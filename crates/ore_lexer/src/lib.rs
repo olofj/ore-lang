@@ -83,6 +83,8 @@ pub struct Spanned {
     pub token: Token,
     pub offset: usize,
     pub len: usize,
+    pub line: usize,
+    pub col: usize,
 }
 
 pub fn lex(source: &str) -> Result<Vec<Spanned>, LexError> {
@@ -95,11 +97,13 @@ pub fn lex(source: &str) -> Result<Vec<Spanned>, LexError> {
 pub struct LexError {
     pub msg: String,
     pub offset: usize,
+    pub line: usize,
+    pub col: usize,
 }
 
 impl std::fmt::Display for LexError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "lex error at offset {}: {}", self.offset, self.msg)
+        write!(f, "lex error at {}:{}: {}", self.line, self.col, self.msg)
     }
 }
 
@@ -109,6 +113,8 @@ struct Lexer<'a> {
     tokens: Vec<Spanned>,
     indent_stack: Vec<usize>,
     at_line_start: bool,
+    line: usize,
+    col: usize,
 }
 
 impl<'a> Lexer<'a> {
@@ -119,6 +125,8 @@ impl<'a> Lexer<'a> {
             tokens: Vec::new(),
             indent_stack: vec![0],
             at_line_start: true,
+            line: 1,
+            col: 1,
         }
     }
 
@@ -132,18 +140,52 @@ impl<'a> Lexer<'a> {
 
     fn advance(&mut self) -> Option<u8> {
         let ch = self.src.get(self.pos).copied();
-        if ch.is_some() {
+        if let Some(c) = ch {
             self.pos += 1;
+            if c == b'\n' {
+                self.line += 1;
+                self.col = 1;
+            } else {
+                self.col += 1;
+            }
         }
         ch
     }
 
     fn emit(&mut self, token: Token, start: usize) {
+        // Compute line/col from start offset by scanning source up to start
+        let (line, col) = self.offset_to_line_col(start);
         self.tokens.push(Spanned {
             token,
             offset: start,
             len: self.pos - start,
+            line,
+            col,
         });
+    }
+
+    fn offset_to_line_col(&self, offset: usize) -> (usize, usize) {
+        let mut line = 1;
+        let mut col = 1;
+        for &b in &self.src[..offset.min(self.src.len())] {
+            if b == b'\n' {
+                line += 1;
+                col = 1;
+            } else {
+                col += 1;
+            }
+        }
+        (line, col)
+    }
+
+    fn lex_error(&self, msg: String) -> LexError {
+        let (line, col) = self.offset_to_line_col(self.pos);
+        LexError { msg, offset: self.pos, line, col }
+    }
+
+    fn lex_error_at(&self, msg: String, offset: usize) -> LexError {
+        let (line, col) = self.offset_to_line_col(offset);
+        LexError { msg, offset, line, col }
     }
 
     fn current_indent(&self) -> usize {
@@ -240,10 +282,7 @@ impl<'a> Lexer<'a> {
                 self.emit(Token::Dedent, start);
             }
             if indent != self.current_indent() {
-                return Err(LexError {
-                    msg: "inconsistent indentation".to_string(),
-                    offset: start,
-                });
+                return Err(self.lex_error_at("inconsistent indentation".to_string(), start));
             }
         }
 
@@ -307,10 +346,7 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     self.emit(Token::BangEq, start);
                 } else {
-                    return Err(LexError {
-                        msg: "unexpected '!'".to_string(),
-                        offset: start,
-                    });
+                    return Err(self.lex_error_at("unexpected '!'".to_string(), start));
                 }
             }
             b'<' => {
@@ -341,10 +377,7 @@ impl<'a> Lexer<'a> {
                 }
             }
             _ => {
-                return Err(LexError {
-                    msg: format!("unexpected character '{}'", ch as char),
-                    offset: start,
-                });
+                return Err(self.lex_error_at(format!("unexpected character '{}'", ch as char), start));
             }
         }
         Ok(())
@@ -372,16 +405,10 @@ impl<'a> Lexer<'a> {
             .collect();
 
         if is_float {
-            let val: f64 = text.parse().map_err(|_| LexError {
-                msg: "invalid float literal".to_string(),
-                offset: start,
-            })?;
+            let val: f64 = text.parse().map_err(|_| self.lex_error_at("invalid float literal".to_string(), start))?;
             self.emit(Token::Float(val), start);
         } else {
-            let val: i64 = text.parse().map_err(|_| LexError {
-                msg: "invalid integer literal".to_string(),
-                offset: start,
-            })?;
+            let val: i64 = text.parse().map_err(|_| self.lex_error_at("invalid integer literal".to_string(), start))?;
             self.emit(Token::Int(val), start);
         }
         Ok(())
@@ -396,10 +423,7 @@ impl<'a> Lexer<'a> {
         loop {
             match self.peek() {
                 None => {
-                    return Err(LexError {
-                        msg: "unterminated string".to_string(),
-                        offset: start,
-                    });
+                    return Err(self.lex_error_at("unterminated string".to_string(), start));
                 }
                 Some(b'"') => {
                     self.advance();
@@ -422,10 +446,7 @@ impl<'a> Lexer<'a> {
                     while depth > 0 {
                         match self.peek() {
                             None => {
-                                return Err(LexError {
-                                    msg: "unterminated interpolation".to_string(),
-                                    offset: seg_start,
-                                });
+                                return Err(self.lex_error_at("unterminated interpolation".to_string(), seg_start));
                             }
                             Some(b'}') => {
                                 depth -= 1;
@@ -457,16 +478,10 @@ impl<'a> Lexer<'a> {
                         Some(b'"') => s.push('"'),
                         Some(b'{') => s.push('{'),
                         Some(other) => {
-                            return Err(LexError {
-                                msg: format!("unknown escape '\\{}'", other as char),
-                                offset: self.pos - 1,
-                            });
+                            return Err(self.lex_error_at(format!("unknown escape '\\{}'", other as char), self.pos - 1));
                         }
                         None => {
-                            return Err(LexError {
-                                msg: "unterminated escape".to_string(),
-                                offset: self.pos,
-                            });
+                            return Err(self.lex_error("unterminated escape".to_string()));
                         }
                     }
                 }

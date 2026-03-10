@@ -14,11 +14,13 @@ pub fn parse(tokens: Vec<Spanned>) -> Result<Program, ParseError> {
 pub struct ParseError {
     pub msg: String,
     pub offset: usize,
+    pub line: usize,
+    pub col: usize,
 }
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "parse error at offset {}: {}", self.offset, self.msg)
+        write!(f, "parse error at {}:{}: {}", self.line, self.col, self.msg)
     }
 }
 
@@ -34,10 +36,6 @@ impl Parser {
 
     fn peek(&self) -> &Token {
         self.tokens.get(self.pos).map(|s| &s.token).unwrap_or(&Token::Eof)
-    }
-
-    fn peek_offset(&self) -> usize {
-        self.tokens.get(self.pos).map(|s| s.offset).unwrap_or(0)
     }
 
     fn advance(&mut self) -> &Token {
@@ -58,9 +56,12 @@ impl Parser {
     }
 
     fn error(&self, msg: String) -> ParseError {
+        let spanned = self.tokens.get(self.pos);
         ParseError {
             msg,
-            offset: self.peek_offset(),
+            offset: spanned.map(|s| s.offset).unwrap_or(0),
+            line: spanned.map(|s| s.line).unwrap_or(0),
+            col: spanned.map(|s| s.col).unwrap_or(0),
         }
     }
 
