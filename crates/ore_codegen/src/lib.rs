@@ -85,6 +85,12 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
         Expr::FieldAccess { object, .. } => {
             collect_free_vars(object, bound, free, seen);
         }
+        Expr::MethodCall { object, args, .. } => {
+            collect_free_vars(object, bound, free, seen);
+            for arg in args {
+                collect_free_vars(arg, bound, free, seen);
+            }
+        }
         // Literals and constants have no free variables
         Expr::IntLit(_) | Expr::FloatLit(_) | Expr::BoolLit(_) | Expr::StringLit(_)
         | Expr::Break | Expr::OptionNone => {}
@@ -181,6 +187,8 @@ pub struct CodeGen<'ctx> {
     lambda_counter: u32,
     /// Maps lambda function name -> capture info (only for closures with captures)
     lambda_captures: HashMap<String, CaptureInfo<'ctx>>,
+    /// Maps type name -> list of method names (for method call resolution)
+    method_map: HashMap<String, Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -217,6 +225,7 @@ impl<'ctx> CodeGen<'ctx> {
             str_counter: 0,
             lambda_counter: 0,
             lambda_captures: HashMap::new(),
+            method_map: HashMap::new(),
         }
     }
 
@@ -244,15 +253,53 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
+        // Declare regular functions
         for item in &program.items {
             if let Item::FnDef(f) = item {
                 self.declare_function(f)?;
             }
         }
 
+        // Declare impl block methods (mangled names: TypeName_methodName)
+        for item in &program.items {
+            if let Item::ImplBlock { type_name, methods } = item {
+                let mut method_names = Vec::new();
+                for method in methods {
+                    let mangled_name = format!("{}_{}", type_name, method.name);
+                    method_names.push(method.name.clone());
+                    // Create a copy of the FnDef with the mangled name for declaration
+                    let mangled_fn = FnDef {
+                        name: mangled_name,
+                        params: method.params.clone(),
+                        ret_type: method.ret_type.clone(),
+                        body: method.body.clone(),
+                    };
+                    self.declare_function(&mangled_fn)?;
+                }
+                self.method_map.insert(type_name.clone(), method_names);
+            }
+        }
+
+        // Compile regular functions
         for item in &program.items {
             if let Item::FnDef(f) = item {
                 self.compile_function(f)?;
+            }
+        }
+
+        // Compile impl block methods
+        for item in &program.items {
+            if let Item::ImplBlock { type_name, methods } = item {
+                for method in methods {
+                    let mangled_name = format!("{}_{}", type_name, method.name);
+                    let mangled_fn = FnDef {
+                        name: mangled_name,
+                        params: method.params.clone(),
+                        ret_type: method.ret_type.clone(),
+                        body: method.body.clone(),
+                    };
+                    self.compile_function(&mangled_fn)?;
+                }
             }
         }
 
@@ -675,6 +722,9 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::FieldAccess { object, field } => {
                 self.compile_field_access(object, field, func)
             }
+            Expr::MethodCall { object, method, args } => {
+                self.compile_method_call(object, method, args, func)
+            }
             Expr::OptionNone => {
                 let opt_ty = self.option_type();
                 let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_none"))?;
@@ -801,6 +851,35 @@ impl<'ctx> CodeGen<'ctx> {
         let field_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, idx as u32, field))?;
         let result = bld!(self.builder.build_load(field_ty, field_ptr, field))?;
         Ok((result, field_kind))
+    }
+
+    fn compile_method_call(
+        &mut self,
+        object: &Expr,
+        method: &str,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
+        let type_name = match &obj_kind {
+            ValKind::Record(name) => name.clone(),
+            _ => return Err(CodeGenError { msg: "method call on non-record type".into() }),
+        };
+
+        // Look up the mangled function name
+        let mangled_name = format!("{}_{}", type_name, method);
+        let (called_fn, ret_kind) = self.resolve_function(&mangled_name)?;
+
+        // Build args: object as first arg, then the rest
+        let mut compiled_args: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> = Vec::new();
+        compiled_args.push(obj_val.into());
+        for arg in args {
+            compiled_args.push(self.compile_expr(arg, func)?.into());
+        }
+
+        let result = bld!(self.builder.build_call(called_fn, &compiled_args, "mcall"))?;
+        let val = self.call_result_to_value(result)?;
+        Ok((val, ret_kind))
     }
 
     fn compile_variant_construct(

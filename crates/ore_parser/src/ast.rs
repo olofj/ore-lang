@@ -8,6 +8,10 @@ pub enum Item {
     FnDef(FnDef),
     TypeDef(TypeDef),
     EnumDef(EnumDef),
+    ImplBlock {
+        type_name: String,
+        methods: Vec<FnDef>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -132,6 +136,11 @@ pub enum Expr {
     FieldAccess {
         object: Box<Expr>,
         field: String,
+    },
+    MethodCall {
+        object: Box<Expr>,
+        method: String,
+        args: Vec<Expr>,
     },
     Break,
     OptionNone,

@@ -25,6 +25,7 @@ pub enum Token {
     Break,
     In,
     Type,
+    Impl,
     Some,
     None_,
 
@@ -505,6 +506,7 @@ impl<'a> Lexer<'a> {
             "break" => Token::Break,
             "in" => Token::In,
             "type" => Token::Type,
+            "impl" => Token::Impl,
             "Some" => Token::Some,
             "None" => Token::None_,
             _ => Token::Ident(text.to_string()),

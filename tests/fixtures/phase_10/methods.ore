@@ -1,0 +1,15 @@
+type Point { x:Float, y:Float }
+
+impl Point
+  fn magnitude self:Point -> Float
+    self.x * self.x + self.y * self.y
+
+  fn translate self:Point dx:Float dy:Float -> Point
+    Point(x: self.x + dx, y: self.y + dy)
+
+fn main
+  p := Point(x: 3.0, y: 4.0)
+  print p.magnitude()
+  p2 := p.translate(1.0, 1.0)
+  print p2.x
+  print p2.y

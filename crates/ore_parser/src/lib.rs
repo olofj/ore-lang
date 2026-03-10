@@ -87,8 +87,31 @@ impl Parser {
         match self.peek() {
             Token::Fn => Ok(Item::FnDef(self.parse_fn_def()?)),
             Token::Type => self.parse_type_or_enum(),
+            Token::Impl => self.parse_impl_block(),
             _ => Err(self.error(format!("expected item, got {:?}", self.peek()))),
         }
+    }
+
+    fn parse_impl_block(&mut self) -> Result<Item, ParseError> {
+        self.expect(&Token::Impl)?;
+        let type_name = match self.peek().clone() {
+            Token::Ident(n) => { self.advance(); n }
+            _ => return Err(self.error("expected type name after impl".into())),
+        };
+        self.skip_newlines();
+        self.expect(&Token::Indent)?;
+        let mut methods = Vec::new();
+        loop {
+            self.skip_newlines();
+            if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+                break;
+            }
+            methods.push(self.parse_fn_def()?);
+        }
+        if self.peek() == &Token::Dedent {
+            self.advance();
+        }
+        Ok(Item::ImplBlock { type_name, methods })
     }
 
     fn parse_type_or_enum(&mut self) -> Result<Item, ParseError> {
@@ -362,7 +385,7 @@ impl Parser {
                 }
             }
 
-            // Field access (highest precedence postfix)
+            // Field access / method call (highest precedence postfix)
             if self.peek() == &Token::Dot {
                 if let Some(Token::Ident(_)) = self.tokens.get(self.pos + 1).map(|s| &s.token) {
                     let dot_bp = 15; // Higher than any infix op
@@ -372,10 +395,29 @@ impl Parser {
                             Token::Ident(f) => { self.advance(); f }
                             _ => unreachable!(),
                         };
-                        lhs = Expr::FieldAccess {
-                            object: Box::new(lhs),
-                            field,
-                        };
+                        // Check if this is a method call: field followed by '('
+                        if self.peek() == &Token::LParen {
+                            self.advance(); // consume '('
+                            let mut args = Vec::new();
+                            if self.peek() != &Token::RParen {
+                                args.push(self.parse_expr(0)?);
+                                while self.peek() == &Token::Comma {
+                                    self.advance();
+                                    args.push(self.parse_expr(0)?);
+                                }
+                            }
+                            self.expect(&Token::RParen)?;
+                            lhs = Expr::MethodCall {
+                                object: Box::new(lhs),
+                                method: field,
+                                args,
+                            };
+                        } else {
+                            lhs = Expr::FieldAccess {
+                                object: Box::new(lhs),
+                                field,
+                            };
+                        }
                         continue;
                     }
                 }

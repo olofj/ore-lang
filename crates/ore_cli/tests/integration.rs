@@ -105,3 +105,10 @@ fn phase9_closures() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["15", "21"]);
 }
+
+#[test]
+fn phase10_methods() {
+    let out = run_ore("phase_10/methods.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["25.0", "4.0", "5.0"]);
+}
