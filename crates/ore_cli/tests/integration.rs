@@ -84,3 +84,10 @@ fn phase6_enums() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["78.53975", "12.0"]);
 }
+
+#[test]
+fn phase7_loops() {
+    let out = run_ore("phase_7/loops.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["45", "5", "3"]);
+}

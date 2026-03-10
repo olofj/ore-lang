@@ -1,0 +1,17 @@
+fn main
+  mut sum := 0
+  for i in 0..10
+    sum = sum + i
+  print sum
+
+  mut count := 0
+  while count < 5
+    count = count + 1
+  print count
+
+  mut x := 0
+  loop
+    x = x + 1
+    if x >= 3
+      break
+  print x

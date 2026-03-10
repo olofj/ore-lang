@@ -266,6 +266,37 @@ impl Parser {
                     Ok(Stmt::Return(Some(expr)))
                 }
             }
+            Token::For => {
+                self.advance();
+                let var = match self.peek().clone() {
+                    Token::Ident(n) => { self.advance(); n }
+                    _ => return Err(self.error("expected variable name after for".into())),
+                };
+                self.expect(&Token::In)?;
+                let start = self.parse_expr(3)?; // Parse at higher precedence to stop at ..
+                self.expect(&Token::DotDot)?;
+                let end = self.parse_expr(0)?;
+                self.skip_newlines();
+                let body = self.parse_block()?;
+                Ok(Stmt::ForIn { var, start, end, body })
+            }
+            Token::While => {
+                self.advance();
+                let cond = self.parse_expr(0)?;
+                self.skip_newlines();
+                let body = self.parse_block()?;
+                Ok(Stmt::While { cond, body })
+            }
+            Token::Loop => {
+                self.advance();
+                self.skip_newlines();
+                let body = self.parse_block()?;
+                Ok(Stmt::Loop { body })
+            }
+            Token::Break => {
+                self.advance();
+                Ok(Stmt::Break)
+            }
             Token::Ident(name) if name == "print" => {
                 self.advance();
                 let expr = self.parse_expr(0)?;
@@ -429,6 +460,10 @@ impl Parser {
             Token::Float(f) => {
                 self.advance();
                 Ok(Expr::FloatLit(f))
+            }
+            Token::Break => {
+                self.advance();
+                Ok(Expr::Break)
             }
             Token::True => {
                 self.advance();

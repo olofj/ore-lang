@@ -50,6 +50,8 @@ pub struct CodeGen<'ctx> {
     enums: HashMap<String, EnumInfo<'ctx>>,
     /// Maps variant name -> enum name for quick lookup
     variant_to_enum: HashMap<String, String>,
+    /// Target block for `break` statements
+    break_target: Option<inkwell::basic_block::BasicBlock<'ctx>>,
     str_counter: u32,
     lambda_counter: u32,
 }
@@ -84,6 +86,7 @@ impl<'ctx> CodeGen<'ctx> {
             records: HashMap::new(),
             enums: HashMap::new(),
             variant_to_enum: HashMap::new(),
+            break_target: None,
             str_counter: 0,
             lambda_counter: 0,
         }
@@ -388,6 +391,26 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_return(None))?;
                 Ok(None)
             }
+            Stmt::ForIn { var, start, end, body } => {
+                self.compile_for_in(var, start, end, body, func)?;
+                Ok(None)
+            }
+            Stmt::While { cond, body } => {
+                self.compile_while(cond, body, func)?;
+                Ok(None)
+            }
+            Stmt::Loop { body } => {
+                self.compile_loop(body, func)?;
+                Ok(None)
+            }
+            Stmt::Break => {
+                if let Some(target) = self.break_target {
+                    bld!(self.builder.build_unconditional_branch(target))?;
+                } else {
+                    return Err(CodeGenError { msg: "break outside of loop".into() });
+                }
+                Ok(None)
+            }
         }
     }
 
@@ -512,6 +535,14 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::FieldAccess { object, field } => {
                 self.compile_field_access(object, field, func)
+            }
+            Expr::Break => {
+                if let Some(target) = self.break_target {
+                    bld!(self.builder.build_unconditional_branch(target))?;
+                } else {
+                    return Err(CodeGenError { msg: "break outside of loop".into() });
+                }
+                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
         }
     }
@@ -972,6 +1003,112 @@ impl<'ctx> CodeGen<'ctx> {
             }
             _ => Err(CodeGenError { msg: "unsupported pipeline target".into() }),
         }
+    }
+
+    fn compile_for_in(
+        &mut self,
+        var: &str,
+        start_expr: &Expr,
+        end_expr: &Expr,
+        body: &Block,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let i64_type = self.context.i64_type();
+        let start_val = self.compile_expr(start_expr, func)?.into_int_value();
+        let end_val = self.compile_expr(end_expr, func)?.into_int_value();
+
+        // Alloca for loop variable
+        let var_alloca = bld!(self.builder.build_alloca(i64_type, var))?;
+        bld!(self.builder.build_store(var_alloca, start_val))?;
+        self.variables.insert(var.to_string(), (var_alloca, i64_type.into(), ValKind::Int));
+
+        let cond_bb = self.context.append_basic_block(func, "for_cond");
+        let body_bb = self.context.append_basic_block(func, "for_body");
+        let end_bb = self.context.append_basic_block(func, "for_end");
+
+        bld!(self.builder.build_unconditional_branch(cond_bb))?;
+
+        // Condition: i < end
+        self.builder.position_at_end(cond_bb);
+        let current = bld!(self.builder.build_load(i64_type, var_alloca, var))?.into_int_value();
+        let cmp = bld!(self.builder.build_int_compare(IntPredicate::SLT, current, end_val, "for_cmp"))?;
+        bld!(self.builder.build_conditional_branch(cmp, body_bb, end_bb))?;
+
+        // Body
+        self.builder.position_at_end(body_bb);
+        let saved_break = self.break_target;
+        self.break_target = Some(end_bb);
+        for stmt in &body.stmts {
+            self.compile_stmt(stmt, func)?;
+        }
+        self.break_target = saved_break;
+
+        // Increment
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            let current = bld!(self.builder.build_load(i64_type, var_alloca, var))?.into_int_value();
+            let next = bld!(self.builder.build_int_add(current, i64_type.const_int(1, false), "inc"))?;
+            bld!(self.builder.build_store(var_alloca, next))?;
+            bld!(self.builder.build_unconditional_branch(cond_bb))?;
+        }
+
+        self.builder.position_at_end(end_bb);
+        Ok(())
+    }
+
+    fn compile_while(
+        &mut self,
+        cond_expr: &Expr,
+        body: &Block,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let cond_bb = self.context.append_basic_block(func, "while_cond");
+        let body_bb = self.context.append_basic_block(func, "while_body");
+        let end_bb = self.context.append_basic_block(func, "while_end");
+
+        bld!(self.builder.build_unconditional_branch(cond_bb))?;
+
+        self.builder.position_at_end(cond_bb);
+        let cond_val = self.compile_expr(cond_expr, func)?.into_int_value();
+        bld!(self.builder.build_conditional_branch(cond_val, body_bb, end_bb))?;
+
+        self.builder.position_at_end(body_bb);
+        let saved_break = self.break_target;
+        self.break_target = Some(end_bb);
+        for stmt in &body.stmts {
+            self.compile_stmt(stmt, func)?;
+        }
+        self.break_target = saved_break;
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            bld!(self.builder.build_unconditional_branch(cond_bb))?;
+        }
+
+        self.builder.position_at_end(end_bb);
+        Ok(())
+    }
+
+    fn compile_loop(
+        &mut self,
+        body: &Block,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let body_bb = self.context.append_basic_block(func, "loop_body");
+        let end_bb = self.context.append_basic_block(func, "loop_end");
+
+        bld!(self.builder.build_unconditional_branch(body_bb))?;
+
+        self.builder.position_at_end(body_bb);
+        let saved_break = self.break_target;
+        self.break_target = Some(end_bb);
+        for stmt in &body.stmts {
+            self.compile_stmt(stmt, func)?;
+        }
+        self.break_target = saved_break;
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            bld!(self.builder.build_unconditional_branch(body_bb))?;
+        }
+
+        self.builder.position_at_end(end_bb);
+        Ok(())
     }
 
     fn compile_if_else(

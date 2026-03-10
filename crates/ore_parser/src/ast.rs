@@ -71,6 +71,20 @@ pub enum Stmt {
     },
     Expr(Expr),
     Return(Option<Expr>),
+    ForIn {
+        var: String,
+        start: Expr,
+        end: Expr,
+        body: Block,
+    },
+    While {
+        cond: Expr,
+        body: Block,
+    },
+    Loop {
+        body: Block,
+    },
+    Break,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -119,6 +133,7 @@ pub enum Expr {
         object: Box<Expr>,
         field: String,
     },
+    Break,
 }
 
 #[derive(Debug, Clone, PartialEq)]
