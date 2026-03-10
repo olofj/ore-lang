@@ -256,6 +256,7 @@ fn run_repl() {
             map_fn!("ore_sleep", ore_runtime::ore_sleep);
             map_fn!("ore_list_new", ore_runtime::ore_list_new);
             map_fn!("ore_list_push", ore_runtime::ore_list_push);
+    map_fn!("ore_list_set", ore_runtime::ore_list_set);
             map_fn!("ore_list_get", ore_runtime::ore_list_get);
             map_fn!("ore_list_len", ore_runtime::ore_list_len);
             map_fn!("ore_list_print", ore_runtime::ore_list_print);
@@ -341,6 +342,7 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_sleep", ore_runtime::ore_sleep);
     map_fn!("ore_list_new", ore_runtime::ore_list_new);
     map_fn!("ore_list_push", ore_runtime::ore_list_push);
+    map_fn!("ore_list_set", ore_runtime::ore_list_set);
     map_fn!("ore_list_get", ore_runtime::ore_list_get);
     map_fn!("ore_list_len", ore_runtime::ore_list_len);
     map_fn!("ore_list_print", ore_runtime::ore_list_print);

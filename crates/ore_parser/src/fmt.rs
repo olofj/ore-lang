@@ -141,6 +141,22 @@ impl Formatter {
                 self.format_expr(value, level);
                 self.out.push('\n');
             }
+            Stmt::IndexAssign { object, index, value } => {
+                self.indent(level);
+                self.format_expr(object, level);
+                self.out.push('[');
+                self.format_expr(index, level);
+                self.out.push_str("] = ");
+                self.format_expr(value, level);
+                self.out.push('\n');
+            }
+            Stmt::FieldAssign { object, field, value } => {
+                self.indent(level);
+                self.format_expr(object, level);
+                self.out.push_str(&format!(".{} = ", field));
+                self.format_expr(value, level);
+                self.out.push('\n');
+            }
             Stmt::Expr(expr) => {
                 self.indent(level);
                 self.format_expr(expr, level);

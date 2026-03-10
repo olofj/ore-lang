@@ -1,0 +1,12 @@
+fn main
+  -- List index assignment
+  mut xs := [1, 2, 3]
+  xs[1] = 99
+  print xs
+
+  -- Map index assignment
+  m := {"x": 10}
+  m["x"] = 42
+  m["y"] = 20
+  print m.get("x")
+  print m.len()

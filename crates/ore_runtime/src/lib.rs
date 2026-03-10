@@ -494,6 +494,17 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+/// Set a list element by index
+#[no_mangle]
+pub extern "C" fn ore_list_set(list: *mut OreList, index: i64, value: i64) {
+    unsafe {
+        let list = &mut *list;
+        if index >= 0 && (index as usize) < list.len as usize {
+            *list.data.add(index as usize) = value;
+        }
+    }
+}
+
 /// Reduce a list with a 2-arg closure: fn(acc, elem) -> acc
 /// call_closure2 dispatches based on whether env is null.
 unsafe fn call_closure2(func: *const u8, env: *mut u8, a: i64, b: i64) -> i64 {

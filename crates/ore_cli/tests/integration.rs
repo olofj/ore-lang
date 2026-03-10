@@ -256,6 +256,13 @@ fn stdlib_strings_adv() {
 }
 
 #[test]
+fn mutation_assign() {
+    let out = run_ore("mutation/assign.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["[1, 99, 3]", "42", "2"]);
+}
+
+#[test]
 fn maps_basic() {
     let out = run_ore("maps/basic.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

@@ -484,7 +484,8 @@ impl Parser {
                 Ok(Stmt::Let { name, mutable: true, value })
             }
             Token::Ident(_) => {
-                // Could be: binding (x := ...), assignment (x = ...), or expression
+                // Could be: binding (x := ...), assignment (x = ...),
+                // index assign (x[i] = ...), field assign (x.f = ...), or expression
                 let saved = self.pos;
                 let name = match self.peek().clone() {
                     Token::Ident(n) => { self.advance(); n }
@@ -503,10 +504,25 @@ impl Parser {
                         Ok(Stmt::Assign { name, value })
                     }
                     _ => {
-                        // Backtrack and parse as expression
+                        // Backtrack and parse as expression, then check for assignment
                         self.pos = saved;
                         let expr = self.parse_expr(0)?;
-                        Ok(Stmt::Expr(expr))
+                        // Check for index/field assignment: expr[idx] = val, expr.field = val
+                        if self.peek() == &Token::Eq {
+                            self.advance();
+                            let value = self.parse_expr(0)?;
+                            match expr {
+                                Expr::Index { object, index } => {
+                                    Ok(Stmt::IndexAssign { object: *object, index: *index, value })
+                                }
+                                Expr::FieldAccess { object, field } => {
+                                    Ok(Stmt::FieldAssign { object: *object, field, value })
+                                }
+                                _ => Err(self.error("invalid assignment target".into())),
+                            }
+                        } else {
+                            Ok(Stmt::Expr(expr))
+                        }
                     }
                 }
             }

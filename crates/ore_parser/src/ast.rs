@@ -100,6 +100,16 @@ pub enum Stmt {
         name: String,
         value: Expr,
     },
+    IndexAssign {
+        object: Expr,
+        index: Expr,
+        value: Expr,
+    },
+    FieldAssign {
+        object: Expr,
+        field: String,
+        value: Expr,
+    },
     Expr(Expr),
     Return(Option<Expr>),
     ForIn {

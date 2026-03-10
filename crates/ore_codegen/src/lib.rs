@@ -145,6 +145,15 @@ fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<S
                 collect_free_vars_stmt(s, bound, free, seen);
             }
         }
+        Stmt::IndexAssign { object, index, value } => {
+            collect_free_vars(object, bound, free, seen);
+            collect_free_vars(index, bound, free, seen);
+            collect_free_vars(value, bound, free, seen);
+        }
+        Stmt::FieldAssign { object, field: _, value } => {
+            collect_free_vars(object, bound, free, seen);
+            collect_free_vars(value, bound, free, seen);
+        }
     }
 }
 
@@ -485,6 +494,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_get", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_len(ptr) -> i64
         self.module.add_function("ore_list_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_set(ptr, i64, i64)
+        self.module.add_function("ore_list_set", void_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_print(ptr)
         self.module.add_function("ore_list_print", void_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_map(ptr, fn_ptr, env_ptr) -> ptr
@@ -703,6 +714,44 @@ impl<'ctx> CodeGen<'ctx> {
                     });
                 }
                 bld!(self.builder.build_store(*ptr, val))?;
+                Ok(None)
+            }
+            Stmt::IndexAssign { object, index, value } => {
+                let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
+                let idx_val = self.compile_expr(index, func)?;
+                let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
+                match obj_kind {
+                    ValKind::List => {
+                        let rt = self.module.get_function("ore_list_set").unwrap();
+                        bld!(self.builder.build_call(rt, &[obj_val.into(), idx_val.into(), val.into()], ""))?;
+                    }
+                    ValKind::Map => {
+                        let rt = self.module.get_function("ore_map_set").unwrap();
+                        bld!(self.builder.build_call(rt, &[obj_val.into(), idx_val.into(), val.into()], ""))?;
+                    }
+                    _ => return Err(CodeGenError { msg: "index assignment only supported on lists and maps".into() }),
+                }
+                Ok(None)
+            }
+            Stmt::FieldAssign { object, field, value } => {
+                let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
+                let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
+                match obj_kind {
+                    ValKind::Record(ref name) => {
+                        let rec_info = self.records.get(name).ok_or_else(|| CodeGenError {
+                            msg: format!("undefined record type '{}'", name),
+                        })?;
+                        let field_idx = rec_info.field_names.iter().position(|f| f == field).ok_or_else(|| CodeGenError {
+                            msg: format!("unknown field '{}' on record '{}'", field, name),
+                        })?;
+                        let struct_type = rec_info.struct_type;
+                        let field_ptr = bld!(self.builder.build_struct_gep(
+                            struct_type, obj_val.into_pointer_value(), field_idx as u32, &format!("fld_{}", field)
+                        ))?;
+                        bld!(self.builder.build_store(field_ptr, val))?;
+                    }
+                    _ => return Err(CodeGenError { msg: format!("field assignment not supported on {:?}", obj_kind) }),
+                }
                 Ok(None)
             }
             Stmt::Expr(expr) => {
