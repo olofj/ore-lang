@@ -1,4 +1,5 @@
 pub mod ast;
+pub mod fmt;
 
 use ast::*;
 use ore_lexer::Token;

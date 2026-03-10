@@ -26,6 +26,19 @@ enum Commands {
         #[arg(short, long, default_value = "a.out")]
         output: PathBuf,
     },
+    /// Check an Ore source file for errors (parse only, no codegen)
+    Check {
+        /// Path to the .ore file
+        file: PathBuf,
+    },
+    /// Format an Ore source file
+    Fmt {
+        /// Path to the .ore file
+        file: PathBuf,
+        /// Write formatted output back to the file
+        #[arg(short, long)]
+        write: bool,
+    },
 }
 
 type MainFunc = unsafe extern "C" fn() -> i32;
@@ -44,6 +57,31 @@ fn main() {
             if let Err(e) = build_file(&file, &output) {
                 eprintln!("error: {}", e);
                 std::process::exit(1);
+            }
+        }
+        Commands::Check { file } => {
+            if let Err(e) = check_file(&file) {
+                eprintln!("error: {}", e);
+                std::process::exit(1);
+            }
+            eprintln!("ok: {}", file.display());
+        }
+        Commands::Fmt { file, write } => {
+            match fmt_file(&file) {
+                Ok(formatted) => {
+                    if write {
+                        if let Err(e) = std::fs::write(&file, &formatted) {
+                            eprintln!("error writing {}: {}", file.display(), e);
+                            std::process::exit(1);
+                        }
+                    } else {
+                        print!("{}", formatted);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                }
             }
         }
     }
@@ -125,6 +163,26 @@ fn compile_source<'ctx>(
     codegen.compile_program(&program).map_err(|e| e.to_string())?;
 
     Ok(codegen)
+}
+
+fn check_file(path: &Path) -> Result<(), String> {
+    let canonical_path = path.canonicalize()
+        .map_err(|e| format!("cannot resolve '{}': {}", path.display(), e))?;
+    let base_dir = canonical_path.parent().unwrap();
+
+    let program = parse_file(&canonical_path)?;
+
+    // Also resolve imports to check them
+    let mut already_loaded = HashSet::new();
+    already_loaded.insert(canonical_path.clone());
+    let _imported = resolve_imports(&program, base_dir, &mut already_loaded)?;
+
+    Ok(())
+}
+
+fn fmt_file(path: &Path) -> Result<String, String> {
+    let program = parse_file(path)?;
+    Ok(ore_parser::fmt::format_program(&program))
 }
 
 fn run_file(path: &std::path::Path) -> Result<(), String> {
