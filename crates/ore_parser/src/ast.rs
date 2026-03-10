@@ -7,6 +7,7 @@ pub struct Program {
 pub enum Item {
     FnDef(FnDef),
     TypeDef(TypeDef),
+    EnumDef(EnumDef),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -19,6 +20,18 @@ pub struct TypeDef {
 pub struct FieldDef {
     pub name: String,
     pub ty: TypeExpr,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EnumDef {
+    pub name: String,
+    pub variants: Vec<Variant>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Variant {
+    pub name: String,
+    pub fields: Vec<FieldDef>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -89,6 +102,10 @@ pub enum Expr {
         then_expr: Box<Expr>,
         else_expr: Option<Box<Expr>>,
     },
+    Match {
+        subject: Box<Expr>,
+        arms: Vec<MatchArm>,
+    },
     StringInterp(Vec<StringPart>),
     Lambda {
         params: Vec<String>,
@@ -102,6 +119,21 @@ pub enum Expr {
         object: Box<Expr>,
         field: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MatchArm {
+    pub pattern: Pattern,
+    pub body: Expr,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Pattern {
+    Variant {
+        name: String,
+        bindings: Vec<String>,
+    },
+    Wildcard,
 }
 
 #[derive(Debug, Clone, PartialEq)]

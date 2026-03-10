@@ -86,19 +86,68 @@ impl Parser {
     fn parse_item(&mut self) -> Result<Item, ParseError> {
         match self.peek() {
             Token::Fn => Ok(Item::FnDef(self.parse_fn_def()?)),
-            Token::Type => Ok(Item::TypeDef(self.parse_type_def()?)),
+            Token::Type => self.parse_type_or_enum(),
             _ => Err(self.error(format!("expected item, got {:?}", self.peek()))),
         }
     }
 
-    // ── Type Definitions ──
-
-    fn parse_type_def(&mut self) -> Result<TypeDef, ParseError> {
+    fn parse_type_or_enum(&mut self) -> Result<Item, ParseError> {
         self.expect(&Token::Type)?;
         let name = match self.peek().clone() {
             Token::Ident(n) => { self.advance(); n }
             _ => return Err(self.error("expected type name".into())),
         };
+
+        // If next is '{', it's a record type
+        if self.peek() == &Token::LBrace {
+            return self.parse_record_body(name).map(Item::TypeDef);
+        }
+
+        // Otherwise it's an enum (indented variants)
+        self.skip_newlines();
+        self.expect(&Token::Indent)?;
+        let mut variants = Vec::new();
+        loop {
+            self.skip_newlines();
+            if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+                break;
+            }
+            variants.push(self.parse_variant()?);
+        }
+        if self.peek() == &Token::Dedent {
+            self.advance();
+        }
+        Ok(Item::EnumDef(EnumDef { name, variants }))
+    }
+
+    fn parse_variant(&mut self) -> Result<Variant, ParseError> {
+        let name = match self.peek().clone() {
+            Token::Ident(n) => { self.advance(); n }
+            _ => return Err(self.error("expected variant name".into())),
+        };
+        let mut fields = Vec::new();
+        if self.peek() == &Token::LParen {
+            self.advance();
+            while self.peek() != &Token::RParen {
+                let field_name = match self.peek().clone() {
+                    Token::Ident(n) => { self.advance(); n }
+                    _ => return Err(self.error("expected field name".into())),
+                };
+                self.expect(&Token::Colon)?;
+                let ty = self.parse_type_expr()?;
+                fields.push(FieldDef { name: field_name, ty });
+                if self.peek() == &Token::Comma {
+                    self.advance();
+                }
+            }
+            self.expect(&Token::RParen)?;
+        }
+        Ok(Variant { name, fields })
+    }
+
+    // ── Type Definitions ──
+
+    fn parse_record_body(&mut self, name: String) -> Result<TypeDef, ParseError> {
         self.expect(&Token::LBrace)?;
         let mut fields = Vec::new();
         while self.peek() != &Token::RBrace {
@@ -307,17 +356,35 @@ impl Parser {
                 Token::Or => BinOp::Or,
                 Token::Pipe => BinOp::Pipe,
                 Token::Colon => {
-                    // Check next token after colon isn't end-of-expression
+                    // Check next token after colon
                     let next = self.tokens.get(self.pos + 1).map(|s| &s.token);
-                    if matches!(next, None | Some(Token::Newline) | Some(Token::Dedent) | Some(Token::Eof)) {
+                    if matches!(next, None | Some(Token::Dedent) | Some(Token::Eof)) {
                         break;
                     }
-                    // Inline conditional: cond : trueExpr [: elseExpr]
+
                     let l_bp = 2;
                     if l_bp < min_bp {
                         break;
                     }
+
+                    // If next is Newline (then Indent), it's a pattern match block
+                    if matches!(next, Some(Token::Newline)) {
+                        // Check if there's an Indent after the Newline
+                        let after_nl = self.tokens.get(self.pos + 2).map(|s| &s.token);
+                        if matches!(after_nl, Some(Token::Indent)) {
+                            self.advance(); // consume ':'
+                            self.skip_newlines();
+                            let arms = self.parse_match_arms()?;
+                            lhs = Expr::Match {
+                                subject: Box::new(lhs),
+                                arms,
+                            };
+                            continue;
+                        }
+                    }
+
                     self.advance(); // consume ':'
+                    // Inline conditional: cond : trueExpr [: elseExpr]
                     // Parse then_expr stopping at ':' (use min_bp=3 so ':' at bp=2 stops)
                     let then_expr = self.parse_expr(3)?;
                     let else_expr = if self.peek() == &Token::Colon {
@@ -561,6 +628,54 @@ impl Parser {
             params,
             body: Box::new(body),
         }))
+    }
+
+    /// Parse match arms inside an indented block.
+    /// Each arm: Pattern -> expr
+    fn parse_match_arms(&mut self) -> Result<Vec<MatchArm>, ParseError> {
+        self.expect(&Token::Indent)?;
+        let mut arms = Vec::new();
+        loop {
+            self.skip_newlines();
+            if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+                break;
+            }
+            arms.push(self.parse_match_arm()?);
+        }
+        if self.peek() == &Token::Dedent {
+            self.advance();
+        }
+        Ok(arms)
+    }
+
+    fn parse_match_arm(&mut self) -> Result<MatchArm, ParseError> {
+        let pattern = self.parse_pattern()?;
+        self.expect(&Token::Arrow)?;
+        let body = self.parse_expr(0)?;
+        Ok(MatchArm { pattern, body })
+    }
+
+    fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
+        match self.peek().clone() {
+            Token::Ident(name) if name == "_" => {
+                self.advance();
+                Ok(Pattern::Wildcard)
+            }
+            Token::Ident(name) => {
+                self.advance();
+                // If followed by identifiers (not Arrow), these are bindings
+                let mut bindings = Vec::new();
+                while let Token::Ident(b) = self.peek().clone() {
+                    if self.peek() == &Token::Arrow {
+                        break;
+                    }
+                    self.advance();
+                    bindings.push(b);
+                }
+                Ok(Pattern::Variant { name, bindings })
+            }
+            _ => Err(self.error(format!("expected pattern, got {:?}", self.peek()))),
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
+use inkwell::values::{BasicValue, BasicValueEnum, FunctionValue, IntValue, PointerValue};
 use inkwell::types::BasicType;
 use inkwell::IntPredicate;
 use std::collections::HashMap;
@@ -17,12 +17,26 @@ pub enum ValKind {
     Str,
     Void,
     Record(String),
+    Enum(String),
 }
 
 struct RecordInfo<'ctx> {
     struct_type: inkwell::types::StructType<'ctx>,
     field_names: Vec<String>,
     field_kinds: Vec<ValKind>,
+}
+
+struct VariantInfo<'ctx> {
+    name: String,
+    tag: u8,
+    field_names: Vec<String>,
+    field_kinds: Vec<ValKind>,
+    payload_type: inkwell::types::StructType<'ctx>,
+}
+
+struct EnumInfo<'ctx> {
+    enum_type: inkwell::types::StructType<'ctx>,
+    variants: Vec<VariantInfo<'ctx>>,
 }
 
 pub struct CodeGen<'ctx> {
@@ -33,6 +47,9 @@ pub struct CodeGen<'ctx> {
     variables: HashMap<String, (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>, ValKind)>,
     functions: HashMap<String, (FunctionValue<'ctx>, ValKind)>,
     records: HashMap<String, RecordInfo<'ctx>>,
+    enums: HashMap<String, EnumInfo<'ctx>>,
+    /// Maps variant name -> enum name for quick lookup
+    variant_to_enum: HashMap<String, String>,
     str_counter: u32,
     lambda_counter: u32,
 }
@@ -65,6 +82,8 @@ impl<'ctx> CodeGen<'ctx> {
             variables: HashMap::new(),
             functions: HashMap::new(),
             records: HashMap::new(),
+            enums: HashMap::new(),
+            variant_to_enum: HashMap::new(),
             str_counter: 0,
             lambda_counter: 0,
         }
@@ -79,8 +98,10 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Register type definitions
         for item in &program.items {
-            if let Item::TypeDef(td) = item {
-                self.register_record(td)?;
+            match item {
+                Item::TypeDef(td) => self.register_record(td)?,
+                Item::EnumDef(ed) => self.register_enum(ed)?,
+                _ => {}
             }
         }
 
@@ -119,6 +140,74 @@ impl<'ctx> CodeGen<'ctx> {
             field_kinds,
         });
         Ok(())
+    }
+
+    fn register_enum(&mut self, ed: &EnumDef) -> Result<(), CodeGenError> {
+        let mut variants = Vec::new();
+        let mut max_payload_size: u64 = 0;
+
+        for (i, v) in ed.variants.iter().enumerate() {
+            let mut field_types = Vec::new();
+            let mut field_kinds = Vec::new();
+            let mut field_names = Vec::new();
+
+            for f in &v.fields {
+                let kind = self.type_expr_to_kind(&f.ty);
+                let llvm_ty = self.kind_to_llvm_type(&kind);
+                field_types.push(llvm_ty);
+                field_kinds.push(kind);
+                field_names.push(f.name.clone());
+            }
+
+            let payload_type = self.context.struct_type(&field_types, false);
+            // Compute payload size in bytes (manual estimation)
+            let payload_size: u64 = field_types.iter().map(|ty| self.type_size_bytes(ty)).sum();
+            if payload_size > max_payload_size {
+                max_payload_size = payload_size;
+            }
+
+            variants.push(VariantInfo {
+                name: v.name.clone(),
+                tag: i as u8,
+                field_names,
+                field_kinds,
+                payload_type,
+            });
+
+            self.variant_to_enum.insert(v.name.clone(), ed.name.clone());
+        }
+
+        // Enum layout: { i8 (tag), [max_payload_size x i8] (data) }
+        let i8_type = self.context.i8_type();
+        let data_array = i8_type.array_type(max_payload_size as u32);
+        let enum_type = self.context.struct_type(
+            &[i8_type.into(), data_array.into()],
+            false,
+        );
+
+        self.enums.insert(ed.name.clone(), EnumInfo {
+            enum_type,
+            variants,
+        });
+        Ok(())
+    }
+
+    fn type_size_bytes(&self, ty: &inkwell::types::BasicTypeEnum<'ctx>) -> u64 {
+        match ty {
+            inkwell::types::BasicTypeEnum::IntType(t) => {
+                (t.get_bit_width() as u64 + 7) / 8
+            }
+            inkwell::types::BasicTypeEnum::FloatType(_) => 8, // f64
+            inkwell::types::BasicTypeEnum::PointerType(_) => 8, // 64-bit pointer
+            inkwell::types::BasicTypeEnum::StructType(t) => {
+                t.get_field_types().iter().map(|f| self.type_size_bytes(&f)).sum()
+            }
+            inkwell::types::BasicTypeEnum::ArrayType(t) => {
+                let elem_size = self.type_size_bytes(&t.get_element_type());
+                elem_size * t.len() as u64
+            }
+            _ => 8, // fallback
+        }
     }
 
     fn declare_runtime_functions(&mut self) {
@@ -163,6 +252,8 @@ impl<'ctx> CodeGen<'ctx> {
                 other => {
                     if self.records.contains_key(other) {
                         ValKind::Record(other.to_string())
+                    } else if self.enums.contains_key(other) {
+                        ValKind::Enum(other.to_string())
                     } else {
                         ValKind::Int
                     }
@@ -179,6 +270,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Str => self.ptr_type().into(),
             ValKind::Void => self.context.i64_type().into(),
             ValKind::Record(name) => self.records[name].struct_type.into(),
+            ValKind::Enum(name) => self.enums[name].enum_type.into(),
         }
     }
 
@@ -190,6 +282,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Str => self.ptr_type().into(),
             ValKind::Void => self.context.i64_type().into(),
             ValKind::Record(name) => self.records[name].struct_type.into(),
+            ValKind::Enum(name) => self.enums[name].enum_type.into(),
         }
     }
 
@@ -408,7 +501,14 @@ impl<'ctx> CodeGen<'ctx> {
                 self.compile_colon_match_with_kind(cond, then_expr, else_expr.as_deref(), func)
             }
             Expr::RecordConstruct { type_name, fields } => {
+                // Check if this is actually an enum variant construction
+                if self.variant_to_enum.contains_key(type_name) {
+                    return self.compile_variant_construct(type_name, fields, func);
+                }
                 self.compile_record_construct(type_name, fields, func)
+            }
+            Expr::Match { subject, arms } => {
+                self.compile_match(subject, arms, func)
             }
             Expr::FieldAccess { object, field } => {
                 self.compile_field_access(object, field, func)
@@ -471,6 +571,190 @@ impl<'ctx> CodeGen<'ctx> {
         let field_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, idx as u32, field))?;
         let result = bld!(self.builder.build_load(field_ty, field_ptr, field))?;
         Ok((result, field_kind))
+    }
+
+    fn compile_variant_construct(
+        &mut self,
+        variant_name: &str,
+        fields: &[(String, Expr)],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let enum_name = self.variant_to_enum.get(variant_name).ok_or_else(|| CodeGenError {
+            msg: format!("unknown variant '{}'", variant_name),
+        })?.clone();
+
+        let enum_info = self.enums.get(&enum_name).ok_or_else(|| CodeGenError {
+            msg: format!("undefined enum '{}'", enum_name),
+        })?;
+        let enum_type = enum_info.enum_type;
+
+        // Find the variant
+        let variant = enum_info.variants.iter().find(|v| v.name == variant_name).ok_or_else(|| CodeGenError {
+            msg: format!("unknown variant '{}'", variant_name),
+        })?;
+        let tag = variant.tag;
+        let payload_type = variant.payload_type;
+        let variant_field_names = variant.field_names.clone();
+
+        // Alloca the enum
+        let alloca = bld!(self.builder.build_alloca(enum_type, "enum_val"))?;
+
+        // Store tag
+        let tag_ptr = bld!(self.builder.build_struct_gep(enum_type, alloca, 0, "tag_ptr"))?;
+        let tag_val = self.context.i8_type().const_int(tag as u64, false);
+        bld!(self.builder.build_store(tag_ptr, tag_val))?;
+
+        // Store payload fields
+        let data_ptr = bld!(self.builder.build_struct_gep(enum_type, alloca, 1, "data_ptr"))?;
+        let payload_ptr = bld!(self.builder.build_pointer_cast(
+            data_ptr,
+            self.ptr_type(),
+            "payload_ptr"
+        ))?;
+
+        for (name, expr) in fields {
+            let idx = variant_field_names.iter().position(|n| n == name).ok_or_else(|| CodeGenError {
+                msg: format!("unknown field '{}' on variant '{}'", name, variant_name),
+            })?;
+            let val = self.compile_expr(expr, func)?;
+            let field_ptr = bld!(self.builder.build_struct_gep(payload_type, payload_ptr, idx as u32, &format!("{}.{}", variant_name, name)))?;
+            bld!(self.builder.build_store(field_ptr, val))?;
+        }
+
+        let result = bld!(self.builder.build_load(enum_type, alloca, "enum_loaded"))?;
+        Ok((result, ValKind::Enum(enum_name)))
+    }
+
+    fn compile_match(
+        &mut self,
+        subject: &Expr,
+        arms: &[MatchArm],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let (subject_val, subject_kind) = self.compile_expr_with_kind(subject, func)?;
+
+        let enum_name = match &subject_kind {
+            ValKind::Enum(name) => name.clone(),
+            _ => return Err(CodeGenError { msg: "match subject must be an enum type".into() }),
+        };
+
+        let enum_info = self.enums.get(&enum_name).ok_or_else(|| CodeGenError {
+            msg: format!("undefined enum '{}'", enum_name),
+        })?;
+        let enum_type = enum_info.enum_type;
+
+        // Store subject to an alloca so we can extract tag and data
+        let subject_alloca = bld!(self.builder.build_alloca(enum_type, "match_subject"))?;
+        bld!(self.builder.build_store(subject_alloca, subject_val))?;
+
+        // Load the tag
+        let tag_ptr = bld!(self.builder.build_struct_gep(enum_type, subject_alloca, 0, "tag_ptr"))?;
+        let tag_val = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?;
+
+        let merge_bb = self.context.append_basic_block(func, "match_merge");
+
+        // Build switch cases
+        let default_bb = self.context.append_basic_block(func, "match_default");
+        let mut case_blocks: Vec<(inkwell::values::IntValue<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
+        let mut branch_results: Vec<(BasicValueEnum<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
+        let mut result_kind = ValKind::Void;
+        let mut wildcard_arm: Option<&MatchArm> = None;
+
+        // Pre-collect variant info needed for each arm
+        let variant_infos: Vec<_> = enum_info.variants.iter().map(|v| {
+            (v.name.clone(), v.tag, v.payload_type, v.field_names.clone(), v.field_kinds.clone())
+        }).collect();
+
+        for arm in arms {
+            match &arm.pattern {
+                Pattern::Variant { name, bindings } => {
+                    let variant = variant_infos.iter().find(|v| v.0 == *name).ok_or_else(|| CodeGenError {
+                        msg: format!("unknown variant '{}' in match", name),
+                    })?;
+                    let (_, vtag, payload_type, _field_names, field_kinds) = variant;
+
+                    let case_bb = self.context.append_basic_block(func, &format!("match_{}", name));
+                    let tag_const = self.context.i8_type().const_int(*vtag as u64, false);
+                    case_blocks.push((tag_const, case_bb));
+
+                    self.builder.position_at_end(case_bb);
+
+                    // Save variables and bind variant fields
+                    let saved_vars = self.variables.clone();
+
+                    // Extract payload
+                    let data_ptr = bld!(self.builder.build_struct_gep(enum_type, subject_alloca, 1, "data_ptr"))?;
+                    let payload_ptr = bld!(self.builder.build_pointer_cast(
+                        data_ptr,
+                        self.ptr_type(),
+                        "payload_ptr"
+                    ))?;
+
+                    for (i, binding) in bindings.iter().enumerate() {
+                        let field_kind = &field_kinds[i];
+                        let field_ty = self.kind_to_llvm_type(field_kind);
+                        let field_ptr = bld!(self.builder.build_struct_gep(*payload_type, payload_ptr, i as u32, binding))?;
+                        let val = bld!(self.builder.build_load(field_ty, field_ptr, binding))?;
+                        let alloca = bld!(self.builder.build_alloca(field_ty, binding))?;
+                        bld!(self.builder.build_store(alloca, val))?;
+                        self.variables.insert(binding.clone(), (alloca, field_ty, field_kind.clone()));
+                    }
+
+                    let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
+                    result_kind = arm_kind;
+
+                    if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                    }
+                    let end_bb = self.builder.get_insert_block().unwrap();
+                    branch_results.push((arm_val, end_bb));
+
+                    self.variables = saved_vars;
+                }
+                Pattern::Wildcard => {
+                    wildcard_arm = Some(arm);
+                }
+            }
+        }
+
+        // Handle wildcard/default
+        self.builder.position_at_end(default_bb);
+        if let Some(arm) = wildcard_arm {
+            let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
+            result_kind = arm_kind;
+            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+            }
+            let end_bb = self.builder.get_insert_block().unwrap();
+            branch_results.push((arm_val, end_bb));
+        } else {
+            // Unreachable default
+            bld!(self.builder.build_unreachable())?;
+        }
+
+        // Build the switch
+        // Position back at the block before the switch
+        let switch_bb = tag_val.as_instruction_value().unwrap().get_parent().unwrap();
+        self.builder.position_at_end(switch_bb);
+        let switch = bld!(self.builder.build_switch(
+            tag_val.into_int_value(),
+            default_bb,
+            &case_blocks.iter().map(|(v, bb)| (*v, *bb)).collect::<Vec<_>>()
+        ))?;
+        let _ = switch;
+
+        // Build merge phi
+        self.builder.position_at_end(merge_bb);
+        if branch_results.is_empty() {
+            return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+        }
+
+        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "match_val"))?;
+        for (val, bb) in &branch_results {
+            phi.add_incoming(&[(val, *bb)]);
+        }
+
+        Ok((phi.as_basic_value(), result_kind))
     }
 
     fn compile_string_literal(&mut self, s: &str) -> Result<PointerValue<'ctx>, CodeGenError> {

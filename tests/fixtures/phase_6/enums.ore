@@ -1,0 +1,12 @@
+type Shape
+  Circle(radius: Float)
+  Rect(width: Float, height: Float)
+
+fn area s:Shape -> Float
+  s :
+    Circle r -> 3.14159 * r * r
+    Rect w h -> w * h
+
+fn main
+  print area(Circle(radius: 5.0))
+  print area(Rect(width: 3.0, height: 4.0))

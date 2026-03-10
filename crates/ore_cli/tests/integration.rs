@@ -77,3 +77,10 @@ fn phase4_lambda() {
 fn phase5_records() {
     assert_eq!(run_ore("phase_5/records.ore").trim(), "25.0");
 }
+
+#[test]
+fn phase6_enums() {
+    let out = run_ore("phase_6/enums.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["78.53975", "12.0"]);
+}
