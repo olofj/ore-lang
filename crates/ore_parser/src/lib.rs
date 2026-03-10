@@ -683,6 +683,29 @@ impl Parser {
                 self.expect(&Token::RBracket)?;
                 Ok(Expr::ListLit(elements))
             }
+            Token::LBrace => {
+                self.advance(); // consume '{'
+                let mut entries = Vec::new();
+                if self.peek() != &Token::RBrace {
+                    // Parse key at bp=3 so ':' (bp=2) is not consumed as colon-match
+                    let key = self.parse_expr(3)?;
+                    self.expect(&Token::Colon)?;
+                    let value = self.parse_expr(0)?;
+                    entries.push((key, value));
+                    while self.peek() == &Token::Comma {
+                        self.advance();
+                        if self.peek() == &Token::RBrace {
+                            break; // trailing comma
+                        }
+                        let key = self.parse_expr(3)?;
+                        self.expect(&Token::Colon)?;
+                        let value = self.parse_expr(0)?;
+                        entries.push((key, value));
+                    }
+                }
+                self.expect(&Token::RBrace)?;
+                Ok(Expr::MapLit(entries))
+            }
             Token::Int(n) => {
                 self.advance();
                 Ok(Expr::IntLit(n))

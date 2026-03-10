@@ -237,3 +237,10 @@ fn lists_closures() {
         "101", "102", "103", "104", "105",
     ]);
 }
+
+#[test]
+fn maps_basic() {
+    let out = run_ore("maps/basic.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["3", "true", "false", "2", "4", "3"]);
+}

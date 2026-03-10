@@ -350,6 +350,16 @@ impl Formatter {
                 }
                 self.out.push(']');
             }
+            Expr::MapLit(entries) => {
+                self.out.push('{');
+                for (i, (k, v)) in entries.iter().enumerate() {
+                    if i > 0 { self.out.push_str(", "); }
+                    self.format_expr(k, level);
+                    self.out.push_str(": ");
+                    self.format_expr(v, level);
+                }
+                self.out.push('}');
+            }
             Expr::Index { object, index } => {
                 self.format_expr(object, level);
                 self.out.push('[');

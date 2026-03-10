@@ -1,0 +1,15 @@
+fn main
+  -- Create a map with literal syntax
+  m := {"a": 1, "b": 2, "c": 3}
+  print m.len()
+  print m.contains("a")
+  print m.contains("z")
+
+  -- Get values
+  print m.get("b")
+
+  -- Mutate: set and remove
+  m.set("d", 4)
+  print m.len()
+  m.remove("a")
+  print m.len()

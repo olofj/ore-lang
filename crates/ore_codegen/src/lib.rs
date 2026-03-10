@@ -97,6 +97,12 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
                 collect_free_vars(e, bound, free, seen);
             }
         }
+        Expr::MapLit(entries) => {
+            for (k, v) in entries {
+                collect_free_vars(k, bound, free, seen);
+                collect_free_vars(v, bound, free, seen);
+            }
+        }
         Expr::Index { object, index } => {
             collect_free_vars(object, bound, free, seen);
             collect_free_vars(index, bound, free, seen);
@@ -155,6 +161,7 @@ pub enum ValKind {
     Option,
     Result,
     List,
+    Map,
 }
 
 struct RecordInfo<'ctx> {
@@ -502,6 +509,17 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_split", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
+        // Map operations
+        self.module.add_function("ore_map_new", ptr_type.fn_type(&[], false), ext);
+        self.module.add_function("ore_map_set", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_map_get", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_contains", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_remove", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_keys", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_values", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_print", void_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_print_str", void_type.fn_type(&[ptr_type.into()], false), ext);
         // I/O
         self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -518,6 +536,7 @@ impl<'ctx> CodeGen<'ctx> {
                 "Option" => ValKind::Option,
                 "Result" => ValKind::Result,
                 "List" => ValKind::List,
+                "Map" => ValKind::Map,
                 other => {
                     if self.records.contains_key(other) {
                         ValKind::Record(other.to_string())
@@ -532,6 +551,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // For now, treat generic types by their base name
                 match name.as_str() {
                     "List" => ValKind::List,
+                    "Map" => ValKind::Map,
                     "Option" => ValKind::Option,
                     "Result" => ValKind::Result,
                     other => {
@@ -557,7 +577,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option => self.option_type().into(),
             ValKind::Result => self.result_type().into(),
-            ValKind::List => self.ptr_type().into(),
+            ValKind::List | ValKind::Map => self.ptr_type().into(),
         }
     }
 
@@ -572,7 +592,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option => self.option_type().into(),
             ValKind::Result => self.result_type().into(),
-            ValKind::List => self.ptr_type().into(),
+            ValKind::List | ValKind::Map => self.ptr_type().into(),
         }
     }
 
@@ -949,6 +969,9 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::ListLit(elements) => {
                 self.compile_list_lit(elements, func)
             }
+            Expr::MapLit(entries) => {
+                self.compile_map_lit(entries, func)
+            }
             Expr::Index { object, index } => {
                 self.compile_index(object, index, func)
             }
@@ -1144,6 +1167,11 @@ impl<'ctx> CodeGen<'ctx> {
         // Handle string built-in methods
         if obj_kind == ValKind::Str {
             return self.compile_str_method(obj_val, method, args, func);
+        }
+
+        // Handle map built-in methods
+        if obj_kind == ValKind::Map {
+            return self.compile_map_method(obj_val, method, args, func);
         }
 
         let type_name = match &obj_kind {
@@ -1349,6 +1377,96 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Float))
             }
             _ => Err(CodeGenError { msg: format!("unknown string method '{}'", method) }),
+        }
+    }
+
+    fn compile_map_method(
+        &mut self,
+        map_val: BasicValueEnum<'ctx>,
+        method: &str,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        match method {
+            "set" => {
+                if args.len() != 2 {
+                    return Err(CodeGenError { msg: "set takes 2 arguments (key, value)".into() });
+                }
+                let key = self.compile_expr(&args[0], func)?;
+                let (val, val_kind) = self.compile_expr_with_kind(&args[1], func)?;
+                let i64_val = match val_kind {
+                    ValKind::Int => val.into_int_value(),
+                    ValKind::Bool => {
+                        bld!(self.builder.build_int_z_extend(
+                            val.into_int_value(), self.context.i64_type(), "bool_to_i64"
+                        ))?
+                    }
+                    ValKind::Str | ValKind::List | ValKind::Map => {
+                        bld!(self.builder.build_ptr_to_int(
+                            val.into_pointer_value(), self.context.i64_type(), "ptr_to_i64"
+                        ))?
+                    }
+                    _ => val.into_int_value(),
+                };
+                let rt = self.module.get_function("ore_map_set").unwrap();
+                bld!(self.builder.build_call(rt, &[map_val.into(), key.into(), i64_val.into()], ""))?;
+                Ok((map_val, ValKind::Map))
+            }
+            "get" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "get takes 1 argument (key)".into() });
+                }
+                let key = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_map_get").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mget"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "contains" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "contains takes 1 argument (key)".into() });
+                }
+                let key = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_map_contains").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mcontains"))?;
+                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let bool_val = bld!(self.builder.build_int_compare(
+                    inkwell::IntPredicate::NE,
+                    i8_val,
+                    self.context.i8_type().const_int(0, false),
+                    "tobool"
+                ))?;
+                Ok((bool_val.into(), ValKind::Bool))
+            }
+            "len" => {
+                let rt = self.module.get_function("ore_map_len").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mlen"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "remove" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "remove takes 1 argument (key)".into() });
+                }
+                let key = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_map_remove").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mremove"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "keys" => {
+                let rt = self.module.get_function("ore_map_keys").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mkeys"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            "values" => {
+                let rt = self.module.get_function("ore_map_values").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mvalues"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            _ => Err(CodeGenError { msg: format!("unknown map method '{}'", method) }),
         }
     }
 
@@ -1787,6 +1905,49 @@ impl<'ctx> CodeGen<'ctx> {
         Ok((list_ptr.into(), ValKind::List))
     }
 
+    fn compile_map_lit(
+        &mut self,
+        entries: &[(Expr, Expr)],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let map_new = self.module.get_function("ore_map_new").unwrap();
+        let map_set = self.module.get_function("ore_map_set").unwrap();
+
+        let map_result = bld!(self.builder.build_call(map_new, &[], "map"))?;
+        let map_ptr = self.call_result_to_value(map_result)?.into_pointer_value();
+
+        for (key, value) in entries {
+            let key_val = self.compile_expr(key, func)?;
+            let (val, val_kind) = self.compile_expr_with_kind(value, func)?;
+            // Convert value to i64 for storage
+            let i64_val = match val_kind {
+                ValKind::Int => val.into_int_value(),
+                ValKind::Bool => {
+                    bld!(self.builder.build_int_z_extend(
+                        val.into_int_value(),
+                        self.context.i64_type(),
+                        "bool_to_i64"
+                    ))?
+                }
+                ValKind::Str | ValKind::List | ValKind::Map => {
+                    bld!(self.builder.build_ptr_to_int(
+                        val.into_pointer_value(),
+                        self.context.i64_type(),
+                        "ptr_to_i64"
+                    ))?
+                }
+                _ => val.into_int_value(),
+            };
+            bld!(self.builder.build_call(
+                map_set,
+                &[map_ptr.into(), key_val.into(), i64_val.into()],
+                ""
+            ))?;
+        }
+
+        Ok((map_ptr.into(), ValKind::Map))
+    }
+
     fn compile_index(
         &mut self,
         object: &Expr,
@@ -1807,7 +1968,17 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
-            _ => Err(CodeGenError { msg: "indexing only supported on lists".into() }),
+            ValKind::Map => {
+                let map_get = self.module.get_function("ore_map_get").unwrap();
+                let result = bld!(self.builder.build_call(
+                    map_get,
+                    &[obj_val.into(), idx_val.into()],
+                    "map_get"
+                ))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            _ => Err(CodeGenError { msg: "indexing only supported on lists and maps".into() }),
         }
     }
 
@@ -1962,6 +2133,10 @@ impl<'ctx> CodeGen<'ctx> {
             }
             ValKind::List => {
                 let pf = self.module.get_function("ore_list_print").unwrap();
+                bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+            }
+            ValKind::Map => {
+                let pf = self.module.get_function("ore_map_print").unwrap();
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
             _ => {

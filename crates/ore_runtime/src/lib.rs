@@ -439,6 +439,143 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+// ── Maps ──
+
+/// OreMap: A string-keyed map storing i64 values (which can be pointers to strings, lists, etc.)
+/// Internally uses a Rust HashMap wrapped in a Box.
+pub struct OreMap {
+    inner: std::collections::HashMap<String, i64>,
+}
+
+#[no_mangle]
+pub extern "C" fn ore_map_new() -> *mut OreMap {
+    Box::into_raw(Box::new(OreMap {
+        inner: std::collections::HashMap::new(),
+    }))
+}
+
+/// Set a key-value pair. Key is an OreStr pointer, value is i64.
+#[no_mangle]
+pub extern "C" fn ore_map_set(map: *mut OreMap, key: *mut OreStr, value: i64) {
+    unsafe {
+        let map = &mut *map;
+        let key_str = (*key).as_str().to_string();
+        map.inner.insert(key_str, value);
+    }
+}
+
+/// Get a value by key. Returns the value, or 0 if not found.
+#[no_mangle]
+pub extern "C" fn ore_map_get(map: *mut OreMap, key: *mut OreStr) -> i64 {
+    unsafe {
+        let map = &*map;
+        let key_str = (*key).as_str();
+        *map.inner.get(key_str).unwrap_or(&0)
+    }
+}
+
+/// Check if a key exists. Returns 1 if yes, 0 if no.
+#[no_mangle]
+pub extern "C" fn ore_map_contains(map: *mut OreMap, key: *mut OreStr) -> i8 {
+    unsafe {
+        let map = &*map;
+        let key_str = (*key).as_str();
+        if map.inner.contains_key(key_str) { 1 } else { 0 }
+    }
+}
+
+/// Return the number of entries.
+#[no_mangle]
+pub extern "C" fn ore_map_len(map: *mut OreMap) -> i64 {
+    unsafe { (*map).inner.len() as i64 }
+}
+
+/// Remove a key. Returns the removed value, or 0 if not found.
+#[no_mangle]
+pub extern "C" fn ore_map_remove(map: *mut OreMap, key: *mut OreStr) -> i64 {
+    unsafe {
+        let map = &mut *map;
+        let key_str = (*key).as_str();
+        map.inner.remove(key_str).unwrap_or(0)
+    }
+}
+
+/// Return the keys as an OreList of OreStr pointers (each element is an i64 that is really *mut OreStr).
+#[no_mangle]
+pub extern "C" fn ore_map_keys(map: *mut OreMap) -> *mut OreList {
+    unsafe {
+        let map = &*map;
+        let list = ore_list_new();
+        for key in map.inner.keys() {
+            let s = ore_str_new(key.as_ptr(), key.len() as u32);
+            ore_list_push(list, s as i64);
+        }
+        list
+    }
+}
+
+/// Return the values as an OreList of i64.
+#[no_mangle]
+pub extern "C" fn ore_map_values(map: *mut OreMap) -> *mut OreList {
+    unsafe {
+        let map = &*map;
+        let list = ore_list_new();
+        for &val in map.inner.values() {
+            ore_list_push(list, val);
+        }
+        list
+    }
+}
+
+/// Print a map: {key1: value1, key2: value2, ...} (assumes int values)
+#[no_mangle]
+pub extern "C" fn ore_map_print(map: *mut OreMap) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    unsafe {
+        let map = &*map;
+        let _ = write!(handle, "{{");
+        let mut first = true;
+        // Sort keys for deterministic output
+        let mut keys: Vec<&String> = map.inner.keys().collect();
+        keys.sort();
+        for key in keys {
+            if !first {
+                let _ = write!(handle, ", ");
+            }
+            first = false;
+            let val = map.inner[key];
+            let _ = write!(handle, "{}: {}", key, val);
+        }
+        let _ = writeln!(handle, "}}");
+    }
+}
+
+/// Print a map with string values
+#[no_mangle]
+pub extern "C" fn ore_map_print_str(map: *mut OreMap) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    unsafe {
+        let map = &*map;
+        let _ = write!(handle, "{{");
+        let mut first = true;
+        let mut keys: Vec<&String> = map.inner.keys().collect();
+        keys.sort();
+        for key in keys {
+            if !first {
+                let _ = write!(handle, ", ");
+            }
+            first = false;
+            let val = map.inner[key] as *mut OreStr;
+            if !val.is_null() {
+                let _ = write!(handle, "{}: {}", key, (*val).as_str());
+            }
+        }
+        let _ = writeln!(handle, "}}");
+    }
+}
+
 // ── Concurrency ──
 
 static THREADS: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new());

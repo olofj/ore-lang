@@ -276,6 +276,16 @@ fn run_repl() {
             map_fn!("ore_readln", ore_runtime::ore_readln);
             map_fn!("ore_file_read", ore_runtime::ore_file_read);
             map_fn!("ore_file_write", ore_runtime::ore_file_write);
+            map_fn!("ore_map_new", ore_runtime::ore_map_new);
+            map_fn!("ore_map_set", ore_runtime::ore_map_set);
+            map_fn!("ore_map_get", ore_runtime::ore_map_get);
+            map_fn!("ore_map_contains", ore_runtime::ore_map_contains);
+            map_fn!("ore_map_len", ore_runtime::ore_map_len);
+            map_fn!("ore_map_remove", ore_runtime::ore_map_remove);
+            map_fn!("ore_map_keys", ore_runtime::ore_map_keys);
+            map_fn!("ore_map_values", ore_runtime::ore_map_values);
+            map_fn!("ore_map_print", ore_runtime::ore_map_print);
+            map_fn!("ore_map_print_str", ore_runtime::ore_map_print_str);
 
             unsafe {
                 let main_fn: JitFunction<MainFunc> = ee
@@ -342,6 +352,16 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_readln", ore_runtime::ore_readln);
     map_fn!("ore_file_read", ore_runtime::ore_file_read);
     map_fn!("ore_file_write", ore_runtime::ore_file_write);
+    map_fn!("ore_map_new", ore_runtime::ore_map_new);
+    map_fn!("ore_map_set", ore_runtime::ore_map_set);
+    map_fn!("ore_map_get", ore_runtime::ore_map_get);
+    map_fn!("ore_map_contains", ore_runtime::ore_map_contains);
+    map_fn!("ore_map_len", ore_runtime::ore_map_len);
+    map_fn!("ore_map_remove", ore_runtime::ore_map_remove);
+    map_fn!("ore_map_keys", ore_runtime::ore_map_keys);
+    map_fn!("ore_map_values", ore_runtime::ore_map_values);
+    map_fn!("ore_map_print", ore_runtime::ore_map_print);
+    map_fn!("ore_map_print_str", ore_runtime::ore_map_print_str);
 
     unsafe {
         let main_fn: JitFunction<MainFunc> = ee

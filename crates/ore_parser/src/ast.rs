@@ -176,6 +176,7 @@ pub enum Expr {
         args: Vec<Expr>,
     },
     ListLit(Vec<Expr>),
+    MapLit(Vec<(Expr, Expr)>),
     Index {
         object: Box<Expr>,
         index: Box<Expr>,
