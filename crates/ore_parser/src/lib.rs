@@ -372,7 +372,18 @@ impl Parser {
                 Ok(Expr::UnaryNot(Box::new(expr)))
             }
             Token::LParen => {
-                self.advance();
+                // Could be: (expr), (param => body), (p1, p2 => body)
+                let saved = self.pos;
+                self.advance(); // consume '('
+
+                // Try to parse as lambda: look for ident [, ident]* =>
+                if let Some(lambda) = self.try_parse_lambda()? {
+                    return Ok(lambda);
+                }
+
+                // Not a lambda, backtrack and parse as grouped expression
+                self.pos = saved;
+                self.advance(); // consume '('
                 let expr = self.parse_expr(0)?;
                 self.expect(&Token::RParen)?;
                 Ok(expr)
@@ -420,6 +431,57 @@ impl Parser {
             }
             _ => Err(self.error(format!("expected expression, got {:?}", self.peek()))),
         }
+    }
+
+    /// Try to parse lambda inside parens. Already consumed '('.
+    /// Returns None if it doesn't look like a lambda (caller should backtrack).
+    fn try_parse_lambda(&mut self) -> Result<Option<Expr>, ParseError> {
+        let saved = self.pos;
+
+        // Collect identifiers separated by commas
+        let mut params = Vec::new();
+        match self.peek().clone() {
+            Token::Ident(name) => {
+                self.advance();
+                params.push(name);
+            }
+            _ => {
+                self.pos = saved;
+                return Ok(None);
+            }
+        }
+
+        loop {
+            match self.peek() {
+                Token::Comma => {
+                    self.advance();
+                    match self.peek().clone() {
+                        Token::Ident(name) => {
+                            self.advance();
+                            params.push(name);
+                        }
+                        _ => {
+                            self.pos = saved;
+                            return Ok(None);
+                        }
+                    }
+                }
+                Token::FatArrow => break,
+                _ => {
+                    self.pos = saved;
+                    return Ok(None);
+                }
+            }
+        }
+
+        // Consume '=>'
+        self.expect(&Token::FatArrow)?;
+        let body = self.parse_expr(0)?;
+        self.expect(&Token::RParen)?;
+        Ok(Some(Expr::Lambda {
+            params,
+            body: Box::new(body),
+        }))
     }
 }
 

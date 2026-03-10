@@ -65,3 +65,10 @@ fn phase3_strings() {
 fn phase4_pipeline() {
     assert_eq!(run_ore("phase_4/pipeline.ore").trim(), "-12");
 }
+
+#[test]
+fn phase4_lambda() {
+    let out = run_ore("phase_4/lambda.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["-12", "26", "30"]);
+}

@@ -26,6 +26,7 @@ pub struct CodeGen<'ctx> {
     variables: HashMap<String, (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>, ValKind)>,
     functions: HashMap<String, (FunctionValue<'ctx>, ValKind)>,
     str_counter: u32,
+    lambda_counter: u32,
 }
 
 #[derive(Debug)]
@@ -56,6 +57,7 @@ impl<'ctx> CodeGen<'ctx> {
             variables: HashMap::new(),
             functions: HashMap::new(),
             str_counter: 0,
+            lambda_counter: 0,
         }
     }
 
@@ -276,6 +278,12 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::StringInterp(parts) => {
                 let ptr = self.compile_string_interp(parts, func)?;
                 Ok((ptr.into(), ValKind::Str))
+            }
+            Expr::Lambda { params, body } => {
+                let lambda_fn = self.compile_lambda(params, body, func)?;
+                // Return the function pointer
+                let ptr = lambda_fn.as_global_value().as_pointer_value();
+                Ok((ptr.into(), ValKind::Int)) // Kind is approximate; lambdas are function pointers
             }
             Expr::Ident(name) => {
                 let (ptr, ty, kind) = self.variables.get(name).ok_or_else(|| CodeGenError {
@@ -556,6 +564,12 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ret_kind))
             }
+            Expr::Lambda { params, body } => {
+                let lambda_fn = self.compile_lambda(params, body, current_fn)?;
+                let result = bld!(self.builder.build_call(lambda_fn, &[arg_val.into()], "pipe"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
             _ => Err(CodeGenError { msg: "unsupported pipeline target".into() }),
         }
     }
@@ -648,6 +662,55 @@ impl<'ctx> CodeGen<'ctx> {
         let phi = bld!(self.builder.build_phi(then_val.get_type(), "cval"))?;
         phi.add_incoming(&[(&then_val, then_end_bb), (&else_val, else_end_bb)]);
         Ok((phi.as_basic_value(), then_kind))
+    }
+
+    fn compile_lambda(
+        &mut self,
+        params: &[String],
+        body: &Expr,
+        _parent_fn: FunctionValue<'ctx>,
+    ) -> Result<FunctionValue<'ctx>, CodeGenError> {
+        let name = format!("__lambda_{}", self.lambda_counter);
+        self.lambda_counter += 1;
+
+        // For now, lambdas take and return i64 (no captures)
+        let i64_type = self.context.i64_type();
+        let param_types: Vec<inkwell::types::BasicMetadataTypeEnum<'ctx>> =
+            params.iter().map(|_| i64_type.into()).collect();
+        let fn_type = i64_type.fn_type(&param_types, false);
+        let lambda_fn = self.module.add_function(&name, fn_type, None);
+
+        // Save current state
+        let saved_vars = self.variables.clone();
+        let saved_block = self.builder.get_insert_block();
+
+        // Build lambda body
+        let entry = self.context.append_basic_block(lambda_fn, "entry");
+        self.builder.position_at_end(entry);
+        self.variables.clear();
+
+        for (i, param_name) in params.iter().enumerate() {
+            let val = lambda_fn.get_nth_param(i as u32).unwrap();
+            let ty = val.get_type();
+            let alloca = bld!(self.builder.build_alloca(ty, param_name))?;
+            bld!(self.builder.build_store(alloca, val))?;
+            self.variables.insert(param_name.clone(), (alloca, ty, ValKind::Int));
+        }
+
+        let (result, _kind) = self.compile_expr_with_kind(body, lambda_fn)?;
+
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            bld!(self.builder.build_return(Some(&result)))?;
+        }
+
+        // Restore state
+        self.variables = saved_vars;
+        if let Some(bb) = saved_block {
+            self.builder.position_at_end(bb);
+        }
+
+        self.functions.insert(name, (lambda_fn, ValKind::Int));
+        Ok(lambda_fn)
     }
 
     fn compile_binop(

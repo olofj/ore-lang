@@ -77,6 +77,10 @@ pub enum Expr {
         else_expr: Option<Box<Expr>>,
     },
     StringInterp(Vec<StringPart>),
+    Lambda {
+        params: Vec<String>,
+        body: Box<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

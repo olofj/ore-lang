@@ -1,0 +1,12 @@
+fn double x:Int -> Int
+  x * 2
+
+fn main
+  result := -3 | double | double
+  print result
+
+  y := 5 | (n => n * n + 1)
+  print y
+
+  z := 10 | (x => x + 5) | (x => x * 2)
+  print z
