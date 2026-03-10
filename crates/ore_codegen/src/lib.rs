@@ -2950,6 +2950,39 @@ impl<'ctx> CodeGen<'ctx> {
                 };
                 Ok(result)
             }
+            (BasicValueEnum::PointerValue(l), BasicValueEnum::PointerValue(r)) => {
+                // String comparison via ore_str_eq
+                match op {
+                    BinOp::Eq => {
+                        let rt = self.module.get_function("ore_str_eq").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "seq"))?;
+                        let i8_val = self.call_result_to_value(result)?.into_int_value();
+                        let bool_val = bld!(self.builder.build_int_compare(
+                            IntPredicate::NE, i8_val,
+                            self.context.i8_type().const_int(0, false), "tobool"
+                        ))?;
+                        Ok(bool_val.into())
+                    }
+                    BinOp::NotEq => {
+                        let rt = self.module.get_function("ore_str_eq").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "seq"))?;
+                        let i8_val = self.call_result_to_value(result)?.into_int_value();
+                        let bool_val = bld!(self.builder.build_int_compare(
+                            IntPredicate::EQ, i8_val,
+                            self.context.i8_type().const_int(0, false), "tobool"
+                        ))?;
+                        Ok(bool_val.into())
+                    }
+                    BinOp::Add => {
+                        // String concatenation
+                        let rt = self.module.get_function("ore_str_concat").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "sconcat"))?;
+                        let val = self.call_result_to_value(result)?;
+                        Ok(val)
+                    }
+                    _ => Err(CodeGenError { msg: format!("unsupported pointer op {:?}", op) }),
+                }
+            }
             _ => Err(CodeGenError { msg: "type mismatch in binary operation".into() }),
         }
     }
