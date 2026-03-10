@@ -275,3 +275,10 @@ fn maps_basic() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["3", "true", "false", "2", "4", "3"]);
 }
+
+#[test]
+fn control_literal_match() {
+    let out = run_ore("control/literal_match.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["three", "Hey Bob!", "yes", "many"]);
+}

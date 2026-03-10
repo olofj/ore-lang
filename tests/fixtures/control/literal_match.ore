@@ -1,0 +1,27 @@
+fn main
+  x := 3
+  result := x :
+    1 -> "one"
+    2 -> "two"
+    3 -> "three"
+    _ -> "other"
+  print result
+
+  name := "bob"
+  greeting := name :
+    "alice" -> "Hello Alice!"
+    "bob" -> "Hey Bob!"
+    _ -> "Who are you?"
+  print greeting
+
+  b := true
+  msg := b :
+    true -> "yes"
+    false -> "no"
+  print msg
+
+  y := 99
+  label := y :
+    1 -> "one"
+    _ -> "many"
+  print label

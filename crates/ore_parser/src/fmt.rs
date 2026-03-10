@@ -416,6 +416,20 @@ impl Formatter {
                     self.out.push_str(b);
                 }
             }
+            Pattern::IntLit(n) => {
+                self.out.push_str(&n.to_string());
+            }
+            Pattern::FloatLit(f) => {
+                self.out.push_str(&f.to_string());
+            }
+            Pattern::BoolLit(b) => {
+                self.out.push_str(if *b { "true" } else { "false" });
+            }
+            Pattern::StringLit(s) => {
+                self.out.push('"');
+                self.out.push_str(s);
+                self.out.push('"');
+            }
         }
     }
 }

@@ -1816,6 +1816,15 @@ impl<'ctx> CodeGen<'ctx> {
             return self.compile_result_match(subject_val, arms, func);
         }
 
+        // Check if patterns are literal patterns (Int, String, etc.)
+        let has_literal_patterns = arms.iter().any(|arm| matches!(
+            &arm.pattern,
+            Pattern::IntLit(_) | Pattern::FloatLit(_) | Pattern::BoolLit(_) | Pattern::StringLit(_)
+        ));
+        if has_literal_patterns || matches!(subject_kind, ValKind::Int | ValKind::Float | ValKind::Bool | ValKind::Str) {
+            return self.compile_literal_match(subject_val, &subject_kind, arms, func);
+        }
+
         let enum_name = match &subject_kind {
             ValKind::Enum(name) => name.clone(),
             _ => return Err(CodeGenError { msg: "match subject must be an enum type".into() }),
@@ -1897,6 +1906,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Pattern::Wildcard => {
                     wildcard_arm = Some(arm);
                 }
+                _ => return Err(CodeGenError { msg: "literal patterns not supported in enum match".into() }),
             }
         }
 
@@ -2002,6 +2012,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Pattern::Wildcard => {
                     wildcard_arm = Some(arm);
                 }
+                _ => return Err(CodeGenError { msg: "literal patterns not supported in Option match".into() }),
             }
         }
 
@@ -2040,6 +2051,147 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         Ok((phi.as_basic_value(), result_kind))
+    }
+
+    fn compile_literal_match(
+        &mut self,
+        subject_val: BasicValueEnum<'ctx>,
+        subject_kind: &ValKind,
+        arms: &[MatchArm],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        // Chain of if-else comparisons for literal patterns
+        let merge_bb = self.context.append_basic_block(func, "lmatch_merge");
+        let i64_type = self.context.i64_type();
+
+        let result_alloca = bld!(self.builder.build_alloca(i64_type, "lmatch_result"))?;
+        let mut result_kind = ValKind::Int;
+        let mut has_wildcard = false;
+
+        for (i, arm) in arms.iter().enumerate() {
+            let is_last = i == arms.len() - 1;
+
+            match &arm.pattern {
+                Pattern::Wildcard => {
+                    has_wildcard = true;
+                    let (body_val, bk) = self.compile_expr_with_kind(&arm.body, func)?;
+                    result_kind = bk;
+                    let store_val = self.coerce_to_i64(body_val, &result_kind)?;
+                    bld!(self.builder.build_store(result_alloca, store_val))?;
+                    bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                }
+                _ => {
+                    // Build comparison
+                    let cmp = self.compile_pattern_cmp(subject_val, subject_kind, &arm.pattern, func)?;
+
+                    let then_bb = self.context.append_basic_block(func, &format!("lmatch_arm_{}", i));
+                    let else_bb = if is_last && !has_wildcard {
+                        merge_bb
+                    } else {
+                        self.context.append_basic_block(func, &format!("lmatch_next_{}", i))
+                    };
+
+                    bld!(self.builder.build_conditional_branch(cmp, then_bb, else_bb))?;
+
+                    self.builder.position_at_end(then_bb);
+                    let (body_val, bk) = self.compile_expr_with_kind(&arm.body, func)?;
+                    result_kind = bk;
+                    let store_val = self.coerce_to_i64(body_val, &result_kind)?;
+                    bld!(self.builder.build_store(result_alloca, store_val))?;
+                    bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+                    if else_bb != merge_bb {
+                        self.builder.position_at_end(else_bb);
+                    }
+                }
+            }
+        }
+
+        // If no wildcard, ensure we branch to merge from the last else block
+        if !has_wildcard {
+            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                bld!(self.builder.build_store(result_alloca, i64_type.const_int(0, false)))?;
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+            }
+        }
+
+        self.builder.position_at_end(merge_bb);
+        let result = bld!(self.builder.build_load(i64_type, result_alloca, "lmatch_val"))?;
+
+        // Convert back from i64 if needed
+        let final_val = self.coerce_from_i64(result, &result_kind)?;
+        Ok((final_val, result_kind))
+    }
+
+    fn compile_pattern_cmp(
+        &mut self,
+        subject: BasicValueEnum<'ctx>,
+        _subject_kind: &ValKind,
+        pattern: &Pattern,
+        _func: FunctionValue<'ctx>,
+    ) -> Result<IntValue<'ctx>, CodeGenError> {
+        match pattern {
+            Pattern::IntLit(n) => {
+                let const_val = self.context.i64_type().const_int(*n as u64, true);
+                bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, subject.into_int_value(), const_val, "pcmp"
+                ))
+            }
+            Pattern::BoolLit(b) => {
+                let const_val = self.context.bool_type().const_int(if *b { 1 } else { 0 }, false);
+                bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, subject.into_int_value(), const_val, "pcmp"
+                ))
+            }
+            Pattern::StringLit(s) => {
+                // Create string constant and compare
+                let str_val = self.compile_string_literal(s)?;
+                let rt = self.module.get_function("ore_str_eq").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[subject.into(), str_val.into()], "seq"))?;
+                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                bld!(self.builder.build_int_compare(
+                    IntPredicate::NE, i8_val,
+                    self.context.i8_type().const_int(0, false), "tobool"
+                ))
+            }
+            _ => Err(CodeGenError { msg: "unsupported pattern in literal match".into() }),
+        }
+    }
+
+    fn coerce_to_i64(&mut self, val: BasicValueEnum<'ctx>, kind: &ValKind) -> Result<IntValue<'ctx>, CodeGenError> {
+        match kind {
+            ValKind::Int => Ok(val.into_int_value()),
+            ValKind::Bool => {
+                bld!(self.builder.build_int_z_extend(
+                    val.into_int_value(), self.context.i64_type(), "btoi64"
+                ))
+            }
+            ValKind::Str | ValKind::List | ValKind::Map => {
+                bld!(self.builder.build_ptr_to_int(
+                    val.into_pointer_value(), self.context.i64_type(), "ptoi64"
+                ))
+            }
+            _ => Ok(val.into_int_value()),
+        }
+    }
+
+    fn coerce_from_i64(&mut self, val: BasicValueEnum<'ctx>, kind: &ValKind) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        match kind {
+            ValKind::Str | ValKind::List | ValKind::Map => {
+                let ptr = bld!(self.builder.build_int_to_ptr(
+                    val.into_int_value(), self.context.ptr_type(inkwell::AddressSpace::default()), "i64toptr"
+                ))?;
+                Ok(ptr.into())
+            }
+            ValKind::Bool => {
+                let cmp = bld!(self.builder.build_int_compare(
+                    IntPredicate::NE, val.into_int_value(),
+                    self.context.i64_type().const_int(0, false), "i64tobool"
+                ))?;
+                Ok(cmp.into())
+            }
+            _ => Ok(val),
+        }
     }
 
     fn compile_result_match(
@@ -2101,6 +2253,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Pattern::Wildcard => {
                     wildcard_arm = Some(arm);
                 }
+                _ => return Err(CodeGenError { msg: "literal patterns not supported in Result match".into() }),
             }
         }
 

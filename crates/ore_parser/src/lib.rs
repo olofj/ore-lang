@@ -1085,6 +1085,41 @@ impl Parser {
                 }
                 Ok(Pattern::Variant { name, bindings })
             }
+            Token::Int(n) => {
+                self.advance();
+                Ok(Pattern::IntLit(n))
+            }
+            Token::Float(f) => {
+                self.advance();
+                Ok(Pattern::FloatLit(f))
+            }
+            Token::True => {
+                self.advance();
+                Ok(Pattern::BoolLit(true))
+            }
+            Token::False => {
+                self.advance();
+                Ok(Pattern::BoolLit(false))
+            }
+            Token::StringLit(s) => {
+                self.advance();
+                Ok(Pattern::StringLit(s))
+            }
+            Token::Minus => {
+                // Negative literal: -3
+                self.advance();
+                match self.peek().clone() {
+                    Token::Int(n) => {
+                        self.advance();
+                        Ok(Pattern::IntLit(-n))
+                    }
+                    Token::Float(f) => {
+                        self.advance();
+                        Ok(Pattern::FloatLit(-f))
+                    }
+                    _ => Err(self.error("expected number after '-' in pattern".into())),
+                }
+            }
             _ => Err(self.error(format!("expected pattern, got {:?}", self.peek()))),
         }
     }

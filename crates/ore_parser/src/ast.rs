@@ -213,6 +213,10 @@ pub enum Pattern {
         bindings: Vec<String>,
     },
     Wildcard,
+    IntLit(i64),
+    FloatLit(f64),
+    BoolLit(bool),
+    StringLit(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
