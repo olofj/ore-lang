@@ -121,6 +121,13 @@ fn phase11_modules() {
 }
 
 #[test]
+fn phase12_mut() {
+    let out = run_ore("phase_12/mut_check.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["20"]);
+}
+
+#[test]
 fn phase13_result() {
     let out = run_ore("phase_13/result.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

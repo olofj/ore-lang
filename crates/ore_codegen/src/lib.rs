@@ -176,8 +176,8 @@ pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
     pub module: Module<'ctx>,
     pub builder: Builder<'ctx>,
-    /// Maps variable names to (pointer, pointee type, kind)
-    variables: HashMap<String, (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>, ValKind)>,
+    /// Maps variable names to (pointer, pointee type, kind, mutable)
+    variables: HashMap<String, (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>, ValKind, bool)>,
     functions: HashMap<String, (FunctionValue<'ctx>, ValKind)>,
     records: HashMap<String, RecordInfo<'ctx>>,
     enums: HashMap<String, EnumInfo<'ctx>>,
@@ -527,7 +527,7 @@ impl<'ctx> CodeGen<'ctx> {
             let kind = self.type_expr_to_kind(&param.ty);
             let alloca = bld!(self.builder.build_alloca(ty, &param.name))?;
             bld!(self.builder.build_store(alloca, val))?;
-            self.variables.insert(param.name.clone(), (alloca, ty, kind));
+            self.variables.insert(param.name.clone(), (alloca, ty, kind, false));
         }
 
         let mut last_val: Option<BasicValueEnum<'ctx>> = None;
@@ -561,19 +561,24 @@ impl<'ctx> CodeGen<'ctx> {
         func: FunctionValue<'ctx>,
     ) -> Result<Option<BasicValueEnum<'ctx>>, CodeGenError> {
         match stmt {
-            Stmt::Let { name, value, .. } => {
+            Stmt::Let { name, mutable, value } => {
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
                 let ty = val.get_type();
                 let alloca = bld!(self.builder.build_alloca(ty, name))?;
                 bld!(self.builder.build_store(alloca, val))?;
-                self.variables.insert(name.clone(), (alloca, ty, kind));
+                self.variables.insert(name.clone(), (alloca, ty, kind, *mutable));
                 Ok(None)
             }
             Stmt::Assign { name, value } => {
                 let (val, _kind) = self.compile_expr_with_kind(value, func)?;
-                let (ptr, _, _) = self.variables.get(name).ok_or_else(|| CodeGenError {
+                let (ptr, _, _, is_mut) = self.variables.get(name).ok_or_else(|| CodeGenError {
                     msg: format!("undefined variable '{}'", name),
                 })?;
+                if !is_mut {
+                    return Err(CodeGenError {
+                        msg: format!("cannot assign to immutable variable '{}'", name),
+                    });
+                }
                 bld!(self.builder.build_store(*ptr, val))?;
                 Ok(None)
             }
@@ -651,7 +656,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((ptr.into(), ValKind::Int)) // Kind is approximate; lambdas are function pointers
             }
             Expr::Ident(name) => {
-                let (ptr, ty, kind) = self.variables.get(name).ok_or_else(|| CodeGenError {
+                let (ptr, ty, kind, _) = self.variables.get(name).ok_or_else(|| CodeGenError {
                     msg: format!("undefined variable '{}'", name),
                 })?;
                 let val = bld!(self.builder.build_load(*ty, *ptr, name))?;
@@ -1073,7 +1078,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let val = bld!(self.builder.build_load(field_ty, field_ptr, binding))?;
                         let alloca = bld!(self.builder.build_alloca(field_ty, binding))?;
                         bld!(self.builder.build_store(alloca, val))?;
-                        self.variables.insert(binding.clone(), (alloca, field_ty, field_kind.clone()));
+                        self.variables.insert(binding.clone(), (alloca, field_ty, field_kind.clone(), false));
                     }
 
                     let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
@@ -1178,7 +1183,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let payload = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, &bindings[0]))?;
                         let alloca = bld!(self.builder.build_alloca(self.context.i64_type(), &bindings[0]))?;
                         bld!(self.builder.build_store(alloca, payload))?;
-                        self.variables.insert(bindings[0].clone(), (alloca, self.context.i64_type().into(), ValKind::Int));
+                        self.variables.insert(bindings[0].clone(), (alloca, self.context.i64_type().into(), ValKind::Int, false));
                     }
 
                     let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
@@ -1277,7 +1282,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let payload = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, &bindings[0]))?;
                         let alloca = bld!(self.builder.build_alloca(self.context.i64_type(), &bindings[0]))?;
                         bld!(self.builder.build_store(alloca, payload))?;
-                        self.variables.insert(bindings[0].clone(), (alloca, self.context.i64_type().into(), ValKind::Int));
+                        self.variables.insert(bindings[0].clone(), (alloca, self.context.i64_type().into(), ValKind::Int, false));
                     }
 
                     let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
@@ -1599,7 +1604,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Alloca for loop variable
         let var_alloca = bld!(self.builder.build_alloca(i64_type, var))?;
         bld!(self.builder.build_store(var_alloca, start_val))?;
-        self.variables.insert(var.to_string(), (var_alloca, i64_type.into(), ValKind::Int));
+        self.variables.insert(var.to_string(), (var_alloca, i64_type.into(), ValKind::Int, false));
 
         let cond_bb = self.context.append_basic_block(func, "for_cond");
         let body_bb = self.context.append_basic_block(func, "for_body");
@@ -1801,7 +1806,7 @@ impl<'ctx> CodeGen<'ctx> {
         let mut capture_types = Vec::new();
         let mut capture_kinds = Vec::new();
         for fv in &free_vars {
-            if let Some((_ptr, ty, kind)) = self.variables.get(fv) {
+            if let Some((_ptr, ty, kind, _)) = self.variables.get(fv) {
                 capture_names.push(fv.clone());
                 capture_types.push(*ty);
                 capture_kinds.push(kind.clone());
@@ -1856,7 +1861,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = bld!(self.builder.build_load(field_ty, field_ptr, cap_name))?;
                 let alloca = bld!(self.builder.build_alloca(field_ty, cap_name))?;
                 bld!(self.builder.build_store(alloca, val))?;
-                self.variables.insert(cap_name.clone(), (alloca, field_ty, capture_kinds[i].clone()));
+                self.variables.insert(cap_name.clone(), (alloca, field_ty, capture_kinds[i].clone(), false));
             }
         }
 
@@ -1867,7 +1872,7 @@ impl<'ctx> CodeGen<'ctx> {
             let ty = val.get_type();
             let alloca = bld!(self.builder.build_alloca(ty, param_name))?;
             bld!(self.builder.build_store(alloca, val))?;
-            self.variables.insert(param_name.clone(), (alloca, ty, ValKind::Int));
+            self.variables.insert(param_name.clone(), (alloca, ty, ValKind::Int, false));
         }
 
         let (result, _kind) = self.compile_expr_with_kind(body, lambda_fn)?;
@@ -1902,7 +1907,7 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(struct_type, "captures"))?;
 
         for (i, cap_name) in names.iter().enumerate() {
-            let (var_ptr, var_ty, _kind) = self.variables.get(cap_name).ok_or_else(|| CodeGenError {
+            let (var_ptr, var_ty, _kind, _) = self.variables.get(cap_name).ok_or_else(|| CodeGenError {
                 msg: format!("captured variable '{}' not found in scope", cap_name),
             })?;
             let val = bld!(self.builder.build_load(*var_ty, *var_ptr, cap_name))?;
