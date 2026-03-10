@@ -841,7 +841,7 @@ impl Parser {
             }
             Token::Ident(name) => {
                 self.advance();
-                // Bare lambda: ident => expr (without parens)
+                // Bare lambda: ident [ident...] => expr (without parens)
                 if self.peek() == &Token::FatArrow {
                     self.advance(); // consume '=>'
                     let body = self.parse_expr(0)?;
@@ -849,6 +849,26 @@ impl Parser {
                         params: vec![name],
                         body: Box::new(body),
                     });
+                }
+                // Multi-param bare lambda: a b => expr, a b c => expr, etc.
+                if let Token::Ident(_) = self.peek() {
+                    // Look ahead to see if there's a => after consecutive idents
+                    let saved = self.pos;
+                    let mut params = vec![name.clone()];
+                    while let Token::Ident(p) = self.peek().clone() {
+                        self.advance();
+                        params.push(p);
+                        if self.peek() == &Token::FatArrow {
+                            self.advance(); // consume '=>'
+                            let body = self.parse_expr(0)?;
+                            return Ok(Expr::Lambda {
+                                params,
+                                body: Box::new(body),
+                            });
+                        }
+                    }
+                    // Not a lambda — restore position
+                    self.pos = saved;
                 }
                 // Check for function call or record construction
                 if self.peek() == &Token::LParen {

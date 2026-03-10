@@ -239,6 +239,13 @@ fn lists_closures() {
 }
 
 #[test]
+fn lists_reduce() {
+    let out = run_ore("lists/reduce.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["15", "120", "4", "10-20-30"]);
+}
+
+#[test]
 fn maps_basic() {
     let out = run_ore("maps/basic.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

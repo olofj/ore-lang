@@ -439,6 +439,60 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+/// Reduce a list with a 2-arg closure: fn(acc, elem) -> acc
+/// call_closure2 dispatches based on whether env is null.
+unsafe fn call_closure2(func: *const u8, env: *mut u8, a: i64, b: i64) -> i64 {
+    if env.is_null() {
+        let f: extern "C" fn(i64, i64) -> i64 = std::mem::transmute(func);
+        f(a, b)
+    } else {
+        let f: extern "C" fn(*mut u8, i64, i64) -> i64 = std::mem::transmute(func);
+        f(env, a, b)
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_reduce(list: *mut OreList, init: i64, func: *const u8, env: *mut u8) -> i64 {
+    unsafe {
+        let src = &*list;
+        let mut acc = init;
+        for i in 0..src.len as usize {
+            acc = call_closure2(func, env, acc, *src.data.add(i));
+        }
+        acc
+    }
+}
+
+/// Find first element matching predicate. Returns the element, or the default value if not found.
+#[no_mangle]
+pub extern "C" fn ore_list_find(list: *mut OreList, func: *const u8, env: *mut u8, default: i64) -> i64 {
+    unsafe {
+        let src = &*list;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            if call_closure(func, env, val) != 0 {
+                return val;
+            }
+        }
+        default
+    }
+}
+
+/// Join list elements as strings with a separator.
+#[no_mangle]
+pub extern "C" fn ore_list_join(list: *mut OreList, sep: *mut OreStr) -> *mut OreStr {
+    unsafe {
+        let src = &*list;
+        let sep_str = (*sep).as_str();
+        let mut parts: Vec<String> = Vec::new();
+        for i in 0..src.len as usize {
+            parts.push(format!("{}", *src.data.add(i)));
+        }
+        let joined = parts.join(sep_str);
+        ore_str_new(joined.as_ptr(), joined.len() as u32)
+    }
+}
+
 // ── Maps ──
 
 /// OreMap: A string-keyed map storing i64 values (which can be pointers to strings, lists, etc.)

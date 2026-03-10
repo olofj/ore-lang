@@ -265,6 +265,9 @@ fn run_repl() {
             map_fn!("ore_list_sort", ore_runtime::ore_list_sort);
             map_fn!("ore_list_reverse", ore_runtime::ore_list_reverse);
             map_fn!("ore_list_contains", ore_runtime::ore_list_contains);
+            map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
+            map_fn!("ore_list_find", ore_runtime::ore_list_find);
+            map_fn!("ore_list_join", ore_runtime::ore_list_join);
             map_fn!("ore_float_to_str", ore_runtime::ore_float_to_str);
             map_fn!("ore_str_len", ore_runtime::ore_str_len);
             map_fn!("ore_str_eq", ore_runtime::ore_str_eq);
@@ -341,6 +344,9 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_list_sort", ore_runtime::ore_list_sort);
     map_fn!("ore_list_reverse", ore_runtime::ore_list_reverse);
     map_fn!("ore_list_contains", ore_runtime::ore_list_contains);
+    map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
+    map_fn!("ore_list_find", ore_runtime::ore_list_find);
+    map_fn!("ore_list_join", ore_runtime::ore_list_join);
     map_fn!("ore_float_to_str", ore_runtime::ore_float_to_str);
     map_fn!("ore_str_len", ore_runtime::ore_str_len);
     map_fn!("ore_str_eq", ore_runtime::ore_str_eq);

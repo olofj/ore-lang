@@ -509,6 +509,12 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_split", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_reduce(ptr, i64, fn_ptr, env_ptr) -> i64
+        self.module.add_function("ore_list_reduce", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_find(ptr, fn_ptr, env_ptr, default) -> i64
+        self.module.add_function("ore_list_find", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into(), i64_type.into()], false), ext);
+        // ore_list_join(ptr, sep) -> ptr
+        self.module.add_function("ore_list_join", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // Map operations
         self.module.add_function("ore_map_new", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_map_set", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), i64_type.into()], false), ext);
@@ -1313,6 +1319,77 @@ impl<'ctx> CodeGen<'ctx> {
                     "tobool"
                 ))?;
                 Ok((bool_val.into(), ValKind::Bool))
+            }
+            "reduce" => {
+                // reduce(init, fn(acc, elem) -> acc)
+                if args.len() != 2 {
+                    return Err(CodeGenError { msg: "reduce takes 2 arguments (init, fn)".into() });
+                }
+                let init_val = self.compile_expr(&args[0], func)?;
+                let lambda_fn = match &args[1] {
+                    Expr::Lambda { params, body } => {
+                        self.compile_lambda(params, body, func)?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { msg: "reduce second argument must be a function".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let rt = self.module.get_function("ore_list_reduce").unwrap();
+                let result = bld!(self.builder.build_call(
+                    rt, &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "reduce"
+                ))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "find" => {
+                // find(fn(elem) -> bool) — returns element or 0
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "find takes 1 argument".into() });
+                }
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        self.compile_lambda(params, body, func)?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { msg: "find argument must be a function".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let default_val = self.context.i64_type().const_int(0, false);
+                let rt = self.module.get_function("ore_list_find").unwrap();
+                let result = bld!(self.builder.build_call(
+                    rt, &[list_val.into(), fn_ptr.into(), env_ptr.into(), default_val.into()], "find"
+                ))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "join" => {
+                // join(separator_str)
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "join takes 1 argument (separator)".into() });
+                }
+                let sep = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_list_join").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), sep.into()], "join"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
             }
             _ => Err(CodeGenError { msg: format!("unknown list method '{}'", method) }),
         }

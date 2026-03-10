@@ -1,0 +1,6 @@
+fn main
+  xs := [1, 2, 3, 4, 5]
+  print xs.reduce(0, acc n => acc + n)
+  print xs.reduce(1, acc n => acc * n)
+  print xs.find(n => n > 3)
+  print [10, 20, 30].join("-")
