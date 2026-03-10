@@ -389,27 +389,38 @@ pub extern "C" fn ore_list_print_str(list: *mut OreList) {
     }
 }
 
+/// Call a closure: if env is null, call as fn(i64)->i64; otherwise fn(env, i64)->i64.
+unsafe fn call_closure(func: *const u8, env: *mut u8, arg: i64) -> i64 {
+    if env.is_null() {
+        let f: extern "C" fn(i64) -> i64 = std::mem::transmute(func);
+        f(arg)
+    } else {
+        let f: extern "C" fn(*mut u8, i64) -> i64 = std::mem::transmute(func);
+        f(env, arg)
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn ore_list_map(list: *mut OreList, func: extern "C" fn(i64) -> i64) -> *mut OreList {
+pub extern "C" fn ore_list_map(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
     unsafe {
         let src = &*list;
         let result = ore_list_new();
         for i in 0..src.len as usize {
             let val = *src.data.add(i);
-            ore_list_push(result, func(val));
+            ore_list_push(result, call_closure(func, env, val));
         }
         result
     }
 }
 
 #[no_mangle]
-pub extern "C" fn ore_list_filter(list: *mut OreList, func: extern "C" fn(i64) -> i64) -> *mut OreList {
+pub extern "C" fn ore_list_filter(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
     unsafe {
         let src = &*list;
         let result = ore_list_new();
         for i in 0..src.len as usize {
             let val = *src.data.add(i);
-            if func(val) != 0 {
+            if call_closure(func, env, val) != 0 {
                 ore_list_push(result, val);
             }
         }
@@ -418,12 +429,12 @@ pub extern "C" fn ore_list_filter(list: *mut OreList, func: extern "C" fn(i64) -
 }
 
 #[no_mangle]
-pub extern "C" fn ore_list_each(list: *mut OreList, func: extern "C" fn(i64) -> i64) {
+pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u8) {
     unsafe {
         let src = &*list;
         for i in 0..src.len as usize {
             let val = *src.data.add(i);
-            func(val);
+            call_closure(func, env, val);
         }
     }
 }

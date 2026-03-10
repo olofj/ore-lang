@@ -226,3 +226,14 @@ fn lists_advanced() {
         "6",
     ]);
 }
+
+#[test]
+fn lists_closures() {
+    let out = run_ore("lists/closures.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "[10, 20, 30, 40, 50]",
+        "[4, 5]",
+        "101", "102", "103", "104", "105",
+    ]);
+}

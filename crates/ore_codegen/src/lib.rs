@@ -480,12 +480,12 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_print(ptr)
         self.module.add_function("ore_list_print", void_type.fn_type(&[ptr_type.into()], false), ext);
-        // ore_list_map(ptr, fn_ptr) -> ptr
-        self.module.add_function("ore_list_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
-        // ore_list_filter(ptr, fn_ptr) -> ptr
-        self.module.add_function("ore_list_filter", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
-        // ore_list_each(ptr, fn_ptr)
-        self.module.add_function("ore_list_each", void_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_map(ptr, fn_ptr, env_ptr) -> ptr
+        self.module.add_function("ore_list_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_filter(ptr, fn_ptr, env_ptr) -> ptr
+        self.module.add_function("ore_list_filter", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_each(ptr, fn_ptr, env_ptr)
+        self.module.add_function("ore_list_each", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_sort(ptr)
         self.module.add_function("ore_list_sort", void_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_reverse(ptr)
@@ -1214,12 +1214,18 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => return Err(CodeGenError { msg: format!("{} argument must be a function", method) }),
                 };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
                 let runtime_fn_name = format!("ore_list_{}", method);
                 let runtime_fn = self.module.get_function(&runtime_fn_name).unwrap();
                 let result = bld!(self.builder.build_call(
                     runtime_fn,
-                    &[list_val.into(), fn_ptr.into()],
+                    &[list_val.into(), fn_ptr.into(), env_ptr.into()],
                     method
                 ))?;
                 let val = self.call_result_to_value(result)?;
@@ -1239,11 +1245,17 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => return Err(CodeGenError { msg: "each argument must be a function".into() }),
                 };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
                 let runtime_fn = self.module.get_function("ore_list_each").unwrap();
                 bld!(self.builder.build_call(
                     runtime_fn,
-                    &[list_val.into(), fn_ptr.into()],
+                    &[list_val.into(), fn_ptr.into(), env_ptr.into()],
                     ""
                 ))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))

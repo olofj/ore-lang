@@ -1,0 +1,16 @@
+fn main
+  xs := [1, 2, 3, 4, 5]
+
+  -- Capture a variable in map
+  factor := 10
+  scaled := xs.map(n => n * factor)
+  print scaled
+
+  -- Capture a variable in filter
+  threshold := 3
+  big := xs.filter(n => n > threshold)
+  print big
+
+  -- Capture in each
+  offset := 100
+  xs.each(n => print n + offset)
