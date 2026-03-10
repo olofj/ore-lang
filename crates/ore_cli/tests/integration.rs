@@ -204,6 +204,17 @@ fn lists_foreach() {
 }
 
 #[test]
+fn showcase() {
+    let out = run_ore("showcase.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "11", "25.0", "[5, 3, 4]", "60",
+        "Hello, Ore!", "11", "55", "Hello, world!",
+        "99", "7",
+    ]);
+}
+
+#[test]
 fn lists_advanced() {
     let out = run_ore("lists/advanced.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

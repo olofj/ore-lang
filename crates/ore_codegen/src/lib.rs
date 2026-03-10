@@ -448,7 +448,6 @@ impl<'ctx> CodeGen<'ctx> {
         // ore_print_bool(i8)
         self.module.add_function("ore_print_bool", void_type.fn_type(&[i8_type.into()], false), ext);
         // ore_print_float(f64)
-        let f64_type = self.context.f64_type();
         self.module.add_function("ore_print_float", void_type.fn_type(&[f64_type.into()], false), ext);
         // ore_str_new(ptr, u32) -> ptr
         self.module.add_function("ore_str_new", ptr_type.fn_type(&[ptr_type.into(), i32_type.into()], false), ext);

@@ -1,0 +1,53 @@
+-- Ore Language Showcase
+-- Demonstrates: functions, records, enums, traits, lists, pipelines,
+-- closures, string interpolation, pattern matching, and more.
+
+type Point { x:Float, y:Float }
+
+fn distance a:Point b:Point -> Float
+  dx := a.x - b.x
+  dy := a.y - b.y
+  dx * dx + dy * dy
+
+fn fib n:Int -> Int
+  if n < 2
+    n
+  else
+    fib(n - 1) + fib(n - 2)
+
+fn main
+  -- Basic arithmetic and pipelines
+  result := 5 | n => n * 2 | n => n + 1
+  print result
+
+  -- Records
+  p1 := Point(x: 1.0, y: 2.0)
+  p2 := Point(x: 4.0, y: 6.0)
+  print distance(p1, p2)
+
+  -- Lists with methods
+  nums := [5, 3, 1, 4, 2]
+  big := nums.filter(n => n > 2)
+  print big
+
+  -- For-each loop
+  mut total := 0
+  for x in [10, 20, 30]
+    total = total + x
+  print total
+
+  -- String methods
+  greeting := "  Hello, Ore!  "
+  print greeting.trim()
+  print greeting.trim().len()
+
+  -- Fibonacci
+  print fib(10)
+
+  -- String interpolation
+  name := "world"
+  print "Hello, {name}!"
+
+  -- Math builtins
+  print abs(-99)
+  print max(3, 7)
