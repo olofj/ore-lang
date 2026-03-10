@@ -1,6 +1,6 @@
 -- Ore Language Showcase
 -- Demonstrates: functions, records, enums, traits, lists, pipelines,
--- closures, string interpolation, pattern matching, and more.
+-- closures, string interpolation, pattern matching, maps, and more.
 
 type Point { x:Float, y:Float }
 
@@ -51,3 +51,10 @@ fn main
   -- Math builtins
   print abs(-99)
   print max(3, 7)
+
+  -- Reduce: sum of squares
+  print [1, 2, 3, 4].reduce(0, acc n => acc + n * n)
+
+  -- Maps
+  m := {"x": 10, "y": 20}
+  print m.len()

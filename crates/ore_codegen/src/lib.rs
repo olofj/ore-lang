@@ -1186,6 +1186,12 @@ impl<'ctx> CodeGen<'ctx> {
             return self.compile_map_method(obj_val, method, args, func);
         }
 
+        // Handle to_str() on primitive types
+        if method == "to_str" {
+            let str_val = self.value_to_str(obj_val, obj_kind)?;
+            return Ok((str_val.into(), ValKind::Str));
+        }
+
         let type_name = match &obj_kind {
             ValKind::Record(name) => name.clone(),
             _ => return Err(CodeGenError { msg: format!("method call on unsupported type: {:?}", obj_kind) }),
