@@ -5,6 +5,11 @@ pub enum Token {
     Float(f64),
     Ident(String),
     StringLit(String),
+    // String interpolation: "hello {expr} world" becomes
+    // StringStart("hello "), <expr tokens>, StringMid(" world") or StringEnd(" world")
+    StringStart(String),
+    StringMid(String),
+    StringEnd(String),
 
     // Keywords
     Fn,
@@ -370,17 +375,65 @@ impl<'a> Lexer<'a> {
         let start = self.pos;
         self.advance(); // skip opening "
         let mut s = String::new();
+        let mut has_interp = false;
 
         loop {
-            match self.advance() {
+            match self.peek() {
                 None => {
                     return Err(LexError {
                         msg: "unterminated string".to_string(),
                         offset: start,
                     });
                 }
-                Some(b'"') => break,
+                Some(b'"') => {
+                    self.advance();
+                    break;
+                }
+                Some(b'{') => {
+                    // String interpolation
+                    let seg_start = self.pos;
+                    self.advance(); // skip '{'
+                    if !has_interp {
+                        self.emit(Token::StringStart(s.clone()), start);
+                    } else {
+                        self.emit(Token::StringMid(s.clone()), seg_start);
+                    }
+                    s.clear();
+                    has_interp = true;
+
+                    // Lex tokens inside {} until matching '}'
+                    let mut depth = 1;
+                    while depth > 0 {
+                        match self.peek() {
+                            None => {
+                                return Err(LexError {
+                                    msg: "unterminated interpolation".to_string(),
+                                    offset: seg_start,
+                                });
+                            }
+                            Some(b'}') => {
+                                depth -= 1;
+                                if depth > 0 {
+                                    self.lex_token()?;
+                                } else {
+                                    self.advance(); // skip closing '}'
+                                }
+                            }
+                            Some(b'{') => {
+                                depth += 1;
+                                self.lex_token()?;
+                            }
+                            Some(b' ') | Some(b'\t') => {
+                                self.advance();
+                            }
+                            _ => {
+                                self.lex_token()?;
+                            }
+                        }
+                    }
+                }
                 Some(b'\\') => {
+                    self.advance();
                     match self.advance() {
                         Some(b'n') => s.push('\n'),
                         Some(b't') => s.push('\t'),
@@ -401,11 +454,17 @@ impl<'a> Lexer<'a> {
                         }
                     }
                 }
-                Some(ch) => s.push(ch as char),
+                Some(_) => {
+                    s.push(self.advance().unwrap() as char);
+                }
             }
         }
 
-        self.emit(Token::StringLit(s), start);
+        if has_interp {
+            self.emit(Token::StringEnd(s), start);
+        } else {
+            self.emit(Token::StringLit(s), start);
+        }
         Ok(())
     }
 
@@ -563,5 +622,44 @@ mod tests {
     #[test]
     fn test_float_literal() {
         assert_eq!(tokens("3.14"), vec![Token::Float(3.14), Token::Eof]);
+    }
+
+    #[test]
+    fn test_string_interpolation() {
+        let toks = tokens("\"hello {x}!\"");
+        assert_eq!(
+            toks,
+            vec![
+                Token::StringStart("hello ".into()),
+                Token::Ident("x".into()),
+                Token::StringEnd("!".into()),
+                Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_string_multi_interp() {
+        let toks = tokens("\"a{x}b{y}c\"");
+        assert_eq!(
+            toks,
+            vec![
+                Token::StringStart("a".into()),
+                Token::Ident("x".into()),
+                Token::StringMid("b".into()),
+                Token::Ident("y".into()),
+                Token::StringEnd("c".into()),
+                Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_string_escaped_brace() {
+        let toks = tokens("\"hello \\{world}\"");
+        assert_eq!(
+            toks,
+            vec![Token::StringLit("hello {world}".into()), Token::Eof]
+        );
     }
 }

@@ -76,6 +76,13 @@ pub enum Expr {
         then_expr: Box<Expr>,
         else_expr: Option<Box<Expr>>,
     },
+    StringInterp(Vec<StringPart>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum StringPart {
+    Lit(String),
+    Expr(Expr),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -55,6 +55,13 @@ fn phase2_fib() {
 }
 
 #[test]
+fn phase3_strings() {
+    let out = run_ore("phase_3/strings.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["Hello, world!", "The answer is 42", "plain string"]);
+}
+
+#[test]
 fn phase4_pipeline() {
     assert_eq!(run_ore("phase_4/pipeline.ore").trim(), "-12");
 }

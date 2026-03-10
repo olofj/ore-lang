@@ -38,34 +38,32 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     let source = std::fs::read_to_string(path)
         .map_err(|e| format!("cannot read '{}': {}", path.display(), e))?;
 
-    // Lex
-    let tokens = ore_lexer::lex(&source)
-        .map_err(|e| e.to_string())?;
+    let tokens = ore_lexer::lex(&source).map_err(|e| e.to_string())?;
+    let program = ore_parser::parse(tokens).map_err(|e| e.to_string())?;
 
-    // Parse
-    let program = ore_parser::parse(tokens)
-        .map_err(|e| e.to_string())?;
-
-    // Codegen
     let context = Context::create();
     let mut codegen = ore_codegen::CodeGen::new(&context, "ore_main");
-    codegen.compile_program(&program)
-        .map_err(|e| e.to_string())?;
+    codegen.compile_program(&program).map_err(|e| e.to_string())?;
 
-    // JIT execute
     let ee = codegen.module
         .create_jit_execution_engine(inkwell::OptimizationLevel::None)
         .map_err(|e| format!("JIT error: {}", e))?;
 
     // Map runtime functions
-    ee.add_global_mapping(
-        &codegen.module.get_function("ore_print_int").unwrap(),
-        ore_runtime::ore_print_int as usize,
-    );
-    ee.add_global_mapping(
-        &codegen.module.get_function("ore_print_bool").unwrap(),
-        ore_runtime::ore_print_bool as usize,
-    );
+    macro_rules! map_fn {
+        ($name:expr, $func:expr) => {
+            ee.add_global_mapping(&codegen.module.get_function($name).unwrap(), $func as usize);
+        };
+    }
+    map_fn!("ore_print_int", ore_runtime::ore_print_int);
+    map_fn!("ore_print_bool", ore_runtime::ore_print_bool);
+    map_fn!("ore_str_new", ore_runtime::ore_str_new);
+    map_fn!("ore_str_concat", ore_runtime::ore_str_concat);
+    map_fn!("ore_str_print", ore_runtime::ore_str_print);
+    map_fn!("ore_str_retain", ore_runtime::ore_str_retain);
+    map_fn!("ore_str_release", ore_runtime::ore_str_release);
+    map_fn!("ore_int_to_str", ore_runtime::ore_int_to_str);
+    map_fn!("ore_bool_to_str", ore_runtime::ore_bool_to_str);
 
     unsafe {
         let main_fn: JitFunction<MainFunc> = ee

@@ -329,6 +329,38 @@ impl Parser {
                 self.advance();
                 Ok(Expr::StringLit(s))
             }
+            Token::StringStart(s) => {
+                self.advance();
+                let mut parts = Vec::new();
+                if !s.is_empty() {
+                    parts.push(StringPart::Lit(s));
+                }
+                // Parse the first interpolated expression
+                let expr = self.parse_expr(0)?;
+                parts.push(StringPart::Expr(expr));
+                // Continue with StringMid/StringEnd
+                loop {
+                    match self.peek().clone() {
+                        Token::StringMid(s) => {
+                            self.advance();
+                            if !s.is_empty() {
+                                parts.push(StringPart::Lit(s));
+                            }
+                            let expr = self.parse_expr(0)?;
+                            parts.push(StringPart::Expr(expr));
+                        }
+                        Token::StringEnd(s) => {
+                            self.advance();
+                            if !s.is_empty() {
+                                parts.push(StringPart::Lit(s));
+                            }
+                            break;
+                        }
+                        _ => return Err(self.error("expected string continuation".into())),
+                    }
+                }
+                Ok(Expr::StringInterp(parts))
+            }
             Token::Minus => {
                 self.advance();
                 let expr = self.parse_expr(PREFIX_BP)?;

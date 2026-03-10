@@ -1,0 +1,8 @@
+fn greet name:Str -> Str
+  "Hello, {name}!"
+
+fn main
+  print greet("world")
+  x := 42
+  print "The answer is {x}"
+  print "plain string"
