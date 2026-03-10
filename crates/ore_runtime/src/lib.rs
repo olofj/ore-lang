@@ -20,6 +20,18 @@ pub extern "C" fn ore_print_bool(b: i8) {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn ore_print_float(f: f64) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    // Print without trailing zeros but always show at least one decimal
+    if f == f.floor() {
+        let _ = writeln!(handle, "{:.1}", f);
+    } else {
+        let _ = writeln!(handle, "{}", f);
+    }
+}
+
 // ── RC Strings ──
 //
 // OreStr layout: [refcount: u32][len: u32][data: u8...]

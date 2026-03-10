@@ -86,8 +86,35 @@ impl Parser {
     fn parse_item(&mut self) -> Result<Item, ParseError> {
         match self.peek() {
             Token::Fn => Ok(Item::FnDef(self.parse_fn_def()?)),
+            Token::Type => Ok(Item::TypeDef(self.parse_type_def()?)),
             _ => Err(self.error(format!("expected item, got {:?}", self.peek()))),
         }
+    }
+
+    // ── Type Definitions ──
+
+    fn parse_type_def(&mut self) -> Result<TypeDef, ParseError> {
+        self.expect(&Token::Type)?;
+        let name = match self.peek().clone() {
+            Token::Ident(n) => { self.advance(); n }
+            _ => return Err(self.error("expected type name".into())),
+        };
+        self.expect(&Token::LBrace)?;
+        let mut fields = Vec::new();
+        while self.peek() != &Token::RBrace {
+            let field_name = match self.peek().clone() {
+                Token::Ident(n) => { self.advance(); n }
+                _ => return Err(self.error("expected field name".into())),
+            };
+            self.expect(&Token::Colon)?;
+            let ty = self.parse_type_expr()?;
+            fields.push(FieldDef { name: field_name, ty });
+            if self.peek() == &Token::Comma {
+                self.advance();
+            }
+        }
+        self.expect(&Token::RBrace)?;
+        Ok(TypeDef { name, fields })
     }
 
     // ── Function Definitions ──
@@ -245,6 +272,25 @@ impl Parser {
         let mut lhs = self.parse_prefix()?;
 
         loop {
+            // Field access (highest precedence postfix)
+            if self.peek() == &Token::Dot {
+                if let Some(Token::Ident(_)) = self.tokens.get(self.pos + 1).map(|s| &s.token) {
+                    let dot_bp = 15; // Higher than any infix op
+                    if dot_bp >= min_bp {
+                        self.advance(); // consume '.'
+                        let field = match self.peek().clone() {
+                            Token::Ident(f) => { self.advance(); f }
+                            _ => unreachable!(),
+                        };
+                        lhs = Expr::FieldAccess {
+                            object: Box::new(lhs),
+                            field,
+                        };
+                        continue;
+                    }
+                }
+            }
+
             let op = match self.peek() {
                 Token::Plus => BinOp::Add,
                 Token::Minus => BinOp::Sub,
@@ -409,9 +455,42 @@ impl Parser {
             }
             Token::Ident(name) => {
                 self.advance();
-                // Check for function call
+                // Check for function call or record construction
                 if self.peek() == &Token::LParen {
-                    self.advance();
+                    let saved = self.pos;
+                    self.advance(); // consume '('
+
+                    // Check if this is record construction: Name(field: expr, ...)
+                    // Peek: Ident followed by Colon
+                    if name.chars().next().map_or(false, |c| c.is_uppercase()) {
+                        if let Token::Ident(_) = self.peek() {
+                            if let Some(Token::Colon) = self.tokens.get(self.pos + 1).map(|s| &s.token) {
+                                // Record construction
+                                let mut fields = Vec::new();
+                                while self.peek() != &Token::RParen {
+                                    let field_name = match self.peek().clone() {
+                                        Token::Ident(f) => { self.advance(); f }
+                                        _ => return Err(self.error("expected field name".into())),
+                                    };
+                                    self.expect(&Token::Colon)?;
+                                    let val = self.parse_expr(0)?;
+                                    fields.push((field_name, val));
+                                    if self.peek() == &Token::Comma {
+                                        self.advance();
+                                    }
+                                }
+                                self.expect(&Token::RParen)?;
+                                return Ok(Expr::RecordConstruct {
+                                    type_name: name,
+                                    fields,
+                                });
+                            }
+                        }
+                    }
+
+                    // Regular function call
+                    self.pos = saved;
+                    self.advance(); // consume '('
                     let mut args = Vec::new();
                     if self.peek() != &Token::RParen {
                         args.push(self.parse_expr(0)?);
@@ -526,6 +605,7 @@ mod tests {
                     _ => panic!("expected let"),
                 }
             }
+            _ => panic!("expected FnDef"),
         }
     }
 
@@ -551,6 +631,7 @@ mod tests {
                     _ => panic!("expected let"),
                 }
             }
+            _ => panic!("expected FnDef"),
         }
     }
 
@@ -566,6 +647,7 @@ mod tests {
                     _ => panic!("expected print"),
                 }
             }
+            _ => panic!("expected FnDef"),
         }
     }
 
@@ -580,6 +662,7 @@ mod tests {
                 assert_eq!(f.params[0].ty, TypeExpr::Named("Int".into()));
                 assert_eq!(f.ret_type, Some(TypeExpr::Named("Int".into())));
             }
+            _ => panic!("expected FnDef"),
         }
     }
 
@@ -596,6 +679,7 @@ mod tests {
                     _ => panic!("expected call"),
                 }
             }
+            _ => panic!("expected FnDef"),
         }
     }
 
@@ -616,6 +700,7 @@ mod tests {
                     _ => panic!("expected let"),
                 }
             }
+            _ => panic!("expected FnDef"),
         }
     }
 
@@ -633,6 +718,7 @@ mod tests {
                     _ => panic!("expected if/else"),
                 }
             }
+            _ => panic!("expected FnDef"),
         }
     }
 }

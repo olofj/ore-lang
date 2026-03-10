@@ -24,6 +24,7 @@ pub enum Token {
     Loop,
     Break,
     In,
+    Type,
 
     // Operators
     Plus,
@@ -52,6 +53,8 @@ pub enum Token {
     // Delimiters
     LParen,
     RParen,
+    LBrace,
+    RBrace,
     LBracket,
     RBracket,
     Comma,
@@ -251,6 +254,8 @@ impl<'a> Lexer<'a> {
             b'%' => { self.advance(); self.emit(Token::Percent, start); }
             b'(' => { self.advance(); self.emit(Token::LParen, start); }
             b')' => { self.advance(); self.emit(Token::RParen, start); }
+            b'{' => { self.advance(); self.emit(Token::LBrace, start); }
+            b'}' => { self.advance(); self.emit(Token::RBrace, start); }
             b'[' => { self.advance(); self.emit(Token::LBracket, start); }
             b']' => { self.advance(); self.emit(Token::RBracket, start); }
             b',' => { self.advance(); self.emit(Token::Comma, start); }
@@ -495,6 +500,7 @@ impl<'a> Lexer<'a> {
             "loop" => Token::Loop,
             "break" => Token::Break,
             "in" => Token::In,
+            "type" => Token::Type,
             _ => Token::Ident(text.to_string()),
         };
         self.emit(token, start);

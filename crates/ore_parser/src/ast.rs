@@ -6,6 +6,19 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
     FnDef(FnDef),
+    TypeDef(TypeDef),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeDef {
+    pub name: String,
+    pub fields: Vec<FieldDef>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FieldDef {
+    pub name: String,
+    pub ty: TypeExpr,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -80,6 +93,14 @@ pub enum Expr {
     Lambda {
         params: Vec<String>,
         body: Box<Expr>,
+    },
+    RecordConstruct {
+        type_name: String,
+        fields: Vec<(String, Expr)>,
+    },
+    FieldAccess {
+        object: Box<Expr>,
+        field: String,
     },
 }
 

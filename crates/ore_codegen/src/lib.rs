@@ -9,13 +9,20 @@ use std::collections::HashMap;
 use ore_parser::ast::*;
 
 /// Tracks whether a compiled value is a string pointer (needs RC) or a plain value
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValKind {
     Int,
     Float,
     Bool,
     Str,
     Void,
+    Record(String),
+}
+
+struct RecordInfo<'ctx> {
+    struct_type: inkwell::types::StructType<'ctx>,
+    field_names: Vec<String>,
+    field_kinds: Vec<ValKind>,
 }
 
 pub struct CodeGen<'ctx> {
@@ -25,6 +32,7 @@ pub struct CodeGen<'ctx> {
     /// Maps variable names to (pointer, pointee type, kind)
     variables: HashMap<String, (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>, ValKind)>,
     functions: HashMap<String, (FunctionValue<'ctx>, ValKind)>,
+    records: HashMap<String, RecordInfo<'ctx>>,
     str_counter: u32,
     lambda_counter: u32,
 }
@@ -56,6 +64,7 @@ impl<'ctx> CodeGen<'ctx> {
             builder,
             variables: HashMap::new(),
             functions: HashMap::new(),
+            records: HashMap::new(),
             str_counter: 0,
             lambda_counter: 0,
         }
@@ -68,18 +77,47 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn compile_program(&mut self, program: &Program) -> Result<(), CodeGenError> {
         self.declare_runtime_functions();
 
+        // Register type definitions
         for item in &program.items {
-            match item {
-                Item::FnDef(f) => self.declare_function(f)?,
+            if let Item::TypeDef(td) = item {
+                self.register_record(td)?;
             }
         }
 
         for item in &program.items {
-            match item {
-                Item::FnDef(f) => self.compile_function(f)?,
+            if let Item::FnDef(f) = item {
+                self.declare_function(f)?;
             }
         }
 
+        for item in &program.items {
+            if let Item::FnDef(f) = item {
+                self.compile_function(f)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn register_record(&mut self, td: &TypeDef) -> Result<(), CodeGenError> {
+        let mut field_types = Vec::new();
+        let mut field_kinds = Vec::new();
+        let mut field_names = Vec::new();
+
+        for f in &td.fields {
+            let kind = self.type_expr_to_kind(&f.ty);
+            let llvm_ty = self.kind_to_llvm_type(&kind);
+            field_types.push(llvm_ty);
+            field_kinds.push(kind);
+            field_names.push(f.name.clone());
+        }
+
+        let struct_type = self.context.struct_type(&field_types, false);
+        self.records.insert(td.name.clone(), RecordInfo {
+            struct_type,
+            field_names,
+            field_kinds,
+        });
         Ok(())
     }
 
@@ -96,6 +134,9 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_print_int", void_type.fn_type(&[i64_type.into()], false), ext);
         // ore_print_bool(i8)
         self.module.add_function("ore_print_bool", void_type.fn_type(&[i8_type.into()], false), ext);
+        // ore_print_float(f64)
+        let f64_type = self.context.f64_type();
+        self.module.add_function("ore_print_float", void_type.fn_type(&[f64_type.into()], false), ext);
         // ore_str_new(ptr, u32) -> ptr
         self.module.add_function("ore_str_new", ptr_type.fn_type(&[ptr_type.into(), i32_type.into()], false), ext);
         // ore_str_concat(ptr, ptr) -> ptr
@@ -119,28 +160,36 @@ impl<'ctx> CodeGen<'ctx> {
                 "Float" => ValKind::Float,
                 "Bool" => ValKind::Bool,
                 "Str" => ValKind::Str,
-                _ => ValKind::Int,
+                other => {
+                    if self.records.contains_key(other) {
+                        ValKind::Record(other.to_string())
+                    } else {
+                        ValKind::Int
+                    }
+                }
             },
         }
     }
 
-    fn kind_to_llvm_type(&self, kind: ValKind) -> inkwell::types::BasicTypeEnum<'ctx> {
+    fn kind_to_llvm_type(&self, kind: &ValKind) -> inkwell::types::BasicTypeEnum<'ctx> {
         match kind {
             ValKind::Int => self.context.i64_type().into(),
             ValKind::Float => self.context.f64_type().into(),
             ValKind::Bool => self.context.bool_type().into(),
             ValKind::Str => self.ptr_type().into(),
             ValKind::Void => self.context.i64_type().into(),
+            ValKind::Record(name) => self.records[name].struct_type.into(),
         }
     }
 
-    fn kind_to_param_type(&self, kind: ValKind) -> inkwell::types::BasicMetadataTypeEnum<'ctx> {
+    fn kind_to_param_type(&self, kind: &ValKind) -> inkwell::types::BasicMetadataTypeEnum<'ctx> {
         match kind {
             ValKind::Int => self.context.i64_type().into(),
             ValKind::Float => self.context.f64_type().into(),
             ValKind::Bool => self.context.bool_type().into(),
             ValKind::Str => self.ptr_type().into(),
             ValKind::Void => self.context.i64_type().into(),
+            ValKind::Record(name) => self.records[name].struct_type.into(),
         }
     }
 
@@ -148,7 +197,7 @@ impl<'ctx> CodeGen<'ctx> {
         let param_types: Vec<inkwell::types::BasicMetadataTypeEnum<'ctx>> = fndef
             .params
             .iter()
-            .map(|p| self.kind_to_param_type(self.type_expr_to_kind(&p.ty)))
+            .map(|p| self.kind_to_param_type(&self.type_expr_to_kind(&p.ty)))
             .collect();
 
         let ret_kind = fndef.ret_type.as_ref().map(|t| self.type_expr_to_kind(t)).unwrap_or(ValKind::Void);
@@ -156,7 +205,7 @@ impl<'ctx> CodeGen<'ctx> {
         let fn_type = if fndef.name == "main" {
             self.context.i32_type().fn_type(&param_types, false)
         } else {
-            match ret_kind {
+            match &ret_kind {
                 ValKind::Void => self.context.void_type().fn_type(&param_types, false),
                 kind => {
                     let ret_ty = self.kind_to_llvm_type(kind);
@@ -171,7 +220,8 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     fn compile_function(&mut self, fndef: &FnDef) -> Result<(), CodeGenError> {
-        let (func, _ret_kind) = *self.functions.get(&fndef.name).unwrap();
+        let (func, _ret_kind) = self.functions.get(&fndef.name).unwrap();
+        let func = *func;
         let entry = self.context.append_basic_block(func, "entry");
         self.builder.position_at_end(entry);
         self.variables.clear();
@@ -290,7 +340,7 @@ impl<'ctx> CodeGen<'ctx> {
                     msg: format!("undefined variable '{}'", name),
                 })?;
                 let val = bld!(self.builder.build_load(*ty, *ptr, name))?;
-                Ok((val, *kind))
+                Ok((val, kind.clone()))
             }
             Expr::BinOp { op, left, right } => {
                 if *op == BinOp::Pipe {
@@ -357,7 +407,70 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::ColonMatch { cond, then_expr, else_expr } => {
                 self.compile_colon_match_with_kind(cond, then_expr, else_expr.as_deref(), func)
             }
+            Expr::RecordConstruct { type_name, fields } => {
+                self.compile_record_construct(type_name, fields, func)
+            }
+            Expr::FieldAccess { object, field } => {
+                self.compile_field_access(object, field, func)
+            }
         }
+    }
+
+    fn compile_record_construct(
+        &mut self,
+        type_name: &str,
+        fields: &[(String, Expr)],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let info = self.records.get(type_name).ok_or_else(|| CodeGenError {
+            msg: format!("undefined type '{}'", type_name),
+        })?;
+        let struct_type = info.struct_type;
+        let field_names = info.field_names.clone();
+
+        let alloca = bld!(self.builder.build_alloca(struct_type, type_name))?;
+
+        for (name, expr) in fields {
+            let idx = field_names.iter().position(|n| n == name).ok_or_else(|| CodeGenError {
+                msg: format!("unknown field '{}' on type '{}'", name, type_name),
+            })?;
+            let val = self.compile_expr(expr, func)?;
+            let field_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, idx as u32, &format!("{}.{}", type_name, name)))?;
+            bld!(self.builder.build_store(field_ptr, val))?;
+        }
+
+        let result = bld!(self.builder.build_load(struct_type, alloca, "record"))?;
+        Ok((result, ValKind::Record(type_name.to_string())))
+    }
+
+    fn compile_field_access(
+        &mut self,
+        object: &Expr,
+        field: &str,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
+        let type_name = match &obj_kind {
+            ValKind::Record(name) => name.clone(),
+            _ => return Err(CodeGenError { msg: "field access on non-record type".into() }),
+        };
+
+        let info = self.records.get(&type_name).ok_or_else(|| CodeGenError {
+            msg: format!("undefined type '{}'", type_name),
+        })?;
+        let struct_type = info.struct_type;
+        let idx = info.field_names.iter().position(|n| n == field).ok_or_else(|| CodeGenError {
+            msg: format!("unknown field '{}' on type '{}'", field, type_name),
+        })?;
+        let field_kind = info.field_kinds[idx].clone();
+
+        // Store the struct to an alloca so we can GEP into it
+        let alloca = bld!(self.builder.build_alloca(struct_type, "tmp"))?;
+        bld!(self.builder.build_store(alloca, obj_val))?;
+        let field_ty = self.kind_to_llvm_type(&field_kind);
+        let field_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, idx as u32, field))?;
+        let result = bld!(self.builder.build_load(field_ty, field_ptr, field))?;
+        Ok((result, field_kind))
     }
 
     fn compile_string_literal(&mut self, s: &str) -> Result<PointerValue<'ctx>, CodeGenError> {
@@ -500,8 +613,11 @@ impl<'ctx> CodeGen<'ctx> {
                 let ext = bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?;
                 bld!(self.builder.build_call(pf, &[ext.into()], ""))?;
             }
+            ValKind::Float => {
+                let pf = self.module.get_function("ore_print_float").unwrap();
+                bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+            }
             _ => {
-                // Int, Float, Void — all print as int for now
                 let pf = self.module.get_function("ore_print_int").unwrap();
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
@@ -510,8 +626,8 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     fn resolve_function(&self, name: &str) -> Result<(FunctionValue<'ctx>, ValKind), CodeGenError> {
-        if let Some(&(f, k)) = self.functions.get(name) {
-            return Ok((f, k));
+        if let Some((f, k)) = self.functions.get(name) {
+            return Ok((*f, k.clone()));
         }
         if let Some(f) = self.module.get_function(name) {
             return Ok((f, ValKind::Void));

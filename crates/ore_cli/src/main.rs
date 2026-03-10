@@ -57,6 +57,7 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     }
     map_fn!("ore_print_int", ore_runtime::ore_print_int);
     map_fn!("ore_print_bool", ore_runtime::ore_print_bool);
+    map_fn!("ore_print_float", ore_runtime::ore_print_float);
     map_fn!("ore_str_new", ore_runtime::ore_str_new);
     map_fn!("ore_str_concat", ore_runtime::ore_str_concat);
     map_fn!("ore_str_print", ore_runtime::ore_str_print);

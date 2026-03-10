@@ -1,0 +1,11 @@
+type Point { x:Float, y:Float }
+
+fn distSq a:Point b:Point -> Float
+  dx := a.x - b.x
+  dy := a.y - b.y
+  dx * dx + dy * dy
+
+fn main
+  p1 := Point(x: 1.0, y: 2.0)
+  p2 := Point(x: 4.0, y: 6.0)
+  print distSq(p1, p2)
