@@ -1,0 +1,19 @@
+trait Describable
+  fn describe self:Self -> Int
+
+type Dog { name:Str, age:Int }
+type Cat { name:Str, lives:Int }
+
+impl Describable for Dog
+  fn describe self:Dog -> Int
+    self.age
+
+impl Describable for Cat
+  fn describe self:Cat -> Int
+    self.lives
+
+fn main
+  d := Dog(name: "Rex", age: 5)
+  c := Cat(name: "Whiskers", lives: 9)
+  print d.describe()
+  print c.describe()

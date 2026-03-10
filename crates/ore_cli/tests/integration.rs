@@ -161,3 +161,10 @@ fn generics_basic() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["42", "10", "14"]);
 }
+
+#[test]
+fn traits_basic() {
+    let out = run_ore("traits/basic.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["5", "9"]);
+}

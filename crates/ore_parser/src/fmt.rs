@@ -76,6 +76,28 @@ impl Formatter {
                     self.format_fn_def(m, level + 1);
                 }
             }
+            Item::TraitDef(td) => {
+                self.indent(level);
+                self.out.push_str(&format!("trait {}\n", td.name));
+                for m in &td.methods {
+                    self.indent(level + 1);
+                    self.out.push_str(&format!("fn {}", m.name));
+                    for p in &m.params {
+                        self.out.push_str(&format!(" {}:{}", p.name, format_type_expr(&p.ty)));
+                    }
+                    if let Some(ret) = &m.ret_type {
+                        self.out.push_str(&format!(" -> {}", format_type_expr(ret)));
+                    }
+                    self.out.push('\n');
+                }
+            }
+            Item::ImplTrait { trait_name, type_name, methods } => {
+                self.indent(level);
+                self.out.push_str(&format!("impl {} for {}\n", trait_name, type_name));
+                for m in methods {
+                    self.format_fn_def(m, level + 1);
+                }
+            }
         }
     }
 

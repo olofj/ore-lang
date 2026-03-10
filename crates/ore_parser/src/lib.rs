@@ -89,6 +89,7 @@ impl Parser {
             Token::Fn => Ok(Item::FnDef(self.parse_fn_def()?)),
             Token::Type => self.parse_type_or_enum(),
             Token::Impl => self.parse_impl_block(),
+            Token::Trait => self.parse_trait_def(),
             Token::Use => self.parse_use(),
             _ => Err(self.error(format!("expected item, got {:?}", self.peek()))),
         }
@@ -112,10 +113,23 @@ impl Parser {
 
     fn parse_impl_block(&mut self) -> Result<Item, ParseError> {
         self.expect(&Token::Impl)?;
-        let type_name = match self.peek().clone() {
+        let first_name = match self.peek().clone() {
             Token::Ident(n) => { self.advance(); n }
-            _ => return Err(self.error("expected type name after impl".into())),
+            _ => return Err(self.error("expected type or trait name after impl".into())),
         };
+
+        // Check for "impl Trait for Type"
+        let (trait_name, type_name) = if self.peek() == &Token::For {
+            self.advance(); // consume 'for'
+            let tn = match self.peek().clone() {
+                Token::Ident(n) => { self.advance(); n }
+                _ => return Err(self.error("expected type name after 'for'".into())),
+            };
+            (Some(first_name), tn)
+        } else {
+            (None, first_name)
+        };
+
         self.skip_newlines();
         self.expect(&Token::Indent)?;
         let mut methods = Vec::new();
@@ -129,7 +143,60 @@ impl Parser {
         if self.peek() == &Token::Dedent {
             self.advance();
         }
-        Ok(Item::ImplBlock { type_name, methods })
+
+        if let Some(trait_name) = trait_name {
+            Ok(Item::ImplTrait { trait_name, type_name, methods })
+        } else {
+            Ok(Item::ImplBlock { type_name, methods })
+        }
+    }
+
+    fn parse_trait_def(&mut self) -> Result<Item, ParseError> {
+        self.expect(&Token::Trait)?;
+        let name = match self.peek().clone() {
+            Token::Ident(n) => { self.advance(); n }
+            _ => return Err(self.error("expected trait name".into())),
+        };
+        self.skip_newlines();
+        self.expect(&Token::Indent)?;
+        let mut methods = Vec::new();
+        loop {
+            self.skip_newlines();
+            if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+                break;
+            }
+            methods.push(self.parse_trait_method()?);
+        }
+        if self.peek() == &Token::Dedent {
+            self.advance();
+        }
+        Ok(Item::TraitDef(TraitDef { name, methods }))
+    }
+
+    /// Parse a trait method signature: fn name params -> RetType (no body)
+    fn parse_trait_method(&mut self) -> Result<TraitMethod, ParseError> {
+        self.expect(&Token::Fn)?;
+        let name = match self.peek().clone() {
+            Token::Ident(n) => { self.advance(); n }
+            _ => return Err(self.error("expected method name".into())),
+        };
+        let mut params = Vec::new();
+        let mut ret_type = None;
+        loop {
+            match self.peek() {
+                Token::Arrow => {
+                    self.advance();
+                    ret_type = Some(self.parse_type_expr()?);
+                    break;
+                }
+                Token::Newline | Token::Dedent | Token::Eof => break,
+                Token::Ident(_) => {
+                    params.push(self.parse_param()?);
+                }
+                _ => break,
+            }
+        }
+        Ok(TraitMethod { name, params, ret_type })
     }
 
     fn parse_type_or_enum(&mut self) -> Result<Item, ParseError> {

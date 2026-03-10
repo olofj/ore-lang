@@ -281,25 +281,30 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
-        // Declare impl block methods (mangled names: TypeName_methodName)
+        // Declare impl block and impl-trait methods (mangled names: TypeName_methodName)
         for item in &program.items {
-            if let Item::ImplBlock { type_name, methods } = item {
-                let mut method_names = Vec::new();
-                for method in methods {
-                    let mangled_name = format!("{}_{}", type_name, method.name);
-                    method_names.push(method.name.clone());
-                    // Create a copy of the FnDef with the mangled name for declaration
-                    let mangled_fn = FnDef {
-                        name: mangled_name,
-                        type_params: method.type_params.clone(),
-                        params: method.params.clone(),
-                        ret_type: method.ret_type.clone(),
-                        body: method.body.clone(),
-                    };
-                    self.declare_function(&mangled_fn)?;
-                }
-                self.method_map.insert(type_name.clone(), method_names);
+            let (type_name, methods) = match item {
+                Item::ImplBlock { type_name, methods } => (type_name, methods),
+                Item::ImplTrait { type_name, methods, .. } => (type_name, methods),
+                _ => continue,
+            };
+            let mut method_names = Vec::new();
+            for method in methods {
+                let mangled_name = format!("{}_{}", type_name, method.name);
+                method_names.push(method.name.clone());
+                let mangled_fn = FnDef {
+                    name: mangled_name,
+                    type_params: method.type_params.clone(),
+                    params: method.params.clone(),
+                    ret_type: method.ret_type.clone(),
+                    body: method.body.clone(),
+                };
+                self.declare_function(&mangled_fn)?;
             }
+            // Merge with existing methods if any
+            self.method_map.entry(type_name.clone())
+                .or_default()
+                .extend(method_names);
         }
 
         // Compile regular functions
@@ -309,20 +314,23 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
-        // Compile impl block methods
+        // Compile impl block and impl-trait methods
         for item in &program.items {
-            if let Item::ImplBlock { type_name, methods } = item {
-                for method in methods {
-                    let mangled_name = format!("{}_{}", type_name, method.name);
-                    let mangled_fn = FnDef {
-                        name: mangled_name,
-                        type_params: method.type_params.clone(),
-                        params: method.params.clone(),
-                        ret_type: method.ret_type.clone(),
-                        body: method.body.clone(),
-                    };
-                    self.compile_function(&mangled_fn)?;
-                }
+            let (type_name, methods) = match item {
+                Item::ImplBlock { type_name, methods } => (type_name, methods),
+                Item::ImplTrait { type_name, methods, .. } => (type_name, methods),
+                _ => continue,
+            };
+            for method in methods {
+                let mangled_name = format!("{}_{}", type_name, method.name);
+                let mangled_fn = FnDef {
+                    name: mangled_name,
+                    type_params: method.type_params.clone(),
+                    params: method.params.clone(),
+                    ret_type: method.ret_type.clone(),
+                    body: method.body.clone(),
+                };
+                self.compile_function(&mangled_fn)?;
             }
         }
 
