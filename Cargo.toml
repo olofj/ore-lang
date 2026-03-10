@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ore_cli",
+    "crates/ore_lexer",
+    "crates/ore_parser",
+    "crates/ore_types",
+    "crates/ore_typecheck",
+    "crates/ore_codegen",
+    "crates/ore_runtime",
+]
+
+[workspace.dependencies]
+inkwell = { version = "0.8", features = ["llvm19-1"] }

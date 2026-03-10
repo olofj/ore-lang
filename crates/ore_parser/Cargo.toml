@@ -1,0 +1,7 @@
+[package]
+name = "ore_parser"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ore_lexer = { path = "../ore_lexer" }

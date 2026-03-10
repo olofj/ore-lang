@@ -1,0 +1,8 @@
+[package]
+name = "ore_typecheck"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ore_parser = { path = "../ore_parser" }
+ore_types = { path = "../ore_types" }

@@ -1,0 +1,9 @@
+fn abs x:Int -> Int
+  x < 0 : -x : x
+
+fn fib n:Int -> Int
+  n < 2 : n : fib(n - 1) + fib(n - 2)
+
+fn main
+  print abs(-42)
+  print fib(10)

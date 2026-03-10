@@ -1,0 +1,9 @@
+[package]
+name = "ore_codegen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ore_parser = { path = "../ore_parser" }
+ore_types = { path = "../ore_types" }
+inkwell = { workspace = true }

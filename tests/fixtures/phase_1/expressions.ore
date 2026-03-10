@@ -1,0 +1,7 @@
+fn main
+  a := 10 * 3 + 5
+  print a
+  b := 100 - 50 / 2
+  print b
+  c := 17 % 5
+  print c

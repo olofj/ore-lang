@@ -1,0 +1,4 @@
+fn main
+  x := 42
+  y := x + 8
+  print y
