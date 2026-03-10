@@ -840,7 +840,13 @@ impl Parser {
                 let else_block = if self.peek() == &Token::Else {
                     self.advance();
                     self.skip_newlines();
-                    Some(self.parse_block()?)
+                    if self.peek() == &Token::If {
+                        // else if — parse the if as a single expression in a block
+                        let nested_if = self.parse_expr(0)?;
+                        Some(Block { stmts: vec![Stmt::Expr(nested_if)] })
+                    } else {
+                        Some(self.parse_block()?)
+                    }
                 } else {
                     None
                 };

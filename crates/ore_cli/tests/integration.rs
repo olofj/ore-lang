@@ -256,6 +256,13 @@ fn stdlib_strings_adv() {
 }
 
 #[test]
+fn control_elseif() {
+    let out = run_ore("control/elseif.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["-1", "0", "1", "2"]);
+}
+
+#[test]
 fn mutation_assign() {
     let out = run_ore("mutation/assign.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
