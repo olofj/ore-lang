@@ -1,0 +1,8 @@
+fn main
+  x := 10
+  result := 5 | (n => n + x)
+  print result
+
+  multiplier := 3
+  y := 7 | (n => n * multiplier)
+  print y

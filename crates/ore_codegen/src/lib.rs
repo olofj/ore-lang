@@ -4,9 +4,120 @@ use inkwell::module::Module;
 use inkwell::values::{BasicValue, BasicValueEnum, FunctionValue, IntValue, PointerValue};
 use inkwell::types::BasicType;
 use inkwell::IntPredicate;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use ore_parser::ast::*;
+
+/// Walk an expression tree and collect identifiers that are not in `bound`.
+fn find_free_vars(expr: &Expr, bound: &HashSet<String>) -> Vec<String> {
+    let mut free = Vec::new();
+    let mut seen = HashSet::new();
+    collect_free_vars(expr, bound, &mut free, &mut seen);
+    free
+}
+
+fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String>, seen: &mut HashSet<String>) {
+    match expr {
+        Expr::Ident(name) => {
+            if !bound.contains(name) && !seen.contains(name) {
+                seen.insert(name.clone());
+                free.push(name.clone());
+            }
+        }
+        Expr::BinOp { left, right, .. } => {
+            collect_free_vars(left, bound, free, seen);
+            collect_free_vars(right, bound, free, seen);
+        }
+        Expr::UnaryMinus(inner) | Expr::UnaryNot(inner) | Expr::Print(inner)
+        | Expr::OptionSome(inner) | Expr::Try(inner) => {
+            collect_free_vars(inner, bound, free, seen);
+        }
+        Expr::Call { func, args } => {
+            collect_free_vars(func, bound, free, seen);
+            for arg in args {
+                collect_free_vars(arg, bound, free, seen);
+            }
+        }
+        Expr::Lambda { params, body } => {
+            // Lambda params introduce new bindings; they shadow outer names
+            let mut inner_bound = bound.clone();
+            for p in params {
+                inner_bound.insert(p.clone());
+            }
+            collect_free_vars(body, &inner_bound, free, seen);
+        }
+        Expr::IfElse { cond, then_block, else_block } => {
+            collect_free_vars(cond, bound, free, seen);
+            for stmt in &then_block.stmts {
+                collect_free_vars_stmt(stmt, bound, free, seen);
+            }
+            if let Some(eb) = else_block {
+                for stmt in &eb.stmts {
+                    collect_free_vars_stmt(stmt, bound, free, seen);
+                }
+            }
+        }
+        Expr::ColonMatch { cond, then_expr, else_expr } => {
+            collect_free_vars(cond, bound, free, seen);
+            collect_free_vars(then_expr, bound, free, seen);
+            if let Some(e) = else_expr {
+                collect_free_vars(e, bound, free, seen);
+            }
+        }
+        Expr::Match { subject, arms } => {
+            collect_free_vars(subject, bound, free, seen);
+            for arm in arms {
+                collect_free_vars(&arm.body, bound, free, seen);
+            }
+        }
+        Expr::StringInterp(parts) => {
+            for part in parts {
+                if let StringPart::Expr(e) = part {
+                    collect_free_vars(e, bound, free, seen);
+                }
+            }
+        }
+        Expr::RecordConstruct { fields, .. } => {
+            for (_, e) in fields {
+                collect_free_vars(e, bound, free, seen);
+            }
+        }
+        Expr::FieldAccess { object, .. } => {
+            collect_free_vars(object, bound, free, seen);
+        }
+        // Literals and constants have no free variables
+        Expr::IntLit(_) | Expr::FloatLit(_) | Expr::BoolLit(_) | Expr::StringLit(_)
+        | Expr::Break | Expr::OptionNone => {}
+    }
+}
+
+fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<String>, seen: &mut HashSet<String>) {
+    match stmt {
+        Stmt::Let { value, .. } => collect_free_vars(value, bound, free, seen),
+        Stmt::Assign { value, .. } => collect_free_vars(value, bound, free, seen),
+        Stmt::Expr(e) => collect_free_vars(e, bound, free, seen),
+        Stmt::Return(Some(e)) => collect_free_vars(e, bound, free, seen),
+        Stmt::Return(None) | Stmt::Break => {}
+        Stmt::ForIn { start, end, body, .. } => {
+            collect_free_vars(start, bound, free, seen);
+            collect_free_vars(end, bound, free, seen);
+            for s in &body.stmts {
+                collect_free_vars_stmt(s, bound, free, seen);
+            }
+        }
+        Stmt::While { cond, body } => {
+            collect_free_vars(cond, bound, free, seen);
+            for s in &body.stmts {
+                collect_free_vars_stmt(s, bound, free, seen);
+            }
+        }
+        Stmt::Loop { body } => {
+            for s in &body.stmts {
+                collect_free_vars_stmt(s, bound, free, seen);
+            }
+        }
+    }
+}
 
 /// Tracks whether a compiled value is a string pointer (needs RC) or a plain value
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,6 +151,19 @@ struct EnumInfo<'ctx> {
     variants: Vec<VariantInfo<'ctx>>,
 }
 
+/// Tracks capture information for a compiled lambda/closure
+#[allow(dead_code)]
+struct CaptureInfo<'ctx> {
+    /// The LLVM struct type holding all captured values
+    struct_type: inkwell::types::StructType<'ctx>,
+    /// Names of captured variables (in struct field order)
+    names: Vec<String>,
+    /// LLVM types of captured variables (in struct field order)
+    types: Vec<inkwell::types::BasicTypeEnum<'ctx>>,
+    /// ValKind of each captured variable
+    kinds: Vec<ValKind>,
+}
+
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
     pub module: Module<'ctx>,
@@ -55,6 +179,8 @@ pub struct CodeGen<'ctx> {
     break_target: Option<inkwell::basic_block::BasicBlock<'ctx>>,
     str_counter: u32,
     lambda_counter: u32,
+    /// Maps lambda function name -> capture info (only for closures with captures)
+    lambda_captures: HashMap<String, CaptureInfo<'ctx>>,
 }
 
 #[derive(Debug)]
@@ -90,6 +216,7 @@ impl<'ctx> CodeGen<'ctx> {
             break_target: None,
             str_counter: 0,
             lambda_counter: 0,
+            lambda_captures: HashMap::new(),
         }
     }
 
@@ -1175,7 +1302,16 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::Lambda { params, body } => {
                 let lambda_fn = self.compile_lambda(params, body, current_fn)?;
-                let result = bld!(self.builder.build_call(lambda_fn, &[arg_val.into()], "pipe"))?;
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+
+                let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> = Vec::new();
+                if self.lambda_captures.contains_key(&lambda_name) {
+                    let env_ptr = self.build_captures_struct(&lambda_name)?;
+                    call_args.push(env_ptr.into());
+                }
+                call_args.push(arg_val.into());
+
+                let result = bld!(self.builder.build_call(lambda_fn, &call_args, "pipe"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
@@ -1388,12 +1524,51 @@ impl<'ctx> CodeGen<'ctx> {
         let name = format!("__lambda_{}", self.lambda_counter);
         self.lambda_counter += 1;
 
-        // For now, lambdas take and return i64 (no captures)
         let i64_type = self.context.i64_type();
-        let param_types: Vec<inkwell::types::BasicMetadataTypeEnum<'ctx>> =
-            params.iter().map(|_| i64_type.into()).collect();
+        let ptr_type = self.ptr_type();
+
+        // Detect free variables (captures) — identifiers in body not in params
+        let bound: HashSet<String> = params.iter().cloned().collect();
+        let free_vars = find_free_vars(body, &bound);
+
+        // Filter to only variables that exist in the current scope
+        let mut capture_names = Vec::new();
+        let mut capture_types = Vec::new();
+        let mut capture_kinds = Vec::new();
+        for fv in &free_vars {
+            if let Some((_ptr, ty, kind)) = self.variables.get(fv) {
+                capture_names.push(fv.clone());
+                capture_types.push(*ty);
+                capture_kinds.push(kind.clone());
+            }
+        }
+        let has_captures = !capture_names.is_empty();
+
+        // Build function signature: if captures, first param is env_ptr
+        let mut param_types: Vec<inkwell::types::BasicMetadataTypeEnum<'ctx>> = Vec::new();
+        if has_captures {
+            param_types.push(ptr_type.into()); // env_ptr
+        }
+        for _ in params {
+            param_types.push(i64_type.into());
+        }
         let fn_type = i64_type.fn_type(&param_types, false);
         let lambda_fn = self.module.add_function(&name, fn_type, None);
+
+        // Build the captures struct type and store CaptureInfo if needed
+        let captures_struct_type = if has_captures {
+            let field_types: Vec<inkwell::types::BasicTypeEnum<'ctx>> = capture_types.clone();
+            let st = self.context.struct_type(&field_types, false);
+            self.lambda_captures.insert(name.clone(), CaptureInfo {
+                struct_type: st,
+                names: capture_names.clone(),
+                types: capture_types.clone(),
+                kinds: capture_kinds.clone(),
+            });
+            Some(st)
+        } else {
+            None
+        };
 
         // Save current state
         let saved_vars = self.variables.clone();
@@ -1404,8 +1579,26 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(entry);
         self.variables.clear();
 
+        // If we have captures, extract them from the env_ptr (first param)
+        if has_captures {
+            let env_ptr = lambda_fn.get_nth_param(0).unwrap().into_pointer_value();
+            let st = captures_struct_type.unwrap();
+            for (i, cap_name) in capture_names.iter().enumerate() {
+                let field_ptr = bld!(self.builder.build_struct_gep(
+                    st, env_ptr, i as u32, &format!("cap_{}", cap_name)
+                ))?;
+                let field_ty = capture_types[i];
+                let val = bld!(self.builder.build_load(field_ty, field_ptr, cap_name))?;
+                let alloca = bld!(self.builder.build_alloca(field_ty, cap_name))?;
+                bld!(self.builder.build_store(alloca, val))?;
+                self.variables.insert(cap_name.clone(), (alloca, field_ty, capture_kinds[i].clone()));
+            }
+        }
+
+        // Bind lambda parameters (offset by 1 if captures exist)
+        let param_offset: u32 = if has_captures { 1 } else { 0 };
         for (i, param_name) in params.iter().enumerate() {
-            let val = lambda_fn.get_nth_param(i as u32).unwrap();
+            let val = lambda_fn.get_nth_param(i as u32 + param_offset).unwrap();
             let ty = val.get_type();
             let alloca = bld!(self.builder.build_alloca(ty, param_name))?;
             bld!(self.builder.build_store(alloca, val))?;
@@ -1426,6 +1619,37 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.functions.insert(name, (lambda_fn, ValKind::Int));
         Ok(lambda_fn)
+    }
+
+    /// Build the captures struct on the stack and fill it with current variable values.
+    /// Returns a pointer to the alloca'd struct.
+    fn build_captures_struct(
+        &mut self,
+        lambda_name: &str,
+    ) -> Result<PointerValue<'ctx>, CodeGenError> {
+        let cap_info = self.lambda_captures.get(lambda_name).ok_or_else(|| CodeGenError {
+            msg: format!("no capture info for lambda '{}'", lambda_name),
+        })?;
+        let struct_type = cap_info.struct_type;
+        let names = cap_info.names.clone();
+        let types = cap_info.types.clone();
+
+        let alloca = bld!(self.builder.build_alloca(struct_type, "captures"))?;
+
+        for (i, cap_name) in names.iter().enumerate() {
+            let (var_ptr, var_ty, _kind) = self.variables.get(cap_name).ok_or_else(|| CodeGenError {
+                msg: format!("captured variable '{}' not found in scope", cap_name),
+            })?;
+            let val = bld!(self.builder.build_load(*var_ty, *var_ptr, cap_name))?;
+            let field_ptr = bld!(self.builder.build_struct_gep(
+                struct_type, alloca, i as u32, &format!("cap_store_{}", cap_name)
+            ))?;
+            // If types don't exactly match (e.g. i64 vs i64), just store directly
+            let _ = types[i]; // ensure we have the type
+            bld!(self.builder.build_store(field_ptr, val))?;
+        }
+
+        Ok(alloca)
     }
 
     fn compile_binop(
