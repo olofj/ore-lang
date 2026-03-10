@@ -32,6 +32,7 @@ pub enum Token {
     Err_,
     Use,
     Pub,
+    Spawn,
 
     // Operators
     Plus,
@@ -517,6 +518,7 @@ impl<'a> Lexer<'a> {
             "Err" => Token::Err_,
             "use" => Token::Use,
             "pub" => Token::Pub,
+            "spawn" => Token::Spawn,
             _ => Token::Ident(text.to_string()),
         };
         self.emit(token, start);

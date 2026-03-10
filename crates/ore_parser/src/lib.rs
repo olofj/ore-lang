@@ -342,6 +342,16 @@ impl Parser {
                 let expr = self.parse_expr(0)?;
                 Ok(Stmt::Expr(Expr::Print(Box::new(expr))))
             }
+            Token::Ident(name) if name == "sleep" => {
+                self.advance();
+                let expr = self.parse_expr(0)?;
+                Ok(Stmt::Expr(Expr::Sleep(Box::new(expr))))
+            }
+            Token::Spawn => {
+                self.advance();
+                let expr = self.parse_expr(0)?;
+                Ok(Stmt::Spawn(expr))
+            }
             Token::Mut => {
                 self.advance();
                 let name = match self.peek().clone() {

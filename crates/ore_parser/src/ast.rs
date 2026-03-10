@@ -92,6 +92,7 @@ pub enum Stmt {
         body: Block,
     },
     Break,
+    Spawn(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -151,6 +152,7 @@ pub enum Expr {
     ResultOk(Box<Expr>),
     ResultErr(Box<Expr>),
     Try(Box<Expr>),
+    Sleep(Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

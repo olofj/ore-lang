@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::sync::Mutex;
 
 // ── Print primitives ──
 
@@ -142,4 +143,27 @@ pub extern "C" fn ore_int_to_str(n: i64) -> *mut OreStr {
 pub extern "C" fn ore_bool_to_str(b: i8) -> *mut OreStr {
     let s = if b != 0 { "true" } else { "false" };
     ore_str_new(s.as_ptr(), s.len() as u32)
+}
+
+// ── Concurrency ──
+
+static THREADS: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new());
+
+#[no_mangle]
+pub extern "C" fn ore_spawn(func: extern "C" fn()) {
+    let handle = std::thread::spawn(move || func());
+    THREADS.lock().unwrap().push(handle);
+}
+
+#[no_mangle]
+pub extern "C" fn ore_thread_join_all() {
+    let mut threads = THREADS.lock().unwrap();
+    for handle in threads.drain(..) {
+        handle.join().unwrap();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_sleep(ms: i64) {
+    std::thread::sleep(std::time::Duration::from_millis(ms as u64));
 }

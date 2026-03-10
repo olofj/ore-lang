@@ -151,6 +151,9 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_str_release", ore_runtime::ore_str_release);
     map_fn!("ore_int_to_str", ore_runtime::ore_int_to_str);
     map_fn!("ore_bool_to_str", ore_runtime::ore_bool_to_str);
+    map_fn!("ore_spawn", ore_runtime::ore_spawn);
+    map_fn!("ore_thread_join_all", ore_runtime::ore_thread_join_all);
+    map_fn!("ore_sleep", ore_runtime::ore_sleep);
 
     unsafe {
         let main_fn: JitFunction<MainFunc> = ee

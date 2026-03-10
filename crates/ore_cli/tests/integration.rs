@@ -133,3 +133,10 @@ fn phase13_result() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["5", "-1"]);
 }
+
+#[test]
+fn phase15_concurrency() {
+    let out = run_ore("phase_15/concurrency.ore");
+    assert!(out.contains("42"));
+    assert!(out.contains("1"));
+}

@@ -1,0 +1,6 @@
+fn greet
+  print 42
+
+fn main
+  spawn greet()
+  print 1

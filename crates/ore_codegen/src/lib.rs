@@ -30,7 +30,7 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
         }
         Expr::UnaryMinus(inner) | Expr::UnaryNot(inner) | Expr::Print(inner)
         | Expr::OptionSome(inner) | Expr::ResultOk(inner) | Expr::ResultErr(inner)
-        | Expr::Try(inner) => {
+        | Expr::Try(inner) | Expr::Sleep(inner) => {
             collect_free_vars(inner, bound, free, seen);
         }
         Expr::Call { func, args } => {
@@ -105,6 +105,7 @@ fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<S
         Stmt::Expr(e) => collect_free_vars(e, bound, free, seen),
         Stmt::Return(Some(e)) => collect_free_vars(e, bound, free, seen),
         Stmt::Return(None) | Stmt::Break => {}
+        Stmt::Spawn(e) => collect_free_vars(e, bound, free, seen),
         Stmt::ForIn { start, end, body, .. } => {
             collect_free_vars(start, bound, free, seen);
             collect_free_vars(end, bound, free, seen);
@@ -436,6 +437,12 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_int_to_str", ptr_type.fn_type(&[i64_type.into()], false), ext);
         // ore_bool_to_str(i8) -> ptr
         self.module.add_function("ore_bool_to_str", ptr_type.fn_type(&[i8_type.into()], false), ext);
+        // ore_spawn(ptr) — takes a function pointer
+        self.module.add_function("ore_spawn", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_thread_join_all()
+        self.module.add_function("ore_thread_join_all", void_type.fn_type(&[], false), ext);
+        // ore_sleep(i64)
+        self.module.add_function("ore_sleep", void_type.fn_type(&[i64_type.into()], false), ext);
     }
 
     fn type_expr_to_kind(&self, ty: &TypeExpr) -> ValKind {
@@ -537,6 +544,9 @@ impl<'ctx> CodeGen<'ctx> {
 
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
             if fndef.name == "main" {
+                // Join all spawned threads before returning from main
+                let join_all = self.module.get_function("ore_thread_join_all").unwrap();
+                bld!(self.builder.build_call(join_all, &[], ""))?;
                 let zero = self.context.i32_type().const_int(0, false);
                 bld!(self.builder.build_return(Some(&zero)))?;
             } else if fndef.ret_type.is_some() {
@@ -614,6 +624,23 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { msg: "break outside of loop".into() });
                 }
                 Ok(None)
+            }
+            Stmt::Spawn(expr) => {
+                // spawn only works with zero-argument function calls
+                match expr {
+                    Expr::Call { func: callee, args } if args.is_empty() => {
+                        let name = match callee.as_ref() {
+                            Expr::Ident(n) => n.clone(),
+                            _ => return Err(CodeGenError { msg: "spawn requires a named function call".into() }),
+                        };
+                        let (target_fn, _) = self.resolve_function(&name)?;
+                        let fn_ptr = target_fn.as_global_value().as_pointer_value();
+                        let ore_spawn = self.module.get_function("ore_spawn").unwrap();
+                        bld!(self.builder.build_call(ore_spawn, &[fn_ptr.into()], ""))?;
+                        Ok(None)
+                    }
+                    _ => Err(CodeGenError { msg: "spawn requires a zero-argument function call".into() }),
+                }
             }
         }
     }
@@ -701,6 +728,12 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::Print(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
                 self.compile_print(val, kind)?;
+                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+            }
+            Expr::Sleep(inner) => {
+                let val = self.compile_expr(inner, func)?;
+                let ore_sleep = self.module.get_function("ore_sleep").unwrap();
+                bld!(self.builder.build_call(ore_sleep, &[val.into()], ""))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
             Expr::Call { func: callee, args } => {
