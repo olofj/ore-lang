@@ -202,3 +202,16 @@ fn lists_foreach() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["150", "10", "20", "30"]);
 }
+
+#[test]
+fn lists_advanced() {
+    let out = run_ore("lists/advanced.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "[1, 2, 3, 4, 5]",
+        "[5, 4, 3, 2, 1]",
+        "true",
+        "false",
+        "6",
+    ]);
+}

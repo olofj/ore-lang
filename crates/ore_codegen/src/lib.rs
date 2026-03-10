@@ -487,6 +487,12 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_filter", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_each(ptr, fn_ptr)
         self.module.add_function("ore_list_each", void_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_sort(ptr)
+        self.module.add_function("ore_list_sort", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_reverse(ptr)
+        self.module.add_function("ore_list_reverse", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_contains(ptr, i64) -> i8
+        self.module.add_function("ore_list_contains", i8_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // String utilities
         self.module.add_function("ore_float_to_str", ptr_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_str_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -1242,6 +1248,32 @@ impl<'ctx> CodeGen<'ctx> {
                     ""
                 ))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+            }
+            "sort" => {
+                let rt = self.module.get_function("ore_list_sort").unwrap();
+                bld!(self.builder.build_call(rt, &[list_val.into()], ""))?;
+                Ok((list_val, ValKind::List))
+            }
+            "reverse" => {
+                let rt = self.module.get_function("ore_list_reverse").unwrap();
+                bld!(self.builder.build_call(rt, &[list_val.into()], ""))?;
+                Ok((list_val, ValKind::List))
+            }
+            "contains" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "contains takes exactly 1 argument".into() });
+                }
+                let val = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_list_contains").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lcontains"))?;
+                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let bool_val = bld!(self.builder.build_int_compare(
+                    inkwell::IntPredicate::NE,
+                    i8_val,
+                    self.context.i8_type().const_int(0, false),
+                    "tobool"
+                ))?;
+                Ok((bool_val.into(), ValKind::Bool))
             }
             _ => Err(CodeGenError { msg: format!("unknown list method '{}'", method) }),
         }

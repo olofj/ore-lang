@@ -339,6 +339,37 @@ pub extern "C" fn ore_list_print(list: *mut OreList) {
 }
 
 #[no_mangle]
+pub extern "C" fn ore_list_sort(list: *mut OreList) {
+    unsafe {
+        let list = &mut *list;
+        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        slice.sort();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_reverse(list: *mut OreList) {
+    unsafe {
+        let list = &mut *list;
+        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        slice.reverse();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_contains(list: *mut OreList, value: i64) -> i8 {
+    unsafe {
+        let list = &*list;
+        for i in 0..list.len as usize {
+            if *list.data.add(i) == value {
+                return 1;
+            }
+        }
+        0
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn ore_list_print_str(list: *mut OreList) {
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();

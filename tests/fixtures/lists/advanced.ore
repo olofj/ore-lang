@@ -1,0 +1,13 @@
+fn main
+  xs := [5, 3, 1, 4, 2]
+  xs.sort()
+  print xs
+
+  xs.reverse()
+  print xs
+
+  print xs.contains(3)
+  print xs.contains(9)
+
+  xs.push(6)
+  print xs.len()
