@@ -814,6 +814,58 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // Built-in stdlib functions
                 match name.as_str() {
+                    "abs" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { msg: "abs takes 1 argument".into() });
+                        }
+                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                        match kind {
+                            ValKind::Int => {
+                                // abs for int: (x ^ (x >> 63)) - (x >> 63)
+                                let x = val.into_int_value();
+                                let shift = self.context.i64_type().const_int(63, false);
+                                let sign = bld!(self.builder.build_right_shift(x, shift, true, "sign"))?;
+                                let xored = bld!(self.builder.build_xor(x, sign, "xor"))?;
+                                let result = bld!(self.builder.build_int_sub(xored, sign, "abs"))?;
+                                return Ok((result.into(), ValKind::Int));
+                            }
+                            ValKind::Float => {
+                                let x = val.into_float_value();
+                                let neg = bld!(self.builder.build_float_neg(x, "neg"))?;
+                                let zero = self.context.f64_type().const_float(0.0);
+                                let is_neg = bld!(self.builder.build_float_compare(
+                                    inkwell::FloatPredicate::OLT, x, zero, "is_neg"
+                                ))?;
+                                let result = bld!(self.builder.build_select(is_neg, neg, x, "abs"))?;
+                                return Ok((result, ValKind::Float));
+                            }
+                            _ => return Err(CodeGenError { msg: "abs requires Int or Float".into() }),
+                        }
+                    }
+                    "min" => {
+                        if args.len() != 2 {
+                            return Err(CodeGenError { msg: "min takes 2 arguments".into() });
+                        }
+                        let a = self.compile_expr(&args[0], func)?;
+                        let b = self.compile_expr(&args[1], func)?;
+                        let cmp = bld!(self.builder.build_int_compare(
+                            inkwell::IntPredicate::SLT, a.into_int_value(), b.into_int_value(), "cmp"
+                        ))?;
+                        let result = bld!(self.builder.build_select(cmp, a, b, "min"))?;
+                        return Ok((result, ValKind::Int));
+                    }
+                    "max" => {
+                        if args.len() != 2 {
+                            return Err(CodeGenError { msg: "max takes 2 arguments".into() });
+                        }
+                        let a = self.compile_expr(&args[0], func)?;
+                        let b = self.compile_expr(&args[1], func)?;
+                        let cmp = bld!(self.builder.build_int_compare(
+                            inkwell::IntPredicate::SGT, a.into_int_value(), b.into_int_value(), "cmp"
+                        ))?;
+                        let result = bld!(self.builder.build_select(cmp, a, b, "max"))?;
+                        return Ok((result, ValKind::Int));
+                    }
                     "readln" => {
                         let rt = self.module.get_function("ore_readln").unwrap();
                         let result = bld!(self.builder.build_call(rt, &[], "readln"))?;

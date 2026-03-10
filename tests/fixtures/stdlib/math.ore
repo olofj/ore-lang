@@ -1,0 +1,6 @@
+fn main
+  print abs(-42)
+  print abs(7)
+  print min(3, 8)
+  print max(3, 8)
+  print min(-5, 2)

@@ -188,3 +188,10 @@ fn stdlib_strings() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["11", "true", "false", "trim me", "50"]);
 }
+
+#[test]
+fn stdlib_math() {
+    let out = run_ore("stdlib/math.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["42", "7", "3", "8", "-5"]);
+}
