@@ -246,6 +246,16 @@ fn lists_reduce() {
 }
 
 #[test]
+fn stdlib_strings_adv() {
+    let out = run_ore("stdlib/strings_adv.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "Hello, Ore!", "true", "true",
+        "HELLO, WORLD!", "hello, world!", "World",
+    ]);
+}
+
+#[test]
 fn maps_basic() {
     let out = run_ore("maps/basic.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

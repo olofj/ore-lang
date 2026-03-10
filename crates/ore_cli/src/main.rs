@@ -276,6 +276,12 @@ fn run_repl() {
             map_fn!("ore_str_split", ore_runtime::ore_str_split);
             map_fn!("ore_str_to_int", ore_runtime::ore_str_to_int);
             map_fn!("ore_str_to_float", ore_runtime::ore_str_to_float);
+    map_fn!("ore_str_replace", ore_runtime::ore_str_replace);
+    map_fn!("ore_str_starts_with", ore_runtime::ore_str_starts_with);
+    map_fn!("ore_str_ends_with", ore_runtime::ore_str_ends_with);
+    map_fn!("ore_str_to_upper", ore_runtime::ore_str_to_upper);
+    map_fn!("ore_str_to_lower", ore_runtime::ore_str_to_lower);
+    map_fn!("ore_str_substr", ore_runtime::ore_str_substr);
             map_fn!("ore_readln", ore_runtime::ore_readln);
             map_fn!("ore_file_read", ore_runtime::ore_file_read);
             map_fn!("ore_file_write", ore_runtime::ore_file_write);
@@ -355,6 +361,12 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_str_split", ore_runtime::ore_str_split);
     map_fn!("ore_str_to_int", ore_runtime::ore_str_to_int);
     map_fn!("ore_str_to_float", ore_runtime::ore_str_to_float);
+    map_fn!("ore_str_replace", ore_runtime::ore_str_replace);
+    map_fn!("ore_str_starts_with", ore_runtime::ore_str_starts_with);
+    map_fn!("ore_str_ends_with", ore_runtime::ore_str_ends_with);
+    map_fn!("ore_str_to_upper", ore_runtime::ore_str_to_upper);
+    map_fn!("ore_str_to_lower", ore_runtime::ore_str_to_lower);
+    map_fn!("ore_str_substr", ore_runtime::ore_str_substr);
     map_fn!("ore_readln", ore_runtime::ore_readln);
     map_fn!("ore_file_read", ore_runtime::ore_file_read);
     map_fn!("ore_file_write", ore_runtime::ore_file_write);

@@ -216,6 +216,61 @@ pub extern "C" fn ore_str_to_float(s: *mut OreStr) -> f64 {
     str_val.parse::<f64>().unwrap_or(0.0)
 }
 
+// ── Additional String Methods ──
+
+#[no_mangle]
+pub extern "C" fn ore_str_replace(s: *mut OreStr, from: *mut OreStr, to: *mut OreStr) -> *mut OreStr {
+    if s.is_null() || from.is_null() || to.is_null() {
+        return ore_str_new(std::ptr::null(), 0);
+    }
+    let result = unsafe { (*s).as_str().replace((*from).as_str(), (*to).as_str()) };
+    ore_str_new(result.as_ptr(), result.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_starts_with(s: *mut OreStr, prefix: *mut OreStr) -> i8 {
+    unsafe {
+        if s.is_null() || prefix.is_null() { return 0; }
+        if (*s).as_str().starts_with((*prefix).as_str()) { 1 } else { 0 }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_ends_with(s: *mut OreStr, suffix: *mut OreStr) -> i8 {
+    unsafe {
+        if s.is_null() || suffix.is_null() { return 0; }
+        if (*s).as_str().ends_with((*suffix).as_str()) { 1 } else { 0 }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_to_upper(s: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let upper = unsafe { (*s).as_str().to_uppercase() };
+    ore_str_new(upper.as_ptr(), upper.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_to_lower(s: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let lower = unsafe { (*s).as_str().to_lowercase() };
+    ore_str_new(lower.as_ptr(), lower.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_substr(s: *mut OreStr, start: i64, len: i64) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let str_val = unsafe { (*s).as_str() };
+    let start = start.max(0) as usize;
+    let len = len.max(0) as usize;
+    if start >= str_val.len() {
+        return ore_str_new(std::ptr::null(), 0);
+    }
+    let end = (start + len).min(str_val.len());
+    let sub = &str_val[start..end];
+    ore_str_new(sub.as_ptr(), sub.len() as u32)
+}
+
 // ── I/O ──
 
 #[no_mangle]

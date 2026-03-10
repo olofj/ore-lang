@@ -509,6 +509,12 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_split", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_replace", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_starts_with", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_ends_with", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_to_upper", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_to_lower", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_substr", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_reduce(ptr, i64, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_reduce", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_find(ptr, fn_ptr, env_ptr, default) -> i64
@@ -1452,6 +1458,68 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "stof"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Float))
+            }
+            "replace" => {
+                if args.len() != 2 {
+                    return Err(CodeGenError { msg: "replace takes 2 arguments (from, to)".into() });
+                }
+                let from = self.compile_expr(&args[0], func)?;
+                let to = self.compile_expr(&args[1], func)?;
+                let rt = self.module.get_function("ore_str_replace").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), from.into(), to.into()], "sreplace"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
+            "starts_with" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "starts_with takes 1 argument".into() });
+                }
+                let prefix = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_str_starts_with").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), prefix.into()], "ssw"))?;
+                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let bool_val = bld!(self.builder.build_int_compare(
+                    inkwell::IntPredicate::NE, i8_val,
+                    self.context.i8_type().const_int(0, false), "tobool"
+                ))?;
+                Ok((bool_val.into(), ValKind::Bool))
+            }
+            "ends_with" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "ends_with takes 1 argument".into() });
+                }
+                let suffix = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_str_ends_with").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), suffix.into()], "sew"))?;
+                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let bool_val = bld!(self.builder.build_int_compare(
+                    inkwell::IntPredicate::NE, i8_val,
+                    self.context.i8_type().const_int(0, false), "tobool"
+                ))?;
+                Ok((bool_val.into(), ValKind::Bool))
+            }
+            "to_upper" => {
+                let rt = self.module.get_function("ore_str_to_upper").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "supper"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
+            "to_lower" => {
+                let rt = self.module.get_function("ore_str_to_lower").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slower"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
+            "substr" => {
+                if args.len() != 2 {
+                    return Err(CodeGenError { msg: "substr takes 2 arguments (start, len)".into() });
+                }
+                let start = self.compile_expr(&args[0], func)?;
+                let len = self.compile_expr(&args[1], func)?;
+                let rt = self.module.get_function("ore_str_substr").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), start.into(), len.into()], "ssub"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
             }
             _ => Err(CodeGenError { msg: format!("unknown string method '{}'", method) }),
         }

@@ -1,0 +1,8 @@
+fn main
+  s := "Hello, World!"
+  print s.replace("World", "Ore")
+  print s.starts_with("Hello")
+  print s.ends_with("World!")
+  print s.to_upper()
+  print s.to_lower()
+  print s.substr(7, 5)
