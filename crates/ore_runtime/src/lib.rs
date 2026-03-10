@@ -172,6 +172,50 @@ pub extern "C" fn ore_str_eq(a: *mut OreStr, b: *mut OreStr) -> i8 {
     }
 }
 
+// ── String methods ──
+
+#[no_mangle]
+pub extern "C" fn ore_str_contains(haystack: *mut OreStr, needle: *mut OreStr) -> i8 {
+    unsafe {
+        if haystack.is_null() || needle.is_null() { return 0; }
+        if (*haystack).as_str().contains((*needle).as_str()) { 1 } else { 0 }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_trim(s: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let trimmed = unsafe { (*s).as_str().trim() };
+    ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_split(s: *mut OreStr, delim: *mut OreStr) -> *mut OreList {
+    let result = ore_list_new();
+    if s.is_null() { return result; }
+    let str_val = unsafe { (*s).as_str() };
+    let delim_str = if delim.is_null() { " " } else { unsafe { (*delim).as_str() } };
+    for part in str_val.split(delim_str) {
+        let part_str = ore_str_new(part.as_ptr(), part.len() as u32);
+        ore_list_push(result, part_str as i64);
+    }
+    result
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_to_int(s: *mut OreStr) -> i64 {
+    if s.is_null() { return 0; }
+    let str_val = unsafe { (*s).as_str().trim() };
+    str_val.parse::<i64>().unwrap_or(0)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_to_float(s: *mut OreStr) -> f64 {
+    if s.is_null() { return 0.0; }
+    let str_val = unsafe { (*s).as_str().trim() };
+    str_val.parse::<f64>().unwrap_or(0.0)
+}
+
 // ── I/O ──
 
 #[no_mangle]
@@ -289,6 +333,26 @@ pub extern "C" fn ore_list_print(list: *mut OreList) {
                 let _ = write!(handle, ", ");
             }
             let _ = write!(handle, "{}", *list.data.add(i));
+        }
+        let _ = writeln!(handle, "]");
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_print_str(list: *mut OreList) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    unsafe {
+        let list = &*list;
+        let _ = write!(handle, "[");
+        for i in 0..list.len as usize {
+            if i > 0 {
+                let _ = write!(handle, ", ");
+            }
+            let s = *list.data.add(i) as *mut OreStr;
+            if !s.is_null() {
+                let _ = write!(handle, "{}", (*s).as_str());
+            }
         }
         let _ = writeln!(handle, "]");
     }

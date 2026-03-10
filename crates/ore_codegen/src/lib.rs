@@ -485,6 +485,12 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_float_to_str", ptr_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_str_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_eq", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // String methods
+        self.module.add_function("ore_str_contains", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_trim", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_split", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_to_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_to_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
         // I/O
         self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -1068,6 +1074,11 @@ impl<'ctx> CodeGen<'ctx> {
             return self.compile_list_method(obj_val, method, args, func);
         }
 
+        // Handle string built-in methods
+        if obj_kind == ValKind::Str {
+            return self.compile_str_method(obj_val, method, args, func);
+        }
+
         let type_name = match &obj_kind {
             ValKind::Record(name) => name.clone(),
             _ => return Err(CodeGenError { msg: format!("method call on unsupported type: {:?}", obj_kind) }),
@@ -1171,6 +1182,68 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
             _ => Err(CodeGenError { msg: format!("unknown list method '{}'", method) }),
+        }
+    }
+
+    fn compile_str_method(
+        &mut self,
+        str_val: BasicValueEnum<'ctx>,
+        method: &str,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        match method {
+            "len" => {
+                let rt = self.module.get_function("ore_str_len").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slen"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "contains" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "contains takes 1 argument".into() });
+                }
+                let needle = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_str_contains").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "scontains"))?;
+                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let bool_val = bld!(self.builder.build_int_compare(
+                    inkwell::IntPredicate::NE,
+                    i8_val,
+                    self.context.i8_type().const_int(0, false),
+                    "tobool"
+                ))?;
+                Ok((bool_val.into(), ValKind::Bool))
+            }
+            "trim" => {
+                let rt = self.module.get_function("ore_str_trim").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "strim"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
+            "split" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "split takes 1 argument".into() });
+                }
+                let delim = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_str_split").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), delim.into()], "ssplit"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            "to_int" => {
+                let rt = self.module.get_function("ore_str_to_int").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "stoi"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "to_float" => {
+                let rt = self.module.get_function("ore_str_to_float").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "stof"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Float))
+            }
+            _ => Err(CodeGenError { msg: format!("unknown string method '{}'", method) }),
         }
     }
 

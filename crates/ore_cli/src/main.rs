@@ -265,6 +265,11 @@ fn run_repl() {
             map_fn!("ore_float_to_str", ore_runtime::ore_float_to_str);
             map_fn!("ore_str_len", ore_runtime::ore_str_len);
             map_fn!("ore_str_eq", ore_runtime::ore_str_eq);
+            map_fn!("ore_str_contains", ore_runtime::ore_str_contains);
+            map_fn!("ore_str_trim", ore_runtime::ore_str_trim);
+            map_fn!("ore_str_split", ore_runtime::ore_str_split);
+            map_fn!("ore_str_to_int", ore_runtime::ore_str_to_int);
+            map_fn!("ore_str_to_float", ore_runtime::ore_str_to_float);
             map_fn!("ore_readln", ore_runtime::ore_readln);
             map_fn!("ore_file_read", ore_runtime::ore_file_read);
             map_fn!("ore_file_write", ore_runtime::ore_file_write);
@@ -323,6 +328,11 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_float_to_str", ore_runtime::ore_float_to_str);
     map_fn!("ore_str_len", ore_runtime::ore_str_len);
     map_fn!("ore_str_eq", ore_runtime::ore_str_eq);
+    map_fn!("ore_str_contains", ore_runtime::ore_str_contains);
+    map_fn!("ore_str_trim", ore_runtime::ore_str_trim);
+    map_fn!("ore_str_split", ore_runtime::ore_str_split);
+    map_fn!("ore_str_to_int", ore_runtime::ore_str_to_int);
+    map_fn!("ore_str_to_float", ore_runtime::ore_str_to_float);
     map_fn!("ore_readln", ore_runtime::ore_readln);
     map_fn!("ore_file_read", ore_runtime::ore_file_read);
     map_fn!("ore_file_write", ore_runtime::ore_file_write);

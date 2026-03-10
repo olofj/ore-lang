@@ -181,3 +181,10 @@ fn stdlib_float_interp() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["pi is 3.14", "42 is cool: true"]);
 }
+
+#[test]
+fn stdlib_strings() {
+    let out = run_ore("stdlib/strings.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["11", "true", "false", "trim me", "50"]);
+}

@@ -1,0 +1,11 @@
+fn main
+  s := "hello world"
+  print s.len()
+  print s.contains("world")
+  print s.contains("xyz")
+
+  padded := "  trim me  "
+  print padded.trim()
+
+  num := "42"
+  print num.to_int() + 8
