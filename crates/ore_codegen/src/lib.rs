@@ -18,6 +18,7 @@ pub enum ValKind {
     Void,
     Record(String),
     Enum(String),
+    Option,
 }
 
 struct RecordInfo<'ctx> {
@@ -94,6 +95,14 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn ptr_type(&self) -> inkwell::types::PointerType<'ctx> {
         self.context.ptr_type(inkwell::AddressSpace::default())
+    }
+
+    /// Built-in Option type: { i8, i64 } where tag=0 is None, tag=1 is Some
+    fn option_type(&self) -> inkwell::types::StructType<'ctx> {
+        self.context.struct_type(
+            &[self.context.i8_type().into(), self.context.i64_type().into()],
+            false,
+        )
     }
 
     pub fn compile_program(&mut self, program: &Program) -> Result<(), CodeGenError> {
@@ -252,6 +261,7 @@ impl<'ctx> CodeGen<'ctx> {
                 "Float" => ValKind::Float,
                 "Bool" => ValKind::Bool,
                 "Str" => ValKind::Str,
+                "Option" => ValKind::Option,
                 other => {
                     if self.records.contains_key(other) {
                         ValKind::Record(other.to_string())
@@ -274,6 +284,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Void => self.context.i64_type().into(),
             ValKind::Record(name) => self.records[name].struct_type.into(),
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
+            ValKind::Option => self.option_type().into(),
         }
     }
 
@@ -286,6 +297,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Void => self.context.i64_type().into(),
             ValKind::Record(name) => self.records[name].struct_type.into(),
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
+            ValKind::Option => self.option_type().into(),
         }
     }
 
@@ -536,6 +548,66 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::FieldAccess { object, field } => {
                 self.compile_field_access(object, field, func)
             }
+            Expr::OptionNone => {
+                let opt_ty = self.option_type();
+                let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_none"))?;
+                let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
+                let tag_val = self.context.i8_type().const_int(0, false);
+                bld!(self.builder.build_store(tag_ptr, tag_val))?;
+                let result = bld!(self.builder.build_load(opt_ty, alloca, "none_val"))?;
+                Ok((result, ValKind::Option))
+            }
+            Expr::OptionSome(inner) => {
+                let (val, _kind) = self.compile_expr_with_kind(inner, func)?;
+                let opt_ty = self.option_type();
+                let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_some"))?;
+                let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
+                let tag_val = self.context.i8_type().const_int(1, false);
+                bld!(self.builder.build_store(tag_ptr, tag_val))?;
+                let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 1, "val_ptr"))?;
+                // Convert the inner value to i64 for storage
+                let i64_val = match val {
+                    BasicValueEnum::IntValue(v) => {
+                        if v.get_type().get_bit_width() < 64 {
+                            bld!(self.builder.build_int_z_extend(v, self.context.i64_type(), "zext"))?
+                        } else {
+                            v
+                        }
+                    }
+                    _ => val.into_int_value(),
+                };
+                bld!(self.builder.build_store(val_ptr, i64_val))?;
+                let result = bld!(self.builder.build_load(opt_ty, alloca, "some_val"))?;
+                Ok((result, ValKind::Option))
+            }
+            Expr::Try(inner) => {
+                let (val, _kind) = self.compile_expr_with_kind(inner, func)?;
+                let opt_ty = self.option_type();
+                // Store the option value so we can extract from it
+                let alloca = bld!(self.builder.build_alloca(opt_ty, "try_opt"))?;
+                bld!(self.builder.build_store(alloca, val))?;
+                // Load tag
+                let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
+                let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+                let is_none = bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_none"
+                ))?;
+                let some_bb = self.context.append_basic_block(func, "try_some");
+                let none_bb = self.context.append_basic_block(func, "try_none");
+                bld!(self.builder.build_conditional_branch(is_none, none_bb, some_bb))?;
+                // None branch: return None from current function
+                self.builder.position_at_end(none_bb);
+                let none_alloca = bld!(self.builder.build_alloca(opt_ty, "ret_none"))?;
+                let none_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, none_alloca, 0, "ret_tag"))?;
+                bld!(self.builder.build_store(none_tag_ptr, self.context.i8_type().const_int(0, false)))?;
+                let none_ret = bld!(self.builder.build_load(opt_ty, none_alloca, "none_ret"))?;
+                bld!(self.builder.build_return(Some(&none_ret)))?;
+                // Some branch: extract value
+                self.builder.position_at_end(some_bb);
+                let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 1, "val_ptr"))?;
+                let extracted = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "unwrapped"))?;
+                Ok((extracted, ValKind::Int))
+            }
             Expr::Break => {
                 if let Some(target) = self.break_target {
                     bld!(self.builder.build_unconditional_branch(target))?;
@@ -664,6 +736,10 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         let (subject_val, subject_kind) = self.compile_expr_with_kind(subject, func)?;
 
+        if subject_kind == ValKind::Option {
+            return self.compile_option_match(subject_val, arms, func);
+        }
+
         let enum_name = match &subject_kind {
             ValKind::Enum(name) => name.clone(),
             _ => return Err(CodeGenError { msg: "match subject must be an enum type".into() }),
@@ -781,6 +857,108 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "match_val"))?;
+        for (val, bb) in &branch_results {
+            phi.add_incoming(&[(val, *bb)]);
+        }
+
+        Ok((phi.as_basic_value(), result_kind))
+    }
+
+    fn compile_option_match(
+        &mut self,
+        subject_val: BasicValueEnum<'ctx>,
+        arms: &[MatchArm],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let opt_ty = self.option_type();
+
+        // Store subject so we can GEP into it
+        let subject_alloca = bld!(self.builder.build_alloca(opt_ty, "opt_match"))?;
+        bld!(self.builder.build_store(subject_alloca, subject_val))?;
+
+        // Load tag
+        let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, subject_alloca, 0, "tag_ptr"))?;
+        let tag_val = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+
+        let merge_bb = self.context.append_basic_block(func, "opt_merge");
+        let default_bb = self.context.append_basic_block(func, "opt_default");
+        let mut case_blocks: Vec<(inkwell::values::IntValue<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
+        let mut branch_results: Vec<(BasicValueEnum<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
+        let mut result_kind = ValKind::Void;
+        let mut wildcard_arm: Option<&MatchArm> = None;
+
+        for arm in arms {
+            match &arm.pattern {
+                Pattern::Variant { name, bindings } => {
+                    let vtag: u8 = match name.as_str() {
+                        "None" => 0,
+                        "Some" => 1,
+                        _ => return Err(CodeGenError { msg: format!("unknown Option variant '{}'", name) }),
+                    };
+
+                    let case_bb = self.context.append_basic_block(func, &format!("opt_{}", name));
+                    let tag_const = self.context.i8_type().const_int(vtag as u64, false);
+                    case_blocks.push((tag_const, case_bb));
+
+                    self.builder.position_at_end(case_bb);
+                    let saved_vars = self.variables.clone();
+
+                    // If Some, bind the payload
+                    if vtag == 1 && !bindings.is_empty() {
+                        let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, subject_alloca, 1, "val_ptr"))?;
+                        let payload = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, &bindings[0]))?;
+                        let alloca = bld!(self.builder.build_alloca(self.context.i64_type(), &bindings[0]))?;
+                        bld!(self.builder.build_store(alloca, payload))?;
+                        self.variables.insert(bindings[0].clone(), (alloca, self.context.i64_type().into(), ValKind::Int));
+                    }
+
+                    let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
+                    result_kind = arm_kind;
+
+                    if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                    }
+                    let end_bb = self.builder.get_insert_block().unwrap();
+                    branch_results.push((arm_val, end_bb));
+
+                    self.variables = saved_vars;
+                }
+                Pattern::Wildcard => {
+                    wildcard_arm = Some(arm);
+                }
+            }
+        }
+
+        // Handle wildcard/default
+        self.builder.position_at_end(default_bb);
+        if let Some(arm) = wildcard_arm {
+            let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
+            result_kind = arm_kind;
+            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+            }
+            let end_bb = self.builder.get_insert_block().unwrap();
+            branch_results.push((arm_val, end_bb));
+        } else {
+            bld!(self.builder.build_unreachable())?;
+        }
+
+        // Build the switch from the original block
+        let switch_bb = tag_ptr.as_instruction_value().unwrap().get_parent().unwrap();
+        self.builder.position_at_end(switch_bb);
+        bld!(self.builder.build_switch(
+            tag_val,
+            default_bb,
+            &case_blocks.iter().map(|(v, bb)| (*v, *bb)).collect::<Vec<_>>()
+        ))?;
+
+        // Build merge phi
+        self.builder.position_at_end(merge_bb);
+        if branch_results.is_empty() {
+            return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+        }
+
+        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "opt_val"))?;
         for (val, bb) in &branch_results {
             phi.add_incoming(&[(val, *bb)]);
         }

@@ -352,6 +352,16 @@ impl Parser {
         let mut lhs = self.parse_prefix()?;
 
         loop {
+            // Try operator (?) - highest precedence postfix
+            if self.peek() == &Token::QuestionMark {
+                let try_bp = 16;
+                if try_bp >= min_bp {
+                    self.advance(); // consume '?'
+                    lhs = Expr::Try(Box::new(lhs));
+                    continue;
+                }
+            }
+
             // Field access (highest precedence postfix)
             if self.peek() == &Token::Dot {
                 if let Some(Token::Ident(_)) = self.tokens.get(self.pos + 1).map(|s| &s.token) {
@@ -536,6 +546,17 @@ impl Parser {
                 self.expect(&Token::RParen)?;
                 Ok(expr)
             }
+            Token::None_ => {
+                self.advance();
+                Ok(Expr::OptionNone)
+            }
+            Token::Some => {
+                self.advance();
+                self.expect(&Token::LParen)?;
+                let inner = self.parse_expr(0)?;
+                self.expect(&Token::RParen)?;
+                Ok(Expr::OptionSome(Box::new(inner)))
+            }
             Token::If => {
                 self.advance();
                 let cond = self.parse_expr(0)?;
@@ -695,6 +716,22 @@ impl Parser {
             Token::Ident(name) if name == "_" => {
                 self.advance();
                 Ok(Pattern::Wildcard)
+            }
+            Token::None_ => {
+                self.advance();
+                Ok(Pattern::Variant { name: "None".to_string(), bindings: vec![] })
+            }
+            Token::Some => {
+                self.advance();
+                let mut bindings = Vec::new();
+                while let Token::Ident(b) = self.peek().clone() {
+                    if self.peek() == &Token::Arrow {
+                        break;
+                    }
+                    self.advance();
+                    bindings.push(b);
+                }
+                Ok(Pattern::Variant { name: "Some".to_string(), bindings })
             }
             Token::Ident(name) => {
                 self.advance();

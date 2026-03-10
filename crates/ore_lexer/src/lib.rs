@@ -25,6 +25,8 @@ pub enum Token {
     Break,
     In,
     Type,
+    Some,
+    None_,
 
     // Operators
     Plus,
@@ -46,6 +48,7 @@ pub enum Token {
     Colon,       // :
     Dot,         // .
     DotDot,      // ..
+    QuestionMark, // ?
     And,
     Or,
     Not,
@@ -259,6 +262,7 @@ impl<'a> Lexer<'a> {
             b'[' => { self.advance(); self.emit(Token::LBracket, start); }
             b']' => { self.advance(); self.emit(Token::RBracket, start); }
             b',' => { self.advance(); self.emit(Token::Comma, start); }
+            b'?' => { self.advance(); self.emit(Token::QuestionMark, start); }
             b'|' => { self.advance(); self.emit(Token::Pipe, start); }
             b'-' => {
                 self.advance();
@@ -501,6 +505,8 @@ impl<'a> Lexer<'a> {
             "break" => Token::Break,
             "in" => Token::In,
             "type" => Token::Type,
+            "Some" => Token::Some,
+            "None" => Token::None_,
             _ => Token::Ident(text.to_string()),
         };
         self.emit(token, start);

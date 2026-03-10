@@ -134,6 +134,9 @@ pub enum Expr {
         field: String,
     },
     Break,
+    OptionNone,
+    OptionSome(Box<Expr>),
+    Try(Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

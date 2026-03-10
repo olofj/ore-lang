@@ -1,0 +1,14 @@
+fn safe_div a:Int b:Int -> Option
+  b == 0 : None : Some(a / b)
+
+fn unwrap_or opt:Option default:Int -> Int
+  opt :
+    Some val -> val
+    None -> default
+
+fn main
+  result := safe_div(10, 3)
+  print unwrap_or(result, 0)
+
+  result2 := safe_div(10, 0)
+  print unwrap_or(result2, -1)

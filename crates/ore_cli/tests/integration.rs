@@ -91,3 +91,10 @@ fn phase7_loops() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["45", "5", "3"]);
 }
+
+#[test]
+fn phase8_option() {
+    let out = run_ore("phase_8/option.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["3", "-1"]);
+}
