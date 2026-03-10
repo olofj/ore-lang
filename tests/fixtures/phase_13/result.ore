@@ -1,0 +1,14 @@
+fn safe_div a:Int b:Int -> Result
+  b == 0 : Err(-1) : Ok(a / b)
+
+fn unwrap_or_err r:Result default:Int -> Int
+  r :
+    Ok val -> val
+    Err e -> e
+
+fn main
+  r := safe_div(10, 2)
+  print unwrap_or_err(r, 0)
+
+  r2 := safe_div(10, 0)
+  print unwrap_or_err(r2, 0)

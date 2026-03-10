@@ -28,6 +28,8 @@ pub enum Token {
     Impl,
     Some,
     None_,
+    Ok_,
+    Err_,
     Use,
     Pub,
 
@@ -511,6 +513,8 @@ impl<'a> Lexer<'a> {
             "impl" => Token::Impl,
             "Some" => Token::Some,
             "None" => Token::None_,
+            "Ok" => Token::Ok_,
+            "Err" => Token::Err_,
             "use" => Token::Use,
             "pub" => Token::Pub,
             _ => Token::Ident(text.to_string()),

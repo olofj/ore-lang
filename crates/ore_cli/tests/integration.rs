@@ -119,3 +119,10 @@ fn phase11_modules() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["7", "25"]);
 }
+
+#[test]
+fn phase13_result() {
+    let out = run_ore("phase_13/result.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["5", "-1"]);
+}

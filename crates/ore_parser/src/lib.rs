@@ -616,6 +616,20 @@ impl Parser {
                 self.expect(&Token::RParen)?;
                 Ok(Expr::OptionSome(Box::new(inner)))
             }
+            Token::Ok_ => {
+                self.advance();
+                self.expect(&Token::LParen)?;
+                let inner = self.parse_expr(0)?;
+                self.expect(&Token::RParen)?;
+                Ok(Expr::ResultOk(Box::new(inner)))
+            }
+            Token::Err_ => {
+                self.advance();
+                self.expect(&Token::LParen)?;
+                let inner = self.parse_expr(0)?;
+                self.expect(&Token::RParen)?;
+                Ok(Expr::ResultErr(Box::new(inner)))
+            }
             Token::If => {
                 self.advance();
                 let cond = self.parse_expr(0)?;
@@ -791,6 +805,30 @@ impl Parser {
                     bindings.push(b);
                 }
                 Ok(Pattern::Variant { name: "Some".to_string(), bindings })
+            }
+            Token::Ok_ => {
+                self.advance();
+                let mut bindings = Vec::new();
+                while let Token::Ident(b) = self.peek().clone() {
+                    if self.peek() == &Token::Arrow {
+                        break;
+                    }
+                    self.advance();
+                    bindings.push(b);
+                }
+                Ok(Pattern::Variant { name: "Ok".to_string(), bindings })
+            }
+            Token::Err_ => {
+                self.advance();
+                let mut bindings = Vec::new();
+                while let Token::Ident(b) = self.peek().clone() {
+                    if self.peek() == &Token::Arrow {
+                        break;
+                    }
+                    self.advance();
+                    bindings.push(b);
+                }
+                Ok(Pattern::Variant { name: "Err".to_string(), bindings })
             }
             Token::Ident(name) => {
                 self.advance();

@@ -148,6 +148,8 @@ pub enum Expr {
     Break,
     OptionNone,
     OptionSome(Box<Expr>),
+    ResultOk(Box<Expr>),
+    ResultErr(Box<Expr>),
     Try(Box<Expr>),
 }
 
