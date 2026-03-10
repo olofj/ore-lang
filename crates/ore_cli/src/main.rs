@@ -262,6 +262,12 @@ fn run_repl() {
             map_fn!("ore_list_map", ore_runtime::ore_list_map);
             map_fn!("ore_list_filter", ore_runtime::ore_list_filter);
             map_fn!("ore_list_each", ore_runtime::ore_list_each);
+            map_fn!("ore_float_to_str", ore_runtime::ore_float_to_str);
+            map_fn!("ore_str_len", ore_runtime::ore_str_len);
+            map_fn!("ore_str_eq", ore_runtime::ore_str_eq);
+            map_fn!("ore_readln", ore_runtime::ore_readln);
+            map_fn!("ore_file_read", ore_runtime::ore_file_read);
+            map_fn!("ore_file_write", ore_runtime::ore_file_write);
 
             unsafe {
                 let main_fn: JitFunction<MainFunc> = ee
@@ -314,6 +320,12 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_list_map", ore_runtime::ore_list_map);
     map_fn!("ore_list_filter", ore_runtime::ore_list_filter);
     map_fn!("ore_list_each", ore_runtime::ore_list_each);
+    map_fn!("ore_float_to_str", ore_runtime::ore_float_to_str);
+    map_fn!("ore_str_len", ore_runtime::ore_str_len);
+    map_fn!("ore_str_eq", ore_runtime::ore_str_eq);
+    map_fn!("ore_readln", ore_runtime::ore_readln);
+    map_fn!("ore_file_read", ore_runtime::ore_file_read);
+    map_fn!("ore_file_write", ore_runtime::ore_file_write);
 
     unsafe {
         let main_fn: JitFunction<MainFunc> = ee

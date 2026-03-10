@@ -168,3 +168,16 @@ fn traits_basic() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["5", "9"]);
 }
+
+#[test]
+fn stdlib_file_io() {
+    let out = run_ore("stdlib/file_io.ore");
+    assert_eq!(out.trim(), "hello from ore");
+}
+
+#[test]
+fn stdlib_float_interp() {
+    let out = run_ore("stdlib/interp.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["pi is 3.14", "42 is cool: true"]);
+}

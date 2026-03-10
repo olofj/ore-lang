@@ -431,6 +431,7 @@ impl<'ctx> CodeGen<'ctx> {
         let i64_type = self.context.i64_type();
         let i32_type = self.context.i32_type();
         let i8_type = self.context.i8_type();
+        let f64_type = self.context.f64_type();
         let void_type = self.context.void_type();
         let ptr_type = self.ptr_type();
 
@@ -480,6 +481,14 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_filter", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_each(ptr, fn_ptr)
         self.module.add_function("ore_list_each", void_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // String utilities
+        self.module.add_function("ore_float_to_str", ptr_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_str_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_eq", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // I/O
+        self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
+        self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_file_write", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
     }
 
     fn type_expr_to_kind(&self, ty: &TypeExpr) -> ValKind {
@@ -796,6 +805,39 @@ impl<'ctx> CodeGen<'ctx> {
                     Expr::Ident(n) => n.clone(),
                     _ => return Err(CodeGenError { msg: "only named function calls supported".into() }),
                 };
+
+                // Built-in stdlib functions
+                match name.as_str() {
+                    "readln" => {
+                        let rt = self.module.get_function("ore_readln").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[], "readln"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Str));
+                    }
+                    "file_read" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { msg: "file_read takes 1 argument".into() });
+                        }
+                        let path_val = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_file_read").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_read"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Str));
+                    }
+                    "file_write" => {
+                        if args.len() != 2 {
+                            return Err(CodeGenError { msg: "file_write takes 2 arguments".into() });
+                        }
+                        let path_val = self.compile_expr(&args[0], func)?;
+                        let content_val = self.compile_expr(&args[1], func)?;
+                        let rt = self.module.get_function("ore_file_write").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[path_val.into(), content_val.into()], "file_write"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Bool));
+                    }
+                    _ => {}
+                }
+
                 let (called_fn, ret_kind) = self.resolve_function(&name)?;
 
                 let mut compiled_args = Vec::new();
@@ -1697,6 +1739,11 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Int => {
                 let int_to_str = self.module.get_function("ore_int_to_str").unwrap();
                 let result = bld!(self.builder.build_call(int_to_str, &[val.into()], "itos"))?;
+                Ok(self.call_result_to_value(result)?.into_pointer_value())
+            }
+            ValKind::Float => {
+                let float_to_str = self.module.get_function("ore_float_to_str").unwrap();
+                let result = bld!(self.builder.build_call(float_to_str, &[val.into()], "ftos"))?;
                 Ok(self.call_result_to_value(result)?.into_pointer_value())
             }
             ValKind::Bool => {

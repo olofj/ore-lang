@@ -145,6 +145,76 @@ pub extern "C" fn ore_bool_to_str(b: i8) -> *mut OreStr {
     ore_str_new(s.as_ptr(), s.len() as u32)
 }
 
+// ── String utilities ──
+
+#[no_mangle]
+pub extern "C" fn ore_float_to_str(f: f64) -> *mut OreStr {
+    let s = if f == f.floor() && !f.is_infinite() && !f.is_nan() {
+        format!("{:.1}", f)
+    } else {
+        f.to_string()
+    };
+    ore_str_new(s.as_ptr(), s.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_len(s: *mut OreStr) -> i64 {
+    if s.is_null() { return 0; }
+    unsafe { (*s).len as i64 }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_eq(a: *mut OreStr, b: *mut OreStr) -> i8 {
+    unsafe {
+        if a.is_null() && b.is_null() { return 1; }
+        if a.is_null() || b.is_null() { return 0; }
+        if (*a).as_str() == (*b).as_str() { 1 } else { 0 }
+    }
+}
+
+// ── I/O ──
+
+#[no_mangle]
+pub extern "C" fn ore_readln() -> *mut OreStr {
+    let mut line = String::new();
+    let _ = std::io::stdin().read_line(&mut line);
+    // Strip trailing newline
+    if line.ends_with('\n') {
+        line.pop();
+        if line.ends_with('\r') {
+            line.pop();
+        }
+    }
+    ore_str_new(line.as_ptr(), line.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_file_read(path: *mut OreStr) -> *mut OreStr {
+    if path.is_null() { return std::ptr::null_mut(); }
+    let path_str = unsafe { (*path).as_str() };
+    match std::fs::read_to_string(path_str) {
+        Ok(contents) => ore_str_new(contents.as_ptr(), contents.len() as u32),
+        Err(e) => {
+            eprintln!("error reading file '{}': {}", path_str, e);
+            ore_str_new(std::ptr::null(), 0)
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_file_write(path: *mut OreStr, content: *mut OreStr) -> i8 {
+    if path.is_null() { return 0; }
+    let path_str = unsafe { (*path).as_str() };
+    let content_str = if content.is_null() { "" } else { unsafe { (*content).as_str() } };
+    match std::fs::write(path_str, content_str) {
+        Ok(()) => 1,
+        Err(e) => {
+            eprintln!("error writing file '{}': {}", path_str, e);
+            0
+        }
+    }
+}
+
 // ── Lists ──
 //
 // OreList: heap-allocated growable array of i64 values.

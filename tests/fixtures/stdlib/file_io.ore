@@ -1,0 +1,4 @@
+fn main
+  file_write("/tmp/ore_test.txt", "hello from ore")
+  content := file_read("/tmp/ore_test.txt")
+  print content
