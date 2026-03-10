@@ -164,6 +164,12 @@ fn compile_source<'ctx>(
     }
     let program = ore_parser::ast::Program { items: merged_items };
 
+    // Type check
+    if let Err(errors) = ore_typecheck::typecheck(&program) {
+        let msgs: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
+        return Err(msgs.join("\n"));
+    }
+
     let mut codegen = ore_codegen::CodeGen::new(context, "ore_main");
     codegen.compile_program(&program).map_err(|e| e.to_string())?;
 
@@ -180,7 +186,22 @@ fn check_file(path: &Path) -> Result<(), String> {
     // Also resolve imports to check them
     let mut already_loaded = HashSet::new();
     already_loaded.insert(canonical_path.clone());
-    let _imported = resolve_imports(&program, base_dir, &mut already_loaded)?;
+    let imported_items = resolve_imports(&program, base_dir, &mut already_loaded)?;
+
+    // Merge for type checking
+    let mut merged_items = imported_items;
+    for item in program.items {
+        if !matches!(item, ore_parser::ast::Item::Use { .. }) {
+            merged_items.push(item);
+        }
+    }
+    let merged = ore_parser::ast::Program { items: merged_items };
+
+    // Type check
+    if let Err(errors) = ore_typecheck::typecheck(&merged) {
+        let msgs: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
+        return Err(msgs.join("\n"));
+    }
 
     Ok(())
 }
