@@ -195,3 +195,10 @@ fn stdlib_math() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["42", "7", "3", "8", "-5"]);
 }
+
+#[test]
+fn lists_foreach() {
+    let out = run_ore("lists/foreach.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["150", "10", "20", "30"]);
+}

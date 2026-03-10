@@ -128,6 +128,12 @@ fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<S
                 collect_free_vars_stmt(s, bound, free, seen);
             }
         }
+        Stmt::ForEach { iterable, body, .. } => {
+            collect_free_vars(iterable, bound, free, seen);
+            for s in &body.stmts {
+                collect_free_vars_stmt(s, bound, free, seen);
+            }
+        }
         Stmt::Loop { body } => {
             for s in &body.stmts {
                 collect_free_vars_stmt(s, bound, free, seen);
@@ -677,6 +683,10 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Stmt::ForIn { var, start, end, body } => {
                 self.compile_for_in(var, start, end, body, func)?;
+                Ok(None)
+            }
+            Stmt::ForEach { var, iterable, body } => {
+                self.compile_for_each(var, iterable, body, func)?;
                 Ok(None)
             }
             Stmt::While { cond, body } => {
@@ -2036,6 +2046,69 @@ impl<'ctx> CodeGen<'ctx> {
             let current = bld!(self.builder.build_load(i64_type, var_alloca, var))?.into_int_value();
             let next = bld!(self.builder.build_int_add(current, i64_type.const_int(1, false), "inc"))?;
             bld!(self.builder.build_store(var_alloca, next))?;
+            bld!(self.builder.build_unconditional_branch(cond_bb))?;
+        }
+
+        self.builder.position_at_end(end_bb);
+        Ok(())
+    }
+
+    fn compile_for_each(
+        &mut self,
+        var: &str,
+        iterable: &Expr,
+        body: &Block,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let i64_type = self.context.i64_type();
+
+        let list_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
+
+        // Get list length
+        let list_len_fn = self.module.get_function("ore_list_len").unwrap();
+        let len_result = bld!(self.builder.build_call(list_len_fn, &[list_ptr.into()], "len"))?;
+        let len_val = self.call_result_to_value(len_result)?.into_int_value();
+
+        // Index variable
+        let idx_alloca = bld!(self.builder.build_alloca(i64_type, "idx"))?;
+        bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
+
+        // Element variable
+        let elem_alloca = bld!(self.builder.build_alloca(i64_type, var))?;
+        self.variables.insert(var.to_string(), (elem_alloca, i64_type.into(), ValKind::Int, false));
+
+        let cond_bb = self.context.append_basic_block(func, "foreach_cond");
+        let body_bb = self.context.append_basic_block(func, "foreach_body");
+        let end_bb = self.context.append_basic_block(func, "foreach_end");
+
+        bld!(self.builder.build_unconditional_branch(cond_bb))?;
+
+        // Condition: idx < len
+        self.builder.position_at_end(cond_bb);
+        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+        let cmp = bld!(self.builder.build_int_compare(IntPredicate::SLT, idx, len_val, "foreach_cmp"))?;
+        bld!(self.builder.build_conditional_branch(cmp, body_bb, end_bb))?;
+
+        // Body: load element, execute body
+        self.builder.position_at_end(body_bb);
+        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+        let list_get_fn = self.module.get_function("ore_list_get").unwrap();
+        let elem_result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "elem"))?;
+        let elem_val = self.call_result_to_value(elem_result)?;
+        bld!(self.builder.build_store(elem_alloca, elem_val))?;
+
+        let saved_break = self.break_target;
+        self.break_target = Some(end_bb);
+        for stmt in &body.stmts {
+            self.compile_stmt(stmt, func)?;
+        }
+        self.break_target = saved_break;
+
+        // Increment index
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+            let next = bld!(self.builder.build_int_add(idx, i64_type.const_int(1, false), "inc"))?;
+            bld!(self.builder.build_store(idx_alloca, next))?;
             bld!(self.builder.build_unconditional_branch(cond_bb))?;
         }
 

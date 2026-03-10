@@ -1,0 +1,10 @@
+fn main
+  xs := [10, 20, 30, 40, 50]
+  mut sum := 0
+  for x in xs
+    sum = sum + x
+  print sum
+
+  names := [1, 2, 3]
+  for n in names
+    print n * 10

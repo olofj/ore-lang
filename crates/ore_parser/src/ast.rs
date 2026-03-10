@@ -112,6 +112,11 @@ pub enum Stmt {
         cond: Expr,
         body: Block,
     },
+    ForEach {
+        var: String,
+        iterable: Expr,
+        body: Block,
+    },
     Loop {
         body: Block,
     },

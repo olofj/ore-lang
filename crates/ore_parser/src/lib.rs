@@ -426,11 +426,19 @@ impl Parser {
                 };
                 self.expect(&Token::In)?;
                 let start = self.parse_expr(3)?; // Parse at higher precedence to stop at ..
-                self.expect(&Token::DotDot)?;
-                let end = self.parse_expr(0)?;
-                self.skip_newlines();
-                let body = self.parse_block()?;
-                Ok(Stmt::ForIn { var, start, end, body })
+                if self.peek() == &Token::DotDot {
+                    // Range loop: for x in start..end
+                    self.advance();
+                    let end = self.parse_expr(0)?;
+                    self.skip_newlines();
+                    let body = self.parse_block()?;
+                    Ok(Stmt::ForIn { var, start, end, body })
+                } else {
+                    // Collection iteration: for x in list
+                    self.skip_newlines();
+                    let body = self.parse_block()?;
+                    Ok(Stmt::ForEach { var, iterable: start, body })
+                }
             }
             Token::While => {
                 self.advance();
