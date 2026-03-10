@@ -18,6 +18,14 @@ enum Commands {
         /// Path to the .ore file
         file: PathBuf,
     },
+    /// Compile an Ore source file to a native binary
+    Build {
+        /// Path to the .ore file
+        file: PathBuf,
+        /// Output binary path
+        #[arg(short, long, default_value = "a.out")]
+        output: PathBuf,
+    },
 }
 
 type MainFunc = unsafe extern "C" fn() -> i32;
@@ -28,6 +36,12 @@ fn main() {
     match cli.command {
         Commands::Run { file } => {
             if let Err(e) = run_file(&file) {
+                eprintln!("error: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Build { file, output } => {
+            if let Err(e) = build_file(&file, &output) {
                 eprintln!("error: {}", e);
                 std::process::exit(1);
             }
@@ -82,7 +96,11 @@ fn resolve_imports(
     Ok(imported_items)
 }
 
-fn run_file(path: &std::path::Path) -> Result<(), String> {
+/// Parse, resolve imports, and compile a source file, returning the codegen context.
+fn compile_source<'ctx>(
+    path: &Path,
+    context: &'ctx Context,
+) -> Result<ore_codegen::CodeGen<'ctx>, String> {
     let canonical_path = path.canonicalize()
         .map_err(|e| format!("cannot resolve '{}': {}", path.display(), e))?;
     let base_dir = canonical_path.parent().unwrap();
@@ -103,9 +121,15 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     }
     let program = ore_parser::ast::Program { items: merged_items };
 
-    let context = Context::create();
-    let mut codegen = ore_codegen::CodeGen::new(&context, "ore_main");
+    let mut codegen = ore_codegen::CodeGen::new(context, "ore_main");
     codegen.compile_program(&program).map_err(|e| e.to_string())?;
+
+    Ok(codegen)
+}
+
+fn run_file(path: &std::path::Path) -> Result<(), String> {
+    let context = Context::create();
+    let codegen = compile_source(path, &context)?;
 
     let ee = codegen.module
         .create_jit_execution_engine(inkwell::OptimizationLevel::None)
@@ -136,4 +160,113 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn build_file(path: &Path, output: &Path) -> Result<(), String> {
+    use inkwell::targets::{
+        CodeModel, InitializationConfig, RelocMode, Target, TargetMachine,
+    };
+    use inkwell::OptimizationLevel;
+
+    let context = Context::create();
+    let codegen = compile_source(path, &context)?;
+
+    // Initialize native target for object file emission
+    Target::initialize_native(&InitializationConfig::default())
+        .map_err(|e| format!("failed to initialize native target: {}", e))?;
+
+    let triple = TargetMachine::get_default_triple();
+    let target = Target::from_triple(&triple)
+        .map_err(|e| format!("failed to get target from triple: {}", e))?;
+    let machine = target
+        .create_target_machine(
+            &triple,
+            "generic",
+            "",
+            OptimizationLevel::Default,
+            RelocMode::PIC,
+            CodeModel::Default,
+        )
+        .ok_or_else(|| "failed to create target machine".to_string())?;
+
+    // Write object file to a temp location
+    let tmp_dir = std::env::temp_dir().join("ore_build");
+    std::fs::create_dir_all(&tmp_dir)
+        .map_err(|e| format!("failed to create temp dir: {}", e))?;
+    let obj_path = tmp_dir.join("output.o");
+
+    machine
+        .write_to_file(
+            &codegen.module,
+            inkwell::targets::FileType::Object,
+            &obj_path,
+        )
+        .map_err(|e| format!("failed to write object file: {}", e))?;
+
+    // Find the ore_runtime staticlib
+    let runtime_lib = find_runtime_staticlib()?;
+
+    // Link with cc
+    let linker = std::env::var("CC").unwrap_or_else(|_| "cc".to_string());
+    let status = std::process::Command::new(&linker)
+        .arg(&obj_path)
+        .arg(&runtime_lib)
+        .arg("-o")
+        .arg(output)
+        .arg("-lm")     // math library
+        .arg("-lpthread") // pthreads (needed by Rust runtime)
+        .arg("-ldl")    // dynamic linking (needed by Rust runtime)
+        .status()
+        .map_err(|e| format!("failed to run linker '{}': {}", linker, e))?;
+
+    if !status.success() {
+        return Err(format!("linker '{}' failed with {}", linker, status));
+    }
+
+    // Clean up temp object file
+    let _ = std::fs::remove_file(&obj_path);
+
+    eprintln!("compiled to {}", output.display());
+    Ok(())
+}
+
+/// Locate the ore_runtime static library (libore_runtime.a).
+///
+/// Strategy:
+/// 1. Check ORE_RUNTIME_LIB env var
+/// 2. Look in the cargo target directory relative to this binary
+fn find_runtime_staticlib() -> Result<PathBuf, String> {
+    // 1. Explicit env var
+    if let Ok(path) = std::env::var("ORE_RUNTIME_LIB") {
+        let p = PathBuf::from(path);
+        if p.exists() {
+            return Ok(p);
+        }
+    }
+
+    // 2. Walk up from the current exe to find target/*/libore_runtime.a
+    if let Ok(exe) = std::env::current_exe() {
+        // The exe is typically in target/{debug,release}/ore
+        // The staticlib is in target/{debug,release}/libore_runtime.a
+        if let Some(dir) = exe.parent() {
+            let candidate = dir.join("libore_runtime.a");
+            if candidate.exists() {
+                return Ok(candidate);
+            }
+        }
+    }
+
+    // 3. Try common cargo target paths relative to CWD
+    for profile in &["debug", "release"] {
+        let candidate = PathBuf::from(format!("target/{}/libore_runtime.a", profile));
+        if candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+
+    Err(
+        "cannot find libore_runtime.a — build the workspace first with `cargo build`, \
+         or set ORE_RUNTIME_LIB to the path of the static library"
+            .to_string(),
+    )
 }
