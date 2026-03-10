@@ -139,9 +139,12 @@ impl Parser {
             _ => return Err(self.error("expected type name".into())),
         };
 
+        // Parse optional type parameters
+        let type_params = self.parse_optional_type_params()?;
+
         // If next is '{', it's a record type
         if self.peek() == &Token::LBrace {
-            return self.parse_record_body(name).map(Item::TypeDef);
+            return self.parse_record_body(name, type_params).map(Item::TypeDef);
         }
 
         // Otherwise it's an enum (indented variants)
@@ -188,7 +191,7 @@ impl Parser {
 
     // ── Type Definitions ──
 
-    fn parse_record_body(&mut self, name: String) -> Result<TypeDef, ParseError> {
+    fn parse_record_body(&mut self, name: String, type_params: Vec<String>) -> Result<TypeDef, ParseError> {
         self.expect(&Token::LBrace)?;
         let mut fields = Vec::new();
         while self.peek() != &Token::RBrace {
@@ -204,7 +207,7 @@ impl Parser {
             }
         }
         self.expect(&Token::RBrace)?;
-        Ok(TypeDef { name, fields })
+        Ok(TypeDef { name, type_params, fields })
     }
 
     // ── Function Definitions ──
@@ -219,6 +222,9 @@ impl Parser {
             }
             _ => return Err(self.error("expected function name".into())),
         };
+
+        // Parse optional type parameters: fn name[T, U]
+        let type_params = self.parse_optional_type_params()?;
 
         // Parse parameters: name:Type pairs before -> or newline
         let mut params = Vec::new();
@@ -244,6 +250,7 @@ impl Parser {
 
         Ok(FnDef {
             name,
+            type_params,
             params,
             ret_type,
             body,
@@ -263,11 +270,48 @@ impl Parser {
         Ok(Param { name, ty })
     }
 
+    /// Parse optional type parameters: [T, U, V]
+    fn parse_optional_type_params(&mut self) -> Result<Vec<String>, ParseError> {
+        if self.peek() != &Token::LBracket {
+            return Ok(Vec::new());
+        }
+        self.advance(); // consume '['
+        let mut params = Vec::new();
+        if self.peek() != &Token::RBracket {
+            match self.peek().clone() {
+                Token::Ident(name) => { self.advance(); params.push(name); }
+                _ => return Err(self.error("expected type parameter name".into())),
+            }
+            while self.peek() == &Token::Comma {
+                self.advance();
+                match self.peek().clone() {
+                    Token::Ident(name) => { self.advance(); params.push(name); }
+                    _ => return Err(self.error("expected type parameter name".into())),
+                }
+            }
+        }
+        self.expect(&Token::RBracket)?;
+        Ok(params)
+    }
+
     fn parse_type_expr(&mut self) -> Result<TypeExpr, ParseError> {
         match self.peek().clone() {
             Token::Ident(name) => {
                 self.advance();
-                Ok(TypeExpr::Named(name))
+                // Check for generic type: Name[Type, Type]
+                if self.peek() == &Token::LBracket {
+                    self.advance(); // consume '['
+                    let mut args = Vec::new();
+                    args.push(self.parse_type_expr()?);
+                    while self.peek() == &Token::Comma {
+                        self.advance();
+                        args.push(self.parse_type_expr()?);
+                    }
+                    self.expect(&Token::RBracket)?;
+                    Ok(TypeExpr::Generic(name, args))
+                } else {
+                    Ok(TypeExpr::Named(name))
+                }
             }
             _ => Err(self.error("expected type name".into())),
         }

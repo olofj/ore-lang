@@ -1,0 +1,10 @@
+fn identity[T] x:T -> T
+  x
+
+fn double[T] x:T -> T
+  x + x
+
+fn main
+  print identity(42)
+  print identity(10)
+  print double(7)

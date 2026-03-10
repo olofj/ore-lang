@@ -154,3 +154,10 @@ fn lists_methods() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["[2, 4, 6, 8, 10]", "[3, 4, 5]", "1", "2", "3", "4", "5"]);
 }
+
+#[test]
+fn generics_basic() {
+    let out = run_ore("generics/basic.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["42", "10", "14"]);
+}

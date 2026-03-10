@@ -20,6 +20,7 @@ pub enum Item {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeDef {
     pub name: String,
+    pub type_params: Vec<String>,
     pub fields: Vec<FieldDef>,
 }
 
@@ -44,6 +45,7 @@ pub struct Variant {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FnDef {
     pub name: String,
+    pub type_params: Vec<String>,
     pub params: Vec<Param>,
     pub ret_type: Option<TypeExpr>,
     pub body: Block,
@@ -58,6 +60,8 @@ pub struct Param {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeExpr {
     Named(String),
+    /// Generic type application: List[Int], Map[Str, Int]
+    Generic(String, Vec<TypeExpr>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

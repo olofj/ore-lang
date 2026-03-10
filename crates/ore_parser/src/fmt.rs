@@ -37,7 +37,11 @@ impl Formatter {
             Item::FnDef(f) => self.format_fn_def(f, level),
             Item::TypeDef(td) => {
                 self.indent(level);
+                if !td.type_params.is_empty() {
+                self.out.push_str(&format!("type {}[{}] {{ ", td.name, td.type_params.join(", ")));
+            } else {
                 self.out.push_str(&format!("type {} {{ ", td.name));
+            }
                 for (i, f) in td.fields.iter().enumerate() {
                     if i > 0 {
                         self.out.push_str(", ");
@@ -78,6 +82,9 @@ impl Formatter {
     fn format_fn_def(&mut self, f: &FnDef, level: usize) {
         self.indent(level);
         self.out.push_str(&format!("fn {}", f.name));
+        if !f.type_params.is_empty() {
+            self.out.push_str(&format!("[{}]", f.type_params.join(", ")));
+        }
         for p in &f.params {
             self.out.push_str(&format!(" {}:{}", p.name, format_type_expr(&p.ty)));
         }
@@ -361,6 +368,10 @@ impl Formatter {
 fn format_type_expr(ty: &TypeExpr) -> String {
     match ty {
         TypeExpr::Named(n) => n.clone(),
+        TypeExpr::Generic(name, args) => {
+            let args_str: Vec<String> = args.iter().map(format_type_expr).collect();
+            format!("{}[{}]", name, args_str.join(", "))
+        }
     }
 }
 

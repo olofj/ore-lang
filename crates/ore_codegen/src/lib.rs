@@ -291,6 +291,7 @@ impl<'ctx> CodeGen<'ctx> {
                     // Create a copy of the FnDef with the mangled name for declaration
                     let mangled_fn = FnDef {
                         name: mangled_name,
+                        type_params: method.type_params.clone(),
                         params: method.params.clone(),
                         ret_type: method.ret_type.clone(),
                         body: method.body.clone(),
@@ -315,6 +316,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let mangled_name = format!("{}_{}", type_name, method.name);
                     let mangled_fn = FnDef {
                         name: mangled_name,
+                        type_params: method.type_params.clone(),
                         params: method.params.clone(),
                         ret_type: method.ret_type.clone(),
                         body: method.body.clone(),
@@ -492,6 +494,21 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                 }
             },
+            TypeExpr::Generic(name, _args) => {
+                // For now, treat generic types by their base name
+                match name.as_str() {
+                    "List" => ValKind::List,
+                    "Option" => ValKind::Option,
+                    "Result" => ValKind::Result,
+                    other => {
+                        if self.records.contains_key(other) {
+                            ValKind::Record(other.to_string())
+                        } else {
+                            ValKind::Int
+                        }
+                    }
+                }
+            }
         }
     }
 
