@@ -12,6 +12,9 @@ pub enum Item {
         type_name: String,
         methods: Vec<FnDef>,
     },
+    Use {
+        path: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

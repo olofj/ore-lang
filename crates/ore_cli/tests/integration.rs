@@ -112,3 +112,10 @@ fn phase10_methods() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["25.0", "4.0", "5.0"]);
 }
+
+#[test]
+fn phase11_modules() {
+    let out = run_ore("phase_11/modules.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["7", "25"]);
+}

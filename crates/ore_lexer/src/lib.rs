@@ -28,6 +28,8 @@ pub enum Token {
     Impl,
     Some,
     None_,
+    Use,
+    Pub,
 
     // Operators
     Plus,
@@ -509,6 +511,8 @@ impl<'a> Lexer<'a> {
             "impl" => Token::Impl,
             "Some" => Token::Some,
             "None" => Token::None_,
+            "use" => Token::Use,
+            "pub" => Token::Pub,
             _ => Token::Ident(text.to_string()),
         };
         self.emit(token, start);

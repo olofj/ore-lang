@@ -88,7 +88,24 @@ impl Parser {
             Token::Fn => Ok(Item::FnDef(self.parse_fn_def()?)),
             Token::Type => self.parse_type_or_enum(),
             Token::Impl => self.parse_impl_block(),
+            Token::Use => self.parse_use(),
             _ => Err(self.error(format!("expected item, got {:?}", self.peek()))),
+        }
+    }
+
+    fn parse_use(&mut self) -> Result<Item, ParseError> {
+        self.expect(&Token::Use)?;
+        match self.peek().clone() {
+            Token::StringLit(path) => {
+                self.advance();
+                Ok(Item::Use { path })
+            }
+            Token::Ident(name) => {
+                self.advance();
+                // Bare identifier becomes "name.ore"
+                Ok(Item::Use { path: format!("{}.ore", name) })
+            }
+            _ => Err(self.error("expected string path or module name after use".into())),
         }
     }
 
