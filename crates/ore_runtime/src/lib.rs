@@ -145,6 +145,124 @@ pub extern "C" fn ore_bool_to_str(b: i8) -> *mut OreStr {
     ore_str_new(s.as_ptr(), s.len() as u32)
 }
 
+// ── Lists ──
+//
+// OreList: heap-allocated growable array of i64 values.
+// Layout: { len: i64, cap: i64, data: *mut i64 }
+
+#[repr(C)]
+pub struct OreList {
+    pub len: i64,
+    pub cap: i64,
+    pub data: *mut i64,
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_new() -> *mut OreList {
+    unsafe {
+        let layout = std::alloc::Layout::new::<OreList>();
+        let list = std::alloc::alloc_zeroed(layout) as *mut OreList;
+        (*list).len = 0;
+        (*list).cap = 0;
+        (*list).data = std::ptr::null_mut();
+        list
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_push(list: *mut OreList, value: i64) {
+    unsafe {
+        let list = &mut *list;
+        if list.len >= list.cap {
+            let new_cap = if list.cap == 0 { 4 } else { list.cap * 2 };
+            let new_layout = std::alloc::Layout::array::<i64>(new_cap as usize).unwrap();
+            let new_data = if list.data.is_null() {
+                std::alloc::alloc(new_layout) as *mut i64
+            } else {
+                let old_layout = std::alloc::Layout::array::<i64>(list.cap as usize).unwrap();
+                std::alloc::realloc(list.data as *mut u8, old_layout, new_layout.size()) as *mut i64
+            };
+            list.data = new_data;
+            list.cap = new_cap;
+        }
+        *list.data.add(list.len as usize) = value;
+        list.len += 1;
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_get(list: *mut OreList, index: i64) -> i64 {
+    unsafe {
+        let list = &*list;
+        if index < 0 || index >= list.len {
+            eprintln!("index out of bounds: {} (len {})", index, list.len);
+            std::process::exit(1);
+        }
+        *list.data.add(index as usize)
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_len(list: *mut OreList) -> i64 {
+    unsafe { (*list).len }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_print(list: *mut OreList) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    unsafe {
+        let list = &*list;
+        let _ = write!(handle, "[");
+        for i in 0..list.len as usize {
+            if i > 0 {
+                let _ = write!(handle, ", ");
+            }
+            let _ = write!(handle, "{}", *list.data.add(i));
+        }
+        let _ = writeln!(handle, "]");
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_map(list: *mut OreList, func: extern "C" fn(i64) -> i64) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            ore_list_push(result, func(val));
+        }
+        result
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_filter(list: *mut OreList, func: extern "C" fn(i64) -> i64) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            if func(val) != 0 {
+                ore_list_push(result, val);
+            }
+        }
+        result
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_each(list: *mut OreList, func: extern "C" fn(i64) -> i64) {
+    unsafe {
+        let src = &*list;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            func(val);
+        }
+    }
+}
+
 // ── Concurrency ──
 
 static THREADS: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new());

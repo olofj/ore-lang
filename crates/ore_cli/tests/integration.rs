@@ -140,3 +140,17 @@ fn phase15_concurrency() {
     assert!(out.contains("42"));
     assert!(out.contains("1"));
 }
+
+#[test]
+fn lists_basic() {
+    let out = run_ore("lists/basic.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["[1, 2, 3, 4, 5]", "3", "5"]);
+}
+
+#[test]
+fn lists_methods() {
+    let out = run_ore("lists/methods.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["[2, 4, 6, 8, 10]", "[3, 4, 5]", "1", "2", "3", "4", "5"]);
+}

@@ -412,6 +412,21 @@ impl Parser {
                 }
             }
 
+            // Indexing: expr[expr]
+            if self.peek() == &Token::LBracket {
+                let idx_bp = 15;
+                if idx_bp >= min_bp {
+                    self.advance(); // consume '['
+                    let index = self.parse_expr(0)?;
+                    self.expect(&Token::RBracket)?;
+                    lhs = Expr::Index {
+                        object: Box::new(lhs),
+                        index: Box::new(index),
+                    };
+                    continue;
+                }
+            }
+
             // Field access / method call (highest precedence postfix)
             if self.peek() == &Token::Dot {
                 if let Some(Token::Ident(_)) = self.tokens.get(self.pos + 1).map(|s| &s.token) {
@@ -532,6 +547,22 @@ impl Parser {
 
     fn parse_prefix(&mut self) -> Result<Expr, ParseError> {
         match self.peek().clone() {
+            Token::LBracket => {
+                self.advance(); // consume '['
+                let mut elements = Vec::new();
+                if self.peek() != &Token::RBracket {
+                    elements.push(self.parse_expr(0)?);
+                    while self.peek() == &Token::Comma {
+                        self.advance();
+                        if self.peek() == &Token::RBracket {
+                            break; // trailing comma
+                        }
+                        elements.push(self.parse_expr(0)?);
+                    }
+                }
+                self.expect(&Token::RBracket)?;
+                Ok(Expr::ListLit(elements))
+            }
             Token::Int(n) => {
                 self.advance();
                 Ok(Expr::IntLit(n))
@@ -659,8 +690,23 @@ impl Parser {
                     else_block,
                 })
             }
+            Token::Ident(name) if name == "print" => {
+                // Allow 'print' as an expression (e.g. inside lambdas)
+                self.advance();
+                let expr = self.parse_expr(0)?;
+                Ok(Expr::Print(Box::new(expr)))
+            }
             Token::Ident(name) => {
                 self.advance();
+                // Bare lambda: ident => expr (without parens)
+                if self.peek() == &Token::FatArrow {
+                    self.advance(); // consume '=>'
+                    let body = self.parse_expr(0)?;
+                    return Ok(Expr::Lambda {
+                        params: vec![name],
+                        body: Box::new(body),
+                    });
+                }
                 // Check for function call or record construction
                 if self.peek() == &Token::LParen {
                     let saved = self.pos;

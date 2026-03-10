@@ -146,6 +146,11 @@ pub enum Expr {
         method: String,
         args: Vec<Expr>,
     },
+    ListLit(Vec<Expr>),
+    Index {
+        object: Box<Expr>,
+        index: Box<Expr>,
+    },
     Break,
     OptionNone,
     OptionSome(Box<Expr>),

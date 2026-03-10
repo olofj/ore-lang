@@ -154,6 +154,14 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_spawn", ore_runtime::ore_spawn);
     map_fn!("ore_thread_join_all", ore_runtime::ore_thread_join_all);
     map_fn!("ore_sleep", ore_runtime::ore_sleep);
+    map_fn!("ore_list_new", ore_runtime::ore_list_new);
+    map_fn!("ore_list_push", ore_runtime::ore_list_push);
+    map_fn!("ore_list_get", ore_runtime::ore_list_get);
+    map_fn!("ore_list_len", ore_runtime::ore_list_len);
+    map_fn!("ore_list_print", ore_runtime::ore_list_print);
+    map_fn!("ore_list_map", ore_runtime::ore_list_map);
+    map_fn!("ore_list_filter", ore_runtime::ore_list_filter);
+    map_fn!("ore_list_each", ore_runtime::ore_list_each);
 
     unsafe {
         let main_fn: JitFunction<MainFunc> = ee

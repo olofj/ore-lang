@@ -92,6 +92,15 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
                 collect_free_vars(arg, bound, free, seen);
             }
         }
+        Expr::ListLit(elements) => {
+            for e in elements {
+                collect_free_vars(e, bound, free, seen);
+            }
+        }
+        Expr::Index { object, index } => {
+            collect_free_vars(object, bound, free, seen);
+            collect_free_vars(index, bound, free, seen);
+        }
         // Literals and constants have no free variables
         Expr::IntLit(_) | Expr::FloatLit(_) | Expr::BoolLit(_) | Expr::StringLit(_)
         | Expr::Break | Expr::OptionNone => {}
@@ -139,6 +148,7 @@ pub enum ValKind {
     Enum(String),
     Option,
     Result,
+    List,
 }
 
 struct RecordInfo<'ctx> {
@@ -443,6 +453,23 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_thread_join_all", void_type.fn_type(&[], false), ext);
         // ore_sleep(i64)
         self.module.add_function("ore_sleep", void_type.fn_type(&[i64_type.into()], false), ext);
+        // List operations
+        // ore_list_new() -> ptr
+        self.module.add_function("ore_list_new", ptr_type.fn_type(&[], false), ext);
+        // ore_list_push(ptr, i64)
+        self.module.add_function("ore_list_push", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        // ore_list_get(ptr, i64) -> i64
+        self.module.add_function("ore_list_get", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        // ore_list_len(ptr) -> i64
+        self.module.add_function("ore_list_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_print(ptr)
+        self.module.add_function("ore_list_print", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_map(ptr, fn_ptr) -> ptr
+        self.module.add_function("ore_list_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_filter(ptr, fn_ptr) -> ptr
+        self.module.add_function("ore_list_filter", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_each(ptr, fn_ptr)
+        self.module.add_function("ore_list_each", void_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
     }
 
     fn type_expr_to_kind(&self, ty: &TypeExpr) -> ValKind {
@@ -454,6 +481,7 @@ impl<'ctx> CodeGen<'ctx> {
                 "Str" => ValKind::Str,
                 "Option" => ValKind::Option,
                 "Result" => ValKind::Result,
+                "List" => ValKind::List,
                 other => {
                     if self.records.contains_key(other) {
                         ValKind::Record(other.to_string())
@@ -478,6 +506,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option => self.option_type().into(),
             ValKind::Result => self.result_type().into(),
+            ValKind::List => self.ptr_type().into(),
         }
     }
 
@@ -492,6 +521,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option => self.option_type().into(),
             ValKind::Result => self.result_type().into(),
+            ValKind::List => self.ptr_type().into(),
         }
     }
 
@@ -776,6 +806,12 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::MethodCall { object, method, args } => {
                 self.compile_method_call(object, method, args, func)
             }
+            Expr::ListLit(elements) => {
+                self.compile_list_lit(elements, func)
+            }
+            Expr::Index { object, index } => {
+                self.compile_index(object, index, func)
+            }
             Expr::OptionNone => {
                 let opt_ty = self.option_type();
                 let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_none"))?;
@@ -959,9 +995,15 @@ impl<'ctx> CodeGen<'ctx> {
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
+
+        // Handle list built-in methods
+        if obj_kind == ValKind::List {
+            return self.compile_list_method(obj_val, method, args, func);
+        }
+
         let type_name = match &obj_kind {
             ValKind::Record(name) => name.clone(),
-            _ => return Err(CodeGenError { msg: "method call on non-record type".into() }),
+            _ => return Err(CodeGenError { msg: format!("method call on unsupported type: {:?}", obj_kind) }),
         };
 
         // Look up the mangled function name
@@ -978,6 +1020,91 @@ impl<'ctx> CodeGen<'ctx> {
         let result = bld!(self.builder.build_call(called_fn, &compiled_args, "mcall"))?;
         let val = self.call_result_to_value(result)?;
         Ok((val, ret_kind))
+    }
+
+    fn compile_list_method(
+        &mut self,
+        list_val: BasicValueEnum<'ctx>,
+        method: &str,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        match method {
+            "len" => {
+                let list_len = self.module.get_function("ore_list_len").unwrap();
+                let result = bld!(self.builder.build_call(list_len, &[list_val.into()], "len"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "push" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "push takes exactly 1 argument".into() });
+                }
+                let arg = self.compile_expr(&args[0], func)?;
+                let list_push = self.module.get_function("ore_list_push").unwrap();
+                bld!(self.builder.build_call(list_push, &[list_val.into(), arg.into()], ""))?;
+                Ok((list_val, ValKind::List))
+            }
+            "get" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "get takes exactly 1 argument".into() });
+                }
+                let idx = self.compile_expr(&args[0], func)?;
+                let list_get = self.module.get_function("ore_list_get").unwrap();
+                let result = bld!(self.builder.build_call(list_get, &[list_val.into(), idx.into()], "get"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "map" | "filter" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: format!("{} takes exactly 1 argument", method) });
+                }
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        self.compile_lambda(params, body, func)?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { msg: format!("{} argument must be a function", method) }),
+                };
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let runtime_fn_name = format!("ore_list_{}", method);
+                let runtime_fn = self.module.get_function(&runtime_fn_name).unwrap();
+                let result = bld!(self.builder.build_call(
+                    runtime_fn,
+                    &[list_val.into(), fn_ptr.into()],
+                    method
+                ))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            "each" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "each takes exactly 1 argument".into() });
+                }
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        self.compile_lambda(params, body, func)?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { msg: "each argument must be a function".into() }),
+                };
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let runtime_fn = self.module.get_function("ore_list_each").unwrap();
+                bld!(self.builder.build_call(
+                    runtime_fn,
+                    &[list_val.into(), fn_ptr.into()],
+                    ""
+                ))?;
+                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+            }
+            _ => Err(CodeGenError { msg: format!("unknown list method '{}'", method) }),
+        }
     }
 
     fn compile_variant_construct(
@@ -1396,6 +1523,49 @@ impl<'ctx> CodeGen<'ctx> {
         Ok((extracted, ValKind::Int))
     }
 
+    fn compile_list_lit(
+        &mut self,
+        elements: &[Expr],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let list_new = self.module.get_function("ore_list_new").unwrap();
+        let list_push = self.module.get_function("ore_list_push").unwrap();
+
+        let list_result = bld!(self.builder.build_call(list_new, &[], "list"))?;
+        let list_ptr = self.call_result_to_value(list_result)?.into_pointer_value();
+
+        for elem in elements {
+            let val = self.compile_expr(elem, func)?;
+            bld!(self.builder.build_call(list_push, &[list_ptr.into(), val.into()], ""))?;
+        }
+
+        Ok((list_ptr.into(), ValKind::List))
+    }
+
+    fn compile_index(
+        &mut self,
+        object: &Expr,
+        index: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
+        let idx_val = self.compile_expr(index, func)?;
+
+        match obj_kind {
+            ValKind::List => {
+                let list_get = self.module.get_function("ore_list_get").unwrap();
+                let result = bld!(self.builder.build_call(
+                    list_get,
+                    &[obj_val.into(), idx_val.into()],
+                    "list_get"
+                ))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            _ => Err(CodeGenError { msg: "indexing only supported on lists".into() }),
+        }
+    }
+
     fn compile_string_literal(&mut self, s: &str) -> Result<PointerValue<'ctx>, CodeGenError> {
         let bytes = s.as_bytes();
         let global_name = format!(".str.{}", self.str_counter);
@@ -1538,6 +1708,10 @@ impl<'ctx> CodeGen<'ctx> {
             }
             ValKind::Float => {
                 let pf = self.module.get_function("ore_print_float").unwrap();
+                bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+            }
+            ValKind::List => {
+                let pf = self.module.get_function("ore_list_print").unwrap();
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
             _ => {
@@ -1908,10 +2082,21 @@ impl<'ctx> CodeGen<'ctx> {
             self.variables.insert(param_name.clone(), (alloca, ty, ValKind::Int, false));
         }
 
-        let (result, _kind) = self.compile_expr_with_kind(body, lambda_fn)?;
+        let (result, kind) = self.compile_expr_with_kind(body, lambda_fn)?;
 
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
-            bld!(self.builder.build_return(Some(&result)))?;
+            // Coerce result to i64 if needed (e.g. bool i1 from comparisons)
+            let ret_val = match kind {
+                ValKind::Bool => {
+                    bld!(self.builder.build_int_z_extend(
+                        result.into_int_value(),
+                        self.context.i64_type(),
+                        "bool_to_i64"
+                    ))?.into()
+                }
+                _ => result,
+            };
+            bld!(self.builder.build_return(Some(&ret_val)))?;
         }
 
         // Restore state

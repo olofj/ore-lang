@@ -1,0 +1,6 @@
+fn main
+  xs := [1, 2, 3, 4, 5]
+  print xs
+
+  print xs[2]
+  print xs.len()

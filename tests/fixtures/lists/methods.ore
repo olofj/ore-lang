@@ -1,0 +1,10 @@
+fn main
+  xs := [1, 2, 3, 4, 5]
+
+  doubled := xs.map(n => n * 2)
+  print doubled
+
+  big := xs.filter(n => n > 2)
+  print big
+
+  xs.each(n => print n)
