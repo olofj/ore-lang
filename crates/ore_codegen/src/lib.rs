@@ -1623,8 +1623,15 @@ impl<'ctx> CodeGen<'ctx> {
                         if args.len() != 2 {
                             return Err(CodeGenError { line: None, msg: "min takes 2 arguments".into() });
                         }
-                        let a = self.compile_expr(&args[0], func)?;
-                        let b = self.compile_expr(&args[1], func)?;
+                        let (a, ak) = self.compile_expr_with_kind(&args[0], func)?;
+                        let (b, _) = self.compile_expr_with_kind(&args[1], func)?;
+                        if ak == ValKind::Float {
+                            let cmp = bld!(self.builder.build_float_compare(
+                                inkwell::FloatPredicate::OLT, a.into_float_value(), b.into_float_value(), "cmp"
+                            ))?;
+                            let result = bld!(self.builder.build_select(cmp, a, b, "min"))?;
+                            return Ok((result, ValKind::Float));
+                        }
                         let cmp = bld!(self.builder.build_int_compare(
                             inkwell::IntPredicate::SLT, a.into_int_value(), b.into_int_value(), "cmp"
                         ))?;
@@ -1635,8 +1642,15 @@ impl<'ctx> CodeGen<'ctx> {
                         if args.len() != 2 {
                             return Err(CodeGenError { line: None, msg: "max takes 2 arguments".into() });
                         }
-                        let a = self.compile_expr(&args[0], func)?;
-                        let b = self.compile_expr(&args[1], func)?;
+                        let (a, ak) = self.compile_expr_with_kind(&args[0], func)?;
+                        let (b, _) = self.compile_expr_with_kind(&args[1], func)?;
+                        if ak == ValKind::Float {
+                            let cmp = bld!(self.builder.build_float_compare(
+                                inkwell::FloatPredicate::OGT, a.into_float_value(), b.into_float_value(), "cmp"
+                            ))?;
+                            let result = bld!(self.builder.build_select(cmp, a, b, "max"))?;
+                            return Ok((result, ValKind::Float));
+                        }
                         let cmp = bld!(self.builder.build_int_compare(
                             inkwell::IntPredicate::SGT, a.into_int_value(), b.into_int_value(), "cmp"
                         ))?;
