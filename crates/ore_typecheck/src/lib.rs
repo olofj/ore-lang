@@ -713,6 +713,11 @@ impl TypeChecker {
                 }
                 Type::Unit
             }
+            Expr::AssertEq { left, right, .. } => {
+                self.infer_expr(left, env);
+                self.infer_expr(right, env);
+                Type::Unit
+            }
         }
     }
 

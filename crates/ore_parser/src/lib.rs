@@ -574,6 +574,22 @@ impl Parser {
                 };
                 Ok(Stmt::Expr(Expr::Assert { cond: Box::new(cond), message }))
             }
+            Token::AssertEq => {
+                self.advance();
+                let left = self.parse_expr(0)?;
+                self.expect(&Token::Comma)?;
+                let right = self.parse_expr(0)?;
+                let message = if self.peek() == &Token::Comma {
+                    self.advance();
+                    match self.peek().clone() {
+                        Token::StringLit(s) => { self.advance(); Some(s) }
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+                Ok(Stmt::Expr(Expr::AssertEq { left: Box::new(left), right: Box::new(right), message }))
+            }
             Token::Mut => {
                 self.advance();
                 let name = match self.peek().clone() {

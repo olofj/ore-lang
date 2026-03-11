@@ -1,0 +1,14 @@
+fn double x:Int -> Int
+  x * 2
+
+test "assert_eq with ints"
+  assert_eq double(5), 10
+  assert_eq 2 + 3, 5
+
+test "assert_eq with strings"
+  assert_eq "hello", "hello"
+  name := "world"
+  assert_eq "hello {name}", "hello world"
+
+test "assert_eq with message"
+  assert_eq 42, 42, "the answer"

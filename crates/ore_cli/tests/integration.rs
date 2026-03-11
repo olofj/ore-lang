@@ -240,6 +240,18 @@ fn testing_ore_test_failure() {
 }
 
 #[test]
+fn testing_assert_eq() {
+    let path = fixtures_dir().join("testing/assert_eq.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore");
+    assert!(output.status.success(), "ore test should pass for assert_eq");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("3 passed"), "expected 3 passed, got: {}", stderr);
+}
+
+#[test]
 fn stdlib_file_io() {
     let out = run_ore("stdlib/file_io.ore");
     assert_eq!(out.trim(), "hello from ore");

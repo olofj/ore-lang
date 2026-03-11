@@ -244,6 +244,11 @@ pub enum Expr {
         cond: Box<Expr>,
         message: Option<String>,
     },
+    AssertEq {
+        left: Box<Expr>,
+        right: Box<Expr>,
+        message: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

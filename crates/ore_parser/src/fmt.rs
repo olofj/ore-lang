@@ -456,6 +456,15 @@ impl Formatter {
                     self.out.push_str(&format!(", \"{}\"", msg));
                 }
             }
+            Expr::AssertEq { left, right, message } => {
+                self.out.push_str("assert_eq ");
+                self.format_expr(left, level);
+                self.out.push_str(", ");
+                self.format_expr(right, level);
+                if let Some(msg) = message {
+                    self.out.push_str(&format!(", \"{}\"", msg));
+                }
+            }
         }
     }
 
