@@ -2689,6 +2689,28 @@ fn showcase123_typed_list_params() {
 }
 
 #[test]
+fn showcase124_option_result() {
+    let out = run_ore("showcase124.ore");
+    assert!(out.contains("ID 1: Alice"));
+    assert!(out.contains("ID 3: not found"));
+    assert!(out.contains("10 / 3 = 3"));
+    assert!(out.contains("10 / 0: division by zero"));
+    assert!(out.contains("x: 42"));
+    assert!(out.contains("y: -1"));
+    assert!(out.contains("z: unknown"));
+}
+
+#[test]
+fn showcase125_impl_blocks() {
+    let out = run_ore("showcase125.ore");
+    assert!(out.contains("v1 magnitude: 5.0"));
+    assert!(out.contains("v1 + v2 = (4.0, 6.0)"));
+    assert!(out.contains("v1 . v2 = 11.0"));
+    assert!(out.contains("Counter(0, step=5)"));
+    assert!(out.contains("Counter(20, step=5)"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

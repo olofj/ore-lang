@@ -1,0 +1,44 @@
+-- Showcase 124: Option and Result handling
+
+fn safe_divide a:Int b:Int -> Result[Int]
+  if b == 0
+    Err("division by zero")
+  else
+    Ok(a / b)
+
+fn find_name id:Int -> Option[Str]
+  if id == 1
+    Some("Alice")
+  else if id == 2
+    Some("Bob")
+  else
+    None
+
+fn main
+  -- Option handling
+  for id in [1, 2, 3]
+    result := find_name(id)
+    match result
+      Some name -> print "ID {id}: {name}"
+      None -> print "ID {id}: not found"
+
+  -- Result handling
+  print ""
+  for pair in [[10, 3], [10, 0], [100, 7]]
+    a := pair[0]
+    b := pair[1]
+    result := safe_divide(a, b)
+    match result
+      Ok v -> print "{a} / {b} = {v}"
+      Err e -> print "{a} / {b}: {e}"
+
+  -- Pipeline fallback with | else
+  print ""
+  x := Some(42) | else 0
+  y := None | else -1
+  print "x: {x}"
+  print "y: {y}"
+
+  -- Chained Option with default
+  z := find_name(99) | else "unknown"
+  print "z: {z}"
