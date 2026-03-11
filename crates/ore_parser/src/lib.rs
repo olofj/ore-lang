@@ -923,12 +923,14 @@ impl Parser {
             let rhs = self.parse_expr(r_bp)?;
 
             // Comparison chaining: `a < b < c` → `a < b and b < c`
-            if matches!(op, BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq) {
+            if matches!(op, BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq | BinOp::Eq | BinOp::NotEq) {
                 let next_op = match self.peek() {
                     Token::Lt => Some(BinOp::Lt),
                     Token::Gt => Some(BinOp::Gt),
                     Token::LtEq => Some(BinOp::LtEq),
                     Token::GtEq => Some(BinOp::GtEq),
+                    Token::EqEq => Some(BinOp::Eq),
+                    Token::BangEq => Some(BinOp::NotEq),
                     _ => None,
                 };
                 if let Some(op2) = next_op {

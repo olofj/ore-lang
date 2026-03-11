@@ -943,3 +943,15 @@ fn showcase7() {
         "showcase7 ok",
     ]);
 }
+
+#[test]
+fn control_comparison_chains() {
+    let out = run_ore("control/comparison_chains.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "true", "false",    // 0 < x < 100, 0 < x < 10
+        "true", "false",    // a == b == c, a == b == d
+        "true", "false",    // 1 <= 5 < 10, 1 <= 0 < 10
+        "chains ok",
+    ]);
+}

@@ -1,0 +1,22 @@
+-- Test comparison chains
+
+fn main
+  -- Basic range check: 0 < x < 100
+  x := 50
+  print 0 < x < 100
+  print 0 < x < 10
+
+  -- Equality chain: a == b == c
+  a := 5
+  b := 5
+  c := 5
+  print a == b == c
+
+  d := 6
+  print a == b == d
+
+  -- Mixed: a <= b < c
+  print 1 <= 5 < 10
+  print 1 <= 0 < 10
+
+  print "chains ok"
