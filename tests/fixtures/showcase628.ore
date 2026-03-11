@@ -1,0 +1,193 @@
+-- Showcase 628: Boyer-Moore String Matching
+
+fn main
+  print "Boyer-Moore String Matching:"
+  print ""
+
+  -- Simplified Boyer-Moore using bad character heuristic
+
+  -- Part 1: Bad character table
+  print "=== Part 1: Pattern Setup ==="
+  -- Pattern: "ABCAB"
+  mut pattern := [65, 66, 67, 65, 66]
+  pat_len := 5
+  print "  Pattern: ABCAB (length {pat_len})"
+
+  -- Bad character table: for each character, last occurrence in pattern
+  -- ASCII simplified: track A(65), B(66), C(67)
+  mut bad_char := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  -- Index by char - 65: A=0, B=1, C=2
+  for i in range(0, pat_len)
+    idx := pattern[i] - 65
+    bad_char[idx] = i
+  print "  Bad char table:"
+  print "    A: last at position {bad_char[0]}"
+  print "    B: last at position {bad_char[1]}"
+  print "    C: last at position {bad_char[2]}"
+
+  -- Part 2: Search in text
+  print ""
+  print "=== Part 2: Search ==="
+  -- Text: "ABCABDABCABCAB"
+  mut text := [65, 66, 67, 65, 66, 68, 65, 66, 67, 65, 66, 67, 65, 66]
+  text_len := 14
+  print "  Text: ABCABDABCABCAB (length {text_len})"
+
+  mut matches := [-1, -1, -1, -1, -1]
+  mut match_count := 0
+  mut comparisons := 0
+  mut shifts := 0
+
+  mut s := 0
+  while s <= text_len - pat_len
+    mut j := pat_len - 1
+    mut matched := true
+    while j >= 0 and matched
+      comparisons = comparisons + 1
+      if text[s + j] != pattern[j]
+        matched = false
+        -- Bad character shift
+        char_idx := text[s + j] - 65
+        mut bc_shift := 1
+        if char_idx >= 0 and char_idx < 10
+          last_pos := bad_char[char_idx]
+          if j - last_pos > 1
+            bc_shift = j - last_pos
+        print "  At s={s}, mismatch at j={j}, shift by {bc_shift}"
+        s = s + bc_shift
+        shifts = shifts + 1
+      else
+        j = j - 1
+
+    if matched
+      print "  MATCH found at position {s}"
+      matches[match_count] = s
+      match_count = match_count + 1
+      s = s + 1
+      shifts = shifts + 1
+
+  print "  Total matches: {match_count}"
+  print "  Comparisons: {comparisons}"
+  print "  Shifts: {shifts}"
+
+  -- Part 3: Second search
+  print ""
+  print "=== Part 3: Search for 'ABC' ==="
+  mut pat2 := [65, 66, 67]
+  pat2_len := 3
+
+  mut bc2 := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  for i in range(0, pat2_len)
+    idx := pat2[i] - 65
+    bc2[idx] = i
+
+  mut matches2 := [-1, -1, -1, -1, -1, -1, -1, -1]
+  mut match_count2 := 0
+  mut comp2 := 0
+
+  mut s2 := 0
+  while s2 <= text_len - pat2_len
+    mut j2 := pat2_len - 1
+    mut ok := true
+    while j2 >= 0 and ok
+      comp2 = comp2 + 1
+      if text[s2 + j2] != pat2[j2]
+        ok = false
+        char_idx := text[s2 + j2] - 65
+        mut shift := 1
+        if char_idx >= 0 and char_idx < 10
+          lp := bc2[char_idx]
+          if j2 - lp > 1
+            shift = j2 - lp
+        s2 = s2 + shift
+      else
+        j2 = j2 - 1
+    if ok
+      matches2[match_count2] = s2
+      match_count2 = match_count2 + 1
+      s2 = s2 + 1
+
+  print "  Pattern 'ABC' found {match_count2} times"
+  print "  Comparisons: {comp2}"
+  for i in range(0, match_count2)
+    print "    Position: {matches2[i]}"
+
+  -- Part 4: Worst case analysis
+  print ""
+  print "=== Part 4: Worst Case ==="
+  -- Pattern "AAA" in text "AAAAAA"
+  mut text_w := [65, 65, 65, 65, 65, 65]
+  mut pat_w := [65, 65, 65]
+  tw_len := 6
+  pw_len := 3
+
+  mut worst_comp := 0
+  mut worst_matches := 0
+  mut sw := 0
+  while sw <= tw_len - pw_len
+    mut jw := pw_len - 1
+    mut ok_w := true
+    while jw >= 0 and ok_w
+      worst_comp = worst_comp + 1
+      if text_w[sw + jw] != pat_w[jw]
+        ok_w = false
+      else
+        jw = jw - 1
+    if ok_w
+      worst_matches = worst_matches + 1
+    sw = sw + 1
+
+  print "  Pattern 'AAA' in 'AAAAAA':"
+  print "  Matches: {worst_matches}"
+  print "  Comparisons: {worst_comp} (worst case: all match)"
+
+  -- Part 5: Best case analysis
+  print ""
+  print "=== Part 5: Best Case ==="
+  -- Pattern "XYZ" in "ABCABCABC" - never matches, big shifts
+  mut text_b := [65, 66, 67, 65, 66, 67, 65, 66, 67]
+  mut pat_b := [88, 89, 90]
+  tb_len := 9
+  pb_len := 3
+
+  mut best_comp := 0
+  mut sb := 0
+  while sb <= tb_len - pb_len
+    best_comp = best_comp + 1
+    -- First comparison at j=2 always mismatches, shift by pb_len
+    sb = sb + pb_len
+
+  print "  Pattern 'XYZ' in 'ABCABCABC':"
+  print "  Comparisons: {best_comp} (best case: n/m)"
+
+  -- Part 6: Comparison with naive
+  print ""
+  print "=== Part 6: vs Naive Search ==="
+  -- Naive search: compare every position
+  mut naive_comp := 0
+  for i in range(0, text_len - pat_len + 1)
+    mut j := 0
+    mut ok := true
+    while j < pat_len and ok
+      naive_comp = naive_comp + 1
+      if text[i + j] != pattern[j]
+        ok = false
+      j = j + 1
+
+  print "  Boyer-Moore comparisons: {comparisons}"
+  print "  Naive comparisons: {naive_comp}"
+  if comparisons < naive_comp
+    print "  Boyer-Moore is faster"
+  else
+    print "  Similar performance on this input"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Bad character heuristic: skip based on mismatched character"
+  print "  Best case: O(n/m) comparisons"
+  print "  Worst case: O(n*m) comparisons"
+  print "  Practical: sublinear on typical text"
+
+  print ""
+  print "Boyer-Moore: bad character table, right-to-left scan, shift heuristics, pattern matching."

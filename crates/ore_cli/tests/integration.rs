@@ -8105,6 +8105,128 @@ fn showcase620_theorem_proving() {
 }
 
 #[test]
+fn showcase621_gc_mark_compact() {
+    let out = run_ore("showcase621.ore");
+    assert!(out.contains("Garbage Collection Mark-Compact:"));
+    assert!(out.contains("Marked: 7, Garbage: 1"));
+    assert!(out.contains("GARBAGE (will be collected)"));
+    assert!(out.contains("Compacted heap size: 36"));
+    assert!(out.contains("Freed: 2"));
+    assert!(out.contains("Fragmentation after compaction: 0%"));
+    assert!(out.contains("Compaction ratio: 36 / 38"));
+    assert!(out.contains("GC mark-compact: root tracing, mark phase, forwarding addresses, reference update, compaction."));
+}
+
+#[test]
+fn showcase622_parallel_prefix_sum() {
+    let out = run_ore("showcase622.ore");
+    assert!(out.contains("Parallel Prefix Sum (Scan):"));
+    assert!(out.contains("Inclusive scan: [3, 4, 11, 11, 15, 16, 22, 25]"));
+    assert!(out.contains("Exclusive scan: [0, 3, 4, 11, 11, 15, 16, 22]"));
+    assert!(out.contains("Root contains total sum: 25"));
+    assert!(out.contains("Blelloch result matches sequential: PASS"));
+    assert!(out.contains("Compacted elements: 4 out of 8"));
+    assert!(out.contains("Parallel prefix sum: inclusive/exclusive scan, Blelloch algorithm, stream compaction."));
+}
+
+#[test]
+fn showcase623_instruction_scheduling() {
+    let out = run_ore("showcase623.ore");
+    assert!(out.contains("Instruction Scheduling:"));
+    assert!(out.contains("I2 depends on I0 (RAW: r0)"));
+    assert!(out.contains("I3 depends on I2 (RAW: r2)"));
+    assert!(out.contains("Cycle 0: schedule I0 (LOAD)"));
+    assert!(out.contains("Cycle 3: schedule I2 (ADD)"));
+    assert!(out.contains("Total cycles: 6"));
+    assert!(out.contains("Instruction scheduling: dependency graph, list scheduling, pipeline stalls, ILP analysis."));
+}
+
+#[test]
+fn showcase624_interval_graph_coloring() {
+    let out = run_ore("showcase624.ore");
+    assert!(out.contains("Interval Graph Coloring:"));
+    assert!(out.contains("Total overlapping pairs: 9"));
+    assert!(out.contains("Chromatic number: 3"));
+    assert!(out.contains("Equals chromatic number: VERIFIED (perfect graph)"));
+    assert!(out.contains("Maximum independent set size: 5"));
+    assert!(out.contains("Interval graph coloring: overlap detection, greedy coloring, sweep line, independent set."));
+}
+
+#[test]
+fn showcase625_mvc_pattern() {
+    let out = run_ore("showcase625.ore");
+    assert!(out.contains("Model-View-Controller Pattern:"));
+    assert!(out.contains("Toggled 'Buy groceries' -> done"));
+    assert!(out.contains("Completed: 3/5"));
+    assert!(out.contains("Total pending: 2"));
+    assert!(out.contains("High priority items: 2"));
+    assert!(out.contains("Separation of concerns: data, presentation, logic"));
+    assert!(out.contains("MVC pattern: model data store, view rendering, controller actions, filtered views."));
+}
+
+#[test]
+fn showcase626_network_flow_min_cut() {
+    let out = run_ore("showcase626.ore");
+    assert!(out.contains("Network Flow Minimum Cut:"));
+    assert!(out.contains("Total flow after 3 augmentations: 23"));
+    assert!(out.contains("Min-cut capacity: 23"));
+    assert!(out.contains("Max-flow = Min-cut: VERIFIED"));
+    assert!(out.contains("Edge 1->3: flow=12/12 (100%)"));
+    assert!(out.contains("Network flow min-cut: Ford-Fulkerson, residual graph, BFS reachability, cut edges."));
+}
+
+#[test]
+fn showcase627_interpreter_with_closures() {
+    let out = run_ore("showcase627.ore");
+    assert!(out.contains("Interpreter with Closures:"));
+    assert!(out.contains("Output: 14"));
+    assert!(out.contains("Output: 30"));
+    assert!(out.contains("Output: 200"));
+    assert!(out.contains("adder5(3) = 8"));
+    assert!(out.contains("adder10(7) = 17"));
+    assert!(out.contains("make_multiplier(2)(3)(4) = 24"));
+    assert!(out.contains("Counter 0 after 5 increments: 5"));
+    assert!(out.contains("Interpreter with closures: bytecode execution, variable binding, closure capture, nested environments."));
+}
+
+#[test]
+fn showcase628_boyer_moore() {
+    let out = run_ore("showcase628.ore");
+    assert!(out.contains("Boyer-Moore String Matching:"));
+    assert!(out.contains("Total matches: 3"));
+    assert!(out.contains("Pattern 'ABC' found 3 times"));
+    assert!(out.contains("Matches: 4"));
+    assert!(out.contains("Comparisons: 3 (best case: n/m)"));
+    assert!(out.contains("Boyer-Moore is faster"));
+    assert!(out.contains("Boyer-Moore: bad character table, right-to-left scan, shift heuristics, pattern matching."));
+}
+
+#[test]
+fn showcase629_concurrent_data_structures() {
+    let out = run_ore("showcase629.ore");
+    assert!(out.contains("Concurrent Data Structure Concepts:"));
+    assert!(out.contains("Pop: 50 (from node 4)"));
+    assert!(out.contains("CAS(100->200): SUCCESS, value now 200"));
+    assert!(out.contains("CAS(100->300): FAILED, value is 200"));
+    assert!(out.contains("Final counter: 12"));
+    assert!(out.contains("ABA detected! CAS rejected"));
+    assert!(out.contains("Dequeue: 100"));
+    assert!(out.contains("Concurrent data structures: CAS operations, lock-free stack/queue, ABA problem, linearizability."));
+}
+
+#[test]
+fn showcase630_symbolic_regression() {
+    let out = run_ore("showcase630.ore");
+    assert!(out.contains("Symbolic Regression:"));
+    assert!(out.contains("Sum squared error: 152"));
+    assert!(out.contains("PERFECT FIT!"));
+    assert!(out.contains("Formulas tried: 125"));
+    assert!(out.contains("Best: y = 2*x^2 + 3*x + 1"));
+    assert!(out.contains("Found: y = 1*x^2 + 0*x + 1"));
+    assert!(out.contains("Symbolic regression: data fitting, expression search, coefficient optimization, formula discovery."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

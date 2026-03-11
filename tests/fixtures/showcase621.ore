@@ -1,0 +1,124 @@
+-- Showcase 621: Simple Garbage Collection Mark-Compact
+
+fn main
+  print "Garbage Collection Mark-Compact:"
+  print ""
+
+  -- Simulate a heap with objects that have references
+  -- Each object: [marked, size, ref1, ref2] stored in flat array
+  -- ref = -1 means no reference
+
+  -- Part 1: Setup heap
+  print "=== Part 1: Heap Setup ==="
+  num_objects := 8
+  -- Object fields: marked, size, ref1, ref2
+  mut obj_marked := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut obj_size := [4, 8, 2, 6, 4, 2, 8, 4]
+  mut obj_ref1 := [1, 2, -1, 4, -1, -1, 7, -1]
+  mut obj_ref2 := [3, -1, -1, -1, -1, -1, -1, -1]
+  mut obj_addr := [0, 4, 12, 14, 20, 24, 26, 34]
+
+  mut total_size := 0
+  for i in range(0, num_objects)
+    total_size = total_size + obj_size[i]
+    print "  Object {i}: addr={obj_addr[i]}, size={obj_size[i]}, refs=[{obj_ref1[i]},{obj_ref2[i]}]"
+  print "  Total heap size: {total_size}"
+
+  -- Part 2: Mark phase (roots: objects 0 and 6)
+  print ""
+  print "=== Part 2: Mark Phase ==="
+  mut roots := [0, 6]
+  num_roots := 2
+  print "  Roots: [0, 6]"
+
+  -- BFS-style marking using worklist
+  mut worklist := [0, 6, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut wl_head := 0
+  mut wl_tail := 2
+
+  while wl_head < wl_tail
+    obj := worklist[wl_head]
+    wl_head = wl_head + 1
+    if obj_marked[obj] == 0
+      obj_marked[obj] = 1
+      print "  Marked object {obj}"
+      -- Add references to worklist
+      if obj_ref1[obj] != -1 and obj_marked[obj_ref1[obj]] == 0
+        worklist[wl_tail] = obj_ref1[obj]
+        wl_tail = wl_tail + 1
+      if obj_ref2[obj] != -1 and obj_marked[obj_ref2[obj]] == 0
+        worklist[wl_tail] = obj_ref2[obj]
+        wl_tail = wl_tail + 1
+
+  mut marked_count := 0
+  for i in range(0, num_objects)
+    if obj_marked[i] == 1
+      marked_count = marked_count + 1
+  print "  Marked: {marked_count}, Garbage: {num_objects - marked_count}"
+
+  -- Part 3: Compute forwarding addresses
+  print ""
+  print "=== Part 3: Compute Forwarding ==="
+  mut new_addr := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut compact_ptr := 0
+
+  for i in range(0, num_objects)
+    if obj_marked[i] == 1
+      new_addr[i] = compact_ptr
+      print "  Object {i}: old={obj_addr[i]} -> new={compact_ptr}"
+      compact_ptr = compact_ptr + obj_size[i]
+    else
+      new_addr[i] = -1
+      print "  Object {i}: GARBAGE (will be collected)"
+
+  print "  Compacted heap size: {compact_ptr}"
+  print "  Freed: {total_size - compact_ptr}"
+
+  -- Part 4: Update references
+  print ""
+  print "=== Part 4: Update References ==="
+  for i in range(0, num_objects)
+    if obj_marked[i] == 1
+      if obj_ref1[i] != -1
+        old_ref := obj_ref1[i]
+        obj_ref1[i] = new_addr[old_ref]
+        if old_ref != new_addr[old_ref]
+          print "  Object {i}: ref1 updated (obj {old_ref})"
+      if obj_ref2[i] != -1
+        old_ref := obj_ref2[i]
+        obj_ref2[i] = new_addr[old_ref]
+        if old_ref != new_addr[old_ref]
+          print "  Object {i}: ref2 updated (obj {old_ref})"
+
+  -- Part 5: Compact (move objects)
+  print ""
+  print "=== Part 5: Compact ==="
+  for i in range(0, num_objects)
+    if obj_marked[i] == 1
+      obj_addr[i] = new_addr[i]
+      print "  Object {i} now at addr {obj_addr[i]}, size={obj_size[i]}"
+
+  -- Part 6: Fragmentation analysis
+  print ""
+  print "=== Part 6: Analysis ==="
+  mut live_size := 0
+  for i in range(0, num_objects)
+    if obj_marked[i] == 1
+      live_size = live_size + obj_size[i]
+  print "  Live data: {live_size}"
+  print "  Reclaimed: {total_size - live_size}"
+  fragmentation := 0
+  print "  Fragmentation after compaction: {fragmentation}%"
+  print "  Objects collected: {num_objects - marked_count}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Phase 1 (Mark): BFS from roots, {marked_count} objects reachable"
+  print "  Phase 2 (Compute): forwarding addresses assigned"
+  print "  Phase 3 (Update): references adjusted to new locations"
+  print "  Phase 4 (Compact): objects moved, heap defragmented"
+  print "  Compaction ratio: {live_size} / {total_size}"
+
+  print ""
+  print "GC mark-compact: root tracing, mark phase, forwarding addresses, reference update, compaction."

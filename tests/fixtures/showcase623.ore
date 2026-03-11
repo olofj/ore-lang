@@ -1,0 +1,135 @@
+-- Showcase 623: Simple Instruction Scheduling
+
+fn main
+  print "Instruction Scheduling:"
+  print ""
+
+  -- Schedule instructions to minimize pipeline stalls
+  -- Each instruction has: opcode, dest reg, src1 reg, src2 reg, latency
+  -- -1 means no register
+
+  -- Part 1: Instruction set
+  print "=== Part 1: Instructions ==="
+  num_instr := 8
+  mut op_name := ["LOAD", "LOAD", "ADD", "MUL", "STORE", "LOAD", "SUB", "STORE"]
+  mut dest := [0, 1, 2, 3, 2, 4, 5, 5]
+  mut src1 := [-1, -1, 0, 1, -1, -1, 2, -1]
+  mut src2 := [-1, -1, 1, 2, -1, -1, 4, -1]
+  mut latency := [3, 3, 1, 2, 1, 3, 1, 1]
+
+  for i in range(0, num_instr)
+    print "  I{i}: {op_name[i]} r{dest[i]} (lat={latency[i]})"
+
+  -- Part 2: Build dependency graph
+  print ""
+  print "=== Part 2: Dependencies ==="
+  -- dep[i] = list of instructions that i depends on (RAW hazards)
+  mut dep_count := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut dep_on := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+
+  -- For each instruction, find which earlier instructions produce its sources
+  for i in range(0, num_instr)
+    for j in range(0, i)
+      mut has_dep := false
+      if src1[i] != -1 and dest[j] == src1[i]
+        has_dep = true
+      if src2[i] != -1 and dest[j] == src2[i]
+        has_dep = true
+      if has_dep
+        dep_on[i * 2 + dep_count[i]] = j
+        dep_count[i] = dep_count[i] + 1
+        print "  I{i} depends on I{j} (RAW: r{dest[j]})"
+
+  -- Part 3: Compute earliest start times
+  print ""
+  print "=== Part 3: Earliest Start Times ==="
+  mut earliest := [0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Topological order (instructions are already in order)
+  for i in range(0, num_instr)
+    mut max_ready := 0
+    for d in range(0, dep_count[i])
+      dep_idx := dep_on[i * 2 + d]
+      ready := earliest[dep_idx] + latency[dep_idx]
+      if ready > max_ready
+        max_ready = ready
+    earliest[i] = max_ready
+    print "  I{i}: earliest cycle = {earliest[i]}"
+
+  -- Part 4: List scheduling (greedy)
+  print ""
+  print "=== Part 4: List Scheduling ==="
+  mut scheduled := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut schedule_order := [-1, -1, -1, -1, -1, -1, -1, -1]
+  mut schedule_cycle := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_scheduled := 0
+  mut current_cycle := 0
+
+  while num_scheduled < num_instr
+    -- Find ready instruction with highest priority (longest latency first)
+    mut best := -1
+    mut best_lat := -1
+    for i in range(0, num_instr)
+      if scheduled[i] == 0
+        -- Check if all dependencies satisfied
+        mut ready := true
+        for d in range(0, dep_count[i])
+          dep_idx := dep_on[i * 2 + d]
+          if scheduled[dep_idx] == 0
+            ready = false
+          else
+            finish := schedule_cycle[dep_idx] + latency[dep_idx]
+            if finish > current_cycle
+              ready = false
+        if ready and latency[i] > best_lat
+          best = i
+          best_lat = latency[i]
+    if best != -1
+      schedule_order[num_scheduled] = best
+      schedule_cycle[best] = current_cycle
+      scheduled[best] = 1
+      num_scheduled = num_scheduled + 1
+      print "  Cycle {current_cycle}: schedule I{best} ({op_name[best]})"
+    else
+      current_cycle = current_cycle + 1
+
+  -- Part 5: Calculate metrics
+  print ""
+  print "=== Part 5: Schedule Metrics ==="
+  mut max_cycle := 0
+  for i in range(0, num_instr)
+    finish := schedule_cycle[i] + latency[i]
+    if finish > max_cycle
+      max_cycle = finish
+  print "  Total cycles: {max_cycle}"
+  print "  Instructions: {num_instr}"
+
+  -- Count stalls (cycles with no instruction issued)
+  mut stalls := max_cycle - num_instr
+  if stalls < 0
+    stalls = 0
+  print "  Stall cycles: {stalls}"
+
+  -- Part 6: ILP analysis
+  print ""
+  print "=== Part 6: Instruction-Level Parallelism ==="
+  -- Critical path length
+  mut crit_path := 0
+  for i in range(0, num_instr)
+    finish := earliest[i] + latency[i]
+    if finish > crit_path
+      crit_path = finish
+  print "  Critical path length: {crit_path} cycles"
+  print "  Sequential execution: {max_cycle} cycles"
+  print "  ILP ratio: {num_instr} instructions / {crit_path} critical cycles"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Scheduling strategy: list scheduling (longest latency first)"
+  print "  Dependency analysis: RAW hazards detected"
+  print "  Pipeline efficiency improved by reordering"
+  print "  Key: minimize stalls while preserving dependencies"
+
+  print ""
+  print "Instruction scheduling: dependency graph, list scheduling, pipeline stalls, ILP analysis."

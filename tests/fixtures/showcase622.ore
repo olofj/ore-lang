@@ -1,0 +1,147 @@
+-- Showcase 622: Parallel Prefix Sum (Scan Operation)
+
+fn main
+  print "Parallel Prefix Sum (Scan):"
+  print ""
+
+  -- Part 1: Sequential prefix sum
+  print "=== Part 1: Sequential Prefix Sum ==="
+  mut data := [3, 1, 7, 0, 4, 1, 6, 3]
+  n := 8
+  print "  Input: [3, 1, 7, 0, 4, 1, 6, 3]"
+
+  mut prefix := [0, 0, 0, 0, 0, 0, 0, 0]
+  prefix[0] = data[0]
+  for i in range(1, n)
+    prefix[i] = prefix[i - 1] + data[i]
+
+  result_str := prefix | join(", ")
+  print "  Inclusive scan: [{result_str}]"
+
+  mut exclusive := [0, 0, 0, 0, 0, 0, 0, 0]
+  exclusive[0] = 0
+  for i in range(1, n)
+    exclusive[i] = exclusive[i - 1] + data[i - 1]
+  ex_str := exclusive | join(", ")
+  print "  Exclusive scan: [{ex_str}]"
+
+  -- Part 2: Blelloch algorithm (up-sweep)
+  print ""
+  print "=== Part 2: Blelloch Up-Sweep ==="
+  mut tree := [3, 1, 7, 0, 4, 1, 6, 3]
+
+  -- Level 1: stride 2
+  tree[1] = tree[0] + tree[1]
+  tree[3] = tree[2] + tree[3]
+  tree[5] = tree[4] + tree[5]
+  tree[7] = tree[6] + tree[7]
+  l1_str := tree | join(", ")
+  print "  After stride 2: [{l1_str}]"
+
+  -- Level 2: stride 4
+  tree[3] = tree[1] + tree[3]
+  tree[7] = tree[5] + tree[7]
+  l2_str := tree | join(", ")
+  print "  After stride 4: [{l2_str}]"
+
+  -- Level 3: stride 8
+  tree[7] = tree[3] + tree[7]
+  l3_str := tree | join(", ")
+  print "  After stride 8: [{l3_str}]"
+  print "  Root contains total sum: {tree[7]}"
+
+  -- Part 3: Down-sweep
+  print ""
+  print "=== Part 3: Blelloch Down-Sweep ==="
+  tree[7] = 0
+
+  -- Level 3: stride 8
+  tmp := tree[3]
+  tree[3] = tree[7]
+  tree[7] = tree[7] + tmp
+  d3_str := tree | join(", ")
+  print "  After down stride 8: [{d3_str}]"
+
+  -- Level 2: stride 4
+  tmp2a := tree[1]
+  tree[1] = tree[3]
+  tree[3] = tree[3] + tmp2a
+
+  tmp2b := tree[5]
+  tree[5] = tree[7]
+  tree[7] = tree[7] + tmp2b
+  d2_str := tree | join(", ")
+  print "  After down stride 4: [{d2_str}]"
+
+  -- Level 1: stride 2
+  tmp1a := tree[0]
+  tree[0] = tree[1]
+  tree[1] = tree[1] + tmp1a
+
+  tmp1b := tree[2]
+  tree[2] = tree[3]
+  tree[3] = tree[3] + tmp1b
+
+  tmp1c := tree[4]
+  tree[4] = tree[5]
+  tree[5] = tree[5] + tmp1c
+
+  tmp1d := tree[6]
+  tree[6] = tree[7]
+  tree[7] = tree[7] + tmp1d
+  d1_str := tree | join(", ")
+  print "  Exclusive prefix sum: [{d1_str}]"
+
+  -- Part 4: Verify Blelloch result
+  print ""
+  print "=== Part 4: Verification ==="
+  mut correct := true
+  for i in range(0, n)
+    if tree[i] != exclusive[i]
+      correct = false
+  if correct
+    print "  Blelloch result matches sequential: PASS"
+  else
+    print "  Blelloch result matches sequential: FAIL"
+
+  -- Part 5: Work and span analysis
+  print ""
+  print "=== Part 5: Complexity ==="
+  -- Blelloch: O(n) work, O(log n) span
+  work := 2 * (n - 1)
+  print "  Array size: {n}"
+  print "  Sequential work: {n - 1} additions"
+  print "  Blelloch work: {work} additions"
+  print "  Blelloch span: 3 levels (log2 of {n})"
+  print "  Speedup potential: {n / 3}x with {n} processors"
+
+  -- Part 6: Application - stream compaction
+  print ""
+  print "=== Part 6: Stream Compaction ==="
+  mut flags := [1, 0, 1, 1, 0, 0, 1, 0]
+  print "  Input flags: [1, 0, 1, 1, 0, 0, 1, 0]"
+
+  -- Prefix sum of flags gives scatter addresses
+  mut scatter := [0, 0, 0, 0, 0, 0, 0, 0]
+  scatter[0] = 0
+  for i in range(1, n)
+    scatter[i] = scatter[i - 1] + flags[i - 1]
+  sc_str := scatter | join(", ")
+  print "  Scatter addresses: [{sc_str}]"
+
+  mut compact_count := 0
+  for i in range(0, n)
+    compact_count = compact_count + flags[i]
+  print "  Compacted elements: {compact_count} out of {n}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  total_sum := prefix[n - 1]
+  print "  Total sum: {total_sum}"
+  print "  Prefix sum enables parallel algorithms"
+  print "  Blelloch scan: O(n) work, O(log n) span"
+  print "  Applications: stream compaction, radix sort, polynomial evaluation"
+
+  print ""
+  print "Parallel prefix sum: inclusive/exclusive scan, Blelloch algorithm, stream compaction."

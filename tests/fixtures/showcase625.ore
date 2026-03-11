@@ -1,0 +1,126 @@
+-- Showcase 625: Simple Model-View-Controller Pattern
+
+fn main
+  print "Model-View-Controller Pattern:"
+  print ""
+
+  -- Simulate MVC with a todo list application
+  -- Model: data storage, View: display, Controller: logic
+
+  -- Part 1: Model (data store)
+  print "=== Part 1: Model Setup ==="
+  mut todo_titles := ["Buy groceries", "Write report", "Call dentist", "Fix bug", "Read book"]
+  mut todo_done := [false, false, false, false, false]
+  mut todo_priority := [2, 1, 3, 1, 3]
+  mut num_todos := 5
+
+  for i in range(0, num_todos)
+    mut status := "pending"
+    if todo_done[i]
+      status = "done"
+    print "  [{i}] {todo_titles[i]} (priority={todo_priority[i]}, {status})"
+
+  -- Part 2: View (rendering)
+  print ""
+  print "=== Part 2: View Rendering ==="
+  print "  +------ TODO LIST ------+"
+  for i in range(0, num_todos)
+    mut marker := " "
+    if todo_done[i]
+      marker = "x"
+    mut prio_str := "LOW"
+    if todo_priority[i] == 1
+      prio_str = "HIGH"
+    else if todo_priority[i] == 2
+      prio_str = "MED"
+    print "  | [{marker}] {todo_titles[i]} ({prio_str}) |"
+  print "  +-----------------------+"
+
+  mut done_count := 0
+  for i in range(0, num_todos)
+    if todo_done[i]
+      done_count = done_count + 1
+  print "  Progress: {done_count}/{num_todos}"
+
+  -- Part 3: Controller actions
+  print ""
+  print "=== Part 3: Controller - Toggle ==="
+  -- Toggle items 0, 2, 3
+  mut toggles := [0, 2, 3]
+  for t in range(0, 3)
+    idx := toggles[t]
+    todo_done[idx] = not todo_done[idx]
+    mut new_status := "pending"
+    if todo_done[idx]
+      new_status = "done"
+    print "  Toggled '{todo_titles[idx]}' -> {new_status}"
+
+  -- Part 4: Updated view
+  print ""
+  print "=== Part 4: Updated View ==="
+  done_count = 0
+  for i in range(0, num_todos)
+    if todo_done[i]
+      done_count = done_count + 1
+  print "  Completed: {done_count}/{num_todos}"
+
+  for i in range(0, num_todos)
+    if todo_done[i]
+      print "  [x] {todo_titles[i]}"
+    else
+      print "  [ ] {todo_titles[i]}"
+
+  -- Part 5: Filter view (controller: filter by status)
+  print ""
+  print "=== Part 5: Filtered Views ==="
+  print "  --- Pending Items ---"
+  mut pending := 0
+  for i in range(0, num_todos)
+    if not todo_done[i]
+      pending = pending + 1
+      print "  [ ] {todo_titles[i]}"
+  print "  Total pending: {pending}"
+
+  print "  --- High Priority ---"
+  mut high_count := 0
+  for i in range(0, num_todos)
+    if todo_priority[i] == 1
+      high_count = high_count + 1
+      mut mk := " "
+      if todo_done[i]
+        mk = "x"
+      print "  [{mk}] {todo_titles[i]}"
+  print "  High priority items: {high_count}"
+
+  -- Part 6: Controller - sort by priority
+  print ""
+  print "=== Part 6: Sorted by Priority ==="
+  mut sorted_idx := [0, 1, 2, 3, 4]
+  for i in range(0, num_todos)
+    mut min_p := i
+    for j in range(i + 1, num_todos)
+      if todo_priority[sorted_idx[j]] < todo_priority[sorted_idx[min_p]]
+        min_p = j
+    if min_p != i
+      tmp := sorted_idx[i]
+      sorted_idx[i] = sorted_idx[min_p]
+      sorted_idx[min_p] = tmp
+
+  for idx in range(0, num_todos)
+    i := sorted_idx[idx]
+    mut mk2 := " "
+    if todo_done[i]
+      mk2 = "x"
+    print "  [{mk2}] P{todo_priority[i]}: {todo_titles[i]}"
+
+  -- Part 7: Summary and stats
+  print ""
+  print "=== Part 7: MVC Summary ==="
+  print "  Model: {num_todos} items in data store"
+  print "  Views: list, filtered, sorted"
+  print "  Controller actions: toggle, filter, sort"
+  print "  Completed: {done_count}/{num_todos}"
+  print "  Separation of concerns: data, presentation, logic"
+
+  print ""
+  print "MVC pattern: model data store, view rendering, controller actions, filtered views."

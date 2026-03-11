@@ -1,0 +1,138 @@
+-- Showcase 624: Disjoint Intervals (Interval Graph Coloring)
+
+fn main
+  print "Interval Graph Coloring:"
+  print ""
+
+  -- Given intervals, color them so overlapping intervals have different colors
+  -- This is equivalent to finding the chromatic number of an interval graph
+
+  -- Part 1: Input intervals
+  print "=== Part 1: Intervals ==="
+  num_intervals := 8
+  mut starts := [1, 2, 3, 5, 6, 8, 9, 1]
+  mut ends := [4, 6, 5, 7, 10, 9, 11, 3]
+
+  for i in range(0, num_intervals)
+    print "  Interval {i}: [{starts[i]}, {ends[i]}]"
+
+  -- Part 2: Check overlaps
+  print ""
+  print "=== Part 2: Overlap Detection ==="
+  mut overlap_count := 0
+  -- Two intervals overlap if start_a < end_b AND start_b < end_a
+  mut adj := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, num_intervals)
+    for j in range(i + 1, num_intervals)
+      if starts[i] < ends[j] and starts[j] < ends[i]
+        adj[i * num_intervals + j] = 1
+        adj[j * num_intervals + i] = 1
+        overlap_count = overlap_count + 1
+        print "  Interval {i} overlaps {j}"
+  print "  Total overlapping pairs: {overlap_count}"
+
+  -- Part 3: Greedy coloring (sorted by start time)
+  print ""
+  print "=== Part 3: Greedy Coloring ==="
+  -- Sort intervals by start time (simple selection sort of indices)
+  mut order := [0, 1, 2, 3, 4, 5, 6, 7]
+  for i in range(0, num_intervals)
+    mut min_idx := i
+    for j in range(i + 1, num_intervals)
+      if starts[order[j]] < starts[order[min_idx]]
+        min_idx = j
+    if min_idx != i
+      tmp := order[i]
+      order[i] = order[min_idx]
+      order[min_idx] = tmp
+
+  mut colors := [-1, -1, -1, -1, -1, -1, -1, -1]
+  mut num_colors := 0
+
+  for idx in range(0, num_intervals)
+    iv := order[idx]
+    -- Find smallest color not used by overlapping intervals
+    mut used := [0, 0, 0, 0, 0, 0, 0, 0]
+    for j in range(0, num_intervals)
+      if adj[iv * num_intervals + j] == 1 and colors[j] != -1
+        used[colors[j]] = 1
+    -- Find first available color
+    mut c := 0
+    while used[c] == 1
+      c = c + 1
+    colors[iv] = c
+    if c + 1 > num_colors
+      num_colors = c + 1
+    print "  Interval {iv} [{starts[iv]},{ends[iv]}] -> color {c}"
+
+  print "  Chromatic number: {num_colors}"
+
+  -- Part 4: Maximum clique (equals chromatic number for interval graphs)
+  print ""
+  print "=== Part 4: Maximum Clique ==="
+  -- Sweep line: max concurrent intervals = chromatic number
+  mut max_concurrent := 0
+  for t in range(1, 12)
+    mut count := 0
+    for i in range(0, num_intervals)
+      if starts[i] <= t and t < ends[i]
+        count = count + 1
+    if count > max_concurrent
+      max_concurrent = count
+
+  print "  Max concurrent intervals: {max_concurrent}"
+  if max_concurrent == num_colors
+    print "  Equals chromatic number: VERIFIED (perfect graph)"
+  else
+    print "  Chromatic number: {num_colors}"
+
+  -- Part 5: Find maximum independent set (non-overlapping)
+  print ""
+  print "=== Part 5: Maximum Independent Set ==="
+  -- Greedy: pick interval with earliest end, skip overlapping
+  mut selected := [0, 0, 0, 0, 0, 0, 0, 0]
+  -- Sort by end time
+  mut end_order := [0, 1, 2, 3, 4, 5, 6, 7]
+  for i in range(0, num_intervals)
+    mut min_idx := i
+    for j in range(i + 1, num_intervals)
+      if ends[end_order[j]] < ends[end_order[min_idx]]
+        min_idx = j
+    if min_idx != i
+      tmp := end_order[i]
+      end_order[i] = end_order[min_idx]
+      end_order[min_idx] = tmp
+
+  mut last_end := -1
+  mut indep_count := 0
+  for idx in range(0, num_intervals)
+    iv := end_order[idx]
+    if starts[iv] >= last_end
+      selected[iv] = 1
+      last_end = ends[iv]
+      indep_count = indep_count + 1
+      print "  Selected interval {iv}: [{starts[iv]},{ends[iv]}]"
+
+  print "  Maximum independent set size: {indep_count}"
+
+  -- Part 6: Color classes
+  print ""
+  print "=== Part 6: Color Classes ==="
+  for c in range(0, num_colors)
+    mut class_size := 0
+    for i in range(0, num_intervals)
+      if colors[i] == c
+        class_size = class_size + 1
+    print "  Color {c}: {class_size} intervals"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Intervals: {num_intervals}"
+  print "  Overlapping pairs: {overlap_count}"
+  print "  Colors needed: {num_colors}"
+  print "  Max independent set: {indep_count}"
+  print "  Interval graphs are perfect: clique = chromatic number"
+
+  print ""
+  print "Interval graph coloring: overlap detection, greedy coloring, sweep line, independent set."

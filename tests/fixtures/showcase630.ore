@@ -1,0 +1,149 @@
+-- Showcase 630: Symbolic Regression (Finding Formulas)
+
+fn main
+  print "Symbolic Regression:"
+  print ""
+
+  -- Given data points, find a formula that fits
+  -- Try combinations of simple expressions
+
+  -- Part 1: Target data
+  print "=== Part 1: Target Data ==="
+  -- Hidden formula: y = 2*x^2 + 3*x + 1
+  mut xs := [0, 1, 2, 3, 4, 5]
+  mut ys := [1, 6, 15, 28, 45, 66]
+  num_points := 6
+
+  for i in range(0, num_points)
+    print "  x={xs[i]}, y={ys[i]}"
+
+  -- Part 2: Try linear model y = a*x + b
+  print ""
+  print "=== Part 2: Linear Model ==="
+  -- Least squares for y = a*x + b
+  mut sum_x := 0
+  mut sum_y := 0
+  mut sum_xx := 0
+  mut sum_xy := 0
+  for i in range(0, num_points)
+    sum_x = sum_x + xs[i]
+    sum_y = sum_y + ys[i]
+    sum_xx = sum_xx + xs[i] * xs[i]
+    sum_xy = sum_xy + xs[i] * ys[i]
+
+  -- a = (n*sum_xy - sum_x*sum_y) / (n*sum_xx - sum_x*sum_x)
+  a_num := num_points * sum_xy - sum_x * sum_y
+  a_den := num_points * sum_xx - sum_x * sum_x
+  a_lin := a_num / a_den
+  -- b = (sum_y - a*sum_x) / n
+  b_lin := (sum_y - a_lin * sum_x) / num_points
+
+  print "  Linear fit: y = {a_lin}*x + {b_lin}"
+
+  -- Compute error
+  mut lin_error := 0
+  for i in range(0, num_points)
+    pred := a_lin * xs[i] + b_lin
+    diff := ys[i] - pred
+    lin_error = lin_error + diff * diff
+  print "  Sum squared error: {lin_error}"
+
+  -- Part 3: Try quadratic model y = a*x^2 + b*x + c
+  print ""
+  print "=== Part 3: Quadratic Model ==="
+  -- Try candidate: y = 2*x^2 + 3*x + 1
+  mut quad_error := 0
+  for i in range(0, num_points)
+    pred := 2 * xs[i] * xs[i] + 3 * xs[i] + 1
+    diff := ys[i] - pred
+    quad_error = quad_error + diff * diff
+  print "  Candidate: y = 2*x^2 + 3*x + 1"
+  print "  Sum squared error: {quad_error}"
+
+  if quad_error == 0
+    print "  PERFECT FIT!"
+
+  -- Part 4: Brute force search over simple expressions
+  print ""
+  print "=== Part 4: Expression Search ==="
+  -- Try y = a*x^2 + b*x + c for small integer coefficients
+  mut best_a := 0
+  mut best_b := 0
+  mut best_c := 0
+  mut best_err := 999999
+  mut formulas_tried := 0
+
+  for a in range(0, 5)
+    for b in range(0, 5)
+      for c in range(0, 5)
+        mut err := 0
+        for i in range(0, num_points)
+          pred := a * xs[i] * xs[i] + b * xs[i] + c
+          diff := ys[i] - pred
+          err = err + diff * diff
+        formulas_tried = formulas_tried + 1
+        if err < best_err
+          best_err = err
+          best_a = a
+          best_b = b
+          best_c = c
+
+  print "  Formulas tried: {formulas_tried}"
+  print "  Best: y = {best_a}*x^2 + {best_b}*x + {best_c}"
+  print "  Error: {best_err}"
+
+  -- Part 5: Verify best formula
+  print ""
+  print "=== Part 5: Verification ==="
+  for i in range(0, num_points)
+    pred := best_a * xs[i] * xs[i] + best_b * xs[i] + best_c
+    mut ok_str := "MATCH"
+    if pred != ys[i]
+      ok_str = "MISMATCH"
+    print "  x={xs[i]}: predicted={pred}, actual={ys[i]} {ok_str}"
+
+  -- Part 6: Second dataset
+  print ""
+  print "=== Part 6: Second Dataset ==="
+  -- Hidden formula: y = x^2 + 1
+  mut xs2 := [0, 1, 2, 3, 4]
+  mut ys2 := [1, 2, 5, 10, 17]
+  n2 := 5
+
+  for i in range(0, n2)
+    print "  x={xs2[i]}, y={ys2[i]}"
+
+  -- Search
+  mut best2_a := 0
+  mut best2_b := 0
+  mut best2_c := 0
+  mut best2_err := 999999
+
+  for a in range(0, 4)
+    for b in range(0, 4)
+      for c in range(0, 4)
+        mut err := 0
+        for i in range(0, n2)
+          pred := a * xs2[i] * xs2[i] + b * xs2[i] + c
+          diff := ys2[i] - pred
+          err = err + diff * diff
+        if err < best2_err
+          best2_err = err
+          best2_a = a
+          best2_b = b
+          best2_c = c
+
+  print "  Found: y = {best2_a}*x^2 + {best2_b}*x + {best2_c}"
+  print "  Error: {best2_err}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Dataset 1: y = {best_a}*x^2 + {best_b}*x + {best_c} (error={best_err})"
+  print "  Dataset 2: y = {best2_a}*x^2 + {best2_b}*x + {best2_c} (error={best2_err})"
+  print "  Method: exhaustive search over polynomial coefficients"
+  print "  Formulas evaluated: {formulas_tried} for dataset 1"
+  print "  Symbolic regression discovers mathematical relationships"
+
+  print ""
+  print "Symbolic regression: data fitting, expression search, coefficient optimization, formula discovery."

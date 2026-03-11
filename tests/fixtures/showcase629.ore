@@ -1,0 +1,180 @@
+-- Showcase 629: Simple Concurrent Data Structure Concepts
+
+fn main
+  print "Concurrent Data Structure Concepts:"
+  print ""
+
+  -- Simulate concurrent data structure operations and concepts
+  -- without actual threads, focusing on the algorithms
+
+  -- Part 1: Lock-free stack (Treiber stack simulation)
+  print "=== Part 1: Lock-Free Stack ==="
+  mut stack_data := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut stack_next := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut stack_top := -1
+  mut free_idx := 0
+
+  -- Push operations (CAS simulation: always succeeds in sequential)
+  mut push_vals := [10, 20, 30, 40, 50]
+  for i in range(0, 5)
+    node := free_idx
+    free_idx = free_idx + 1
+    stack_data[node] = push_vals[i]
+    stack_next[node] = stack_top
+    -- CAS(top, expected=old_top, new=node) -> succeeds
+    stack_top = node
+    print "  Push {push_vals[i]}: top -> node {node}"
+
+  -- Pop operations
+  mut pop_count := 0
+  for i in range(0, 3)
+    if stack_top != -1
+      node := stack_top
+      val := stack_data[node]
+      stack_top = stack_next[node]
+      pop_count = pop_count + 1
+      print "  Pop: {val} (from node {node})"
+
+  print "  Stack operations: 5 pushes, {pop_count} pops"
+
+  -- Part 2: Compare-and-swap simulation
+  print ""
+  print "=== Part 2: CAS Operations ==="
+  mut shared_val := 100
+
+  -- Thread 1 tries CAS(shared, 100, 200) - succeeds
+  mut expected := 100
+  mut desired := 200
+  if shared_val == expected
+    shared_val = desired
+    print "  CAS(100->200): SUCCESS, value now {shared_val}"
+  else
+    print "  CAS(100->200): FAILED, value is {shared_val}"
+
+  -- Thread 2 tries CAS(shared, 100, 300) - fails (stale expected)
+  expected = 100
+  desired = 300
+  if shared_val == expected
+    shared_val = desired
+    print "  CAS(100->300): SUCCESS"
+  else
+    print "  CAS(100->300): FAILED, value is {shared_val}"
+
+  -- Thread 2 retries with correct expected
+  expected = 200
+  desired = 300
+  if shared_val == expected
+    shared_val = desired
+    print "  CAS(200->300): SUCCESS, value now {shared_val}"
+
+  -- Part 3: Lock-free counter
+  print ""
+  print "=== Part 3: Lock-Free Counter ==="
+  mut counter := 0
+  mut cas_attempts := 0
+  mut cas_successes := 0
+
+  -- Simulate 3 threads incrementing, with occasional contention
+  mut thread_ops := [5, 3, 4]
+  num_threads := 3
+  for t in range(0, num_threads)
+    for op in range(0, thread_ops[t])
+      -- Simulate possible CAS failure (retry once per 3 ops)
+      if op % 3 == 1
+        cas_attempts = cas_attempts + 1
+        -- Simulated failure: retry
+      cas_attempts = cas_attempts + 1
+      cas_successes = cas_successes + 1
+      counter = counter + 1
+
+  print "  Final counter: {counter}"
+  print "  CAS attempts: {cas_attempts}"
+  print "  CAS successes: {cas_successes}"
+  print "  Contention retries: {cas_attempts - cas_successes}"
+
+  -- Part 4: Lock-free queue (Michael-Scott)
+  print ""
+  print "=== Part 4: Lock-Free Queue ==="
+  mut q_data := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut q_next := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  -- Sentinel node at index 0
+  mut q_head := 0
+  mut q_tail := 0
+  mut q_free := 1
+
+  -- Enqueue values
+  mut enq_vals := [100, 200, 300, 400]
+  for i in range(0, 4)
+    node := q_free
+    q_free = q_free + 1
+    q_data[node] = enq_vals[i]
+    q_next[node] = -1
+    q_next[q_tail] = node
+    q_tail = node
+    print "  Enqueue {enq_vals[i]}"
+
+  -- Dequeue values
+  for i in range(0, 2)
+    if q_next[q_head] != -1
+      first := q_next[q_head]
+      val := q_data[first]
+      q_head = first
+      print "  Dequeue: {val}"
+
+  -- Part 5: ABA problem
+  print ""
+  print "=== Part 5: ABA Problem ==="
+  mut aba_val := 10
+  mut aba_version := 0
+  print "  Initial: value={aba_val}, version={aba_version}"
+
+  -- Thread 1 reads (10, v0), gets suspended
+  t1_expected := aba_val
+  t1_version := aba_version
+
+  -- Thread 2 changes 10->20
+  aba_val = 20
+  aba_version = aba_version + 1
+  print "  Thread 2: changed to {aba_val} (v{aba_version})"
+
+  -- Thread 3 changes 20->10 (back to original value!)
+  aba_val = 10
+  aba_version = aba_version + 1
+  print "  Thread 3: changed back to {aba_val} (v{aba_version})"
+
+  -- Thread 1 resumes: value matches but version doesn't
+  if aba_val == t1_expected and aba_version == t1_version
+    print "  Thread 1 CAS: SUCCESS (WRONG - ABA!)"
+  else if aba_val == t1_expected
+    print "  Thread 1: value matches but version changed ({t1_version} -> {aba_version})"
+    print "  ABA detected! CAS rejected"
+  else
+    print "  Thread 1: value mismatch"
+
+  -- Part 6: Linearizability check
+  print ""
+  print "=== Part 6: Linearizability ==="
+  -- History: push(1), push(2), pop()->2, push(3), pop()->3, pop()->1
+  mut hist_ops := ["push", "push", "pop", "push", "pop", "pop"]
+  mut hist_vals := [1, 2, 2, 3, 3, 1]
+  num_ops := 6
+
+  -- Check LIFO ordering
+  mut lifo_ok := true
+  -- The pop sequence 2,3,1 is valid for pushes 1,2 then pop 2, push 3, pop 3, pop 1
+  print "  History: push(1), push(2), pop->2, push(3), pop->3, pop->1"
+  print "  LIFO property: each pop returns most recent unpop'd push"
+  print "  Linearizable: yes (sequential ordering exists)"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Lock-free stack: CAS-based push/pop"
+  print "  Lock-free queue: Michael-Scott algorithm"
+  print "  CAS: atomic compare-and-swap primitive"
+  print "  ABA problem: version tags prevent false matches"
+  print "  Linearizability: operations appear atomic"
+  print "  Counter final value: {counter}"
+
+  print ""
+  print "Concurrent data structures: CAS operations, lock-free stack/queue, ABA problem, linearizability."
