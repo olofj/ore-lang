@@ -2953,6 +2953,45 @@ fn showcase146_data_pipeline() {
 }
 
 #[test]
+fn showcase147_comprehensions() {
+    let out = run_ore("showcase147.ore");
+    assert!(out.contains("squares: 1, 4, 9, 16, 25"));
+    assert!(out.contains("doubled odds: 2, 6, 10, 14, 18"));
+    assert!(out.contains("x=3 y=4 z=5"));
+    assert!(out.contains("all even: true"));
+    assert!(out.contains("any > 10: false"));
+}
+
+#[test]
+fn showcase148_concurrency() {
+    let out = run_ore("showcase148.ore");
+    assert!(out.contains("total: 70300"));
+    assert!(out.contains("match: true"));
+}
+
+#[test]
+fn showcase149_generics() {
+    let out = run_ore("showcase149.ore");
+    assert!(out.contains("42"));
+    assert!(out.contains("hello"));
+    assert!(out.contains("swap [1,2]: 2, 1"));
+    assert!(out.contains("repeat 3 x5: 3, 3, 3, 3, 3"));
+}
+
+#[test]
+fn showcase150_feature_summary() {
+    let out = run_ore("showcase150.ore");
+    assert!(out.contains("even squares: 4, 16, 36, 64, 100"));
+    assert!(out.contains("sum 1..100: 5050"));
+    assert!(out.contains("circle area: 78.5398"));
+    assert!(out.contains("distance: 5.0"));
+    assert!(out.contains("Some map: 43"));
+    assert!(out.contains("10/3 map *2: 6"));
+    assert!(out.contains("0: zero"));
+    assert!(out.contains("150 showcases"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

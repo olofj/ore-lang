@@ -1,0 +1,26 @@
+-- Showcase 148: Concurrency basics
+
+fn counter ch:Channel n:Int
+  mut sum := 0
+  for i in range(1, n + 1)
+    sum = sum + i
+  ch.send(sum)
+
+fn main
+  ch := channel()
+
+  -- Spawn workers to compute partial sums
+  spawn counter(ch, 100)
+  spawn counter(ch, 200)
+  spawn counter(ch, 300)
+
+  -- Collect results
+  mut total := 0
+  for i in range(0, 3)
+    val := ch.recv()
+    total = total + val
+
+  print "total: {total}"
+  -- Expected: sum(1..100) + sum(1..200) + sum(1..300) = 5050 + 20100 + 45150 = 70300
+  print "expected: 70300"
+  print "match: {total == 70300}"

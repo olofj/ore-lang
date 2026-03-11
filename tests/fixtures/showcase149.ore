@@ -1,0 +1,39 @@
+-- Showcase 149: Generic functions
+
+fn identity[T] x:T -> T
+  x
+
+fn swap[A, B] pair:List[A] -> List[A]
+  [pair[1], pair[0]]
+
+fn repeat_n[T] item:T n:Int -> List[T]
+  mut result := []
+  for i in range(0, n)
+    result.push(item)
+  result
+
+fn main
+  -- Identity with different types
+  print identity(42)
+  print identity("hello")
+  print identity(true)
+
+  -- Swap
+  print ""
+  swapped := swap([1, 2])
+  print "swap [1,2]: {swapped | join(", ")}"
+
+  -- Repeat
+  print ""
+  threes := repeat_n(3, 5)
+  print "repeat 3 x5: {threes | join(", ")}"
+
+  hellos := repeat_n("hi", 3)
+  print "repeat hi x3: {hellos | join(", ")}"
+
+  -- Generic pipeline
+  print ""
+  result := range(1, 6)
+    | map(n => identity(n * 10))
+    | join(", ")
+  print "piped identity: {result}"

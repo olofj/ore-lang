@@ -1,0 +1,136 @@
+-- Showcase 150: Ore Language Feature Summary
+-- This showcase demonstrates all major language features in one program
+
+-- 1. Type definitions
+type Direction
+  North
+  South
+  East
+  West
+
+type Shape
+  Circle(radius: Float)
+  Rect(width: Float, height: Float)
+
+type Point { x:Float, y:Float }
+
+-- 2. Trait/impl blocks
+impl Point
+  fn distance self:Self other:Point -> Float
+    dx := self.x - other.x
+    dy := self.y - other.y
+    sqrt(dx * dx + dy * dy)
+
+-- 3. Functions with typed params
+fn area s:Shape -> Float
+  match s
+    Circle r -> pi() * r * r
+    Rect w h -> w * h
+
+fn direction_name d:Direction -> Str
+  match d
+    North -> "N"
+    South -> "S"
+    East -> "E"
+    West -> "W"
+
+-- 4. Generic function
+fn first_or_default[T] xs:List[T] default:T -> T
+  if xs.len() > 0 then xs[0] else default
+
+-- 5. Result-returning function
+fn safe_divide a:Int b:Int -> Result[Int]
+  if b == 0 then Err("division by zero") else Ok(a / b)
+
+fn main
+  -- Basic types
+  print "=== Types ==="
+  print "Int: {42}"
+  print "Float: {3.14}"
+  print "Bool: {true}"
+  print "Str: {"hello"}"
+
+  -- Lists and pipelines
+  print ""
+  print "=== Pipelines ==="
+  result := range(1, 11)
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | join(", ")
+  print "even squares: {result}"
+
+  sum := range(1, 101) | sum()
+  print "sum 1..100: {sum}"
+
+  -- List comprehensions
+  cubes := [n * n * n for n in range(1, 6)]
+  print "cubes: {cubes | join(", ")}"
+
+  -- Enums
+  print ""
+  print "=== Enums ==="
+  dirs := [North, South, East, West]
+  for d in dirs
+    print direction_name(d)
+
+  -- Enum with float data
+  c := Circle(radius: 5.0)
+  r := Rect(width: 3.0, height: 4.0)
+  print "circle area: {area(c)}"
+  print "rect area: {area(r)}"
+
+  -- Records and methods
+  print ""
+  print "=== Records ==="
+  p1 := Point(x: 0.0, y: 0.0)
+  p2 := Point(x: 3.0, y: 4.0)
+  print "distance: {p1.distance(p2)}"
+
+  -- Maps
+  print ""
+  print "=== Maps ==="
+  m := {"a": 1, "b": 2, "c": 3}
+  print "keys: {m.keys().sort().join(", ")}"
+  print "sum: {m.values().sum()}"
+
+  -- Option and Result
+  print ""
+  print "=== Option/Result ==="
+  opt := Some(42)
+  print "Some map: {opt.map(n => n + 1) | else 0}"
+  print "None fallback: {None | else "default"}"
+
+  r1 := safe_divide(10, 3)
+  r2 := safe_divide(10, 0)
+  print "10/3: {r1 | else 0}"
+  print "10/0: {r2 | else -1}"
+  print "10/3 map *2: {r1.map(n => n * 2) | else 0}"
+
+  -- String operations
+  print ""
+  print "=== Strings ==="
+  s := "Hello, World!"
+  print "upper: {s.to_upper()}"
+  print "reverse: {s.reverse()}"
+  print "words: {s.split(" ").len()}"
+
+  -- Generics
+  print ""
+  print "=== Generics ==="
+  print "first_or_default [1,2,3]: {first_or_default([1, 2, 3], 0)}"
+  print "first_or_default []: {first_or_default([], 0)}"
+
+  -- Match with guards
+  print ""
+  print "=== Match Guards ==="
+  for n in [0, 3, 15, 50, 100]
+    label := match n
+      0 -> "zero"
+      n if n < 10 -> "small"
+      n if n < 50 -> "medium"
+      _ -> "large"
+    print "{n}: {label}"
+
+  print ""
+  print "=== Done ==="
+  print "Ore v0.1 - 150 showcases and counting!"
