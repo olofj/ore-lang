@@ -1,0 +1,42 @@
+-- Showcase 87: Multiline match arms
+
+type Shape
+  Circle(radius: Float)
+  Rect(w: Float, h: Float)
+
+fn describe s:Shape -> Str
+  match s
+    Circle r ->
+      if r > 10.0
+        "large circle (r={r})"
+      else
+        "small circle (r={r})"
+    Rect w h ->
+      if w == h
+        "square ({w}x{h})"
+      else
+        "rectangle ({w}x{h})"
+
+fn classify n:Int -> Str
+  match n
+    0 -> "zero"
+    1 -> "one"
+    _ ->
+      if n < 0
+        "negative"
+      else if n > 100
+        "big"
+      else
+        "other"
+
+fn main
+  print describe(Circle(radius: 5.0))
+  print describe(Circle(radius: 15.0))
+  print describe(Rect(w: 3.0, h: 4.0))
+  print describe(Rect(w: 7.0, h: 7.0))
+
+  print classify(0)
+  print classify(1)
+  print classify(-5)
+  print classify(200)
+  print classify(42)

@@ -1217,7 +1217,18 @@ impl Parser {
                         None
                     };
                     self.expect(&Token::Arrow)?;
-                    let body = self.parse_expr(0)?;
+                    // Support multiline match arms: if newline+INDENT follows ->, parse a block
+                    let body = if self.peek() == &Token::Newline || self.peek() == &Token::Indent {
+                        self.skip_newlines();
+                        if self.peek() == &Token::Indent {
+                            let block = self.parse_block()?;
+                            Expr::BlockExpr(block)
+                        } else {
+                            self.parse_expr(0)?
+                        }
+                    } else {
+                        self.parse_expr(0)?
+                    };
                     arms.push(MatchArm { pattern, guard, body });
                     self.skip_newlines();
                 }
@@ -1481,7 +1492,18 @@ impl Parser {
             None
         };
         self.expect(&Token::Arrow)?;
-        let body = self.parse_expr(0)?;
+        // Support multiline match arms: if an INDENT follows ->, parse a block
+        let body = if self.peek() == &Token::Newline || self.peek() == &Token::Indent {
+            self.skip_newlines();
+            if self.peek() == &Token::Indent {
+                let block = self.parse_block()?;
+                Expr::BlockExpr(block)
+            } else {
+                self.parse_expr(0)?
+            }
+        } else {
+            self.parse_expr(0)?
+        };
         Ok(MatchArm { pattern, guard, body })
     }
 

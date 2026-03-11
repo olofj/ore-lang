@@ -2287,6 +2287,20 @@ fn showcase86_loops_mutation() {
 }
 
 #[test]
+fn showcase87_multiline_match_arms() {
+    let out = run_ore("showcase87.ore");
+    assert!(out.contains("small circle (r=5.0)"));
+    assert!(out.contains("large circle (r=15.0)"));
+    assert!(out.contains("rectangle (3.0x4.0)"));
+    assert!(out.contains("square (7.0x7.0)"));
+    assert!(out.contains("zero"));
+    assert!(out.contains("one"));
+    assert!(out.contains("negative"));
+    assert!(out.contains("big"));
+    assert!(out.contains("other"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
