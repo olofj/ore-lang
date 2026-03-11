@@ -1,0 +1,49 @@
+-- Showcase 25: Caesar cipher with ord/chr
+-- Demonstrates: ord, chr, string processing, character manipulation
+
+fn caesar_shift text:Str shift:Int -> Str
+  mut result := ""
+  for i in 0..text.len()
+    c := text.char_at(i)
+    code := ord(c)
+    if code >= 65 and code <= 90
+      new_code := (code - 65 + shift) % 26 + 65
+      result = result + chr(new_code)
+    else if code >= 97 and code <= 122
+      new_code := (code - 97 + shift) % 26 + 97
+      result = result + chr(new_code)
+    else
+      result = result + c
+  result
+
+fn rot13 text:Str -> Str
+  caesar_shift(text, 13)
+
+fn is_alpha c:Str -> Bool
+  code := ord(c)
+  (code >= 65 and code <= 90) or (code >= 97 and code <= 122)
+
+fn main
+  -- Caesar cipher
+  msg := "Hello World"
+  encrypted := caesar_shift(msg, 3)
+  decrypted := caesar_shift(encrypted, -3)
+  print "Original:  {msg}"
+  print "Encrypted: {encrypted}"
+  print "Decrypted: {decrypted}"
+  
+  -- ROT13 (self-inverse)
+  secret := "Gur Dhvpx Oebja Sbk"
+  print "ROT13: {rot13(secret)}"
+  print "Double ROT13: {rot13(rot13(secret))}"
+  
+  -- Count letters
+  text := "Hello, World! 123"
+  alpha_count := text.chars() | filter(c => is_alpha(c)) | len()
+  print "Letters in '{text}': {alpha_count}"
+  
+  -- Build ASCII table
+  mut ascii := ""
+  for i in 33..48
+    ascii = ascii + chr(i) + " "
+  print "ASCII 33-47: {ascii}"

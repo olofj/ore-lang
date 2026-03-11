@@ -1,0 +1,71 @@
+-- Showcase 26: Pattern matching and enums
+-- Demonstrates: enums, match expressions, nested matching
+
+type Color
+  Red
+  Green
+  Blue
+  Custom(r: Int, g: Int, b: Int)
+
+fn color_name c:Color -> Str
+  c :
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+    Custom r g b -> "rgb({r},{g},{b})"
+
+type Expr
+  Num(val: Int)
+  Add(a: Int, b: Int)
+  Mul(a: Int, b: Int)
+
+fn evaluate e:Expr -> Int
+  e :
+    Num v -> v
+    Add a b -> a + b
+    Mul a b -> a * b
+
+fn classify n:Int -> Str
+  if n < 0
+    "negative"
+  else if n == 0
+    "zero"
+  else if n % 2 == 0
+    "positive even"
+  else
+    "positive odd"
+
+fn fizzbuzz n:Int -> Str
+  if n % 15 == 0
+    "FizzBuzz"
+  else if n % 3 == 0
+    "Fizz"
+  else if n % 5 == 0
+    "Buzz"
+  else
+    str(n)
+
+fn main
+  -- Color enum
+  print "Color: {color_name(Red)}"
+  print "Color: {color_name(Blue)}"
+  print "Color: {color_name(Custom(r: 255, g: 128, b: 0))}"
+
+  -- Expression evaluation
+  print "42 = {evaluate(Num(val: 42))}"
+  print "10+20 = {evaluate(Add(a: 10, b: 20))}"
+  print "6*7 = {evaluate(Mul(a: 6, b: 7))}"
+
+  -- Classification
+  nums := [-5, 0, 3, 8]
+  for i in 0..nums.len()
+    n := nums.get(i)
+    print "{n}: {classify(n)}"
+
+  -- FizzBuzz
+  mut fb := ""
+  for i in 1..16
+    if i > 1
+      fb = fb + ", "
+    fb = fb + fizzbuzz(i)
+  print "FizzBuzz: {fb}"

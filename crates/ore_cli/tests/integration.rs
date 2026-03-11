@@ -1492,3 +1492,24 @@ fn strings_ord_chr() {
     assert!(out.contains("a\n"));
     assert!(out.contains("HIJKL"));
 }
+
+#[test]
+fn showcase25() {
+    let out = run_ore("showcase25.ore");
+    assert!(out.contains("Encrypted: Khoor Zruog"));
+    assert!(out.contains("Decrypted: Hello World"));
+    assert!(out.contains("ROT13: The Quick Brown Fox"));
+    assert!(out.contains("Letters in 'Hello, World! 123': 10"));
+}
+
+#[test]
+fn showcase26() {
+    let out = run_ore("showcase26.ore");
+    assert!(out.contains("Color: red"));
+    assert!(out.contains("Color: rgb(255,128,0)"));
+    assert!(out.contains("42 = 42"));
+    assert!(out.contains("10+20 = 30"));
+    assert!(out.contains("-5: negative"));
+    assert!(out.contains("8: positive even"));
+    assert!(out.contains("FizzBuzz: 1, 2, Fizz, 4, Buzz"));
+}
