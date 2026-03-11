@@ -267,6 +267,20 @@ pub extern "C" fn ore_str_trim(s: *mut OreStr) -> *mut OreStr {
 }
 
 #[no_mangle]
+pub extern "C" fn ore_str_trim_start(s: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let trimmed = unsafe { (*s).as_str().trim_start() };
+    ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_trim_end(s: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let trimmed = unsafe { (*s).as_str().trim_end() };
+    ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
+}
+
+#[no_mangle]
 pub extern "C" fn ore_str_split(s: *mut OreStr, delim: *mut OreStr) -> *mut OreList {
     let result = ore_list_new();
     if s.is_null() { return result; }

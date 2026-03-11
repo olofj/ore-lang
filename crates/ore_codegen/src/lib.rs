@@ -720,6 +720,8 @@ impl<'ctx> CodeGen<'ctx> {
         // String methods
         self.module.add_function("ore_str_contains", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_trim", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_trim_start", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_trim_end", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_split", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3297,8 +3299,9 @@ impl<'ctx> CodeGen<'ctx> {
                 ))?;
                 Ok((bool_val.into(), ValKind::Bool))
             }
-            "trim" => {
-                let rt = self.module.get_function("ore_str_trim").unwrap();
+            "trim" | "trim_start" | "trim_end" => {
+                let fn_name = format!("ore_str_{}", method);
+                let rt = self.module.get_function(&fn_name).unwrap();
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "strim"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
