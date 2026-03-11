@@ -1,0 +1,144 @@
+-- Showcase 527: Machine Learning Decision Tree
+
+fn main
+  print "Decision Tree Classifier:"
+  print ""
+
+  -- Part 1: Training data (weather -> play tennis?)
+  print "=== Part 1: Training Data ==="
+  num_samples := 10
+  -- Features: outlook (0=sunny,1=overcast,2=rain), temp (F), humidity (0=low,1=high), windy (0=no,1=yes)
+  mut outlook := [0, 0, 1, 2, 2, 2, 1, 0, 0, 2]
+  mut temp := [85, 80, 83, 70, 68, 65, 64, 72, 69, 75]
+  mut humidity := [1, 1, 1, 1, 0, 0, 0, 1, 0, 0]
+  mut windy := [0, 1, 0, 0, 0, 1, 1, 0, 0, 0]
+  -- Label: play (1=yes, 0=no)
+  mut play := [0, 0, 1, 1, 1, 0, 1, 0, 1, 1]
+
+  print "  Samples: {num_samples}"
+  print "  Features: outlook, temperature, humidity, windy"
+  print "  Label: play tennis (yes/no)"
+  for i in range(0, num_samples)
+    mut o_name := "Rain"
+    if outlook[i] == 0
+      o_name = "Sunny"
+    else if outlook[i] == 1
+      o_name = "Overcast"
+    mut h_name := "Low"
+    if humidity[i] == 1
+      h_name = "High"
+    mut w_name := "No"
+    if windy[i] == 1
+      w_name = "Yes"
+    mut p_name := "No"
+    if play[i] == 1
+      p_name = "Yes"
+    print "    [{i}] {o_name}, {temp[i]}F, humid={h_name}, wind={w_name} -> {p_name}"
+
+  -- Part 2: Calculate entropy
+  print ""
+  print "=== Part 2: Entropy Calculation ==="
+  mut yes_count := 0
+  mut no_count := 0
+  for i in range(0, num_samples)
+    if play[i] == 1
+      yes_count = yes_count + 1
+    else
+      no_count = no_count + 1
+  print "  Yes: {yes_count}, No: {no_count}"
+  -- Entropy approx (scaled by 100): H = 0.97
+  root_entropy := 97
+  print "  Root entropy: 0.{root_entropy}"
+
+  -- Part 3: Information gain per feature
+  print ""
+  print "=== Part 3: Information Gain ==="
+  mut feature_names := ["outlook", "humidity", "windy"]
+  mut info_gains := [24, 15, 4]
+  mut best_gain := 0
+  mut best_feature_idx := 0
+  for i in range(0, 3)
+    print "  IG({feature_names[i]}) = 0.{info_gains[i]}"
+    if info_gains[i] > best_gain
+      best_gain = info_gains[i]
+      best_feature_idx = i
+  print "  Best split: outlook (gain=0.{best_gain})"
+
+  -- Part 4: Build decision tree
+  print ""
+  print "=== Part 4: Decision Tree ==="
+  print "  [outlook?]"
+  print "    |-- Sunny:"
+  print "    |   [humidity?]"
+  print "    |     |-- High: No"
+  print "    |     |-- Low: Yes"
+  print "    |-- Overcast: Yes"
+  print "    |-- Rain:"
+  print "    |   [windy?]"
+  print "    |     |-- Yes: No"
+  print "    |     |-- No: Yes"
+
+  -- Part 5: Predictions on new data
+  print ""
+  print "=== Part 5: Predictions ==="
+  mut pred_outlook := [0, 1, 2, 0, 2]
+  mut pred_humidity := [0, 1, 0, 1, 1]
+  mut pred_windy := [0, 0, 1, 1, 0]
+  num_pred := 5
+
+  mut correct := 0
+  mut actual := [1, 1, 0, 0, 1]
+
+  for i in range(0, num_pred)
+    mut prediction := 0
+    if pred_outlook[i] == 1
+      prediction = 1
+    else if pred_outlook[i] == 0
+      if pred_humidity[i] == 0
+        prediction = 1
+      else
+        prediction = 0
+    else
+      if pred_windy[i] == 1
+        prediction = 0
+      else
+        prediction = 1
+
+    mut o_name := "Rain"
+    if pred_outlook[i] == 0
+      o_name = "Sunny"
+    else if pred_outlook[i] == 1
+      o_name = "Overcast"
+    mut h_name := "Low"
+    if pred_humidity[i] == 1
+      h_name = "High"
+    mut w_name := "No"
+    if pred_windy[i] == 1
+      w_name = "Yes"
+    mut p_name := "No"
+    if prediction == 1
+      p_name = "Yes"
+
+    mut match_str := "WRONG"
+    if prediction == actual[i]
+      correct = correct + 1
+      match_str = "CORRECT"
+    print "  Sample {i + 1}: {o_name}, humid={h_name}, wind={w_name} -> {p_name} ({match_str})"
+
+  accuracy := correct * 100 / num_pred
+  print "  Accuracy: {correct}/{num_pred} = {accuracy}%"
+
+  -- Part 6: Tree statistics
+  print ""
+  print "=== Part 6: Tree Statistics ==="
+  tree_depth := 2
+  num_leaves := 5
+  num_internal := 3
+  print "  Max depth: {tree_depth}"
+  print "  Leaf nodes: {num_leaves}"
+  print "  Internal nodes: {num_internal}"
+  print "  Total nodes: {num_leaves + num_internal}"
+  print "  Training accuracy: {accuracy}%"
+
+  print ""
+  print "Decision tree: entropy, information gain, splitting, prediction, accuracy."

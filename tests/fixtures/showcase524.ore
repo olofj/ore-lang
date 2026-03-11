@@ -1,0 +1,122 @@
+-- Showcase 524: Ant Colony Optimization
+
+fn main
+  print "Ant Colony Optimization:"
+  print ""
+
+  -- Part 1: Graph setup (5 cities, distance matrix)
+  print "=== Part 1: City Graph ==="
+  num_cities := 5
+  mut city_names := ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]
+  -- Distance matrix (symmetric, flattened 5x5), 0 on diagonal
+  mut dist := [0, 10, 15, 20, 25, 10, 0, 35, 25, 30, 15, 35, 0, 30, 20, 20, 25, 30, 0, 15, 25, 30, 20, 15, 0]
+
+  print "  Cities: {num_cities}"
+  print "  Distance matrix:"
+  for i in range(0, num_cities)
+    mut row := "    "
+    for j in range(0, num_cities)
+      d := dist[i * num_cities + j]
+      if d < 10
+        row = row + " " + str(d)
+      else
+        row = row + " " + str(d)
+    print "  {city_names[i]}:{row}"
+
+  -- Part 2: Pheromone initialization
+  print ""
+  print "=== Part 2: Pheromone Levels ==="
+  -- Start with pheromone = 10 on all edges
+  mut pheromone := [0, 10, 10, 10, 10, 10, 0, 10, 10, 10, 10, 10, 0, 10, 10, 10, 10, 10, 0, 10, 10, 10, 10, 10, 0]
+  initial_pher := 10
+  print "  Initial pheromone on all edges: {initial_pher}"
+
+  -- Part 3: Ant tours (3 ants, each builds a tour)
+  print ""
+  print "=== Part 3: Ant Tours ==="
+  num_ants := 3
+
+  -- Ant 1 tour: 0 -> 1 -> 3 -> 4 -> 2 -> 0
+  mut ant1 := [0, 1, 3, 4, 2, 0]
+  -- Ant 2 tour: 0 -> 2 -> 4 -> 3 -> 1 -> 0
+  mut ant2 := [0, 2, 4, 3, 1, 0]
+  -- Ant 3 tour: 0 -> 4 -> 3 -> 1 -> 2 -> 0
+  mut ant3 := [0, 4, 3, 1, 2, 0]
+
+  -- Calculate tour lengths
+  mut len1 := 0
+  mut len2 := 0
+  mut len3 := 0
+  for i in range(0, 5)
+    len1 = len1 + dist[ant1[i] * num_cities + ant1[i + 1]]
+    len2 = len2 + dist[ant2[i] * num_cities + ant2[i + 1]]
+    len3 = len3 + dist[ant3[i] * num_cities + ant3[i + 1]]
+
+  print "  Ant 1: A->B->D->E->G->A, length={len1}"
+  print "  Ant 2: A->G->E->D->B->A, length={len2}"
+  print "  Ant 3: A->E->D->B->G->A, length={len3}"
+
+  -- Find best ant
+  mut best_len := len1
+  mut best_ant := 1
+  if len2 < best_len
+    best_len = len2
+    best_ant = 2
+  if len3 < best_len
+    best_len = len3
+    best_ant = 3
+  print "  Best: Ant {best_ant} with length {best_len}"
+
+  -- Part 4: Pheromone update
+  print ""
+  print "=== Part 4: Pheromone Update ==="
+  evap_rate := 10
+  print "  Evaporation rate: {evap_rate}%"
+
+  -- Evaporate
+  for i in range(0, 25)
+    if pheromone[i] > 0
+      pheromone[i] = pheromone[i] * (100 - evap_rate) / 100
+
+  -- Deposit: each ant deposits 100/tour_length on its edges
+  deposit1 := 1000 / len1
+  deposit2 := 1000 / len2
+  deposit3 := 1000 / len3
+  print "  Deposit amounts: Ant1={deposit1}, Ant2={deposit2}, Ant3={deposit3}"
+
+  for i in range(0, 5)
+    a := ant1[i]
+    b := ant1[i + 1]
+    pheromone[a * num_cities + b] = pheromone[a * num_cities + b] + deposit1
+    pheromone[b * num_cities + a] = pheromone[b * num_cities + a] + deposit1
+
+  print "  Updated pheromone sample edges:"
+  print "    Alpha-Beta: {pheromone[0 * 5 + 1]}"
+  print "    Alpha-Gamma: {pheromone[0 * 5 + 2]}"
+  print "    Delta-Epsilon: {pheromone[3 * 5 + 4]}"
+
+  -- Part 5: Multiple iterations
+  print ""
+  print "=== Part 5: Iteration History ==="
+  mut iter_best := [100, 90, 85, 80, 80, 78, 75, 75, 75, 75]
+  for i in range(0, 10)
+    mut bar := ""
+    num_hashes := iter_best[i] / 5
+    for j in range(0, num_hashes)
+      bar = bar + "#"
+    print "  Iter {i + 1}: best={iter_best[i]} {bar}"
+
+  improvement := iter_best[0] - iter_best[9]
+  pct := improvement * 100 / iter_best[0]
+  print "  Improvement: {improvement} ({pct}%)"
+
+  -- Part 6: Final solution
+  print ""
+  print "=== Part 6: Best Solution ==="
+  print "  Optimal tour: Alpha -> Epsilon -> Delta -> Beta -> Gamma -> Alpha"
+  print "  Tour length: {best_len}"
+  print "  Iterations: 10"
+  print "  Ants per iteration: {num_ants}"
+
+  print ""
+  print "Ant colony: graph, pheromones, tours, evaporation, convergence."

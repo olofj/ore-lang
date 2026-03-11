@@ -1,0 +1,120 @@
+-- Showcase 525: Simple HTTP Server Routing
+
+fn main
+  print "HTTP Server Routing Simulation:"
+  print ""
+
+  -- Part 1: Route table
+  print "=== Part 1: Route Table ==="
+  mut route_methods := ["GET", "GET", "POST", "PUT", "DELETE", "GET", "POST"]
+  mut route_paths := ["/", "/users", "/users", "/users/:id", "/users/:id", "/api/health", "/login"]
+  mut route_handlers := ["home", "list_users", "create_user", "update_user", "delete_user", "health_check", "login"]
+  num_routes := 7
+
+  print "  Registered routes:"
+  for i in range(0, num_routes)
+    print "    {route_methods[i]} {route_paths[i]} -> {route_handlers[i]}"
+
+  -- Part 2: Request matching
+  print ""
+  print "=== Part 2: Request Matching ==="
+  mut req_methods := ["GET", "POST", "GET", "DELETE", "GET", "PATCH"]
+  mut req_paths := ["/users", "/login", "/api/health", "/users/42", "/unknown", "/users"]
+  num_requests := 6
+
+  mut matched := 0
+  mut not_found := 0
+  mut method_errors := 0
+
+  for r in range(0, num_requests)
+    mut found := false
+    mut handler := "404 Not Found"
+    mut status := 404
+
+    for i in range(0, num_routes)
+      if route_methods[i] == req_methods[r] and route_paths[i] == req_paths[r]
+        handler = route_handlers[i]
+        status = 200
+        found = true
+
+    -- Check for path-only match (method not allowed)
+    if not found
+      for i in range(0, num_routes)
+        if route_paths[i] == req_paths[r] and not found
+          handler = "405 Method Not Allowed"
+          status = 405
+          found = true
+
+    if status == 200
+      matched = matched + 1
+    else if status == 405
+      method_errors = method_errors + 1
+    else
+      not_found = not_found + 1
+
+    print "  {req_methods[r]} {req_paths[r]} -> {status} ({handler})"
+
+  -- Part 3: Middleware pipeline
+  print ""
+  print "=== Part 3: Middleware Pipeline ==="
+  mut middleware := ["logger", "cors", "auth", "rate_limiter", "handler"]
+  num_mw := 5
+  print "  Request pipeline:"
+  for i in range(0, num_mw)
+    mut arrow := ""
+    for j in range(0, i)
+      arrow = arrow + "  "
+    print "  {arrow}-> {middleware[i]}"
+
+  -- Simulate middleware execution times (microseconds)
+  mut mw_times := [5, 2, 15, 8, 50]
+  mut total_time := 0
+  for i in range(0, num_mw)
+    total_time = total_time + mw_times[i]
+  print "  Total processing time: {total_time}us"
+
+  -- Part 4: Response codes
+  print ""
+  print "=== Part 4: Response Statistics ==="
+  print "  200 OK: {matched}"
+  print "  404 Not Found: {not_found}"
+  print "  405 Method Not Allowed: {method_errors}"
+  total_req := matched + not_found + method_errors
+  success_rate := matched * 100 / total_req
+  print "  Success rate: {success_rate}%"
+
+  -- Part 5: Rate limiting
+  print ""
+  print "=== Part 5: Rate Limiting ==="
+  rate_limit := 100
+  window_sec := 60
+  print "  Limit: {rate_limit} requests per {window_sec}s"
+
+  mut client_counts := [45, 102, 78, 150, 30]
+  mut client_ips := ["192.168.1.1", "10.0.0.5", "172.16.0.3", "192.168.1.99", "10.0.0.12"]
+  mut blocked := 0
+  for i in range(0, 5)
+    if client_counts[i] > rate_limit
+      print "  {client_ips[i]}: {client_counts[i]} reqs -> BLOCKED"
+      blocked = blocked + 1
+    else
+      print "  {client_ips[i]}: {client_counts[i]} reqs -> OK"
+  print "  Blocked clients: {blocked}/5"
+
+  -- Part 6: Access log
+  print ""
+  print "=== Part 6: Access Log ==="
+  mut log_times := [100, 150, 80, 200, 120, 95]
+  mut total_resp := 0
+  mut slowest := 0
+  for i in range(0, num_requests)
+    total_resp = total_resp + log_times[i]
+    if log_times[i] > slowest
+      slowest = log_times[i]
+    print "  [{req_methods[i]}] {req_paths[i]} {log_times[i]}ms"
+  avg_resp := total_resp / num_requests
+  print "  Average response: {avg_resp}ms"
+  print "  Slowest: {slowest}ms"
+
+  print ""
+  print "HTTP routing: routes, matching, middleware, rate limiting, logging."

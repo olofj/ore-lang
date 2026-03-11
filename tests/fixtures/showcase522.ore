@@ -1,0 +1,122 @@
+-- Showcase 522: Card Game (Poker Hand Evaluation)
+
+fn main
+  print "Poker Hand Evaluator:"
+  print ""
+
+  -- Part 1: Deck representation
+  print "=== Part 1: Card Deck ==="
+  mut suits := ["Hearts", "Diamonds", "Clubs", "Spades"]
+  mut ranks := ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
+  total_cards := 52
+  print "  Deck: {total_cards} cards ({suits | len} suits x {ranks | len} ranks)"
+  for i in range(0, 4)
+    print "  {suits[i]}: 2-10, J, Q, K, A"
+
+  -- Part 2: Hand ranking
+  print ""
+  print "=== Part 2: Hand Rankings ==="
+  mut hand_names := ["High Card", "One Pair", "Two Pair", "Three of a Kind", "Straight", "Flush", "Full House", "Four of a Kind", "Straight Flush", "Royal Flush"]
+  for i in range(0, 10)
+    print "  {i + 1}. {hand_names[i]}"
+
+  -- Part 3: Evaluate sample hands
+  print ""
+  print "=== Part 3: Hand Evaluation ==="
+
+  -- Hand 1: One Pair (two 8s)
+  mut h1_ranks := [8, 8, 3, 11, 13]
+  mut h1_suits := [0, 1, 2, 3, 0]
+  -- Count rank occurrences
+  mut has_pair := false
+  for i in range(0, 5)
+    for j in range(i + 1, 5)
+      if h1_ranks[i] == h1_ranks[j]
+        has_pair = true
+  print "  Hand 1: 8H 8D 3C JH KS -> One Pair (8s)"
+
+  -- Hand 2: Flush (all hearts)
+  mut h2_ranks := [2, 7, 9, 5, 12]
+  mut h2_suits := [0, 0, 0, 0, 0]
+  mut is_flush := true
+  for i in range(1, 5)
+    if h2_suits[i] != h2_suits[0]
+      is_flush = false
+  if is_flush
+    print "  Hand 2: 2H 7H 9H 5H QH -> Flush (Hearts)"
+
+  -- Hand 3: Straight (5-6-7-8-9)
+  mut h3_ranks := [5, 6, 7, 8, 9]
+  -- Sort and check consecutive
+  mut is_straight := true
+  for i in range(1, 5)
+    if h3_ranks[i] != h3_ranks[i - 1] + 1
+      is_straight = false
+  if is_straight
+    print "  Hand 3: 5C 6D 7H 8S 9C -> Straight (5-9)"
+
+  -- Hand 4: Full House (three Ks, two 4s)
+  mut h4_ranks := [13, 13, 13, 4, 4]
+  mut three_count := 0
+  mut two_count := 0
+  -- Count K occurrences
+  for i in range(0, 5)
+    if h4_ranks[i] == 13
+      three_count = three_count + 1
+    if h4_ranks[i] == 4
+      two_count = two_count + 1
+  if three_count == 3 and two_count == 2
+    print "  Hand 4: KH KD KC 4S 4H -> Full House (Ks over 4s)"
+
+  -- Part 4: Compare hands
+  print ""
+  print "=== Part 4: Hand Comparison ==="
+  mut hand_scores := [2, 6, 5, 7]
+  mut hand_labels := ["One Pair", "Flush", "Straight", "Full House"]
+  -- Find best hand
+  mut best_score := 0
+  mut best_idx := 0
+  for i in range(0, 4)
+    if hand_scores[i] > best_score
+      best_score = hand_scores[i]
+      best_idx = i
+  print "  Best hand: Hand {best_idx + 1} - {hand_labels[best_idx]} (rank {best_score})"
+
+  -- Rank all hands
+  print "  Rankings:"
+  -- Simple insertion sort of indices by score descending
+  mut order := [0, 1, 2, 3]
+  for i in range(0, 4)
+    for j in range(i + 1, 4)
+      if hand_scores[order[j]] > hand_scores[order[i]]
+        tmp := order[i]
+        order[i] = order[j]
+        order[j] = tmp
+  for i in range(0, 4)
+    idx := order[i]
+    print "    {i + 1}. Hand {idx + 1}: {hand_labels[idx]} (rank {hand_scores[idx]})"
+
+  -- Part 5: Win probability estimation
+  print ""
+  print "=== Part 5: Win Probability ==="
+  -- Simplified: higher rank = higher win %
+  mut total_rank := 0
+  for i in range(0, 4)
+    total_rank = total_rank + hand_scores[i]
+  for i in range(0, 4)
+    pct := hand_scores[i] * 100 / total_rank
+    print "  Hand {i + 1} ({hand_labels[i]}): ~{pct}% win chance"
+
+  -- Part 6: Pot calculation
+  print ""
+  print "=== Part 6: Pot and Payouts ==="
+  mut bets := [50, 100, 75, 120]
+  mut pot := 0
+  for i in range(0, 4)
+    pot = pot + bets[i]
+    print "  Player {i + 1} bets: {bets[i]}"
+  print "  Total pot: {pot}"
+  print "  Winner (Player {best_idx + 1}) takes: {pot}"
+
+  print ""
+  print "Poker: deck, hand evaluation, ranking, comparison, probability, payouts."

@@ -1,0 +1,128 @@
+-- Showcase 528: Digital Circuit Simulator (Flip-Flops, Counters)
+
+fn main
+  print "Digital Circuit Simulator:"
+  print ""
+
+  -- Part 1: Logic gates
+  print "=== Part 1: Logic Gates ==="
+  print "  AND gate truth table:"
+  for a in range(0, 2)
+    for b in range(0, 2)
+      mut result := 0
+      if a == 1 and b == 1
+        result = 1
+      print "    {a} AND {b} = {result}"
+
+  print "  OR gate truth table:"
+  for a in range(0, 2)
+    for b in range(0, 2)
+      mut result := 0
+      if a == 1 or b == 1
+        result = 1
+      print "    {a} OR  {b} = {result}"
+
+  print "  XOR gate truth table:"
+  for a in range(0, 2)
+    for b in range(0, 2)
+      mut result := 0
+      if a != b
+        result = 1
+      print "    {a} XOR {b} = {result}"
+
+  -- Part 2: SR Latch
+  print ""
+  print "=== Part 2: SR Latch ==="
+  mut q := 0
+  mut inputs_s := [0, 1, 0, 0, 0, 1, 0]
+  mut inputs_r := [0, 0, 0, 1, 0, 0, 1]
+  num_steps := 7
+  print "  S R -> Q"
+  for i in range(0, num_steps)
+    s := inputs_s[i]
+    r := inputs_r[i]
+    if s == 1 and r == 0
+      q = 1
+    else if s == 0 and r == 1
+      q = 0
+    print "  {s} {r} -> {q}"
+
+  -- Part 3: D Flip-Flop
+  print ""
+  print "=== Part 3: D Flip-Flop ==="
+  mut d_input := [0, 1, 1, 0, 1, 0, 0, 1]
+  mut clk := [0, 1, 0, 1, 0, 1, 0, 1]
+  mut ff_q := 0
+  num_cycles := 8
+  print "  CLK D -> Q"
+  for i in range(0, num_cycles)
+    -- On rising edge (clk=1), capture D
+    if clk[i] == 1
+      ff_q = d_input[i]
+    print "   {clk[i]}   {d_input[i]} -> {ff_q}"
+
+  -- Part 4: 4-bit binary counter
+  print ""
+  print "=== Part 4: 4-Bit Counter ==="
+  mut counter := 0
+  print "  Clock  Count  Binary"
+  for clk_tick in range(0, 16)
+    -- Convert to binary representation
+    mut b3 := 0
+    mut b2 := 0
+    mut b1 := 0
+    mut b0 := 0
+    mut val := counter
+    if val >= 8
+      b3 = 1
+      val = val - 8
+    if val >= 4
+      b2 = 1
+      val = val - 4
+    if val >= 2
+      b1 = 1
+      val = val - 2
+    if val >= 1
+      b0 = 1
+    print "    {clk_tick}      {counter}      {b3}{b2}{b1}{b0}"
+    counter = counter + 1
+    if counter > 15
+      counter = 0
+
+  -- Part 5: Shift register
+  print ""
+  print "=== Part 5: 4-Bit Shift Register ==="
+  mut sr := [0, 0, 0, 0]
+  mut serial_in := [1, 0, 1, 1, 0, 1]
+  num_shifts := 6
+  print "  Input  Register"
+  for i in range(0, num_shifts)
+    -- Shift right, insert at position 0
+    sr[3] = sr[2]
+    sr[2] = sr[1]
+    sr[1] = sr[0]
+    sr[0] = serial_in[i]
+    print "    {serial_in[i]}    [{sr[0]}, {sr[1]}, {sr[2]}, {sr[3]}]"
+
+  -- Part 6: Circuit timing analysis
+  print ""
+  print "=== Part 6: Timing Analysis ==="
+  mut gate_delays := [2, 2, 3, 1, 5]
+  mut gate_names := ["AND", "OR", "XOR", "NOT", "MUX"]
+  print "  Gate delays (ns):"
+  mut total_delay := 0
+  mut max_delay := 0
+  for i in range(0, 5)
+    print "    {gate_names[i]}: {gate_delays[i]}ns"
+    total_delay = total_delay + gate_delays[i]
+    if gate_delays[i] > max_delay
+      max_delay = gate_delays[i]
+
+  -- Critical path: AND -> XOR -> MUX = 2 + 3 + 5 = 10ns
+  critical_path := 2 + 3 + 5
+  max_freq := 1000 / critical_path
+  print "  Critical path: AND -> XOR -> MUX = {critical_path}ns"
+  print "  Max frequency: {max_freq}MHz"
+
+  print ""
+  print "Circuit simulator: gates, SR latch, D flip-flop, counter, shift register, timing."

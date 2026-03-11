@@ -1,0 +1,144 @@
+-- Showcase 530: Cryptocurrency Mining Simulation
+
+fn main
+  print "Cryptocurrency Mining Simulation:"
+  print ""
+
+  -- Part 1: Blockchain setup
+  print "=== Part 1: Blockchain ==="
+  mut block_ids := [0, 1, 2, 3, 4]
+  mut block_hashes := [1000, 2847, 5391, 7723, 9156]
+  mut block_prev := [0, 1000, 2847, 5391, 7723]
+  mut block_nonces := [0, 42, 117, 283, 501]
+  mut block_miners := ["genesis", "MinerA", "MinerB", "MinerA", "MinerC"]
+  num_blocks := 5
+
+  print "  Chain length: {num_blocks} blocks"
+  print "  Blockchain:"
+  for i in range(0, num_blocks)
+    print "    Block {block_ids[i]}: hash={block_hashes[i]}, prev={block_prev[i]}, nonce={block_nonces[i]}, miner={block_miners[i]}"
+
+  -- Verify chain integrity
+  mut valid := true
+  for i in range(1, num_blocks)
+    if block_prev[i] != block_hashes[i - 1]
+      valid = false
+  if valid
+    print "  Chain integrity: VALID"
+  else
+    print "  Chain integrity: INVALID"
+
+  -- Part 2: Mining (proof of work)
+  print ""
+  print "=== Part 2: Proof of Work ==="
+  difficulty := 100
+  print "  Difficulty: hash must be < {difficulty}"
+  print "  Mining new block..."
+
+  -- Simulate finding a nonce
+  mut nonce := 0
+  mut found := false
+  mut hash := 0
+  mut attempts := 0
+  for n in range(0, 1000)
+    if not found
+      -- Simple hash: (prev_hash * 31 + nonce) % 997
+      hash = (block_hashes[4] * 31 + n) % 997
+      attempts = attempts + 1
+      if hash < difficulty
+        nonce = n
+        found = true
+
+  if found
+    print "  Found! nonce={nonce}, hash={hash}, attempts={attempts}"
+  print "  Hash rate: ~{attempts} hashes simulated"
+
+  -- Part 3: Mining pool
+  print ""
+  print "=== Part 3: Mining Pool ==="
+  mut miner_names := ["MinerA", "MinerB", "MinerC", "MinerD"]
+  mut miner_power := [30, 25, 35, 10]
+  num_miners := 4
+  total_power := 100
+  print "  Pool members:"
+  for i in range(0, num_miners)
+    print "    {miner_names[i]}: {miner_power[i]}% hash power"
+
+  -- Simulate 20 blocks mined by the pool
+  print "  Block rewards (20 blocks, reward=50 coins each):"
+  block_reward := 50
+  for i in range(0, num_miners)
+    share := block_reward * 20 * miner_power[i] / total_power
+    print "    {miner_names[i]}: {share} coins ({miner_power[i]}%)"
+
+  -- Part 4: Transaction mempool
+  print ""
+  print "=== Part 4: Transaction Mempool ==="
+  mut tx_from := ["Alice", "Bob", "Carol", "Dave", "Eve", "Alice"]
+  mut tx_to := ["Bob", "Carol", "Dave", "Eve", "Alice", "Carol"]
+  mut tx_amounts := [10, 25, 5, 15, 30, 8]
+  mut tx_fees := [2, 3, 1, 2, 4, 1]
+  num_txs := 6
+
+  mut total_fees := 0
+  mut total_value := 0
+  print "  Pending transactions:"
+  for i in range(0, num_txs)
+    print "    {tx_from[i]} -> {tx_to[i]}: {tx_amounts[i]} coins (fee: {tx_fees[i]})"
+    total_fees = total_fees + tx_fees[i]
+    total_value = total_value + tx_amounts[i]
+  print "  Total value: {total_value} coins"
+  print "  Total fees: {total_fees} coins"
+
+  -- Sort by fee (highest first) for block inclusion
+  mut tx_order := [0, 1, 2, 3, 4, 5]
+  for i in range(0, num_txs)
+    for j in range(i + 1, num_txs)
+      if tx_fees[tx_order[j]] > tx_fees[tx_order[i]]
+        tmp := tx_order[i]
+        tx_order[i] = tx_order[j]
+        tx_order[j] = tmp
+
+  max_tx_per_block := 4
+  print "  Block capacity: {max_tx_per_block} transactions"
+  print "  Selected transactions (by fee):"
+  mut included_fees := 0
+  for i in range(0, max_tx_per_block)
+    idx := tx_order[i]
+    print "    {tx_from[idx]} -> {tx_to[idx]}: {tx_amounts[idx]} (fee: {tx_fees[idx]})"
+    included_fees = included_fees + tx_fees[idx]
+  print "  Miner earns: {block_reward} (reward) + {included_fees} (fees) = {block_reward + included_fees}"
+
+  -- Part 5: Difficulty adjustment
+  print ""
+  print "=== Part 5: Difficulty Adjustment ==="
+  target_time := 10
+  mut actual_times := [8, 12, 7, 15, 9, 11, 6, 14, 10, 8]
+  mut avg_time := 0
+  for i in range(0, 10)
+    avg_time = avg_time + actual_times[i]
+  avg_time = avg_time / 10
+  print "  Target block time: {target_time}s"
+  print "  Average block time: {avg_time}s"
+
+  mut new_difficulty := difficulty * target_time / avg_time
+  if avg_time < target_time
+    print "  Blocks too fast -> increase difficulty"
+  else
+    print "  Blocks too slow -> decrease difficulty"
+  print "  Old difficulty: {difficulty}"
+  print "  New difficulty: {new_difficulty}"
+
+  -- Part 6: Network stats
+  print ""
+  print "=== Part 6: Network Statistics ==="
+  chain_len := num_blocks + 1
+  total_coins := chain_len * block_reward
+  print "  Chain height: {chain_len}"
+  print "  Total coins minted: {total_coins}"
+  print "  Active miners: {num_miners}"
+  print "  Mempool size: {num_txs} transactions"
+  print "  Network hash rate: {total_power}%"
+
+  print ""
+  print "Crypto mining: blockchain, proof-of-work, pool, mempool, difficulty, stats."

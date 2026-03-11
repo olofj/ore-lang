@@ -1,0 +1,85 @@
+-- Showcase 523: Simple JIT Compiler Concepts (Bytecode to Native)
+
+fn main
+  print "JIT Compiler Simulation:"
+  print ""
+
+  -- Part 1: Bytecode instruction set
+  print "=== Part 1: Instruction Set ==="
+  mut opcodes := ["LOAD_CONST", "LOAD_VAR", "STORE_VAR", "ADD", "SUB", "MUL", "CMP_LT", "JUMP", "JUMP_IF", "CALL", "RET", "PRINT"]
+  mut op_codes := [1, 2, 3, 10, 11, 12, 20, 30, 31, 40, 41, 50]
+  for i in range(0, 12)
+    print "  0x{op_codes[i]}: {opcodes[i]}"
+
+  -- Part 2: Compile a simple program to bytecode
+  print ""
+  print "=== Part 2: Bytecode Generation ==="
+  print "  Source: sum = 0; for i in 1..5: sum = sum + i; print sum"
+  -- Bytecode representation (op, arg)
+  mut bc_ops := [1, 3, 1, 3, 2, 10, 3, 2, 20, 31, 11, 30, 2, 50]
+  mut bc_args := [0, 0, 1, 1, 1, 0, 0, 0, 5, 12, 1, 4, 0, 0]
+  mut bc_labels := ["LOAD_CONST 0", "STORE_VAR sum", "LOAD_CONST 1", "STORE_VAR i", "LOAD_VAR i", "ADD sum", "STORE_VAR sum", "LOAD_VAR i", "CMP_LT 5", "JUMP_IF loop", "ADD_VAR i 1", "JUMP loop", "LOAD_VAR sum", "PRINT"]
+  num_instructions := 14
+  print "  Bytecode ({num_instructions} instructions):"
+  for i in range(0, num_instructions)
+    print "    [{i}] {bc_labels[i]}"
+
+  -- Part 3: Interpreter execution
+  print ""
+  print "=== Part 3: Interpreter Execution ==="
+  mut vars := [0, 0, 0, 0]
+  mut var_names := ["sum", "i", "temp", "result"]
+  -- Execute: sum = 0, then loop i=1..4, sum += i
+  vars[0] = 0
+  mut steps := 0
+  for i in range(1, 5)
+    vars[1] = i
+    vars[0] = vars[0] + i
+    steps = steps + 3
+  print "  Interpreter result: sum = {vars[0]}"
+  print "  Steps executed: {steps}"
+
+  -- Part 4: Hot path detection
+  print ""
+  print "=== Part 4: Hot Path Detection ==="
+  mut exec_counts := [1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1]
+  hot_threshold := 3
+  mut hot_count := 0
+  print "  Execution counts (threshold={hot_threshold}):"
+  for i in range(0, num_instructions)
+    mut marker := ""
+    if exec_counts[i] >= hot_threshold
+      marker = " [HOT]"
+      hot_count = hot_count + 1
+    print "    [{i}] {bc_labels[i]}: {exec_counts[i]}x{marker}"
+  print "  Hot instructions: {hot_count}/{num_instructions}"
+
+  -- Part 5: JIT compilation (translate hot path to native ops)
+  print ""
+  print "=== Part 5: JIT Compilation ==="
+  print "  Compiling hot loop to native code..."
+  mut native_ops := ["mov eax, [sum]", "mov ecx, [i]", "add eax, ecx", "mov [sum], eax", "inc ecx", "cmp ecx, 5", "jl loop_start"]
+  num_native := 7
+  print "  Native code ({num_native} instructions):"
+  for i in range(0, num_native)
+    print "    {native_ops[i]}"
+  speedup := num_instructions * 100 / num_native
+  print "  Compression ratio: {num_instructions} bytecode -> {num_native} native ({speedup}%)"
+
+  -- Part 6: Performance comparison
+  print ""
+  print "=== Part 6: Performance Comparison ==="
+  -- Simulate cycle counts
+  interp_cycles := steps * 10
+  jit_compile_cost := 50
+  jit_run_cycles := 4 * num_native * 2
+  jit_total := jit_compile_cost + jit_run_cycles
+  print "  Interpreter: {interp_cycles} cycles"
+  print "  JIT compile cost: {jit_compile_cost} cycles"
+  print "  JIT execution: {jit_run_cycles} cycles"
+  print "  JIT total: {jit_total} cycles"
+  if jit_total < interp_cycles
+    print "  JIT is faster by {interp_cycles - jit_total} cycles"
+
+  print ""
+  print "JIT compiler: bytecode, interpreter, hot paths, native codegen, performance."

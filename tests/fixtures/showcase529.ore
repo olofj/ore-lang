@@ -1,0 +1,147 @@
+-- Showcase 529: Simple Garbage Collection Strategies Compared
+
+fn main
+  print "Garbage Collection Strategies:"
+  print ""
+
+  -- Part 1: Memory heap simulation
+  print "=== Part 1: Heap Setup ==="
+  heap_size := 64
+  block_size := 4
+  num_blocks := heap_size / block_size
+  print "  Heap size: {heap_size} bytes"
+  print "  Block size: {block_size} bytes"
+  print "  Total blocks: {num_blocks}"
+
+  -- Block states: 0=free, 1=allocated, 2=garbage
+  mut blocks := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut block_owners := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Allocate some objects
+  mut alloc_count := 0
+  mut alloc_sizes := [2, 3, 1, 4, 2, 1]
+  mut alloc_names := ["ObjA", "ObjB", "ObjC", "ObjD", "ObjE", "ObjF"]
+  num_allocs := 6
+  mut pos := 0
+  for a in range(0, num_allocs)
+    sz := alloc_sizes[a]
+    for b in range(0, sz)
+      if pos + b < num_blocks
+        blocks[pos + b] = 1
+        block_owners[pos + b] = a + 1
+    print "  Alloc {alloc_names[a]}: blocks {pos}-{pos + sz - 1} ({sz} blocks)"
+    pos = pos + sz
+    alloc_count = alloc_count + sz
+
+  free_blocks := num_blocks - alloc_count
+  print "  Allocated: {alloc_count}/{num_blocks} blocks"
+  print "  Free: {free_blocks} blocks"
+
+  -- Part 2: Objects become garbage
+  print ""
+  print "=== Part 2: Creating Garbage ==="
+  -- ObjB (owner=2) and ObjD (owner=4) become unreachable
+  for i in range(0, num_blocks)
+    if block_owners[i] == 2 or block_owners[i] == 4
+      blocks[i] = 2
+  mut garbage := 0
+  mut live := 0
+  for i in range(0, num_blocks)
+    if blocks[i] == 2
+      garbage = garbage + 1
+    else if blocks[i] == 1
+      live = live + 1
+  print "  ObjB and ObjD are now unreachable"
+  print "  Live blocks: {live}"
+  print "  Garbage blocks: {garbage}"
+  print "  Free blocks: {free_blocks}"
+
+  -- Part 3: Reference counting
+  print ""
+  print "=== Part 3: Reference Counting ==="
+  mut ref_counts := [1, 0, 2, 0, 1, 3]
+  print "  Object reference counts:"
+  mut rc_freed := 0
+  for i in range(0, num_allocs)
+    mut status := "alive"
+    if ref_counts[i] == 0
+      status = "FREED"
+      rc_freed = rc_freed + alloc_sizes[i]
+    print "    {alloc_names[i]}: refcount={ref_counts[i]} ({status})"
+  print "  Blocks freed by RC: {rc_freed}"
+  print "  Advantage: immediate reclamation"
+  print "  Disadvantage: cannot handle cycles"
+
+  -- Part 4: Mark-and-sweep
+  print ""
+  print "=== Part 4: Mark-and-Sweep ==="
+  -- Root set: ObjA, ObjC, ObjE, ObjF are reachable
+  mut marked := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Mark phase
+  print "  Mark phase (tracing from roots):"
+  mut mark_count := 0
+  for i in range(0, num_blocks)
+    owner := block_owners[i]
+    if owner == 1 or owner == 3 or owner == 5 or owner == 6
+      marked[i] = 1
+      mark_count = mark_count + 1
+  print "    Marked {mark_count} blocks as reachable"
+
+  -- Sweep phase
+  print "  Sweep phase:"
+  mut swept := 0
+  for i in range(0, num_blocks)
+    if blocks[i] != 0 and marked[i] == 0
+      blocks[i] = 0
+      block_owners[i] = 0
+      swept = swept + 1
+  print "    Swept {swept} garbage blocks"
+  print "  Advantage: handles cycles"
+  print "  Disadvantage: stop-the-world pause"
+
+  -- Part 5: Compaction
+  print ""
+  print "=== Part 5: Compaction ==="
+  -- Count fragmentation before compaction
+  mut fragments := 0
+  mut in_free := false
+  for i in range(0, num_blocks)
+    if blocks[i] == 0 and not in_free
+      fragments = fragments + 1
+      in_free = true
+    else if blocks[i] != 0
+      in_free = false
+  print "  Free fragments before compaction: {fragments}"
+
+  -- Compact: move all live blocks to the start
+  mut compact := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut write_pos := 0
+  mut moved := 0
+  for i in range(0, num_blocks)
+    if blocks[i] == 1
+      compact[write_pos] = 1
+      write_pos = write_pos + 1
+      if write_pos - 1 != i
+        moved = moved + 1
+
+  print "  Blocks moved: {moved}"
+  print "  Live region: blocks 0-{write_pos - 1}"
+  print "  Free region: blocks {write_pos}-{num_blocks - 1}"
+  print "  Fragments after compaction: 1"
+
+  -- Part 6: Strategy comparison
+  print ""
+  print "=== Part 6: Strategy Comparison ==="
+  mut strategies := ["Reference Counting", "Mark-and-Sweep", "Mark-Compact", "Generational"]
+  mut throughput := [85, 92, 88, 95]
+  mut latency := [1, 15, 20, 5]
+  mut handles_cycles := [0, 1, 1, 1]
+  for i in range(0, 4)
+    mut cycle_str := "no"
+    if handles_cycles[i] == 1
+      cycle_str = "yes"
+    print "  {strategies[i]}:"
+    print "    Throughput: {throughput[i]}%, Latency: {latency[i]}ms, Cycles: {cycle_str}"
+
+  print ""
+  print "GC strategies: reference counting, mark-sweep, compaction, comparison."

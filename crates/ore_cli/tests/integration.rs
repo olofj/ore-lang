@@ -6845,6 +6845,124 @@ fn showcase520_neural_network() {
 }
 
 #[test]
+fn showcase521_parser_combinator() {
+    let out = run_ore("showcase521.ore");
+    assert!(out.contains("Parser Combinator Library:"));
+    assert!(out.contains("[0] NUM(3)"));
+    assert!(out.contains("[3] OP(*)"));
+    assert!(out.contains("Result: 287"));
+    assert!(out.contains("Total AST nodes: 7"));
+    assert!(out.contains("Parser tests: 5/5 passed"));
+    assert!(out.contains("Parser combinators: tokenizer, recursive descent, grammar rules, AST analysis."));
+}
+
+#[test]
+fn showcase522_poker_hand() {
+    let out = run_ore("showcase522.ore");
+    assert!(out.contains("Poker Hand Evaluator:"));
+    assert!(out.contains("Deck: 52 cards (4 suits x 13 ranks)"));
+    assert!(out.contains("Hand 2: 2H 7H 9H 5H QH -> Flush (Hearts)"));
+    assert!(out.contains("Full House (Ks over 4s)"));
+    assert!(out.contains("Best hand: Hand 4 - Full House (rank 7)"));
+    assert!(out.contains("Total pot: 345"));
+    assert!(out.contains("Poker: deck, hand evaluation, ranking, comparison, probability, payouts."));
+}
+
+#[test]
+fn showcase523_jit_compiler() {
+    let out = run_ore("showcase523.ore");
+    assert!(out.contains("JIT Compiler Simulation:"));
+    assert!(out.contains("Bytecode (14 instructions):"));
+    assert!(out.contains("Interpreter result: sum = 10"));
+    assert!(out.contains("Hot instructions: 10/14"));
+    assert!(out.contains("Native code (7 instructions):"));
+    assert!(out.contains("JIT is faster by 14 cycles"));
+    assert!(out.contains("JIT compiler: bytecode, interpreter, hot paths, native codegen, performance."));
+}
+
+#[test]
+fn showcase524_ant_colony() {
+    let out = run_ore("showcase524.ore");
+    assert!(out.contains("Ant Colony Optimization:"));
+    assert!(out.contains("Cities: 5"));
+    assert!(out.contains("Best: Ant 1 with length 85"));
+    assert!(out.contains("Evaporation rate: 10%"));
+    assert!(out.contains("Improvement: 25 (25%)"));
+    assert!(out.contains("Ant colony: graph, pheromones, tours, evaporation, convergence."));
+}
+
+#[test]
+fn showcase525_http_routing() {
+    let out = run_ore("showcase525.ore");
+    assert!(out.contains("HTTP Server Routing Simulation:"));
+    assert!(out.contains("GET /users -> 200 (list_users)"));
+    assert!(out.contains("PATCH /users -> 405 (405 Method Not Allowed)"));
+    assert!(out.contains("Total processing time: 80us"));
+    assert!(out.contains("Blocked clients: 2/5"));
+    assert!(out.contains("HTTP routing: routes, matching, middleware, rate limiting, logging."));
+}
+
+#[test]
+fn showcase526_graph_database() {
+    let out = run_ore("showcase526.ore");
+    assert!(out.contains("Graph Database Query Engine:"));
+    assert!(out.contains("Nodes: 8"));
+    assert!(out.contains("Alice -> watched -> Matrix"));
+    assert!(out.contains("Results: 7 rows"));
+    assert!(out.contains("Recommend: Interstellar (watched by Bob)"));
+    assert!(out.contains("Graph density: 15%"));
+    assert!(out.contains("Graph database: nodes, edges, pattern matching, aggregation, paths, recommendations."));
+}
+
+#[test]
+fn showcase527_decision_tree() {
+    let out = run_ore("showcase527.ore");
+    assert!(out.contains("Decision Tree Classifier:"));
+    assert!(out.contains("Yes: 6, No: 4"));
+    assert!(out.contains("Best split: outlook (gain=0.24)"));
+    assert!(out.contains("|-- Overcast: Yes"));
+    assert!(out.contains("Accuracy: 5/5 = 100%"));
+    assert!(out.contains("Total nodes: 8"));
+    assert!(out.contains("Decision tree: entropy, information gain, splitting, prediction, accuracy."));
+}
+
+#[test]
+fn showcase528_circuit_simulator() {
+    let out = run_ore("showcase528.ore");
+    assert!(out.contains("Digital Circuit Simulator:"));
+    assert!(out.contains("1 AND 1 = 1"));
+    assert!(out.contains("1 XOR 0 = 1"));
+    assert!(out.contains("15      1111"));
+    assert!(out.contains("[1, 0, 1, 1]"));
+    assert!(out.contains("Max frequency: 100MHz"));
+    assert!(out.contains("Circuit simulator: gates, SR latch, D flip-flop, counter, shift register, timing."));
+}
+
+#[test]
+fn showcase529_garbage_collection() {
+    let out = run_ore("showcase529.ore");
+    assert!(out.contains("Garbage Collection Strategies:"));
+    assert!(out.contains("Total blocks: 16"));
+    assert!(out.contains("Garbage blocks: 7"));
+    assert!(out.contains("Blocks freed by RC: 7"));
+    assert!(out.contains("Swept 7 garbage blocks"));
+    assert!(out.contains("Fragments after compaction: 1"));
+    assert!(out.contains("GC strategies: reference counting, mark-sweep, compaction, comparison."));
+}
+
+#[test]
+fn showcase530_crypto_mining() {
+    let out = run_ore("showcase530.ore");
+    assert!(out.contains("Cryptocurrency Mining Simulation:"));
+    assert!(out.contains("Chain integrity: VALID"));
+    assert!(out.contains("MinerC: 350 coins (35%)"));
+    assert!(out.contains("Total fees: 13 coins"));
+    assert!(out.contains("Miner earns: 50 (reward) + 11 (fees) = 61"));
+    assert!(out.contains("Total coins minted: 300"));
+    assert!(out.contains("Crypto mining: blockchain, proof-of-work, pool, mempool, difficulty, stats."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

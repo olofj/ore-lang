@@ -1,0 +1,123 @@
+-- Showcase 526: Graph Database Queries (Cypher-like)
+
+fn main
+  print "Graph Database Query Engine:"
+  print ""
+
+  -- Part 1: Node and edge storage
+  print "=== Part 1: Graph Schema ==="
+  -- Nodes: (id, label, name)
+  mut node_ids := [1, 2, 3, 4, 5, 6, 7, 8]
+  mut node_labels := ["Person", "Person", "Person", "Person", "Movie", "Movie", "Movie", "Movie"]
+  mut node_names := ["Alice", "Bob", "Carol", "Dave", "Matrix", "Inception", "Interstellar", "Pulp Fiction"]
+  num_nodes := 8
+
+  print "  Nodes: {num_nodes}"
+  for i in range(0, num_nodes)
+    print "    ({node_ids[i]}) :{node_labels[i]} name={node_names[i]}"
+
+  -- Edges: (from, to, type)
+  mut edge_from := [1, 1, 2, 2, 3, 3, 4, 1, 2, 3]
+  mut edge_to := [5, 6, 5, 7, 6, 8, 7, 2, 3, 4]
+  mut edge_types := ["WATCHED", "WATCHED", "WATCHED", "WATCHED", "WATCHED", "WATCHED", "WATCHED", "FRIENDS", "FRIENDS", "FRIENDS"]
+  num_edges := 10
+
+  print "  Edges: {num_edges}"
+
+  -- Part 2: Simple queries
+  print ""
+  print "=== Part 2: Pattern Matching Queries ==="
+
+  -- Query: MATCH (p:Person)-[:WATCHED]->(m:Movie) RETURN p, m
+  print "  Query: MATCH (p:Person)-[:WATCHED]->(m:Movie)"
+  mut watch_count := 0
+  for e in range(0, num_edges)
+    if edge_types[e] == "WATCHED"
+      from_idx := edge_from[e] - 1
+      to_idx := edge_to[e] - 1
+      print "    {node_names[from_idx]} -> watched -> {node_names[to_idx]}"
+      watch_count = watch_count + 1
+  print "  Results: {watch_count} rows"
+
+  -- Part 3: Aggregation query
+  print ""
+  print "=== Part 3: Aggregation ==="
+  -- Count movies watched per person
+  print "  Query: MATCH (p:Person)-[:WATCHED]->(m) RETURN p, count(m)"
+  for p in range(0, 4)
+    mut count := 0
+    for e in range(0, num_edges)
+      if edge_types[e] == "WATCHED" and edge_from[e] == node_ids[p]
+        count = count + 1
+    print "    {node_names[p]}: {count} movies"
+
+  -- Movie popularity (how many watchers)
+  print "  Query: MATCH (p)-[:WATCHED]->(m:Movie) RETURN m, count(p)"
+  for m in range(4, 8)
+    mut watchers := 0
+    for e in range(0, num_edges)
+      if edge_types[e] == "WATCHED" and edge_to[e] == node_ids[m]
+        watchers = watchers + 1
+    print "    {node_names[m]}: {watchers} watchers"
+
+  -- Part 4: Path queries
+  print ""
+  print "=== Part 4: Path Queries ==="
+  -- Find: Alice's friends who watched Matrix
+  print "  Query: (Alice)-[:FRIENDS]->(f)-[:WATCHED]->(Matrix)"
+  alice_id := 1
+  matrix_id := 5
+  for e1 in range(0, num_edges)
+    if edge_types[e1] == "FRIENDS" and edge_from[e1] == alice_id
+      friend_id := edge_to[e1]
+      for e2 in range(0, num_edges)
+        if edge_types[e2] == "WATCHED" and edge_from[e2] == friend_id and edge_to[e2] == matrix_id
+          friend_idx := friend_id - 1
+          print "    Alice -> friends -> {node_names[friend_idx]} -> watched -> Matrix"
+
+  -- Part 5: Recommendation (collaborative filtering)
+  print ""
+  print "=== Part 5: Movie Recommendations for Alice ==="
+  -- Find movies watched by Alice's friends but not by Alice
+  print "  Strategy: friends watched but Alice hasn't"
+  -- Alice watched: movies 5, 6
+  mut alice_watched := [5, 6]
+  for e1 in range(0, num_edges)
+    if edge_types[e1] == "FRIENDS" and edge_from[e1] == alice_id
+      friend_id := edge_to[e1]
+      for e2 in range(0, num_edges)
+        if edge_types[e2] == "WATCHED" and edge_from[e2] == friend_id
+          movie_id := edge_to[e2]
+          -- Check Alice hasn't watched it
+          mut alice_has := false
+          for w in range(0, 2)
+            if alice_watched[w] == movie_id
+              alice_has = true
+          if not alice_has
+            friend_idx := friend_id - 1
+            movie_idx := movie_id - 1
+            print "    Recommend: {node_names[movie_idx]} (watched by {node_names[friend_idx]})"
+
+  -- Part 6: Graph statistics
+  print ""
+  print "=== Part 6: Graph Statistics ==="
+  mut person_count := 0
+  mut movie_count := 0
+  for i in range(0, num_nodes)
+    if node_labels[i] == "Person"
+      person_count = person_count + 1
+    else
+      movie_count = movie_count + 1
+  mut friend_count := 0
+  for e in range(0, num_edges)
+    if edge_types[e] == "FRIENDS"
+      friend_count = friend_count + 1
+  print "  Persons: {person_count}"
+  print "  Movies: {movie_count}"
+  print "  Friendship edges: {friend_count}"
+  print "  Watch edges: {watch_count}"
+  density := num_edges * 100 / (num_nodes * num_nodes)
+  print "  Graph density: {density}%"
+
+  print ""
+  print "Graph database: nodes, edges, pattern matching, aggregation, paths, recommendations."
