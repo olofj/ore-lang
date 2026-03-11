@@ -553,6 +553,7 @@ fn map_runtime_functions(
     map_fn!("ore_list_filter", ore_runtime::ore_list_filter);
     map_fn!("ore_list_each", ore_runtime::ore_list_each);
     map_fn!("ore_list_find_index", ore_runtime::ore_list_find_index);
+    map_fn!("ore_list_find", ore_runtime::ore_list_find);
     map_fn!("ore_list_fold", ore_runtime::ore_list_fold);
     map_fn!("ore_list_sort", ore_runtime::ore_list_sort);
     map_fn!("ore_list_reverse", ore_runtime::ore_list_reverse);

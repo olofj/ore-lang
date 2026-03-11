@@ -688,6 +688,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_each", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_find_index(ptr, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_find_index", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_find", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_fold(ptr, init_i64, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_fold", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_sort(ptr) -> ptr (returns new sorted list)
