@@ -1,0 +1,42 @@
+-- Showcase 31: Stack-based RPN calculator
+-- Demonstrates: mutable lists as stacks, string matching, parsing
+
+fn eval_rpn expr:Str -> Int
+  tokens := expr.words()
+  mut stack := [0]
+  stack = []
+  for i in 0..tokens.len()
+    token := tokens.get(i)
+    if token == "+"
+      b := stack.get(stack.len() - 1)
+      a := stack.get(stack.len() - 2)
+      stack = stack.take(stack.len() - 2)
+      stack = stack + [a + b]
+    else if token == "-"
+      b := stack.get(stack.len() - 1)
+      a := stack.get(stack.len() - 2)
+      stack = stack.take(stack.len() - 2)
+      stack = stack + [a - b]
+    else if token == "*"
+      b := stack.get(stack.len() - 1)
+      a := stack.get(stack.len() - 2)
+      stack = stack.take(stack.len() - 2)
+      stack = stack + [a * b]
+    else if token == "/"
+      b := stack.get(stack.len() - 1)
+      a := stack.get(stack.len() - 2)
+      stack = stack.take(stack.len() - 2)
+      stack = stack + [a / b]
+    else
+      stack = stack + [token.parse_int()]
+  stack.get(0)
+
+fn main
+  -- RPN expressions
+  print "3 4 + = {eval_rpn("3 4 +")}"
+  print "5 3 - = {eval_rpn("5 3 -")}"
+  print "6 7 * = {eval_rpn("6 7 *")}"
+  print "10 3 / = {eval_rpn("10 3 /")}"
+  print "3 4 + 2 * = {eval_rpn("3 4 + 2 *")}"
+  print "5 1 2 + 4 * + 3 - = {eval_rpn("5 1 2 + 4 * + 3 -")}"
+  print "2 3 + 4 5 + * = {eval_rpn("2 3 + 4 5 + *")}"

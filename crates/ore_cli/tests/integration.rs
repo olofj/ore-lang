@@ -1560,3 +1560,13 @@ fn showcase30() {
     assert!(out.contains("Max Collatz length: 20"));
     assert!(out.contains("Frequency of 1: 2"));
 }
+
+#[test]
+fn showcase31() {
+    let out = run_ore("showcase31.ore");
+    assert!(out.contains("3 4 + = 7"));
+    assert!(out.contains("6 7 * = 42"));
+    assert!(out.contains("3 4 + 2 * = 14"));
+    assert!(out.contains("5 1 2 + 4 * + 3 - = 14"));
+    assert!(out.contains("2 3 + 4 5 + * = 45"));
+}
