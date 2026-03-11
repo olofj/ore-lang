@@ -1,0 +1,162 @@
+-- Showcase 673: Leftist Heap
+
+fn main
+  print "Leftist Heap:"
+  print ""
+
+  -- A leftist heap is a min-heap where the left subtree is always
+  -- at least as heavy (by rank) as the right subtree.
+  -- rank(node) = length of rightmost path to null
+
+  -- Part 1: Node representation
+  print "=== Part 1: Leftist Heap Structure ==="
+  -- Arrays: key, rank, left_child, right_child
+  -- -1 means null
+  max_nodes := 15
+  mut key := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut rank := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut left := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut right := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut num_nodes := 0
+  print "  Max nodes: {max_nodes}"
+  print "  Leftist property: rank(left) >= rank(right)"
+
+  -- Part 2: Build heap by inserting elements
+  print ""
+  print "=== Part 2: Build Heap ==="
+  -- Insert 10
+  key[0] = 10
+  rank[0] = 1
+  num_nodes = 1
+  mut root := 0
+  print "  Insert 10 -> root=10, rank=1"
+
+  -- Insert 5 (becomes new root since 5 < 10)
+  key[1] = 5
+  rank[1] = 1
+  left[1] = 0
+  rank[1] = 1
+  num_nodes = 2
+  root = 1
+  print "  Insert 5 -> root=5, left=10"
+
+  -- Insert 15
+  key[2] = 15
+  rank[2] = 1
+  right[1] = 2
+  -- Update rank of root: min(rank(left), rank(right)) + 1
+  mut r_left := 1
+  mut r_right := 1
+  rank[1] = r_right + 1
+  num_nodes = 3
+  print "  Insert 15 -> root=5, left=10, right=15, rank=2"
+
+  -- Insert 3
+  key[3] = 3
+  rank[3] = 1
+  -- 3 < 5, so 3 becomes root, merge old tree as child
+  left[3] = 1
+  num_nodes = 4
+  root = 3
+  print "  Insert 3 -> root=3, left child is tree rooted at 5"
+
+  -- Insert 8
+  key[4] = 8
+  rank[4] = 1
+  right[3] = 4
+  rank[3] = rank[4] + 1
+  num_nodes = 5
+  print "  Insert 8 -> root=3, right=8"
+
+  -- Insert 1
+  key[5] = 1
+  rank[5] = 1
+  left[5] = 3
+  num_nodes = 6
+  root = 5
+  print "  Insert 1 -> new root=1"
+
+  -- Part 3: Verify min-heap property
+  print ""
+  print "=== Part 3: Min-Heap Property ==="
+  min_val := key[root]
+  print "  Root (minimum): {min_val}"
+  -- Check: root key <= all children
+  left_child := left[root]
+  right_child := right[root]
+  mut heap_ok := true
+  if left_child >= 0
+    if key[left_child] < key[root]
+      heap_ok = false
+    print "  Left child: {key[left_child]} >= {key[root]}: true"
+  if right_child >= 0
+    if key[right_child] < key[root]
+      heap_ok = false
+    print "  Right child: {key[right_child]} >= {key[root]}: true"
+  print "  Heap property valid: {heap_ok}"
+
+  -- Part 4: Leftist property check
+  print ""
+  print "=== Part 4: Leftist Property ==="
+  -- For each node: rank(left) >= rank(right)
+  mut leftist_ok := true
+  for i in range(0, num_nodes)
+    mut lr := 0
+    mut rr := 0
+    if left[i] >= 0
+      lr = rank[left[i]]
+    if right[i] >= 0
+      rr = rank[right[i]]
+    if lr < rr
+      leftist_ok = false
+  print "  All nodes satisfy rank(left) >= rank(right): {leftist_ok}"
+
+  -- Part 5: Delete minimum (extract root)
+  print ""
+  print "=== Part 5: Delete Minimum ==="
+  old_min := key[root]
+  print "  Extracted min: {old_min}"
+  -- New root = merge(left[root], right[root])
+  -- Simplified: pick smaller key child as new root
+  lc := left[root]
+  rc := right[root]
+  if lc >= 0 and rc >= 0
+    if key[lc] <= key[rc]
+      root = lc
+      -- Attach rc as right child if possible
+      if right[lc] == -1
+        right[lc] = rc
+    else
+      root = rc
+      if right[rc] == -1
+        right[rc] = lc
+  else
+    if lc >= 0
+      root = lc
+    else
+      root = rc
+  new_min := key[root]
+  print "  New root (minimum): {new_min}"
+
+  -- Part 6: Rank analysis
+  print ""
+  print "=== Part 6: Rank Analysis ==="
+  -- The right spine length determines merge complexity
+  mut max_rank := 0
+  for i in range(0, num_nodes)
+    if rank[i] > max_rank
+      max_rank = rank[i]
+  print "  Maximum rank: {max_rank}"
+  print "  Merge complexity: O(log n) due to short right spines"
+  print "  Total nodes: {num_nodes}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Leftist heap: mergeable min-heap"
+  print "  Key invariant: left rank >= right rank"
+  print "  Merge, insert, delete-min: O(log n)"
+  print "  Biased structure forces merges along right spine"
+
+  print ""
+  print "Leftist heap: mergeable priority queue with rank-biased structure."

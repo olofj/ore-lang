@@ -1,0 +1,156 @@
+-- Showcase 680: Deterministic Finite Automaton Minimization
+
+fn main
+  print "DFA Minimization:"
+  print ""
+
+  -- Minimize a DFA using table-filling (Myhill-Nerode) algorithm
+  -- Two states are equivalent if no string distinguishes them
+
+  -- Part 1: Original DFA
+  print "=== Part 1: Original DFA ==="
+  num_states := 5
+  -- States: 0,1,2,3,4. Alphabet: {0,1}
+  -- Transition table: trans[state * 2 + symbol] = next_state
+  mut trans := [1, 2, 0, 3, 1, 2, 0, 3, 1, 2]
+  -- State 0: on 0->1, on 1->2
+  -- State 1: on 0->0, on 1->3
+  -- State 2: on 0->1, on 1->2
+  -- State 3: on 0->0, on 1->3
+  -- State 4: on 0->1, on 1->2
+  mut is_accept := [0, 1, 0, 1, 0]
+  -- Accept states: 1, 3
+  start_state := 0
+  print "  States: 0, 1, 2, 3, 4"
+  print "  Alphabet: 0, 1"
+  print "  Start state: {start_state}"
+  print "  Accept states: 1, 3"
+  print "  Transitions:"
+  for s in range(0, num_states)
+    t0 := trans[s * 2]
+    t1 := trans[s * 2 + 1]
+    mut acc := ""
+    if is_accept[s] == 1
+      acc = " (accept)"
+    print "    State {s}: 0->{t0}, 1->{t1}{acc}"
+
+  -- Part 2: Table-filling algorithm
+  print ""
+  print "=== Part 2: Table Filling ==="
+  -- Mark pairs (p,q) as distinguishable
+  -- dist[p * num_states + q] = 1 if distinguishable
+  mut dist := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Step 1: Mark pairs where one is accept and other is not
+  mut initial_marks := 0
+  for p in range(0, num_states)
+    for q in range(p + 1, num_states)
+      if is_accept[p] != is_accept[q]
+        dist[p * num_states + q] = 1
+        dist[q * num_states + p] = 1
+        initial_marks = initial_marks + 1
+  print "  Initial marks (accept vs non-accept): {initial_marks}"
+
+  -- Step 2: Iterate until no more changes
+  mut changed := true
+  mut iterations := 0
+  while changed
+    changed = false
+    iterations = iterations + 1
+    for p in range(0, num_states)
+      for q in range(p + 1, num_states)
+        if dist[p * num_states + q] == 0
+          -- Check if transitions lead to distinguished pair
+          for sym in range(0, 2)
+            np := trans[p * 2 + sym]
+            nq := trans[q * 2 + sym]
+            if np != nq and dist[np * num_states + nq] == 1
+              dist[p * num_states + q] = 1
+              dist[q * num_states + p] = 1
+              changed = true
+  print "  Iterations until stable: {iterations}"
+
+  -- Part 3: Find equivalent state pairs
+  print ""
+  print "=== Part 3: Equivalent States ==="
+  mut equiv_count := 0
+  for p in range(0, num_states)
+    for q in range(p + 1, num_states)
+      if dist[p * num_states + q] == 0
+        print "  States {p} and {q} are equivalent"
+        equiv_count = equiv_count + 1
+  if equiv_count == 0
+    print "  No equivalent states found (already minimal)"
+  print "  Equivalent pairs: {equiv_count}"
+
+  -- Part 4: Build minimized DFA
+  print ""
+  print "=== Part 4: Minimized DFA ==="
+  -- Merge equivalent states: assign each state to its representative
+  mut representative := [0, 1, 2, 3, 4]
+  for p in range(0, num_states)
+    for q in range(p + 1, num_states)
+      if dist[p * num_states + q] == 0
+        -- q merges into p (smaller index is representative)
+        representative[q] = representative[p]
+
+  -- Count unique representatives
+  mut unique := [0, 0, 0, 0, 0]
+  mut min_states := 0
+  for i in range(0, num_states)
+    mut is_new := true
+    for j in range(0, min_states)
+      if unique[j] == representative[i]
+        is_new = false
+    if is_new
+      unique[min_states] = representative[i]
+      min_states = min_states + 1
+  print "  Original states: {num_states}"
+  print "  Minimized states: {min_states}"
+  saved := num_states - min_states
+  print "  States eliminated: {saved}"
+
+  -- Print representative mapping
+  for i in range(0, num_states)
+    if representative[i] != i
+      print "  State {i} merged into state {representative[i]}"
+
+  -- Part 5: Verify minimized DFA
+  print ""
+  print "=== Part 5: Verification ==="
+  -- Test string "01" on original: 0 -0-> 1 -1-> 3 (accept)
+  mut state := start_state
+  state = trans[state * 2 + 0]
+  state = trans[state * 2 + 1]
+  orig_accept := is_accept[state] == 1
+  print "  String '01': original reaches state {state}, accept={orig_accept}"
+
+  -- Test on minimized (using representatives)
+  state = start_state
+  state = trans[state * 2 + 0]
+  state = representative[state]
+  state = trans[state * 2 + 1]
+  state = representative[state]
+  min_accept := is_accept[state] == 1
+  print "  String '01': minimized reaches state {state}, accept={min_accept}"
+  print "  Results match: {orig_accept == min_accept}"
+
+  -- Part 6: Complexity analysis
+  print ""
+  print "=== Part 6: Complexity ==="
+  pairs := (num_states * (num_states - 1)) / 2
+  print "  State pairs checked: {pairs}"
+  print "  Table filling: O(n^2 * |alphabet|) per iteration"
+  print "  Total iterations: {iterations}"
+  print "  Minimized DFA is unique (up to isomorphism)"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  DFA minimization: merge indistinguishable states"
+  print "  Table-filling: mark distinguishable pairs iteratively"
+  print "  Myhill-Nerode theorem: minimal DFA is unique"
+  print "  Used in: compiler optimization, regex engines, model checking"
+
+  print ""
+  print "DFA minimization: table-filling algorithm to find and merge equivalent states."

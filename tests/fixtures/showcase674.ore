@@ -1,0 +1,149 @@
+-- Showcase 674: Simple Debugger Watchpoint
+
+fn main
+  print "Simple Debugger Watchpoint:"
+  print ""
+
+  -- Simulate a debugger watchpoint system that monitors memory locations
+  -- and triggers when values change
+
+  -- Part 1: Watchpoint setup
+  print "=== Part 1: Watchpoint Table ==="
+  max_watches := 8
+  mut watch_addr := [100, 200, 304, 500, 0, 0, 0, 0]
+  mut watch_old_val := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut watch_enabled := [1, 1, 1, 1, 0, 0, 0, 0]
+  mut watch_hit_count := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut watch_type := [1, 1, 2, 2, 0, 0, 0, 0]
+  -- type 1=write, 2=read-write
+  mut num_watches := 4
+  print "  Watchpoint 0: addr=100, type=write"
+  print "  Watchpoint 1: addr=200, type=write"
+  print "  Watchpoint 2: addr=304, type=read-write"
+  print "  Watchpoint 3: addr=500, type=read-write"
+
+  -- Part 2: Simulated memory
+  print ""
+  print "=== Part 2: Memory Simulation ==="
+  mut memory := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Map addresses: 100->idx0, 200->idx1, 304->idx2, 500->idx3
+  memory[0] = 42
+  memory[1] = 99
+  memory[2] = 17
+  memory[3] = 256
+  watch_old_val[0] = 42
+  watch_old_val[1] = 99
+  watch_old_val[2] = 17
+  watch_old_val[3] = 256
+  print "  mem[100] = 42"
+  print "  mem[200] = 99"
+  print "  mem[304] = 17"
+  print "  mem[500] = 256"
+
+  -- Part 3: Execute instructions and check watchpoints
+  print ""
+  print "=== Part 3: Instruction Execution ==="
+  mut triggers := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_triggers := 0
+
+  -- Instruction 1: write to addr 100 (value 42 -> 50)
+  print "  WRITE addr=100, val=50"
+  memory[0] = 50
+  -- Check watchpoint 0
+  if watch_enabled[0] == 1
+    if memory[0] != watch_old_val[0]
+      print "  ** WATCHPOINT 0 triggered: addr=100 changed {watch_old_val[0]} -> {memory[0]}"
+      watch_hit_count[0] = watch_hit_count[0] + 1
+      watch_old_val[0] = memory[0]
+      triggers[num_triggers] = 0
+      num_triggers = num_triggers + 1
+
+  -- Instruction 2: write to addr 200 (value stays 99)
+  print "  WRITE addr=200, val=99"
+  memory[1] = 99
+  if watch_enabled[1] == 1
+    if memory[1] != watch_old_val[1]
+      print "  ** WATCHPOINT 1 triggered"
+      watch_hit_count[1] = watch_hit_count[1] + 1
+    else
+      print "  No change at addr=200, watchpoint not triggered"
+
+  -- Instruction 3: read from addr 304 (read-write watchpoint)
+  print "  READ addr=304"
+  if watch_enabled[2] == 1 and watch_type[2] == 2
+    print "  ** WATCHPOINT 2 triggered: read access at addr=304, val={memory[2]}"
+    watch_hit_count[2] = watch_hit_count[2] + 1
+    triggers[num_triggers] = 2
+    num_triggers = num_triggers + 1
+
+  -- Instruction 4: write to addr 500
+  print "  WRITE addr=500, val=512"
+  memory[3] = 512
+  if watch_enabled[3] == 1
+    if memory[3] != watch_old_val[3]
+      print "  ** WATCHPOINT 3 triggered: addr=500 changed {watch_old_val[3]} -> {memory[3]}"
+      watch_hit_count[3] = watch_hit_count[3] + 1
+      watch_old_val[3] = memory[3]
+      triggers[num_triggers] = 3
+      num_triggers = num_triggers + 1
+
+  -- Part 4: Watchpoint statistics
+  print ""
+  print "=== Part 4: Watchpoint Stats ==="
+  mut total_hits := 0
+  for i in range(0, num_watches)
+    total_hits = total_hits + watch_hit_count[i]
+  print "  Total triggers: {num_triggers}"
+  print "  Total hit count: {total_hits}"
+  for i in range(0, num_watches)
+    print "  Watch {i}: hits={watch_hit_count[i]}, enabled={watch_enabled[i]}"
+
+  -- Part 5: Disable and conditional watchpoints
+  print ""
+  print "=== Part 5: Watchpoint Control ==="
+  -- Disable watchpoint 1
+  watch_enabled[1] = 0
+  print "  Disabled watchpoint 1 (addr=200)"
+  -- Write to addr 200 again
+  memory[1] = 77
+  if watch_enabled[1] == 1
+    print "  TRIGGERED"
+  else
+    print "  Write to addr=200 ignored (watchpoint disabled)"
+
+  -- Enable it back
+  watch_enabled[1] = 1
+  watch_old_val[1] = memory[1]
+  print "  Re-enabled watchpoint 1, synced to val={memory[1]}"
+
+  -- Part 6: Conditional watchpoint (trigger only if new value > threshold)
+  print ""
+  print "=== Part 6: Conditional Watchpoints ==="
+  threshold := 100
+  memory[0] = 55
+  if watch_enabled[0] == 1 and memory[0] != watch_old_val[0]
+    if memory[0] > threshold
+      print "  Conditional trigger: addr=100 val={memory[0]} > {threshold}"
+    else
+      print "  Value changed but below threshold: {memory[0]} <= {threshold}"
+  watch_old_val[0] = memory[0]
+
+  memory[0] = 150
+  if watch_enabled[0] == 1 and memory[0] != watch_old_val[0]
+    if memory[0] > threshold
+      print "  Conditional trigger: addr=100 val={memory[0]} > {threshold}"
+    else
+      print "  Value changed but below threshold"
+  watch_old_val[0] = memory[0]
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Watchpoints monitor memory for changes"
+  print "  Write watchpoints: trigger on value change"
+  print "  Read-write watchpoints: trigger on any access"
+  print "  Conditional watchpoints: filter by criteria"
+  print "  Used in: debuggers (GDB, LLDB), hardware breakpoints"
+
+  print ""
+  print "Debugger watchpoints: memory monitoring with configurable triggers and conditions."

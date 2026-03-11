@@ -1,0 +1,119 @@
+-- Showcase 677: Simple Tensor Operations
+
+fn main
+  print "Simple Tensor Operations:"
+  print ""
+
+  -- Simulate basic tensor (multi-dimensional array) operations
+  -- Using flat arrays with manual indexing
+
+  -- Part 1: 2x3 Matrix (Rank-2 Tensor)
+  print "=== Part 1: Matrix Creation ==="
+  rows := 2
+  cols := 3
+  -- Matrix A (2x3): [[1,2,3],[4,5,6]]
+  mut mat_a := [1, 2, 3, 4, 5, 6]
+  -- Matrix B (2x3): [[7,8,9],[10,11,12]]
+  mut mat_b := [7, 8, 9, 10, 11, 12]
+  print "  Matrix A (2x3):"
+  print "    [{mat_a[0]}, {mat_a[1]}, {mat_a[2]}]"
+  print "    [{mat_a[3]}, {mat_a[4]}, {mat_a[5]}]"
+  print "  Matrix B (2x3):"
+  print "    [{mat_b[0]}, {mat_b[1]}, {mat_b[2]}]"
+  print "    [{mat_b[3]}, {mat_b[4]}, {mat_b[5]}]"
+
+  -- Part 2: Element-wise addition
+  print ""
+  print "=== Part 2: Element-wise Addition ==="
+  mut mat_sum := [0, 0, 0, 0, 0, 0]
+  for i in range(0, 6)
+    mat_sum[i] = mat_a[i] + mat_b[i]
+  print "  A + B:"
+  print "    [{mat_sum[0]}, {mat_sum[1]}, {mat_sum[2]}]"
+  print "    [{mat_sum[3]}, {mat_sum[4]}, {mat_sum[5]}]"
+
+  -- Part 3: Scalar multiplication
+  print ""
+  print "=== Part 3: Scalar Multiply ==="
+  scalar := 3
+  mut mat_scaled := [0, 0, 0, 0, 0, 0]
+  for i in range(0, 6)
+    mat_scaled[i] = mat_a[i] * scalar
+  print "  A * {scalar}:"
+  print "    [{mat_scaled[0]}, {mat_scaled[1]}, {mat_scaled[2]}]"
+  print "    [{mat_scaled[3]}, {mat_scaled[4]}, {mat_scaled[5]}]"
+
+  -- Part 4: Matrix transpose
+  print ""
+  print "=== Part 4: Transpose ==="
+  -- Transpose of 2x3 -> 3x2
+  mut mat_t := [0, 0, 0, 0, 0, 0]
+  for r in range(0, rows)
+    for c in range(0, cols)
+      -- A[r][c] at index r*cols+c -> T[c][r] at index c*rows+r
+      src_idx := r * cols + c
+      dst_idx := c * rows + r
+      mat_t[dst_idx] = mat_a[src_idx]
+  print "  Transpose of A (3x2):"
+  print "    [{mat_t[0]}, {mat_t[1]}]"
+  print "    [{mat_t[2]}, {mat_t[3]}]"
+  print "    [{mat_t[4]}, {mat_t[5]}]"
+
+  -- Part 5: Matrix multiplication (A * A^T = 2x3 * 3x2 = 2x2)
+  print ""
+  print "=== Part 5: Matrix Multiply ==="
+  -- Result C is 2x2
+  mut mat_c := [0, 0, 0, 0]
+  -- C[i][j] = sum_k A[i][k] * A^T[k][j]
+  for i in range(0, 2)
+    for j in range(0, 2)
+      mut dot := 0
+      for k in range(0, 3)
+        a_val := mat_a[i * 3 + k]
+        t_val := mat_t[k * 2 + j]
+        dot = dot + a_val * t_val
+      mat_c[i * 2 + j] = dot
+  print "  A * A^T (2x2):"
+  print "    [{mat_c[0]}, {mat_c[1]}]"
+  print "    [{mat_c[2]}, {mat_c[3]}]"
+
+  -- Part 6: Tensor reduction (sum, max)
+  print ""
+  print "=== Part 6: Reductions ==="
+  -- Sum along rows (reduce cols)
+  mut row_sum := [0, 0]
+  for r in range(0, rows)
+    for c in range(0, cols)
+      row_sum[r] = row_sum[r] + mat_a[r * cols + c]
+  print "  Row sums of A: [{row_sum[0]}, {row_sum[1]}]"
+
+  -- Sum along cols (reduce rows)
+  mut col_sum := [0, 0, 0]
+  for c in range(0, cols)
+    for r in range(0, rows)
+      col_sum[c] = col_sum[c] + mat_a[r * cols + c]
+  print "  Col sums of A: [{col_sum[0]}, {col_sum[1]}, {col_sum[2]}]"
+
+  -- Total sum
+  mut total := 0
+  for i in range(0, 6)
+    total = total + mat_a[i]
+  print "  Total sum of A: {total}"
+
+  -- Max element
+  mut max_val := mat_a[0]
+  for i in range(1, 6)
+    if mat_a[i] > max_val
+      max_val = mat_a[i]
+  print "  Max element of A: {max_val}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Tensors: multi-dimensional arrays"
+  print "  Operations: add, scale, transpose, multiply, reduce"
+  print "  Flat storage with index arithmetic"
+  print "  Foundation for neural networks and scientific computing"
+
+  print ""
+  print "Tensor operations: matrix arithmetic with element-wise and aggregate computations."

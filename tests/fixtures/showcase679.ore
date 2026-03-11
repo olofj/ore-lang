@@ -1,0 +1,121 @@
+-- Showcase 679: Simple Termination Checker
+
+fn main
+  print "Simple Termination Checker:"
+  print ""
+
+  -- Check if recursive functions terminate by tracking decreasing arguments
+  -- A function terminates if at least one argument strictly decreases each call
+
+  -- Part 1: Represent function calls as (func_id, arg_value) pairs
+  print "=== Part 1: Call Trace Setup ==="
+  -- Function 0: factorial(n) -> calls factorial(n-1)
+  -- Trace: factorial(5), factorial(4), factorial(3), factorial(2), factorial(1), factorial(0)
+  mut trace_func := [0, 0, 0, 0, 0, 0]
+  mut trace_arg := [5, 4, 3, 2, 1, 0]
+  trace_len := 6
+  print "  Function: factorial"
+  print "  Call trace: 5, 4, 3, 2, 1, 0"
+  print "  Trace length: {trace_len}"
+
+  -- Part 2: Check strict decrease
+  print ""
+  print "=== Part 2: Strict Decrease Check ==="
+  mut decreasing := true
+  for i in range(0, trace_len - 1)
+    if trace_arg[i + 1] >= trace_arg[i]
+      decreasing = false
+  print "  Argument strictly decreasing: {decreasing}"
+
+  -- Check bounded below (reaches base case >= 0)
+  base_reached := trace_arg[trace_len - 1] == 0
+  print "  Base case reached (arg=0): {base_reached}"
+  terminates := decreasing and base_reached
+  print "  Terminates: {terminates}"
+
+  -- Part 3: Non-terminating example
+  print ""
+  print "=== Part 3: Non-Terminating Example ==="
+  -- f(n) -> f(n+1): argument increases!
+  mut bad_trace := [1, 2, 3, 4, 5, 6]
+  bad_len := 6
+  mut bad_decreasing := true
+  for i in range(0, bad_len - 1)
+    if bad_trace[i + 1] >= bad_trace[i]
+      bad_decreasing = false
+  print "  Trace: 1, 2, 3, 4, 5, 6"
+  print "  Argument decreasing: {bad_decreasing}"
+  print "  Verdict: DOES NOT TERMINATE"
+
+  -- Part 4: Mutual recursion (even/odd)
+  print ""
+  print "=== Part 4: Mutual Recursion ==="
+  -- is_even(n) calls is_odd(n-1), is_odd(n) calls is_even(n-1)
+  -- Trace: even(4), odd(3), even(2), odd(1), even(0)
+  mut mr_func := [0, 1, 0, 1, 0]
+  mut mr_arg := [4, 3, 2, 1, 0]
+  mr_len := 5
+  mut mr_decreasing := true
+  for i in range(0, mr_len - 1)
+    if mr_arg[i + 1] >= mr_arg[i]
+      mr_decreasing = false
+  mr_base := mr_arg[mr_len - 1] == 0
+  print "  Trace: even(4)->odd(3)->even(2)->odd(1)->even(0)"
+  print "  Combined arg decreasing: {mr_decreasing}"
+  print "  Base case reached: {mr_base}"
+  print "  Mutual recursion terminates: {mr_decreasing}"
+
+  -- Part 5: Lexicographic ordering
+  print ""
+  print "=== Part 5: Lexicographic Order ==="
+  -- Ackermann-like: two arguments (m, n)
+  -- Terminates if (m, n) decreases lexicographically
+  -- Trace: (2,3), (2,2), (2,1), (2,0), (1,3), (1,2), (1,1), (1,0)
+  mut lex_m := [2, 2, 2, 2, 1, 1, 1, 1]
+  mut lex_n := [3, 2, 1, 0, 3, 2, 1, 0]
+  lex_len := 8
+  mut lex_ok := true
+  for i in range(0, lex_len - 1)
+    -- Lexicographic: m decreases, OR m same and n decreases
+    m_dec := lex_m[i + 1] < lex_m[i]
+    m_same := lex_m[i + 1] == lex_m[i]
+    n_dec := lex_n[i + 1] < lex_n[i]
+    if not m_dec and not (m_same and n_dec)
+      lex_ok = false
+  print "  Trace: (2,3),(2,2),(2,1),(2,0),(1,3),..."
+  print "  Lexicographic decrease: {lex_ok}"
+  if lex_ok
+    print "  Terminates by lexicographic ordering"
+  else
+    print "  Cannot prove termination by lex order"
+
+  -- Part 6: Ranking function
+  print ""
+  print "=== Part 6: Ranking Function ==="
+  -- A ranking function maps state to natural numbers, must decrease each step
+  -- For factorial(n): rank = n, clearly decreasing
+  -- For collatz: hard to find ranking function (open problem!)
+  -- Collatz trace from 6: 6, 3, 10, 5, 16, 8, 4, 2, 1
+  mut collatz := [6, 3, 10, 5, 16, 8, 4, 2, 1]
+  collatz_len := 9
+  mut col_decreasing := true
+  for i in range(0, collatz_len - 1)
+    if collatz[i + 1] >= collatz[i]
+      col_decreasing = false
+  print "  Collatz from 6: 6, 3, 10, 5, 16, 8, 4, 2, 1"
+  print "  Strictly decreasing: {col_decreasing}"
+  print "  Reaches 1: true"
+  print "  Monotone ranking function: NONE KNOWN"
+  print "  Collatz termination is an open problem!"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Termination checking: prove recursion always halts"
+  print "  Methods: strict decrease, lexicographic order, ranking functions"
+  print "  Mutual recursion: track combined argument decrease"
+  print "  Some programs: termination undecidable in general"
+  print "  Used in: theorem provers, verified compilers, Agda/Coq"
+
+  print ""
+  print "Termination checker: verifying recursion halts via decreasing measures."

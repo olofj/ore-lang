@@ -1,0 +1,116 @@
+-- Showcase 671: Counting Bloom Filter
+
+fn main
+  print "Counting Bloom Filter:"
+  print ""
+
+  -- A counting bloom filter uses counters instead of bits
+  -- Allows both insertion and deletion (unlike standard bloom filter)
+
+  -- Part 1: Initialize filter
+  print "=== Part 1: Filter Setup ==="
+  filter_size := 16
+  mut counters := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  print "  Filter size: {filter_size}"
+  print "  All counters initialized to 0"
+
+  -- Part 2: Hash functions (simple modular hashes)
+  print ""
+  print "=== Part 2: Hash Functions ==="
+  -- h1(x) = x % size
+  -- h2(x) = (x * 7 + 3) % size
+  -- h3(x) = (x * 13 + 5) % size
+
+  -- Insert element 42
+  e1 := 42
+  h1_42 := e1 % filter_size
+  h2_42 := (e1 * 7 + 3) % filter_size
+  h3_42 := (e1 * 13 + 5) % filter_size
+  print "  Element 42 -> hashes: {h1_42}, {h2_42}, {h3_42}"
+  counters[h1_42] = counters[h1_42] + 1
+  counters[h2_42] = counters[h2_42] + 1
+  counters[h3_42] = counters[h3_42] + 1
+
+  -- Insert element 17
+  e2 := 17
+  h1_17 := e2 % filter_size
+  h2_17 := (e2 * 7 + 3) % filter_size
+  h3_17 := (e2 * 13 + 5) % filter_size
+  print "  Element 17 -> hashes: {h1_17}, {h2_17}, {h3_17}"
+  counters[h1_17] = counters[h1_17] + 1
+  counters[h2_17] = counters[h2_17] + 1
+  counters[h3_17] = counters[h3_17] + 1
+
+  -- Insert element 99
+  e3 := 99
+  h1_99 := e3 % filter_size
+  h2_99 := (e3 * 7 + 3) % filter_size
+  h3_99 := (e3 * 13 + 5) % filter_size
+  print "  Element 99 -> hashes: {h1_99}, {h2_99}, {h3_99}"
+  counters[h1_99] = counters[h1_99] + 1
+  counters[h2_99] = counters[h2_99] + 1
+  counters[h3_99] = counters[h3_99] + 1
+
+  -- Part 3: Query membership
+  print ""
+  print "=== Part 3: Membership Query ==="
+  -- Check element 42: all counter positions must be > 0
+  c42_ok := counters[h1_42] > 0 and counters[h2_42] > 0 and counters[h3_42] > 0
+  print "  42 possibly in set: {c42_ok}"
+
+  -- Check element 55 (not inserted)
+  e4 := 55
+  h1_55 := e4 % filter_size
+  h2_55 := (e4 * 7 + 3) % filter_size
+  h3_55 := (e4 * 13 + 5) % filter_size
+  c55_ok := counters[h1_55] > 0 and counters[h2_55] > 0 and counters[h3_55] > 0
+  print "  55 possibly in set: {c55_ok}"
+
+  -- Part 4: Deletion (the key advantage over standard bloom filter)
+  print ""
+  print "=== Part 4: Deletion ==="
+  print "  Deleting element 42..."
+  counters[h1_42] = counters[h1_42] - 1
+  counters[h2_42] = counters[h2_42] - 1
+  counters[h3_42] = counters[h3_42] - 1
+  c42_after := counters[h1_42] > 0 and counters[h2_42] > 0 and counters[h3_42] > 0
+  print "  42 possibly in set after deletion: {c42_after}"
+  -- 17 should still be present
+  c17_after := counters[h1_17] > 0 and counters[h2_17] > 0 and counters[h3_17] > 0
+  print "  17 still in set: {c17_after}"
+
+  -- Part 5: Counter statistics
+  print ""
+  print "=== Part 5: Counter Statistics ==="
+  mut nonzero := 0
+  mut max_count := 0
+  mut total_count := 0
+  for i in range(0, filter_size)
+    if counters[i] > 0
+      nonzero = nonzero + 1
+    if counters[i] > max_count
+      max_count = counters[i]
+    total_count = total_count + counters[i]
+  print "  Non-zero counters: {nonzero}"
+  print "  Max counter value: {max_count}"
+  print "  Total count sum: {total_count}"
+
+  -- Part 6: False positive rate estimation
+  print ""
+  print "=== Part 6: False Positive Analysis ==="
+  -- FP rate ~ (nonzero/filter_size)^num_hashes
+  fill_pct := (nonzero * 100) / filter_size
+  print "  Fill ratio: {fill_pct}%"
+  print "  Num hash functions: 3"
+  print "  Lower fill = fewer false positives"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Counting bloom filter: counters instead of bits"
+  print "  Supports insertion and deletion"
+  print "  Same probabilistic membership query as bloom filter"
+  print "  Trade-off: more memory per slot (counter vs bit)"
+
+  print ""
+  print "Counting bloom filter: probabilistic set with deletion support via counters."

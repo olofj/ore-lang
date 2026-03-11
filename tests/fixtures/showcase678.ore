@@ -1,0 +1,144 @@
+-- Showcase 678: Oblivious RAM Concepts
+
+fn main
+  print "Oblivious RAM Concepts:"
+  print ""
+
+  -- ORAM hides memory access patterns from an observer
+  -- Key idea: every access looks random regardless of actual pattern
+
+  -- Part 1: Standard memory access (observable pattern)
+  print "=== Part 1: Observable Access Pattern ==="
+  mut memory := [10, 20, 30, 40, 50, 60, 70, 80]
+  mem_size := 8
+  -- Access pattern: read indices 2, 2, 5, 2 (observer sees repeated access to index 2)
+  mut access_log := [2, 2, 5, 2]
+  num_accesses := 4
+  print "  Memory: [10, 20, 30, 40, 50, 60, 70, 80]"
+  print "  Access pattern: [2, 2, 5, 2]"
+  print "  Observer sees: index 2 accessed 3 times -> learns hotspot"
+
+  -- Count frequency of each index accessed
+  mut freq := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, num_accesses)
+    idx := access_log[i]
+    freq[idx] = freq[idx] + 1
+  mut max_freq := 0
+  mut hotspot := 0
+  for i in range(0, mem_size)
+    if freq[i] > max_freq
+      max_freq = freq[i]
+      hotspot = i
+  print "  Hotspot index: {hotspot} (accessed {max_freq} times)"
+
+  -- Part 2: Trivial ORAM (access all positions every time)
+  print ""
+  print "=== Part 2: Trivial ORAM ==="
+  -- To hide which element we want, read ALL elements each time
+  -- Then pick the one we need
+  target_idx := 2
+  mut result := 0
+  mut total_reads := 0
+  for i in range(0, mem_size)
+    total_reads = total_reads + 1
+    if i == target_idx
+      result = memory[i]
+  print "  Want index {target_idx}, read all {mem_size} positions"
+  print "  Result: {result}"
+  print "  Observer sees: all indices accessed equally"
+  print "  Cost: O(N) per access (expensive!)"
+
+  -- Part 3: Position map (simplified ORAM concept)
+  print ""
+  print "=== Part 3: Position Map ==="
+  -- Map logical address -> random physical address
+  -- After each access, remap to new random position
+  mut pos_map := [3, 7, 1, 5, 0, 6, 4, 2]
+  print "  Logical -> Physical mapping:"
+  for i in range(0, mem_size)
+    print "    logical[{i}] -> physical[{pos_map[i]}]"
+
+  -- Access logical index 2 -> physical 1
+  logical := 2
+  physical := pos_map[logical]
+  print "  Access logical {logical} -> physical {physical}"
+  -- After access, remap (rotate position map as simple shuffle)
+  old_phys := pos_map[logical]
+  pos_map[logical] = (old_phys + 3) % mem_size
+  print "  Remap: logical {logical} now at physical {pos_map[logical]}"
+
+  -- Part 4: Dummy accesses (noise)
+  print ""
+  print "=== Part 4: Dummy Accesses ==="
+  -- Mix real accesses with dummy (fake) accesses
+  mut real_accesses := 0
+  mut dummy_accesses := 0
+  -- For each real access, do 3 dummy accesses to random positions
+  mut access_trace := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut trace_len := 0
+  -- Real access to index 5
+  access_trace[trace_len] = 5
+  trace_len = trace_len + 1
+  real_accesses = real_accesses + 1
+  -- Dummy accesses
+  access_trace[trace_len] = 1
+  trace_len = trace_len + 1
+  dummy_accesses = dummy_accesses + 1
+  access_trace[trace_len] = 6
+  trace_len = trace_len + 1
+  dummy_accesses = dummy_accesses + 1
+  access_trace[trace_len] = 3
+  trace_len = trace_len + 1
+  dummy_accesses = dummy_accesses + 1
+  print "  Real accesses: {real_accesses}"
+  print "  Dummy accesses: {dummy_accesses}"
+  print "  Total trace length: {trace_len}"
+  print "  Observer cannot distinguish real from dummy"
+
+  -- Part 5: Stash (temporary storage)
+  print ""
+  print "=== Part 5: Stash Concept ==="
+  -- In Path ORAM, accessed blocks go to a stash before being written back
+  mut stash := [0, 0, 0, 0, 0]
+  mut stash_size := 0
+  -- Fetch block into stash
+  stash[0] = memory[2]
+  stash_size = stash_size + 1
+  stash[1] = memory[5]
+  stash_size = stash_size + 1
+  print "  Stash contains {stash_size} blocks"
+  print "  Stash[0] = {stash[0]} (from index 2)"
+  print "  Stash[1] = {stash[1]} (from index 5)"
+  -- Write back to new positions (eviction)
+  memory[7] = stash[0]
+  memory[0] = stash[1]
+  stash_size = 0
+  print "  Evicted: block from idx 2 -> idx 7, block from idx 5 -> idx 0"
+  print "  Stash emptied: {stash_size} blocks"
+
+  -- Part 6: Security analysis
+  print ""
+  print "=== Part 6: Security Analysis ==="
+  -- Compare information leakage
+  print "  Standard RAM: access pattern fully visible"
+  print "  Trivial ORAM: O(N) cost, perfect hiding"
+  print "  Path ORAM: O(log N) cost, provably secure"
+  -- Calculate overhead
+  log_n := 3
+  overhead := mem_size * 100 / 1
+  path_overhead := log_n * 100 / 1
+  print "  Trivial overhead: {mem_size}x per access"
+  print "  Path ORAM overhead: ~{log_n}x per access (log {mem_size})"
+  print "  Trade-off: security vs performance"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  ORAM hides access patterns from observers"
+  print "  Position maps randomize physical locations"
+  print "  Dummy accesses add noise to traces"
+  print "  Stash + eviction maintains data integrity"
+  print "  Used in: cloud computing, secure enclaves, privacy"
+
+  print ""
+  print "Oblivious RAM: hiding memory access patterns through randomization and indirection."

@@ -8716,6 +8716,143 @@ fn showcase670_auto_differentiation() {
 }
 
 #[test]
+fn showcase671_counting_bloom_filter() {
+    let out = run_ore("showcase671.ore");
+    assert!(out.contains("Counting Bloom Filter:"));
+    assert!(out.contains("Element 42 -> hashes: 10, 9, 7"));
+    assert!(out.contains("42 possibly in set: true"));
+    assert!(out.contains("55 possibly in set: false"));
+    assert!(out.contains("42 possibly in set after deletion: false"));
+    assert!(out.contains("17 still in set: true"));
+    assert!(out.contains("Non-zero counters: 6"));
+    assert!(out.contains("Max counter value: 1"));
+    assert!(out.contains("Counting bloom filter: probabilistic set with deletion support via counters."));
+}
+
+#[test]
+fn showcase672_packet_scheduler() {
+    let out = run_ore("showcase672.ore");
+    assert!(out.contains("Simple Packet Scheduler:"));
+    assert!(out.contains("Total enqueued: 8"));
+    assert!(out.contains("High: served 3 packets"));
+    assert!(out.contains("Medium: served 2 packets"));
+    assert!(out.contains("Low: served 1 packets"));
+    assert!(out.contains("Total bytes scheduled: 1400"));
+    assert!(out.contains("Bandwidth share: high=57%, med=28%, low=14%"));
+    assert!(out.contains("Packet scheduler: weighted fair queuing with priority-based traffic management."));
+}
+
+#[test]
+fn showcase673_leftist_heap() {
+    let out = run_ore("showcase673.ore");
+    assert!(out.contains("Leftist Heap:"));
+    assert!(out.contains("Root (minimum): 1"));
+    assert!(out.contains("Heap property valid: true"));
+    assert!(out.contains("All nodes satisfy rank(left) >= rank(right): true"));
+    assert!(out.contains("Extracted min: 1"));
+    assert!(out.contains("New root (minimum): 3"));
+    assert!(out.contains("Leftist heap: mergeable priority queue with rank-biased structure."));
+}
+
+#[test]
+fn showcase674_debugger_watchpoint() {
+    let out = run_ore("showcase674.ore");
+    assert!(out.contains("Simple Debugger Watchpoint:"));
+    assert!(out.contains("WATCHPOINT 0 triggered: addr=100 changed 42 -> 50"));
+    assert!(out.contains("No change at addr=200, watchpoint not triggered"));
+    assert!(out.contains("WATCHPOINT 2 triggered: read access at addr=304, val=17"));
+    assert!(out.contains("WATCHPOINT 3 triggered: addr=500 changed 256 -> 512"));
+    assert!(out.contains("Total triggers: 3"));
+    assert!(out.contains("Write to addr=200 ignored (watchpoint disabled)"));
+    assert!(out.contains("Conditional trigger: addr=100 val=150 > 100"));
+    assert!(out.contains("Debugger watchpoints: memory monitoring with configurable triggers and conditions."));
+}
+
+#[test]
+fn showcase675_skip_graph() {
+    let out = run_ore("showcase675.ore");
+    assert!(out.contains("Skip Graph:"));
+    assert!(out.contains("Sorted: true"));
+    assert!(out.contains("Group 0 (mem=0): 4 nodes"));
+    assert!(out.contains("Group 1 (mem=1): 4 nodes"));
+    assert!(out.contains("Found key 50 in 4 hops"));
+    assert!(out.contains("Keys in [25, 55]: 3"));
+    assert!(out.contains("Sum of keys in range: 120"));
+    assert!(out.contains("Reachable nodes after failure: 7"));
+    assert!(out.contains("Skip graph: distributed search structure with membership-based level partitioning."));
+}
+
+#[test]
+fn showcase676_hindley_milner() {
+    let out = run_ore("showcase676.ore");
+    assert!(out.contains("Hindley-Milner Type Inference:"));
+    assert!(out.contains("Int -> Int = 111"));
+    assert!(out.contains("Int -> Bool = 112"));
+    assert!(out.contains("ERROR: type mismatch! b=1 but expected 2"));
+    assert!(out.contains("f : Int -> Bool = 112"));
+    assert!(out.contains("REJECTED: would create infinite type a = a -> Int"));
+    assert!(out.contains("Type variables: 3, resolved: 3"));
+    assert!(out.contains("Hindley-Milner: type inference via unification with let polymorphism."));
+}
+
+#[test]
+fn showcase677_tensor_operations() {
+    let out = run_ore("showcase677.ore");
+    assert!(out.contains("Simple Tensor Operations:"));
+    assert!(out.contains("[8, 10, 12]"));
+    assert!(out.contains("[14, 16, 18]"));
+    assert!(out.contains("[3, 6, 9]"));
+    assert!(out.contains("[14, 32]"));
+    assert!(out.contains("[32, 77]"));
+    assert!(out.contains("Row sums of A: [6, 15]"));
+    assert!(out.contains("Col sums of A: [5, 7, 9]"));
+    assert!(out.contains("Total sum of A: 21"));
+    assert!(out.contains("Tensor operations: matrix arithmetic with element-wise and aggregate computations."));
+}
+
+#[test]
+fn showcase678_oblivious_ram() {
+    let out = run_ore("showcase678.ore");
+    assert!(out.contains("Oblivious RAM Concepts:"));
+    assert!(out.contains("Hotspot index: 2 (accessed 3 times)"));
+    assert!(out.contains("Result: 30"));
+    assert!(out.contains("Access logical 2 -> physical 1"));
+    assert!(out.contains("Real accesses: 1"));
+    assert!(out.contains("Dummy accesses: 3"));
+    assert!(out.contains("Stash contains 2 blocks"));
+    assert!(out.contains("Stash emptied: 0 blocks"));
+    assert!(out.contains("Oblivious RAM: hiding memory access patterns through randomization and indirection."));
+}
+
+#[test]
+fn showcase679_termination_checker() {
+    let out = run_ore("showcase679.ore");
+    assert!(out.contains("Simple Termination Checker:"));
+    assert!(out.contains("Argument strictly decreasing: true"));
+    assert!(out.contains("Terminates: true"));
+    assert!(out.contains("Verdict: DOES NOT TERMINATE"));
+    assert!(out.contains("Mutual recursion terminates: true"));
+    assert!(out.contains("Lexicographic decrease: true"));
+    assert!(out.contains("Collatz termination is an open problem!"));
+    assert!(out.contains("Termination checker: verifying recursion halts via decreasing measures."));
+}
+
+#[test]
+fn showcase680_dfa_minimization() {
+    let out = run_ore("showcase680.ore");
+    assert!(out.contains("DFA Minimization:"));
+    assert!(out.contains("Initial marks (accept vs non-accept): 6"));
+    assert!(out.contains("States 0 and 2 are equivalent"));
+    assert!(out.contains("States 1 and 3 are equivalent"));
+    assert!(out.contains("Equivalent pairs: 4"));
+    assert!(out.contains("Original states: 5"));
+    assert!(out.contains("Minimized states: 2"));
+    assert!(out.contains("States eliminated: 3"));
+    assert!(out.contains("Results match: true"));
+    assert!(out.contains("DFA minimization: table-filling algorithm to find and merge equivalent states."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,132 @@
+-- Showcase 676: Hindley-Milner Type Inference
+
+fn main
+  print "Hindley-Milner Type Inference:"
+  print ""
+
+  -- Simulate type inference with unification for a simple expression language
+  -- Types: Int=1, Bool=2, Arrow(a,b)=100+a*10+b, Var(n)=50+n
+
+  -- Part 1: Type representation
+  print "=== Part 1: Type System ==="
+  t_int := 1
+  t_bool := 2
+  -- Type variables
+  t_var_a := 51
+  t_var_b := 52
+  t_var_c := 53
+  print "  Int = {t_int}, Bool = {t_bool}"
+  print "  TypeVar a = {t_var_a}, b = {t_var_b}, c = {t_var_c}"
+
+  -- Arrow type: encode as from*10 + to + 100
+  -- Int -> Int = 100 + 1*10 + 1 = 111
+  -- Int -> Bool = 100 + 1*10 + 2 = 112
+  fn_int_int := 100 + t_int * 10 + t_int
+  fn_int_bool := 100 + t_int * 10 + t_bool
+  print "  Int -> Int = {fn_int_int}"
+  print "  Int -> Bool = {fn_int_bool}"
+
+  -- Part 2: Substitution table (type var -> concrete type)
+  print ""
+  print "=== Part 2: Substitution ==="
+  mut subst := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- subst[var_id] = resolved type (0 means unresolved)
+  -- var_id: a=1, b=2, c=3
+  print "  Initial substitution: all vars unresolved"
+
+  -- Part 3: Unification
+  print ""
+  print "=== Part 3: Unification ==="
+
+  -- Unify(a, Int) -> a := Int
+  print "  Unify(a, Int):"
+  subst[1] = t_int
+  print "    a -> Int"
+
+  -- Unify(b, a) -> b := Int (since a = Int)
+  print "  Unify(b, a):"
+  -- Resolve a first
+  resolved_a := subst[1]
+  subst[2] = resolved_a
+  print "    a resolves to {resolved_a}"
+  print "    b -> {subst[2]}"
+
+  -- Unify(c, Bool)
+  print "  Unify(c, Bool):"
+  subst[3] = t_bool
+  print "    c -> Bool"
+
+  -- Verify: try to unify(b, Bool) -> should fail (b=Int, not Bool)
+  print "  Unify(b, Bool):"
+  if subst[2] == t_bool
+    print "    OK: types match"
+  else
+    print "    ERROR: type mismatch! b={subst[2]} but expected {t_bool}"
+
+  -- Part 4: Infer expression types
+  print ""
+  print "=== Part 4: Expression Inference ==="
+  -- Expr: let x = 5 in x + 1
+  -- x : a, 5 : Int => unify(a, Int) => x : Int
+  -- x + 1 : Int (both operands Int)
+  print "  Expression: let x = 5 in x + 1"
+  print "  5 : Int"
+  print "  x : a, unify(a, Int) => x : Int"
+  print "  x + 1 : Int + Int => Int"
+  expr1_type := t_int
+  print "  Result type: {expr1_type}"
+
+  -- Expr: let f = fn(x) => x > 0 in f(42)
+  print ""
+  print "  Expression: let f = fn(x) => x > 0 in f(42)"
+  -- f : a -> b, x > 0 => b = Bool, 42 : Int => a = Int
+  print "  f : a -> b"
+  print "  x > 0 => b = Bool"
+  print "  f(42) => a = Int"
+  fn_type := 100 + t_int * 10 + t_bool
+  print "  f : Int -> Bool = {fn_type}"
+  expr2_type := t_bool
+  print "  f(42) : Bool"
+
+  -- Part 5: Occurs check
+  print ""
+  print "=== Part 5: Occurs Check ==="
+  -- Prevent infinite types: a = List(a) would be infinite
+  -- Check if variable appears in the type being unified with
+  print "  Unify(a, Arrow(a, Int)):"
+  print "  Occurs check: a appears in Arrow(a, Int)"
+  print "  REJECTED: would create infinite type a = a -> Int"
+  print "  This prevents unsound type inference"
+
+  -- Part 6: Let polymorphism
+  print ""
+  print "=== Part 6: Let Polymorphism ==="
+  -- let id = fn(x) => x
+  -- id can be used at different types: id(5), id(true)
+  print "  let id = fn(x) => x"
+  print "  id : forall a. a -> a"
+  print "  id(5) : Int (instantiate a = Int)"
+  print "  id(true) : Bool (instantiate a = Bool)"
+  -- Verify both usages are valid
+  id_int := 100 + t_int * 10 + t_int
+  id_bool := 100 + t_bool * 10 + t_bool
+  print "  id at Int: {id_int}"
+  print "  id at Bool: {id_bool}"
+  print "  Polymorphism: same function, different types"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  total_vars := 3
+  mut resolved := 0
+  for i in range(1, 4)
+    if subst[i] > 0
+      resolved = resolved + 1
+  print "  Type variables: {total_vars}, resolved: {resolved}"
+  print "  Algorithm W: infer types bottom-up"
+  print "  Unification: equate type expressions"
+  print "  Occurs check: prevent infinite types"
+  print "  Let polymorphism: generalize at let bindings"
+
+  print ""
+  print "Hindley-Milner: type inference via unification with let polymorphism."

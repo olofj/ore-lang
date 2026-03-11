@@ -1,0 +1,154 @@
+-- Showcase 672: Simple Packet Scheduler
+
+fn main
+  print "Simple Packet Scheduler:"
+  print ""
+
+  -- Simulate weighted fair queuing and priority scheduling
+  -- Packets go to queues with different priorities and weights
+
+  -- Part 1: Queue setup
+  print "=== Part 1: Queue Setup ==="
+  num_queues := 3
+  -- Queue 0: high priority (weight 4), Queue 1: medium (weight 2), Queue 2: low (weight 1)
+  mut queue_weight := [4, 2, 1]
+  mut queue_names := ["high", "medium", "low"]
+  mut queue_size := [0, 0, 0]
+  mut queue_served := [0, 0, 0]
+  -- Flat packet store: queue_id * 10 + position -> packet_size
+  mut packets := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  print "  Queue 0 (high): weight=4"
+  print "  Queue 1 (medium): weight=2"
+  print "  Queue 2 (low): weight=1"
+
+  -- Part 2: Enqueue packets
+  print ""
+  print "=== Part 2: Enqueue Packets ==="
+  -- Enqueue to high priority
+  packets[0] = 100
+  packets[1] = 200
+  packets[2] = 150
+  queue_size[0] = 3
+
+  -- Enqueue to medium
+  packets[10] = 300
+  packets[11] = 250
+  queue_size[1] = 2
+
+  -- Enqueue to low
+  packets[20] = 400
+  packets[21] = 180
+  packets[22] = 120
+  queue_size[2] = 3
+
+  total_packets := queue_size[0] + queue_size[1] + queue_size[2]
+  print "  High queue: 3 packets (100, 200, 150 bytes)"
+  print "  Medium queue: 2 packets (300, 250 bytes)"
+  print "  Low queue: 3 packets (400, 180, 120 bytes)"
+  print "  Total enqueued: {total_packets}"
+
+  -- Part 3: Weighted round-robin scheduling
+  print ""
+  print "=== Part 3: Weighted Round-Robin ==="
+  -- Each round: serve weight[i] packets from queue i
+  mut round := 0
+  mut total_served := 0
+  mut total_bytes := 0
+
+  -- Round 1
+  round = round + 1
+  print "  Round {round}:"
+  -- High: serve up to 4 (has 3)
+  mut served_h := 0
+  mut idx := 0
+  while idx < queue_size[0] and served_h < queue_weight[0]
+    total_bytes = total_bytes + packets[idx]
+    served_h = served_h + 1
+    idx = idx + 1
+  queue_served[0] = queue_served[0] + served_h
+  total_served = total_served + served_h
+  print "    High: served {served_h} packets"
+
+  -- Medium: serve up to 2
+  mut served_m := 0
+  idx = 0
+  while idx < queue_size[1] and served_m < queue_weight[1]
+    total_bytes = total_bytes + packets[10 + idx]
+    served_m = served_m + 1
+    idx = idx + 1
+  queue_served[1] = queue_served[1] + served_m
+  total_served = total_served + served_m
+  print "    Medium: served {served_m} packets"
+
+  -- Low: serve up to 1
+  mut served_l := 0
+  idx = 0
+  while idx < queue_size[2] and served_l < queue_weight[2]
+    total_bytes = total_bytes + packets[20 + idx]
+    served_l = served_l + 1
+    idx = idx + 1
+  queue_served[2] = queue_served[2] + served_l
+  total_served = total_served + served_l
+  print "    Low: served {served_l} packets"
+  print "    Total served this round: {total_served}"
+
+  -- Part 4: Bandwidth accounting
+  print ""
+  print "=== Part 4: Bandwidth Stats ==="
+  print "  Total bytes scheduled: {total_bytes}"
+  print "  Packets served per queue: high={queue_served[0]}, med={queue_served[1]}, low={queue_served[2]}"
+  total_weight := queue_weight[0] + queue_weight[1] + queue_weight[2]
+  bw_high := (queue_weight[0] * 100) / total_weight
+  bw_med := (queue_weight[1] * 100) / total_weight
+  bw_low := (queue_weight[2] * 100) / total_weight
+  print "  Bandwidth share: high={bw_high}%, med={bw_med}%, low={bw_low}%"
+
+  -- Part 5: Priority strict mode
+  print ""
+  print "=== Part 5: Strict Priority Mode ==="
+  -- In strict mode, always drain highest priority first
+  mut strict_order := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut pos := 0
+  -- All high first
+  for i in range(0, queue_size[0])
+    strict_order[pos] = packets[i]
+    pos = pos + 1
+  -- Then medium
+  for i in range(0, queue_size[1])
+    strict_order[pos] = packets[10 + i]
+    pos = pos + 1
+  -- Then low
+  for i in range(0, queue_size[2])
+    strict_order[pos] = packets[20 + i]
+    pos = pos + 1
+  print "  Strict order: process all high before medium before low"
+  print "  First packet: {strict_order[0]} bytes (from high)"
+  print "  Last packet: {strict_order[pos - 1]} bytes (from low)"
+
+  -- Part 6: Latency estimation
+  print ""
+  print "=== Part 6: Latency Estimation ==="
+  -- Assume 1 byte = 1 time unit
+  mut cumulative := 0
+  mut high_latency := 0
+  for i in range(0, queue_size[0])
+    cumulative = cumulative + packets[i]
+  high_latency = cumulative
+  mut med_latency := cumulative
+  for i in range(0, queue_size[1])
+    cumulative = cumulative + packets[10 + i]
+  med_latency = cumulative
+  print "  High queue drain time: {high_latency} units"
+  print "  Medium queue drain time: {med_latency} units"
+  print "  Risk: low priority starvation in strict mode"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Weighted round-robin: fair bandwidth allocation"
+  print "  Strict priority: lowest latency for critical traffic"
+  print "  Trade-off: fairness vs latency guarantees"
+  print "  Used in: network routers, OS task schedulers, QoS"
+
+  print ""
+  print "Packet scheduler: weighted fair queuing with priority-based traffic management."
