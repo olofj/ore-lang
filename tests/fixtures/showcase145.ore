@@ -1,0 +1,44 @@
+-- Showcase 145: Enum match with guards on same variant
+
+type HttpStatus
+  Success(code: Int)
+  Failure(code: Int)
+
+fn classify_status s:HttpStatus -> Str
+  match s
+    Success c if c == 200 -> "success"
+    Success c if c == 201 -> "created"
+    Success c if c == 204 -> "no content"
+    Success c -> "other success ({c})"
+    Failure c if c == 404 -> "not found"
+    Failure c if c == 500 -> "server error"
+    Failure c -> "error ({c})"
+
+type Expr
+  Num(val: Int)
+  Add(left: Int, right: Int)
+
+fn simplify e:Expr -> Str
+  match e
+    Num v if v == 0 -> "zero"
+    Num v if v < 0 -> "negative"
+    Num v -> "positive ({v})"
+    Add l r if l == 0 -> "{r}"
+    Add l r if r == 0 -> "{l}"
+    Add l r -> "{l} + {r}"
+
+fn main
+  -- HTTP status classification
+  statuses := [200, 201, 204, 301, 404, 500, 503]
+  for code in statuses
+    s := if code < 400 then Success(code: code) else Failure(code: code)
+    print "{code}: {classify_status(s)}"
+
+  -- Expression simplification
+  print ""
+  print simplify(Num(val: 0))
+  print simplify(Num(val: -5))
+  print simplify(Num(val: 42))
+  print simplify(Add(left: 0, right: 7))
+  print simplify(Add(left: 3, right: 0))
+  print simplify(Add(left: 3, right: 4))

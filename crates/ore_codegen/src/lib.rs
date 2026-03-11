@@ -5050,6 +5050,9 @@ impl<'ctx> CodeGen<'ctx> {
             (v.name.clone(), v.tag, v.payload_type, v.field_names.clone(), v.field_kinds.clone())
         }).collect();
 
+        // Track which tags already have a case block (for chaining guard failures)
+        let mut tag_to_guard_fail: HashMap<u8, inkwell::basic_block::BasicBlock<'ctx>> = HashMap::new();
+
         for arm in arms {
             match &arm.pattern {
                 Pattern::Variant { name, bindings } => {
@@ -5058,9 +5061,24 @@ impl<'ctx> CodeGen<'ctx> {
                     })?;
                     let (_, vtag, payload_type, _field_names, field_kinds) = variant;
 
-                    let case_bb = self.context.append_basic_block(func, &format!("match_{}", name));
-                    let tag_const = self.context.i8_type().const_int(*vtag as u64, false);
-                    case_blocks.push((tag_const, case_bb));
+                    // If this tag already has a case block (duplicate variant with guard),
+                    // chain from the previous guard's failure point
+                    let case_bb = if let Some(prev_fail_bb) = tag_to_guard_fail.get(vtag) {
+                        // Create a new block for this arm, chained from previous guard failure
+                        let bb = self.context.append_basic_block(func, &format!("match_{}_guard", name));
+                        // Patch previous guard failure to jump here instead of default_bb
+                        self.builder.position_at_end(*prev_fail_bb);
+                        // The previous fail block should be empty (we'll fill it with a branch)
+                        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                            bld!(self.builder.build_unconditional_branch(bb))?;
+                        }
+                        bb
+                    } else {
+                        let bb = self.context.append_basic_block(func, &format!("match_{}", name));
+                        let tag_const = self.context.i8_type().const_int(*vtag as u64, false);
+                        case_blocks.push((tag_const, bb));
+                        bb
+                    };
 
                     self.builder.position_at_end(case_bb);
 
@@ -5090,8 +5108,14 @@ impl<'ctx> CodeGen<'ctx> {
                         let (guard_val, _) = self.compile_expr_with_kind(guard, func)?;
                         let guard_bool = guard_val.into_int_value();
                         let body_bb = self.context.append_basic_block(func, &format!("guard_pass_{}", name));
-                        bld!(self.builder.build_conditional_branch(guard_bool, body_bb, default_bb))?;
+                        let guard_fail_bb = self.context.append_basic_block(func, &format!("guard_fail_{}", name));
+                        bld!(self.builder.build_conditional_branch(guard_bool, body_bb, guard_fail_bb))?;
+                        // Record the guard failure block for potential chaining
+                        tag_to_guard_fail.insert(*vtag, guard_fail_bb);
                         self.builder.position_at_end(body_bb);
+                    } else {
+                        // No guard — remove any pending guard_fail for this tag
+                        tag_to_guard_fail.remove(vtag);
                     }
 
                     let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
@@ -5109,6 +5133,14 @@ impl<'ctx> CodeGen<'ctx> {
                     wildcard_arm = Some(arm);
                 }
                 _ => return Err(CodeGenError { line: Some(self.current_line), msg: "literal patterns not supported in enum match".into() }),
+            }
+        }
+
+        // Patch any remaining guard failure blocks to jump to default_bb
+        for (_, fail_bb) in &tag_to_guard_fail {
+            self.builder.position_at_end(*fail_bb);
+            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                bld!(self.builder.build_unconditional_branch(default_bb))?;
             }
         }
 

@@ -2929,6 +2929,19 @@ fn showcase144_recursion_algorithms() {
 }
 
 #[test]
+fn showcase145_enum_match_guards() {
+    let out = run_ore("showcase145.ore");
+    assert!(out.contains("200: success"));
+    assert!(out.contains("201: created"));
+    assert!(out.contains("301: other success (301)"));
+    assert!(out.contains("404: not found"));
+    assert!(out.contains("503: error (503)"));
+    assert!(out.contains("zero"));
+    assert!(out.contains("negative"));
+    assert!(out.contains("3 + 4"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
