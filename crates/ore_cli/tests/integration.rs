@@ -1199,6 +1199,20 @@ fn math_functions() {
 }
 
 #[test]
+fn lists_string_ops() {
+    let out = run_ore("lists/string_ops.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "apple, banana, cherry",  // unique
+        "true", "false",          // contains
+        "2", "-1",                // index_of
+        "apple, banana, cherry",  // sort
+        "2",                      // frequencies
+        "cat, dog",               // unique_by
+    ]);
+}
+
+#[test]
 fn stdlib_comprehensive() {
     let out = run_ore("stdlib/comprehensive.ore");
     let lines: Vec<&str> = out.lines().collect();

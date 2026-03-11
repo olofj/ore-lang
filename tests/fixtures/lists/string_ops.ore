@@ -1,0 +1,27 @@
+fn main
+  fruits := ["apple", "banana", "cherry", "apple", "banana"]
+
+  -- String-aware unique
+  print fruits.unique().join(", ")
+
+  -- String-aware contains
+  print fruits.contains("cherry")
+  print fruits.contains("grape")
+
+  -- String-aware index_of
+  print fruits.index_of("cherry")
+  print fruits.index_of("grape")
+
+  -- String sort
+  sorted := ["cherry", "apple", "banana"]
+  sorted.sort()
+  print sorted.join(", ")
+
+  -- Frequencies
+  freq := fruits.frequencies()
+  print freq.get("apple")
+
+  -- Unique by key
+  words := ["cat", "car", "dog", "cup"]
+  by_first := words.unique_by(w => w.char_at(0))
+  print by_first.join(", ")
