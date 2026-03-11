@@ -1,0 +1,176 @@
+-- Showcase 658: Simple Abstract Domain (Interval Arithmetic)
+
+fn main
+  print "Abstract Domain - Interval Arithmetic:"
+  print ""
+
+  -- Abstract interpretation: reason about program behavior using intervals
+  -- Each variable tracked as [lo, hi] instead of concrete values
+
+  -- Part 1: Setup abstract state
+  print "=== Part 1: Abstract Variables ==="
+  num_vars := 4
+  mut var_names := ["x", "y", "z", "w"]
+  -- Each variable has [lo, hi] interval
+  mut lo := [0, 0, 0, 0]
+  mut hi := [0, 0, 0, 0]
+
+  -- x := 5
+  lo[0] = 5
+  hi[0] = 5
+  print "  x := 5  =>  x in [5, 5]"
+
+  -- y := input (assume [0, 10])
+  lo[1] = 0
+  hi[1] = 10
+  print "  y := input  =>  y in [0, 10]"
+
+  -- z := x + y  =>  [5+0, 5+10] = [5, 15]
+  lo[2] = lo[0] + lo[1]
+  hi[2] = hi[0] + hi[1]
+  print "  z := x + y  =>  z in [{lo[2]}, {hi[2]}]"
+
+  -- w := z * 2  =>  [5*2, 15*2] = [10, 30]
+  lo[3] = lo[2] * 2
+  hi[3] = hi[2] * 2
+  print "  w := z * 2  =>  w in [{lo[3]}, {hi[3]}]"
+
+  -- Part 2: Interval operations
+  print ""
+  print "=== Part 2: Interval Operations ==="
+
+  -- Addition: [a,b] + [c,d] = [a+c, b+d]
+  a_lo := 3
+  a_hi := 7
+  b_lo := 2
+  b_hi := 5
+  add_lo := a_lo + b_lo
+  add_hi := a_hi + b_hi
+  print "  [{a_lo},{a_hi}] + [{b_lo},{b_hi}] = [{add_lo},{add_hi}]"
+
+  -- Subtraction: [a,b] - [c,d] = [a-d, b-c]
+  sub_lo := a_lo - b_hi
+  sub_hi := a_hi - b_lo
+  print "  [{a_lo},{a_hi}] - [{b_lo},{b_hi}] = [{sub_lo},{sub_hi}]"
+
+  -- Multiplication: [a,b] * [c,d] (all positive) = [a*c, b*d]
+  mul_lo := a_lo * b_lo
+  mul_hi := a_hi * b_hi
+  print "  [{a_lo},{a_hi}] * [{b_lo},{b_hi}] = [{mul_lo},{mul_hi}]"
+
+  -- Intersection: [a,b] & [c,d] = [max(a,c), min(b,d)]
+  c_lo := 4
+  c_hi := 9
+  mut int_lo := a_lo
+  if c_lo > int_lo
+    int_lo = c_lo
+  mut int_hi := a_hi
+  if c_hi < int_hi
+    int_hi = c_hi
+  print "  [{a_lo},{a_hi}] intersect [{c_lo},{c_hi}] = [{int_lo},{int_hi}]"
+
+  -- Union (join): [a,b] | [c,d] = [min(a,c), max(b,d)]
+  mut uni_lo := a_lo
+  if c_lo < uni_lo
+    uni_lo = c_lo
+  mut uni_hi := a_hi
+  if c_hi > uni_hi
+    uni_hi = c_hi
+  print "  [{a_lo},{a_hi}] union [{c_lo},{c_hi}] = [{uni_lo},{uni_hi}]"
+
+  -- Part 3: Conditional branches
+  print ""
+  print "=== Part 3: Branch Analysis ==="
+  -- if y > 5 then ... else ...
+  -- y in [0, 10]
+  -- true branch: y in [6, 10]
+  -- false branch: y in [0, 5]
+  print "  Variable y in [0, 10]"
+  print "  Condition: y > 5"
+  print "  True branch:  y in [6, 10]"
+  print "  False branch: y in [0, 5]"
+
+  -- In true branch: z = x + y => [5+6, 5+10] = [11, 15]
+  -- In false branch: z = x + y => [5+0, 5+5] = [5, 10]
+  print "  True branch:  z = x + y => [11, 15]"
+  print "  False branch: z = x + y => [5, 10]"
+
+  -- Join at merge point: z in [min(5,11), max(10,15)] = [5, 15]
+  print "  After join: z in [5, 15]"
+
+  -- Part 4: Loop widening
+  print ""
+  print "=== Part 4: Loop Analysis ==="
+  -- i := 0; while i < 100: i = i + 1
+  -- Without widening: iteration 0: i in [0,0], iter 1: [0,1], ... slow
+  -- With widening: after seeing increase, widen to [0, +inf] then narrow
+
+  mut iter_lo := 0
+  mut iter_hi := 0
+  print "  Loop: i := 0; while i < 100: i = i + 1"
+  print "  Iteration 0: i in [{iter_lo}, {iter_hi}]"
+
+  -- Simulate a few iterations
+  for step in range(1, 5)
+    new_lo := iter_lo
+    new_hi := iter_hi + 1
+    iter_lo = new_lo
+    iter_hi = new_hi
+    print "  Iteration {step}: i in [{iter_lo}, {iter_hi}]"
+
+  -- Widening: hi is increasing -> widen to upper bound
+  print "  Widening: i in [0, 100] (loop bound)"
+  iter_hi = 100
+
+  -- After loop: i = 100
+  print "  After loop: i in [100, 100]"
+
+  -- Part 5: Division safety check
+  print ""
+  print "=== Part 5: Safety Checks ==="
+  -- Check if division by zero is possible
+  -- d in [2, 8] => safe
+  -- d in [-3, 5] => might be zero!
+  mut d1_lo := 2
+  mut d1_hi := 8
+  mut d2_lo := -3
+  mut d2_hi := 5
+
+  mut safe1 := true
+  if d1_lo <= 0 and d1_hi >= 0
+    safe1 = false
+  mut safe2 := true
+  if d2_lo <= 0 and d2_hi >= 0
+    safe2 = false
+
+  print "  d1 in [{d1_lo}, {d1_hi}]: division safe = {safe1}"
+  print "  d2 in [{d2_lo}, {d2_hi}]: division safe = {safe2}"
+
+  -- Array bounds check
+  -- arr has 10 elements, index i in [0, 9] => safe
+  -- index j in [0, 12] => might overflow!
+  arr_size := 10
+  mut i_lo := 0
+  mut i_hi := 9
+  mut j_lo := 0
+  mut j_hi := 12
+  mut arr_safe1 := true
+  if i_lo < 0 or i_hi >= arr_size
+    arr_safe1 = false
+  mut arr_safe2 := true
+  if j_lo < 0 or j_hi >= arr_size
+    arr_safe2 = false
+  print "  arr[10], i in [{i_lo},{i_hi}]: bounds safe = {arr_safe1}"
+  print "  arr[10], j in [{j_lo},{j_hi}]: bounds safe = {arr_safe2}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Interval domain tracks [lo, hi] per variable"
+  print "  Operations: add, sub, mul, intersect, union"
+  print "  Branch analysis splits domains"
+  print "  Widening handles loops"
+  print "  Safety: division-by-zero, array bounds"
+
+  print ""
+  print "Abstract interpretation: interval arithmetic, branch analysis, loop widening, safety checks."

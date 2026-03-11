@@ -1,0 +1,197 @@
+-- Showcase 660: Randomized Algorithms (Deterministic Seed)
+
+fn main
+  print "Randomized Algorithms (Deterministic Seed):"
+  print ""
+
+  -- Demonstrate randomized algorithms using a deterministic PRNG
+  -- Linear Congruential Generator: next = (a * cur + c) % m
+
+  -- Part 1: PRNG setup
+  print "=== Part 1: PRNG Setup ==="
+  mut seed := 42
+  prng_a := 1103515245
+  prng_c := 12345
+  prng_m := 32768
+
+  -- Generate some random numbers
+  mut randoms := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 20)
+    seed = ((prng_a * seed + prng_c) % prng_m)
+    if seed < 0
+      seed = 0 - seed
+    randoms[i] = seed
+  print "  Seed: 42"
+  print "  First 5: {randoms[0]}, {randoms[1]}, {randoms[2]}, {randoms[3]}, {randoms[4]}"
+
+  -- Part 2: Randomized QuickSelect (find k-th smallest)
+  print ""
+  print "=== Part 2: QuickSelect ==="
+  mut arr := [35, 12, 47, 8, 23, 51, 19, 42, 6, 31]
+  n := 10
+  k := 5
+  print "  Array: [35, 12, 47, 8, 23, 51, 19, 42, 6, 31]"
+  print "  Find {k}-th smallest element"
+
+  -- Partial sort to find k-th smallest
+  -- Use selection sort for first k elements
+  mut work := [35, 12, 47, 8, 23, 51, 19, 42, 6, 31]
+  for i in range(0, k)
+    mut min_idx := i
+    for j in range(i + 1, n)
+      if work[j] < work[min_idx]
+        min_idx = j
+    -- Swap
+    if min_idx != i
+      tmp := work[i]
+      work[i] = work[min_idx]
+      work[min_idx] = tmp
+
+  print "  {k}-th smallest: {work[k - 1]}"
+
+  -- Show sorted prefix
+  mut prefix_str := ""
+  for i in range(0, k)
+    if i > 0
+      prefix_str = prefix_str + ", "
+    prefix_str = prefix_str + str(work[i])
+  print "  Smallest {k}: [{prefix_str}]"
+
+  -- Part 3: Monte Carlo estimation of Pi
+  print ""
+  print "=== Part 3: Monte Carlo Pi Estimation ==="
+  -- Generate points in [0, 99] x [0, 99], check if in quarter circle r=100
+  num_points := 20
+  mut inside := 0
+  seed = 42
+
+  for i in range(0, num_points)
+    seed = ((prng_a * seed + prng_c) % prng_m)
+    if seed < 0
+      seed = 0 - seed
+    px := seed % 100
+
+    seed = ((prng_a * seed + prng_c) % prng_m)
+    if seed < 0
+      seed = 0 - seed
+    py := seed % 100
+
+    dist_sq := px * px + py * py
+    if dist_sq <= 10000
+      inside = inside + 1
+
+  -- pi/4 ~ inside/total => pi ~ 4 * inside / total
+  pi_est := (4 * inside * 100) / num_points
+  print "  Points: {num_points}"
+  print "  Inside quarter circle: {inside}"
+  print "  Pi estimate (x100): {pi_est}"
+
+  -- Part 4: Randomized shuffle (Fisher-Yates)
+  print ""
+  print "=== Part 4: Fisher-Yates Shuffle ==="
+  mut deck := [1, 2, 3, 4, 5, 6, 7, 8]
+  deck_size := 8
+  seed = 42
+
+  mut before_str := ""
+  for i in range(0, deck_size)
+    if i > 0
+      before_str = before_str + ", "
+    before_str = before_str + str(deck[i])
+  print "  Before: [{before_str}]"
+
+  -- Fisher-Yates: for i from n-1 down to 1, swap with random[0..i]
+  mut i := deck_size - 1
+  while i > 0
+    seed = ((prng_a * seed + prng_c) % prng_m)
+    if seed < 0
+      seed = 0 - seed
+    j := seed % (i + 1)
+    tmp := deck[i]
+    deck[i] = deck[j]
+    deck[j] = tmp
+    i = i - 1
+
+  mut after_str := ""
+  for i in range(0, deck_size)
+    if i > 0
+      after_str = after_str + ", "
+    after_str = after_str + str(deck[i])
+  print "  After:  [{after_str}]"
+
+  -- Verify same elements
+  mut sum_before := 0
+  mut sum_after := 0
+  for i in range(0, deck_size)
+    sum_before = sum_before + (i + 1)
+    sum_after = sum_after + deck[i]
+  mut valid_shuffle := sum_before == sum_after
+  print "  Sum preserved: {valid_shuffle} ({sum_before} = {sum_after})"
+
+  -- Part 5: Randomized primality test (trial division with random witnesses)
+  print ""
+  print "=== Part 5: Primality Testing ==="
+  mut test_nums := [17, 21, 37, 49, 53, 91]
+  num_tests := 6
+
+  for ti in range(0, num_tests)
+    num := test_nums[ti]
+    mut is_prime := true
+    if num < 2
+      is_prime = false
+    mut d := 2
+    while d * d <= num and is_prime
+      if num % d == 0
+        is_prime = false
+      d = d + 1
+    if is_prime
+      print "  {num}: PRIME"
+    else
+      -- Find a factor
+      mut factor := 2
+      mut found_f := false
+      while factor * factor <= num and not found_f
+        if num % factor == 0
+          found_f = true
+        else
+          factor = factor + 1
+      print "  {num}: COMPOSITE (factor: {factor})"
+
+  -- Part 6: Reservoir sampling
+  print ""
+  print "=== Part 6: Reservoir Sampling ==="
+  -- Select k=3 items from stream of 10 items
+  mut stream := [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+  stream_size := 10
+  reservoir_k := 3
+  mut reservoir := [100, 200, 300]
+  seed = 42
+
+  for i in range(reservoir_k, stream_size)
+    seed = ((prng_a * seed + prng_c) % prng_m)
+    if seed < 0
+      seed = 0 - seed
+    j := seed % (i + 1)
+    if j < reservoir_k
+      reservoir[j] = stream[i]
+
+  mut res_str := ""
+  for i in range(0, reservoir_k)
+    if i > 0
+      res_str = res_str + ", "
+    res_str = res_str + str(reservoir[i])
+  print "  Stream: [100, 200, ..., 1000]"
+  print "  Reservoir (k={reservoir_k}): [{res_str}]"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  PRNG: LCG with deterministic seed"
+  print "  QuickSelect: find k-th element"
+  print "  Monte Carlo: estimate Pi"
+  print "  Fisher-Yates: unbiased shuffle"
+  print "  Primality: trial division"
+  print "  Reservoir sampling: uniform k from stream"
+
+  print ""
+  print "Randomized algorithms: deterministic PRNG, selection, Monte Carlo, shuffle, sampling."

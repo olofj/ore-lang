@@ -1,0 +1,207 @@
+-- Showcase 655: Lindenmayer Systems (L-Systems)
+
+fn main
+  print "Lindenmayer Systems (L-Systems):"
+  print ""
+
+  -- L-systems: parallel string rewriting for fractal generation
+  -- Axiom + production rules iterated to produce complex strings
+
+  -- Part 1: Algae growth (original L-system)
+  print "=== Part 1: Algae Growth ==="
+  -- Rules: A -> AB, B -> A
+  -- Axiom: A
+  -- Gen 0: A
+  -- Gen 1: AB
+  -- Gen 2: ABA
+  -- Gen 3: ABAAB
+  -- Gen 4: ABAABABA
+  -- Gen 5: ABAABABAABAAB
+
+  -- Encode: A=1, B=2 in arrays
+  mut cur := [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut nxt := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut clen := 1
+  max_len := 50
+  num_gens := 7
+
+  print "  Rules: A -> AB, B -> A"
+  print "  Gen 0: A (len=1)"
+
+  for gen in range(1, num_gens + 1)
+    mut nlen := 0
+    for i in range(0, clen)
+      if cur[i] == 1
+        -- A -> AB
+        if nlen + 1 < max_len
+          nxt[nlen] = 1
+          nlen = nlen + 1
+          nxt[nlen] = 2
+          nlen = nlen + 1
+      else if cur[i] == 2
+        -- B -> A
+        if nlen < max_len
+          nxt[nlen] = 1
+          nlen = nlen + 1
+
+    -- Copy nxt to cur
+    for i in range(0, nlen)
+      cur[i] = nxt[i]
+    clen = nlen
+
+    -- Display as string
+    mut s := ""
+    for i in range(0, clen)
+      if cur[i] == 1
+        s = s + "A"
+      else
+        s = s + "B"
+
+    -- Count A's and B's
+    mut ca := 0
+    mut cb := 0
+    for i in range(0, clen)
+      if cur[i] == 1
+        ca = ca + 1
+      else
+        cb = cb + 1
+
+    if clen <= 21
+      print "  Gen {gen}: {s} (len={clen}, A={ca}, B={cb})"
+    else
+      print "  Gen {gen}: (len={clen}, A={ca}, B={cb})"
+
+  -- Part 2: Fibonacci connection
+  print ""
+  print "=== Part 2: Fibonacci Connection ==="
+  -- Length of algae L-system at gen n = Fibonacci(n+2)
+  mut fib := [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(2, 10)
+    fib[i] = fib[i - 1] + fib[i - 2]
+  print "  Fibonacci: 1, 1, 2, 3, 5, 8, 13, 21, 34"
+  print "  L-system lengths follow Fibonacci sequence"
+
+  -- Part 3: Koch curve L-system
+  print ""
+  print "=== Part 3: Koch Curve ==="
+  -- Rules: F -> F+F-F-F+F
+  -- Axiom: F
+  -- F=draw forward, +=turn left 90, -=turn right 90
+  -- Encode: F=1, +=2, -=3
+
+  mut koch := [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut knxt := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut klen := 1
+
+  print "  Rules: F -> F+F-F-F+F"
+  for gen in range(1, 3)
+    mut nlen := 0
+    for i in range(0, klen)
+      if koch[i] == 1
+        -- F -> F+F-F-F+F (5 symbols: 1,2,1,3,1,3,1,2,1 = 9 symbols)
+        if nlen + 8 < max_len
+          knxt[nlen] = 1
+          nlen = nlen + 1
+          knxt[nlen] = 2
+          nlen = nlen + 1
+          knxt[nlen] = 1
+          nlen = nlen + 1
+          knxt[nlen] = 3
+          nlen = nlen + 1
+          knxt[nlen] = 1
+          nlen = nlen + 1
+          knxt[nlen] = 3
+          nlen = nlen + 1
+          knxt[nlen] = 1
+          nlen = nlen + 1
+          knxt[nlen] = 2
+          nlen = nlen + 1
+          knxt[nlen] = 1
+          nlen = nlen + 1
+      else
+        knxt[nlen] = koch[i]
+        nlen = nlen + 1
+
+    for i in range(0, nlen)
+      koch[i] = knxt[i]
+    klen = nlen
+
+    -- Count segments
+    mut segs := 0
+    for i in range(0, klen)
+      if koch[i] == 1
+        segs = segs + 1
+    print "  Gen {gen}: length={klen}, segments={segs}"
+
+  -- Part 4: Turtle graphics simulation
+  print ""
+  print "=== Part 4: Turtle Walk (Gen 1 Koch) ==="
+  -- Gen 1: F+F-F-F+F
+  -- Start at (0,0) facing right (dx=1,dy=0)
+  -- F: move forward, +: turn left, -: turn right
+  mut simple_koch := [1, 2, 1, 3, 1, 3, 1, 2, 1]
+  sk_len := 9
+  mut tx := 0
+  mut ty := 0
+  mut tdx := 1
+  mut tdy := 0
+  print "  Start: ({tx}, {ty}) facing right"
+
+  for i in range(0, sk_len)
+    if simple_koch[i] == 1
+      tx = tx + tdx
+      ty = ty + tdy
+      print "  Move to ({tx}, {ty})"
+    else if simple_koch[i] == 2
+      -- Turn left 90: (dx,dy) -> (-dy, dx)
+      old_dx := tdx
+      tdx = 0 - tdy
+      tdy = old_dx
+    else
+      -- Turn right 90: (dx,dy) -> (dy, -dx)
+      old_dx := tdx
+      tdx = tdy
+      tdy = 0 - old_dx
+
+  print "  End: ({tx}, {ty})"
+
+  -- Part 5: Sierpinski triangle L-system
+  print ""
+  print "=== Part 5: Sierpinski Triangle ==="
+  -- Rules: A -> B-A-B, B -> A+B+A
+  -- Axiom: A
+  -- Turns by 60 degrees (we just count symbols)
+  print "  Rules: A -> B-A-B, B -> A+B+A"
+  -- Gen 0: A (1 symbol)
+  -- Gen 1: B-A-B (5 symbols)
+  -- Gen 2: A+B+A-B-A-B-A+B+A (17 symbols)
+  mut s_len := 1
+  for gen in range(1, 6)
+    -- Each A or B expands to 5 symbols (X op X op X)
+    -- Non-A/B stay the same
+    -- Formula: new_len = old_draw_symbols * 5 + old_ops
+    -- Actually: each draw symbol becomes 5, ops stay
+    -- Simpler: len(n) = 3*len(n-1) + 2 (from X->XoXoX adding 2 ops per draw)
+    -- Wait: gen 0=1, gen 1: one A -> B-A-B = 5 (3 draws + 2 ops)
+    -- gen 2: 3 draws each expand: 3*5 + 2 ops = 17
+    -- Actually: len(n) = 3*len(n-1) + 2*(number of draw symbols at n-1)
+    -- Easier to just compute: len(n) = 2 * 3^n - 1
+    -- gen0=1, gen1=5, gen2=17, gen3=53, gen4=161, gen5=485
+    -- Formula: (2 * 3^n - 1)
+    mut pwr := 1
+    for p in range(0, gen)
+      pwr = pwr * 3
+    s_len = 2 * pwr - 1
+    print "  Gen {gen}: length={s_len}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  L-systems: parallel string rewriting"
+  print "  Algae: produces Fibonacci-length strings"
+  print "  Koch curve: fractal coastline"
+  print "  Sierpinski: fractal triangle"
+  print "  Applications: plant modeling, fractal art, road networks"
+
+  print ""
+  print "L-systems: parallel rewriting, Fibonacci growth, fractal curves, turtle graphics."

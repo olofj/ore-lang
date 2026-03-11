@@ -8468,6 +8468,123 @@ fn showcase650_segment_tree() {
 }
 
 #[test]
+fn showcase651_treap_split_merge() {
+    let out = run_ore("showcase651.ore");
+    assert!(out.contains("Treap with Split and Merge:"));
+    assert!(out.contains("In-order: [10, 20, 30, 40, 50, 60, 70]"));
+    assert!(out.contains("Left (< 35): [10, 20, 30]"));
+    assert!(out.contains("Right (>= 35): [40, 50, 60, 70]"));
+    assert!(out.contains("Merge verified: matches original"));
+    assert!(out.contains("After insert: [10, 20, 30, 40, 45, 50, 60, 70]"));
+    assert!(out.contains("After delete: [10, 20, 40, 45, 50, 60, 70]"));
+    assert!(out.contains("Treap split/merge: functional treap ops, insert and delete via split+merge."));
+}
+
+#[test]
+fn showcase652_network_simulator() {
+    let out = run_ore("showcase652.ore");
+    assert!(out.contains("Simple Network Simulator:"));
+    assert!(out.contains("R0 -> R5: distance=7ms via prev=3"));
+    assert!(out.contains("Packet 0: R0 -> R5 size=3 path=[R0 -> R1 -> R3 -> R5] latency=7ms"));
+    assert!(out.contains("Congested links: 2"));
+    assert!(out.contains("Average latency: 5ms"));
+    assert!(out.contains("Network simulator: routers, shortest-path routing, packet forwarding, congestion detection."));
+}
+
+#[test]
+fn showcase653_two_three_tree() {
+    let out = run_ore("showcase653.ore");
+    assert!(out.contains("2-3 Tree Simulation:"));
+    assert!(out.contains("Root: 2-node, keys=[15, 25]"));
+    assert!(out.contains("Search 10: FOUND at depth 1"));
+    assert!(out.contains("Search 12: NOT FOUND"));
+    assert!(out.contains("All keys: [5, 10, 15, 20, 25, 30, 35]"));
+    assert!(out.contains("All leaves at same depth: true"));
+    assert!(out.contains("2-3 tree: balanced search tree, 2 or 3 children per node, all leaves same depth."));
+}
+
+#[test]
+fn showcase654_gc_comparison() {
+    let out = run_ore("showcase654.ore");
+    assert!(out.contains("Garbage Collector Comparison:"));
+    assert!(out.contains("A (size=10) -> [B, C]"));
+    assert!(out.contains("G (size=10) -> [F]"));
+    assert!(out.contains("RC collected: 1 objects, 8 bytes"));
+    assert!(out.contains("M&S collected: 3 objects, 43 bytes"));
+    assert!(out.contains("Garbage: 43 bytes (34%)"));
+    assert!(out.contains("GC comparison: reference counting vs mark-and-sweep, cycle detection matters."));
+}
+
+#[test]
+fn showcase655_lindenmayer_systems() {
+    let out = run_ore("showcase655.ore");
+    assert!(out.contains("Lindenmayer Systems (L-Systems):"));
+    assert!(out.contains("Gen 3: ABAAB (len=5, A=3, B=2)"));
+    assert!(out.contains("Gen 6: ABAABABAABAABABAABABA (len=21, A=13, B=8)"));
+    assert!(out.contains("Gen 1: length=9, segments=5"));
+    assert!(out.contains("End: (3, 0)"));
+    assert!(out.contains("L-systems: parallel rewriting, Fibonacci growth, fractal curves, turtle graphics."));
+}
+
+#[test]
+fn showcase656_constraint_propagation() {
+    let out = run_ore("showcase656.ore");
+    assert!(out.contains("Constraint Propagation:"));
+    assert!(out.contains("C4 (W > 2): W domain = [3,4,5]"));
+    assert!(out.contains("C5 (X != 3): X domain = [1,2,4,5]"));
+    assert!(out.contains("Solution 1: X=1, Y=2, Z=5, W=3"));
+    assert!(out.contains("Total solutions: 19"));
+    assert!(out.contains("Reduction: 77%"));
+    assert!(out.contains("Constraint propagation: domain reduction, arc consistency, backtracking search."));
+}
+
+#[test]
+fn showcase657_hopcroft_karp() {
+    let out = run_ore("showcase657.ore");
+    assert!(out.contains("Hopcroft-Karp Bipartite Matching:"));
+    assert!(out.contains("Greedy matching size: 5"));
+    assert!(out.contains("Maximum matching size: 5"));
+    assert!(out.contains("Unmatched jobs: 0"));
+    assert!(out.contains("Unmatched workers: 0"));
+    assert!(out.contains("Hopcroft-Karp: maximum bipartite matching via augmenting paths."));
+}
+
+#[test]
+fn showcase658_abstract_domain() {
+    let out = run_ore("showcase658.ore");
+    assert!(out.contains("Abstract Domain - Interval Arithmetic:"));
+    assert!(out.contains("z := x + y  =>  z in [5, 15]"));
+    assert!(out.contains("[3,7] + [2,5] = [5,12]"));
+    assert!(out.contains("[3,7] - [2,5] = [-2,5]"));
+    assert!(out.contains("d1 in [2, 8]: division safe = true"));
+    assert!(out.contains("d2 in [-3, 5]: division safe = false"));
+    assert!(out.contains("Abstract interpretation: interval arithmetic, branch analysis, loop widening, safety checks."));
+}
+
+#[test]
+fn showcase659_xor_linked_list() {
+    let out = run_ore("showcase659.ore");
+    assert!(out.contains("XOR Linked List Concepts:"));
+    assert!(out.contains("Forward: 10 -> 20 -> 30 -> 40 -> 50 -> 60"));
+    assert!(out.contains("Backward: 60 -> 50 -> 40 -> 30 -> 20 -> 10"));
+    assert!(out.contains("Savings: 6 pointers (50%)"));
+    assert!(out.contains("(a XOR b) XOR a = 3 (recovers b)"));
+    assert!(out.contains("XOR linked list: space-efficient doubly-linked list using XOR encoding."));
+}
+
+#[test]
+fn showcase660_randomized_algorithms() {
+    let out = run_ore("showcase660.ore");
+    assert!(out.contains("Randomized Algorithms (Deterministic Seed):"));
+    assert!(out.contains("5-th smallest: 23"));
+    assert!(out.contains("Smallest 5: [6, 8, 12, 19, 23]"));
+    assert!(out.contains("Sum preserved: true (36 = 36)"));
+    assert!(out.contains("17: PRIME"));
+    assert!(out.contains("91: COMPOSITE (factor: 7)"));
+    assert!(out.contains("Randomized algorithms: deterministic PRNG, selection, Monte Carlo, shuffle, sampling."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

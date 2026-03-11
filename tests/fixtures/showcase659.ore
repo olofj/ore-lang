@@ -1,0 +1,194 @@
+-- Showcase 659: XOR Linked List Concepts
+
+fn main
+  print "XOR Linked List Concepts:"
+  print ""
+
+  -- XOR linked list: each node stores XOR of prev and next addresses
+  -- Saves memory: one pointer per node instead of two
+  -- We simulate with arrays and XOR-encoded links
+
+  -- Part 1: Setup nodes
+  print "=== Part 1: Setup ==="
+  num_nodes := 6
+  mut values := [10, 20, 30, 40, 50, 60]
+  -- xor_link[i] = prev_index XOR next_index
+  -- For boundary: prev of head = 0 (null=0 convention shifted by 1)
+  -- Use index+1 as "address" (0 = null)
+  -- Node 0 (addr 1): prev=0, next=2 => xor = 0 XOR 2 = 2
+  -- Node 1 (addr 2): prev=1, next=3 => xor = 1 XOR 3 = 2
+  -- Node 2 (addr 3): prev=2, next=4 => xor = 2 XOR 4 = 6
+  -- Node 3 (addr 4): prev=3, next=5 => xor = 3 XOR 5 = 6
+  -- Node 4 (addr 5): prev=4, next=6 => xor = 4 XOR 6 = 2
+  -- Node 5 (addr 6): prev=5, next=0 => xor = 5 XOR 0 = 5
+
+  -- Compute XOR links manually using XOR = (a+b) - 2*AND(a,b)
+  -- We'll compute XOR via bitwise simulation
+
+  -- Actually, let's use a simpler approach: store prev and next separately
+  -- then demonstrate XOR encoding and decoding
+  mut prev_idx := [0, 1, 2, 3, 4, 5]
+  mut next_idx := [2, 3, 4, 5, 6, 0]
+  mut xor_link := [0, 0, 0, 0, 0, 0]
+
+  -- Compute XOR for each node using bit-by-bit XOR
+  for i in range(0, num_nodes)
+    p := prev_idx[i]
+    n := next_idx[i]
+    -- XOR bit by bit (values 0-6 fit in 3 bits)
+    mut xval := 0
+    mut pp := p
+    mut nn := n
+    mut bit := 1
+    for b in range(0, 4)
+      pb := pp % 2
+      nb := nn % 2
+      if pb != nb
+        xval = xval + bit
+      pp = pp / 2
+      nn = nn / 2
+      bit = bit * 2
+    xor_link[i] = xval
+
+  for i in range(0, num_nodes)
+    addr := i + 1
+    print "  Node {i}: val={values[i]} addr={addr} xor_link={xor_link[i]} (prev={prev_idx[i]} XOR next={next_idx[i]})"
+
+  -- Part 2: Forward traversal
+  print ""
+  print "=== Part 2: Forward Traversal ==="
+  -- Start: prev_addr=0, cur=node 0 (addr 1)
+  -- next_addr = xor_link XOR prev_addr
+  mut prev_addr := 0
+  mut cur_addr := 1
+  mut trav_str := ""
+
+  for step in range(0, num_nodes)
+    cur_idx := cur_addr - 1
+    if step > 0
+      trav_str = trav_str + " -> "
+    trav_str = trav_str + str(values[cur_idx])
+
+    -- Decode next: next_addr = xor_link XOR prev_addr
+    xr := xor_link[cur_idx]
+    -- XOR xr with prev_addr
+    mut next_addr := 0
+    mut xr2 := xr
+    mut pa := prev_addr
+    mut bit2 := 1
+    for b in range(0, 4)
+      xb := xr2 % 2
+      pb := pa % 2
+      if xb != pb
+        next_addr = next_addr + bit2
+      xr2 = xr2 / 2
+      pa = pa / 2
+      bit2 = bit2 * 2
+
+    prev_addr = cur_addr
+    cur_addr = next_addr
+
+  print "  Forward: {trav_str}"
+
+  -- Part 3: Backward traversal
+  print ""
+  print "=== Part 3: Backward Traversal ==="
+  -- Start from tail: prev_addr=0 (after tail), cur=node 5 (addr 6)
+  prev_addr = 0
+  cur_addr = 6
+  mut back_str := ""
+
+  for step in range(0, num_nodes)
+    cur_idx := cur_addr - 1
+    if step > 0
+      back_str = back_str + " -> "
+    back_str = back_str + str(values[cur_idx])
+
+    xr := xor_link[cur_idx]
+    mut next_addr := 0
+    mut xr3 := xr
+    mut pa2 := prev_addr
+    mut bit3 := 1
+    for b in range(0, 4)
+      xb := xr3 % 2
+      pb := pa2 % 2
+      if xb != pb
+        next_addr = next_addr + bit3
+      xr3 = xr3 / 2
+      pa2 = pa2 / 2
+      bit3 = bit3 * 2
+
+    prev_addr = cur_addr
+    cur_addr = next_addr
+
+  print "  Backward: {back_str}"
+
+  -- Part 4: Memory comparison
+  print ""
+  print "=== Part 4: Memory Comparison ==="
+  regular_ptrs := num_nodes * 2
+  xor_ptrs := num_nodes * 1
+  savings := regular_ptrs - xor_ptrs
+  pct := (savings * 100) / regular_ptrs
+  print "  Regular doubly-linked: {regular_ptrs} pointers"
+  print "  XOR linked list: {xor_ptrs} pointers"
+  print "  Savings: {savings} pointers ({pct}%)"
+
+  -- Part 5: XOR properties
+  print ""
+  print "=== Part 5: XOR Properties ==="
+  -- a XOR a = 0
+  -- a XOR 0 = a
+  -- a XOR b XOR a = b (self-inverse)
+
+  -- Demonstrate with values
+  a := 5
+  b := 3
+  -- 5 XOR 3: 101 XOR 011 = 110 = 6
+  -- Compute via bit extraction
+  mut axb := 0
+  mut aa := a
+  mut bb := b
+  mut bit4 := 1
+  for i in range(0, 4)
+    ab := aa % 2
+    bbit := bb % 2
+    if ab != bbit
+      axb = axb + bit4
+    aa = aa / 2
+    bb = bb / 2
+    bit4 = bit4 * 2
+
+  -- a XOR a
+  mut axa := 0
+
+  -- axb XOR a should give b
+  mut axba := 0
+  mut xx := axb
+  mut aa2 := a
+  mut bit5 := 1
+  for i in range(0, 4)
+    xb := xx % 2
+    ab := aa2 % 2
+    if xb != ab
+      axba = axba + bit5
+    xx = xx / 2
+    aa2 = aa2 / 2
+    bit5 = bit5 * 2
+
+  print "  a={a}, b={b}"
+  print "  a XOR b = {axb}"
+  print "  a XOR a = {axa}"
+  print "  (a XOR b) XOR a = {axba} (recovers b)"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Nodes: {num_nodes}"
+  print "  Forward traversal: works with prev context"
+  print "  Backward traversal: works with next context"
+  print "  Memory: 50% pointer savings"
+  print "  Trade-off: need adjacent node to traverse"
+
+  print ""
+  print "XOR linked list: space-efficient doubly-linked list using XOR encoding."

@@ -1,0 +1,163 @@
+-- Showcase 652: Simple Network Simulator
+
+fn main
+  print "Simple Network Simulator:"
+  print ""
+
+  -- Simulate a small packet-switched network with routers and links
+  -- Track packet routing, latency, and congestion
+
+  -- Part 1: Network topology
+  print "=== Part 1: Network Topology ==="
+  num_routers := 6
+  mut router_names := ["R0", "R1", "R2", "R3", "R4", "R5"]
+  for i in range(0, num_routers)
+    print "  Router: {router_names[i]}"
+
+  -- Adjacency and link latency (flat encoding)
+  -- Links: R0-R1(2), R0-R2(5), R1-R3(3), R2-R3(1), R2-R4(4), R3-R5(2), R4-R5(3)
+  num_links := 7
+  mut link_from := [0, 0, 1, 2, 2, 3, 4]
+  mut link_to := [1, 2, 3, 3, 4, 5, 5]
+  mut link_lat := [2, 5, 3, 1, 4, 2, 3]
+  mut link_cap := [10, 8, 6, 12, 5, 10, 7]
+  mut link_load := [0, 0, 0, 0, 0, 0, 0]
+  mut link_from_name := ["R0", "R0", "R1", "R2", "R2", "R3", "R4"]
+  mut link_to_name := ["R1", "R2", "R3", "R3", "R4", "R5", "R5"]
+
+  for i in range(0, num_links)
+    print "  Link: {link_from_name[i]} -> {link_to_name[i]} lat={link_lat[i]}ms cap={link_cap[i]}"
+
+  -- Part 2: Routing table (shortest path via Dijkstra-like BFS)
+  print ""
+  print "=== Part 2: Routing Tables ==="
+  -- Compute shortest path from R0 to all others
+  mut dist := [0, 999, 999, 999, 999, 999]
+  mut prev := [-1, -1, -1, -1, -1, -1]
+  mut visited := [0, 0, 0, 0, 0, 0]
+
+  -- Simple relaxation iterations (Dijkstra)
+  for iter in range(0, num_routers)
+    -- Find unvisited with min dist
+    mut min_d := 9999
+    mut min_v := -1
+    for v in range(0, num_routers)
+      if visited[v] == 0 and dist[v] < min_d
+        min_d = dist[v]
+        min_v = v
+
+    if min_v >= 0
+      visited[min_v] = 1
+      -- Relax edges from min_v
+      for ei in range(0, num_links)
+        if link_from[ei] == min_v
+          nb := link_to[ei]
+          nd := dist[min_v] + link_lat[ei]
+          if nd < dist[nb]
+            dist[nb] = nd
+            prev[nb] = min_v
+        -- Also check reverse direction (bidirectional links)
+        if link_to[ei] == min_v
+          nb := link_from[ei]
+          nd := dist[min_v] + link_lat[ei]
+          if nd < dist[nb]
+            dist[nb] = nd
+            prev[nb] = min_v
+
+  for i in range(0, num_routers)
+    print "  R0 -> {router_names[i]}: distance={dist[i]}ms via prev={prev[i]}"
+
+  -- Part 3: Send packets
+  print ""
+  print "=== Part 3: Packet Simulation ==="
+  num_packets := 4
+  mut pkt_src := [0, 0, 1, 2]
+  mut pkt_dst := [5, 3, 5, 4]
+  mut pkt_size := [3, 2, 4, 1]
+
+  for pi in range(0, num_packets)
+    src := pkt_src[pi]
+    dst := pkt_dst[pi]
+    src_name := router_names[src]
+    dst_name := router_names[dst]
+    -- Trace path from dst back to src using prev
+    mut path := [-1, -1, -1, -1, -1, -1]
+    mut plen := 0
+    mut c := dst
+    while c >= 0
+      path[plen] = c
+      plen = plen + 1
+      c = prev[c]
+
+    -- Reverse path
+    mut path_str := ""
+    mut pi2 := plen - 1
+    while pi2 >= 0
+      if pi2 < plen - 1
+        path_str = path_str + " -> "
+      ridx := path[pi2]
+      rname := router_names[ridx]
+      path_str = path_str + rname
+      pi2 = pi2 - 1
+
+    latency := dist[dst] - dist[src]
+    psz := pkt_size[pi]
+    print "  Packet {pi}: {src_name} -> {dst_name} size={psz} path=[{path_str}] latency={latency}ms"
+
+    -- Add load to links along the path
+    mut pi3 := plen - 1
+    while pi3 > 0
+      from_r := path[pi3]
+      to_r := path[pi3 - 1]
+      for ei in range(0, num_links)
+        if link_from[ei] == from_r and link_to[ei] == to_r
+          link_load[ei] = link_load[ei] + psz
+        if link_to[ei] == from_r and link_from[ei] == to_r
+          link_load[ei] = link_load[ei] + psz
+      pi3 = pi3 - 1
+
+  -- Part 4: Link utilization
+  print ""
+  print "=== Part 4: Link Utilization ==="
+  mut congested := 0
+  for i in range(0, num_links)
+    pct := (link_load[i] * 100) / link_cap[i]
+    mut status := "OK"
+    if pct > 80
+      status = "CONGESTED"
+      congested = congested + 1
+    else if pct > 50
+      status = "BUSY"
+    fn_name := link_from_name[i]
+    tn_name := link_to_name[i]
+    ld := link_load[i]
+    cp := link_cap[i]
+    print "  {fn_name}->{tn_name}: load={ld}/{cp} ({pct}%) {status}"
+  print "  Congested links: {congested}"
+
+  -- Part 5: Network stats
+  print ""
+  print "=== Part 5: Network Statistics ==="
+  mut total_latency := 0
+  mut total_bytes := 0
+  for pi in range(0, num_packets)
+    dd := pkt_dst[pi]
+    ss := pkt_src[pi]
+    total_latency = total_latency + dist[dd] - dist[ss]
+    total_bytes = total_bytes + pkt_size[pi]
+  avg_lat := total_latency / num_packets
+  print "  Total packets: {num_packets}"
+  print "  Total bytes: {total_bytes}"
+  print "  Average latency: {avg_lat}ms"
+  print "  Network diameter: {dist[5]}ms (R0 to R5)"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Routers: {num_routers}"
+  print "  Links: {num_links}"
+  print "  Shortest path routing via Dijkstra"
+  print "  Congestion tracking on links"
+
+  print ""
+  print "Network simulator: routers, shortest-path routing, packet forwarding, congestion detection."

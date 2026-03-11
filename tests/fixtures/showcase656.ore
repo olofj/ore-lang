@@ -1,0 +1,142 @@
+-- Showcase 656: Simple Constraint Propagation
+
+fn main
+  print "Constraint Propagation:"
+  print ""
+
+  -- Solve a simple constraint satisfaction problem
+  -- Variables with domains, constraints reduce domains
+
+  -- Part 1: Setup variables and domains
+  print "=== Part 1: Variables ==="
+  num_vars := 4
+  mut var_names := ["X", "Y", "Z", "W"]
+  -- Each variable has domain [1..5]
+  -- Domain represented as bitmask: bit i means value (i+1) is in domain
+  -- 31 = 11111 = {1,2,3,4,5}
+  mut domain := [31, 31, 31, 31]
+
+  for i in range(0, num_vars)
+    print "  {var_names[i]}: domain = [1,2,3,4,5]"
+
+  -- Part 2: Define constraints
+  print ""
+  print "=== Part 2: Constraints ==="
+  -- C1: X < Y (X must be less than Y)
+  -- C2: Y + Z = 7
+  -- C3: Z != W
+  -- C4: W > 2
+  -- C5: X != 3
+  print "  C1: X < Y"
+  print "  C2: Y + Z = 7"
+  print "  C3: Z != W"
+  print "  C4: W > 2"
+  print "  C5: X != 3"
+
+  -- Part 3: Apply unary constraints first
+  print ""
+  print "=== Part 3: Unary Constraints ==="
+
+  -- C4: W > 2 => remove 1, 2 from W
+  -- Remove bit 0 (value 1) and bit 1 (value 2)
+  domain[3] = domain[3] - 1
+  domain[3] = domain[3] - 2
+  -- domain[3] = 28 = 11100 = {3,4,5}
+  print "  C4 (W > 2): W domain = [3,4,5]"
+
+  -- C5: X != 3 => remove 3 from X
+  -- Remove bit 2 (value 3)
+  domain[0] = domain[0] - 4
+  -- domain[0] = 27 = 11011 = {1,2,4,5}
+  print "  C5 (X != 3): X domain = [1,2,4,5]"
+
+  -- Part 4: Arc consistency propagation
+  print ""
+  print "=== Part 4: Propagation ==="
+
+  -- C2: Y + Z = 7
+  -- Possible pairs: (2,5),(3,4),(4,3),(5,2)
+  -- Y can be {2,3,4,5}, Z can be {2,3,4,5}
+  -- Remove 1 from Y and Z
+  domain[1] = domain[1] - 1
+  domain[2] = domain[2] - 1
+  -- Y = {2,3,4,5} = 30, Z = {2,3,4,5} = 30
+  print "  C2 (Y+Z=7): Y=[2,3,4,5], Z=[2,3,4,5]"
+
+  -- C1: X < Y
+  -- X in {1,2,4,5}, Y in {2,3,4,5}
+  -- X can be at most max(Y)-1 = 4, so remove 5 from X
+  domain[0] = domain[0] - 16
+  -- X = {1,2,4} = 11 = 1+2+8
+  print "  C1 (X<Y): X=[1,2,4]"
+  -- Y must be > min(X) = 1, Y already >= 2, OK
+
+  -- C3: Z != W
+  -- Z in {2,3,4,5}, W in {3,4,5} -- overlapping values
+  -- Cannot prune yet without more info
+  print "  C3 (Z!=W): no pruning yet"
+
+  -- Second round: try more propagation
+  -- C2 with Z in {2,3,4,5}: Y+Z=7
+  -- If Z=2 then Y=5, if Z=3 then Y=4, if Z=4 then Y=3, if Z=5 then Y=2
+  -- All still valid
+
+  -- C1: X < Y, X in {1,2,4}, Y in {2,3,4,5}
+  -- If X=4, then Y must be 5
+  -- If X=2, then Y in {3,4,5}
+  -- If X=1, then Y in {2,3,4,5}
+
+  -- Part 5: Try assignments (backtracking)
+  print ""
+  print "=== Part 5: Find Solutions ==="
+  mut solutions := 0
+
+  -- Iterate over possible values for each variable
+  -- X in {1,2,4}, Y in {2,3,4,5}, Z in {2,3,4,5}, W in {3,4,5}
+  mut x_vals := [1, 2, 4]
+  mut y_vals := [2, 3, 4, 5]
+  mut z_vals := [2, 3, 4, 5]
+  mut w_vals := [3, 4, 5]
+
+  for xi in range(0, 3)
+    for yi in range(0, 4)
+      for zi in range(0, 4)
+        for wi in range(0, 3)
+          xv := x_vals[xi]
+          yv := y_vals[yi]
+          zv := z_vals[zi]
+          wv := w_vals[wi]
+          -- Check all constraints
+          mut ok := true
+          if xv >= yv
+            ok = false
+          if yv + zv != 7
+            ok = false
+          if zv == wv
+            ok = false
+          if wv <= 2
+            ok = false
+          if xv == 3
+            ok = false
+          if ok
+            solutions = solutions + 1
+            print "  Solution {solutions}: X={xv}, Y={yv}, Z={zv}, W={wv}"
+
+  print "  Total solutions: {solutions}"
+
+  -- Part 6: Domain reduction stats
+  print ""
+  print "=== Part 6: Statistics ==="
+  -- Original search space: 5^4 = 625
+  -- After propagation: 3 * 4 * 4 * 3 = 144
+  -- Solutions found
+  orig_space := 625
+  reduced_space := 144
+  pct := (reduced_space * 100) / orig_space
+  print "  Original search space: {orig_space}"
+  print "  After propagation: {reduced_space}"
+  print "  Reduction: {100 - pct}%"
+  print "  Solutions found: {solutions}"
+
+  print ""
+  print "Constraint propagation: domain reduction, arc consistency, backtracking search."
