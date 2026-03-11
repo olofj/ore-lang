@@ -2484,6 +2484,29 @@ fn showcase104_advanced_tests() {
 }
 
 #[test]
+fn showcase105_generics() {
+    let out = run_ore("showcase105.ore");
+    assert!(out.contains("swap(1,2): 2, 1"));
+    assert!(out.contains("max(3, 7): 7"));
+    assert!(out.contains("min(3, 7): 3"));
+    assert!(out.contains("id(42): 42"));
+    assert!(out.contains("id(hello): hello"));
+    assert!(out.contains("apply double 21: 42"));
+    assert!(out.contains("sorted: 1, 3, 5, 8, 9"));
+}
+
+#[test]
+fn showcase106_real_world_patterns() {
+    let out = run_ore("showcase106.ore");
+    assert!(out.contains("port: 8080"));
+    assert!(out.contains("debug: true"));
+    assert!(out.contains("= Report ="));
+    assert!(out.contains("- First item"));
+    assert!(out.contains("| Alice | 95 | A |"));
+    assert!(out.contains("values > 30: count=7, sum=490, avg=70"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

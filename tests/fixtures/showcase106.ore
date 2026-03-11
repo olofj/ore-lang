@@ -1,0 +1,49 @@
+-- Showcase 106: Real-world patterns
+
+-- Configuration builder pattern
+fn build_config defaults:Map[Str, Str] overrides:Map[Str, Str] -> Map[Str, Str]
+  defaults.merge(overrides)
+
+-- Header formatting
+fn header title:Str -> Str
+  line := "=".repeat(title.len() + 4)
+  "{line}\n= {title} =\n{line}"
+
+fn main
+  -- Config builder
+  defaults := {"host": "localhost", "port": "3000", "debug": "false"}
+  overrides := {"port": "8080", "debug": "true"}
+  config := build_config(defaults, overrides)
+  print "port: {config["port"]}"
+  print "debug: {config["debug"]}"
+  print "host: {config["host"]}"
+
+  -- Header formatting
+  print ""
+  print header("Report")
+
+  -- Bullet list (inline)
+  print ""
+  items := ["First item", "Second item", "Third item"]
+  for item in items
+    print "  - {item}"
+
+  -- Table formatting (inline)
+  print ""
+  rows := ["Name,Score,Grade", "Alice,95,A", "Bob,87,B", "Carol,92,A"]
+  for row in rows
+    cells := row.split(",")
+    print "| {cells.join(" | ")} |"
+
+  -- Data processing pipeline
+  print ""
+  data := "10,20,30,40,50,60,70,80,90,100"
+  nums := data.split(",")
+  mut sum := 0
+  mut count := 0
+  for s in nums
+    n := s.parse_int()
+    if n > 30
+      sum = sum + n
+      count = count + 1
+  print "values > 30: count={count}, sum={sum}, avg={sum / count}"

@@ -1,0 +1,50 @@
+-- Showcase 105: Generic data structures
+
+fn swap[T] a:T b:T -> List[Int]
+  [b, a]
+
+fn max_of[T] a:T b:T -> T
+  if a > b
+    a
+  else
+    b
+
+fn min_of[T] a:T b:T -> T
+  if a < b
+    a
+  else
+    b
+
+fn identity[T] x:T -> T
+  x
+
+fn apply[T] f:(T -> T) x:T -> T
+  f(x)
+
+fn main
+  -- Generic swap
+  pair := swap(1, 2)
+  print "swap(1,2): {pair.join(", ")}"
+
+  -- Generic max/min
+  print "max(3, 7): {max_of(3, 7)}"
+  print "min(3, 7): {min_of(3, 7)}"
+  print "max str: {max_of("alpha", "beta")}"
+
+  -- Generic identity
+  print "id(42): {identity(42)}"
+  print "id(hello): {identity("hello")}"
+  print "id(true): {identity(true)}"
+
+  -- Generic apply
+  doubled := apply(n => n * 2, 21)
+  print "apply double 21: {doubled}"
+  negated := apply(n => -n, 42)
+  print "apply negate 42: {negated}"
+
+  -- Generics with complex types
+  nums := [5, 3, 8, 1, 9]
+  sorted := nums.sort()
+  print "sorted: {sorted.join(", ")}"
+  print "max: {sorted[sorted.len() - 1]}"
+  print "min: {sorted[0]}"
