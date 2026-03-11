@@ -1,0 +1,7 @@
+-- Error: cannot send mutable variable through channel
+
+fn main
+  ch := channel()
+  mut x := 42
+  ch.send(x)
+  print "done"

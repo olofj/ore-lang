@@ -1,0 +1,9 @@
+-- Error: cannot send mutable variable to spawned task
+
+fn worker x:Int -> Int
+  x * 2
+
+fn main
+  mut counter := 0
+  spawn worker(counter)
+  print "done"

@@ -391,6 +391,16 @@ impl TypeChecker {
             Stmt::Break => Type::Unit,
             Stmt::Continue => Type::Unit,
             Stmt::Spawn(e) => {
+                // Check that spawn doesn't pass mutable variables
+                if let Expr::Call { args, .. } = e {
+                    for arg in args {
+                        if let Expr::Ident(name) = arg {
+                            if let Some((_, true)) = env.lookup(name) {
+                                self.err(format!("cannot send mutable variable '{}' to spawned task", name));
+                            }
+                        }
+                    }
+                }
                 self.infer_expr(e, env);
                 Type::Int
             }
@@ -482,6 +492,7 @@ impl TypeChecker {
                             "float" => return Type::Float,
                             "str" => return Type::Str,
                             "file_read" | "file_write" => return Type::Str,
+                            "channel" => return Type::Channel,
                             _ => {}
                         }
 
@@ -643,6 +654,16 @@ impl TypeChecker {
                 let obj_ty = self.infer_expr(object, env);
                 for a in args {
                     self.infer_expr(a, env);
+                }
+                // Enforce mut scope confinement: cannot send mutable variable through channel
+                if method == "send" && obj_ty == Type::Channel {
+                    for a in args {
+                        if let Expr::Ident(name) = a {
+                            if let Some((_, true)) = env.lookup(name) {
+                                self.err(format!("cannot send mutable variable '{}' through channel", name));
+                            }
+                        }
+                    }
                 }
                 self.infer_method_return(&obj_ty, method, args.len())
             }

@@ -477,6 +477,18 @@ fn mutation_compound() {
 }
 
 #[test]
+fn mutation_spawn_mut_error() {
+    let err = run_ore_expect_error("mutation/spawn_mut.ore");
+    assert!(err.contains("cannot send mutable variable 'counter' to spawned task"));
+}
+
+#[test]
+fn mutation_channel_mut_error() {
+    let err = run_ore_expect_error("mutation/channel_mut.ore");
+    assert!(err.contains("cannot send mutable variable 'x' through channel"));
+}
+
+#[test]
 fn stdlib_chars() {
     let out = run_ore("stdlib/chars.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

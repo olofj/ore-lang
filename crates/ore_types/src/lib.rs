@@ -15,6 +15,7 @@ pub enum Type {
         params: Vec<Type>,
         ret: Box<Type>,
     },
+    Channel,
     /// A type variable for inference (not yet resolved)
     Any,
 }
@@ -33,6 +34,7 @@ impl std::fmt::Display for Type {
             Type::Result(ok, err) => write!(f, "Result[{}, {}]", ok, err),
             Type::Record(name) => write!(f, "{}", name),
             Type::Enum(name) => write!(f, "{}", name),
+            Type::Channel => write!(f, "Channel"),
             Type::Fn { params, ret } => {
                 let ps: Vec<String> = params.iter().map(|p| p.to_string()).collect();
                 write!(f, "({}) -> {}", ps.join(", "), ret)
