@@ -1,0 +1,60 @@
+-- Showcase 41: Parallel data lists with pipelines
+-- Demonstrates: multiple correlated lists, pipeline operations, data processing
+
+fn main
+  -- Parallel arrays (database-style)
+  names := ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace"]
+  ages := [30, 25, 35, 28, 22, 40, 33]
+  cities := ["NYC", "LA", "NYC", "Chicago", "LA", "NYC", "Chicago"]
+
+  print "All people:"
+  for i in 0..names.len()
+    print "  {names.get(i)} (age {ages.get(i)}, {cities.get(i)})"
+
+  -- Average age
+  avg := ages.sum() / ages.len()
+  print "Average age: {avg}"
+
+  -- Count by city using frequencies
+  city_counts := cities.frequencies()
+  print "NYC: {city_counts.get_or("NYC", 0)}, LA: {city_counts.get_or("LA", 0)}, Chicago: {city_counts.get_or("Chicago", 0)}"
+
+  -- Find oldest
+  mut oldest_idx := 0
+  for i in 1..ages.len()
+    if ages.get(i) > ages.get(oldest_idx)
+      oldest_idx = i
+  print "Oldest: {names.get(oldest_idx)} ({ages.get(oldest_idx)})"
+
+  -- Find youngest
+  mut youngest_idx := 0
+  for i in 1..ages.len()
+    if ages.get(i) < ages.get(youngest_idx)
+      youngest_idx = i
+  print "Youngest: {names.get(youngest_idx)} ({ages.get(youngest_idx)})"
+
+  -- Ages pipeline: stats
+  sorted_ages := ages.sort()
+  print "Sorted ages: {sorted_ages.join(", ")}"
+  print "Age range: {ages.min()} - {ages.max()}"
+
+  -- NYC residents
+  mut nyc_residents := [""]
+  nyc_residents = []
+  for i in 0..names.len()
+    if cities.get(i) == "NYC"
+      nyc_residents = nyc_residents + [names.get(i)]
+  print "NYC residents: {nyc_residents.join(", ")}"
+
+  -- People over 30
+  mut over_30 := [""]
+  over_30 = []
+  for i in 0..names.len()
+    if ages.get(i) > 30
+      over_30 = over_30 + [names.get(i)]
+  print "Over 30: {over_30.join(", ")}"
+
+  -- Name lengths via pipeline
+  name_lens := names | map(n => n.len())
+  print "Name lengths: {name_lens.join(", ")}"
+  print "Longest name: {name_lens.max()} chars"

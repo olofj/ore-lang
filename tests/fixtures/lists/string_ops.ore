@@ -13,8 +13,8 @@ fn main
   print fruits.index_of("grape")
 
   -- String sort
-  sorted := ["cherry", "apple", "banana"]
-  sorted.sort()
+  mut sorted := ["cherry", "apple", "banana"]
+  sorted = sorted.sort()
   print sorted.join(", ")
 
   -- Frequencies

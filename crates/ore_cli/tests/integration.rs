@@ -1658,6 +1658,15 @@ fn showcase40() {
 }
 
 #[test]
+fn showcase41() {
+    let out = run_ore("showcase41.ore");
+    assert!(out.contains("NYC: 3, LA: 2, Chicago: 2"));
+    assert!(out.contains("Oldest: Frank (40)"));
+    assert!(out.contains("Over 30: Charlie, Frank, Grace"));
+    assert!(out.contains("NYC residents: Alice, Charlie, Frank"));
+}
+
+#[test]
 fn build_and_run_binary() {
     // Test `ore build` produces a working native binary
     let path = fixtures_dir().join("showcase36.ore");

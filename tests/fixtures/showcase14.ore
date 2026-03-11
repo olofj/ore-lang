@@ -45,8 +45,8 @@ fn main
   ["x", "y", "z"].each_with_index((i, v) => print "{i}={v}")
 
   -- String sorting
-  words := ["banana", "cherry", "apple", "date"]
-  words.sort()
+  mut words := ["banana", "cherry", "apple", "date"]
+  words = words.sort()
   print "sorted: {words.join(", ")}"
 
   -- Char at

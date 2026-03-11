@@ -945,39 +945,57 @@ pub extern "C" fn ore_list_print(list: *mut OreList) {
 }
 
 #[no_mangle]
-pub extern "C" fn ore_list_sort(list: *mut OreList) {
+pub extern "C" fn ore_list_sort(list: *mut OreList) -> *mut OreList {
     unsafe {
-        let list = &mut *list;
-        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        let src = &*list;
+        let new_list = ore_list_new();
+        for i in 0..src.len as usize {
+            ore_list_push(new_list, *src.data.add(i));
+        }
+        let new = &mut *new_list;
+        let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
         slice.sort();
+        new_list
     }
 }
 
 /// Sort a list of strings lexicographically.
 #[no_mangle]
-pub extern "C" fn ore_list_sort_str(list: *mut OreList) {
+pub extern "C" fn ore_list_sort_str(list: *mut OreList) -> *mut OreList {
     unsafe {
-        let list = &mut *list;
-        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        let src = &*list;
+        let new_list = ore_list_new();
+        for i in 0..src.len as usize {
+            ore_list_push(new_list, *src.data.add(i));
+        }
+        let new = &mut *new_list;
+        let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
         slice.sort_by(|a, b| {
             let sa = &*(*a as *mut OreStr);
             let sb = &*(*b as *mut OreStr);
             sa.as_str().cmp(sb.as_str())
         });
+        new_list
     }
 }
 
 /// Sort a list of floats.
 #[no_mangle]
-pub extern "C" fn ore_list_sort_float(list: *mut OreList) {
+pub extern "C" fn ore_list_sort_float(list: *mut OreList) -> *mut OreList {
     unsafe {
-        let list = &mut *list;
-        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        let src = &*list;
+        let new_list = ore_list_new();
+        for i in 0..src.len as usize {
+            ore_list_push(new_list, *src.data.add(i));
+        }
+        let new = &mut *new_list;
+        let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
         slice.sort_by(|a, b| {
             let fa = f64::from_bits(*a as u64);
             let fb = f64::from_bits(*b as u64);
             fa.partial_cmp(&fb).unwrap_or(std::cmp::Ordering::Equal)
         });
+        new_list
     }
 }
 
@@ -1004,16 +1022,22 @@ pub extern "C" fn ore_list_sort_by(
     list: *mut OreList,
     cmp: extern "C" fn(i64, i64, *mut u8) -> i64,
     env_ptr: *mut u8,
-) {
+) -> *mut OreList {
     unsafe {
-        let list = &mut *list;
-        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        let src = &*list;
+        let new_list = ore_list_new();
+        for i in 0..src.len as usize {
+            ore_list_push(new_list, *src.data.add(i));
+        }
+        let new = &mut *new_list;
+        let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
         slice.sort_by(|a, b| {
             let result = cmp(*a, *b, env_ptr);
             if result < 0 { std::cmp::Ordering::Less }
             else if result > 0 { std::cmp::Ordering::Greater }
             else { std::cmp::Ordering::Equal }
         });
+        new_list
     }
 }
 
@@ -1072,16 +1096,20 @@ pub extern "C" fn ore_list_sort_by_key(
     list: *mut OreList,
     key_fn: extern "C" fn(i64, *mut u8) -> i64,
     env_ptr: *mut u8,
-) {
+) -> *mut OreList {
     unsafe {
-        let list = &mut *list;
-        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
-        // Compute keys once, then sort by them (Schwartzian transform)
-        let mut keyed: Vec<(i64, i64)> = slice.iter().map(|&elem| (key_fn(elem, env_ptr), elem)).collect();
-        keyed.sort_by_key(|&(k, _)| k);
-        for (i, (_, elem)) in keyed.into_iter().enumerate() {
-            slice[i] = elem;
+        let src = &*list;
+        let new_list = ore_list_new();
+        let mut keyed: Vec<(i64, i64)> = Vec::with_capacity(src.len as usize);
+        for i in 0..src.len as usize {
+            let elem = *src.data.add(i);
+            keyed.push((key_fn(elem, env_ptr), elem));
         }
+        keyed.sort_by_key(|&(k, _)| k);
+        for (_, elem) in keyed {
+            ore_list_push(new_list, elem);
+        }
+        new_list
     }
 }
 
@@ -1091,19 +1119,22 @@ pub extern "C" fn ore_list_sort_by_key_str(
     list: *mut OreList,
     key_fn: extern "C" fn(i64, *mut u8) -> *mut OreStr,
     env_ptr: *mut u8,
-) {
+) -> *mut OreList {
     unsafe {
-        let list = &mut *list;
-        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
-        let mut keyed: Vec<(String, i64)> = slice.iter().map(|&elem| {
+        let src = &*list;
+        let new_list = ore_list_new();
+        let mut keyed: Vec<(String, i64)> = Vec::with_capacity(src.len as usize);
+        for i in 0..src.len as usize {
+            let elem = *src.data.add(i);
             let key_str = key_fn(elem, env_ptr);
             let s = if !key_str.is_null() { (*key_str).as_str().to_string() } else { String::new() };
-            (s, elem)
-        }).collect();
-        keyed.sort_by(|a, b| a.0.cmp(&b.0));
-        for (i, (_, elem)) in keyed.into_iter().enumerate() {
-            slice[i] = elem;
+            keyed.push((s, elem));
         }
+        keyed.sort_by(|a, b| a.0.cmp(&b.0));
+        for (_, elem) in keyed {
+            ore_list_push(new_list, elem);
+        }
+        new_list
     }
 }
 

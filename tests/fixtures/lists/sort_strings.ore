@@ -1,12 +1,12 @@
 fn main
   -- Sort strings lexicographically
-  words := ["cherry", "apple", "banana", "date"]
-  words.sort()
+  mut words := ["cherry", "apple", "banana", "date"]
+  words = words.sort()
   print words.join(", ")
 
   -- Sort floats
-  nums := [3.14, 1.0, 2.71, 0.5]
-  nums.sort()
+  mut nums := [3.14, 1.0, 2.71, 0.5]
+  nums = nums.sort()
   nums.each(n => print n)
 
   -- Dedup consecutive duplicates

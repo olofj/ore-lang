@@ -28,7 +28,7 @@ fn main
 
   -- Sort with custom comparator
   mut sorted := [4, 2, 7, 1, 5]
-  sorted.sort((a, b) => a - b)
+  sorted = sorted.sort((a, b) => a - b)
   print sorted
 
   -- Option handling with map and chaining

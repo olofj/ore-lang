@@ -33,13 +33,13 @@ fn main
   print m.get_or("z", 99)
 
   -- String sort
-  words := ["cherry", "apple", "banana"]
-  words.sort()
+  mut words := ["cherry", "apple", "banana"]
+  words = words.sort()
   print words.join(", ")
 
   -- Float sort
-  floats := [3.14, 1.0, 2.71]
-  floats.sort()
+  mut floats := [3.14, 1.0, 2.71]
+  floats = floats.sort()
   print floats.min()
   print floats.max()
 

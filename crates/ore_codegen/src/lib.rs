@@ -685,8 +685,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_find_index", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_fold(ptr, init_i64, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_fold", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
-        // ore_list_sort(ptr)
-        self.module.add_function("ore_list_sort", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_sort(ptr) -> ptr (returns new sorted list)
+        self.module.add_function("ore_list_sort", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_reverse(ptr)
         self.module.add_function("ore_list_reverse", void_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_contains(ptr, i64) -> i8
@@ -763,11 +763,11 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_min", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_max", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_count", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
-        self.module.add_function("ore_list_sort_by", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
-        self.module.add_function("ore_list_sort_by_key", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_sort_by", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_sort_by_key", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_min_by", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_max_by", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
-        self.module.add_function("ore_list_sort_by_key_str", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_sort_by_key_str", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_index_of", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_unique", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_flatten", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -808,8 +808,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_to_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_frequencies", ptr_type.fn_type(&[ptr_type.into(), i8_type.into()], false), ext);
         self.module.add_function("ore_list_intersperse", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
-        self.module.add_function("ore_list_sort_str", void_type.fn_type(&[ptr_type.into()], false), ext);
-        self.module.add_function("ore_list_sort_float", void_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_sort_str", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_sort_float", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_dedup", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_tap", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_map_with_index", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
@@ -3175,8 +3175,9 @@ impl<'ctx> CodeGen<'ctx> {
                         _ => "ore_list_sort",
                     };
                     let rt = self.module.get_function(rt_name).unwrap();
-                    bld!(self.builder.build_call(rt, &[list_val.into()], ""))?;
-                    return Ok((list_val, ValKind::List));
+                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sorted"))?;
+                    let sorted_val = self.call_result_to_value(result)?;
+                    return Ok((sorted_val, ValKind::List));
                 }
                 // sort(comparator) - sort_by
                 let elem_kind = self.last_list_elem_kind.clone();
@@ -3200,8 +3201,9 @@ impl<'ctx> CodeGen<'ctx> {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
                 let rt = self.module.get_function("ore_list_sort_by").unwrap();
-                bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
-                Ok((list_val, ValKind::List))
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "sorted"))?;
+                let sorted_val = self.call_result_to_value(result)?;
+                Ok((sorted_val, ValKind::List))
             }
             "sort_by" => {
                 // sort_by(key_fn) - sort by a key extracted from each element
@@ -3229,8 +3231,9 @@ impl<'ctx> CodeGen<'ctx> {
                 };
                 // Determine which runtime to use based on key return type
                 let rt = self.module.get_function("ore_list_sort_by_key").unwrap();
-                bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
-                Ok((list_val, ValKind::List))
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "sorted"))?;
+                let sorted_val = self.call_result_to_value(result)?;
+                Ok((sorted_val, ValKind::List))
             }
             "min_by" | "max_by" => {
                 if args.len() != 1 {
@@ -3271,9 +3274,10 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             "reverse" => {
-                let rt = self.module.get_function("ore_list_reverse").unwrap();
-                bld!(self.builder.build_call(rt, &[list_val.into()], ""))?;
-                Ok((list_val, ValKind::List))
+                let rt = self.module.get_function("ore_list_reverse_new").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "reversed"))?;
+                let rev_val = self.call_result_to_value(result)?;
+                Ok((rev_val, ValKind::List))
             }
             "contains" => {
                 if args.len() != 1 {

@@ -1,10 +1,10 @@
 fn main
   -- sort_by with key function (sort by negative = descending)
-  nums := [3, 1, 4, 1, 5, 9, 2, 6]
-  nums.sort_by(x => 0 - x)
+  mut nums := [3, 1, 4, 1, 5, 9, 2, 6]
+  nums = nums.sort_by(x => 0 - x)
   print nums | join(" ")
 
   -- sort_by ascending (identity)
-  nums2 := [5, 3, 8, 1, 9]
-  nums2.sort_by(x => x)
+  mut nums2 := [5, 3, 8, 1, 9]
+  nums2 = nums2.sort_by(x => x)
   print nums2 | join(" ")

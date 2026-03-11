@@ -3,7 +3,7 @@
 
 fn main
   -- Raw temperature readings (Celsius) from a sensor array
-  readings := [22.5, 19.8, 23.1, 21.0, 22.5, 24.3, 19.8, 20.7, 23.1, 22.5]
+  mut readings := [22.5, 19.8, 23.1, 21.0, 22.5, 24.3, 19.8, 20.7, 23.1, 22.5]
 
   -- Basic statistics
   total := readings.sum()
@@ -14,7 +14,7 @@ fn main
   print "max: {hi}"
 
   -- Sort to see the distribution
-  readings.sort()
+  readings = readings.sort()
   sorted_str := readings | map(x => "{x}") | join(", ")
   print "sorted: {sorted_str}"
 
