@@ -1,0 +1,18 @@
+-- Showcase 73: Multi-file modules with use imports
+use utils
+
+fn main
+  -- Using imported functions
+  print "clamp(15, 0, 10) = {clamp(15, 0, 10)}"
+  print "clamp(-5, 0, 10) = {clamp(-5, 0, 10)}"
+  print "clamp(7, 0, 10) = {clamp(7, 0, 10)}"
+
+  -- Bar chart using repeat_char
+  data := [3, 7, 2, 9, 5]
+  for i, val in data
+    bar := repeat_char("#", val)
+    print "{i}: {bar} ({val})"
+
+  -- Range check
+  for x in [0, 5, 10, 15, -1]
+    print "{x} in [0,10]: {is_between(x, 0, 10)}"

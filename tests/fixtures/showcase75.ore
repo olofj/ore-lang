@@ -1,0 +1,66 @@
+-- Showcase 75: CSV-like data processing
+
+fn parse_csv_line line:Str -> List[Str]
+  line.split(",")
+
+fn main
+  -- Simulated CSV data (name,age,score)
+  lines := [
+    "Alice,30,95",
+    "Bob,25,87",
+    "Carol,35,92",
+    "Dave,28,78",
+    "Eve,32,96"
+  ]
+
+  -- Parse and display
+  print "Name       Age  Score"
+  print "----       ---  -----"
+  for line in lines
+    parts := line.split(",")
+    [name, age, score] := parts
+    padded_name := name.pad_right(10, " ")
+    padded_age := age.pad_left(3, " ")
+    padded_score := score.pad_left(5, " ")
+    print "{padded_name} {padded_age}  {padded_score}"
+
+  -- Extract scores and compute stats
+  mut scores := []
+  for line in lines
+    parts := line.split(",")
+    [_n, _a, sc] := parts
+    scores.push(sc.parse_int())
+  print ""
+  print "Total students: {scores.len()}"
+  print "Average score: {scores.average()}"
+  print "Highest: {scores.max()}"
+  print "Lowest: {scores.min()}"
+
+  -- Count passing (>= 80)
+  passing := scores.filter(s => s >= 80).len()
+  print "Passing: {passing}/{scores.len()}"
+
+  -- Find top scorer
+  mut top_name := ""
+  mut top_score := 0
+  for line in lines
+    parts := line.split(",")
+    [nm, _ag, sc] := parts
+    s := sc.parse_int()
+    if s > top_score
+      top_score = s
+      top_name = nm
+  print "Top scorer: {top_name} ({top_score})"
+
+  -- Generate summary line
+  mut all_names := ""
+  mut first := true
+  for line in lines
+    parts := line.split(",")
+    [nm, _a, _s] := parts
+    if first
+      all_names = nm
+      first = false
+    else
+      all_names = all_names + ", " + nm
+  print "Students: {all_names}"

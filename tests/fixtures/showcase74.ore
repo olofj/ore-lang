@@ -1,0 +1,31 @@
+-- Showcase 74: Concurrency with spawn and channels
+
+fn compute_sum start:Int end:Int ch:Channel
+  mut total := 0
+  for i in range(start, end)
+    total = total + i
+  ch.send(total)
+
+fn greet_thread
+  print "Hello from thread!"
+
+fn main
+  -- Basic spawn
+  spawn greet_thread()
+
+  -- Channel communication
+  ch := channel()
+  spawn compute_sum(0, 50, ch)
+  spawn compute_sum(50, 100, ch)
+  result1 := ch.recv()
+  result2 := ch.recv()
+  print "Sum 0..100 = {result1 + result2}"
+
+  -- Parallel map
+  data := range(1, 11)
+  doubled := data.par_map(n => n * 2)
+  print "Par map: {doubled.join(", ")}"
+
+  -- Sleep
+  sleep(10)
+  print "After sleep"

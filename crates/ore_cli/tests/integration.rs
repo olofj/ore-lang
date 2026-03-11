@@ -2066,6 +2066,43 @@ fn showcase72() {
 }
 
 #[test]
+fn showcase73() {
+    let path = fixtures_dir().join("showcase73/main.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["run", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore");
+    assert!(output.status.success(), "ore run failed: {}", String::from_utf8_lossy(&output.stderr));
+    let out = String::from_utf8(output.stdout).unwrap();
+    assert!(out.contains("clamp(15, 0, 10) = 10"));
+    assert!(out.contains("clamp(-5, 0, 10) = 0"));
+    assert!(out.contains("1: ####### (7)"));
+    assert!(out.contains("5 in [0,10]: true"));
+    assert!(out.contains("-1 in [0,10]: false"));
+}
+
+#[test]
+fn showcase74() {
+    let out = run_ore("showcase74.ore");
+    assert!(out.contains("Hello from thread!"));
+    assert!(out.contains("Sum 0..100 = 4950"));
+    assert!(out.contains("Par map: 2, 4, 6, 8, 10, 12, 14, 16, 18, 20"));
+    assert!(out.contains("After sleep"));
+}
+
+#[test]
+fn showcase75() {
+    let out = run_ore("showcase75.ore");
+    assert!(out.contains("Alice       30     95"));
+    assert!(out.contains("Total students: 5"));
+    assert!(out.contains("Average score: 89.6"));
+    assert!(out.contains("Highest: 96"));
+    assert!(out.contains("Passing: 4/5"));
+    assert!(out.contains("Top scorer: Eve (96)"));
+    assert!(out.contains("Students: Alice, Bob, Carol, Dave, Eve"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
