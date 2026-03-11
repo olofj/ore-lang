@@ -1,0 +1,113 @@
+-- Showcase 882: Auction Mechanisms (First-Price and Second-Price)
+
+-- Compare first-price sealed-bid and second-price (Vickrey) auctions.
+-- In first-price: winner pays their bid (rational bidders shade bids below value).
+-- In second-price: winner pays second-highest bid (truthful bidding is dominant).
+
+fn max_of a:Int b:Int -> Int
+  if a > b then a else b
+
+fn min_of a:Int b:Int -> Int
+  if a < b then a else b
+
+-- Find the winner (highest bidder index) and second highest
+fn find_winner bids:List -> Int
+  mut win_idx := 0
+  mut win_val := bids[0]
+  for i in range(1, bids.len())
+    if bids[i] > win_val
+      win_val = bids[i]
+      win_idx = i
+  win_idx
+
+fn find_second_price bids:List winner:Int -> Int
+  mut second := 0
+  for i in range(0, bids.len())
+    if i != winner
+      if bids[i] > second
+        second = bids[i]
+  second
+
+-- First-price: winner pays own bid
+fn first_price_auction bids:List values:List -> List
+  winner := find_winner(bids)
+  price := bids[winner]
+  surplus := values[winner] - price
+  mut res := []
+  res.push(winner)
+  res.push(price)
+  res.push(surplus)
+  res
+
+-- Second-price: winner pays second highest bid
+fn second_price_auction bids:List values:List -> List
+  winner := find_winner(bids)
+  price := find_second_price(bids, winner)
+  surplus := values[winner] - price
+  mut res := []
+  res.push(winner)
+  res.push(price)
+  res.push(surplus)
+  res
+
+-- Revenue equivalence theorem comparison
+fn bidder_name idx:Int -> Str
+  if idx == 0 then "Alice"
+  else if idx == 1 then "Bob"
+  else if idx == 2 then "Carol"
+  else "Dave"
+
+fn main
+  print "Auction Mechanisms: First-Price vs Second-Price"
+  print "================================================"
+  print ""
+
+  -- True values (private information)
+  values := [100, 85, 120, 95]
+  print "Bidder private values:"
+  for i in range(0, values.len())
+    print "  {bidder_name(i)}: {values[i]}"
+
+  print ""
+  print "--- First-Price Sealed-Bid Auction ---"
+  print "Rational strategy: bid below true value (bid shading)"
+  -- Approximate equilibrium bids: bid (n-1)/n * value for n bidders
+  -- With 4 bidders, bid ~ 0.75 * value
+  fp_bids := [75, 63, 90, 71]
+  print "Equilibrium bids (approx 75% of value):"
+  for i in range(0, fp_bids.len())
+    print "  {bidder_name(i)}: bids {fp_bids[i]} (value={values[i]})"
+  fp_result := first_price_auction(fp_bids, values)
+  fp_winner := fp_result[0]
+  fp_price := fp_result[1]
+  fp_surplus := fp_result[2]
+  print "Winner: {bidder_name(fp_winner)} | Price paid: {fp_price} | Surplus: {fp_surplus}"
+
+  print ""
+  print "--- Second-Price (Vickrey) Auction ---"
+  print "Dominant strategy: bid exactly your true value"
+  sp_bids := [100, 85, 120, 95]
+  print "Truthful bids:"
+  for i in range(0, sp_bids.len())
+    print "  {bidder_name(i)}: bids {sp_bids[i]} (value={sp_bids[i]})"
+  sp_result := second_price_auction(sp_bids, values)
+  sp_winner := sp_result[0]
+  sp_price := sp_result[1]
+  sp_surplus := sp_result[2]
+  print "Winner: {bidder_name(sp_winner)} | Price paid: {sp_price} | Surplus: {sp_surplus}"
+
+  print ""
+  print "--- Revenue Equivalence Theorem ---"
+  print "Both auctions yield same expected revenue in equilibrium"
+  print "First-price revenue:  {fp_price}"
+  print "Second-price revenue: {sp_price}"
+  print ""
+  print "--- Efficiency Comparison ---"
+  top_val := values.max()
+  print "Highest-value bidder's value: {top_val}"
+  print "First-price winner value:  {values[fp_winner]}"
+  print "Second-price winner value: {values[sp_winner]}"
+  fp_efficient := values[fp_winner] == top_val
+  sp_efficient := values[sp_winner] == top_val
+  print "First-price allocatively efficient: {fp_efficient}"
+  print "Second-price allocatively efficient: {sp_efficient}"

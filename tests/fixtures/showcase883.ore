@@ -1,0 +1,92 @@
+-- Showcase 883: Supply and Demand Equilibrium
+
+-- Models market equilibrium using supply and demand curves.
+-- Supply: Qs = a + b*P (upward sloping)
+-- Demand: Qd = c - d*P (downward sloping)
+-- Equilibrium: Qs = Qd => P* = (c-a)/(b+d)
+
+fn supply_qty a:Int b:Int price:Int -> Int
+  a + b * price
+
+fn demand_qty c:Int d:Int price:Int -> Int
+  c - d * price
+
+fn abs_val x:Int -> Int
+  if x < 0 then 0 - x else x
+
+fn main
+  print "Supply and Demand Equilibrium"
+  print "=============================="
+  print ""
+
+  -- Widget market parameters
+  -- Supply: Qs = 10 + 3*P
+  -- Demand: Qd = 100 - 2*P
+  sa := 10
+  sb := 3
+  dc := 100
+  dd := 2
+
+  print "Widget Market:"
+  print "  Supply:  Qs = {sa} + {sb}*P"
+  print "  Demand:  Qd = {dc} - {dd}*P"
+  print ""
+
+  -- Find equilibrium price (integer search)
+  -- At equilibrium: 10 + 3P = 100 - 2P => 5P = 90 => P = 18
+  mut eq_price := 0
+  mut eq_qty := 0
+  mut min_gap := 99999
+  for p in range(1, 100)
+    qs := supply_qty(sa, sb, p)
+    qd := demand_qty(dc, dd, p)
+    if qd > 0
+      gap := abs_val(qs - qd)
+      if gap < min_gap
+        min_gap = gap
+        eq_price = p
+        eq_qty = (qs + qd) / 2
+
+  print "Equilibrium:"
+  print "  Price: P* = {eq_price}"
+  print "  Quantity: Q* = {eq_qty}"
+  print "  Supply at P*: Qs = {supply_qty(sa, sb, eq_price)}"
+  print "  Demand at P*: Qd = {demand_qty(dc, dd, eq_price)}"
+
+  print ""
+  print "Market Schedule (P = 0 to 30):"
+  print "  Price | Supply | Demand | Surplus/Shortage"
+  print "  ------+--------+--------+-----------------"
+  for p in range(0, 31)
+    qs := supply_qty(sa, sb, p)
+    qd := demand_qty(dc, dd, p)
+    if qd >= 0
+      gap := qs - qd
+      status := if gap > 0 then "surplus " + str(gap)
+                else if gap < 0 then "shortage " + str(0 - gap)
+                else "EQUILIBRIUM"
+      price_str := str(p).pad_left(5)
+      qs_str := str(qs).pad_left(6)
+      qd_str := str(qd).pad_left(6)
+      print "  {price_str} | {qs_str} | {qd_str} | {status}"
+
+  print ""
+  print "Consumer Surplus at equilibrium:"
+  -- CS = 0.5 * (max_price - eq_price) * eq_qty
+  -- Max demand price: Qd=0 => P = dc/dd = 50
+  max_price := dc / dd
+  cs := (max_price - eq_price) * eq_qty / 2
+  print "  Max willingness to pay: {max_price}"
+  print "  Consumer Surplus (approx): {cs}"
+
+  print ""
+  print "Producer Surplus at equilibrium:"
+  -- PS = 0.5 * (eq_price - min_price) * eq_qty
+  -- Min supply price: Qs=0 => P = -sa/sb ~ 0 (use 0)
+  ps := eq_price * eq_qty / 2
+  print "  Producer Surplus (approx): {ps}"
+
+  total_surplus := cs + ps
+  print ""
+  print "Total Surplus: {total_surplus}"
+  print "Market is efficient at equilibrium (maximum total surplus)"

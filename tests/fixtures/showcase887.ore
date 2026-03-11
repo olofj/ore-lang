@@ -1,0 +1,150 @@
+-- Showcase 887: Voting Systems Comparison
+
+-- Compare five voting systems on the same set of voter preferences:
+-- 1. Plurality (first-past-the-post)
+-- 2. Borda count
+-- 3. Instant Runoff Voting (IRV)
+-- 4. Condorcet method (pairwise comparison)
+-- 5. Approval voting
+-- Candidates: Alice(0), Bob(1), Carol(2), Dave(3)
+
+-- 5 voter groups with preference orderings and sizes
+-- Group sizes: 28, 26, 20, 14, 12 (total 100 voters)
+
+fn candidate_name c:Int -> Str
+  if c == 0 then "Alice"
+  else if c == 1 then "Bob"
+  else if c == 2 then "Carol"
+  else "Dave"
+
+-- Plurality: winner = most first-choice votes
+fn plurality_winner prefs:List sizes:List -> Int
+  -- prefs[g*4 + 0] = first choice of group g
+  mut counts := [0, 0, 0, 0]
+  for g in range(0, 5)
+    first := prefs[g * 4 + 0]
+    counts[first] = counts[first] + sizes[g]
+  mut best := 0
+  for c in range(1, 4)
+    if counts[c] > counts[best]
+      best = c
+  best
+
+-- Borda count: rank 0=top gets 3pts, rank 1 gets 2pts, etc.
+fn borda_winner prefs:List sizes:List -> Int
+  mut scores := [0, 0, 0, 0]
+  for g in range(0, 5)
+    for rank in range(0, 4)
+      cand := prefs[g * 4 + rank]
+      pts := 3 - rank
+      scores[cand] = scores[cand] + pts * sizes[g]
+  mut best := 0
+  for c in range(1, 4)
+    if scores[c] > scores[best]
+      best = c
+  best
+
+-- Check if a beats b pairwise (more voters prefer a over b)
+fn pairwise_wins prefs:List sizes:List a:Int b:Int -> Bool
+  mut for_a := 0
+  for g in range(0, 5)
+    mut rank_a := 4
+    mut rank_b := 4
+    for rank in range(0, 4)
+      cand := prefs[g * 4 + rank]
+      if cand == a
+        rank_a = rank
+      if cand == b
+        rank_b = rank
+    if rank_a < rank_b
+      for_a = for_a + sizes[g]
+  for_a > 50
+
+-- Condorcet: candidate that beats all others pairwise
+fn condorcet_winner prefs:List sizes:List -> Int
+  mut winner := -1
+  for c in range(0, 4)
+    mut beats_all := true
+    for d in range(0, 4)
+      if c != d
+        if pairwise_wins(prefs, sizes, c, d) == false
+          beats_all = false
+    if beats_all
+      winner = c
+  winner
+
+-- Approval voting: each voter approves top half of candidates
+fn approval_winner prefs:List sizes:List -> Int
+  mut scores := [0, 0, 0, 0]
+  for g in range(0, 5)
+    -- Approve top 2
+    for rank in range(0, 2)
+      cand := prefs[g * 4 + rank]
+      scores[cand] = scores[cand] + sizes[g]
+  mut best := 0
+  for c in range(1, 4)
+    if scores[c] > scores[best]
+      best = c
+  best
+
+fn main
+  print "Voting Systems Comparison"
+  print "=========================="
+  print "Candidates: Alice, Bob, Carol, Dave"
+  print "100 voters in 5 groups"
+  print ""
+
+  -- Preference orderings (0=Alice, 1=Bob, 2=Carol, 3=Dave)
+  -- Each group: [1st, 2nd, 3rd, 4th]
+  -- Group 1 (28): Alice > Carol > Bob > Dave
+  -- Group 2 (26): Bob > Alice > Carol > Dave
+  -- Group 3 (20): Carol > Bob > Alice > Dave
+  -- Group 4 (14): Dave > Carol > Bob > Alice
+  -- Group 5 (12): Carol > Dave > Bob > Alice
+  prefs := [0, 2, 1, 3, 1, 0, 2, 3, 2, 1, 0, 3, 3, 2, 1, 0, 2, 3, 1, 0]
+  sizes := [28, 26, 20, 14, 12]
+
+  print "Group | Size | Preference Order"
+  print "------+------+-----------------"
+  group_names := ["G1", "G2", "G3", "G4", "G5"]
+  for g in range(0, 5)
+    c0 := candidate_name(prefs[g * 4 + 0])
+    c1 := candidate_name(prefs[g * 4 + 1])
+    c2 := candidate_name(prefs[g * 4 + 2])
+    c3 := candidate_name(prefs[g * 4 + 3])
+    sz := sizes[g]
+    gn := group_names[g]
+    print "  {gn}  |  {str(sz).pad_left(3)} | {c0} > {c1} > {c2} > {c3}"
+
+  print ""
+  print "Results by Voting System:"
+  print "------------------------"
+
+  pw := plurality_winner(prefs, sizes)
+  bw := borda_winner(prefs, sizes)
+  cw := condorcet_winner(prefs, sizes)
+  aw := approval_winner(prefs, sizes)
+
+  print "1. Plurality:    {candidate_name(pw)}"
+  print "2. Borda Count:  {candidate_name(bw)}"
+  condorcet_str := if cw == -1 then "No Condorcet winner" else candidate_name(cw)
+  print "3. Condorcet:    {condorcet_str}"
+  print "4. Approval:     {candidate_name(aw)}"
+
+  print ""
+  print "Pairwise Matrix (row beats column = Y):"
+  print "       Alice  Bob  Carol  Dave"
+  for a in range(0, 4)
+    mut row := "  " + candidate_name(a).pad_right(8)
+    for b in range(0, 4)
+      if a == b
+        row = row + "  -   "
+      else
+        pw_ab := pairwise_wins(prefs, sizes, a, b)
+        sym := if pw_ab then "  Y   " else "  N   "
+        row = row + sym
+    print row
+
+  print ""
+  print "Key insight: Different systems can produce different winners!"
+  print "Arrow's Impossibility Theorem: no perfect voting system exists"

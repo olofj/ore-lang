@@ -1,0 +1,95 @@
+-- Showcase 884: Portfolio Optimization (Markowitz Mean-Variance)
+
+-- Markowitz portfolio theory: find optimal asset allocation to
+-- maximize return for a given level of risk (or minimize risk for a
+-- given return). Uses the efficient frontier concept.
+-- Three assets: Stocks (high return/risk), Bonds (low), Gold (medium).
+
+fn round1 x:Float -> Float
+  r := (x * 10.0 + 0.5).to_int()
+  r.to_float() / 10.0
+
+fn round2 x:Float -> Float
+  r := (x * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+-- Compute portfolio return given weights and fixed assets
+fn port_return ws:Float wb:Float wg:Float -> Float
+  ws * 10.0 + wb * 4.0 + wg * 6.0
+
+-- Portfolio volatility with correlation rho=0.2
+fn port_vol ws:Float wb:Float wg:Float -> Float
+  ss := 18.0
+  bs := 5.0
+  gs := 12.0
+  rho := 0.2
+  cross1 := 2.0 * rho * ws * wb * ss * bs
+  cross2 := 2.0 * rho * ws * wg * ss * gs
+  cross3 := 2.0 * rho * wb * wg * bs * gs
+  diag := ws*ws*ss*ss + wb*wb*bs*bs + wg*wg*gs*gs
+  var := diag + cross1 + cross2 + cross3
+  sqrt(var)
+
+fn sharpe ws:Float wb:Float wg:Float -> Float
+  ret := port_return(ws, wb, wg)
+  vol := port_vol(ws, wb, wg)
+  (ret - 2.0) / vol
+
+fn main
+  print "Markowitz Portfolio Optimization"
+  print "=================================="
+  print ""
+  print "Assets:   Return   Volatility"
+  print "  Stocks:  10.0%    18.0%"
+  print "  Bonds:    4.0%     5.0%"
+  print "  Gold:     6.0%    12.0%"
+  print "  Correlation (pairwise): 0.2"
+  print ""
+
+  print "Efficient Frontier (sample portfolios):"
+  print "  S%  B%  G% | Return% | Vol%  | Sharpe"
+  print "  ----------+---------+-------+-------"
+
+  -- Enumerate over integer percentages (step 10)
+  for si in range(0, 11)
+    for bi in range(0, 11)
+      gi := 10 - si - bi
+      if gi >= 0
+        ws := si.to_float() / 10.0
+        wb := bi.to_float() / 10.0
+        wg := gi.to_float() / 10.0
+        ret := port_return(ws, wb, wg)
+        vol := port_vol(ws, wb, wg)
+        sh := sharpe(ws, wb, wg)
+        ret_r := round1(ret)
+        vol_r := round1(vol)
+        sh_r := round2(sh)
+        sp := si * 10
+        bp := bi * 10
+        gp := gi * 10
+        print "  {str(sp).pad_left(3)} {str(bp).pad_left(3)} {str(gp).pad_left(3)} | {str(ret_r).pad_left(7)} | {str(vol_r).pad_left(5)} | {str(sh_r).pad_left(6)}"
+
+  print ""
+  print "Key Portfolios:"
+
+  -- 100% Bonds (minimum variance)
+  v1 := round1(port_vol(0.0, 1.0, 0.0))
+  r1 := port_return(0.0, 1.0, 0.0)
+  print "  Min-Variance (100% Bonds):  Return={r1}%, Vol={v1}%"
+
+  -- 100% Stocks (maximum return)
+  v2 := round1(port_vol(1.0, 0.0, 0.0))
+  r2 := port_return(1.0, 0.0, 0.0)
+  print "  Max-Return  (100% Stocks):  Return={r2}%, Vol={v2}%"
+
+  -- Equal weight
+  v3 := round1(port_vol(0.333, 0.333, 0.334))
+  r3 := round1(port_return(0.333, 0.333, 0.334))
+  s3 := round2(sharpe(0.333, 0.333, 0.334))
+  print "  Equal Weight (33/33/34):    Return={r3}%, Vol={v3}%, Sharpe={s3}"
+
+  print ""
+  print "Diversification benefit: vol < weighted average volatility"
+  -- Weighted avg vol for equal weight: (18+5+12)/3 = 11.67
+  weighted_avg := round1((18.0 + 5.0 + 12.0) / 3.0)
+  print "  Weighted avg vol: {weighted_avg}% vs diversified: {v3}%"

@@ -1,0 +1,169 @@
+-- Showcase 889: Stable Matching (Gale-Shapley Algorithm)
+
+-- The Gale-Shapley algorithm finds a stable matching between
+-- two groups (e.g., medical students to hospitals).
+-- A matching is stable if no pair prefers each other over their current match.
+-- The algorithm produces an optimal matching for the proposing side.
+
+-- Preference lists encoded as rank matrices
+-- prefs_m[m * n + h] = rank that man m gives hospital h (0 = most preferred)
+-- prefs_h[h * n + m] = rank that hospital h gives man m (0 = most preferred)
+
+fn get_pref prefs:List idx:Int n:Int -> Int
+  prefs[idx * n + n]
+
+fn prefers_new_over_current prefs_h:List h:Int current_m:Int new_m:Int n:Int -> Bool
+  -- Does hospital h prefer new_m over current_m?
+  rank_current := prefs_h[h * n + current_m]
+  rank_new := prefs_h[h * n + new_m]
+  rank_new < rank_current
+
+fn next_proposal proposals:List m:Int -> Int
+  proposals[m]
+
+fn man_name m:Int -> Str
+  if m == 0 then "Adam "
+  else if m == 1 then "Ben  "
+  else if m == 2 then "Carl "
+  else if m == 3 then "Dave "
+  else "Eric "
+
+fn hosp_name h:Int -> Str
+  if h == 0 then "Hosp-A"
+  else if h == 1 then "Hosp-B"
+  else if h == 2 then "Hosp-C"
+  else if h == 3 then "Hosp-D"
+  else "Hosp-E"
+
+fn main
+  print "Stable Matching: Gale-Shapley Algorithm"
+  print "========================================="
+  print "Medical students proposing to hospitals (man-optimal)"
+  print ""
+
+  n := 4  -- 4 men, 4 hospitals
+
+  -- Men's preference lists (rows = men 0-3, cols = hospitals in order of preference)
+  -- Man 0 (Adam):  prefers A > B > C > D  => ranks: A=0, B=1, C=2, D=3
+  -- Man 1 (Ben):   prefers B > A > D > C  => ranks: A=1, B=0, C=3, D=2
+  -- Man 2 (Carl):  prefers A > C > B > D  => ranks: A=0, B=2, C=1, D=3
+  -- Man 3 (Dave):  prefers C > B > A > D  => ranks: A=2, B=1, C=0, D=3
+  -- prefs_m[m*4+h] = rank man m gives hospital h
+  prefs_m := [0, 1, 2, 3, 1, 0, 3, 2, 0, 2, 1, 3, 2, 1, 0, 3]
+
+  -- Hospitals' preference lists (rows = hospitals 0-3, cols = men in order of preference)
+  -- Hosp A: prefers Carl > Adam > Dave > Ben => ranks: A0=1, B1=3, C2=0, D3=2
+  -- Hosp B: prefers Ben  > Dave > Carl > Adam => ranks: A0=3, B1=0, C2=2, D3=1
+  -- Hosp C: prefers Adam > Carl > Ben > Dave => ranks: A0=0, B1=2, C2=1, D3=3
+  -- Hosp D: prefers Dave > Adam > Ben > Carl => ranks: A0=1, B1=2, C2=3, D3=0
+  -- prefs_h[h*4+m] = rank hospital h gives man m
+  prefs_h := [1, 3, 0, 2, 3, 0, 2, 1, 0, 2, 1, 3, 1, 2, 3, 0]
+
+  print "Men's Preferences (most to least preferred):"
+  for m in range(0, n)
+    -- Find hospital order
+    mut order := [0, 1, 2, 3]
+    for i in range(0, n)
+      for j in range(i + 1, n)
+        oi := order[i]
+        oj := order[j]
+        if prefs_m[m * n + oi] > prefs_m[m * n + oj]
+          order[i] = oj
+          order[j] = oi
+    h0 := hosp_name(order[0])
+    h1 := hosp_name(order[1])
+    h2 := hosp_name(order[2])
+    h3 := hosp_name(order[3])
+    print "  {man_name(m)}: {h0} > {h1} > {h2} > {h3}"
+
+  print ""
+  print "Hospitals' Preferences (most to least preferred):"
+  for h in range(0, n)
+    mut order := [0, 1, 2, 3]
+    for i in range(0, n)
+      for j in range(i + 1, n)
+        oi := order[i]
+        oj := order[j]
+        if prefs_h[h * n + oi] > prefs_h[h * n + oj]
+          order[i] = oj
+          order[j] = oi
+    m0 := man_name(order[0])
+    m1 := man_name(order[1])
+    m2 := man_name(order[2])
+    m3 := man_name(order[3])
+    print "  {hosp_name(h)}: {m0} > {m1} > {m2} > {m3}"
+
+  print ""
+  print "Running Gale-Shapley (students propose):"
+  print ""
+
+  -- matching_h[h] = man matched to hospital h, -1 if free
+  mut matching_h := [-1, -1, -1, -1]
+  -- matching_m[m] = hospital matched to man m, -1 if free
+  mut matching_m := [-1, -1, -1, -1]
+  -- next_proposal[m] = index of next hospital man m will propose to (in pref order)
+  mut next_prop := [0, 0, 0, 0]
+  -- preference order for each man (precomputed)
+  -- Man 0: A,B,C,D  Man 1: B,A,D,C  Man 2: A,C,B,D  Man 3: C,B,A,D
+  pref_order := [0, 1, 2, 3, 1, 0, 3, 2, 0, 2, 1, 3, 2, 1, 0, 3]
+
+  mut round := 0
+  mut done := false
+  while done == false
+    -- Find a free man who hasn't exhausted his list
+    mut free_m := -1
+    for m in range(0, n)
+      if matching_m[m] == -1 and next_prop[m] < n
+        if free_m == -1
+          free_m = m
+
+    if free_m == -1
+      done = true
+    else
+      m := free_m
+      prop_idx := next_prop[m]
+      h := pref_order[m * n + prop_idx]
+      next_prop[m] = next_prop[m] + 1
+      round = round + 1
+
+      current := matching_h[h]
+      if current == -1
+        -- Hospital is free, accept
+        matching_h[h] = m
+        matching_m[m] = h
+        print "  Round {round}: {man_name(m)} proposes to {hosp_name(h)} -> accepted (free)"
+      else
+        -- Hospital compares current vs new
+        prefers := prefers_new_over_current(prefs_h, h, current, m, n)
+        if prefers
+          -- Hospital prefers new applicant
+          matching_h[h] = m
+          matching_m[m] = h
+          matching_m[current] = -1
+          print "  Round {round}: {man_name(m)} proposes to {hosp_name(h)} -> accepted, {man_name(current)} rejected"
+        else
+          print "  Round {round}: {man_name(m)} proposes to {hosp_name(h)} -> rejected (kept {man_name(current)})"
+
+  print ""
+  print "Final Stable Matching:"
+  print "  Man   -> Hospital"
+  print "  ------+----------"
+  for m in range(0, n)
+    h := matching_m[m]
+    print "  {man_name(m)} -> {hosp_name(h)}"
+
+  print ""
+  print "Stability verification (checking for blocking pairs):"
+  mut blocking := 0
+  for m in range(0, n)
+    for h in range(0, n)
+      mh := matching_m[m]
+      hm := matching_h[h]
+      -- Would m and h prefer each other?
+      m_prefers := prefs_m[m * n + h] < prefs_m[m * n + mh]
+      h_prefers := prefs_h[h * n + m] < prefs_h[h * n + hm]
+      if m_prefers and h_prefers
+        blocking = blocking + 1
+        print "  Blocking pair: {man_name(m)} and {hosp_name(h)}"
+  if blocking == 0
+    print "  No blocking pairs found - matching is STABLE"

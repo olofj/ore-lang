@@ -10968,6 +10968,166 @@ fn showcase870_two_stack_pda() {
 }
 
 #[test]
+fn showcase871_sieve_of_eratosthenes() {
+    let out = run_ore("showcase871.ore");
+    assert!(out.contains("Sieve of Eratosthenes (Optimized)"), "got: {out}");
+    assert!(out.contains("Primes up to 100 (25 total)"), "got: {out}");
+    assert!(out.contains("pi(1000) = 168"), "got: {out}");
+}
+
+#[test]
+fn showcase872_goldbach_conjecture() {
+    let out = run_ore("showcase872.ore");
+    assert!(out.contains("Goldbach's Conjecture Verification"), "got: {out}");
+    assert!(out.contains("Conjecture holds for all even n in (2, 50]: true"), "got: {out}");
+    assert!(out.contains("4 = 2 + 2  (1 ways)"), "got: {out}");
+}
+
+#[test]
+fn showcase873_perfect_numbers() {
+    let out = run_ore("showcase873.ore");
+    assert!(out.contains("Perfect Numbers and Mersenne Primes"), "got: {out}");
+    assert!(out.contains("Found 4 perfect numbers"), "got: {out}");
+    assert!(out.contains("p=7: M_7=127, perfect=8128, verify=true"), "got: {out}");
+}
+
+#[test]
+fn showcase874_collatz_conjecture() {
+    let out = run_ore("showcase874.ore");
+    assert!(out.contains("Collatz Conjecture Exploration"), "got: {out}");
+    assert!(out.contains("Famous n=27: sequence length=112, peak=9232"), "got: {out}");
+    assert!(out.contains("n=27: new record stopping time = 111"), "got: {out}");
+}
+
+#[test]
+fn showcase875_egyptian_fractions() {
+    let out = run_ore("showcase875.ore");
+    assert!(out.contains("Egyptian Fractions (Greedy Algorithm)"), "got: {out}");
+    assert!(out.contains("2/3 = 1/2 + 1/6"), "got: {out}");
+    assert!(out.contains("7/15 = 1/3 + 1/8 + 1/120"), "got: {out}");
+}
+
+#[test]
+fn showcase876_continued_fractions() {
+    let out = run_ore("showcase876.ore");
+    assert!(out.contains("Continued Fraction Expansion"), "got: {out}");
+    assert!(out.contains("22/7 = [3; 7]"), "got: {out}");
+    assert!(out.contains("Convergent 8: 55/34"), "got: {out}");
+}
+
+#[test]
+fn showcase877_catalan_numbers() {
+    let out = run_ore("showcase877.ore");
+    assert!(out.contains("Catalan Numbers and Applications"), "got: {out}");
+    assert!(out.contains("1, 1, 2, 5, 14, 42, 132, 429"), "got: {out}");
+    assert!(out.contains("n=3: 5 ways (C(3)=5)"), "got: {out}");
+}
+
+#[test]
+fn showcase878_partition_function() {
+    let out = run_ore("showcase878.ore");
+    assert!(out.contains("Integer Partitions and the Partition Function"), "got: {out}");
+    assert!(out.contains("p(10) = 42"), "got: {out}");
+    assert!(out.contains("p(10, k=3) = 8"), "got: {out}");
+}
+
+#[test]
+fn showcase879_fibonacci_variants() {
+    let out = run_ore("showcase879.ore");
+    assert!(out.contains("Fibonacci Variants"), "got: {out}");
+    assert!(out.contains("0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144"), "got: {out}");
+    assert!(out.contains("Tribonacci: T(n) = T(n-1) + T(n-2) + T(n-3)"), "got: {out}");
+}
+
+#[test]
+fn showcase880_modular_arithmetic() {
+    let out = run_ore("showcase880.ore");
+    assert!(out.contains("Modular Arithmetic and Group Theory"), "got: {out}");
+    assert!(out.contains("5^6 mod 7 = 1"), "got: {out}");
+    assert!(out.contains("x = 2 mod 3, x = 3 mod 5 => x = 8 mod 15"), "got: {out}");
+}
+
+#[test]
+fn showcase881_nash_equilibrium() {
+    let out = run_ore("showcase881.ore");
+    assert!(out.contains("Nash Equilibrium Finder"), "got: {out}");
+    assert!(out.contains("(Defect, Defect) -> Row=1, Col=1"), "got: {out}");
+    assert!(out.contains("Pure-strategy Nash equilibria found: 0"), "got: {out}");
+}
+
+#[test]
+fn showcase882_auction_mechanisms() {
+    let out = run_ore("showcase882.ore");
+    assert!(out.contains("Auction Mechanisms: First-Price vs Second-Price"), "got: {out}");
+    assert!(out.contains("Winner: Carol | Price paid: 90 | Surplus: 30"), "got: {out}");
+    assert!(out.contains("Second-price allocatively efficient: true"), "got: {out}");
+}
+
+#[test]
+fn showcase883_supply_demand() {
+    let out = run_ore("showcase883.ore");
+    assert!(out.contains("Supply and Demand Equilibrium"), "got: {out}");
+    assert!(out.contains("Price: P* = 18"), "got: {out}");
+    assert!(out.contains("Total Surplus: 1600"), "got: {out}");
+}
+
+#[test]
+fn showcase884_portfolio_optimization() {
+    let out = run_ore("showcase884.ore");
+    assert!(out.contains("Markowitz Portfolio Optimization"), "got: {out}");
+    assert!(out.contains("Min-Variance (100% Bonds):  Return=4.0%, Vol=5.0%"), "got: {out}");
+    assert!(out.contains("Diversification benefit: vol < weighted average volatility"), "got: {out}");
+}
+
+#[test]
+fn showcase885_black_scholes() {
+    let out = run_ore("showcase885.ore");
+    assert!(out.contains("Black-Scholes Option Pricing"), "got: {out}");
+    assert!(out.contains("Call price: 10.45"), "got: {out}");
+    assert!(out.contains("Put-Call Parity check: C - P = S - K*exp(-rT)"), "got: {out}");
+}
+
+#[test]
+fn showcase886_prisoners_dilemma() {
+    let out = run_ore("showcase886.ore");
+    assert!(out.contains("Prisoner's Dilemma Tournament (Axelrod-style)"), "got: {out}");
+    assert!(out.contains("Tournament Standings:"), "got: {out}");
+    assert!(out.contains("Tournament winner: AllDefect"), "got: {out}");
+}
+
+#[test]
+fn showcase887_voting_systems() {
+    let out = run_ore("showcase887.ore");
+    assert!(out.contains("Voting Systems Comparison"), "got: {out}");
+    assert!(out.contains("1. Plurality:    Carol"), "got: {out}");
+    assert!(out.contains("Arrow's Impossibility Theorem: no perfect voting system exists"), "got: {out}");
+}
+
+#[test]
+fn showcase888_fair_division() {
+    let out = run_ore("showcase888.ore");
+    assert!(out.contains("Fair Division (Cake Cutting)"), "got: {out}");
+    assert!(out.contains("Transfer Jewelry from Alice to Bob"), "got: {out}");
+    assert!(out.contains("Envy-free (Alice): true"), "got: {out}");
+}
+
+#[test]
+fn showcase889_stable_matching() {
+    let out = run_ore("showcase889.ore");
+    assert!(out.contains("Stable Matching: Gale-Shapley Algorithm"), "got: {out}");
+    assert!(out.contains("Carl  -> Hosp-A"), "got: {out}");
+    assert!(out.contains("No blocking pairs found - matching is STABLE"), "got: {out}");
+}
+
+#[test]
+fn showcase890_vcg_auction() {
+    let out = run_ore("showcase890.ore");
+    assert!(out.contains("Mechanism Design: VCG (Vickrey-Clarke-Groves) Auction"), "got: {out}");
+    assert!(out.contains("Total social welfare: 185"), "got: {out}");
+    assert!(out.contains("Efficient: maximizes total social welfare"), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

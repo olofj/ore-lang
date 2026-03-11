@@ -1,0 +1,176 @@
+-- Showcase 890: Mechanism Design (VCG Auction)
+
+-- The Vickrey-Clarke-Groves (VCG) mechanism is the canonical
+-- dominant-strategy incentive-compatible mechanism.
+-- Truth-telling is a dominant strategy for each bidder.
+-- VCG payment: each winner pays the "harm" they impose on others
+-- (the social welfare lost due to their participation).
+
+-- Multi-unit auction: 3 items, 5 bidders with bundle valuations.
+-- Each bidder submits valuations for each subset of items.
+-- Winner determination: find allocation maximizing total welfare.
+
+fn max2 a:Int b:Int -> Int
+  if a > b then a else b
+
+fn bidder_name b:Int -> Str
+  if b == 0 then "Alice  "
+  else if b == 1 then "Bob    "
+  else if b == 2 then "Carol  "
+  else if b == 3 then "Dave   "
+  else "Eve    "
+
+fn item_set_name mask:Int -> Str
+  -- mask is bitmask: bit 0=item A, bit 1=item B, bit 2=item C
+  a := mask % 2
+  b := (mask / 2) % 2
+  c := (mask / 4) % 2
+  if a == 1 and b == 1 and c == 1 then "ABC   "
+  else if a == 1 and b == 1 then "AB    "
+  else if a == 1 and c == 1 then "AC    "
+  else if b == 1 and c == 1 then "BC    "
+  else if a == 1 then "A     "
+  else if b == 1 then "B     "
+  else if c == 1 then "C     "
+  else "(none)"
+
+-- Get valuation of bidder b for bundle with given mask
+-- vals[b * 8 + mask] = valuation
+fn val_of vals:List b:Int mask:Int -> Int
+  vals[b * 8 + mask]
+
+-- Find allocation maximizing social welfare (brute force over allocations)
+-- Allocations: assign each item to at most one bidder
+-- Since 3 items, 5 bidders: enumerate 5^3 = 125 allocations
+fn find_optimal_welfare vals:List n_bidders:Int exclude:Int -> List
+  -- Returns [welfare, alloc_A, alloc_B, alloc_C]
+  -- alloc_X = which bidder gets item X (-1 = unallocated)
+  mut best_w := 0
+  mut best_aA := -1
+  mut best_aB := -1
+  mut best_aC := -1
+  -- Enumerate: for each item, who gets it (0..n_bidders-1 or n_bidders=nobody)
+  for aA in range(0, n_bidders + 1)
+    for aB in range(0, n_bidders + 1)
+      for aC in range(0, n_bidders + 1)
+        -- Skip excluded bidder
+        skip := (aA == exclude) or (aB == exclude) or (aC == exclude)
+        if skip == false
+          -- Build bundle mask per bidder and compute welfare
+          mut w := 0
+          for b in range(0, n_bidders)
+            mut mask := 0
+            if aA == b
+              mask = mask + 1
+            if aB == b
+              mask = mask + 2
+            if aC == b
+              mask = mask + 4
+            if mask > 0
+              w = w + val_of(vals, b, mask)
+          if w > best_w
+            best_w = w
+            best_aA = aA
+            best_aB = aB
+            best_aC = aC
+  mut res := []
+  res.push(best_w)
+  res.push(best_aA)
+  res.push(best_aB)
+  res.push(best_aC)
+  res
+
+fn main
+  print "Mechanism Design: VCG (Vickrey-Clarke-Groves) Auction"
+  print "========================================================"
+  print "Items: A, B, C (3 items)"
+  print "Bidders: Alice, Bob, Carol, Dave, Eve (5 bidders)"
+  print ""
+
+  -- vals[b * 8 + mask] = bidder b's valuation for bundle 'mask'
+  -- mask: bit0=A, bit1=B, bit2=C
+  -- Bundles: 0={} 1={A} 2={B} 3={AB} 4={C} 5={AC} 6={BC} 7={ABC}
+  -- Alice:  A=50, B=30, C=20, AB=90, AC=75, BC=45, ABC=110
+  -- Bob:    A=40, B=60, C=30, AB=85, AC=65, BC=100, ABC=120
+  -- Carol:  A=70, B=25, C=15, AB=90, AC=80, BC=35, ABC=100
+  -- Dave:   A=20, B=45, C=55, AB=60, AC=70, BC=90, ABC=105
+  -- Eve:    A=35, B=35, C=45, AB=65, AC=75, BC=75, ABC=100
+  vals := [
+    0, 50, 30, 90, 20, 75, 45, 110,
+    0, 40, 60, 85, 30, 65, 100, 120,
+    0, 70, 25, 90, 15, 80, 35, 100,
+    0, 20, 45, 60, 55, 70, 90, 105,
+    0, 35, 35, 65, 45, 75, 75, 100
+  ]
+
+  n := 5
+  print "Bidder Valuations (single items):"
+  print "  Bidder | Item A | Item B | Item C | Bundle AB | Bundle BC"
+  print "  -------+--------+--------+--------+-----------+----------"
+  for b in range(0, n)
+    va := val_of(vals, b, 1)
+    vb := val_of(vals, b, 2)
+    vc := val_of(vals, b, 4)
+    vab := val_of(vals, b, 3)
+    vbc := val_of(vals, b, 6)
+    print "  {bidder_name(b)}| {str(va).pad_left(6)} | {str(vb).pad_left(6)} | {str(vc).pad_left(6)} | {str(vab).pad_left(9)} | {str(vbc).pad_left(8)}"
+
+  print ""
+  print "Step 1: Find socially optimal allocation (maximize total welfare)"
+  optimal := find_optimal_welfare(vals, n, n)
+  opt_welfare := optimal[0]
+  opt_aA := optimal[1]
+  opt_aB := optimal[2]
+  opt_aC := optimal[3]
+  print "  Item A -> {bidder_name(opt_aA).trim()}"
+  print "  Item B -> {bidder_name(opt_aB).trim()}"
+  print "  Item C -> {bidder_name(opt_aC).trim()}"
+  print "  Total social welfare: {opt_welfare}"
+
+  print ""
+  print "Step 2: Compute VCG payments"
+  print "  Payment_i = [welfare without i] - [welfare others receive in optimal]"
+  print ""
+  print "  Bidder | Bundle | Value | Payment | Surplus"
+  print "  -------+--------+-------+---------+-------"
+
+  for b in range(0, n)
+    -- Build this bidder's bundle mask
+    mut mask := 0
+    if opt_aA == b
+      mask = mask + 1
+    if opt_aB == b
+      mask = mask + 2
+    if opt_aC == b
+      mask = mask + 4
+
+    if mask > 0
+      my_val := val_of(vals, b, mask)
+      -- Welfare without bidder b
+      without_b := find_optimal_welfare(vals, n, b)
+      welfare_without_b := without_b[0]
+      -- Others' welfare in optimal allocation
+      mut others_welfare := 0
+      for ob in range(0, n)
+        if ob != b
+          mut omask := 0
+          if opt_aA == ob
+            omask = omask + 1
+          if opt_aB == ob
+            omask = omask + 2
+          if opt_aC == ob
+            omask = omask + 4
+          if omask > 0
+            others_welfare = others_welfare + val_of(vals, ob, omask)
+      -- VCG payment = harm imposed = welfare_without_b - others_welfare
+      payment := welfare_without_b - others_welfare
+      surplus := my_val - payment
+      bundle_str := item_set_name(mask)
+      print "  {bidder_name(b)}| {bundle_str.pad_right(6)} | {str(my_val).pad_left(5)} | {str(payment).pad_left(7)} | {str(surplus).pad_left(6)}"
+
+  print ""
+  print "VCG Properties:"
+  print "  Incentive compatible: truth-telling is dominant strategy"
+  print "  Individually rational: each winner has non-negative surplus"
+  print "  Efficient: maximizes total social welfare"
+  print "  No deficit: auctioneer collects non-negative revenue"
