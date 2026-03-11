@@ -1358,3 +1358,19 @@ fn lists_find_fold() {
         "9",      // fold max
     ]);
 }
+
+#[test]
+fn showcase17() {
+    let out = run_ore("showcase17.ore");
+    assert!(out.contains("Students: Alice, Bob, Charlie, Diana, Eve, Frank, Grace, Hank"));
+    assert!(out.contains("Average grade: 78"));
+    assert!(out.contains("Passing: 7 / 8"));
+    assert!(out.contains("Highest: 95"));
+    assert!(out.contains("Lowest: 54"));
+    assert!(out.contains("A's: 2"));
+    assert!(out.contains("B's: 2"));
+    assert!(out.contains("Math students: 4"));
+    assert!(out.contains("Top students: Alice, Eve"));
+    assert!(out.contains("Hello, Ore!"));
+    assert!(out.contains("Bonjour, Ore!"));
+}

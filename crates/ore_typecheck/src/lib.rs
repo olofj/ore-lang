@@ -886,8 +886,8 @@ impl TypeChecker {
     fn infer_method_return(&self, obj_ty: &Type, method: &str, _arg_count: usize) -> Type {
         match obj_ty {
             Type::Str => match method {
-                "len" | "to_int" | "count" => Type::Int,
-                "to_float" => Type::Float,
+                "len" | "to_int" | "parse_int" | "count" => Type::Int,
+                "to_float" | "parse_float" => Type::Float,
                 "contains" | "starts_with" | "ends_with" | "is_empty" => Type::Bool,
                 "trim" | "trim_start" | "trim_end" | "to_upper" | "to_lower" | "replace" | "substr" | "pad_left" | "pad_right" | "repeat" | "strip_prefix" | "strip_suffix" | "char_at" | "capitalize" => Type::Str,
                 "split" | "words" | "lines" => Type::List(Box::new(Type::Str)),

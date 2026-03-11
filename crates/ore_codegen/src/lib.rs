@@ -2761,11 +2761,26 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "get takes exactly 1 argument".into() });
                 }
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let idx = self.compile_expr(&args[0], func)?;
                 let list_get = self.module.get_function("ore_list_get").unwrap();
                 let result = bld!(self.builder.build_call(list_get, &[list_val.into(), idx.into()], "get"))?;
-                let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                let raw_val = self.call_result_to_value(result)?;
+                // Convert i64 to the correct type based on element kind
+                match &elem_kind {
+                    ValKind::Str => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            raw_val.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
+                        ))?;
+                        Ok((ptr.into(), ValKind::Str))
+                    }
+                    ValKind::Float => {
+                        let f = bld!(self.builder.build_bit_cast(raw_val, self.context.f64_type(), "i2f"))?;
+                        Ok((f, ValKind::Float))
+                    }
+                    _ => Ok((raw_val, elem_kind))
+                }
             }
             "map" | "filter" | "flat_map" | "take_while" | "drop_while" => {
                 if args.len() != 1 {

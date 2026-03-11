@@ -1,0 +1,76 @@
+-- Showcase 17: CSV-like data processing pipeline
+-- Demonstrates: pipelines, lambdas, maps, string processing, closures
+
+fn letter_grade grade:Int -> Str
+  if grade >= 90
+    return "A"
+  if grade >= 80
+    return "B"
+  if grade >= 70
+    return "C"
+  if grade >= 60
+    return "D"
+  "F"
+
+fn extract_name line:Str -> Str
+  line.split(",").get(0)
+
+fn extract_grade line:Str -> Int
+  line.split(",").get(1).parse_int()
+
+fn extract_subject line:Str -> Str
+  line.split(",").get(2)
+
+fn main
+  -- Simulated CSV data
+  data := [
+    "Alice,95,Math",
+    "Bob,82,Science",
+    "Charlie,71,Math",
+    "Diana,88,Science",
+    "Eve,93,Math",
+    "Frank,67,Science",
+    "Grace,79,Math",
+    "Hank,54,Science"
+  ]
+
+  -- Extract and print names
+  names := data | map(line => extract_name(line))
+  print "Students: {names.join(", ")}"
+
+  -- Grade analysis
+  grades := data | map(line => extract_grade(line))
+  avg := grades.sum() / grades.len()
+  print "Average grade: {avg}"
+
+  -- Count passing students (>= 60)
+  passing := grades | filter(g => g >= 60)
+  print "Passing: {passing.len()} / {grades.len()}"
+
+  -- Min and max grades
+  print "Highest: {grades.max()}"
+  print "Lowest: {grades.min()}"
+
+  -- Grade letter distribution
+  letters := grades | map(g => letter_grade(g))
+  freq := letters.frequencies()
+  print "A's: {freq.get("A")}"
+  print "B's: {freq.get("B")}"
+
+  -- Subject breakdown
+  subjects := data | map(line => extract_subject(line))
+  subj_freq := subjects.frequencies()
+  print "Math students: {subj_freq.get("Math")}"
+  print "Science students: {subj_freq.get("Science")}"
+
+  -- Find top students (grade >= 90)
+  top := data | filter(line => extract_grade(line) >= 90)
+  top_names := top | map(line => extract_name(line))
+  print "Top students: {top_names.join(", ")}"
+
+  -- Default parameters demo
+  print greet("Ore")
+  print greet("Ore", "Bonjour")
+
+fn greet name:Str greeting:Str = "Hello" -> Str
+  "{greeting}, {name}!"
