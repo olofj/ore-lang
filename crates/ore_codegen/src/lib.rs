@@ -691,6 +691,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_all", i8_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_zip(ptr, ptr) -> ptr
         self.module.add_function("ore_list_zip", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_zip_with", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_enumerate(ptr) -> ptr
         self.module.add_function("ore_list_enumerate", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_join_str(ptr, sep) -> ptr
@@ -3024,6 +3025,39 @@ impl<'ctx> CodeGen<'ctx> {
                 let rt = self.module.get_function("ore_list_zip").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), other.into()], "zip"))?;
                 let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            "zip_with" => {
+                if args.len() != 2 {
+                    return Err(CodeGenError { line: None, msg: "zip_with takes 2 arguments (other_list, fn)".into() });
+                }
+                let other = self.compile_expr(&args[0], func)?;
+                let elem_kind = self.last_list_elem_kind.clone();
+                let lambda_fn = match &args[1] {
+                    Expr::Lambda { params, body } => {
+                        let ek = elem_kind.unwrap_or(ValKind::Int);
+                        let kinds = vec![ek.clone(), ek];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "zip_with requires a function".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let rt = self.module.get_function("ore_list_zip_with").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), other.into(), fn_ptr.into(), env_ptr.into()], "zipw"))?;
+                let val = self.call_result_to_value(result)?;
+                if let Some(rk) = self.last_lambda_return_kind.take() {
+                    self.last_list_elem_kind = Some(rk);
+                }
                 Ok((val, ValKind::List))
             }
             "enumerate" => {

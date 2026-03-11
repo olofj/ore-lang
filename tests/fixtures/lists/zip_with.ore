@@ -1,0 +1,15 @@
+fn main
+  a := [1, 2, 3]
+  b := [10, 20, 30]
+
+  -- zip_with adds corresponding elements
+  sums := a.zip_with(b, (x, y) => x + y)
+  print sums | join(" ")
+
+  -- zip_with multiplies
+  products := a.zip_with(b, (x, y) => x * y)
+  print products | join(" ")
+
+  -- dot product via zip_with + sum
+  dot := a.zip_with(b, (x, y) => x * y).sum()
+  print dot

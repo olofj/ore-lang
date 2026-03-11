@@ -995,6 +995,13 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn lists_zip_with() {
+    let out = run_ore("lists/zip_with.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["11 22 33", "10 40 90", "140"]);
+}
+
+#[test]
 fn strings_methods2() {
     let out = run_ore("strings/str_methods2.ore");
     let lines: Vec<&str> = out.lines().collect();

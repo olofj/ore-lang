@@ -466,6 +466,7 @@ fn map_runtime_functions(
     map_fn!("ore_list_any", ore_runtime::ore_list_any);
     map_fn!("ore_list_all", ore_runtime::ore_list_all);
     map_fn!("ore_list_zip", ore_runtime::ore_list_zip);
+    map_fn!("ore_list_zip_with", ore_runtime::ore_list_zip_with);
     map_fn!("ore_list_enumerate", ore_runtime::ore_list_enumerate);
     map_fn!("ore_list_flat_map", ore_runtime::ore_list_flat_map);
     map_fn!("ore_list_count_by", ore_runtime::ore_list_count_by);

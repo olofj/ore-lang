@@ -1413,6 +1413,29 @@ pub extern "C" fn ore_list_all(list: *mut OreList, func: *const u8, env: *mut u8
     }
 }
 
+/// Zip two lists with a combiner function: zip_with(other, fn(a,b)->c).
+#[no_mangle]
+pub extern "C" fn ore_list_zip_with(
+    a: *mut OreList,
+    b: *mut OreList,
+    func: *const u8,
+    env: *mut u8,
+) -> *mut OreList {
+    unsafe {
+        let a_ref = &*a;
+        let b_ref = &*b;
+        let result = ore_list_new();
+        let min_len = a_ref.len.min(b_ref.len) as usize;
+        for i in 0..min_len {
+            let av = *a_ref.data.add(i);
+            let bv = *b_ref.data.add(i);
+            let combined = call_closure2(func, env, av, bv);
+            ore_list_push(result, combined);
+        }
+        result
+    }
+}
+
 /// Zip two lists into a list of [a, b] pairs (as nested lists).
 #[no_mangle]
 pub extern "C" fn ore_list_zip(a: *mut OreList, b: *mut OreList) -> *mut OreList {
