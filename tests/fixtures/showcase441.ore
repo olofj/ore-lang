@@ -1,0 +1,88 @@
+-- Showcase 441: Prim's algorithm (minimum spanning tree)
+
+-- Graph represented as adjacency list with weights
+-- Vertices: 0..5, edges as (to, weight) pairs
+
+fn main
+  print "Prim's Algorithm (Minimum Spanning Tree):"
+  print ""
+
+  -- 6 vertices
+  n := 6
+
+  -- Adjacency list: edge_from[i], edge_to[i], edge_w[i]
+  -- Undirected graph edges:
+  -- 0-1:4, 0-2:2, 1-2:1, 1-3:5, 2-3:8, 2-4:10, 3-4:2, 3-5:6, 4-5:3
+  mut edge_from := [0, 0, 1, 1, 2, 2, 3, 3, 4]
+  mut edge_to := [1, 2, 2, 3, 3, 4, 4, 5, 5]
+  mut edge_w := [4, 2, 1, 5, 8, 10, 2, 6, 3]
+  num_edges := 9
+
+  -- in_mst[i] = 1 if vertex i is in the MST
+  mut in_mst := [0, 0, 0, 0, 0, 0]
+
+  -- mst_edges: store from-to-weight of selected edges
+  mut mst_from := []
+  mut mst_to := []
+  mut mst_weight := []
+
+  -- Start from vertex 0
+  in_mst[0] = 1
+  mut total_weight := 0
+
+  print "Building MST starting from vertex 0:"
+  print ""
+
+  -- Repeat n-1 times to add n-1 edges
+  for step in range(0, n - 1)
+    -- Find minimum weight edge crossing the cut
+    mut min_w := 999999
+    mut min_from := 0
+    mut min_to := 0
+
+    for e in range(0, num_edges)
+      f := edge_from[e]
+      t := edge_to[e]
+      w := edge_w[e]
+
+      -- Check both directions (undirected)
+      if in_mst[f] == 1 and in_mst[t] == 0
+        if w < min_w
+          min_w = w
+          min_from = f
+          min_to = t
+
+      if in_mst[t] == 1 and in_mst[f] == 0
+        if w < min_w
+          min_w = w
+          min_from = t
+          min_to = f
+
+    -- Add the edge
+    in_mst[min_to] = 1
+    mst_from.push(min_from)
+    mst_to.push(min_to)
+    mst_weight.push(min_w)
+    total_weight = total_weight + min_w
+    print "  Step {step + 1}: Add edge {min_from}-{min_to} (weight {min_w})"
+
+  print ""
+  print "=== MST Edges ==="
+  for i in range(0, n - 1)
+    print "  {mst_from[i]} -- {mst_to[i]} : {mst_weight[i]}"
+
+  print ""
+  print "Total MST weight: {total_weight}"
+
+  -- Verify all vertices are connected
+  mut all_in := true
+  for i in range(0, n)
+    if in_mst[i] == 0
+      all_in = false
+  if all_in
+    print "All {n} vertices are in the MST."
+  else
+    print "ERROR: Not all vertices connected."
+
+  print ""
+  print "Prim's: greedy MST algorithm using cut property."

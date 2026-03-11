@@ -1,0 +1,134 @@
+-- Showcase 446: Strongly connected components (Kosaraju's algorithm)
+
+fn main
+  print "Kosaraju's Algorithm (Strongly Connected Components):"
+  print ""
+
+  -- 8 vertices (0..7)
+  n := 8
+
+  -- Forward edges
+  ff := [0, 1, 2, 3, 3, 4, 5, 6, 7]
+  ft := [1, 2, 0, 4, 7, 5, 6, 4, 3]
+  num_edges := 9
+
+  -- Reverse edges
+  rf := [1, 2, 0, 4, 7, 5, 6, 4, 3]
+  rt := [0, 1, 2, 3, 3, 4, 5, 6, 7]
+
+  print "Graph edges:"
+  for e in range(0, num_edges)
+    print "  {ff[e]} -> {ft[e]}"
+  print ""
+
+  -- Step 1: DFS on original graph to get finish order
+  mut visited := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut finish_order := []
+
+  for start in range(0, n)
+    if visited[start] == 0
+      mut stack_node := [start]
+      mut stack_phase := [0]
+      visited[start] = 1
+
+      loop
+        sz := stack_node | count()
+        if sz == 0
+          break
+
+        node := stack_node[sz - 1]
+        phase := stack_phase[sz - 1]
+
+        if phase == 1
+          mut new_sn := []
+          mut new_sp := []
+          for k in range(0, sz - 1)
+            new_sn.push(stack_node[k])
+            new_sp.push(stack_phase[k])
+          stack_node = new_sn
+          stack_phase = new_sp
+          visited[node] = 2
+          finish_order.push(node)
+        else
+          stack_phase[sz - 1] = 1
+          for e in range(0, num_edges)
+            if ff[e] == node
+              nb := ft[e]
+              if visited[nb] == 0
+                visited[nb] = 1
+                stack_node.push(nb)
+                stack_phase.push(0)
+
+  print "Finish order: {finish_order | join(", ")}"
+  print ""
+
+  -- Step 2: DFS on reverse graph in reverse finish order
+  mut visited2 := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut scc_id := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut scc_count := 0
+  fo_len := finish_order | count()
+
+  for idx in range(0, fo_len)
+    start := finish_order[fo_len - 1 - idx]
+    if visited2[start] == 0
+      -- BFS on reverse graph
+      mut queue := [start]
+      visited2[start] = 1
+      scc_id[start] = scc_count
+      mut comp := [start]
+
+      loop
+        qlen := queue | count()
+        if qlen == 0
+          break
+
+        u := queue[0]
+        mut new_q := []
+        for qi in range(1, qlen)
+          new_q.push(queue[qi])
+        queue = new_q
+
+        for e in range(0, num_edges)
+          if rf[e] == u
+            nb := rt[e]
+            if visited2[nb] == 0
+              visited2[nb] = 1
+              scc_id[nb] = scc_count
+              queue.push(nb)
+              comp.push(nb)
+
+      comp = comp | sort()
+      print "  SCC {scc_count}: [{comp | join(", ")}]"
+      scc_count = scc_count + 1
+
+  print ""
+  print "Total SCCs: {scc_count}"
+
+  -- Build condensation graph
+  print ""
+  print "=== Condensation Graph ==="
+  mut cond_edges_from := []
+  mut cond_edges_to := []
+  for e in range(0, num_edges)
+    u := ff[e]
+    v := ft[e]
+    su := scc_id[u]
+    sv := scc_id[v]
+    if su != sv
+      -- Check if edge already added
+      mut dup := false
+      ce_len := cond_edges_from | count()
+      for ce in range(0, ce_len)
+        if cond_edges_from[ce] == su and cond_edges_to[ce] == sv
+          dup = true
+      if not dup
+        cond_edges_from.push(su)
+        cond_edges_to.push(sv)
+        print "  SCC_{su} -> SCC_{sv}"
+
+  ce_len := cond_edges_from | count()
+  if ce_len == 0
+    print "  (no edges between SCCs)"
+
+  print ""
+  print "Kosaraju's: two-pass DFS algorithm for finding SCCs in O(V+E)."

@@ -1,0 +1,185 @@
+-- Showcase 449: Articulation points and bridges
+
+fn min_val a:Int b:Int -> Int
+  if a < b then a else b
+
+fn main
+  print "Articulation Points and Bridges:"
+  print ""
+
+  -- Graph: 7 vertices
+  -- 0-1, 0-2, 1-2, 1-3, 3-4, 4-5, 4-6, 5-6
+  n := 7
+  ef := [0, 0, 1, 1, 3, 4, 4, 5]
+  et := [1, 2, 2, 3, 4, 5, 6, 6]
+  ne := 8
+
+  print "Graph ({n} vertices, {ne} edges):"
+  for e in range(0, ne)
+    print "  {ef[e]} - {et[e]}"
+  print ""
+
+  -- DFS-based algorithm for articulation points and bridges
+  -- disc[i] = discovery time, low[i] = lowest reachable disc time
+  mut disc := [-1, -1, -1, -1, -1, -1, -1]
+  mut low := [-1, -1, -1, -1, -1, -1, -1]
+  mut parent := [-1, -1, -1, -1, -1, -1, -1]
+  mut is_ap := [0, 0, 0, 0, 0, 0, 0]
+  mut timer := 0
+
+  -- Iterative DFS with explicit stack
+  -- Stack: (node, neighbor_index, phase)
+  -- phase 0 = first visit, phase 1 = processing neighbors
+  mut stack_node := [0]
+  mut stack_nidx := [0]
+  disc[0] = 0
+  low[0] = 0
+  timer = 1
+
+  mut bridges_from := []
+  mut bridges_to := []
+
+  loop
+    slen := stack_node | count()
+    if slen == 0
+      break
+
+    u := stack_node[slen - 1]
+    nidx := stack_nidx[slen - 1]
+
+    -- Find neighbors of u
+    mut neighbors := []
+    for e in range(0, ne)
+      if ef[e] == u
+        neighbors.push(et[e])
+      if et[e] == u
+        neighbors.push(ef[e])
+
+    nn := neighbors | count()
+
+    if nidx >= nn
+      -- Done with u, pop
+      mut new_sn := []
+      mut new_si := []
+      for k in range(0, slen - 1)
+        new_sn.push(stack_node[k])
+        new_si.push(stack_nidx[k])
+      stack_node = new_sn
+      stack_nidx = new_si
+
+      -- Update parent's low value
+      if slen >= 2
+        p := stack_node[slen - 2]
+        low_p := low[p]
+        low_u := low[u]
+        if low_u < low_p
+          low[p] = low_u
+
+        -- Check if p is an articulation point (non-root case)
+        disc_p := disc[p]
+        if low_u >= disc_p
+          -- Count children in DFS tree for root check later
+          if parent[p] != -1
+            is_ap[p] = 1
+
+        -- Check bridge
+        if low_u > disc_p
+          bridges_from.push(p)
+          bridges_to.push(u)
+    else
+      -- Process next neighbor
+      stack_nidx[slen - 1] = nidx + 1
+      v := neighbors[nidx]
+
+      if disc[v] == -1
+        -- Tree edge
+        parent[v] = u
+        disc[v] = timer
+        low[v] = timer
+        timer = timer + 1
+        stack_node.push(v)
+        stack_nidx.push(0)
+      else if v != parent[u]
+        -- Back edge: update low
+        low_u := low[u]
+        disc_v := disc[v]
+        if disc_v < low_u
+          low[u] = disc_v
+
+  -- Check root articulation point (root has 2+ children in DFS tree)
+  mut root_children := 0
+  for i in range(0, n)
+    if parent[i] == 0
+      root_children = root_children + 1
+  if root_children >= 2
+    is_ap[0] = 1
+
+  -- Print results
+  print "=== Discovery and Low values ==="
+  for i in range(0, n)
+    print "  Vertex {i}: disc={disc[i]}, low={low[i]}"
+
+  print ""
+  print "=== Articulation Points ==="
+  mut ap_list := []
+  for i in range(0, n)
+    if is_ap[i] == 1
+      ap_list.push(str(i))
+
+  ap_count := ap_list | count()
+  if ap_count > 0
+    print "  Found {ap_count}: [{ap_list | join(", ")}]"
+  else
+    print "  None found"
+
+  print ""
+  print "=== Bridges ==="
+  b_count := bridges_from | count()
+  if b_count > 0
+    print "  Found {b_count}:"
+    for i in range(0, b_count)
+      print "    {bridges_from[i]} - {bridges_to[i]}"
+  else
+    print "  None found"
+
+  -- Verify: removing an articulation point disconnects the graph
+  print ""
+  print "=== Verification ==="
+  for ai in range(0, ap_count)
+    ap_v := ap_list[ai] | to_int()
+    -- BFS from vertex 0 (or 1 if ap_v is 0), skipping ap_v
+    mut start_v := 0
+    if ap_v == 0
+      start_v = 1
+    mut vis := [0, 0, 0, 0, 0, 0, 0]
+    vis[ap_v] = 1
+    vis[start_v] = 1
+    mut bfs_q := [start_v]
+    mut reached := 1
+    loop
+      ql := bfs_q | count()
+      if ql == 0
+        break
+      u := bfs_q[0]
+      mut nq := []
+      for qi in range(1, ql)
+        nq.push(bfs_q[qi])
+      bfs_q = nq
+      for e in range(0, ne)
+        mut nb := -1
+        if ef[e] == u and et[e] != ap_v
+          nb = et[e]
+        if et[e] == u and ef[e] != ap_v
+          nb = ef[e]
+        if nb >= 0 and vis[nb] == 0
+          vis[nb] = 1
+          bfs_q.push(nb)
+          reached = reached + 1
+    remaining := n - 1
+    if reached < remaining
+      print "  Removing vertex {ap_v}: graph disconnected ({reached} of {remaining} reachable)"
+    else
+      print "  Removing vertex {ap_v}: graph still connected"
+
+  print ""
+  print "Articulation points and bridges: found via DFS disc/low values."

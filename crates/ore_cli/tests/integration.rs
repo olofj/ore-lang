@@ -5892,6 +5892,117 @@ fn showcase440_kmp() {
 }
 
 #[test]
+fn showcase441_prims() {
+    let out = run_ore("showcase441.ore");
+    assert!(out.contains("Prim's Algorithm (Minimum Spanning Tree):"));
+    assert!(out.contains("Step 1: Add edge 0-2 (weight 2)"));
+    assert!(out.contains("Total MST weight: 13"));
+    assert!(out.contains("All 6 vertices are in the MST."));
+    assert!(out.contains("Prim's: greedy MST algorithm using cut property."));
+}
+
+#[test]
+fn showcase442_floyd_warshall() {
+    let out = run_ore("showcase442.ore");
+    assert!(out.contains("Floyd-Warshall (All-Pairs Shortest Paths):"));
+    assert!(out.contains("0 -> 1: 1"));
+    assert!(out.contains("0 -> 2: -3"));
+    assert!(out.contains("0 -> 4: -4"));
+    assert!(out.contains("No negative cycles."));
+    assert!(out.contains("Floyd-Warshall: O(V^3) all-pairs shortest paths with negative edge support."));
+}
+
+#[test]
+fn showcase443_toposort_dfs() {
+    let out = run_ore("showcase443.ore");
+    assert!(out.contains("Topological Sort via DFS (finishing times):"));
+    assert!(out.contains("A -> B, C"));
+    assert!(out.contains("G -> (none)"));
+    assert!(out.contains("Ordering is valid!"));
+    assert!(out.contains("A: finish time 7"));
+    assert!(out.contains("G: finish time 1"));
+    assert!(out.contains("Topological sort: DFS post-order reversal for DAG linearization."));
+}
+
+#[test]
+fn showcase444_ford_fulkerson() {
+    let out = run_ore("showcase444.ore");
+    assert!(out.contains("Ford-Fulkerson Maximum Flow:"));
+    assert!(out.contains("Maximum Flow: 23"));
+    assert!(out.contains("path 0->1->3->5 bottleneck=12"));
+    assert!(out.contains("1->3: 12/12"));
+    assert!(out.contains("Ford-Fulkerson: augmenting path method for maximum network flow."));
+}
+
+#[test]
+fn showcase445_bellman_ford() {
+    let out = run_ore("showcase445.ore");
+    assert!(out.contains("Bellman-Ford Shortest Path Algorithm:"));
+    assert!(out.contains("No negative-weight cycles found."));
+    assert!(out.contains("To 3: 2"));
+    assert!(out.contains("0 -> 3: [0 -> 1 -> 3] distance=2"));
+    assert!(out.contains("NEGATIVE CYCLE DETECTED"));
+    assert!(out.contains("Bellman-Ford: handles negative weights, detects negative cycles in O(VE)."));
+}
+
+#[test]
+fn showcase446_kosaraju() {
+    let out = run_ore("showcase446.ore");
+    assert!(out.contains("Kosaraju's Algorithm (Strongly Connected Components):"));
+    assert!(out.contains("SCC 0: [3, 7]"));
+    assert!(out.contains("SCC 1: [4, 5, 6]"));
+    assert!(out.contains("SCC 2: [0, 1, 2]"));
+    assert!(out.contains("Total SCCs: 3"));
+    assert!(out.contains("Kosaraju's: two-pass DFS algorithm for finding SCCs in O(V+E)."));
+}
+
+#[test]
+fn showcase447_euler() {
+    let out = run_ore("showcase447.ore");
+    assert!(out.contains("Euler Path and Circuit Detection:"));
+    assert!(out.contains("Euler CIRCUIT exists (all degrees even)"));
+    assert!(out.contains("Euler PATH exists between vertices 0 and 3"));
+    assert!(out.contains("No Euler path or circuit (4 odd-degree vertices)"));
+    assert!(out.contains("Directed Euler CIRCUIT exists (in-degree = out-degree for all)"));
+    assert!(out.contains("Euler paths: exist iff 0 or 2 odd-degree vertices (undirected graphs)."));
+}
+
+#[test]
+fn showcase448_bipartite() {
+    let out = run_ore("showcase448.ore");
+    assert!(out.contains("Bipartite Graph Checking (BFS 2-coloring):"));
+    assert!(out.contains("Set A (red):  [0, 2, 4]"));
+    assert!(out.contains("Set B (blue): [1, 3, 5]"));
+    assert!(out.contains("Bipartite: NO (conflict at edge"));
+    assert!(out.contains("Bipartite: YES (all trees are bipartite)"));
+    assert!(out.contains("Bipartite check: BFS 2-coloring detects odd cycles in O(V+E)."));
+}
+
+#[test]
+fn showcase449_articulation() {
+    let out = run_ore("showcase449.ore");
+    assert!(out.contains("Articulation Points and Bridges:"));
+    assert!(out.contains("Found 3: [1, 3, 4]"));
+    assert!(out.contains("Found 2:"));
+    assert!(out.contains("1 - 3"));
+    assert!(out.contains("3 - 4"));
+    assert!(out.contains("Removing vertex 1: graph disconnected"));
+    assert!(out.contains("Articulation points and bridges: found via DFS disc/low values."));
+}
+
+#[test]
+fn showcase450_graph_coloring() {
+    let out = run_ore("showcase450.ore");
+    assert!(out.contains("Graph Coloring:"));
+    assert!(out.contains("Greedy chromatic number: 3"));
+    assert!(out.contains("Coloring is valid!"));
+    assert!(out.contains("k=2: No valid coloring"));
+    assert!(out.contains("Chromatic number: 3"));
+    assert!(out.contains("Valid coloring confirmed."));
+    assert!(out.contains("Graph coloring: greedy gives upper bound, backtracking finds exact chromatic number."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

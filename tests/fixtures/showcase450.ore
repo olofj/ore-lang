@@ -1,0 +1,157 @@
+-- Showcase 450: Graph coloring (greedy + backtracking)
+
+fn color_name c:Int -> Str
+  if c == 0
+    return "Red"
+  if c == 1
+    return "Green"
+  if c == 2
+    return "Blue"
+  if c == 3
+    return "Yellow"
+  "Color_{c}"
+
+fn main
+  print "Graph Coloring:"
+  print ""
+
+  -- Part 1: Greedy coloring
+  print "=== Part 1: Greedy Coloring ==="
+  -- Petersen-like graph, 7 vertices
+  n := 7
+  ef := [0, 0, 0, 1, 1, 2, 2, 3, 4, 5]
+  et := [1, 3, 4, 2, 5, 3, 6, 4, 5, 6]
+  ne := 10
+
+  print "Graph ({n} vertices, {ne} edges):"
+  for e in range(0, ne)
+    print "  {ef[e]} - {et[e]}"
+  print ""
+
+  -- Greedy: assign lowest available color to each vertex
+  mut colors := [-1, -1, -1, -1, -1, -1, -1]
+
+  for v in range(0, n)
+    -- Find colors used by neighbors
+    mut used := [0, 0, 0, 0, 0, 0, 0]
+    for e in range(0, ne)
+      if ef[e] == v and colors[et[e]] >= 0
+        used[colors[et[e]]] = 1
+      if et[e] == v and colors[ef[e]] >= 0
+        used[colors[ef[e]]] = 1
+
+    -- Pick lowest available color
+    mut c := 0
+    loop
+      if used[c] == 0
+        break
+      c = c + 1
+    colors[v] = c
+    print "  Vertex {v}: {color_name(c)}"
+
+  -- Count colors used
+  mut max_color := 0
+  for i in range(0, n)
+    if colors[i] > max_color
+      max_color = colors[i]
+  chromatic_greedy := max_color + 1
+  print ""
+  print "  Greedy chromatic number: {chromatic_greedy}"
+
+  -- Verify coloring
+  mut valid := true
+  for e in range(0, ne)
+    if colors[ef[e]] == colors[et[e]]
+      valid = false
+      print "  CONFLICT: {ef[e]}-{et[e]} both {color_name(colors[ef[e]])}"
+  if valid
+    print "  Coloring is valid!"
+
+  -- Part 2: Backtracking for minimum coloring
+  print ""
+  print "=== Part 2: Backtracking (exact chromatic number) ==="
+
+  -- Try k colors starting from 1
+  -- Small graph for backtracking: 5 vertices
+  n2 := 5
+  e2f := [0, 0, 1, 1, 2, 3]
+  e2t := [1, 2, 2, 3, 3, 4]
+  ne2 := 6
+
+  print "Graph 2 ({n2} vertices, {ne2} edges):"
+  for e in range(0, ne2)
+    print "  {e2f[e]} - {e2t[e]}"
+  print ""
+
+  -- Try with k=2 first, then k=3
+  for k in range(2, 5)
+    mut col := [-1, -1, -1, -1, -1]
+    -- Backtracking: iterative with stack
+    -- stack_v[i] = vertex being colored, stack_c[i] = color to try
+    mut stack_v := [0]
+    mut stack_c := [0]
+    mut found := false
+
+    loop
+      sl := stack_v | count()
+      if sl == 0
+        break
+      if found
+        break
+
+      v := stack_v[sl - 1]
+      c := stack_c[sl - 1]
+
+      if c >= k
+        -- Backtrack: pop this vertex
+        col[v] = -1
+        mut nsv := []
+        mut nsc := []
+        for i in range(0, sl - 1)
+          nsv.push(stack_v[i])
+          nsc.push(stack_c[i])
+        stack_v = nsv
+        stack_c = nsc
+
+        -- Increment parent's color
+        sl2 := stack_v | count()
+        if sl2 > 0
+          stack_c[sl2 - 1] = stack_c[sl2 - 1] + 1
+      else
+        -- Check if color c is valid for vertex v
+        mut ok := true
+        for e in range(0, ne2)
+          if e2f[e] == v and col[e2t[e]] == c
+            ok = false
+          if e2t[e] == v and col[e2f[e]] == c
+            ok = false
+
+        if ok
+          col[v] = c
+          if v == n2 - 1
+            found = true
+          else
+            stack_v.push(v + 1)
+            stack_c.push(0)
+        else
+          stack_c[sl - 1] = c + 1
+
+    if found
+      mut col_strs := []
+      for i in range(0, n2)
+        col_strs.push("{i}={color_name(col[i])}")
+      print "  k={k}: Solution found! [{col_strs | join(", ")}]"
+      -- Verify
+      mut v2 := true
+      for e in range(0, ne2)
+        if col[e2f[e]] == col[e2t[e]]
+          v2 = false
+      if v2
+        print "  Valid coloring confirmed."
+      print "  Chromatic number: {k}"
+      break
+    else
+      print "  k={k}: No valid coloring"
+
+  print ""
+  print "Graph coloring: greedy gives upper bound, backtracking finds exact chromatic number."

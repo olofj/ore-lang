@@ -1,0 +1,125 @@
+-- Showcase 445: Bellman-Ford (shortest paths with negative weights)
+
+fn main
+  print "Bellman-Ford Shortest Path Algorithm:"
+  print ""
+
+  -- 5 vertices (0..4), source = 0
+  n := 5
+  source := 0
+  inf := 999999
+
+  -- Edges: (from, to, weight)
+  ef := [0, 0, 1, 1, 1, 2, 3, 4]
+  et := [1, 2, 2, 3, 4, 3, 4, 2]
+  ew := [6, 7, 5, -4, 8, -3, 9, 7]
+  num_edges := 8
+
+  print "Graph edges:"
+  for e in range(0, num_edges)
+    print "  {ef[e]} -> {et[e]} : weight {ew[e]}"
+  print ""
+
+  -- Initialize distances
+  mut dist := []
+  mut pred := []
+  for i in range(0, n)
+    dist.push(inf)
+    pred.push(0 - 1)
+  dist[source] = 0
+
+  print "Running Bellman-Ford from vertex {source}..."
+  print ""
+
+  -- Relax edges n-1 times
+  for i in range(1, n)
+    mut relaxed := 0
+    for e in range(0, num_edges)
+      u := ef[e]
+      v := et[e]
+      w := ew[e]
+      if dist[u] < inf and dist[u] + w < dist[v]
+        dist[v] = dist[u] + w
+        pred[v] = u
+        relaxed = relaxed + 1
+    print "  Pass {i}: {relaxed} relaxation(s)"
+
+  -- Check for negative-weight cycles
+  print ""
+  mut has_neg_cycle := false
+  for e in range(0, num_edges)
+    u := ef[e]
+    v := et[e]
+    w := ew[e]
+    if dist[u] < inf and dist[u] + w < dist[v]
+      has_neg_cycle = true
+
+  if has_neg_cycle
+    print "WARNING: Negative-weight cycle detected!"
+  else
+    print "No negative-weight cycles found."
+
+  -- Print shortest distances
+  print ""
+  print "=== Shortest Distances from vertex {source} ==="
+  for v in range(0, n)
+    if dist[v] >= inf
+      print "  To {v}: INF"
+    else
+      print "  To {v}: {dist[v]}"
+
+  -- Reconstruct paths
+  print ""
+  print "=== Shortest Paths ==="
+  for v in range(0, n)
+    if v == source
+      print "  {source} -> {v}: [{v}]"
+    else if dist[v] >= inf
+      print "  {source} -> {v}: unreachable"
+    else
+      mut path := []
+      mut cur := v
+      loop
+        path.push(cur)
+        if cur == source
+          break
+        cur = pred[cur]
+
+      plen := path | count()
+      mut rev := []
+      for i in range(0, plen)
+        rev.push(path[plen - 1 - i])
+      print "  {source} -> {v}: [{rev | join(" -> ")}] distance={dist[v]}"
+
+  -- Second example: graph with negative cycle
+  print ""
+  print "=== Negative Cycle Detection ==="
+  -- 3 vertices, edges: 0->1:1, 1->2:-3, 2->0:1 (cycle sum = -1)
+  ef2 := [0, 1, 2]
+  et2 := [1, 2, 0]
+  ew2 := [1, -3, 1]
+
+  mut dist2 := [0, inf, inf]
+  for i in range(1, 3)
+    for e in range(0, 3)
+      u := ef2[e]
+      v := et2[e]
+      w := ew2[e]
+      if dist2[u] < inf and dist2[u] + w < dist2[v]
+        dist2[v] = dist2[u] + w
+
+  mut neg_cycle := false
+  for e in range(0, 3)
+    u := ef2[e]
+    v := et2[e]
+    w := ew2[e]
+    if dist2[u] < inf and dist2[u] + w < dist2[v]
+      neg_cycle = true
+
+  if neg_cycle
+    print "  Cycle 0->1->2->0 (weights: 1, -3, 1): NEGATIVE CYCLE DETECTED"
+  else
+    print "  No negative cycle"
+
+  print ""
+  print "Bellman-Ford: handles negative weights, detects negative cycles in O(VE)."

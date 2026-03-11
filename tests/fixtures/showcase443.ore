@@ -1,0 +1,123 @@
+-- Showcase 443: Topological sort via DFS with finishing times
+
+fn label v:Int -> Str
+  if v == 0
+    return "A"
+  if v == 1
+    return "B"
+  if v == 2
+    return "C"
+  if v == 3
+    return "D"
+  if v == 4
+    return "E"
+  if v == 5
+    return "F"
+  "G"
+
+fn main
+  print "Topological Sort via DFS (finishing times):"
+  print ""
+
+  n := 7
+
+  -- Directed edges: A->B, A->C, B->D, B->E, C->D, C->F, D->G, E->G, F->G
+  adj_from := [0, 0, 1, 1, 2, 2, 3, 4, 5]
+  adj_to :=   [1, 2, 3, 4, 3, 5, 6, 6, 6]
+  num_edges := 9
+
+  print "Dependency graph:"
+  for i in range(0, n)
+    mut neighbors := []
+    for e in range(0, num_edges)
+      if adj_from[e] == i
+        neighbors.push(label(adj_to[e]))
+    if neighbors | count() > 0
+      print "  {label(i)} -> {neighbors | join(", ")}"
+    else
+      print "  {label(i)} -> (none)"
+
+  print ""
+
+  -- DFS-based topological sort
+  mut visited := [0, 0, 0, 0, 0, 0, 0]
+  mut finish_order := []
+
+  for start in range(0, n)
+    if visited[start] == 0
+      mut stack_node := [start]
+      mut stack_phase := [0]
+      visited[start] = 1
+
+      loop
+        sz := stack_node | count()
+        if sz == 0
+          break
+
+        node := stack_node[sz - 1]
+        phase := stack_phase[sz - 1]
+
+        if phase == 1
+          mut new_sn := []
+          mut new_sp := []
+          for k in range(0, sz - 1)
+            new_sn.push(stack_node[k])
+            new_sp.push(stack_phase[k])
+          stack_node = new_sn
+          stack_phase = new_sp
+          visited[node] = 2
+          finish_order.push(node)
+        else
+          stack_phase[sz - 1] = 1
+          mut neighbors := []
+          for e in range(0, num_edges)
+            if adj_from[e] == node
+              neighbors.push(adj_to[e])
+
+          nc := neighbors | count()
+          for ni in range(0, nc)
+            idx := nc - 1 - ni
+            nb := neighbors[idx]
+            if visited[nb] == 0
+              visited[nb] = 1
+              stack_node.push(nb)
+              stack_phase.push(0)
+
+  -- Reverse finish order for topological sort
+  total := finish_order | count()
+  mut topo := []
+  for i in range(0, total)
+    topo.push(finish_order[total - 1 - i])
+
+  print "=== Topological Order ==="
+  mut topo_labels := []
+  for i in range(0, total)
+    topo_labels.push(label(topo[i]))
+  print "  {topo_labels | join(" -> ")}"
+
+  -- Verify ordering
+  mut pos := [0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, total)
+    pos[topo[i]] = i
+
+  mut valid := true
+  for e in range(0, num_edges)
+    f := adj_from[e]
+    t := adj_to[e]
+    if pos[f] >= pos[t]
+      valid = false
+
+  if valid
+    print "  Ordering is valid!"
+  else
+    print "  Ordering is INVALID!"
+
+  -- Show finish times
+  print ""
+  print "=== Finish Times ==="
+  for i in range(0, total)
+    v := finish_order[i]
+    print "  {label(v)}: finish time {i + 1}"
+
+  print ""
+  print "Topological sort: DFS post-order reversal for DAG linearization."

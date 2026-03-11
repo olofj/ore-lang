@@ -1,0 +1,164 @@
+-- Showcase 447: Euler path/circuit detection
+
+fn main
+  print "Euler Path and Circuit Detection:"
+  print ""
+
+  -- Test 1: Graph with Euler circuit (all even degree)
+  -- Square: 0-1, 1-2, 2-3, 3-0 (all degree 2)
+  print "=== Graph 1: Square ==="
+  n1 := 4
+  e1f := [0, 1, 2, 3]
+  e1t := [1, 2, 3, 0]
+  ne1 := 4
+
+  -- Calculate degrees (undirected)
+  mut deg1 := [0, 0, 0, 0]
+  for e in range(0, ne1)
+    u := e1f[e]
+    v := e1t[e]
+    deg1[u] = deg1[u] + 1
+    deg1[v] = deg1[v] + 1
+
+  print "  Edges: 0-1, 1-2, 2-3, 3-0"
+  mut deg_str := []
+  for i in range(0, n1)
+    deg_str.push("v{i}={deg1[i]}")
+  print "  Degrees: {deg_str | join(", ")}"
+
+  mut odd_count1 := 0
+  for i in range(0, n1)
+    if deg1[i] % 2 != 0
+      odd_count1 = odd_count1 + 1
+
+  if odd_count1 == 0
+    print "  Result: Euler CIRCUIT exists (all degrees even)"
+  else if odd_count1 == 2
+    print "  Result: Euler PATH exists (exactly 2 odd-degree vertices)"
+  else
+    print "  Result: No Euler path or circuit ({odd_count1} odd-degree vertices)"
+
+  -- Find Euler circuit using Hierholzer's algorithm
+  print ""
+  print "  Finding Euler circuit (Hierholzer's):"
+
+  -- Adjacency tracking: for each edge, used[e] tracks if used in either direction
+  mut used := [0, 0, 0, 0]
+  mut circuit := []
+  mut stack := [0]
+
+  loop
+    slen := stack | count()
+    if slen == 0
+      break
+
+    v := stack[slen - 1]
+
+    -- Find an unused edge from v
+    mut found := false
+    for e in range(0, ne1)
+      if used[e] == 0
+        if e1f[e] == v
+          used[e] = 1
+          stack.push(e1t[e])
+          found = true
+          break
+        if e1t[e] == v
+          used[e] = 1
+          stack.push(e1f[e])
+          found = true
+          break
+
+    if not found
+      -- Pop and add to circuit
+      mut new_stack := []
+      for k in range(0, slen - 1)
+        new_stack.push(stack[k])
+      stack = new_stack
+      circuit.push(v)
+
+  mut path_str := []
+  for i in range(0, circuit | count())
+    path_str.push(str(circuit[i]))
+  print "  Circuit: {path_str | join(" -> ")}"
+
+  -- Test 2: Graph with Euler path but no circuit
+  print ""
+  print "=== Graph 2: Path graph ==="
+  -- 0-1, 1-2, 2-3
+  n2 := 4
+  e2f := [0, 1, 2]
+  e2t := [1, 2, 3]
+  ne2 := 3
+
+  mut deg2 := [0, 0, 0, 0]
+  for e in range(0, ne2)
+    u := e2f[e]
+    v := e2t[e]
+    deg2[u] = deg2[u] + 1
+    deg2[v] = deg2[v] + 1
+
+  print "  Edges: 0-1, 1-2, 2-3"
+  mut deg_str2 := []
+  for i in range(0, n2)
+    deg_str2.push("v{i}={deg2[i]}")
+  print "  Degrees: {deg_str2 | join(", ")}"
+
+  mut odd_count2 := 0
+  mut odd_verts := []
+  for i in range(0, n2)
+    if deg2[i] % 2 != 0
+      odd_count2 = odd_count2 + 1
+      odd_verts.push(i)
+
+  if odd_count2 == 0
+    print "  Result: Euler CIRCUIT exists"
+  else if odd_count2 == 2
+    print "  Result: Euler PATH exists between vertices {odd_verts[0]} and {odd_verts[1]}"
+  else
+    print "  Result: No Euler path or circuit"
+
+  -- Test 3: Graph with no Euler path
+  print ""
+  print "=== Graph 3: Star graph K1,3 ==="
+  -- 0-1, 0-2, 0-3
+  n3 := 4
+  mut deg3 := [3, 1, 1, 1]
+
+  print "  Edges: 0-1, 0-2, 0-3"
+  mut deg_str3 := []
+  for i in range(0, n3)
+    deg_str3.push("v{i}={deg3[i]}")
+  print "  Degrees: {deg_str3 | join(", ")}"
+
+  mut odd_count3 := 0
+  for i in range(0, n3)
+    if deg3[i] % 2 != 0
+      odd_count3 = odd_count3 + 1
+
+  if odd_count3 == 0
+    print "  Result: Euler CIRCUIT exists"
+  else if odd_count3 == 2
+    print "  Result: Euler PATH exists"
+  else
+    print "  Result: No Euler path or circuit ({odd_count3} odd-degree vertices)"
+
+  -- Test 4: Directed Euler circuit check
+  print ""
+  print "=== Graph 4: Directed cycle ==="
+  print "  Edges: 0->1, 1->2, 2->0"
+  mut in_deg := [1, 1, 1]
+  mut out_deg := [1, 1, 1]
+
+  mut dir_euler := true
+  for i in range(0, 3)
+    if in_deg[i] != out_deg[i]
+      dir_euler = false
+
+  if dir_euler
+    print "  Result: Directed Euler CIRCUIT exists (in-degree = out-degree for all)"
+  else
+    print "  Result: No directed Euler circuit"
+
+  print ""
+  print "Euler paths: exist iff 0 or 2 odd-degree vertices (undirected graphs)."
