@@ -1,0 +1,87 @@
+-- Showcase 57: Real-world algorithms - sorting, searching, data processing
+
+fn binary_search xs:List[Int] target:Int -> Int
+  mut lo := 0
+  mut hi := xs.len() - 1
+  while lo <= hi
+    mid := (lo + hi) / 2
+    val := xs[mid]
+    if val == target
+      return mid
+    else if val < target
+      lo = mid + 1
+    else
+      hi = mid - 1
+  return -1
+
+fn gcd a:Int b:Int -> Int
+  if b == 0
+    a
+  else
+    gcd(b, a % b)
+
+fn lcm a:Int b:Int -> Int
+  a / gcd(a, b) * b
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  if n < 4
+    return true
+  if n % 2 == 0 or n % 3 == 0
+    return false
+  mut i := 5
+  while i * i <= n
+    if n % i == 0 or n % (i + 2) == 0
+      return false
+    i = i + 6
+  true
+
+fn main
+  -- Binary search
+  sorted := range(0, 100).map(n => n * 2)
+  idx := binary_search(sorted, 42)
+  print "42 found at index: {idx}"
+  print "Verify: sorted[{idx}] = {sorted[idx]}"
+
+  -- GCD/LCM
+  print "gcd(12, 8) = {gcd(12, 8)}"
+  print "lcm(12, 8) = {lcm(12, 8)}"
+
+  -- Primes
+  primes := range(2, 50).filter(n => is_prime(n))
+  print "Primes < 50: {primes.join(", ")}"
+
+  -- FizzBuzz in one pipeline
+  fizzbuzz := range(1, 16).map(n =>
+    if n % 15 == 0
+      "FizzBuzz"
+    else if n % 3 == 0
+      "Fizz"
+    else if n % 5 == 0
+      "Buzz"
+    else
+      str(n)
+  )
+  print fizzbuzz.join(", ")
+
+  -- Collatz conjecture - length of sequence
+  mut n := 27
+  mut steps := 0
+  while n != 1
+    if n % 2 == 0
+      n = n / 2
+    else
+      n = n * 3 + 1
+    steps = steps + 1
+  print "Collatz(27) takes {steps} steps"
+
+  -- Matrix operations (flattened 3x3)
+  a := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  b := [9, 8, 7, 6, 5, 4, 3, 2, 1]
+  -- Element-wise addition
+  sum := range(0, 9).map(i => a[i] + b[i])
+  print "Matrix sum: {sum.join(", ")}"
+  -- Trace (sum of diagonal)
+  trace := a[0] + a[4] + a[8]
+  print "Trace: {trace}"

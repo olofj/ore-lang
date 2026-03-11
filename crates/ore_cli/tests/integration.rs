@@ -1813,6 +1813,20 @@ fn showcase56() {
 }
 
 #[test]
+fn showcase57() {
+    let out = run_ore("showcase57.ore");
+    assert!(out.contains("42 found at index: 21"));
+    assert!(out.contains("Verify: sorted[21] = 42"));
+    assert!(out.contains("gcd(12, 8) = 4"));
+    assert!(out.contains("lcm(12, 8) = 24"));
+    assert!(out.contains("Primes < 50: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47"));
+    assert!(out.contains("1, 2, Fizz, 4, Buzz, Fizz, 7, 8, Fizz, Buzz, 11, Fizz, 13, 14, FizzBuzz"));
+    assert!(out.contains("Collatz(27) takes 111 steps"));
+    assert!(out.contains("Matrix sum: 10, 10, 10, 10, 10, 10, 10, 10, 10"));
+    assert!(out.contains("Trace: 15"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
