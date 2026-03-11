@@ -1281,6 +1281,29 @@ pub extern "C" fn ore_list_skip(list: *mut OreList, n: i64) -> *mut OreList {
     }
 }
 
+/// Scan (cumulative reduce): returns list of all intermediate accumulator values.
+/// scan(list, init, fn(acc, elem) -> acc) -> [init, fn(init,e0), fn(fn(init,e0),e1), ...]
+#[no_mangle]
+pub extern "C" fn ore_list_scan(
+    list: *mut OreList,
+    init: i64,
+    func: *const u8,
+    env: *mut u8,
+) -> *mut OreList {
+    let result = ore_list_new();
+    unsafe {
+        let src = &*list;
+        let mut acc = init;
+        ore_list_push(result, acc);
+        for i in 0..src.len as usize {
+            let elem = *src.data.add(i);
+            acc = call_closure2(func, env, acc, elem);
+            ore_list_push(result, acc);
+        }
+    }
+    result
+}
+
 /// Take elements while predicate is true.
 #[no_mangle]
 pub extern "C" fn ore_list_take_while(

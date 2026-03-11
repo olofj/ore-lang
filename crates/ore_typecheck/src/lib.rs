@@ -886,6 +886,7 @@ impl TypeChecker {
                 "partition" => Type::List(Box::new(obj_ty.clone())),
                 "each" => Type::Unit,
                 "reduce" => Type::Any,
+                "scan" => Type::List(Box::new(Type::Any)),
                 "find" | "min_by" | "max_by" => *elem.clone(),
                 "join" => Type::Str,
                 "sort" | "sort_by" | "reverse" | "window" | "chunks" | "take_while" | "drop_while" => obj_ty.clone(),

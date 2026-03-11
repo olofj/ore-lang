@@ -754,6 +754,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_unique", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_flatten", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_partition", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_scan", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_take_while", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_drop_while", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_window", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
@@ -2922,6 +2923,39 @@ impl<'ctx> CodeGen<'ctx> {
                 ))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
+            }
+            "scan" => {
+                // scan(init, fn(acc, elem) -> acc) -> list of all acc values
+                if args.len() != 2 {
+                    return Err(CodeGenError { line: None, msg: "scan takes 2 arguments (init, fn)".into() });
+                }
+                let init_val = self.compile_expr(&args[0], func)?;
+                let elem_kind = self.last_list_elem_kind.clone();
+                let lambda_fn = match &args[1] {
+                    Expr::Lambda { params, body } => {
+                        let kinds: Vec<ValKind> = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "scan second argument must be a function".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let rt = self.module.get_function("ore_list_scan").unwrap();
+                let result = bld!(self.builder.build_call(
+                    rt, &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "scan"
+                ))?;
+                let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::Int);
+                Ok((val, ValKind::List))
             }
             "find" => {
                 // find(fn(elem) -> bool) — returns element or 0

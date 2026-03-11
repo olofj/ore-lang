@@ -995,6 +995,17 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn lists_scan() {
+    let out = run_ore("lists/scan.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "0 1 3 6 10 15",   // running sum
+        "1 2 6 24",         // running product
+        "0 3 3 4 4 5 9",   // running max
+    ]);
+}
+
+#[test]
 fn lists_take_drop_while() {
     let out = run_ore("lists/take_drop_while.ore");
     let lines: Vec<&str> = out.lines().collect();

@@ -1,0 +1,15 @@
+fn main
+  -- Running sum (cumulative sum)
+  nums := [1, 2, 3, 4, 5]
+  running := nums.scan(0, (acc, x) => acc + x)
+  print running | join(" ")
+
+  -- Running product
+  factors := [2, 3, 4]
+  cumulative := factors.scan(1, (acc, x) => acc * x)
+  print cumulative | join(" ")
+
+  -- Running max
+  data := [3, 1, 4, 1, 5, 9]
+  maxes := data.scan(0, (best, x) => max(best, x))
+  print maxes | join(" ")
