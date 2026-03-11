@@ -1,0 +1,123 @@
+-- Showcase 533: Packet Switching Network Simulation
+
+fn node_name idx:Int -> Str
+  if idx == 0
+    return "A"
+  if idx == 1
+    return "B"
+  if idx == 2
+    return "C"
+  if idx == 3
+    return "D"
+  if idx == 4
+    return "E"
+  return "F"
+
+fn main
+  print "Packet Switching Network Simulation:"
+  print ""
+
+  -- Part 1: Network topology
+  print "=== Part 1: Network Topology ==="
+  num_nodes := 6
+
+  -- Adjacency: edges as pairs with latency
+  mut edge_from := [0, 0, 1, 1, 2, 2, 3, 4]
+  mut edge_to := [1, 2, 2, 3, 3, 4, 5, 5]
+  mut edge_latency := [10, 25, 5, 15, 10, 20, 8, 12]
+  num_edges := 8
+
+  print "  Nodes: A, B, C, D, E, F"
+  print "  Links:"
+  for i in range(0, num_edges)
+    ef := edge_from[i]
+    et := edge_to[i]
+    fn_name := node_name(ef)
+    tn_name := node_name(et)
+    print "    {fn_name} -- {tn_name} ({edge_latency[i]}ms)"
+
+  -- Part 2: Routing table (shortest paths via Dijkstra-like)
+  print ""
+  print "=== Part 2: Routing Tables ==="
+  -- Pre-computed shortest paths from A
+  mut dist_from_a := [0, 10, 15, 25, 35, 33]
+  mut next_hop_from_a := ["A", "B", "B", "B", "C", "D"]
+
+  print "  From node A:"
+  for i in range(0, num_nodes)
+    nn := node_name(i)
+    print "    -> {nn}: cost={dist_from_a[i]}, next_hop={next_hop_from_a[i]}"
+
+  -- Part 3: Packet fragmentation
+  print ""
+  print "=== Part 3: Packet Fragmentation ==="
+  message_size := 4500
+  mtu := 1000
+  header_size := 40
+  payload_size := mtu - header_size
+  num_fragments := message_size / payload_size
+  mut remaining := message_size - num_fragments * payload_size
+  if remaining > 0
+    num_fragments_total := num_fragments + 1
+    print "  Message size: {message_size} bytes"
+    print "  MTU: {mtu} bytes (payload: {payload_size})"
+    print "  Fragments needed: {num_fragments_total}"
+    for i in range(0, num_fragments)
+      print "    Fragment {i}: offset={i * payload_size}, size={payload_size}"
+    print "    Fragment {num_fragments}: offset={num_fragments * payload_size}, size={remaining}"
+  else
+    print "  Fragments needed: {num_fragments}"
+
+  -- Part 4: Packet routing simulation
+  print ""
+  print "=== Part 4: Packet Routing ==="
+  mut pkt_src := [0, 0, 1, 2, 0]
+  mut pkt_dst := [5, 3, 5, 5, 4]
+  mut pkt_sizes := [512, 256, 1024, 768, 384]
+  num_packets := 5
+
+  mut total_latency := 0
+  mut total_bytes := 0
+  for i in range(0, num_packets)
+    src_idx := pkt_src[i]
+    dst_idx := pkt_dst[i]
+    latency := dist_from_a[dst_idx]
+    total_latency = total_latency + latency
+    total_bytes = total_bytes + pkt_sizes[i]
+    sn := node_name(src_idx)
+    dn := node_name(dst_idx)
+    print "  Packet {i}: {sn}->{dn} size={pkt_sizes[i]}B latency={latency}ms"
+
+  -- Part 5: Congestion detection
+  print ""
+  print "=== Part 5: Congestion Control ==="
+  mut link_load := [80, 45, 95, 60, 30, 70, 55, 88]
+  threshold := 75
+
+  mut congested := 0
+  print "  Link utilization:"
+  for i in range(0, num_edges)
+    mut status := "OK"
+    if link_load[i] > threshold
+      status = "CONGESTED"
+      congested = congested + 1
+    ef := edge_from[i]
+    et := edge_to[i]
+    fn2 := node_name(ef)
+    tn2 := node_name(et)
+    print "    {fn2}-{tn2}: {link_load[i]}% [{status}]"
+  print "  Congested links: {congested}/{num_edges}"
+
+  -- Part 6: Network statistics
+  print ""
+  print "=== Part 6: Network Statistics ==="
+  avg_latency := total_latency / num_packets
+  print "  Total packets sent: {num_packets}"
+  print "  Total bytes transferred: {total_bytes}"
+  print "  Average latency: {avg_latency}ms"
+  print "  Network nodes: {num_nodes}"
+  print "  Network links: {num_edges}"
+  print "  Congestion rate: {congested * 100 / num_edges}%"
+
+  print ""
+  print "Packet network: topology, routing, fragmentation, congestion, statistics."

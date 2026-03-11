@@ -1,0 +1,157 @@
+-- Showcase 538: Simple Game Physics (2D Platformer Concepts)
+
+fn main
+  print "Simple Game Physics (2D Platformer):"
+  print ""
+
+  -- Part 1: Player state
+  print "=== Part 1: Player State ==="
+  mut px := 100
+  mut py := 200
+  mut vx := 0
+  mut vy := 0
+  gravity := 2
+  jump_force := 20
+  move_speed := 5
+  max_fall := 15
+  ground_y := 400
+
+  print "  Initial position: ({px}, {py})"
+  print "  Gravity: {gravity} per tick"
+  print "  Jump force: {jump_force}"
+  print "  Move speed: {move_speed}"
+  print "  Ground level: {ground_y}"
+
+  -- Part 2: Simulate jump sequence
+  print ""
+  print "=== Part 2: Jump Simulation ==="
+  vy = 0 - jump_force
+  vx = move_speed
+  print "  Jump! vy={vy}, vx={vx}"
+
+  mut max_height := py
+  for tick in range(0, 15)
+    -- Apply gravity
+    vy = vy + gravity
+    if vy > max_fall
+      vy = max_fall
+    -- Update position
+    px = px + vx
+    py = py + vy
+    -- Ground collision
+    mut on_ground := false
+    if py >= ground_y
+      py = ground_y
+      vy = 0
+      on_ground = true
+    if py < max_height
+      max_height = py
+    if tick % 3 == 0
+      mut ground_str := ""
+      if on_ground
+        ground_str = " [GROUND]"
+      print "    t={tick}: pos=({px}, {py}) vel=({vx}, {vy}){ground_str}"
+
+  height_reached := ground_y - max_height
+  print "  Max height reached: {height_reached} pixels above ground"
+
+  -- Part 3: Platform collision
+  print ""
+  print "=== Part 3: Platform Collision ==="
+  -- Platforms: [x, y, width]
+  mut plat_x := [50, 200, 350, 150]
+  mut plat_y := [350, 300, 250, 380]
+  mut plat_w := [100, 80, 120, 60]
+  num_platforms := 4
+
+  print "  Platforms:"
+  for i in range(0, num_platforms)
+    print "    Platform {i}: x={plat_x[i]}, y={plat_y[i]}, width={plat_w[i]}"
+
+  -- Check which platforms player is over
+  test_x := 220
+  test_y := 295
+  print "  Player at ({test_x}, {test_y}):"
+  mut standing_on := -1
+  for i in range(0, num_platforms)
+    if test_x >= plat_x[i] and test_x <= plat_x[i] + plat_w[i]
+      dist := plat_y[i] - test_y
+      if dist >= 0 and dist <= 10
+        standing_on = i
+        print "    Standing on platform {i}"
+  if standing_on == -1
+    print "    In the air!"
+
+  -- Part 4: AABB collision detection
+  print ""
+  print "=== Part 4: AABB Collision ==="
+  -- Player hitbox
+  player_w := 20
+  player_h := 30
+  player_x := 150
+  player_y := 280
+
+  -- Enemies
+  mut enemy_x := [140, 300, 155, 500]
+  mut enemy_y := [275, 350, 270, 200]
+  mut enemy_w := [25, 30, 20, 25]
+  mut enemy_h := [25, 30, 20, 25]
+  num_enemies := 4
+
+  print "  Player hitbox: ({player_x},{player_y}) {player_w}x{player_h}"
+  mut collisions := 0
+  for i in range(0, num_enemies)
+    -- AABB: overlap if no gap on either axis
+    mut overlap := true
+    if player_x + player_w < enemy_x[i]
+      overlap = false
+    if enemy_x[i] + enemy_w[i] < player_x
+      overlap = false
+    if player_y + player_h < enemy_y[i]
+      overlap = false
+    if enemy_y[i] + enemy_h[i] < player_y
+      overlap = false
+    if overlap
+      collisions = collisions + 1
+      print "    Enemy {i} at ({enemy_x[i]},{enemy_y[i]}): COLLISION"
+    else
+      print "    Enemy {i} at ({enemy_x[i]},{enemy_y[i]}): safe"
+  print "  Total collisions: {collisions}"
+
+  -- Part 5: Projectile trajectory
+  print ""
+  print "=== Part 5: Projectile ==="
+  mut proj_x := 100
+  mut proj_y := 300
+  proj_vx := 8
+  proj_vy := -12
+  mut proj_active := true
+  mut bounce_count := 0
+
+  print "  Projectile launched from ({proj_x}, {proj_y})"
+  for tick in range(0, 20)
+    if proj_active
+      proj_x = proj_x + proj_vx
+      proj_y = proj_y + proj_vy + tick
+      -- Bounce off ground
+      if proj_y >= ground_y
+        proj_y = ground_y
+        bounce_count = bounce_count + 1
+        if bounce_count >= 3
+          proj_active = false
+      if tick % 4 == 0
+        print "    t={tick}: ({proj_x}, {proj_y})"
+  print "  Bounces: {bounce_count}"
+
+  -- Part 6: Physics summary
+  print ""
+  print "=== Part 6: Physics Summary ==="
+  print "  Jump height: {height_reached} px"
+  print "  Platforms: {num_platforms}"
+  print "  Enemies: {num_enemies}"
+  print "  Collisions detected: {collisions}"
+  print "  Projectile bounces: {bounce_count}"
+  print "  Simulation ticks: 15 (jump) + 20 (projectile)"
+
+  print ""
+  print "Game physics: gravity, jumping, platforms, AABB collision, projectiles."

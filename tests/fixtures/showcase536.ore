@@ -1,0 +1,144 @@
+-- Showcase 536: Simple File Format Parser (CSV, INI-like)
+
+fn main
+  print "Simple File Format Parser:"
+  print ""
+
+  -- Part 1: CSV parsing
+  print "=== Part 1: CSV Parser ==="
+  mut csv_lines := ["name,age,city", "Alice,30,NYC", "Bob,25,London", "Carol,35,Tokyo", "Dave,28,Paris"]
+  num_csv := 5
+
+  print "  Raw CSV:"
+  for i in range(0, num_csv)
+    print "    {csv_lines[i]}"
+
+  -- Parse header
+  header := csv_lines[0]
+  mut col_names := header | split(",")
+  num_cols := col_names | len()
+  print "  Columns: {num_cols}"
+  for i in range(0, num_cols)
+    print "    [{i}] {col_names[i]}"
+
+  -- Parse data rows
+  print "  Parsed records:"
+  mut ages := [0, 0, 0, 0]
+  mut names := ["", "", "", ""]
+  mut cities := ["", "", "", ""]
+  for i in range(1, num_csv)
+    fields := csv_lines[i] | split(",")
+    names[i - 1] = fields[0]
+    ages[i - 1] = fields[1] | to_int()
+    cities[i - 1] = fields[2]
+    print "    Record {i}: name={fields[0]}, age={fields[1]}, city={fields[2]}"
+
+  -- Aggregate
+  mut total_age := 0
+  for i in range(0, 4)
+    total_age = total_age + ages[i]
+  avg_age := total_age / 4
+  print "  Average age: {avg_age}"
+
+  -- Part 2: INI-like config parsing
+  print ""
+  print "=== Part 2: INI Config Parser ==="
+  mut ini_lines := ["[database]", "host=localhost", "port=5432", "name=mydb", "[server]", "host=0.0.0.0", "port=8080", "workers=4"]
+  num_ini := 8
+
+  print "  Raw INI:"
+  for i in range(0, num_ini)
+    print "    {ini_lines[i]}"
+
+  -- Parse sections and keys
+  mut current_section := ""
+  mut sections := ["", ""]
+  mut section_count := 0
+  mut keys := ["", "", "", "", "", ""]
+  mut vals := ["", "", "", "", "", ""]
+  mut kv_count := 0
+
+  for i in range(0, num_ini)
+    line := ini_lines[i]
+    if line | starts_with("[")
+      current_section = line | slice(1, line | len() - 1)
+      sections[section_count] = current_section
+      section_count = section_count + 1
+    else
+      parts := line | split("=")
+      keys[kv_count] = current_section + "." + parts[0]
+      vals[kv_count] = parts[1]
+      kv_count = kv_count + 1
+
+  print "  Sections found: {section_count}"
+  for i in range(0, section_count)
+    print "    [{sections[i]}]"
+  print "  Key-value pairs: {kv_count}"
+  for i in range(0, kv_count)
+    print "    {keys[i]} = {vals[i]}"
+
+  -- Part 3: Data validation
+  print ""
+  print "=== Part 3: Data Validation ==="
+  mut valid_records := 0
+  mut invalid_records := 0
+  for i in range(0, 4)
+    mut is_valid := true
+    mut reason := "OK"
+    if names[i] | len() == 0
+      is_valid = false
+      reason = "empty name"
+    if ages[i] < 0 or ages[i] > 150
+      is_valid = false
+      reason = "invalid age"
+    if cities[i] | len() == 0
+      is_valid = false
+      reason = "empty city"
+    if is_valid
+      valid_records = valid_records + 1
+      print "    {names[i]}: VALID"
+    else
+      invalid_records = invalid_records + 1
+      print "    {names[i]}: INVALID ({reason})"
+  print "  Valid: {valid_records}, Invalid: {invalid_records}"
+
+  -- Part 4: Field statistics
+  print ""
+  print "=== Part 4: Field Statistics ==="
+  -- Find youngest and oldest
+  mut min_age := ages[0]
+  mut max_age := ages[0]
+  mut min_name := names[0]
+  mut max_name := names[0]
+  for i in range(1, 4)
+    if ages[i] < min_age
+      min_age = ages[i]
+      min_name = names[i]
+    if ages[i] > max_age
+      max_age = ages[i]
+      max_name = names[i]
+  print "  Youngest: {min_name} (age {min_age})"
+  print "  Oldest: {max_name} (age {max_age})"
+  print "  Age range: {max_age - min_age}"
+
+  -- Part 5: CSV generation
+  print ""
+  print "=== Part 5: CSV Generation ==="
+  print "  Generated CSV:"
+  print "    name,age,city,status"
+  for i in range(0, 4)
+    mut status := "junior"
+    if ages[i] >= 30
+      status = "senior"
+    print "    {names[i]},{ages[i]},{cities[i]},{status}"
+
+  -- Part 6: Format summary
+  print ""
+  print "=== Part 6: Format Summary ==="
+  print "  CSV: {num_csv} lines, {num_cols} columns, {num_csv - 1} records"
+  print "  INI: {num_ini} lines, {section_count} sections, {kv_count} key-value pairs"
+  total_parsed := (num_csv - 1) + kv_count
+  print "  Total items parsed: {total_parsed}"
+
+  print ""
+  print "Format parser: CSV, INI, validation, statistics, generation."

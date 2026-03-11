@@ -1,0 +1,114 @@
+-- Showcase 531: Event-Driven Architecture Simulation
+
+fn main
+  print "Event-Driven Architecture Simulation:"
+  print ""
+
+  -- Part 1: Event bus setup
+  print "=== Part 1: Event Bus ==="
+  mut event_types := ["user.created", "user.updated", "order.placed", "order.shipped", "payment.received"]
+  mut event_data := [101, 102, 501, 502, 301]
+  mut event_times := [100, 120, 200, 350, 210]
+  num_events := 5
+
+  print "  Registered events:"
+  for i in range(0, num_events)
+    print "    [{event_times[i]}ms] {event_types[i]} (data={event_data[i]})"
+
+  -- Part 2: Subscriber registry
+  print ""
+  print "=== Part 2: Subscribers ==="
+  mut sub_names := ["EmailService", "LogService", "AnalyticsService", "InventoryService", "NotificationService"]
+  mut sub_patterns := ["user.*", "*", "order.*", "order.placed", "payment.*"]
+  num_subs := 5
+
+  print "  Subscribers:"
+  for i in range(0, num_subs)
+    print "    {sub_names[i]} listens to: {sub_patterns[i]}"
+
+  -- Part 3: Event dispatching
+  print ""
+  print "=== Part 3: Event Dispatch ==="
+  mut total_dispatches := 0
+
+  for e in range(0, num_events)
+    mut handlers := 0
+    mut handler_list := ""
+    for s in range(0, num_subs)
+      -- Wildcard match: "*" matches all
+      -- "user.*" matches "user.created", "user.updated"
+      -- "order.*" matches "order.placed", "order.shipped"
+      -- "payment.*" matches "payment.received"
+      -- "order.placed" matches exactly
+      mut matched := false
+      if sub_patterns[s] == "*"
+        matched = true
+      if sub_patterns[s] == "user.*" and event_types[e] | starts_with("user.")
+        matched = true
+      if sub_patterns[s] == "order.*" and event_types[e] | starts_with("order.")
+        matched = true
+      if sub_patterns[s] == "order.placed" and event_types[e] == "order.placed"
+        matched = true
+      if sub_patterns[s] == "payment.*" and event_types[e] | starts_with("payment.")
+        matched = true
+      if matched
+        handlers = handlers + 1
+        if handler_list | len() > 0
+          handler_list = handler_list + ", "
+        handler_list = handler_list + sub_names[s]
+    total_dispatches = total_dispatches + handlers
+    print "  {event_types[e]} -> {handlers} handlers: [{handler_list}]"
+
+  print "  Total dispatches: {total_dispatches}"
+
+  -- Part 4: Event queue with priority
+  print ""
+  print "=== Part 4: Priority Queue ==="
+  mut pq_events := ["critical.error", "user.login", "order.placed", "metrics.collected", "cache.expired"]
+  mut pq_priority := [1, 3, 2, 5, 4]
+  num_pq := 5
+
+  -- Sort by priority (lower = higher priority)
+  mut pq_order := [0, 1, 2, 3, 4]
+  for i in range(0, num_pq)
+    for j in range(i + 1, num_pq)
+      if pq_priority[pq_order[j]] < pq_priority[pq_order[i]]
+        tmp := pq_order[i]
+        pq_order[i] = pq_order[j]
+        pq_order[j] = tmp
+
+  print "  Processing order (by priority):"
+  for i in range(0, num_pq)
+    idx := pq_order[i]
+    print "    P{pq_priority[idx]}: {pq_events[idx]}"
+
+  -- Part 5: Dead letter queue
+  print ""
+  print "=== Part 5: Dead Letter Queue ==="
+  mut dlq_events := ["payment.failed", "email.bounce", "webhook.timeout"]
+  mut dlq_retries := [3, 2, 3]
+  mut dlq_max := 3
+  num_dlq := 3
+
+  print "  Failed events:"
+  mut permanently_failed := 0
+  for i in range(0, num_dlq)
+    if dlq_retries[i] >= dlq_max
+      print "    {dlq_events[i]}: {dlq_retries[i]} retries -> DEAD LETTER"
+      permanently_failed = permanently_failed + 1
+    else
+      print "    {dlq_events[i]}: {dlq_retries[i]} retries -> RETRY"
+  print "  Dead letters: {permanently_failed}/{num_dlq}"
+
+  -- Part 6: Event sourcing stats
+  print ""
+  print "=== Part 6: Event Store Stats ==="
+  total_events := num_events + num_pq + num_dlq
+  print "  Total events processed: {total_events}"
+  print "  Total dispatches: {total_dispatches}"
+  avg_handlers := total_dispatches / num_events
+  print "  Avg handlers per event: {avg_handlers}"
+  print "  Dead letter rate: {permanently_failed * 100 / num_dlq}%"
+
+  print ""
+  print "Event-driven: bus, subscribers, dispatch, priority queue, dead letters, sourcing."

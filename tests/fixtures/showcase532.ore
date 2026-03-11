@@ -1,0 +1,130 @@
+-- Showcase 532: Simple Search Engine (Inverted Index, TF-IDF Ranking)
+
+fn main
+  print "Simple Search Engine:"
+  print ""
+
+  -- Part 1: Document corpus
+  print "=== Part 1: Document Corpus ==="
+  mut doc_titles := ["Ore Language Guide", "Functional Programming", "Systems Programming", "Web Development", "Data Structures"]
+  mut doc_words_0 := ["ore", "language", "compiler", "types", "functions", "ore", "syntax"]
+  mut doc_words_1 := ["functional", "programming", "lambda", "functions", "map", "filter", "reduce"]
+  mut doc_words_2 := ["systems", "programming", "memory", "compiler", "performance", "types"]
+  mut doc_words_3 := ["web", "programming", "server", "routing", "api", "data"]
+  mut doc_words_4 := ["data", "structures", "list", "map", "tree", "sort", "performance"]
+  num_docs := 5
+
+  print "  Documents:"
+  print "    [0] {doc_titles[0]} (7 words)"
+  print "    [1] {doc_titles[1]} (7 words)"
+  print "    [2] {doc_titles[2]} (6 words)"
+  print "    [3] {doc_titles[3]} (6 words)"
+  print "    [4] {doc_titles[4]} (7 words)"
+
+  -- Part 2: Build inverted index
+  print ""
+  print "=== Part 2: Inverted Index ==="
+  -- Track which documents contain key terms
+  mut index_terms := ["programming", "compiler", "functions", "types", "map", "data", "performance", "ore"]
+  mut index_doc_counts := [3, 2, 2, 2, 2, 2, 2, 1]
+  num_terms := 8
+
+  print "  Index entries:"
+  for i in range(0, num_terms)
+    print "    '{index_terms[i]}' -> {index_doc_counts[i]} docs"
+
+  -- Part 3: TF-IDF computation
+  print ""
+  print "=== Part 3: TF-IDF Scores ==="
+  -- TF = term_count / doc_length
+  -- IDF = log approximation: (N - df + 1) / df where N=5
+  -- We use integer approximation: IDF_approx = (N * 10) / df
+
+  -- Query: "programming"
+  print "  Query: 'programming'"
+  -- programming appears in docs 1, 2, 3 (df=3)
+  -- TF in doc1: 1/7, doc2: 1/6, doc3: 1/6
+  -- IDF_approx = 50/3 = 16
+  idf_prog := 50 / 3
+  print "  IDF('programming') = {idf_prog}"
+
+  -- Compute TF-IDF scores (scaled by 100)
+  mut scores := [0, 0, 0, 0, 0]
+  -- doc0: no match
+  scores[1] = 1 * idf_prog * 100 / 7
+  scores[2] = 1 * idf_prog * 100 / 6
+  scores[3] = 1 * idf_prog * 100 / 6
+  -- doc4: no match
+
+  print "  TF-IDF scores:"
+  for i in range(0, num_docs)
+    print "    [{i}] {doc_titles[i]}: {scores[i]}"
+
+  -- Part 4: Search ranking
+  print ""
+  print "=== Part 4: Search Results ==="
+  -- Sort documents by score (descending)
+  mut ranked := [0, 1, 2, 3, 4]
+  for i in range(0, num_docs)
+    for j in range(i + 1, num_docs)
+      if scores[ranked[j]] > scores[ranked[i]]
+        tmp := ranked[i]
+        ranked[i] = ranked[j]
+        ranked[j] = tmp
+
+  mut shown := 0
+  for i in range(0, num_docs)
+    idx := ranked[i]
+    if scores[idx] > 0
+      shown = shown + 1
+      print "    #{shown}: {doc_titles[idx]} (score={scores[idx]})"
+
+  print "  Found {shown} results"
+
+  -- Part 5: Multi-term query
+  print ""
+  print "=== Part 5: Multi-term Query ==="
+  print "  Query: 'compiler types'"
+  -- compiler in docs 0, 2 (df=2); types in docs 0, 2 (df=2)
+  idf_comp := 50 / 2
+  idf_types := 50 / 2
+  print "  IDF('compiler') = {idf_comp}"
+  print "  IDF('types') = {idf_types}"
+
+  mut scores2 := [0, 0, 0, 0, 0]
+  -- doc0: compiler(1/7) + types(1/7) => 2 terms
+  scores2[0] = (1 * idf_comp * 100 / 7) + (1 * idf_types * 100 / 7)
+  -- doc2: compiler(1/6) + types(1/6) => 2 terms
+  scores2[2] = (1 * idf_comp * 100 / 6) + (1 * idf_types * 100 / 6)
+
+  mut ranked2 := [0, 1, 2, 3, 4]
+  for i in range(0, num_docs)
+    for j in range(i + 1, num_docs)
+      if scores2[ranked2[j]] > scores2[ranked2[i]]
+        tmp := ranked2[i]
+        ranked2[i] = ranked2[j]
+        ranked2[j] = tmp
+
+  mut shown2 := 0
+  for i in range(0, num_docs)
+    idx := ranked2[i]
+    if scores2[idx] > 0
+      shown2 = shown2 + 1
+      print "    #{shown2}: {doc_titles[idx]} (score={scores2[idx]})"
+  print "  Found {shown2} results"
+
+  -- Part 6: Index statistics
+  print ""
+  print "=== Part 6: Index Statistics ==="
+  mut total_postings := 0
+  for i in range(0, num_terms)
+    total_postings = total_postings + index_doc_counts[i]
+  avg_postings := total_postings / num_terms
+  print "  Unique terms indexed: {num_terms}"
+  print "  Total postings: {total_postings}"
+  print "  Avg docs per term: {avg_postings}"
+  print "  Documents: {num_docs}"
+  print "  Avg doc length: 6 words"
+
+  print ""
+  print "Search engine: inverted index, TF-IDF, ranking, multi-term queries, statistics."

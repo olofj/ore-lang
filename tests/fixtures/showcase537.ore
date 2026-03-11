@@ -1,0 +1,135 @@
+-- Showcase 537: Resource Allocation (Bin Packing)
+
+fn main
+  print "Resource Allocation (Bin Packing):"
+  print ""
+
+  -- Part 1: Items to pack
+  print "=== Part 1: Items ==="
+  mut item_names := ["App-A", "App-B", "App-C", "App-D", "App-E", "App-F", "App-G", "App-H"]
+  mut item_sizes := [40, 25, 35, 10, 50, 15, 30, 20]
+  num_items := 8
+  bin_capacity := 100
+
+  mut total_size := 0
+  for i in range(0, num_items)
+    total_size = total_size + item_sizes[i]
+  print "  Items to allocate ({num_items} total):"
+  for i in range(0, num_items)
+    print "    {item_names[i]}: {item_sizes[i]} units"
+  print "  Total demand: {total_size} units"
+  print "  Bin capacity: {bin_capacity} units"
+  mut min_bins := total_size / bin_capacity
+  if total_size % bin_capacity > 0
+    min_bins = min_bins + 1
+  print "  Theoretical minimum bins: {min_bins}"
+
+  -- Part 2: First Fit algorithm
+  print ""
+  print "=== Part 2: First Fit ==="
+  mut ff_bin_used := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut ff_assign := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut ff_num_bins := 0
+
+  for i in range(0, num_items)
+    mut placed := false
+    for b in range(0, ff_num_bins)
+      if not placed and ff_bin_used[b] + item_sizes[i] <= bin_capacity
+        ff_bin_used[b] = ff_bin_used[b] + item_sizes[i]
+        ff_assign[i] = b
+        placed = true
+    if not placed
+      ff_assign[i] = ff_num_bins
+      ff_bin_used[ff_num_bins] = item_sizes[i]
+      ff_num_bins = ff_num_bins + 1
+
+  print "  Bins used: {ff_num_bins}"
+  for b in range(0, ff_num_bins)
+    mut contents := ""
+    for i in range(0, num_items)
+      if ff_assign[i] == b
+        if contents | len() > 0
+          contents = contents + ", "
+        contents = contents + item_names[i]
+    print "    Bin {b}: [{contents}] ({ff_bin_used[b]}/{bin_capacity})"
+
+  -- Part 3: First Fit Decreasing
+  print ""
+  print "=== Part 3: First Fit Decreasing ==="
+  -- Sort items by size descending
+  mut sorted_idx := [0, 1, 2, 3, 4, 5, 6, 7]
+  for i in range(0, num_items)
+    for j in range(i + 1, num_items)
+      if item_sizes[sorted_idx[j]] > item_sizes[sorted_idx[i]]
+        tmp := sorted_idx[i]
+        sorted_idx[i] = sorted_idx[j]
+        sorted_idx[j] = tmp
+
+  print "  Sorted order:"
+  for i in range(0, num_items)
+    idx := sorted_idx[i]
+    print "    {item_names[idx]}: {item_sizes[idx]}"
+
+  mut ffd_bin_used := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut ffd_assign := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut ffd_num_bins := 0
+
+  for i in range(0, num_items)
+    idx := sorted_idx[i]
+    mut placed := false
+    for b in range(0, ffd_num_bins)
+      if not placed and ffd_bin_used[b] + item_sizes[idx] <= bin_capacity
+        ffd_bin_used[b] = ffd_bin_used[b] + item_sizes[idx]
+        ffd_assign[idx] = b
+        placed = true
+    if not placed
+      ffd_assign[idx] = ffd_num_bins
+      ffd_bin_used[ffd_num_bins] = item_sizes[idx]
+      ffd_num_bins = ffd_num_bins + 1
+
+  print "  Bins used: {ffd_num_bins}"
+  for b in range(0, ffd_num_bins)
+    mut contents := ""
+    for i in range(0, num_items)
+      if ffd_assign[i] == b
+        if contents | len() > 0
+          contents = contents + ", "
+        contents = contents + item_names[i]
+    print "    Bin {b}: [{contents}] ({ffd_bin_used[b]}/{bin_capacity})"
+
+  -- Part 4: Utilization analysis
+  print ""
+  print "=== Part 4: Utilization ==="
+  mut ff_total_cap := ff_num_bins * bin_capacity
+  ff_util := total_size * 100 / ff_total_cap
+  mut ffd_total_cap := ffd_num_bins * bin_capacity
+  ffd_util := total_size * 100 / ffd_total_cap
+
+  print "  First Fit: {ff_num_bins} bins, {ff_util}% utilization"
+  print "  First Fit Decreasing: {ffd_num_bins} bins, {ffd_util}% utilization"
+  if ffd_num_bins <= ff_num_bins
+    print "  FFD is at least as good as FF"
+
+  -- Part 5: Waste analysis
+  print ""
+  print "=== Part 5: Waste Analysis ==="
+  ff_waste := ff_total_cap - total_size
+  ffd_waste := ffd_total_cap - total_size
+  print "  First Fit waste: {ff_waste} units"
+  print "  FFD waste: {ffd_waste} units"
+
+  print "  Per-bin waste (FF):"
+  for b in range(0, ff_num_bins)
+    waste := bin_capacity - ff_bin_used[b]
+    print "    Bin {b}: {waste} units free"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Items: {num_items}, Total: {total_size} units"
+  print "  Capacity: {bin_capacity} per bin"
+  print "  FF bins: {ff_num_bins}, FFD bins: {ffd_num_bins}"
+  print "  Lower bound: {min_bins} bins"
+
+  print ""
+  print "Bin packing: first fit, first fit decreasing, utilization, waste analysis."

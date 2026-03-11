@@ -6963,6 +6963,117 @@ fn showcase530_crypto_mining() {
 }
 
 #[test]
+fn showcase531_event_driven() {
+    let out = run_ore("showcase531.ore");
+    assert!(out.contains("Event-Driven Architecture Simulation:"));
+    assert!(out.contains("user.created -> 2 handlers: [EmailService, LogService]"));
+    assert!(out.contains("Total dispatches: 11"));
+    assert!(out.contains("P1: critical.error"));
+    assert!(out.contains("Dead letters: 2/3"));
+    assert!(out.contains("Event-driven: bus, subscribers, dispatch, priority queue, dead letters, sourcing."));
+}
+
+#[test]
+fn showcase532_search_engine() {
+    let out = run_ore("showcase532.ore");
+    assert!(out.contains("Simple Search Engine:"));
+    assert!(out.contains("'programming' -> 3 docs"));
+    assert!(out.contains("Found 3 results"));
+    assert!(out.contains("IDF('compiler') = 25"));
+    assert!(out.contains("Unique terms indexed: 8"));
+    assert!(out.contains("Search engine: inverted index, TF-IDF, ranking, multi-term queries, statistics."));
+}
+
+#[test]
+fn showcase533_packet_network() {
+    let out = run_ore("showcase533.ore");
+    assert!(out.contains("Packet Switching Network Simulation:"));
+    assert!(out.contains("A -- B (10ms)"));
+    assert!(out.contains("Fragments needed: 5"));
+    assert!(out.contains("Packet 0: A->F size=512B latency=33ms"));
+    assert!(out.contains("Congested links: 3/8"));
+    assert!(out.contains("Packet network: topology, routing, fragmentation, congestion, statistics."));
+}
+
+#[test]
+fn showcase534_theorem_prover() {
+    let out = run_ore("showcase534.ore");
+    assert!(out.contains("Simple Theorem Prover (Propositional Logic):"));
+    assert!(out.contains("1 AND 1 = 1"));
+    assert!(out.contains("Result: TAUTOLOGY"));
+    assert!(out.contains("NOT A TAUTOLOGY (contradiction)"));
+    assert!(out.contains("De Morgan 1: VERIFIED"));
+    assert!(out.contains("Total theorems proved: 4"));
+    assert!(out.contains("Theorem prover: truth tables, evaluation, tautologies, De Morgan, inference rules."));
+}
+
+#[test]
+fn showcase535_image_dithering() {
+    let out = run_ore("showcase535.ore");
+    assert!(out.contains("Image Dithering (Floyd-Steinberg on Number Grid):"));
+    assert!(out.contains("White pixels: 8, Black pixels: 16"));
+    assert!(out.contains("Floyd-Steinberg result (rows 0-1):"));
+    assert!(out.contains("Image size: 4x6 = 24 pixels"));
+    assert!(out.contains("Image dithering: threshold, Floyd-Steinberg, error diffusion, histogram, analysis."));
+}
+
+#[test]
+fn showcase536_format_parser() {
+    let out = run_ore("showcase536.ore");
+    assert!(out.contains("Simple File Format Parser:"));
+    assert!(out.contains("Record 1: name=Alice, age=30, city=NYC"));
+    assert!(out.contains("Average age: 29"));
+    assert!(out.contains("database.host = localhost"));
+    assert!(out.contains("Youngest: Bob (age 25)"));
+    assert!(out.contains("Total items parsed: 10"));
+    assert!(out.contains("Format parser: CSV, INI, validation, statistics, generation."));
+}
+
+#[test]
+fn showcase537_bin_packing() {
+    let out = run_ore("showcase537.ore");
+    assert!(out.contains("Resource Allocation (Bin Packing):"));
+    assert!(out.contains("Total demand: 225 units"));
+    assert!(out.contains("Theoretical minimum bins: 3"));
+    assert!(out.contains("Bin 0: [App-A, App-B, App-C] (100/100)"));
+    assert!(out.contains("FFD is at least as good as FF"));
+    assert!(out.contains("Bin packing: first fit, first fit decreasing, utilization, waste analysis."));
+}
+
+#[test]
+fn showcase538_game_physics() {
+    let out = run_ore("showcase538.ore");
+    assert!(out.contains("Simple Game Physics (2D Platformer):"));
+    assert!(out.contains("Jump! vy=-20, vx=5"));
+    assert!(out.contains("Standing on platform 1"));
+    assert!(out.contains("Total collisions: 2"));
+    assert!(out.contains("Game physics: gravity, jumping, platforms, AABB collision, projectiles."));
+}
+
+#[test]
+fn showcase539_automata_validation() {
+    let out = run_ore("showcase539.ore");
+    assert!(out.contains("Automata-Based String Validation:"));
+    assert!(out.contains("'110' (=6): ACCEPT (mod 3 = 0)"));
+    assert!(out.contains("'111' (=7): REJECT (mod 3 = 1)"));
+    assert!(out.contains("'0011': MATCH"));
+    assert!(out.contains("Valid: 5/7"));
+    assert!(out.contains("Total strings validated: 24"));
+    assert!(out.contains("Automata: DFA, pattern matching, integer validation, identifier validation."));
+}
+
+#[test]
+fn showcase540_code_generator() {
+    let out = run_ore("showcase540.ore");
+    assert!(out.contains("Simple Machine Code Generator:"));
+    assert!(out.contains("AST: ADD(3, MUL(4, 2))"));
+    assert!(out.contains("Registers used: 4/8"));
+    assert!(out.contains("Execution result: sum = 10"));
+    assert!(out.contains("Total instructions generated: 28"));
+    assert!(out.contains("Code generator: instructions, registers, if-else, loops, statistics."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
