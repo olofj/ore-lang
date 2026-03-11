@@ -837,6 +837,13 @@ fn maps_merge() {
 }
 
 #[test]
+fn lists_map_type_change() {
+    let out = run_ore("lists/map_type_change.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["item_1", "item_2", "item_3", "item_100", "item_200", "map_type_change ok"]);
+}
+
+#[test]
 fn maps_string_values() {
     let out = run_ore("maps/string_values.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

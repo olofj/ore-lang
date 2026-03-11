@@ -1,0 +1,18 @@
+-- Test that map() correctly updates element type for chained operations
+
+fn to_label n:Int -> Str
+  "item_{n}"
+
+fn main
+  -- map Int -> Str, then use string methods in each
+  [1, 2, 3]
+    | map(n => to_label(n))
+    | each(s => print s)
+
+  -- map Int -> Str, then filter by string length
+  result := [1, 2, 3, 100, 200]
+    | map(n => to_label(n))
+    | filter(s => s.len() > 6)
+  result.each(s => print s)
+
+  print "map_type_change ok"

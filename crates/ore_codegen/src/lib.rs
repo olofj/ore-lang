@@ -257,6 +257,7 @@ pub struct CodeGen<'ctx> {
     list_element_kinds: HashMap<String, ValKind>,
     /// Temporary: element kind from the last compiled list literal
     last_list_elem_kind: Option<ValKind>,
+    last_lambda_return_kind: Option<ValKind>,
     /// Maps variable name -> value ValKind for typed maps
     map_value_kinds: HashMap<String, ValKind>,
     /// Temporary: value kind from the last compiled map literal
@@ -314,6 +315,7 @@ impl<'ctx> CodeGen<'ctx> {
             dynamic_kind_tags: HashMap::new(),
             list_element_kinds: HashMap::new(),
             last_list_elem_kind: None,
+            last_lambda_return_kind: None,
             map_value_kinds: HashMap::new(),
             last_map_val_kind: None,
             current_line: 0,
@@ -2439,13 +2441,15 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: format!("{} takes exactly 1 argument", method) });
                 }
                 let elem_kind = self.last_list_elem_kind.clone();
+                self.last_lambda_return_kind = None;
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
-                        let kinds: Vec<ValKind> = vec![elem_kind.unwrap_or(ValKind::Int)];
+                        let kinds: Vec<ValKind> = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
                         self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
-                        let (f, _) = self.resolve_function(name)?;
+                        let (f, ret_kind) = self.resolve_function(name)?;
+                        self.last_lambda_return_kind = Some(ret_kind);
                         f
                     }
                     _ => return Err(CodeGenError { line: None, msg: format!("{} argument must be a function", method) }),
@@ -2465,6 +2469,13 @@ impl<'ctx> CodeGen<'ctx> {
                     method
                 ))?;
                 let val = self.call_result_to_value(result)?;
+                // For map, update element kind based on lambda return type
+                if method == "map" {
+                    if let Some(ret_kind) = self.last_lambda_return_kind.take() {
+                        self.last_list_elem_kind = Some(ret_kind);
+                    }
+                }
+                // filter preserves element kind, no update needed
                 Ok((val, ValKind::List))
             }
             "each" => {
@@ -5570,6 +5581,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         let (result, kind) = self.compile_expr_with_kind(body, lambda_fn)?;
+        let return_kind = kind.clone();
 
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
             // Coerce result to i64 if needed (e.g. bool i1 from comparisons)
@@ -5592,6 +5604,7 @@ impl<'ctx> CodeGen<'ctx> {
             self.builder.position_at_end(bb);
         }
 
+        self.last_lambda_return_kind = Some(return_kind);
         self.functions.insert(name, (lambda_fn, ValKind::Int));
         Ok(lambda_fn)
     }
