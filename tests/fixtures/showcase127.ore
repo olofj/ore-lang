@@ -1,0 +1,45 @@
+-- Showcase 127: Result methods and error handling
+
+fn safe_sqrt x:Float -> Result[Float]
+  if x < 0.0
+    Err("cannot take sqrt of negative number")
+  else
+    Ok(sqrt(x))
+
+fn parse_positive s:Str -> Result[Int]
+  n := s.parse_int()
+  if n > 0
+    Ok(n)
+  else
+    Err("not a positive number")
+
+fn main
+  -- Result with | else fallback
+  r1 := Ok(42) | else 0
+  r2 := Err("bad") | else -1
+  print "r1: {r1}"
+  print "r2: {r2}"
+
+  -- is_ok / is_err
+  ok := Ok(100)
+  err := Err("error")
+  print ""
+  print "ok.is_ok: {ok.is_ok()}"
+  print "ok.is_err: {ok.is_err()}"
+  print "err.is_ok: {err.is_ok()}"
+  print "err.is_err: {err.is_err()}"
+
+  -- Safe sqrt with fallback
+  print ""
+  x := safe_sqrt(16.0) | else 0.0
+  y := safe_sqrt(-4.0) | else 0.0
+  print "sqrt(16): {x}"
+  print "sqrt(-4): {y}"
+
+  -- Pattern matching on Result
+  print ""
+  for val in ["42", "-5", "hello"]
+    result := parse_positive(val)
+    match result
+      Ok n -> print "{val} -> {n}"
+      Err e -> print "{val} -> error: {e}"

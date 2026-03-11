@@ -5373,6 +5373,10 @@ impl<'ctx> CodeGen<'ctx> {
                 ))?;
                 Ok(cmp.into())
             }
+            ValKind::Float => {
+                let f = bld!(self.builder.build_bit_cast(val, self.context.f64_type(), "i64tof64"))?;
+                Ok(f)
+            }
             _ => Ok(val),
         }
     }

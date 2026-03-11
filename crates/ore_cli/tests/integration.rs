@@ -2721,6 +2721,19 @@ fn showcase126_self_type() {
 }
 
 #[test]
+fn showcase127_result_methods() {
+    let out = run_ore("showcase127.ore");
+    assert!(out.contains("r1: 42"));
+    assert!(out.contains("r2: -1"));
+    assert!(out.contains("ok.is_ok: true"));
+    assert!(out.contains("err.is_err: true"));
+    assert!(out.contains("sqrt(16): 4.0"));
+    assert!(out.contains("sqrt(-4): 0.0"));
+    assert!(out.contains("42 -> 42"));
+    assert!(out.contains("-5 -> error: not a positive number"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
