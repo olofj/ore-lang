@@ -1683,6 +1683,23 @@ fn showcase43() {
 }
 
 #[test]
+fn showcase44() {
+    let out = run_ore("showcase44.ore");
+    assert!(out.contains("Maze:"));
+    assert!(out.contains("Open cells: 97"));
+}
+
+#[test]
+fn showcase45() {
+    let out = run_ore("showcase45.ore");
+    assert!(out.contains("Euler 1 (multiples of 3,5 < 1000): 233168"));
+    assert!(out.contains("Euler 2 (even Fibonacci < 4M): 4613732"));
+    assert!(out.contains("Euler 6 (sum square diff, n=100): 25164150"));
+    assert!(out.contains("Euler 9 (Pythagorean triplet): 31875000"));
+    assert!(out.contains("sum primes < 2000): 277050"));
+}
+
+#[test]
 fn build_and_run_binary() {
     // Test `ore build` produces a working native binary
     let path = fixtures_dir().join("showcase36.ore");

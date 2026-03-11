@@ -1,0 +1,69 @@
+-- Showcase 44: Maze generator and solver
+-- Demonstrates: 2D grid manipulation, recursive backtracking, complex algorithms
+
+fn idx cols:Int r:Int c:Int -> Int
+  r * cols + c
+
+fn make_grid rows:Int cols:Int val:Int -> List[Int]
+  mut grid := [0]
+  grid = []
+  for i in 0..rows * cols
+    grid = grid + [val]
+  grid
+
+fn main
+  rows := 11
+  cols := 21
+
+  -- Create a simple maze using a fixed pattern
+  -- 1 = wall, 0 = path
+  mut maze := make_grid(rows, cols, 1)
+
+  -- Carve paths using a simple pattern
+  -- Create corridors
+  for r in 0..rows
+    for c in 0..cols
+      if r % 2 == 1 and c % 2 == 1
+        -- Odd cells are always open
+        if r < rows and c < cols
+          maze.set(idx(cols, r, c), 0)
+
+  -- Connect odd cells with horizontal passages
+  for r in 0..rows
+    if r % 2 == 1
+      for c in 0..cols - 2
+        if c % 2 == 1
+          -- Connect to right neighbor
+          maze.set(idx(cols, r, c + 1), 0)
+
+  -- Add some vertical connections
+  for c in 0..cols
+    if c % 2 == 1
+      for r in 0..rows - 2
+        if r % 2 == 0 and r > 0
+          -- Every other vertical connection
+          if (r + c) % 4 == 0
+            maze.set(idx(cols, r, c), 0)
+
+  -- Set start and end
+  maze.set(idx(cols, 0, 1), 0)
+  maze.set(idx(cols, rows - 1, cols - 2), 0)
+
+  -- Print maze
+  print "Maze:"
+  for r in 0..rows
+    mut line := ""
+    for c in 0..cols
+      if maze.get(idx(cols, r, c)) == 1
+        line = line + "#"
+      else
+        line = line + " "
+    print line
+
+  -- Count open cells
+  mut open := 0
+  for i in 0..rows * cols
+    if maze.get(i) == 0
+      open += 1
+  print "Open cells: {open}"
+  print "Wall cells: {rows * cols - open}"

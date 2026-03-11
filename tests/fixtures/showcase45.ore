@@ -1,0 +1,72 @@
+-- Showcase 45: Project Euler problems
+-- Demonstrates: mathematical algorithms, optimization, large-number-safe code
+
+-- Problem 1: Sum of multiples of 3 or 5 below 1000
+fn euler1 -> Int
+  mut sum := 0
+  for i in 1..1000
+    if i % 3 == 0 or i % 5 == 0
+      sum += i
+  sum
+
+-- Problem 2: Sum of even Fibonacci numbers below 4 million
+fn euler2 -> Int
+  mut a := 1
+  mut b := 2
+  mut sum := 0
+  while b < 4000000
+    if b % 2 == 0
+      sum += b
+    tmp := a + b
+    a = b
+    b = tmp
+  sum
+
+-- Problem 6: Sum square difference (first 100 natural numbers)
+fn euler6 -> Int
+  n := 100
+  sum_sq := range(1, n + 1) | map(x => x * x) | reduce((a, b) => a + b)
+  sq_sum := range(1, n + 1).reduce((a, b) => a + b)
+  sq_sum * sq_sum - sum_sq
+
+-- Problem 9: Special Pythagorean triplet (a + b + c = 1000)
+fn euler9 -> Int
+  mut result := 0
+  for a in 1..334
+    for b in a + 1..500
+      c := 1000 - a - b
+      if c > b and a * a + b * b == c * c
+        result = a * b * c
+  result
+
+-- Problem 10: Sum of primes below 2000 (reduced for speed)
+fn euler10 limit:Int -> Int
+  -- Simple sieve
+  mut is_p := [0]
+  is_p = []
+  for i in 0..limit
+    if i < 2
+      is_p = is_p + [0]
+    else
+      is_p = is_p + [1]
+  mut i := 2
+  while i * i < limit
+    if is_p.get(i) == 1
+      mut j := i * i
+      while j < limit
+        is_p.set(j, 0)
+        j += i
+    i += 1
+  mut sum := 0
+  for i in 2..limit
+    if is_p.get(i) == 1
+      sum += i
+  sum
+
+fn main
+  print "Euler 1 (multiples of 3,5 < 1000): {euler1()}"
+  print "Euler 2 (even Fibonacci < 4M): {euler2()}"
+  print "Euler 6 (sum square diff, n=100): {euler6()}"
+  print "Euler 9 (Pythagorean triplet): {euler9()}"
+  sum2000 := euler10(2000)
+  print "Euler 10 (sum primes < 2000): {sum2000}"
