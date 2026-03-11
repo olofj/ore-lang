@@ -1,0 +1,59 @@
+-- Showcase 90: Practical example - stack data structure
+
+type Stack { items: List[Int] }
+
+impl Stack
+  fn push self:Stack val:Int -> Stack
+    mut new_items := self.items
+    new_items.push(val)
+    Stack(items: new_items)
+
+  fn peek self:Stack -> Int
+    self.items[self.items.len() - 1]
+
+  fn size self:Stack -> Int
+    self.items.len()
+
+  fn is_empty self:Stack -> Bool
+    self.items.len() == 0
+
+fn new_stack -> Stack
+  mut items := [0]
+  items.pop()
+  Stack(items: items)
+
+fn main
+  -- Build a stack
+  mut s := new_stack()
+
+  -- Push values
+  s = s.push(10)
+  s = s.push(20)
+  s = s.push(30)
+
+  print "size: {s.size()}"
+  print "top: {s.peek()}"
+
+  -- Evaluate a simple expression using a stack: 3 4 + 5 * = (3+4)*5 = 35
+  mut stack := new_stack()
+  stack = stack.push(3)
+  stack = stack.push(4)
+
+  -- Add top two
+  a := stack.peek()
+  stack = Stack(items: stack.items.slice(0, stack.items.len() - 1))
+  b := stack.peek()
+  stack = Stack(items: stack.items.slice(0, stack.items.len() - 1))
+  stack = stack.push(a + b)
+
+  stack = stack.push(5)
+
+  -- Multiply top two
+  x := stack.peek()
+  stack = Stack(items: stack.items.slice(0, stack.items.len() - 1))
+  y := stack.peek()
+  stack = Stack(items: stack.items.slice(0, stack.items.len() - 1))
+  stack = stack.push(x * y)
+
+  print "result: {stack.peek()}"
+  print "final size: {stack.size()}"

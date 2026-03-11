@@ -2301,6 +2301,35 @@ fn showcase87_multiline_match_arms() {
 }
 
 #[test]
+fn showcase88_impl_methods() {
+    let out = run_ore("showcase88.ore");
+    assert!(out.contains("a = (3.0, 4.0)"));
+    assert!(out.contains("|a| = 5.0"));
+    assert!(out.contains("a + b = (4.0, 6.0)"));
+    assert!(out.contains("a * 2 = (6.0, 8.0)"));
+    assert!(out.contains("a . b = 11.0"));
+    assert!(out.contains("chain = (5.0, 3.0)"));
+}
+
+#[test]
+fn showcase89_traits() {
+    let out = run_ore("showcase89.ore");
+    assert!(out.contains("Rex (dog, age 5)"));
+    assert!(out.contains("Whiskers (cat, 9 lives)"));
+    assert!(out.contains("circle area: 78.53975"));
+    assert!(out.contains("square area: 16.0"));
+}
+
+#[test]
+fn showcase90_stack_data_structure() {
+    let out = run_ore("showcase90.ore");
+    assert!(out.contains("size: 3"));
+    assert!(out.contains("top: 30"));
+    assert!(out.contains("result: 35"));
+    assert!(out.contains("final size: 1"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

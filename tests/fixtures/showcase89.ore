@@ -1,0 +1,42 @@
+-- Showcase 89: Traits and polymorphism
+
+trait Printable
+  fn show self:Self -> Str
+
+type Dog { name: Str, age: Int }
+type Cat { name: Str, lives: Int }
+
+impl Printable for Dog
+  fn show self:Dog -> Str
+    "{self.name} (dog, age {self.age})"
+
+impl Printable for Cat
+  fn show self:Cat -> Str
+    "{self.name} (cat, {self.lives} lives)"
+
+trait HasArea
+  fn area self:Self -> Float
+
+type Circle { radius: Float }
+type Square { side: Float }
+
+impl HasArea for Circle
+  fn area self:Circle -> Float
+    3.14159 * self.radius * self.radius
+
+impl HasArea for Square
+  fn area self:Square -> Float
+    self.side * self.side
+
+fn main
+  -- Trait methods on different types
+  d := Dog(name: "Rex", age: 5)
+  c := Cat(name: "Whiskers", lives: 9)
+  print d.show()
+  print c.show()
+
+  -- Area trait
+  circle := Circle(radius: 5.0)
+  square := Square(side: 4.0)
+  print "circle area: {circle.area()}"
+  print "square area: {square.area()}"
