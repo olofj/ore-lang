@@ -1,0 +1,140 @@
+-- Showcase 499: Network protocol simulation (TCP-like handshake, sliding window)
+
+fn main
+  print "Network Protocol Simulation:"
+  print ""
+
+  -- Part 1: TCP Three-Way Handshake
+  print "=== Part 1: TCP Handshake ==="
+  mut seq_client := 1000
+  mut seq_server := 5000
+
+  print "  Client -> Server: SYN (seq={seq_client})"
+  seq_client = seq_client + 1
+  print "  Server -> Client: SYN-ACK (seq={seq_server}, ack={seq_client})"
+  seq_server = seq_server + 1
+  print "  Client -> Server: ACK (seq={seq_client}, ack={seq_server})"
+  print "  Connection ESTABLISHED"
+
+  -- Part 2: Sliding Window Protocol
+  print ""
+  print "=== Part 2: Sliding Window ==="
+  window_size := 4
+  total_packets := 10
+  print "  Window size: {window_size}, Packets: {total_packets}"
+
+  mut sent := [false, false, false, false, false, false, false, false, false, false]
+  mut acked := [false, false, false, false, false, false, false, false, false, false]
+  mut window_base := 0
+
+  -- Simulate sending with a lost packet (packet 3 lost on first try)
+  mut round := 0
+  while window_base < total_packets and round < 10
+    round = round + 1
+    print "  Round {round}: base={window_base}"
+
+    -- Send packets in window
+    mut send_end := window_base + window_size
+    if send_end > total_packets
+      send_end = total_packets
+    for i in range(window_base, send_end)
+      if not acked[i]
+        if i == 3 and round == 1
+          print "    Send packet {i} [LOST]"
+          sent[i] = true
+        else
+          print "    Send packet {i}"
+          sent[i] = true
+          acked[i] = true
+
+    -- Slide window past consecutive acks
+    while window_base < total_packets and acked[window_base]
+      window_base = window_base + 1
+
+  print "  All {total_packets} packets delivered"
+
+  -- Part 3: Congestion control (AIMD)
+  print ""
+  print "=== Part 3: Congestion Control (AIMD) ==="
+  mut cwnd := 1
+  mut ssthresh := 16
+  mut time_step := 0
+
+  print "  Slow start + congestion avoidance:"
+  for step in range(0, 12)
+    time_step = step
+    if cwnd < ssthresh
+      -- Slow start: double window
+      cwnd = cwnd * 2
+      print "    t={step}: cwnd={cwnd} (slow start)"
+    else
+      -- Congestion avoidance: linear increase
+      cwnd = cwnd + 1
+      print "    t={step}: cwnd={cwnd} (avoidance)"
+
+    -- Simulate congestion event at cwnd=20
+    if cwnd >= 20
+      old := cwnd
+      ssthresh = cwnd / 2
+      cwnd = 1
+      print "    t={step}: CONGESTION! cwnd {old}->{cwnd}, ssthresh={ssthresh}"
+
+  -- Part 4: RTT estimation
+  print ""
+  print "=== Part 4: RTT Estimation ==="
+  -- Simulated RTT samples (milliseconds)
+  mut samples := [100, 120, 95, 110, 130, 105, 115, 125]
+  mut estimated_rtt := 100
+  mut dev_rtt := 10
+
+  for i in range(0, 8)
+    sample := samples[i]
+    mut diff := sample - estimated_rtt
+    if diff < 0
+      diff = 0 - diff
+    -- EWMA: est = 0.875 * est + 0.125 * sample
+    estimated_rtt = (7 * estimated_rtt + sample) / 8
+    -- DevRTT = 0.75 * dev + 0.25 * |diff|
+    dev_rtt = (3 * dev_rtt + diff) / 4
+    timeout := estimated_rtt + 4 * dev_rtt
+    print "  Sample {sample}ms: est={estimated_rtt}ms, dev={dev_rtt}ms, timeout={timeout}ms"
+
+  -- Part 5: Packet checksum
+  print ""
+  print "=== Part 5: Checksum ==="
+  -- Simple checksum: sum of all bytes mod 256
+  mut payload := [72, 101, 108, 108, 111]
+  mut checksum := 0
+  for i in range(0, 5)
+    checksum = checksum + payload[i]
+  checksum = checksum % 256
+  print "  Payload: [72, 101, 108, 108, 111] ('Hello')"
+  print "  Checksum: {checksum}"
+
+  -- Verify
+  mut verify := 0
+  for i in range(0, 5)
+    verify = verify + payload[i]
+  verify = verify % 256
+  ok := verify == checksum
+  print "  Verify: {ok}"
+
+  -- Corrupt a byte
+  payload[2] = 99
+  mut corrupt_sum := 0
+  for i in range(0, 5)
+    corrupt_sum = corrupt_sum + payload[i]
+  corrupt_sum = corrupt_sum % 256
+  mismatch := corrupt_sum != checksum
+  print "  Corrupted checksum: {corrupt_sum} (mismatch: {mismatch})"
+
+  -- Part 6: Protocol layers summary
+  print ""
+  print "=== Part 6: Protocol Stack ==="
+  mut layers := ["Application", "Transport", "Network", "Data Link", "Physical"]
+  mut protos := ["HTTP/DNS", "TCP/UDP", "IP", "Ethernet", "Wire/Radio"]
+  for i in range(0, 5)
+    print "  Layer {5 - i}: {layers[i]} ({protos[i]})"
+
+  print ""
+  print "Network protocols: handshake, sliding window, congestion, RTT, checksum."

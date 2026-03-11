@@ -6508,6 +6508,116 @@ fn showcase490_arithmetic_coding() {
 }
 
 #[test]
+fn showcase491_ray_casting() {
+    let out = run_ore("showcase491.ore");
+    assert!(out.contains("2D Ray Casting:"));
+    assert!(out.contains("Ray 45deg: HIT at (40, 40)"));
+    assert!(out.contains("E: BLOCKED"));
+    assert!(out.contains("Top-Down View"));
+    assert!(out.contains("Ray casting: intersection, walls, shadows, rendering, shading."));
+}
+
+#[test]
+fn showcase492_compression() {
+    let out = run_ore("showcase492.ore");
+    assert!(out.contains("Compression Comparison:"));
+    assert!(out.contains("RLE: 'a3b3c2d4a2b2'"));
+    assert!(out.contains("Savings: 30%"));
+    assert!(out.contains("Decompressed: 'aaabbbccddddaabb'"));
+    assert!(out.contains("Matches original: true"));
+}
+
+#[test]
+fn showcase493_cellular_automata() {
+    let out = run_ore("showcase493.ore");
+    assert!(out.contains("Cellular Automata Garden:"));
+    assert!(out.contains("Rule 30"));
+    assert!(out.contains("Rule 110"));
+    assert!(out.contains("Game of Life (Blinker)"));
+    assert!(out.contains("Turing complete"));
+    assert!(out.contains("Cellular automata: Rule 30, Rule 110, Game of Life, growth, classification."));
+}
+
+#[test]
+fn showcase494_database_indexing() {
+    let out = run_ore("showcase494.ore");
+    assert!(out.contains("Database Indexing:"));
+    assert!(out.contains("Binary search for id=58: index=4"));
+    assert!(out.contains("Found: 4 records"));
+    assert!(out.contains("Lookup id=42: bucket=2, FOUND"));
+    assert!(out.contains("Lookup id=99: bucket=3, NOT FOUND"));
+}
+
+#[test]
+fn showcase495_task_scheduler() {
+    let out = run_ore("showcase495.ore");
+    assert!(out.contains("Task Scheduler:"));
+    assert!(out.contains("Topological Sort"));
+    assert!(out.contains("Critical Path"));
+    assert!(out.contains("Parallel Execution"));
+    assert!(out.contains("Task scheduler: dependencies, topological sort, timeline, critical path, parallelism."));
+}
+
+#[test]
+fn showcase496_virtual_dom() {
+    let out = run_ore("showcase496.ore");
+    assert!(out.contains("Virtual DOM Diffing:"));
+    assert!(out.contains("UPDATE node 1: 'Hello' -> 'Hi'"));
+    assert!(out.contains("INSERT node 7: <li>Item 5"));
+    assert!(out.contains("Total patches: 4"));
+    assert!(out.contains("DELETE 'b'"));
+}
+
+#[test]
+fn showcase497_fourier_transform() {
+    let out = run_ore("showcase497.ore");
+    assert!(out.contains("Fourier Transform Concepts:"));
+    assert!(out.contains("X[0] = 10 + 0i"));
+    assert!(out.contains("Reconstructed: [1, 2, 3, 4]"));
+    assert!(out.contains("Dominant frequency bin: k=1"));
+}
+
+#[test]
+fn showcase498_compiler_optimizations() {
+    let out = run_ore("showcase498.ore");
+    assert!(out.contains("Compiler Optimization Passes:"));
+    assert!(out.contains("Constant Folding"));
+    assert!(out.contains("Dead Code Elimination"));
+    assert!(out.contains("Strength Reduction"));
+    assert!(out.contains("REUSE r10"));
+    assert!(out.contains("Total optimizations: 7"));
+}
+
+#[test]
+fn showcase499_network_protocol() {
+    let out = run_ore("showcase499.ore");
+    assert!(out.contains("Network Protocol Simulation:"));
+    assert!(out.contains("Connection ESTABLISHED"));
+    assert!(out.contains("Send packet 3 [LOST]"));
+    assert!(out.contains("All 10 packets delivered"));
+    assert!(out.contains("CONGESTION!"));
+    assert!(out.contains("Checksum: 244"));
+}
+
+#[test]
+fn showcase500_grand_finale() {
+    let out = run_ore("showcase500.ore");
+    assert!(out.contains("SHOWCASE 500: GRAND FINALE"));
+    assert!(out.contains("Fibonacci(0..9): 0, 1, 1, 2, 3, 5, 8, 13, 21, 34"));
+    assert!(out.contains("Primes < 30: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29"));
+    assert!(out.contains("GCD(48, 18) = 6"));
+    assert!(out.contains("Circle: radius=5"));
+    assert!(out.contains("Rect: 4x6, area=24"));
+    assert!(out.contains("Sum: 55"));
+    assert!(out.contains("FizzBuzz: 1 2 Fizz 4 Buzz"));
+    assert!(out.contains("Collatz(27): 111 steps"));
+    assert!(out.contains("det(A) = 0"));
+    assert!(out.contains("Median: 55"));
+    assert!(out.contains("SHOWCASE 500 COMPLETE"));
+    assert!(out.contains("500 showcases and counting!"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

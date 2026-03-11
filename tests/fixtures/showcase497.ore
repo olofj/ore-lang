@@ -1,0 +1,135 @@
+-- Showcase 497: Fourier transform concepts (DFT on small sequences)
+
+fn main
+  print "Fourier Transform Concepts:"
+  print ""
+
+  -- Part 1: DFT on a 4-element sequence
+  print "=== Part 1: DFT of [1, 2, 3, 4] ==="
+  -- DFT: X[k] = sum(x[n] * e^(-2*pi*i*k*n/N))
+  -- For real sequences, compute real and imaginary parts separately
+  -- cos/sin approximated with lookup tables (scaled by 1000)
+  -- cos(0)=1000, cos(pi/2)=0, cos(pi)=-1000, cos(3pi/2)=0
+  -- sin(0)=0, sin(pi/2)=1000, sin(pi)=0, sin(3pi/2)=-1000
+  -- For N=4, angles at k*n*2*pi/4 = k*n*pi/2
+
+  signal := [1, 2, 3, 4]
+  n := 4
+  -- cos/sin table for multiples of pi/2 (0, pi/2, pi, 3pi/2)
+  mut cos_tab := [1000, 0, -1000, 0]
+  mut sin_tab := [0, 1000, 0, -1000]
+
+  mut real_parts := [0, 0, 0, 0]
+  mut imag_parts := [0, 0, 0, 0]
+
+  for k in range(0, n)
+    mut re := 0
+    mut im := 0
+    for j in range(0, n)
+      angle_idx := (k * j) % 4
+      re = re + signal[j] * cos_tab[angle_idx]
+      im = im - signal[j] * sin_tab[angle_idx]
+    real_parts[k] = re
+    imag_parts[k] = im
+
+  for k in range(0, n)
+    re_scaled := real_parts[k] / 1000
+    im_scaled := imag_parts[k] / 1000
+    print "  X[{k}] = {re_scaled} + {im_scaled}i"
+
+  -- Part 2: Magnitude spectrum
+  print ""
+  print "=== Part 2: Magnitude Spectrum ==="
+  for k in range(0, n)
+    -- |X[k]| = sqrt(re^2 + im^2), approximate using integer sqrt
+    re := real_parts[k] / 1000
+    im := imag_parts[k] / 1000
+    mag_sq := re * re + im * im
+    -- Approximate sqrt via Newton's method
+    mut mag := 1
+    if mag_sq > 0
+      mag = mag_sq
+      for iter in range(0, 10)
+        if mag > 0
+          mag = (mag + mag_sq / mag) / 2
+    else
+      mag = 0
+    print "  |X[{k}]| = {mag} (magnitude^2 = {mag_sq})"
+
+  -- Part 3: DC component and Nyquist
+  print ""
+  print "=== Part 3: DC and Nyquist ==="
+  dc := real_parts[0] / 1000
+  print "  DC component (X[0]): {dc} (sum of all samples)"
+  avg := dc / n
+  print "  Average value: {avg}"
+  nyquist := real_parts[2] / 1000
+  print "  Nyquist (X[N/2]): {nyquist}"
+
+  -- Part 4: Inverse DFT
+  print ""
+  print "=== Part 4: Inverse DFT ==="
+  -- IDFT: x[n] = (1/N) * sum(X[k] * e^(2*pi*i*k*n/N))
+  mut reconstructed := [0, 0, 0, 0]
+  for j in range(0, n)
+    mut re := 0
+    for k in range(0, n)
+      angle_idx := (k * j) % 4
+      -- Use real_parts * cos + imag_parts * (-sin) for real output
+      re = re + real_parts[k] * cos_tab[angle_idx] - imag_parts[k] * sin_tab[angle_idx]
+    reconstructed[j] = re / (n * 1000 * 1000)
+
+  mut recon_str := ""
+  for j in range(0, n)
+    if j > 0
+      recon_str = recon_str + ", "
+    recon_str = recon_str + str(reconstructed[j])
+  print "  Reconstructed: [{recon_str}]"
+
+  -- Part 5: Simple frequency detection
+  print ""
+  print "=== Part 5: Frequency Detection ==="
+  -- Generate a signal with known frequency: cos at frequency 1
+  -- Sample at N=8 points: cos(2*pi*1*n/8) scaled by 1000
+  mut sig8 := [1000, 707, 0, -707, -1000, -707, 0, 707]
+  print "  Signal: cos(2*pi*n/8) sampled at 8 points"
+
+  -- 8-point cos/sin tables (for pi/4 increments)
+  mut cos8 := [1000, 707, 0, -707, -1000, -707, 0, 707]
+  mut sin8 := [0, 707, 1000, 707, 0, -707, -1000, -707]
+
+  mut best_k := 0
+  mut best_mag := 0
+  for k in range(0, 8)
+    mut re := 0
+    mut im := 0
+    for j in range(0, 8)
+      angle_idx := (k * j) % 8
+      re = re + sig8[j] * cos8[angle_idx] / 1000
+      im = im - sig8[j] * sin8[angle_idx] / 1000
+    mag := re * re + im * im
+    if k > 0 and k < 4
+      print "  k={k}: energy={mag}"
+    if mag > best_mag
+      best_mag = mag
+      best_k = k
+  print "  Dominant frequency bin: k={best_k}"
+
+  -- Part 6: Windowing concept
+  print ""
+  print "=== Part 6: Windowing ==="
+  print "  Raw DFT assumes periodic signal"
+  print "  Window functions reduce spectral leakage:"
+  -- Hann window: w[n] = 0.5 * (1 - cos(2*pi*n/(N-1)))
+  -- For N=4: w = [0, 0.75, 0.75, 0]
+  mut hann := [0, 750, 750, 0]
+  print "  Hann window (x1000): [{hann[0]}, {hann[1]}, {hann[2]}, {hann[3]}]"
+
+  -- Apply window to signal
+  mut windowed := [0, 0, 0, 0]
+  for j in range(0, n)
+    windowed[j] = signal[j] * hann[j] / 1000
+  print "  Windowed signal: [{windowed[0]}, {windowed[1]}, {windowed[2]}, {windowed[3]}]"
+
+  print ""
+  print "Fourier transform: DFT, magnitude, IDFT, frequency detection, windowing."

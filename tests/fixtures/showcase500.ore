@@ -1,0 +1,287 @@
+-- Showcase 500: Grand Finale - Ultimate Ore Language Showcase
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  while y != 0
+    mut temp := y
+    y = x % y
+    x = temp
+  return x
+
+fn fibonacci n:Int -> Int
+  if n <= 1
+    return n
+  mut a := 0
+  mut b := 1
+  for i in range(2, n + 1)
+    mut temp := a + b
+    a = b
+    b = temp
+  return b
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  if n < 4
+    return true
+  if n % 2 == 0
+    return false
+  mut i := 3
+  while i * i <= n
+    if n % i == 0
+      return false
+    i = i + 2
+  return true
+
+fn abs_val x:Int -> Int
+  if x < 0
+    return 0 - x
+  return x
+
+type Point { x:Int, y:Int }
+
+impl Point
+  fn distance self:Point other:Point -> Int
+    dx := self.x - other.x
+    dy := self.y - other.y
+    return dx * dx + dy * dy
+
+  fn to_str self:Point -> Str
+    return "({self.x}, {self.y})"
+
+type Shape
+  Circle(radius:Int)
+  Rect(w:Int, h:Int)
+
+fn main
+  print "=== SHOWCASE 500: GRAND FINALE ==="
+  print "The Ultimate Ore Language Demonstration"
+  print ""
+
+  -- Part 1: Functions, recursion, and math
+  print "--- Part 1: Functions & Math ---"
+  fib_results := range(0, 10) | map(n => fibonacci(n))
+  print "  Fibonacci(0..9): {fib_results | join(", ")}"
+
+  primes := range(2, 30) | filter(n => is_prime(n))
+  print "  Primes < 30: {primes | join(", ")}"
+
+  print "  GCD(48, 18) = {gcd(48, 18)}"
+  print "  GCD(100, 75) = {gcd(100, 75)}"
+
+  -- Part 2: Records and methods
+  print ""
+  print "--- Part 2: Records & Methods ---"
+  p1 := Point(x: 3, y: 4)
+  p2 := Point(x: 7, y: 1)
+  dist := p1.distance(p2)
+  print "  Point A: {p1.to_str()}"
+  print "  Point B: {p2.to_str()}"
+  print "  Distance^2: {dist}"
+
+  -- Part 3: Enums and pattern matching
+  print ""
+  print "--- Part 3: Enums & Pattern Matching ---"
+  circle := Circle(radius: 5)
+  rect := Rect(w: 4, h: 6)
+
+  match circle
+    Circle r -> print "  Circle: radius={r}, area~={r * r * 314 / 100}"
+    Rect w h -> print "  Rect: {w}x{h}"
+
+  match rect
+    Circle r -> print "  Circle: radius={r}"
+    Rect w h -> print "  Rect: {w}x{h}, area={w * h}"
+
+  -- Part 4: Pipelines and functional programming
+  print ""
+  print "--- Part 4: Pipelines & FP ---"
+  data := [5, 3, 8, 1, 9, 2, 7, 4, 6, 10]
+  print "  Data: {data | join(", ")}"
+  print "  Sorted: {data | sort | join(", ")}"
+  print "  Evens: {data | filter(x => x % 2 == 0) | sort | join(", ")}"
+  print "  Sum: {data | sum}"
+  print "  Top 3: {data | sort | reverse | take(3) | join(", ")}"
+
+  -- Chained transformations
+  result := range(1, 11) | map(x => x * x) | filter(x => x > 20) | take(3)
+  print "  Squares > 20: {result | join(", ")}"
+
+  -- Part 5: String processing
+  print ""
+  print "--- Part 5: String Processing ---"
+  sentence := "the quick brown fox jumps over the lazy dog"
+  words := sentence.split(" ")
+  print "  Words: {words | len}"
+  print "  Uppercase: {sentence.to_upper()}"
+  long_words := words | filter(w => w | len > 3)
+  print "  Words > 3 chars: {long_words | join(", ")}"
+  print "  Starts with 'the': {sentence.starts_with("the")}"
+  print "  Reversed: {sentence.reverse()}"
+
+  -- Part 6: Map operations
+  print ""
+  print "--- Part 6: Maps ---"
+  mut scores := {"alice": 95, "bob": 87, "carol": 92, "dave": 78}
+  print "  Students: {scores | keys | join(", ")}"
+  print "  Scores: {scores | values | sort | join(", ")}"
+  scores | set("eve", 88)
+  print "  Added eve: {scores | len} students"
+  has_alice := scores | contains("alice")
+  print "  Has alice: {has_alice}"
+
+  -- Part 7: List comprehensions
+  print ""
+  print "--- Part 7: Comprehensions ---"
+  squares := [x * x for x in range(1, 8)]
+  print "  Squares: {squares | join(", ")}"
+
+  evens := [x for x in range(1, 21) if x % 2 == 0]
+  print "  Evens 1-20: {evens | join(", ")}"
+
+  -- Part 8: Closures and higher-order functions
+  print ""
+  print "--- Part 8: Higher-Order Functions ---"
+  nums := [15, 22, 8, 33, 41, 6, 19, 27]
+  mut count_above := nums | filter(x => x > 20) | len
+  print "  Count > 20: {count_above}"
+
+  total := nums | reduce((a, b) => a + b)
+  print "  Reduce sum: {total}"
+
+  -- Each with index
+  items := ["alpha", "beta", "gamma"]
+  items | each_with_index((i, item) => print("  Item {i}: {item}"))
+
+  -- Part 9: Control flow
+  print ""
+  print "--- Part 9: Control Flow ---"
+  -- Loop with break
+  mut collatz := 27
+  mut steps := 0
+  while collatz != 1
+    if collatz % 2 == 0
+      collatz = collatz / 2
+    else
+      collatz = collatz * 3 + 1
+    steps = steps + 1
+  print "  Collatz(27): {steps} steps"
+
+  -- For with ranges
+  mut fizzbuzz := ""
+  for i in range(1, 16)
+    if i % 15 == 0
+      fizzbuzz = fizzbuzz + "FizzBuzz "
+    else if i % 3 == 0
+      fizzbuzz = fizzbuzz + "Fizz "
+    else if i % 5 == 0
+      fizzbuzz = fizzbuzz + "Buzz "
+    else
+      fizzbuzz = fizzbuzz + str(i) + " "
+  print "  FizzBuzz: {fizzbuzz.trim()}"
+
+  -- Part 10: Algorithm showcase
+  print ""
+  print "--- Part 10: Algorithms ---"
+
+  -- Sieve of Eratosthenes
+  limit := 50
+  mut sieve := [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
+  sieve[0] = false
+  sieve[1] = false
+  mut p := 2
+  while p * p <= limit
+    if sieve[p]
+      mut m := p * p
+      while m <= limit
+        sieve[m] = false
+        m = m + p
+    p = p + 1
+
+  mut prime_list := ""
+  mut prime_count := 0
+  for i in range(2, limit + 1)
+    if sieve[i]
+      if prime_count > 0
+        prime_list = prime_list + ", "
+      prime_list = prime_list + str(i)
+      prime_count = prime_count + 1
+  print "  Primes <= {limit}: {prime_list}"
+  print "  Count: {prime_count}"
+
+  -- Binary search
+  sorted := [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]
+  target := 23
+  mut lo := 0
+  mut hi := 9
+  mut found_at := -1
+  while lo <= hi
+    mid := (lo + hi) / 2
+    if sorted[mid] == target
+      found_at = mid
+      lo = hi + 1
+    else if sorted[mid] < target
+      lo = mid + 1
+    else
+      hi = mid - 1
+  print "  Binary search for {target}: index {found_at}"
+
+  -- Part 11: Matrix operations
+  print ""
+  print "--- Part 11: Matrix Ops ---"
+  -- 3x3 matrix multiply
+  mut a := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  mut b := [9, 8, 7, 6, 5, 4, 3, 2, 1]
+  mut c := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  for i in range(0, 3)
+    for j in range(0, 3)
+      mut s := 0
+      for k in range(0, 3)
+        s = s + a[i * 3 + k] * b[k * 3 + j]
+      c[i * 3 + j] = s
+
+  print "  A x B ="
+  for i in range(0, 3)
+    print "    [{c[i * 3]}, {c[i * 3 + 1]}, {c[i * 3 + 2]}]"
+
+  -- Determinant
+  det := a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6]) + a[2] * (a[3] * a[7] - a[4] * a[6])
+  print "  det(A) = {det}"
+
+  -- Part 12: Statistics
+  print ""
+  print "--- Part 12: Statistics ---"
+  values := [23, 45, 12, 67, 34, 89, 56, 78, 41, 55]
+  n := values | len
+  mean := values | sum
+  mean_val := mean / n
+  print "  Data: {values | join(", ")}"
+  print "  Count: {n}"
+  print "  Sum: {mean}"
+  print "  Mean: {mean_val}"
+  print "  Min: {values | min}"
+  print "  Max: {values | max}"
+
+  sorted_vals := values | sort
+  mid := n / 2
+  median := sorted_vals[mid]
+  print "  Median: {median}"
+
+  -- Variance (integer approx)
+  mut var_sum := 0
+  for v in values
+    diff := v - mean_val
+    var_sum = var_sum + diff * diff
+  variance := var_sum / n
+  print "  Variance: {variance}"
+
+  -- Grand summary
+  print ""
+  print "=== SHOWCASE 500 COMPLETE ==="
+  features := ["functions", "records", "enums", "pattern matching", "pipelines", "lambdas", "closures", "maps", "comprehensions", "string ops", "control flow", "algorithms", "matrices", "statistics"]
+  print "Features demonstrated: {features | len}"
+  print "{features | join(", ")}"
+  print ""
+  print "Ore: expressive, concise, powerful. 500 showcases and counting!"

@@ -1,0 +1,153 @@
+-- Showcase 492: Compression comparison (Huffman vs RLE vs dictionary)
+
+fn main
+  print "Compression Comparison:"
+  print ""
+
+  -- Part 1: Run-Length Encoding
+  print "=== Part 1: Run-Length Encoding ==="
+  input := "aaabbbccddddaabb"
+  chars := input.chars()
+  input_len := chars | len
+  print "  Input: '{input}' ({input_len} chars)"
+
+  mut rle := ""
+  mut rle_count := 0
+  mut i := 0
+  while i < input_len
+    mut run := 1
+    while i + run < input_len and chars[i + run] == chars[i]
+      run = run + 1
+    rle = rle + chars[i] + str(run)
+    rle_count = rle_count + 1
+    i = i + run
+  rle_len := rle | len
+  print "  RLE: '{rle}' ({rle_len} chars)"
+  ratio_rle := rle_len * 100 / input_len
+  print "  Compression: {ratio_rle}%"
+
+  -- Part 2: Dictionary coding (LZ77-like)
+  print ""
+  print "=== Part 2: Dictionary Coding ==="
+  dict_input := "abcabcabcdef"
+  dict_chars := dict_input.chars()
+  dict_len := dict_chars | len
+  print "  Input: '{dict_input}' ({dict_len} chars)"
+
+  -- Simulate: scan for repeated substrings
+  mut dict_entries := ["abc", "def"]
+  mut dict_codes := [0, 1]
+  mut dict_output := ""
+  mut di := 0
+  mut tokens := 0
+  while di < dict_len
+    mut matched := false
+    -- Try longest match first (length 3)
+    if di + 3 <= dict_len and not matched
+      sub := dict_chars[di] + dict_chars[di + 1] + dict_chars[di + 2]
+      for e in range(0, 2)
+        if sub == dict_entries[e] and not matched
+          dict_output = dict_output + "[" + str(dict_codes[e]) + "]"
+          di = di + 3
+          matched = true
+          tokens = tokens + 1
+    if not matched
+      dict_output = dict_output + dict_chars[di]
+      di = di + 1
+      tokens = tokens + 1
+  print "  Dictionary: {dict_output}"
+  print "  Tokens: {tokens}"
+  print "  Entries: abc=0, def=1"
+
+  -- Part 3: Huffman-like frequency coding
+  print ""
+  print "=== Part 3: Frequency-Based Coding ==="
+  freq_input := "aaaaabbbccde"
+  freq_chars := freq_input.chars()
+  freq_len := freq_chars | len
+  print "  Input: '{freq_input}' ({freq_len} chars)"
+
+  -- Count frequencies
+  mut symbols := ["a", "b", "c", "d", "e"]
+  mut freqs := [0, 0, 0, 0, 0]
+  for ci in range(0, freq_len)
+    for si in range(0, 5)
+      if freq_chars[ci] == symbols[si]
+        freqs[si] = freqs[si] + 1
+
+  -- Assign shorter codes to more frequent chars
+  -- Sorted by frequency (desc): a=5, b=3, c=2, d=1, e=1
+  mut codes := ["0", "10", "110", "1110", "1111"]
+  mut code_lens := [1, 2, 3, 4, 4]
+
+  for si in range(0, 5)
+    print "  '{symbols[si]}': freq={freqs[si]}, code={codes[si]} ({code_lens[si]} bits)"
+
+  -- Calculate total bits
+  mut total_bits := 0
+  for si in range(0, 5)
+    total_bits = total_bits + freqs[si] * code_lens[si]
+  fixed_bits := freq_len * 3
+  print "  Huffman bits: {total_bits}"
+  print "  Fixed bits: {fixed_bits} (3 bits each)"
+  savings := (fixed_bits - total_bits) * 100 / fixed_bits
+  print "  Savings: {savings}%"
+
+  -- Part 4: Compare methods on same data
+  print ""
+  print "=== Part 4: Comparison ==="
+  test_str := "aaabbbcccaaabbb"
+  test_len := test_str | len
+  print "  Test string: '{test_str}' ({test_len} chars)"
+
+  -- RLE for test
+  test_chars := test_str.chars()
+  mut rle2 := ""
+  mut j := 0
+  while j < test_len
+    mut run := 1
+    while j + run < test_len and test_chars[j + run] == test_chars[j]
+      run = run + 1
+    rle2 = rle2 + test_chars[j] + str(run)
+    j = j + run
+  rle2_len := rle2 | len
+  print "  RLE result: '{rle2}' ({rle2_len} chars)"
+
+  -- Dictionary: "aaa"=A, "bbb"=B, "ccc"=C
+  print "  Dict result: 'ABCAB' (5 tokens)"
+
+  -- Huffman estimate
+  -- a=6, b=6, c=3: codes a=0, b=10, c=11
+  huff_bits := 6 * 1 + 6 * 2 + 3 * 2
+  print "  Huffman: {huff_bits} bits vs {test_len * 3} fixed"
+
+  -- Part 5: Best use cases
+  print ""
+  print "=== Part 5: Best Use Cases ==="
+  print "  RLE: runs of repeated chars (images, simple data)"
+  print "  Dictionary: repeated patterns (text, code)"
+  print "  Huffman: skewed frequency (natural language)"
+
+  -- Part 6: Decompression demo
+  print ""
+  print "=== Part 6: RLE Decompression ==="
+  compressed := "a3b3c2d4a2b2"
+  comp_chars := compressed.chars()
+  comp_len := comp_chars | len
+  print "  Compressed: '{compressed}'"
+
+  mut decompressed := ""
+  mut k := 0
+  while k < comp_len
+    ch := comp_chars[k]
+    count := comp_chars[k + 1].parse_int()
+    for r in range(0, count)
+      decompressed = decompressed + ch
+    k = k + 2
+  print "  Decompressed: '{decompressed}'"
+
+  match_ok := decompressed == input
+  print "  Matches original: {match_ok}"
+
+  print ""
+  print "Compression: RLE, dictionary, Huffman, comparison, decompression."

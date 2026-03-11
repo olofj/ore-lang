@@ -1,0 +1,131 @@
+-- Showcase 494: Simple database indexing (hash index, range queries)
+
+fn hash_key key:Int size:Int -> Int
+  return key % size
+
+fn main
+  print "Database Indexing:"
+  print ""
+
+  -- Part 1: Hash Index
+  print "=== Part 1: Hash Index ==="
+  bucket_count := 8
+  print "  Buckets: {bucket_count}"
+
+  -- Insert records: (id, value)
+  mut ids := [10, 22, 35, 42, 58, 63, 77, 81, 94, 100]
+  mut values := [100, 220, 350, 420, 580, 630, 770, 810, 940, 1000]
+
+  -- Hash table: each bucket stores up to 3 entries
+  mut bucket_counts := [0, 0, 0, 0, 0, 0, 0, 0]
+
+  print "  Inserting 10 records:"
+  for i in range(0, 10)
+    bucket := hash_key(ids[i], bucket_count)
+    bucket_counts[bucket] = bucket_counts[bucket] + 1
+    print "    id={ids[i]} -> bucket {bucket}"
+
+  print "  Bucket distribution:"
+  for b in range(0, bucket_count)
+    mut bar := ""
+    for c in range(0, bucket_counts[b])
+      bar = bar + "#"
+    print "    Bucket {b}: {bucket_counts[b]} [{bar}]"
+
+  -- Part 2: Lookup performance
+  print ""
+  print "=== Part 2: Lookup ==="
+  mut search_ids := [42, 77, 99]
+  for si in range(0, 3)
+    target := search_ids[si]
+    bucket := hash_key(target, bucket_count)
+    mut found := false
+    for i in range(0, 10)
+      if ids[i] == target
+        found = true
+    if found
+      print "  Lookup id={target}: bucket={bucket}, FOUND"
+    else
+      print "  Lookup id={target}: bucket={bucket}, NOT FOUND"
+
+  -- Part 3: Sorted index (B-tree concept)
+  print ""
+  print "=== Part 3: Sorted Index ==="
+  -- Sort the ids for range queries (already manually sorted)
+  mut sorted_ids := [10, 22, 35, 42, 58, 63, 77, 81, 94, 100]
+  mut sorted_vals := [100, 220, 350, 420, 580, 630, 770, 810, 940, 1000]
+
+  -- Binary search
+  search_key := 58
+  mut lo := 0
+  mut hi := 9
+  mut found_idx := -1
+  mut steps := 0
+  while lo <= hi
+    steps = steps + 1
+    mid := (lo + hi) / 2
+    if sorted_ids[mid] == search_key
+      found_idx = mid
+      lo = hi + 1
+    else if sorted_ids[mid] < search_key
+      lo = mid + 1
+    else
+      hi = mid - 1
+  print "  Binary search for id={search_key}: index={found_idx}, steps={steps}"
+
+  -- Part 4: Range query
+  print ""
+  print "=== Part 4: Range Query ==="
+  range_lo := 30
+  range_hi := 70
+  print "  Range: id in [{range_lo}, {range_hi}]"
+  mut count := 0
+  for i in range(0, 10)
+    if sorted_ids[i] >= range_lo and sorted_ids[i] <= range_hi
+      print "    id={sorted_ids[i]}, value={sorted_vals[i]}"
+      count = count + 1
+  print "  Found: {count} records"
+
+  -- Part 5: Index statistics
+  print ""
+  print "=== Part 5: Index Stats ==="
+  mut total_entries := 0
+  mut max_bucket := 0
+  mut empty_buckets := 0
+  for b in range(0, bucket_count)
+    total_entries = total_entries + bucket_counts[b]
+    if bucket_counts[b] > max_bucket
+      max_bucket = bucket_counts[b]
+    if bucket_counts[b] == 0
+      empty_buckets = empty_buckets + 1
+  avg_per_bucket := total_entries * 10 / bucket_count
+  print "  Total entries: {total_entries}"
+  print "  Max bucket depth: {max_bucket}"
+  print "  Empty buckets: {empty_buckets}"
+  print "  Avg per bucket (x10): {avg_per_bucket}"
+  load_factor := total_entries * 100 / bucket_count
+  print "  Load factor: {load_factor}%"
+
+  -- Part 6: Collision handling strategies
+  print ""
+  print "=== Part 6: Collision Strategies ==="
+  print "  Chaining: linked list per bucket"
+  print "  Open addressing: probe next slot"
+  print "  Robin Hood: minimize variance"
+
+  -- Simulate linear probing
+  mut probe_table := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  probe_size := 16
+
+  print "  Linear probing demo:"
+  for i in range(0, 10)
+    mut slot := hash_key(ids[i], probe_size)
+    mut probes := 0
+    while probe_table[slot] != -1
+      slot = (slot + 1) % probe_size
+      probes = probes + 1
+    probe_table[slot] = ids[i]
+    print "    id={ids[i]} -> slot {slot} (probes: {probes})"
+
+  print ""
+  print "Database indexing: hash, binary search, range queries, collision handling."

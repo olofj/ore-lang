@@ -1,0 +1,160 @@
+-- Showcase 495: Task scheduler with dependencies and priorities
+
+fn main
+  print "Task Scheduler:"
+  print ""
+
+  -- Part 1: Task definitions
+  print "=== Part 1: Task Definitions ==="
+  mut task_names := ["compile", "link", "test", "package", "deploy", "docs", "lint", "bench"]
+  mut task_prio := [3, 2, 4, 1, 1, 2, 5, 3]
+  mut task_dur := [5, 3, 8, 2, 4, 6, 2, 10]
+  num_tasks := 8
+
+  -- Dependency matrix (flattened): deps[i*8+j] = 1 means task i depends on j
+  mut deps := [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0]
+
+  for i in range(0, num_tasks)
+    mut dep_str := ""
+    mut has_dep := false
+    for j in range(0, num_tasks)
+      if deps[i * num_tasks + j] == 1
+        if has_dep
+          dep_str = dep_str + ", "
+        dep_str = dep_str + task_names[j]
+        has_dep = true
+    if not has_dep
+      dep_str = "none"
+    print "  {task_names[i]}: prio={task_prio[i]}, dur={task_dur[i]}, deps=[{dep_str}]"
+
+  -- Part 2: Topological sort
+  print ""
+  print "=== Part 2: Topological Sort ==="
+  mut in_degree := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, num_tasks)
+    for j in range(0, num_tasks)
+      if deps[i * num_tasks + j] == 1
+        in_degree[i] = in_degree[i] + 1
+
+  mut scheduled := [false, false, false, false, false, false, false, false]
+  mut order := [-1, -1, -1, -1, -1, -1, -1, -1]
+  mut order_idx := 0
+
+  for round in range(0, num_tasks)
+    -- Find unscheduled task with in_degree 0 and highest priority
+    mut best := -1
+    mut best_prio := -1
+    for i in range(0, num_tasks)
+      if not scheduled[i] and in_degree[i] == 0
+        if task_prio[i] > best_prio
+          best_prio = task_prio[i]
+          best = i
+    if best >= 0
+      order[order_idx] = best
+      order_idx = order_idx + 1
+      scheduled[best] = true
+      -- Remove edges
+      for i in range(0, num_tasks)
+        if deps[i * num_tasks + best] == 1
+          in_degree[i] = in_degree[i] - 1
+
+  print "  Execution order (priority-aware):"
+  for i in range(0, num_tasks)
+    idx := order[i]
+    print "    {i + 1}. {task_names[idx]} (prio={task_prio[idx]})"
+
+  -- Part 3: Scheduling timeline
+  print ""
+  print "=== Part 3: Timeline ==="
+  mut start_time := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut end_time := [0, 0, 0, 0, 0, 0, 0, 0]
+
+  for i in range(0, num_tasks)
+    idx := order[i]
+    -- Start time is max of all dependency end times
+    mut earliest := 0
+    for j in range(0, num_tasks)
+      if deps[idx * num_tasks + j] == 1
+        if end_time[j] > earliest
+          earliest = end_time[j]
+    start_time[idx] = earliest
+    end_time[idx] = earliest + task_dur[idx]
+
+  for i in range(0, num_tasks)
+    idx := order[i]
+    print "  [{start_time[idx]}-{end_time[idx]}] {task_names[idx]}"
+
+  -- Part 4: Critical path
+  print ""
+  print "=== Part 4: Critical Path ==="
+  mut max_end := 0
+  for i in range(0, num_tasks)
+    if end_time[i] > max_end
+      max_end = end_time[i]
+  print "  Total duration: {max_end} units"
+
+  -- Find critical path (tasks that determine total duration)
+  mut on_critical := [false, false, false, false, false, false, false, false]
+  -- Work backward from longest path
+  mut current_end := max_end
+  for round in range(0, num_tasks)
+    for i in range(0, num_tasks)
+      if end_time[i] == current_end and not on_critical[i]
+        on_critical[i] = true
+        current_end = start_time[i]
+
+  mut crit_str := ""
+  mut first := true
+  for i in range(0, num_tasks)
+    idx := order[i]
+    if on_critical[idx]
+      if not first
+        crit_str = crit_str + " -> "
+      crit_str = crit_str + task_names[idx]
+      first = false
+  print "  Critical path: {crit_str}"
+
+  -- Part 5: Parallel execution (2 workers)
+  print ""
+  print "=== Part 5: Parallel Execution (2 workers) ==="
+  mut w1_free := 0
+  mut w2_free := 0
+  mut par_done := [false, false, false, false, false, false, false, false]
+  mut par_end := [0, 0, 0, 0, 0, 0, 0, 0]
+
+  for round in range(0, num_tasks)
+    idx := order[round]
+    -- Find earliest start (after deps)
+    mut earliest := 0
+    for j in range(0, num_tasks)
+      if deps[idx * num_tasks + j] == 1
+        if par_end[j] > earliest
+          earliest = par_end[j]
+
+    -- Assign to whichever worker is free first
+    mut worker := 1
+    mut work_start := w1_free
+    if w2_free < w1_free
+      worker = 2
+      work_start = w2_free
+    if work_start < earliest
+      work_start = earliest
+    work_end := work_start + task_dur[idx]
+    par_end[idx] = work_end
+    par_done[idx] = true
+    if worker == 1
+      w1_free = work_end
+    else
+      w2_free = work_end
+    print "  W{worker}: [{work_start}-{work_end}] {task_names[idx]}"
+
+  mut par_max := 0
+  if w1_free > w2_free
+    par_max = w1_free
+  else
+    par_max = w2_free
+  speedup := max_end * 100 / par_max
+  print "  Parallel duration: {par_max} (speedup: {speedup}%)"
+
+  print ""
+  print "Task scheduler: dependencies, topological sort, timeline, critical path, parallelism."

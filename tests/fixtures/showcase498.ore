@@ -1,0 +1,175 @@
+-- Showcase 498: Compiler optimization passes (constant folding, dead code)
+
+fn main
+  print "Compiler Optimization Passes:"
+  print ""
+
+  -- Represent instructions as parallel arrays
+  -- Opcodes: 0=const, 1=add, 2=mul, 3=sub, 4=load, 5=store, 6=branch, 7=nop
+  -- Each instruction: (opcode, arg1, arg2, result_reg)
+
+  -- Part 1: Constant Folding
+  print "=== Part 1: Constant Folding ==="
+  -- Program: r0 = 3, r1 = 4, r2 = r0 + r1, r3 = r2 * 2
+  mut opcodes := [0, 0, 1, 2, 0, 1, 5]
+  mut arg1 := [3, 4, 0, 2, 10, 3, 4]
+  mut arg2 := [0, 0, 1, 4, 0, 4, 0]
+  mut dest := [0, 1, 2, 3, 4, 5, 0]
+  num_instr := 7
+
+  print "  Before optimization:"
+  for i in range(0, num_instr)
+    mut opname := "nop"
+    oc := opcodes[i]
+    if oc == 0
+      opname = "const"
+    else if oc == 1
+      opname = "add"
+    else if oc == 2
+      opname = "mul"
+    else if oc == 3
+      opname = "sub"
+    else if oc == 4
+      opname = "load"
+    else if oc == 5
+      opname = "store"
+    else if oc == 6
+      opname = "branch"
+    print "    {i}: {opname} {arg1[i]} {arg2[i]} -> r{dest[i]}"
+
+  -- Constant propagation: track which registers hold known constants
+  mut reg_known := [false, false, false, false, false, false]
+  mut reg_val := [0, 0, 0, 0, 0, 0]
+  mut folded := 0
+
+  for i in range(0, num_instr)
+    op := opcodes[i]
+    if op == 0
+      -- const: register gets a known value
+      reg_known[dest[i]] = true
+      reg_val[dest[i]] = arg1[i]
+    else if op == 1
+      -- add: if both operands known, fold
+      if reg_known[arg1[i]] and reg_known[arg2[i]]
+        val := reg_val[arg1[i]] + reg_val[arg2[i]]
+        opcodes[i] = 0
+        arg1[i] = val
+        arg2[i] = 0
+        reg_known[dest[i]] = true
+        reg_val[dest[i]] = val
+        folded = folded + 1
+    else if op == 2
+      -- mul: if both operands known, fold
+      if reg_known[arg1[i]] and reg_known[arg2[i]]
+        val := reg_val[arg1[i]] * reg_val[arg2[i]]
+        opcodes[i] = 0
+        arg1[i] = val
+        arg2[i] = 0
+        reg_known[dest[i]] = true
+        reg_val[dest[i]] = val
+        folded = folded + 1
+
+  print "  After constant folding ({folded} instructions folded):"
+  for i in range(0, num_instr)
+    mut opname := "nop"
+    oc := opcodes[i]
+    if oc == 0
+      opname = "const"
+    else if oc == 1
+      opname = "add"
+    else if oc == 2
+      opname = "mul"
+    else if oc == 3
+      opname = "sub"
+    else if oc == 4
+      opname = "load"
+    else if oc == 5
+      opname = "store"
+    else if oc == 6
+      opname = "branch"
+    print "    {i}: {opname} {arg1[i]} {arg2[i]} -> r{dest[i]}"
+
+  -- Part 2: Dead Code Elimination
+  print ""
+  print "=== Part 2: Dead Code Elimination ==="
+  -- Track which registers are used
+  mut used := [false, false, false, false, false, false]
+  -- Mark store target as used
+  for i in range(0, num_instr)
+    if opcodes[i] == 5
+      used[arg1[i]] = true
+      used[arg2[i]] = true
+  -- Work backward: if a register is used, mark its inputs as used
+  for pass in range(0, 3)
+    for i in range(0, num_instr)
+      if used[dest[i]]
+        if opcodes[i] == 1 or opcodes[i] == 2 or opcodes[i] == 3
+          used[arg1[i]] = true
+          used[arg2[i]] = true
+
+  mut eliminated := 0
+  for i in range(0, num_instr)
+    if opcodes[i] != 5 and not used[dest[i]]
+      print "    Dead: instr {i} (r{dest[i]} unused)"
+      opcodes[i] = 7
+      eliminated = eliminated + 1
+  print "  Eliminated {eliminated} dead instructions"
+
+  -- Part 3: Strength Reduction
+  print ""
+  print "=== Part 3: Strength Reduction ==="
+  mut sr_ops := ["mul", "mul", "mul", "add"]
+  mut sr_a := [5, 8, 3, 7]
+  mut sr_b := [2, 1, 4, 0]
+  mut sr_results := ["", "", "", ""]
+
+  for i in range(0, 4)
+    if sr_ops[i] == "mul" and sr_b[i] == 2
+      sr_results[i] = "shift_left(" + str(sr_a[i]) + ", 1)"
+      print "  {sr_a[i]} * 2 -> {sr_results[i]} = {sr_a[i] * 2}"
+    else if sr_ops[i] == "mul" and sr_b[i] == 1
+      sr_results[i] = "identity(" + str(sr_a[i]) + ")"
+      print "  {sr_a[i]} * 1 -> {sr_results[i]} = {sr_a[i]}"
+    else if sr_ops[i] == "mul" and sr_b[i] == 4
+      sr_results[i] = "shift_left(" + str(sr_a[i]) + ", 2)"
+      print "  {sr_a[i]} * 4 -> {sr_results[i]} = {sr_a[i] * 4}"
+    else if sr_ops[i] == "add" and sr_b[i] == 0
+      sr_results[i] = "identity(" + str(sr_a[i]) + ")"
+      print "  {sr_a[i]} + 0 -> {sr_results[i]} = {sr_a[i]}"
+
+  -- Part 4: Common Subexpression Elimination
+  print ""
+  print "=== Part 4: CSE ==="
+  -- Detect duplicate computations
+  mut cse_ops := ["add", "mul", "add", "sub", "mul"]
+  mut cse_a := [1, 2, 1, 5, 2]
+  mut cse_b := [3, 4, 3, 1, 4]
+  mut cse_regs := [10, 11, 12, 13, 14]
+  mut cse_elim := 0
+
+  print "  Instructions:"
+  for i in range(0, 5)
+    mut is_dup := false
+    mut dup_of := -1
+    for j in range(0, i)
+      if cse_ops[i] == cse_ops[j] and cse_a[i] == cse_a[j] and cse_b[i] == cse_b[j]
+        is_dup = true
+        dup_of = j
+    if is_dup
+      print "    r{cse_regs[i]} = {cse_ops[i]}({cse_a[i]}, {cse_b[i]}) -> REUSE r{cse_regs[dup_of]}"
+      cse_elim = cse_elim + 1
+    else
+      print "    r{cse_regs[i]} = {cse_ops[i]}({cse_a[i]}, {cse_b[i]})"
+  print "  Eliminated {cse_elim} redundant computations"
+
+  -- Part 5: Optimization summary
+  print ""
+  print "=== Part 5: Optimization Summary ==="
+  total_opts := folded + eliminated + cse_elim
+  print "  Constant folding: {folded}"
+  print "  Dead code elimination: {eliminated}"
+  print "  CSE: {cse_elim}"
+  print "  Total optimizations: {total_opts}"
+
+  print ""
+  print "Compiler passes: constant folding, DCE, strength reduction, CSE."

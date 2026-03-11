@@ -1,0 +1,144 @@
+-- Showcase 496: Simple virtual DOM diffing algorithm
+
+fn main
+  print "Virtual DOM Diffing:"
+  print ""
+
+  -- Part 1: Virtual DOM as flat list (tag, text, parent_idx)
+  print "=== Part 1: Old Virtual DOM ==="
+  mut old_tags := ["div", "h1", "p", "ul", "li", "li", "li"]
+  mut old_text := ["", "Hello", "World", "", "Item 1", "Item 2", "Item 3"]
+  mut old_parent := [-1, 0, 0, 0, 3, 3, 3]
+  old_count := 7
+
+  for i in range(0, old_count)
+    mut indent := "  "
+    p := old_parent[i]
+    if p >= 0
+      indent = indent + "  "
+      if old_parent[p] >= 0
+        indent = indent + "  "
+    if old_text[i] | len > 0
+      print "{indent}<{old_tags[i]}>{old_text[i]}</{old_tags[i]}>"
+    else
+      print "{indent}<{old_tags[i]}>"
+
+  -- Part 2: New Virtual DOM (modified)
+  print ""
+  print "=== Part 2: New Virtual DOM ==="
+  mut new_tags := ["div", "h1", "p", "ul", "li", "li", "li", "li"]
+  mut new_text := ["", "Hi", "World!", "", "Item 1", "Item 2", "Item 4", "Item 5"]
+  mut new_parent := [-1, 0, 0, 0, 3, 3, 3, 3]
+  new_count := 8
+
+  for i in range(0, new_count)
+    mut indent := "  "
+    p := new_parent[i]
+    if p >= 0
+      indent = indent + "  "
+      if new_parent[p] >= 0
+        indent = indent + "  "
+    if new_text[i] | len > 0
+      print "{indent}<{new_tags[i]}>{new_text[i]}</{new_tags[i]}>"
+    else
+      print "{indent}<{new_tags[i]}>"
+
+  -- Part 3: Diff computation
+  print ""
+  print "=== Part 3: Diff ==="
+  mut patches := 0
+
+  -- Compare existing nodes
+  mut compare_count := old_count
+  if new_count < compare_count
+    compare_count = new_count
+
+  for i in range(0, compare_count)
+    if old_tags[i] != new_tags[i]
+      print "  REPLACE node {i}: <{old_tags[i]}> -> <{new_tags[i]}>"
+      patches = patches + 1
+    else if old_text[i] != new_text[i]
+      print "  UPDATE node {i}: '{old_text[i]}' -> '{new_text[i]}'"
+      patches = patches + 1
+
+  -- Added nodes
+  if new_count > old_count
+    for i in range(old_count, new_count)
+      print "  INSERT node {i}: <{new_tags[i]}>{new_text[i]}"
+      patches = patches + 1
+
+  -- Removed nodes
+  if old_count > new_count
+    for i in range(new_count, old_count)
+      print "  REMOVE node {i}: <{old_tags[i]}>"
+      patches = patches + 1
+
+  print "  Total patches: {patches}"
+
+  -- Part 4: Patch application
+  print ""
+  print "=== Part 4: Apply Patches ==="
+  -- Simulate applying each patch
+  mut applied := 0
+  for i in range(0, compare_count)
+    if old_text[i] != new_text[i] and old_tags[i] == new_tags[i]
+      print "  setText(node[{i}], '{new_text[i]}')"
+      applied = applied + 1
+  if new_count > old_count
+    for i in range(old_count, new_count)
+      print "  appendChild(node[{new_parent[i]}], <{new_tags[i]}>{new_text[i]})"
+      applied = applied + 1
+  print "  Applied {applied} DOM operations"
+
+  -- Part 5: Key-based reconciliation
+  print ""
+  print "=== Part 5: Key-Based Diff ==="
+  -- Old list with keys
+  mut old_keys := ["a", "b", "c", "d"]
+  mut old_vals := ["Alpha", "Beta", "Charlie", "Delta"]
+  -- New list with keys (reordered, added, removed)
+  mut new_keys := ["c", "a", "e", "d"]
+  mut new_vals := ["Charlie", "Alpha", "Echo", "Delta"]
+
+  print "  Old: a=Alpha, b=Beta, c=Charlie, d=Delta"
+  print "  New: c=Charlie, a=Alpha, e=Echo, d=Delta"
+
+  -- Find moves, inserts, deletes
+  for ni in range(0, 4)
+    mut found := false
+    mut old_pos := -1
+    for oi in range(0, 4)
+      if new_keys[ni] == old_keys[oi]
+        found = true
+        old_pos = oi
+    if found
+      if old_pos != ni
+        print "  MOVE '{new_keys[ni]}' from pos {old_pos} to {ni}"
+      else
+        print "  KEEP '{new_keys[ni]}' at pos {ni}"
+    else
+      print "  INSERT '{new_keys[ni]}' at pos {ni}"
+
+  -- Check for removals
+  for oi in range(0, 4)
+    mut still_exists := false
+    for ni in range(0, 4)
+      if old_keys[oi] == new_keys[ni]
+        still_exists = true
+    if not still_exists
+      print "  DELETE '{old_keys[oi]}'"
+
+  -- Part 6: Diff stats
+  print ""
+  print "=== Part 6: Diff Statistics ==="
+  mut unchanged := compare_count - patches
+  if new_count > old_count
+    unchanged = compare_count - (patches - (new_count - old_count))
+  print "  Nodes compared: {compare_count}"
+  print "  Patches generated: {patches}"
+  print "  Unchanged nodes: {unchanged}"
+  efficiency := unchanged * 100 / compare_count
+  print "  Reuse rate: {efficiency}%"
+
+  print ""
+  print "Virtual DOM: tree diffing, patching, key reconciliation, efficiency."

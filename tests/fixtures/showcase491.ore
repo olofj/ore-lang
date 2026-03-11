@@ -1,0 +1,128 @@
+-- Showcase 491: Simple ray tracer (2D ray casting)
+
+fn abs_val x:Int -> Int
+  if x < 0
+    return 0 - x
+  return x
+
+fn main
+  print "2D Ray Casting:"
+  print ""
+
+  -- Part 1: Ray-circle intersection
+  print "=== Part 1: Ray-Circle Intersection ==="
+  -- Circle at (50, 50), radius 20
+  cx := 50
+  cy := 50
+  radius := 20
+
+  -- Cast rays from origin at different angles (simplified: use dx, dy steps)
+  mut ray_dirs_x := [10, 7, 5, 3, 0]
+  mut ray_dirs_y := [0, 3, 5, 7, 10]
+  mut labels := ["0deg", "~22deg", "45deg", "~67deg", "90deg"]
+
+  for i in range(0, 5)
+    dx := ray_dirs_x[i]
+    dy := ray_dirs_y[i]
+    -- Step along ray and check distance to circle center
+    mut hit := false
+    mut hit_t := 0
+    for t in range(1, 100)
+      px := t * dx
+      py := t * dy
+      dist_sq := (px - cx) * (px - cx) + (py - cy) * (py - cy)
+      if dist_sq <= radius * radius and not hit
+        hit = true
+        hit_t = t
+    if hit
+      hx := hit_t * dx
+      hy := hit_t * dy
+      print "  Ray {labels[i]}: HIT at ({hx}, {hy}), t={hit_t}"
+    else
+      print "  Ray {labels[i]}: MISS"
+
+  -- Part 2: 2D scene with walls
+  print ""
+  print "=== Part 2: Wall Segments ==="
+  -- Walls defined as line segments: x1, y1, x2, y2
+  -- Wall 1: vertical wall at x=30, y=10..40
+  -- Wall 2: horizontal wall at y=25, x=50..80
+  mut wall_x1 := [30, 50]
+  mut wall_y1 := [10, 25]
+  mut wall_x2 := [30, 80]
+  mut wall_y2 := [40, 25]
+  mut wall_names := ["vertical(x=30)", "horizontal(y=25)"]
+
+  -- Cast ray from (0,0) going right and slightly up
+  ray_ox := 0
+  ray_oy := 0
+
+  for w in range(0, 2)
+    print "  Wall: {wall_names[w]}"
+    print "    Segment: ({wall_x1[w]},{wall_y1[w]}) to ({wall_x2[w]},{wall_y2[w]})"
+
+  -- Part 3: Simple shadow casting
+  print ""
+  print "=== Part 3: Shadow Casting ==="
+  -- Light at (25, 25), cast rays in 8 directions
+  lx := 25
+  ly := 25
+  print "  Light source at ({lx}, {ly})"
+
+  -- Obstacle: block at (35, 25) size 5x5
+  mut blocked := [false, false, false, false, false, false, false, false]
+  mut dir_names := ["E", "NE", "N", "NW", "W", "SW", "S", "SE"]
+  mut ddx := [1, 1, 0, -1, -1, -1, 0, 1]
+  mut ddy := [0, 1, 1, 1, 0, -1, -1, -1]
+
+  for d in range(0, 8)
+    mut px := lx
+    mut py := ly
+    for step in range(1, 30)
+      px = lx + step * ddx[d]
+      py = ly + step * ddy[d]
+      -- Check if inside obstacle (35..40, 25..30)
+      if px >= 35 and px <= 40 and py >= 25 and py <= 30
+        blocked[d] = true
+
+  for d in range(0, 8)
+    if blocked[d]
+      print "  {dir_names[d]}: BLOCKED"
+    else
+      print "  {dir_names[d]}: clear"
+
+  -- Part 4: Render a simple scene as text
+  print ""
+  print "=== Part 4: Top-Down View ==="
+  -- 10x10 grid, circle at (5,5) radius 2
+  grid_cx := 5
+  grid_cy := 5
+  grid_r := 2
+
+  for y in range(0, 10)
+    mut row := ""
+    for x in range(0, 10)
+      dx := x - grid_cx
+      dy := y - grid_cy
+      dist := dx * dx + dy * dy
+      if x == 0 and y == 5
+        row = row + "L"
+      else if dist <= grid_r * grid_r
+        row = row + "O"
+      else
+        -- Check if ray from (0,5) through this point hits circle
+        row = row + "."
+    print "  {row}"
+
+  -- Part 5: Distance-based shading
+  print ""
+  print "=== Part 5: Distance Shading ==="
+  shades := ["#", "@", "%", "*", "+", ".", " "]
+  for d in range(0, 7)
+    shade := shades[d]
+    label := d * 5
+    print "  Distance {label}: '{shade}'"
+
+  -- Part 6: Summary
+  print ""
+  print "Ray casting: intersection, walls, shadows, rendering, shading."
