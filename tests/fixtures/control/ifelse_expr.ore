@@ -1,0 +1,32 @@
+fn main
+  -- if/else as expression returning Str
+  x := 5
+  result := if x > 0
+    "positive"
+  else
+    "non-positive"
+  print result
+
+  -- Nested if/else if/else
+  y := -3
+  label := if y > 0
+    "positive"
+  else if y == 0
+    "zero"
+  else
+    "negative"
+  print label
+
+  -- if/else returning Int
+  n := if true
+    42
+  else
+    0
+  print n
+
+  -- if/else returning Bool
+  b := if 3 > 2
+    true
+  else
+    false
+  print b

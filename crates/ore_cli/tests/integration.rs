@@ -508,6 +508,13 @@ fn control_or_patterns() {
 }
 
 #[test]
+fn control_ifelse_expr() {
+    let out = run_ore("control/ifelse_expr.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["positive", "negative", "42", "true"]);
+}
+
+#[test]
 fn control_range_patterns() {
     let out = run_ore("control/range_patterns.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
