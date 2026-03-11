@@ -650,6 +650,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_index_of", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_assert_fail", void_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_reverse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_reverse_new", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_reduce(ptr, i64, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_reduce", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
@@ -2396,6 +2398,12 @@ impl<'ctx> CodeGen<'ctx> {
                 let end = self.compile_expr(&args[1], func)?;
                 let rt = self.module.get_function("ore_str_slice").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), start.into(), end.into()], "sslice"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
+            "reverse" => {
+                let rt = self.module.get_function("ore_str_reverse").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "srev"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }

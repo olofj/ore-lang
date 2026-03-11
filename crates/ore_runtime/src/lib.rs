@@ -335,6 +335,25 @@ pub extern "C" fn ore_str_to_lower(s: *mut OreStr) -> *mut OreStr {
 }
 
 #[no_mangle]
+pub extern "C" fn ore_str_reverse(s: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let reversed: String = unsafe { (*s).as_str().chars().rev().collect() };
+    ore_str_new(reversed.as_ptr(), reversed.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_reverse_new(list: *mut OreList) -> *mut OreList {
+    let result = ore_list_new();
+    if list.is_null() { return result; }
+    let l = unsafe { &*list };
+    for i in (0..l.len).rev() {
+        let val = unsafe { *l.data.offset(i as isize) };
+        ore_list_push(result, val);
+    }
+    result
+}
+
+#[no_mangle]
 pub extern "C" fn ore_str_substr(s: *mut OreStr, start: i64, len: i64) -> *mut OreStr {
     if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
     let str_val = unsafe { (*s).as_str() };

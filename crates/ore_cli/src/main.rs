@@ -45,25 +45,60 @@ enum Commands {
 
 type MainFunc = unsafe extern "C" fn() -> i32;
 
+fn print_error_with_context(error: &str, file: &Path) {
+    // Try to extract line number from error message (format: "line N: ..." or "N:M: ...")
+    let line_num = if error.starts_with("line ") {
+        error.strip_prefix("line ")
+            .and_then(|s| s.split(':').next())
+            .and_then(|s| s.trim().parse::<usize>().ok())
+    } else if error.contains("at ") {
+        // Parse "parse error at N:M:" or "lex error at N:M:" format
+        error.split("at ")
+            .nth(1)
+            .and_then(|s| s.split(':').next())
+            .and_then(|s| s.trim().parse::<usize>().ok())
+    } else {
+        // Try "N:M:" format
+        error.split(':').next()
+            .and_then(|s| s.trim().parse::<usize>().ok())
+    };
+
+    eprintln!("error: {}", error);
+
+    if let Some(line) = line_num {
+        if let Ok(source) = std::fs::read_to_string(file) {
+            let lines: Vec<&str> = source.lines().collect();
+            let start = if line > 2 { line - 2 } else { 0 };
+            let end = (line + 1).min(lines.len());
+            eprintln!();
+            for i in start..end {
+                let marker = if i + 1 == line { " --> " } else { "     " };
+                eprintln!("{}{:>4} | {}", marker, i + 1, lines[i]);
+            }
+            eprintln!();
+        }
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Run { file } => {
             if let Err(e) = run_file(&file) {
-                eprintln!("error: {}", e);
+                print_error_with_context(&e, &file);
                 std::process::exit(1);
             }
         }
         Commands::Build { file, output } => {
             if let Err(e) = build_file(&file, &output) {
-                eprintln!("error: {}", e);
+                print_error_with_context(&e, &file);
                 std::process::exit(1);
             }
         }
         Commands::Check { file } => {
             if let Err(e) = check_file(&file) {
-                eprintln!("error: {}", e);
+                print_error_with_context(&e, &file);
                 std::process::exit(1);
             }
             eprintln!("ok: {}", file.display());
@@ -322,6 +357,8 @@ fn map_runtime_functions(
     map_fn!("ore_str_index_of", ore_runtime::ore_str_index_of);
     map_fn!("ore_str_slice", ore_runtime::ore_str_slice);
     map_fn!("ore_assert_fail", ore_runtime::ore_assert_fail);
+    map_fn!("ore_str_reverse", ore_runtime::ore_str_reverse);
+    map_fn!("ore_list_reverse_new", ore_runtime::ore_list_reverse_new);
     // Lists
     map_fn!("ore_list_new", ore_runtime::ore_list_new);
     map_fn!("ore_list_push", ore_runtime::ore_list_push);

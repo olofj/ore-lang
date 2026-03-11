@@ -497,6 +497,13 @@ fn control_or_patterns() {
 }
 
 #[test]
+fn stdlib_reverse() {
+    let out = run_ore("stdlib/reverse.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["olleh", "edcba", "[5, 4, 3, 2, 1]"]);
+}
+
+#[test]
 fn pipelines_comprehensive() {
     let out = run_ore("pipelines/comprehensive.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
