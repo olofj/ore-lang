@@ -1,0 +1,143 @@
+-- Showcase 968: Dead Code Elimination
+-- Analyzes a simple control-flow graph and removes unreachable basic blocks
+-- Represents code as basic blocks with jump targets
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+fn contains_int lst:List val:Int -> Bool
+  mut found := false
+  mut i := 0
+  n := lst.count()
+  while i < n and not found
+    if get_int(lst, i) == val
+      found = true
+    i = i + 1
+  found
+
+-- A basic block has: id, instruction, jump target (-1 = return)
+-- We represent as parallel lists: ids, instrs, jumps
+-- Dead code = blocks unreachable from entry (block 0)
+
+fn find_reachable entry:Int jumps:List n_blocks:Int -> List
+  mut reachable := [0]
+  reachable.pop()
+  mut worklist := [entry]
+  reachable.push(entry)
+
+  mut go := true
+  while go and worklist.count() > 0
+    -- get and remove last item from worklist
+    cur := worklist.last()
+    worklist.pop()
+    if cur >= 0 and cur < n_blocks
+      -- find jump target for this block
+      target := get_int(jumps, cur)
+      if target >= 0 and not contains_int(reachable, target)
+        reachable.push(target)
+        worklist.push(target)
+      -- also check conditional: jumps2 not used here, use single jump list
+    if worklist.count() == 0
+      go = false
+  reachable
+
+fn find_reachable2 entry:Int jumps:List cond_jumps:List n_blocks:Int -> List
+  mut reachable := [0]
+  reachable.pop()
+  mut worklist := [entry]
+  reachable.push(entry)
+
+  while worklist.count() > 0
+    cur := worklist.last()
+    worklist.pop()
+    if cur >= 0 and cur < n_blocks
+      t1 := get_int(jumps, cur)
+      t2 := get_int(cond_jumps, cur)
+      if t1 >= 0 and not contains_int(reachable, t1)
+        reachable.push(t1)
+        worklist.push(t1)
+      if t2 >= 0 and not contains_int(reachable, t2)
+        reachable.push(t2)
+        worklist.push(t2)
+  reachable
+
+fn main
+  print "Dead Code Elimination"
+  print "====================="
+  print ""
+
+  -- Example 1: Linear chain with unreachable tail
+  -- Block 0 -> Block 1 -> Block 2 (return)
+  -- Block 3 -> Block 4 (unreachable)
+  print "Example 1: Linear chain with unreachable tail"
+  print "  Blocks: 0->1->2(end), 3->4(unreachable)"
+  mut instrs1 := ["x = 1", "x = x + 2", "return x", "y = 99", "return y"]
+  mut jumps1 := [1, 2, -1, 4, -1]
+  n1 := 5
+  reachable1 := find_reachable(0, jumps1, n1)
+  r1_count := reachable1.count()
+  dead1 := n1 - r1_count
+  print "  Reachable blocks: {r1_count}"
+  print "  Dead blocks: {dead1}"
+  mut i := 0
+  while i < n1
+    alive := contains_int(reachable1, i)
+    status := if alive then "LIVE" else "DEAD"
+    instr := get_str(instrs1, i)
+    print "  Block {i}: [{status}] {instr}"
+    i = i + 1
+  print ""
+
+  -- Example 2: With conditional branches (if/else)
+  -- Block 0 -> {Block 1, Block 2}
+  -- Block 1 -> Block 3
+  -- Block 2 -> Block 3
+  -- Block 3 -> -1 (return)
+  -- Block 4 -> Block 5 (unreachable island)
+  print "Example 2: Conditional branches with unreachable island"
+  print "  Blocks: 0->[1,2], 1->3, 2->3, 3->end, 4->5(dead)"
+  mut instrs2 := ["if x > 0", "x = 1", "x = -1", "return x", "y = 42", "return y"]
+  mut jumps2 := [1, 3, 3, -1, 5, -1]
+  mut cond2 := [2, -1, -1, -1, -1, -1]
+  n2 := 6
+  reachable2 := find_reachable2(0, jumps2, cond2, n2)
+  r2_count := reachable2.count()
+  dead2 := n2 - r2_count
+  print "  Reachable blocks: {r2_count}"
+  print "  Dead blocks: {dead2}"
+  mut j := 0
+  while j < n2
+    alive := contains_int(reachable2, j)
+    status := if alive then "LIVE" else "DEAD"
+    instr := get_str(instrs2, j)
+    print "  Block {j}: [{status}] {instr}"
+    j = j + 1
+  print ""
+
+  -- Example 3: Loop with dead code after break
+  -- Block 0 -> {1, exit}; 1 -> 0 (back edge)
+  -- Block 2 -> Block 3 (dead, after unconditional exit in block 0)
+  print "Example 3: Loop structure"
+  print "  Blocks: 0->[1,end], 1->0(back), 2->3(dead)"
+  mut instrs3 := ["while cond", "body", "return 0", "dead_stmt"]
+  mut jumps3 := [1, 0, -1, -1]
+  mut cond3 := [2, -1, -1, -1]
+  n3 := 4
+  reachable3 := find_reachable2(0, jumps3, cond3, n3)
+  r3_count := reachable3.count()
+  dead3 := n3 - r3_count
+  print "  Reachable blocks: {r3_count}"
+  print "  Dead blocks: {dead3}"
+  mut k := 0
+  while k < n3
+    alive := contains_int(reachable3, k)
+    status := if alive then "LIVE" else "DEAD"
+    instr := get_str(instrs3, k)
+    print "  Block {k}: [{status}] {instr}"
+    k = k + 1
+  print ""
+
+  print "Dead code elimination complete."

@@ -1,0 +1,212 @@
+-- Showcase 970: Type Inference Engine (Hindley-Milner style)
+-- Implements basic type inference with unification for a simple expression language
+-- Types: Int, Bool, Str, and type variables (TV0, TV1, ...)
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+-- Type representation: "Int", "Bool", "Str", "TVn" (type variable n)
+
+fn is_type_var t:Str -> Bool
+  t.starts_with("TV")
+
+fn type_var_id t:Str -> Int
+  n := t.len()
+  -- TV followed by digits
+  mut val := 0
+  mut i := 2
+  while i < n
+    c := t.char_at(i)
+    d := if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+      else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+      else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+      else 9
+    val = val * 10 + d
+    i = i + 1
+  val
+
+fn make_tv n:Int -> Str
+  "TV" + str(n)
+
+-- Substitution: list of (var_id, type) pairs
+-- subst_vars: list of ints (var ids)
+-- subst_types: list of strs (types)
+
+fn lookup_subst var_id:Int subst_vars:List subst_types:List -> Str
+  n := subst_vars.count()
+  mut i := 0
+  mut result := ""
+  while i < n
+    if get_int(subst_vars, i) == var_id
+      result = get_str(subst_types, i)
+      i = n  -- break
+    i = i + 1
+  result
+
+fn apply_subst t:Str subst_vars:List subst_types:List -> Str
+  if is_type_var(t)
+    vid := type_var_id(t)
+    found := lookup_subst(vid, subst_vars, subst_types)
+    if found == ""
+      t  -- unresolved
+    else if is_type_var(found)
+      -- follow chain
+      vid2 := type_var_id(found)
+      found2 := lookup_subst(vid2, subst_vars, subst_types)
+      if found2 == "" then found else found2
+    else
+      found
+  else
+    t
+
+-- Unify two types, extend substitution
+-- Returns "" on success, error message on failure
+fn unify t1:Str t2:Str subst_vars:List subst_types:List -> Str
+  r1 := apply_subst(t1, subst_vars, subst_types)
+  r2 := apply_subst(t2, subst_vars, subst_types)
+  if r1 == r2
+    "ok"  -- already equal
+  else if is_type_var(r1)
+    vid := type_var_id(r1)
+    subst_vars.push(vid)
+    subst_types.push(r2)
+    "ok"
+  else if is_type_var(r2)
+    vid := type_var_id(r2)
+    subst_vars.push(vid)
+    subst_types.push(r1)
+    "ok"
+  else
+    "Type error: cannot unify " + r1 + " with " + r2
+
+-- Infer type of expressions
+-- Expressions: "INT:n", "BOOL:b", "STR:s", "VAR:name",
+--              "ADD:e1:e2", "EQ:e1:e2", "IF:cond:t:f"
+
+fn infer_type expr:Str env_vars:List env_types:List subst_vars:List subst_types:List next_tv:Int -> Str
+  if expr.starts_with("INT:")
+    "Int"
+  else if expr.starts_with("BOOL:")
+    "Bool"
+  else if expr.starts_with("STR:")
+    "Str"
+  else if expr.starts_with("VAR:")
+    name := expr.substr(4, expr.len() - 4)
+    n := env_vars.count()
+    mut found := "TV" + str(next_tv)
+    mut i := 0
+    while i < n
+      if get_str(env_vars, i) == name
+        found = get_str(env_types, i)
+        i = n
+      i = i + 1
+    found
+  else if expr.starts_with("ADD:")
+    -- ADD:type1,type2 - types given directly
+    rest := expr.substr(4, expr.len() - 4)
+    comma := rest.index_of(",")
+    t1 := rest.substr(0, comma)
+    t2 := rest.substr(comma + 1, rest.len() - comma - 1)
+    -- resolve VAR references
+    mut rt1 := t1
+    if t1.starts_with("VAR:")
+      vn := t1.substr(4, t1.len() - 4)
+      rt1 = infer_type("VAR:" + vn, env_vars, env_types, subst_vars, subst_types, next_tv)
+    mut rt2 := t2
+    if t2.starts_with("VAR:")
+      vn := t2.substr(4, t2.len() - 4)
+      rt2 = infer_type("VAR:" + vn, env_vars, env_types, subst_vars, subst_types, next_tv + 1)
+    u1 := unify(rt1, "Int", subst_vars, subst_types)
+    u2 := unify(rt2, "Int", subst_vars, subst_types)
+    if u1 == "ok" and u2 == "ok" then "Int" else "TypeError"
+  else if expr.starts_with("EQ:")
+    -- EQ:type1,type2 - both must match, result is Bool
+    rest := expr.substr(3, expr.len() - 3)
+    comma := rest.index_of(",")
+    t1 := rest.substr(0, comma)
+    t2 := rest.substr(comma + 1, rest.len() - comma - 1)
+    mut rt1 := t1
+    if t1.starts_with("VAR:")
+      vn := t1.substr(4, t1.len() - 4)
+      rt1 = infer_type("VAR:" + vn, env_vars, env_types, subst_vars, subst_types, next_tv)
+    mut rt2 := t2
+    if t2.starts_with("VAR:")
+      vn := t2.substr(4, t2.len() - 4)
+      rt2 = infer_type("VAR:" + vn, env_vars, env_types, subst_vars, subst_types, next_tv + 1)
+    u := unify(rt1, rt2, subst_vars, subst_types)
+    if u == "ok" then "Bool" else "TypeError"
+  else
+    "Unknown"
+
+fn main
+  print "Type Inference Engine"
+  print "====================="
+  print ""
+
+  mut sv := [0]
+  sv.pop()
+  mut st := [""]
+  st.pop()
+  mut ev := ["x", "y", "z"]
+  mut et := ["Int", "Bool", "Str"]
+
+  -- Test cases
+  print "Environment: x:Int, y:Bool, z:Str"
+  print ""
+
+  e1 := "INT:42"
+  t1 := infer_type(e1, ev, et, sv, st, 0)
+  print "infer(42) = {t1}"
+
+  e2 := "BOOL:true"
+  t2 := infer_type(e2, ev, et, sv, st, 0)
+  print "infer(true) = {t2}"
+
+  e3 := "STR:hello"
+  t3 := infer_type(e3, ev, et, sv, st, 0)
+  print "infer('hello') = {t3}"
+
+  e4 := "VAR:x"
+  t4 := infer_type(e4, ev, et, sv, st, 0)
+  print "infer(x) = {t4}"
+
+  e5 := "VAR:y"
+  t5 := infer_type(e5, ev, et, sv, st, 0)
+  print "infer(y) = {t5}"
+
+  t6 := infer_type("ADD:Int,Int", ev, et, sv, st, 0)
+  print "infer(3 + 4) = {t6}"
+
+  t7 := infer_type("ADD:VAR:x,Int", ev, et, sv, st, 0)
+  print "infer(x + 1) = {t7}"
+
+  t8 := infer_type("EQ:Int,Int", ev, et, sv, st, 0)
+  print "infer(1 == 1) = {t8}"
+
+  t9 := infer_type("EQ:VAR:x,VAR:x", ev, et, sv, st, 0)
+  print "infer(x == x) = {t9}"
+
+  t10 := infer_type("ADD:Bool,Int", ev, et, sv, st, 0)
+  print "infer(true + 1) = {t10}"
+
+  t11 := infer_type("EQ:Int,Bool", ev, et, sv, st, 0)
+  print "infer(1 == true) = {t11}"
+
+  -- Type variable resolution
+  print ""
+  print "Type variable unification:"
+  mut sv2 := [0]
+  sv2.pop()
+  mut st2 := [""]
+  st2.pop()
+  u1 := unify("TV0", "Int", sv2, st2)
+  u2 := unify("TV1", "TV0", sv2, st2)
+  r0 := apply_subst("TV0", sv2, st2)
+  r1 := apply_subst("TV1", sv2, st2)
+  print "  TV0 unified with Int -> TV0 = {r0}"
+  print "  TV1 unified with TV0 -> TV1 = {r1}"
+  print ""
+  print "Type inference complete."

@@ -1,0 +1,122 @@
+-- Showcase 966: Lambda Calculus Evaluator (Church Numerals)
+-- Implements Church encoding for natural numbers and booleans
+-- Uses integer representation to simulate beta reduction results
+
+-- Church numerals: n = \f.\x. f^n(x)
+-- We represent them as integers and compute via simulation
+
+fn church_to_int n:Int -> Int
+  n
+
+fn succ n:Int -> Int
+  n + 1
+
+fn church_add m:Int n:Int -> Int
+  m + n
+
+fn church_mul m:Int n:Int -> Int
+  m * n
+
+fn church_pow base:Int exp:Int -> Int
+  mut result := 1
+  mut i := 0
+  while i < exp
+    result = result * base
+    i = i + 1
+  result
+
+-- Church booleans: TRUE = \t.\f.t, FALSE = \t.\f.f
+-- We represent as 1 (true) and 0 (false)
+
+fn church_true -> Int
+  1
+
+fn church_false -> Int
+  0
+
+fn church_and a:Int b:Int -> Int
+  if a == 1 and b == 1 then 1 else 0
+
+fn church_or a:Int b:Int -> Int
+  if a == 1 or b == 1 then 1 else 0
+
+fn church_not a:Int -> Int
+  if a == 1 then 0 else 1
+
+fn church_if cond:Int t:Int f:Int -> Int
+  if cond == 1 then t else f
+
+-- Church pairs: PAIR = \x.\y.\z.z x y
+-- FIRST = \p.p TRUE, SECOND = \p.p FALSE
+-- Represented as two ints encoded in one: a * 1000 + b
+fn church_pair a:Int b:Int -> Int
+  a * 1000 + b
+
+fn church_first p:Int -> Int
+  p / 1000
+
+fn church_second p:Int -> Int
+  p % 1000
+
+-- Ackermann function (limited) using Church-style recursion
+fn ackermann m:Int n:Int -> Int
+  if m == 0
+    n + 1
+  else if n == 0
+    ackermann(m - 1, 1)
+  else
+    ackermann(m - 1, ackermann(m, n - 1))
+
+fn bool_str b:Int -> Str
+  if b == 1 then "TRUE" else "FALSE"
+
+fn main
+  print "Lambda Calculus Evaluator"
+  print "========================="
+  print ""
+
+  -- Church numerals
+  print "Church Numerals:"
+  c0 := 0
+  c1 := 1
+  c2 := 2
+  c3 := 3
+  c5 := 5
+  print "  zero = {church_to_int(c0)}"
+  print "  succ(2) = {succ(c2)}"
+  print "  add(3, 5) = {church_add(c3, c5)}"
+  print "  mul(3, 5) = {church_mul(c3, c5)}"
+  print "  pow(2, 10) = {church_pow(2, 10)}"
+  print ""
+
+  -- Church booleans
+  print "Church Booleans:"
+  t := church_true()
+  f := church_false()
+  print "  TRUE AND TRUE = {bool_str(church_and(t, t))}"
+  print "  TRUE AND FALSE = {bool_str(church_and(t, f))}"
+  print "  FALSE OR TRUE = {bool_str(church_or(f, t))}"
+  print "  NOT TRUE = {bool_str(church_not(t))}"
+  print "  NOT FALSE = {bool_str(church_not(f))}"
+  print "  IF TRUE THEN 42 ELSE 0 = {church_if(t, 42, 0)}"
+  print ""
+
+  -- Church pairs
+  print "Church Pairs:"
+  p := church_pair(7, 13)
+  print "  pair(7, 13) first = {church_first(p)}"
+  print "  pair(7, 13) second = {church_second(p)}"
+  p2 := church_pair(100, 200)
+  print "  pair(100, 200) first = {church_first(p2)}"
+  print "  pair(100, 200) second = {church_second(p2)}"
+  print ""
+
+  -- Ackermann function (Church-style primitive recursion)
+  print "Ackermann Function (Church primitive recursion):"
+  print "  ack(0,0) = {ackermann(0, 0)}"
+  print "  ack(1,1) = {ackermann(1, 1)}"
+  print "  ack(2,2) = {ackermann(2, 2)}"
+  print "  ack(3,3) = {ackermann(3, 3)}"
+  print ""
+
+  print "Lambda calculus evaluation complete."

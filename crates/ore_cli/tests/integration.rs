@@ -11597,6 +11597,166 @@ fn showcase_950() {
 }
 
 #[test]
+fn showcase_951() {
+    let out = run_ore("showcase951.ore");
+    assert!(out.contains("IP Address Manipulation (CIDR / Subnet)"), "got: {out}");
+    assert!(out.contains("CIDR: 192.168.1.100/24"), "got: {out}");
+    assert!(out.contains("192.168.1.50 and 192.168.2.5 -> different subnet"), "got: {out}");
+}
+
+#[test]
+fn showcase_952() {
+    let out = run_ore("showcase952.ore");
+    assert!(out.contains("TCP State Machine Simulation"), "got: {out}");
+    assert!(out.contains("[SYN_SENT] --recv_SYN+ACK--> [ESTABLISHED]"), "got: {out}");
+    assert!(out.contains("Final server state: CLOSED"), "got: {out}");
+}
+
+#[test]
+fn showcase_953() {
+    let out = run_ore("showcase953.ore");
+    assert!(out.contains("Routing Table Lookup (Longest Prefix Match)"), "got: {out}");
+    assert!(out.contains("10.10.20.55 -> internal-C (/24)"), "got: {out}");
+    assert!(out.contains("8.8.8.8 -> dns-server (/24)"), "got: {out}");
+}
+
+#[test]
+fn showcase_954() {
+    let out = run_ore("showcase954.ore");
+    assert!(out.contains("DNS Resolution Simulation"), "got: {out}");
+    assert!(out.contains("www.example.com -> 93.184.216.34"), "got: {out}");
+    assert!(out.contains("web.example.com -> CNAME www.example.com -> 93.184.216.34"), "got: {out}");
+}
+
+#[test]
+fn showcase_955() {
+    let out = run_ore("showcase955.ore");
+    assert!(out.contains("HTTP Request Parser"), "got: {out}");
+    assert!(out.contains("Method:  GET"), "got: {out}");
+    assert!(out.contains("404 Not Found"), "got: {out}");
+}
+
+#[test]
+fn showcase_956() {
+    let out = run_ore("showcase956.ore");
+    assert!(out.contains("URL Parser"), "got: {out}");
+    assert!(out.contains("Scheme:   https"), "got: {out}");
+    assert!(out.contains("Query:    page=2&limit=10"), "got: {out}");
+}
+
+#[test]
+fn showcase_957() {
+    let out = run_ore("showcase957.ore");
+    assert!(out.contains("Base64 Encode / Decode"), "got: {out}");
+    assert!(out.contains("Encoded: SGVsbG8="), "got: {out}");
+    assert!(out.contains("Decoded: networking  (ok=true)"), "got: {out}");
+}
+
+#[test]
+fn showcase_958() {
+    let out = run_ore("showcase958.ore");
+    assert!(out.contains("Checksum Algorithms: Fletcher-16, Fletcher-32, Adler-32"), "got: {out}");
+    assert!(out.contains("Fletcher-16:  11542"), "got: {out}");
+    assert!(out.contains("Error detected: true"), "got: {out}");
+}
+
+#[test]
+fn showcase_959() {
+    let out = run_ore("showcase959.ore");
+    assert!(out.contains("Hamming Distance and Error Correction"), "got: {out}");
+    assert!(out.contains("flip bit 7: 0001100  syn=7  corrected=true"), "got: {out}");
+    assert!(out.contains("Hamming(7,4) corrects all single-bit errors"), "got: {out}");
+}
+
+#[test]
+fn showcase_960() {
+    let out = run_ore("showcase960.ore");
+    assert!(out.contains("CIDR Subnet Calculator"), "got: {out}");
+    assert!(out.contains("Usable:     254 hosts"), "got: {out}");
+    assert!(out.contains("Engineering: need 60 hosts -> /26"), "got: {out}");
+}
+
+#[test]
+fn showcase_961() {
+    let out = run_ore("showcase961.ore");
+    assert!(out.contains("Arithmetic Lexer"), "got: {out}");
+    assert!(out.contains("Token count for '3 + 42 * (7 - 2)': 9"), "got: {out}");
+    assert!(out.contains("Token count for '100 / 5 + 3': 5"), "got: {out}");
+}
+
+#[test]
+fn showcase_962() {
+    let out = run_ore("showcase962.ore");
+    assert!(out.contains("Recursive Descent Parser"), "got: {out}");
+    assert!(out.contains("3 + 42 * (7 - 2) = 213"), "got: {out}");
+    assert!(out.contains("(10 + 2) * (3 + 1) = 48"), "got: {out}");
+}
+
+#[test]
+fn showcase_963() {
+    let out = run_ore("showcase963.ore");
+    assert!(out.contains("Shunting-Yard Algorithm"), "got: {out}");
+    assert!(out.contains("RPN:    3 4 2 * +"), "got: {out}");
+    assert!(out.contains("Value:  1400"), "got: {out}");
+}
+
+#[test]
+fn showcase_964() {
+    let out = run_ore("showcase964.ore");
+    assert!(out.contains("Stack-Based Virtual Machine"), "got: {out}");
+    assert!(out.contains("-> 14"), "got: {out}");
+    assert!(out.contains("-> 120"), "got: {out}");
+}
+
+#[test]
+fn showcase_965() {
+    let out = run_ore("showcase965.ore");
+    assert!(out.contains("Brainfuck Interpreter"), "got: {out}");
+    assert!(out.contains("Output char code: 72"), "got: {out}");
+    assert!(out.contains("Output: 7"), "got: {out}");
+}
+
+#[test]
+fn showcase_966() {
+    let out = run_ore("showcase966.ore");
+    assert!(out.contains("Lambda Calculus Evaluator"), "got: {out}");
+    assert!(out.contains("pow(2, 10) = 1024"), "got: {out}");
+    assert!(out.contains("ack(3,3) = 61"), "got: {out}");
+}
+
+#[test]
+fn showcase_967() {
+    let out = run_ore("showcase967.ore");
+    assert!(out.contains("Thompson's NFA Construction"), "got: {out}");
+    assert!(out.contains("Total passed: 21/21"), "got: {out}");
+    assert!(out.contains("Passed: 6/6"), "got: {out}");
+}
+
+#[test]
+fn showcase_968() {
+    let out = run_ore("showcase968.ore");
+    assert!(out.contains("Dead Code Elimination"), "got: {out}");
+    assert!(out.contains("Block 3: [DEAD] y = 99"), "got: {out}");
+    assert!(out.contains("Dead blocks: 2"), "got: {out}");
+}
+
+#[test]
+fn showcase_969() {
+    let out = run_ore("showcase969.ore");
+    assert!(out.contains("Constant Folding Optimizer"), "got: {out}");
+    assert!(out.contains("a = 7  -- folded"), "got: {out}");
+    assert!(out.contains("r = 80  -- folded"), "got: {out}");
+}
+
+#[test]
+fn showcase_970() {
+    let out = run_ore("showcase970.ore");
+    assert!(out.contains("Type Inference Engine"), "got: {out}");
+    assert!(out.contains("infer(3 + 4) = Int"), "got: {out}");
+    assert!(out.contains("infer(true + 1) = TypeError"), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
