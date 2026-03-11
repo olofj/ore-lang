@@ -33,6 +33,42 @@ pub extern "C" fn ore_print_float(f: f64) {
     }
 }
 
+// ── No-newline print primitives (for list display) ──
+
+#[no_mangle]
+pub extern "C" fn ore_str_print_no_newline(s: *mut OreStr) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    unsafe {
+        let _ = write!(handle, "{}", (*s).as_str());
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_print_int_no_newline(n: i64) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    let _ = write!(handle, "{}", n);
+}
+
+#[no_mangle]
+pub extern "C" fn ore_print_float_no_newline(f: f64) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    if f == f.floor() {
+        let _ = write!(handle, "{:.1}", f);
+    } else {
+        let _ = write!(handle, "{}", f);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_print_bool_no_newline(b: i8) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    let _ = write!(handle, "{}", if b != 0 { "true" } else { "false" });
+}
+
 // ── RC Strings ──
 //
 // OreStr layout: [refcount: u32][len: u32][data: u8...]
@@ -496,6 +532,77 @@ pub extern "C" fn ore_list_print_str(list: *mut OreList) {
             if !s.is_null() {
                 let _ = write!(handle, "{}", (*s).as_str());
             }
+        }
+        let _ = writeln!(handle, "]");
+    }
+}
+
+/// Print a list with typed elements.
+/// kind: 0=Int, 1=Float, 2=Bool, 3=Str
+#[no_mangle]
+pub extern "C" fn ore_list_print_typed(list: *mut OreList, kind: i64) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    unsafe {
+        let list = &*list;
+        let _ = write!(handle, "[");
+        for i in 0..list.len as usize {
+            if i > 0 {
+                let _ = write!(handle, ", ");
+            }
+            let val = *list.data.add(i);
+            match kind {
+                0 => { let _ = write!(handle, "{}", val); }
+                1 => { let _ = write!(handle, "{}", format_float(f64::from_bits(val as u64))); }
+                2 => { let _ = write!(handle, "{}", if val != 0 { "true" } else { "false" }); }
+                3 => {
+                    let s = val as *mut OreStr;
+                    if !s.is_null() {
+                        let _ = write!(handle, "{}", (*s).as_str());
+                    }
+                }
+                _ => { let _ = write!(handle, "{}", val); }
+            }
+        }
+        let _ = writeln!(handle, "]");
+    }
+}
+
+fn format_float(f: f64) -> String {
+    if f == f.floor() {
+        format!("{:.1}", f)
+    } else {
+        format!("{}", f)
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_print_float(list: *mut OreList) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    unsafe {
+        let list = &*list;
+        let _ = write!(handle, "[");
+        for i in 0..list.len as usize {
+            if i > 0 { let _ = write!(handle, ", "); }
+            let val = *list.data.add(i);
+            let _ = write!(handle, "{}", format_float(f64::from_bits(val as u64)));
+        }
+        let _ = writeln!(handle, "]");
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_print_bool(list: *mut OreList) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    unsafe {
+        let list = &*list;
+        let _ = write!(handle, "[");
+        for i in 0..list.len as usize {
+            if i > 0 { let _ = write!(handle, ", "); }
+            let val = *list.data.add(i);
+            let _ = write!(handle, "{}", if val != 0 { "true" } else { "false" });
         }
         let _ = writeln!(handle, "]");
     }

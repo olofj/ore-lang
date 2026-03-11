@@ -344,6 +344,18 @@ fn records_display() {
 }
 
 #[test]
+fn lists_typed_display() {
+    let out = run_ore("lists/typed_display.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "[hello, world]",
+        "[true, false, true]",
+        "[1.5, 2.0, 3.14]",
+        "[10, 20, 30]",
+    ]);
+}
+
+#[test]
 fn enum_display() {
     let out = run_ore("records/enum_display.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

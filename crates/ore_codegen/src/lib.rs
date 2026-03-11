@@ -526,6 +526,14 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_concat", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_str_print(ptr)
         self.module.add_function("ore_str_print", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_str_print_no_newline(ptr)
+        self.module.add_function("ore_str_print_no_newline", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_print_int_no_newline(i64)
+        self.module.add_function("ore_print_int_no_newline", void_type.fn_type(&[i64_type.into()], false), ext);
+        // ore_print_float_no_newline(f64)
+        self.module.add_function("ore_print_float_no_newline", void_type.fn_type(&[f64_type.into()], false), ext);
+        // ore_print_bool_no_newline(i8)
+        self.module.add_function("ore_print_bool_no_newline", void_type.fn_type(&[i8_type.into()], false), ext);
         // ore_str_retain(ptr)
         self.module.add_function("ore_str_retain", void_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_str_release(ptr)
@@ -553,6 +561,14 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_set", void_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_print(ptr)
         self.module.add_function("ore_list_print", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_print_typed(ptr, i64)
+        self.module.add_function("ore_list_print_typed", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        // ore_list_print_str(ptr)
+        self.module.add_function("ore_list_print_str", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_print_float(ptr)
+        self.module.add_function("ore_list_print_float", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_print_bool(ptr)
+        self.module.add_function("ore_list_print_bool", void_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_map(ptr, fn_ptr, env_ptr) -> ptr
         self.module.add_function("ore_list_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_filter(ptr, fn_ptr, env_ptr) -> ptr
@@ -993,6 +1009,19 @@ impl<'ctx> CodeGen<'ctx> {
                         let release = self.module.get_function("ore_str_release").unwrap();
                         bld!(self.builder.build_call(release, &[str_ptr.into()], ""))?;
                         return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                    }
+                    // Check for typed list printing
+                    if kind == ValKind::List {
+                        if let Some(elem_kind) = self.list_element_kinds.get(name).cloned() {
+                            match elem_kind {
+                                ValKind::Int => {} // Fall through to default int list print
+                                _ => {
+                                    // Generate inline typed list print loop
+                                    self.compile_typed_list_print(val.into_pointer_value(), &elem_kind)?;
+                                    return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                                }
+                            }
+                        }
                     }
                 }
                 self.compile_print(val, kind)?;
@@ -2490,6 +2519,16 @@ impl<'ctx> CodeGen<'ctx> {
                     let i64_val = bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), self.context.i64_type(), "p2i"))?;
                     i64_val.into()
                 }
+                ValKind::Float => {
+                    // Floats need bitcast to i64 for storage
+                    let i64_val = bld!(self.builder.build_bit_cast(val, self.context.i64_type(), "f2i"))?;
+                    i64_val
+                }
+                ValKind::Bool => {
+                    // Bools need zero-extension to i64
+                    let i64_val = bld!(self.builder.build_int_z_extend(val.into_int_value(), self.context.i64_type(), "b2i"))?;
+                    i64_val.into()
+                }
                 _ => val,
             };
             bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
@@ -2953,6 +2992,100 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(merge_bb);
         let result = bld!(self.builder.build_load(self.ptr_type(), result_alloca, "enum_str_val"))?.into_pointer_value();
         Ok(result)
+    }
+
+    fn compile_typed_list_print(
+        &mut self,
+        list_ptr: PointerValue<'ctx>,
+        elem_kind: &ValKind,
+    ) -> Result<(), CodeGenError> {
+        // Print "[" using ore_str_print
+        let open_bracket = self.compile_string_literal("[")?;
+        let str_print = self.module.get_function("ore_str_print_no_newline").unwrap();
+        bld!(self.builder.build_call(str_print, &[open_bracket.into()], ""))?;
+        let release = self.module.get_function("ore_str_release").unwrap();
+        bld!(self.builder.build_call(release, &[open_bracket.into()], ""))?;
+
+        let list_len = self.module.get_function("ore_list_len").unwrap();
+        let list_get = self.module.get_function("ore_list_get").unwrap();
+
+        let len_result = bld!(self.builder.build_call(list_len, &[list_ptr.into()], "len"))?;
+        let len = self.call_result_to_value(len_result)?.into_int_value();
+
+        let current_fn = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+
+        // Loop: for i in 0..len
+        let idx_alloca = bld!(self.builder.build_alloca(self.context.i64_type(), "idx"))?;
+        bld!(self.builder.build_store(idx_alloca, self.context.i64_type().const_int(0, false)))?;
+
+        let loop_check = self.context.append_basic_block(current_fn, "list_print_check");
+        let loop_body = self.context.append_basic_block(current_fn, "list_print_body");
+        let loop_end = self.context.append_basic_block(current_fn, "list_print_end");
+
+        bld!(self.builder.build_unconditional_branch(loop_check))?;
+
+        self.builder.position_at_end(loop_check);
+        let i = bld!(self.builder.build_load(self.context.i64_type(), idx_alloca, "i"))?.into_int_value();
+        let cond = bld!(self.builder.build_int_compare(IntPredicate::SLT, i, len, "cmp"))?;
+        bld!(self.builder.build_conditional_branch(cond, loop_body, loop_end))?;
+
+        self.builder.position_at_end(loop_body);
+        let i = bld!(self.builder.build_load(self.context.i64_type(), idx_alloca, "i"))?.into_int_value();
+
+        // Print ", " if not first element
+        let is_first = bld!(self.builder.build_int_compare(IntPredicate::EQ, i, self.context.i64_type().const_int(0, false), "first"))?;
+        let sep_bb = self.context.append_basic_block(current_fn, "print_sep");
+        let elem_bb = self.context.append_basic_block(current_fn, "print_elem");
+        bld!(self.builder.build_conditional_branch(is_first, elem_bb, sep_bb))?;
+
+        self.builder.position_at_end(sep_bb);
+        let sep = self.compile_string_literal(", ")?;
+        bld!(self.builder.build_call(str_print, &[sep.into()], ""))?;
+        bld!(self.builder.build_call(release, &[sep.into()], ""))?;
+        bld!(self.builder.build_unconditional_branch(elem_bb))?;
+
+        self.builder.position_at_end(elem_bb);
+        let i = bld!(self.builder.build_load(self.context.i64_type(), idx_alloca, "i"))?.into_int_value();
+
+        // Get element
+        let elem_result = bld!(self.builder.build_call(list_get, &[list_ptr.into(), i.into()], "elem"))?;
+        let elem_i64 = self.call_result_to_value(elem_result)?.into_int_value();
+
+        // Convert and print based on element kind
+        match elem_kind {
+            ValKind::Str => {
+                let elem_ptr = bld!(self.builder.build_int_to_ptr(elem_i64, self.ptr_type(), "str_ptr"))?;
+                bld!(self.builder.build_call(str_print, &[elem_ptr.into()], ""))?;
+            }
+            ValKind::Float => {
+                let f = bld!(self.builder.build_bit_cast(elem_i64, self.context.f64_type(), "f"))?.into_float_value();
+                let print_float = self.module.get_function("ore_print_float_no_newline").unwrap();
+                bld!(self.builder.build_call(print_float, &[f.into()], ""))?;
+            }
+            ValKind::Bool => {
+                let b = bld!(self.builder.build_int_truncate(elem_i64, self.context.i8_type(), "b"))?;
+                let print_bool = self.module.get_function("ore_print_bool_no_newline").unwrap();
+                bld!(self.builder.build_call(print_bool, &[b.into()], ""))?;
+            }
+            _ => {
+                let print_int = self.module.get_function("ore_print_int_no_newline").unwrap();
+                bld!(self.builder.build_call(print_int, &[elem_i64.into()], ""))?;
+            }
+        }
+
+        // Increment
+        let next_i = bld!(self.builder.build_int_add(i, self.context.i64_type().const_int(1, false), "next_i"))?;
+        bld!(self.builder.build_store(idx_alloca, next_i))?;
+        bld!(self.builder.build_unconditional_branch(loop_check))?;
+
+        self.builder.position_at_end(loop_end);
+        // Print "]\n"
+        let close_str = self.compile_string_literal("]")?;
+        let print_str_fn = self.module.get_function("ore_str_print").unwrap();
+        bld!(self.builder.build_call(print_str_fn, &[close_str.into()], ""))?;
+        bld!(self.builder.build_call(release, &[close_str.into()], ""))?;
+
+        Ok(())
     }
 
     fn compile_print(

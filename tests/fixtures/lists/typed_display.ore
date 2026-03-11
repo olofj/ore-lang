@@ -1,0 +1,9 @@
+fn main
+  strs := ["hello", "world"]
+  print strs
+  bools := [true, false, true]
+  print bools
+  floats := [1.5, 2.0, 3.14]
+  print floats
+  ints := [10, 20, 30]
+  print ints

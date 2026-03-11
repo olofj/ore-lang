@@ -254,74 +254,7 @@ fn run_repl() {
                 .create_jit_execution_engine(inkwell::OptimizationLevel::None)
                 .map_err(|e| format!("JIT error: {}", e))?;
 
-            // Map runtime functions
-            macro_rules! map_fn {
-                ($name:expr, $func:expr) => {
-                    if let Some(f) = codegen.module.get_function($name) {
-                        ee.add_global_mapping(&f, $func as usize);
-                    }
-                };
-            }
-            map_fn!("ore_print_int", ore_runtime::ore_print_int);
-            map_fn!("ore_print_bool", ore_runtime::ore_print_bool);
-            map_fn!("ore_print_float", ore_runtime::ore_print_float);
-            map_fn!("ore_str_new", ore_runtime::ore_str_new);
-            map_fn!("ore_str_concat", ore_runtime::ore_str_concat);
-            map_fn!("ore_str_print", ore_runtime::ore_str_print);
-            map_fn!("ore_str_retain", ore_runtime::ore_str_retain);
-            map_fn!("ore_str_release", ore_runtime::ore_str_release);
-            map_fn!("ore_int_to_str", ore_runtime::ore_int_to_str);
-            map_fn!("ore_bool_to_str", ore_runtime::ore_bool_to_str);
-            map_fn!("ore_spawn", ore_runtime::ore_spawn);
-            map_fn!("ore_thread_join_all", ore_runtime::ore_thread_join_all);
-            map_fn!("ore_sleep", ore_runtime::ore_sleep);
-            map_fn!("ore_list_new", ore_runtime::ore_list_new);
-            map_fn!("ore_list_push", ore_runtime::ore_list_push);
-    map_fn!("ore_list_set", ore_runtime::ore_list_set);
-            map_fn!("ore_list_get", ore_runtime::ore_list_get);
-            map_fn!("ore_list_len", ore_runtime::ore_list_len);
-            map_fn!("ore_list_print", ore_runtime::ore_list_print);
-            map_fn!("ore_list_map", ore_runtime::ore_list_map);
-            map_fn!("ore_list_filter", ore_runtime::ore_list_filter);
-            map_fn!("ore_list_each", ore_runtime::ore_list_each);
-            map_fn!("ore_list_sort", ore_runtime::ore_list_sort);
-            map_fn!("ore_list_reverse", ore_runtime::ore_list_reverse);
-            map_fn!("ore_list_contains", ore_runtime::ore_list_contains);
-            map_fn!("ore_list_concat", ore_runtime::ore_list_concat);
-            map_fn!("ore_list_par_map", ore_runtime::ore_list_par_map);
-            map_fn!("ore_list_par_each", ore_runtime::ore_list_par_each);
-            map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
-            map_fn!("ore_list_find", ore_runtime::ore_list_find);
-            map_fn!("ore_list_join", ore_runtime::ore_list_join);
-            map_fn!("ore_float_to_str", ore_runtime::ore_float_to_str);
-            map_fn!("ore_str_len", ore_runtime::ore_str_len);
-            map_fn!("ore_str_eq", ore_runtime::ore_str_eq);
-            map_fn!("ore_str_cmp", ore_runtime::ore_str_cmp);
-            map_fn!("ore_str_contains", ore_runtime::ore_str_contains);
-            map_fn!("ore_str_trim", ore_runtime::ore_str_trim);
-            map_fn!("ore_str_split", ore_runtime::ore_str_split);
-            map_fn!("ore_str_to_int", ore_runtime::ore_str_to_int);
-            map_fn!("ore_str_to_float", ore_runtime::ore_str_to_float);
-    map_fn!("ore_str_replace", ore_runtime::ore_str_replace);
-    map_fn!("ore_str_starts_with", ore_runtime::ore_str_starts_with);
-    map_fn!("ore_str_ends_with", ore_runtime::ore_str_ends_with);
-    map_fn!("ore_str_to_upper", ore_runtime::ore_str_to_upper);
-    map_fn!("ore_str_to_lower", ore_runtime::ore_str_to_lower);
-    map_fn!("ore_str_substr", ore_runtime::ore_str_substr);
-            map_fn!("ore_readln", ore_runtime::ore_readln);
-            map_fn!("ore_file_read", ore_runtime::ore_file_read);
-            map_fn!("ore_file_write", ore_runtime::ore_file_write);
-            map_fn!("ore_map_new", ore_runtime::ore_map_new);
-            map_fn!("ore_map_set", ore_runtime::ore_map_set);
-            map_fn!("ore_map_get", ore_runtime::ore_map_get);
-            map_fn!("ore_map_contains", ore_runtime::ore_map_contains);
-            map_fn!("ore_map_len", ore_runtime::ore_map_len);
-            map_fn!("ore_map_remove", ore_runtime::ore_map_remove);
-            map_fn!("ore_map_keys", ore_runtime::ore_map_keys);
-            map_fn!("ore_map_values", ore_runtime::ore_map_values);
-            map_fn!("ore_map_print", ore_runtime::ore_map_print);
-            map_fn!("ore_map_print_str", ore_runtime::ore_map_print_str);
-            map_fn!("ore_dynamic_to_str", ore_runtime::ore_dynamic_to_str);
+            map_runtime_functions(&ee, &codegen.module);
 
             unsafe {
                 let main_fn: JitFunction<MainFunc> = ee
@@ -339,55 +272,40 @@ fn run_repl() {
     }
 }
 
-fn run_file(path: &std::path::Path) -> Result<(), String> {
-    let context = Context::create();
-    let codegen = compile_source(path, &context)?;
-
-    let ee = codegen.module
-        .create_jit_execution_engine(inkwell::OptimizationLevel::None)
-        .map_err(|e| format!("JIT error: {}", e))?;
-
-    // Map runtime functions
+/// Map all ore_runtime functions to the JIT execution engine.
+/// This is the single source of truth for JIT function mappings.
+fn map_runtime_functions(
+    ee: &inkwell::execution_engine::ExecutionEngine,
+    module: &inkwell::module::Module,
+) {
     macro_rules! map_fn {
         ($name:expr, $func:expr) => {
-            ee.add_global_mapping(&codegen.module.get_function($name).unwrap(), $func as usize);
+            if let Some(f) = module.get_function($name) {
+                ee.add_global_mapping(&f, $func as usize);
+            }
         };
     }
+    // Print primitives
     map_fn!("ore_print_int", ore_runtime::ore_print_int);
     map_fn!("ore_print_bool", ore_runtime::ore_print_bool);
     map_fn!("ore_print_float", ore_runtime::ore_print_float);
+    map_fn!("ore_print_int_no_newline", ore_runtime::ore_print_int_no_newline);
+    map_fn!("ore_print_float_no_newline", ore_runtime::ore_print_float_no_newline);
+    map_fn!("ore_print_bool_no_newline", ore_runtime::ore_print_bool_no_newline);
+    // Strings
     map_fn!("ore_str_new", ore_runtime::ore_str_new);
     map_fn!("ore_str_concat", ore_runtime::ore_str_concat);
     map_fn!("ore_str_print", ore_runtime::ore_str_print);
+    map_fn!("ore_str_print_no_newline", ore_runtime::ore_str_print_no_newline);
     map_fn!("ore_str_retain", ore_runtime::ore_str_retain);
     map_fn!("ore_str_release", ore_runtime::ore_str_release);
     map_fn!("ore_int_to_str", ore_runtime::ore_int_to_str);
-    map_fn!("ore_bool_to_str", ore_runtime::ore_bool_to_str);
-    map_fn!("ore_spawn", ore_runtime::ore_spawn);
-    map_fn!("ore_thread_join_all", ore_runtime::ore_thread_join_all);
-    map_fn!("ore_sleep", ore_runtime::ore_sleep);
-    map_fn!("ore_list_new", ore_runtime::ore_list_new);
-    map_fn!("ore_list_push", ore_runtime::ore_list_push);
-    map_fn!("ore_list_set", ore_runtime::ore_list_set);
-    map_fn!("ore_list_get", ore_runtime::ore_list_get);
-    map_fn!("ore_list_len", ore_runtime::ore_list_len);
-    map_fn!("ore_list_print", ore_runtime::ore_list_print);
-    map_fn!("ore_list_map", ore_runtime::ore_list_map);
-    map_fn!("ore_list_filter", ore_runtime::ore_list_filter);
-    map_fn!("ore_list_each", ore_runtime::ore_list_each);
-    map_fn!("ore_list_sort", ore_runtime::ore_list_sort);
-    map_fn!("ore_list_reverse", ore_runtime::ore_list_reverse);
-    map_fn!("ore_list_contains", ore_runtime::ore_list_contains);
-    map_fn!("ore_list_concat", ore_runtime::ore_list_concat);
-            map_fn!("ore_list_par_map", ore_runtime::ore_list_par_map);
-            map_fn!("ore_list_par_each", ore_runtime::ore_list_par_each);
-    map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
-    map_fn!("ore_list_find", ore_runtime::ore_list_find);
-    map_fn!("ore_list_join", ore_runtime::ore_list_join);
     map_fn!("ore_float_to_str", ore_runtime::ore_float_to_str);
+    map_fn!("ore_bool_to_str", ore_runtime::ore_bool_to_str);
+    map_fn!("ore_dynamic_to_str", ore_runtime::ore_dynamic_to_str);
     map_fn!("ore_str_len", ore_runtime::ore_str_len);
     map_fn!("ore_str_eq", ore_runtime::ore_str_eq);
-            map_fn!("ore_str_cmp", ore_runtime::ore_str_cmp);
+    map_fn!("ore_str_cmp", ore_runtime::ore_str_cmp);
     map_fn!("ore_str_contains", ore_runtime::ore_str_contains);
     map_fn!("ore_str_trim", ore_runtime::ore_str_trim);
     map_fn!("ore_str_split", ore_runtime::ore_str_split);
@@ -399,9 +317,30 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_str_to_upper", ore_runtime::ore_str_to_upper);
     map_fn!("ore_str_to_lower", ore_runtime::ore_str_to_lower);
     map_fn!("ore_str_substr", ore_runtime::ore_str_substr);
-    map_fn!("ore_readln", ore_runtime::ore_readln);
-    map_fn!("ore_file_read", ore_runtime::ore_file_read);
-    map_fn!("ore_file_write", ore_runtime::ore_file_write);
+    // Lists
+    map_fn!("ore_list_new", ore_runtime::ore_list_new);
+    map_fn!("ore_list_push", ore_runtime::ore_list_push);
+    map_fn!("ore_list_set", ore_runtime::ore_list_set);
+    map_fn!("ore_list_get", ore_runtime::ore_list_get);
+    map_fn!("ore_list_len", ore_runtime::ore_list_len);
+    map_fn!("ore_list_print", ore_runtime::ore_list_print);
+    map_fn!("ore_list_print_typed", ore_runtime::ore_list_print_typed);
+    map_fn!("ore_list_print_str", ore_runtime::ore_list_print_str);
+    map_fn!("ore_list_print_float", ore_runtime::ore_list_print_float);
+    map_fn!("ore_list_print_bool", ore_runtime::ore_list_print_bool);
+    map_fn!("ore_list_map", ore_runtime::ore_list_map);
+    map_fn!("ore_list_filter", ore_runtime::ore_list_filter);
+    map_fn!("ore_list_each", ore_runtime::ore_list_each);
+    map_fn!("ore_list_sort", ore_runtime::ore_list_sort);
+    map_fn!("ore_list_reverse", ore_runtime::ore_list_reverse);
+    map_fn!("ore_list_contains", ore_runtime::ore_list_contains);
+    map_fn!("ore_list_concat", ore_runtime::ore_list_concat);
+    map_fn!("ore_list_par_map", ore_runtime::ore_list_par_map);
+    map_fn!("ore_list_par_each", ore_runtime::ore_list_par_each);
+    map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
+    map_fn!("ore_list_find", ore_runtime::ore_list_find);
+    map_fn!("ore_list_join", ore_runtime::ore_list_join);
+    // Maps
     map_fn!("ore_map_new", ore_runtime::ore_map_new);
     map_fn!("ore_map_set", ore_runtime::ore_map_set);
     map_fn!("ore_map_get", ore_runtime::ore_map_get);
@@ -412,7 +351,25 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_map_values", ore_runtime::ore_map_values);
     map_fn!("ore_map_print", ore_runtime::ore_map_print);
     map_fn!("ore_map_print_str", ore_runtime::ore_map_print_str);
-    map_fn!("ore_dynamic_to_str", ore_runtime::ore_dynamic_to_str);
+    // Concurrency
+    map_fn!("ore_spawn", ore_runtime::ore_spawn);
+    map_fn!("ore_thread_join_all", ore_runtime::ore_thread_join_all);
+    map_fn!("ore_sleep", ore_runtime::ore_sleep);
+    // I/O
+    map_fn!("ore_readln", ore_runtime::ore_readln);
+    map_fn!("ore_file_read", ore_runtime::ore_file_read);
+    map_fn!("ore_file_write", ore_runtime::ore_file_write);
+}
+
+fn run_file(path: &std::path::Path) -> Result<(), String> {
+    let context = Context::create();
+    let codegen = compile_source(path, &context)?;
+
+    let ee = codegen.module
+        .create_jit_execution_engine(inkwell::OptimizationLevel::None)
+        .map_err(|e| format!("JIT error: {}", e))?;
+
+    map_runtime_functions(&ee, &codegen.module);
 
     unsafe {
         let main_fn: JitFunction<MainFunc> = ee
