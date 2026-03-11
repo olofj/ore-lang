@@ -1,0 +1,72 @@
+-- Showcase 937: Cryptarithmetic Solver
+-- Solves the classic TWO + TWO = FOUR puzzle.
+-- Each letter represents a unique digit 0-9.
+-- T and F cannot be zero (leading digits).
+
+fn main
+  print "Cryptarithmetic Solver: TWO + TWO = FOUR"
+  print "========================================="
+  print ""
+  print "Letters: T W O F U R (6 distinct digits)"
+  print "T and F cannot be 0 (leading digits)"
+  print ""
+  print "Searching..."
+  print ""
+
+  -- TWO + TWO = FOUR
+  -- T, W, O, F, U, R are 6 distinct digits
+  -- TWO = T*100 + W*10 + O
+  -- FOUR = F*1000 + O*100 + U*10 + R
+  -- 2*TWO = FOUR
+
+  mut solutions_found := 0
+
+  for t in range(1, 10)
+    for w in range(0, 10)
+      if w != t
+        for o in range(0, 10)
+          if o != t and o != w
+            two := t * 100 + w * 10 + o
+            four := 2 * two
+            if four > 999 and four < 10000
+              f := four / 1000
+              r1 := four % 1000
+              ou := r1 / 100
+              r2 := r1 % 100
+              u := r2 / 10
+              r := r2 % 10
+              if f != 0
+                -- Check ou == o
+                if ou == o
+                  -- Check all distinct
+                  if f != t and f != w and f != o
+                    if u != t and u != w and u != o and u != f
+                      if r != t and r != w and r != o and r != f and r != u
+                        solutions_found = solutions_found + 1
+                        print "Solution {solutions_found}:"
+                        print "  T={t}, W={w}, O={o}, F={f}, U={u}, R={r}"
+                        print "  TWO  = {two}"
+                        print "  FOUR = {four}"
+                        print "  {two} + {two} = {four}"
+                        print ""
+
+  print "Total solutions: {solutions_found}"
+  print ""
+
+  -- Also solve: BASE + BALL = GAMES (a harder one with 7 letters)
+  -- Actually let's try NORTH + SOUTH = EARTH
+  -- Too complex. Instead, verify a known solution: 734 + 734 = 1468
+  t2 := 7
+  w2 := 3
+  o2 := 4
+  two2 := t2 * 100 + w2 * 10 + o2
+  four2 := 2 * two2
+  print "Verification: TWO=734, FOUR=1468"
+  print "734 + 734 = {four2}"
+  if four2 == 1468
+    print "Correct!"
+  else
+    print "Incorrect"
+
+  print ""
+  print "Cryptarithmetic: arithmetic puzzles where letters represent digits"

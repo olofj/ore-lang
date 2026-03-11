@@ -1,0 +1,109 @@
+-- Showcase 939: Monty Hall Simulation
+-- Simulates the Monty Hall problem with a deterministic pseudo-random sequence.
+-- Shows that switching wins ~2/3 of the time vs staying wins ~1/3.
+-- Uses a simple LCG (linear congruential generator) for determinism.
+
+fn lcg seed:Int -> Int
+  -- LCG: next = (a*seed + c) % m
+  -- Parameters from Numerical Recipes
+  a := 1664525
+  c := 1013904223
+  m := 2147483647  -- 2^31 - 1
+  (a * seed + c) % m
+
+fn main
+  print "Monty Hall Problem Simulation"
+  print "=============================="
+  print ""
+  print "Setup: 3 doors, 1 car, 2 goats"
+  print "Host always reveals a goat after your initial choice"
+  print ""
+
+  trials := 10000
+  mut seed := 42
+
+  -- Strategy 1: Always stay
+  mut stay_wins := 0
+  mut stay_seed := 42
+
+  for i in range(0, trials)
+    stay_seed = lcg(stay_seed)
+    car := stay_seed % 3  -- which door has car (0,1,2)
+    stay_seed = lcg(stay_seed)
+    choice := stay_seed % 3  -- player's initial choice
+    -- Player stays with initial choice
+    if choice == car
+      stay_wins = stay_wins + 1
+
+  -- Strategy 2: Always switch
+  mut switch_wins := 0
+  mut sw_seed := 42
+
+  for i in range(0, trials)
+    sw_seed = lcg(sw_seed)
+    car2 := sw_seed % 3
+    sw_seed = lcg(sw_seed)
+    choice2 := sw_seed % 3
+
+    -- Host reveals a door that is not car and not choice
+    -- Player then switches to the remaining door
+    -- The remaining door is: 0+1+2 - car - choice (if car != choice)
+    -- or any non-choice door (if car == choice)
+    -- After switch: win iff initial choice != car
+    if choice2 != car2
+      switch_wins = switch_wins + 1
+
+  -- Calculate percentages (integer math: multiply by 100)
+  stay_pct_whole := stay_wins * 100 / trials
+  stay_pct_frac := (stay_wins * 1000 / trials) % 10
+  switch_pct_whole := switch_wins * 100 / trials
+  switch_pct_frac := (switch_wins * 1000 / trials) % 10
+
+  print "Results after {trials} trials:"
+  print ""
+  print "Stay strategy:"
+  print "  Wins: {stay_wins} / {trials}"
+  print "  Win rate: {stay_pct_whole}.{stay_pct_frac}%"
+  print "  Expected: ~33.3%"
+  print ""
+  print "Switch strategy:"
+  print "  Wins: {switch_wins} / {trials}"
+  print "  Win rate: {switch_pct_whole}.{switch_pct_frac}%"
+  print "  Expected: ~66.7%"
+  print ""
+
+  -- Verify mathematical analysis
+  print "Mathematical analysis:"
+  print "  P(win|stay)   = 1/3 (initial choice is correct)"
+  print "  P(win|switch) = 2/3 (initial choice is wrong, switch to car)"
+  print ""
+
+  -- Check simulation is close to expected
+  stay_ok := stay_pct_whole > 30 and stay_pct_whole < 37
+  switch_ok := switch_pct_whole > 63 and switch_pct_whole < 70
+  if stay_ok and switch_ok
+    print "Simulation confirms: switching doubles your winning chances!"
+  else
+    print "Simulation result unexpected (check parameters)"
+
+  print ""
+
+  -- Show a few individual examples
+  print "Example games (first 5):"
+  mut ex_seed := 42
+  for i in range(0, 5)
+    ex_seed = lcg(ex_seed)
+    ex_car := ex_seed % 3
+    ex_seed = lcg(ex_seed)
+    ex_choice := ex_seed % 3
+    game_num := i + 1
+    mut outcome_stay := "LOSE"
+    if ex_choice == ex_car
+      outcome_stay = "WIN"
+    mut outcome_switch := "WIN"
+    if ex_choice == ex_car
+      outcome_switch = "LOSE"
+    print "  Game {game_num}: car=door {ex_car}, pick=door {ex_choice} | stay={outcome_stay}, switch={outcome_switch}"
+
+  print ""
+  print "Monty Hall paradox: counterintuitive but mathematically proven"

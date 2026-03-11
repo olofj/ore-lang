@@ -1,0 +1,110 @@
+-- Showcase 935: Knight's Tour (Warnsdorff's Rule)
+-- Finds a knight's tour on a chessboard using Warnsdorff's heuristic.
+-- Always move to the square with the fewest onward moves.
+-- Produces a Hamiltonian path visiting all n*n squares exactly once.
+
+fn knight_moves_count board:List r:Int c:Int n:Int drs:List dcs:List -> Int
+  mut cnt := 0
+  for i in range(0, 8)
+    nr := r + drs[i]
+    nc := c + dcs[i]
+    if nr >= 0 and nr < n and nc >= 0 and nc < n
+      if board[nr * n + nc] == 0
+        cnt = cnt + 1
+  cnt
+
+fn main
+  print "Knight's Tour (Warnsdorff's Heuristic)"
+  print "======================================="
+  print ""
+
+  n := 6  -- 6x6 board
+  total := n * n
+
+  mut board := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Knight move offsets
+  mut drs := [0, 0, 0, 0, 0, 0, 0, 0]
+  drs[0] = 0 - 2
+  drs[1] = 0 - 2
+  drs[2] = 0 - 1
+  drs[3] = 0 - 1
+  drs[4] = 1
+  drs[5] = 1
+  drs[6] = 2
+  drs[7] = 2
+
+  mut dcs := [0, 0, 0, 0, 0, 0, 0, 0]
+  dcs[0] = 0 - 1
+  dcs[1] = 1
+  dcs[2] = 0 - 2
+  dcs[3] = 2
+  dcs[4] = 0 - 2
+  dcs[5] = 2
+  dcs[6] = 0 - 1
+  dcs[7] = 1
+
+  -- Start at (0,0)
+  mut cur_r := 0
+  mut cur_c := 0
+  board[0] = 1
+  mut step := 1
+
+  loop
+    if step >= total
+      break
+
+    mut best_r := 0 - 1
+    mut best_c := 0 - 1
+    mut best_cnt := 9999
+
+    for i in range(0, 8)
+      nr := cur_r + drs[i]
+      nc := cur_c + dcs[i]
+      if nr >= 0 and nr < n and nc >= 0 and nc < n
+        if board[nr * n + nc] == 0
+          cnt := knight_moves_count(board, nr, nc, n, drs, dcs)
+          if cnt < best_cnt
+            best_cnt = cnt
+            best_r = nr
+            best_c = nc
+
+    if best_r < 0
+      break
+
+    step = step + 1
+    board[best_r * n + best_c] = step
+    cur_r = best_r
+    cur_c = best_c
+
+  -- Print the board
+  print "Starting position: (0,0)"
+  print "Board size: {n}x{n} ({total} squares)"
+  print ""
+  print "Tour order (step number at each square):"
+  print ""
+
+  for r in range(0, n)
+    v0 := str(board[r * n + 0]).pad_left(3, " ")
+    v1 := str(board[r * n + 1]).pad_left(3, " ")
+    v2 := str(board[r * n + 2]).pad_left(3, " ")
+    v3 := str(board[r * n + 3]).pad_left(3, " ")
+    v4 := str(board[r * n + 4]).pad_left(3, " ")
+    v5 := str(board[r * n + 5]).pad_left(3, " ")
+    print "{v0} {v1} {v2} {v3} {v4} {v5}"
+
+  -- Count visited squares
+  mut visited := 0
+  for i in range(0, total)
+    if board[i] > 0
+      visited = visited + 1
+
+  print ""
+  print "Squares visited: {visited} / {total}"
+  if visited == total
+    print "Complete knight's tour found!"
+  else
+    print "Partial tour ({visited} squares)"
+
+  print ""
+  print "Warnsdorff heuristic: move to square with fewest onward moves"

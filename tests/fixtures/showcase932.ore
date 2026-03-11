@@ -1,0 +1,110 @@
+-- Showcase 932: Magic Square Generator
+-- Generates odd-order magic squares using the Siamese (de la Loubere) method.
+-- In a magic square, all rows, columns, and diagonals sum to the same value.
+-- Magic constant = n*(n^2+1)/2
+
+fn main
+  print "Magic Square Generator (Siamese Method)"
+  print "========================================"
+  print ""
+
+  -- Generate 3x3 magic square
+  n := 3
+  magic_sum := n * (n * n + 1) / 2
+  print "Order-{n} magic square (magic constant = {magic_sum}):"
+  print ""
+
+  -- Flat 9-element grid, indexed as grid[row*3 + col]
+  mut grid := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Start: place 1 in middle of top row
+  mut row := 0
+  mut col := n / 2
+
+  for num in range(1, n * n + 1)
+    idx := row * n + col
+    grid[idx] = num
+
+    -- Next position: up and right
+    next_row := (row - 1 + n) % n
+    next_col := (col + 1) % n
+    next_idx := next_row * n + next_col
+
+    if num < n * n
+      if grid[next_idx] != 0
+        -- Occupied: move down instead
+        row = (row + 1) % n
+      else
+        row = next_row
+        col = next_col
+
+  -- Print the square
+  for r in range(0, n)
+    c0 := grid[r * n + 0]
+    c1 := grid[r * n + 1]
+    c2 := grid[r * n + 2]
+    s0 := str(c0).pad_left(3, " ")
+    s1 := str(c1).pad_left(3, " ")
+    s2 := str(c2).pad_left(3, " ")
+    print "{s0} {s1} {s2}"
+
+  print ""
+
+  -- Verify rows
+  print "Verification:"
+  for r in range(0, n)
+    row_sum := grid[r * n + 0] + grid[r * n + 1] + grid[r * n + 2]
+    print "  Row {r} sum: {row_sum}"
+
+  -- Verify columns
+  for c in range(0, n)
+    col_sum := grid[0 * n + c] + grid[1 * n + c] + grid[2 * n + c]
+    print "  Col {c} sum: {col_sum}"
+
+  -- Verify diagonals
+  d1 := grid[0] + grid[4] + grid[8]
+  d2 := grid[2] + grid[4] + grid[6]
+  print "  Main diagonal sum: {d1}"
+  print "  Anti-diagonal sum: {d2}"
+
+  print ""
+
+  -- Generate 5x5 magic square
+  n5 := 5
+  magic5 := n5 * (n5 * n5 + 1) / 2
+  print "Order-{n5} magic square (magic constant = {magic5}):"
+  print ""
+
+  mut g5 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut r5 := 0
+  mut c5 := n5 / 2
+
+  for num5 in range(1, n5 * n5 + 1)
+    i5 := r5 * n5 + c5
+    g5[i5] = num5
+    nr5 := (r5 - 1 + n5) % n5
+    nc5 := (c5 + 1) % n5
+    ni5 := nr5 * n5 + nc5
+    if num5 < n5 * n5
+      if g5[ni5] != 0
+        r5 = (r5 + 1) % n5
+      else
+        r5 = nr5
+        c5 = nc5
+
+  for rr in range(0, n5)
+    v0 := str(g5[rr * n5 + 0]).pad_left(3, " ")
+    v1 := str(g5[rr * n5 + 1]).pad_left(3, " ")
+    v2 := str(g5[rr * n5 + 2]).pad_left(3, " ")
+    v3 := str(g5[rr * n5 + 3]).pad_left(3, " ")
+    v4 := str(g5[rr * n5 + 4]).pad_left(3, " ")
+    print "{v0} {v1} {v2} {v3} {v4}"
+
+  print ""
+
+  -- Verify one row and diagonal of 5x5
+  row0_sum := g5[0] + g5[1] + g5[2] + g5[3] + g5[4]
+  diag5 := g5[0] + g5[6] + g5[12] + g5[18] + g5[24]
+  print "5x5 Row 0 sum: {row0_sum} (expected {magic5})"
+  print "5x5 Main diagonal sum: {diag5} (expected {magic5})"
+  print "Siamese method works for all odd n"

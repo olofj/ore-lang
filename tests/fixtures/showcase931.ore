@@ -1,0 +1,140 @@
+-- Showcase 931: Tower of Hanoi (iterative)
+-- Solves Tower of Hanoi iteratively using three stacks.
+-- The classic recursive solution is emulated iteratively.
+-- For n disks, requires 2^n - 1 moves.
+
+fn main
+  print "Tower of Hanoi (Iterative)"
+  print "=========================="
+  print ""
+
+  n := 3
+  total_moves := 7  -- 2^3 - 1
+
+  -- Use three lists as stacks: A (source), B (auxiliary), C (destination)
+  mut stack_a := [3, 2, 1, 0]  -- top is last element (index size-1)
+  mut stack_b := [0, 0, 0, 0]
+  mut stack_c := [0, 0, 0, 0]
+  mut size_a := 3
+  mut size_b := 0
+  mut size_c := 0
+
+  print "Initial state: A=[3,2,1] (top=1), B=[], C=[]"
+  print "Moving {n} disks from A to C via B"
+  print ""
+
+  -- Iterative algorithm: move smallest cyclically A->C->B->A if n is even
+  -- or A->B->C->A if n is odd
+  -- Between moves of smallest disk, make the only legal move between other pegs
+
+  mut move_count := 0
+
+  -- For even n: cycle is A->C, C->B, B->A  (peg order A,C,B repeating)
+  -- For odd n:  cycle is A->B, B->C, C->A  (peg order A,B,C repeating)
+  -- We simulate via peg indices: 0=A, 1=B, 2=C
+  -- sizes and tops via arrays
+
+  mut sizes := [size_a, size_b, size_c]
+  mut tops_a := stack_a
+  mut tops_b := stack_b
+  mut tops_c := stack_c
+
+  -- Instead: simulate with parallel arrays indexed by peg (0,1,2)
+  -- Use separate mut lists for each peg's disks, stored flat with size tracking
+  -- Represent as: peg_disks[peg][pos] - not supported with nested lists
+  -- Use a flat encoding: peg_flat = 12 ints, peg 0 uses [0..3], peg 1 uses [4..7], peg 2 uses [8..11]
+
+  mut flat := [3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut psz := [3, 0, 0]  -- sizes of pegs
+
+  -- Helper: top of peg p = flat[p*4 + psz[p]-1]
+  -- pop peg p: psz[p] -= 1
+  -- push peg p val: flat[p*4 + psz[p]] = val; psz[p] += 1
+
+  -- Determine move sequence
+  -- Peg cycle for smallest disk: for odd n, A->C->B->A moves smallest to C first
+  mut cycle := [0, 2, 1]  -- A->C->B->A for odd n (destination is C)
+  if n % 2 == 0
+    cycle = [0, 1, 2]     -- A->B->C->A for even n
+
+  mut step := 0
+  mut done := 0
+
+  loop
+    if move_count >= total_moves
+      done = 1
+      break
+
+    -- Move smallest disk
+    from_peg := cycle[step % 3]
+    to_peg := cycle[(step + 1) % 3]
+
+    fp := from_peg * 4 + psz[from_peg] - 1
+    disk := flat[fp]
+    flat[fp] = 0
+    psz[from_peg] = psz[from_peg] - 1
+
+    tp := to_peg * 4 + psz[to_peg]
+    flat[tp] = disk
+    psz[to_peg] = psz[to_peg] + 1
+
+    move_count = move_count + 1
+    from_name := "ABC"
+    fn_ch := from_name.char_at(from_peg)
+    to_ch := from_name.char_at(to_peg)
+    print "Move {move_count}: disk {disk} from {fn_ch} to {to_ch}"
+
+    step = step + 1
+
+    if move_count >= total_moves
+      break
+
+    -- Now make the only legal non-smallest-disk move
+    -- Find the two pegs that are NOT the next smallest-disk source
+    next_from := cycle[step % 3]
+    other_a := (next_from + 1) % 3
+    other_b := (next_from + 2) % 3
+
+    -- Move between other_a and other_b: move smaller top to larger top peg
+    top_a_idx := other_a * 4 + psz[other_a] - 1
+    top_b_idx := other_b * 4 + psz[other_b] - 1
+
+    mut move_from2 := other_a
+    mut move_to2 := other_b
+
+    if psz[other_a] == 0
+      move_from2 = other_b
+      move_to2 = other_a
+    else
+      if psz[other_b] == 0
+        move_from2 = other_a
+        move_to2 = other_b
+      else
+        da := flat[top_a_idx]
+        db := flat[top_b_idx]
+        if da < db
+          move_from2 = other_a
+          move_to2 = other_b
+        else
+          move_from2 = other_b
+          move_to2 = other_a
+
+    fp2 := move_from2 * 4 + psz[move_from2] - 1
+    disk2 := flat[fp2]
+    flat[fp2] = 0
+    psz[move_from2] = psz[move_from2] - 1
+
+    tp2 := move_to2 * 4 + psz[move_to2]
+    flat[tp2] = disk2
+    psz[move_to2] = psz[move_to2] + 1
+
+    move_count = move_count + 1
+    fn_ch2 := from_name.char_at(move_from2)
+    to_ch2 := from_name.char_at(move_to2)
+    print "Move {move_count}: disk {disk2} from {fn_ch2} to {to_ch2}"
+
+  print ""
+  print "Total moves: {move_count} (optimal for {n} disks: {total_moves})"
+  peg_c_size := psz[2]
+  print "Peg C size: {peg_c_size} disks"
+  print "Final state: all {n} disks successfully moved to peg C"

@@ -1,0 +1,151 @@
+-- Showcase 934: Eight Queens (counting solutions)
+-- Counts all solutions to the N-queens problem using backtracking.
+-- For 8x8 board there are exactly 92 solutions.
+-- Tracks column and diagonal attacks using flat arrays.
+
+fn main
+  print "Eight Queens Problem"
+  print "===================="
+  print ""
+
+  -- Solve for n=8
+  n := 8
+
+  -- We use iterative backtracking with explicit state
+  -- queens[r] = column of queen in row r (0-indexed)
+  -- -1 means no queen placed in that row yet
+
+  mut queens := [-1, -1, -1, -1, -1, -1, -1, -1]
+
+  -- col_used[c] = 1 if column c has a queen
+  mut col_used := [0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- diag1_used[r-c+7] = 1 if that diagonal is attacked (r-c ranges -7..7, offset by 7)
+  mut diag1 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- diag2_used[r+c] = 1 if that anti-diagonal is attacked (r+c ranges 0..14)
+  mut diag2 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  mut solutions := 0
+  mut row := 0
+  mut col := 0
+
+  -- Iterative backtracking
+  loop
+    if row == n
+      -- Found a solution
+      solutions = solutions + 1
+      row = row - 1
+      if row < 0
+        break
+      -- Undo last placement
+      prev_col := queens[row]
+      col_used[prev_col] = 0
+      d1 := row - prev_col + 7
+      d2 := row + prev_col
+      diag1[d1] = 0
+      diag2[d2] = 0
+      queens[row] = -1
+      col = prev_col + 1
+    else
+      -- Try to place a queen in row 'row' starting at 'col'
+      if col >= n
+        -- Backtrack
+        if row == 0
+          break
+        row = row - 1
+        prev_col := queens[row]
+        col_used[prev_col] = 0
+        d1b := row - prev_col + 7
+        d2b := row + prev_col
+        diag1[d1b] = 0
+        diag2[d2b] = 0
+        queens[row] = -1
+        col = prev_col + 1
+      else
+        d1c := row - col + 7
+        d2c := row + col
+        if col_used[col] == 0 and diag1[d1c] == 0 and diag2[d2c] == 0
+          -- Place queen
+          queens[row] = col
+          col_used[col] = 1
+          diag1[d1c] = 1
+          diag2[d2c] = 1
+          row = row + 1
+          col = 0
+        else
+          col = col + 1
+
+  print "Board size: {n}x{n}"
+  print "Total solutions: {solutions}"
+  print ""
+
+  -- Display one solution: reset and find the first one
+  mut q2 := [-1, -1, -1, -1, -1, -1, -1, -1]
+  mut cu2 := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut d1x := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut d2x := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut sol_count := 0
+  mut r2 := 0
+  mut c2 := 0
+  mut found := 0
+
+  loop
+    if found == 1
+      break
+    if r2 == n
+      sol_count = sol_count + 1
+      if sol_count == 1
+        found = 1
+        break
+      r2 = r2 - 1
+      if r2 < 0
+        break
+      pc := q2[r2]
+      cu2[pc] = 0
+      da := r2 - pc + 7
+      db := r2 + pc
+      d1x[da] = 0
+      d2x[db] = 0
+      q2[r2] = -1
+      c2 = pc + 1
+    else
+      if c2 >= n
+        if r2 == 0
+          break
+        r2 = r2 - 1
+        pc2 := q2[r2]
+        cu2[pc2] = 0
+        dc := r2 - pc2 + 7
+        dd := r2 + pc2
+        d1x[dc] = 0
+        d2x[dd] = 0
+        q2[r2] = -1
+        c2 = pc2 + 1
+      else
+        de := r2 - c2 + 7
+        df := r2 + c2
+        if cu2[c2] == 0 and d1x[de] == 0 and d2x[df] == 0
+          q2[r2] = c2
+          cu2[c2] = 1
+          d1x[de] = 1
+          d2x[df] = 1
+          r2 = r2 + 1
+          c2 = 0
+        else
+          c2 = c2 + 1
+
+  print "First solution (Q=queen, .=empty):"
+  for r in range(0, n)
+    qc := q2[r]
+    mut rowstr := "........"
+    for c in range(0, n)
+      if c == qc
+        rowstr = rowstr.substr(0, c) + "Q" + rowstr.substr(c + 1, n - c - 1)
+    print "  {rowstr}"
+
+  print ""
+  queen_cols := [q2[0], q2[1], q2[2], q2[3], q2[4], q2[5], q2[6], q2[7]]
+  cols_str := queen_cols | map(x => str(x + 1)) | join(", ")
+  print "Queen columns (1-indexed): {cols_str}"
+  print "8-queens has exactly 92 solutions"

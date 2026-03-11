@@ -1,0 +1,114 @@
+-- Showcase 940: Josephus Problem (Various k)
+-- Solves the Josephus problem: n people in a circle, every k-th person eliminated.
+-- Find the position of the last survivor.
+-- Uses both iterative simulation and the mathematical recurrence.
+
+fn josephus_math n:Int k:Int -> Int
+  -- Mathematical formula: J(1,k)=0, J(n,k)=(J(n-1,k)+k) mod n
+  -- Returns 0-indexed position
+  mut pos := 0
+  for i in range(2, n + 1)
+    pos = (pos + k) % i
+  pos
+
+fn josephus_sim n:Int k:Int -> Int
+  -- Simulate by maintaining a list of people
+  mut alive := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut sz := n
+  for i in range(0, n)
+    alive[i] = i
+
+  mut idx := 0
+  loop
+    if sz == 1
+      break
+    -- Advance k-1 positions (we're already at current)
+    idx = (idx + k - 1) % sz
+    -- Remove this person: shift remaining
+    for j in range(idx, sz - 1)
+      alive[j] = alive[j + 1]
+    sz = sz - 1
+    -- idx now points to next person
+    if idx >= sz
+      idx = 0
+
+  alive[0]
+
+fn main
+  print "Josephus Problem"
+  print "================"
+  print ""
+  print "n people stand in a circle, every k-th person is eliminated."
+  print "Find the 0-indexed position of the last survivor."
+  print ""
+
+  -- Classic case: n=41, k=3 (Josephus's own reported solution)
+  n_classic := 41
+  k_classic := 3
+  classic_pos := josephus_math(n_classic, k_classic)
+  classic_pos1 := classic_pos + 1
+  print "Classic (n=41, k=3):"
+  print "  Survivor position (0-indexed): {classic_pos}"
+  print "  Survivor position (1-indexed): {classic_pos1}"
+  print "  (Josephus placed himself at position {classic_pos1})"
+  print ""
+
+  -- Show results for various k with n=10
+  n10 := 10
+  print "Survivors for n={n10} people, various k:"
+  print "  k  | math | sim | elimination order"
+  print "  ---+------+-----+------------------"
+
+  for k in range(2, 8)
+    math_pos := josephus_math(n10, k)
+    sim_pos := josephus_sim(n10, k)
+    math1 := math_pos + 1
+    sim1 := sim_pos + 1
+    print "  {k}  |  {math1}   |  {sim1}  | (k={k})"
+
+  print ""
+
+  -- Show full elimination order for n=7, k=2
+  n7 := 7
+  k2 := 2
+  print "Full simulation for n={n7}, k={k2}:"
+  print "People numbered 1 to {n7}"
+  print ""
+
+  mut alive7 := [1, 2, 3, 4, 5, 6, 7]
+  mut sz7 := n7
+  mut idx7 := 0
+  mut elim_order := 1
+
+  loop
+    if sz7 == 1
+      break
+    idx7 = (idx7 + k2 - 1) % sz7
+    eliminated := alive7[idx7]
+    print "  Elimination {elim_order}: person {eliminated}"
+    elim_order = elim_order + 1
+    for j in range(idx7, sz7 - 1)
+      alive7[j] = alive7[j + 1]
+    sz7 = sz7 - 1
+    if idx7 >= sz7
+      idx7 = 0
+
+  survivor7 := alive7[0]
+  print ""
+  print "  Survivor: person {survivor7}"
+
+  math7 := josephus_math(n7, k2) + 1
+  print "  Mathematical formula gives: {math7}"
+  if survivor7 == math7
+    print "  Results match!"
+
+  print ""
+
+  -- Powers of 2 pattern for k=2
+  print "Special case k=2: survivor = 2*L + 1 where n = 2^m + L"
+  print "  n=4:  survivor position 1-indexed = {josephus_math(4, 2) + 1} (expected 1)"
+  print "  n=8:  survivor position 1-indexed = {josephus_math(8, 2) + 1} (expected 1)"
+  print "  n=10: survivor position 1-indexed = {josephus_math(10, 2) + 1} (expected 5)"
+  print "  n=12: survivor position 1-indexed = {josephus_math(12, 2) + 1} (expected 9)"
+  print ""
+  print "Josephus problem: classic combinatorics / survivor counting puzzle"

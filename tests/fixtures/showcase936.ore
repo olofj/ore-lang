@@ -1,0 +1,163 @@
+-- Showcase 936: Maze Solver (BFS)
+-- Solves a maze using Breadth-First Search to find shortest path.
+-- The maze is represented as a flat array: 0=open, 1=wall.
+-- BFS guarantees the shortest path from start to end.
+
+fn main
+  print "Maze Solver (Breadth-First Search)"
+  print "==================================="
+  print ""
+
+  -- 8x8 maze: 0=open, 1=wall
+  -- S=start at (0,0), E=end at (7,7)
+  rows := 8
+  cols := 8
+
+  maze := [
+    0, 0, 1, 0, 0, 0, 1, 0,
+    0, 1, 1, 0, 1, 0, 1, 0,
+    0, 0, 0, 0, 1, 0, 0, 0,
+    1, 1, 0, 1, 1, 1, 1, 0,
+    0, 0, 0, 0, 0, 0, 1, 0,
+    0, 1, 1, 1, 1, 0, 1, 0,
+    0, 0, 0, 0, 1, 0, 0, 0,
+    1, 1, 1, 0, 1, 1, 0, 0
+  ]
+
+  print "Maze (S=start, E=end, #=wall, .=open):"
+  for r in range(0, rows)
+    mut rowstr := ""
+    for c in range(0, cols)
+      v := maze[r * cols + c]
+      if r == 0 and c == 0
+        rowstr = rowstr + "S"
+      else
+        if r == rows - 1 and c == cols - 1
+          rowstr = rowstr + "E"
+        else
+          if v == 1
+            rowstr = rowstr + "#"
+          else
+            rowstr = rowstr + "."
+    print "  {rowstr}"
+
+  print ""
+
+  -- BFS using flat arrays as queue
+  -- dist[r*cols+c] = distance from start (-1 = unvisited)
+  -- prev[r*cols+c] = flat index of previous cell (-1 = none)
+  total := rows * cols
+  mut dist := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut prev := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut visited := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Initialize: -1 for all prev
+  for i in range(0, total)
+    prev[i] = 0 - 1
+    dist[i] = 0 - 1
+
+  -- BFS queue (flat array as circular buffer, max size = total)
+  mut queue := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut q_head := 0
+  mut q_tail := 0
+
+  -- Start at (0,0)
+  start := 0
+  goal := (rows - 1) * cols + (cols - 1)
+  dist[start] = 0
+  visited[start] = 1
+  queue[q_tail] = start
+  q_tail = q_tail + 1
+
+  -- Direction offsets: up, down, left, right
+  mut drs2 := [0, 0, 0, 0]
+  drs2[0] = 0 - 1
+  drs2[1] = 1
+  drs2[2] = 0
+  drs2[3] = 0
+
+  mut dcs2 := [0, 0, 0, 0]
+  dcs2[0] = 0
+  dcs2[1] = 0
+  dcs2[2] = 0 - 1
+  dcs2[3] = 1
+
+  mut found := 0
+
+  loop
+    if q_head >= q_tail
+      break
+    if found == 1
+      break
+
+    curr := queue[q_head]
+    q_head = q_head + 1
+
+    if curr == goal
+      found = 1
+      break
+
+    cr := curr / cols
+    cc := curr % cols
+
+    for d in range(0, 4)
+      nr := cr + drs2[d]
+      nc := cc + dcs2[d]
+      if nr >= 0 and nr < rows and nc >= 0 and nc < cols
+        ni := nr * cols + nc
+        if maze[ni] == 0 and visited[ni] == 0
+          visited[ni] = 1
+          dist[ni] = dist[curr] + 1
+          prev[ni] = curr
+          queue[q_tail] = ni
+          q_tail = q_tail + 1
+
+  if found == 1
+    path_len := dist[goal]
+    print "Shortest path found! Length: {path_len} steps"
+    print ""
+
+    -- Reconstruct path
+    mut path := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    mut path_size := 0
+    mut curr2 := goal
+    loop
+      path[path_size] = curr2
+      path_size = path_size + 1
+      if curr2 == start
+        break
+      curr2 = prev[curr2]
+
+    -- Mark path on maze copy
+    mut display := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for i in range(0, path_size)
+      display[path[i]] = 1
+
+    print "Solution path (* = path):"
+    for r in range(0, rows)
+      mut rowstr2 := ""
+      for c in range(0, cols)
+        idx := r * cols + c
+        if r == 0 and c == 0
+          rowstr2 = rowstr2 + "S"
+        else
+          if r == rows - 1 and c == cols - 1
+            rowstr2 = rowstr2 + "E"
+          else
+            if maze[idx] == 1
+              rowstr2 = rowstr2 + "#"
+            else
+              if display[idx] == 1
+                rowstr2 = rowstr2 + "*"
+              else
+                rowstr2 = rowstr2 + "."
+      print "  {rowstr2}"
+
+    print ""
+    print "Path length: {path_len} steps"
+    print "Cells in path (including start/end): {path_size}"
+  else
+    print "No path found!"
+
+  print ""
+  print "BFS guarantees the shortest path in unweighted graphs"
