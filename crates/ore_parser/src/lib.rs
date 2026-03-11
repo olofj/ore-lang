@@ -38,6 +38,10 @@ impl Parser {
         self.tokens.get(self.pos).map(|s| &s.token).unwrap_or(&Token::Eof)
     }
 
+    fn peek_line(&self) -> usize {
+        self.tokens.get(self.pos).map(|s| s.line).unwrap_or(0)
+    }
+
     fn advance(&mut self) -> &Token {
         let tok = self.tokens.get(self.pos).map(|s| &s.token).unwrap_or(&Token::Eof);
         if self.pos < self.tokens.len() {
@@ -411,7 +415,9 @@ impl Parser {
             if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
                 break;
             }
-            stmts.push(self.parse_stmt()?);
+            let line = self.peek_line();
+            let stmt = self.parse_stmt()?;
+            stmts.push(SpannedStmt { stmt, line });
         }
 
         if self.peek() == &Token::Dedent {
@@ -901,8 +907,9 @@ impl Parser {
                     self.skip_newlines();
                     if self.peek() == &Token::If {
                         // else if — parse the if as a single expression in a block
+                        let line = self.peek_line();
                         let nested_if = self.parse_expr(0)?;
-                        Some(Block { stmts: vec![Stmt::Expr(nested_if)] })
+                        Some(Block { stmts: vec![SpannedStmt { stmt: Stmt::Expr(nested_if), line }] })
                     } else {
                         Some(self.parse_block()?)
                     }

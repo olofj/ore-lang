@@ -7,11 +7,16 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct TypeError {
     pub msg: String,
+    pub line: usize,
 }
 
 impl std::fmt::Display for TypeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "type error: {}", self.msg)
+        if self.line > 0 {
+            write!(f, "line {}: {}", self.line, self.msg)
+        } else {
+            write!(f, "{}", self.msg)
+        }
     }
 }
 
@@ -72,6 +77,7 @@ pub struct TypeChecker {
     variant_to_enum: HashMap<String, String>,
     traits: HashMap<String, TraitInfo>,
     errors: Vec<TypeError>,
+    current_line: usize,
 }
 
 impl TypeChecker {
@@ -83,11 +89,12 @@ impl TypeChecker {
             variant_to_enum: HashMap::new(),
             traits: HashMap::new(),
             errors: Vec::new(),
+            current_line: 0,
         }
     }
 
     fn err(&mut self, msg: impl Into<String>) {
-        self.errors.push(TypeError { msg: msg.into() });
+        self.errors.push(TypeError { msg: msg.into(), line: self.current_line });
     }
 
     fn resolve_type_expr(&self, te: &TypeExpr) -> Type {
@@ -201,8 +208,9 @@ impl TypeChecker {
 
     fn check_block(&mut self, block: &Block, env: &mut Env, ret_ty: &Type) -> Type {
         let mut last = Type::Unit;
-        for stmt in &block.stmts {
-            last = self.check_stmt(stmt, env, ret_ty);
+        for spanned in &block.stmts {
+            self.current_line = spanned.line;
+            last = self.check_stmt(&spanned.stmt, env, ret_ty);
         }
         last
     }

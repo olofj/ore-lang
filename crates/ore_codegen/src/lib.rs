@@ -49,11 +49,11 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
         }
         Expr::IfElse { cond, then_block, else_block } => {
             collect_free_vars(cond, bound, free, seen);
-            for stmt in &then_block.stmts {
+            for stmt in then_block.iter_stmts() {
                 collect_free_vars_stmt(stmt, bound, free, seen);
             }
             if let Some(eb) = else_block {
-                for stmt in &eb.stmts {
+                for stmt in eb.iter_stmts() {
                     collect_free_vars_stmt(stmt, bound, free, seen);
                 }
             }
@@ -124,24 +124,24 @@ fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<S
         Stmt::ForIn { start, end, body, .. } => {
             collect_free_vars(start, bound, free, seen);
             collect_free_vars(end, bound, free, seen);
-            for s in &body.stmts {
+            for s in body.iter_stmts() {
                 collect_free_vars_stmt(s, bound, free, seen);
             }
         }
         Stmt::While { cond, body } => {
             collect_free_vars(cond, bound, free, seen);
-            for s in &body.stmts {
+            for s in body.iter_stmts() {
                 collect_free_vars_stmt(s, bound, free, seen);
             }
         }
         Stmt::ForEach { iterable, body, .. } => {
             collect_free_vars(iterable, bound, free, seen);
-            for s in &body.stmts {
+            for s in body.iter_stmts() {
                 collect_free_vars_stmt(s, bound, free, seen);
             }
         }
         Stmt::Loop { body } => {
-            for s in &body.stmts {
+            for s in body.iter_stmts() {
                 collect_free_vars_stmt(s, bound, free, seen);
             }
         }
@@ -715,7 +715,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         let mut last_val: Option<BasicValueEnum<'ctx>> = None;
-        for stmt in &fndef.body.stmts {
+        for stmt in fndef.body.iter_stmts() {
             last_val = self.compile_stmt(stmt, func)?;
         }
 
@@ -2829,7 +2829,7 @@ impl<'ctx> CodeGen<'ctx> {
         let saved_continue = self.continue_target;
         self.break_target = Some(end_bb);
         self.continue_target = Some(inc_bb);
-        for stmt in &body.stmts {
+        for stmt in body.iter_stmts() {
             self.compile_stmt(stmt, func)?;
         }
         self.break_target = saved_break;
@@ -2899,7 +2899,7 @@ impl<'ctx> CodeGen<'ctx> {
         let saved_continue = self.continue_target;
         self.break_target = Some(end_bb);
         self.continue_target = Some(inc_bb);
-        for stmt in &body.stmts {
+        for stmt in body.iter_stmts() {
             self.compile_stmt(stmt, func)?;
         }
         self.break_target = saved_break;
@@ -2941,7 +2941,7 @@ impl<'ctx> CodeGen<'ctx> {
         let saved_continue = self.continue_target;
         self.break_target = Some(end_bb);
         self.continue_target = Some(cond_bb);
-        for stmt in &body.stmts {
+        for stmt in body.iter_stmts() {
             self.compile_stmt(stmt, func)?;
         }
         self.break_target = saved_break;
@@ -2969,7 +2969,7 @@ impl<'ctx> CodeGen<'ctx> {
         let saved_continue = self.continue_target;
         self.break_target = Some(end_bb);
         self.continue_target = Some(body_bb);
-        for stmt in &body.stmts {
+        for stmt in body.iter_stmts() {
             self.compile_stmt(stmt, func)?;
         }
         self.break_target = saved_break;
@@ -3003,7 +3003,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(then_bb);
         let mut then_val: BasicValueEnum<'ctx> = self.context.i64_type().const_int(0, false).into();
-        for stmt in &then_block.stmts {
+        for stmt in then_block.iter_stmts() {
             if let Some(v) = self.compile_stmt(stmt, func)? {
                 then_val = v;
             }
@@ -3016,7 +3016,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(else_bb);
         let mut else_val: BasicValueEnum<'ctx> = self.context.i64_type().const_int(0, false).into();
         if let Some(eb) = else_block {
-            for stmt in &eb.stmts {
+            for stmt in eb.iter_stmts() {
                 if let Some(v) = self.compile_stmt(stmt, func)? {
                     else_val = v;
                 }

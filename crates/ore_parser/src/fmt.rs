@@ -118,8 +118,8 @@ impl Formatter {
     }
 
     fn format_block(&mut self, block: &Block, level: usize) {
-        for stmt in &block.stmts {
-            self.format_stmt(stmt, level);
+        for spanned in &block.stmts {
+            self.format_stmt(&spanned.stmt, level);
         }
     }
 

@@ -86,7 +86,20 @@ pub enum TypeExpr {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block {
-    pub stmts: Vec<Stmt>,
+    pub stmts: Vec<SpannedStmt>,
+}
+
+impl Block {
+    /// Iterate over statements without span info (convenience for codegen)
+    pub fn iter_stmts(&self) -> impl Iterator<Item = &Stmt> {
+        self.stmts.iter().map(|s| &s.stmt)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpannedStmt {
+    pub stmt: Stmt,
+    pub line: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
