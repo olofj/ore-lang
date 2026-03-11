@@ -2019,6 +2019,21 @@ fn showcase69() {
 }
 
 #[test]
+fn showcase70() {
+    let out = run_ore("showcase70.ore");
+    assert!(out.contains("Temperatures: 20.5, 22.3, 19.8, 25.1, 21.7"));
+    assert!(out.contains("Average: 21.88"));
+    assert!(out.contains("Min: 19.8"));
+    assert!(out.contains("Max: 25.1"));
+    assert!(out.contains("Days above 21: 3"));
+    assert!(out.contains("Fahrenheit: 32.0, 68.0, 98.6, 212.0"));
+    assert!(out.contains("Probabilities: 0.2, 0.3, 0.5"));
+    assert!(out.contains("Sorted: 0.58, 1.41, 1.73, 2.72, 3.14"));
+    assert!(out.contains("Product: 9.0"));
+    assert!(out.contains("Steps: 0.0, 0.5, 1.0, 1.5, 2.0, 2.5"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

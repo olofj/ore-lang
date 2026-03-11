@@ -1,0 +1,44 @@
+-- Showcase 70: Float list operations and numerical computing
+
+fn main
+  -- Basic float list operations
+  temps := [20.5, 22.3, 19.8, 25.1, 21.7]
+  print "Temperatures: {temps.join(", ")}"
+  print "Average: {temps.average()}"
+  print "Min: {temps.min()}"
+  print "Max: {temps.max()}"
+  print "Sum: {temps.sum()}"
+
+  -- Float list iteration
+  mut above_21 := 0
+  for t in temps
+    if t > 21.0
+      above_21 = above_21 + 1
+  print "Days above 21: {above_21}"
+
+  -- Map and filter on float lists
+  celsius := [0.0, 20.0, 37.0, 100.0]
+  fahrenheit := celsius.map(c => c * 9.0 / 5.0 + 32.0)
+  print "Fahrenheit: {fahrenheit.join(", ")}"
+
+  hot := fahrenheit.filter(f => f > 100.0)
+  print "Hot temps: {hot.join(", ")}"
+
+  -- Normalize to probabilities
+  weights := [2.0, 3.0, 5.0]
+  total := weights.sum()
+  probs := weights.map(x => x / total)
+  print "Probabilities: {probs.join(", ")}"
+
+  -- Float sort
+  unsorted := [3.14, 1.41, 2.72, 1.73, 0.58]
+  sorted := unsorted.sort()
+  print "Sorted: {sorted.join(", ")}"
+
+  -- Product
+  factors := [1.5, 2.0, 3.0]
+  print "Product: {factors.product()}"
+
+  -- Generate float sequence
+  steps := range(0, 6).map(i => i.to_float() * 0.5)
+  print "Steps: {steps.join(", ")}"
