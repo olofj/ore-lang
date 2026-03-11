@@ -2507,6 +2507,30 @@ fn showcase106_real_world_patterns() {
 }
 
 #[test]
+fn showcase107_recursive_processing() {
+    let out = run_ore("showcase107.ore");
+    assert!(out.contains("sum_digits(12345) = 15"));
+    assert!(out.contains("digital_root(493) = 7"));
+    assert!(out.contains("reverse(12345) = 54321"));
+    assert!(out.contains("Armstrong numbers < 1000: 1, 2, 3, 4, 5, 6, 7, 8, 9, 153, 370, 371, 407"));
+    assert!(out.contains("2^10 = 1024"));
+}
+
+#[test]
+fn showcase108_type_system() {
+    let out = run_ore("showcase108.ore");
+    assert!(out.contains("red"));
+    assert!(out.contains("rgb(128,0,255)"));
+    assert!(out.contains("Rex the Labrador says woof!"));
+    assert!(out.contains("Whiskers the indoor cat says meow!"));
+    assert!(out.contains("Clownfish says blub!"));
+    assert!(out.contains("x = 42"));
+    assert!(out.contains("y is none"));
+    assert!(out.contains("ok: 100"));
+    assert!(out.contains("err: something went wrong"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

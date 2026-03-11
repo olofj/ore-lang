@@ -1,0 +1,75 @@
+-- Showcase 108: Type system showcase
+
+type Color
+  Red
+  Green
+  Blue
+  Custom(r: Int, g: Int, b: Int)
+
+type Animal
+  Dog(name: Str, breed: Str)
+  Cat(name: Str, indoor: Bool)
+  Fish(species: Str)
+
+fn color_name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+    Custom r g b -> "rgb({r},{g},{b})"
+
+fn animal_sound a:Animal -> Str
+  match a
+    Dog name breed -> "{name} the {breed} says woof!"
+    Cat name indoor ->
+      place := if indoor then "indoor" else "outdoor"
+      "{name} the {place} cat says meow!"
+    Fish species -> "{species} says blub!"
+
+fn animal_name a:Animal -> Str
+  match a
+    Dog name _ -> name
+    Cat name _ -> name
+    Fish species -> species
+
+fn main
+  -- Colors
+  colors := [Red, Green, Blue, Custom(r: 128, g: 0, b: 255)]
+  print color_name(Red)
+  print color_name(Custom(r: 128, g: 0, b: 255))
+
+  -- Animals
+  print ""
+  rex := Dog(name: "Rex", breed: "Labrador")
+  whiskers := Cat(name: "Whiskers", indoor: true)
+  nemo := Fish(species: "Clownfish")
+
+  print animal_sound(rex)
+  print animal_sound(whiskers)
+  print animal_sound(nemo)
+
+  -- Option type
+  print ""
+  x := Some(42)
+  y := None
+
+  match x
+    Some v -> print "x = {v}"
+    None -> print "x is none"
+
+  match y
+    Some v -> print "y = {v}"
+    None -> print "y is none"
+
+  -- Result type
+  print ""
+  ok := Ok(100)
+  err := Err("something went wrong")
+
+  match ok
+    Ok v -> print "ok: {v}"
+    Err e -> print "err: {e}"
+
+  match err
+    Ok v -> print "ok: {v}"
+    Err e -> print "err: {e}"

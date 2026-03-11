@@ -1,0 +1,68 @@
+-- Showcase 107: Recursive data processing
+
+fn sum_digits n:Int -> Int
+  if n < 10
+    n
+  else
+    n % 10 + sum_digits(n / 10)
+
+fn digital_root n:Int -> Int
+  if n < 10
+    n
+  else
+    digital_root(sum_digits(n))
+
+fn count_digits n:Int -> Int
+  if n < 10
+    1
+  else
+    1 + count_digits(n / 10)
+
+fn reverse_int n:Int -> Int
+  mut result := 0
+  mut remaining := n
+  while remaining > 0
+    result = result * 10 + remaining % 10
+    remaining = remaining / 10
+  result
+
+fn power base:Int exp:Int -> Int
+  if exp == 0
+    1
+  else
+    base * power(base, exp - 1)
+
+fn is_armstrong n:Int -> Bool
+  digits := count_digits(n)
+  mut sum := 0
+  mut remaining := n
+  while remaining > 0
+    d := remaining % 10
+    sum = sum + power(d, digits)
+    remaining = remaining / 10
+  sum == n
+
+fn main
+  -- Digit sum
+  print "sum_digits(12345) = {sum_digits(12345)}"
+  print "sum_digits(999) = {sum_digits(999)}"
+
+  -- Digital root
+  print "digital_root(493) = {digital_root(493)}"
+  print "digital_root(12345) = {digital_root(12345)}"
+
+  -- Count digits
+  print "count_digits(12345) = {count_digits(12345)}"
+  print "count_digits(7) = {count_digits(7)}"
+
+  -- Reverse integer
+  print "reverse(12345) = {reverse_int(12345)}"
+  print "reverse(100) = {reverse_int(100)}"
+
+  -- Armstrong numbers
+  armstrong := range(1, 1000).filter(n => is_armstrong(n))
+  print "Armstrong numbers < 1000: {armstrong.join(", ")}"
+
+  -- Power
+  print "2^10 = {power(2, 10)}"
+  print "3^5 = {power(3, 5)}"
