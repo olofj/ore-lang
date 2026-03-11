@@ -1,0 +1,50 @@
+-- Showcase 142: Advent of Code style problems
+
+-- Day 1: Sum of calibration values (first and last digit)
+fn calibration_value line:Str -> Int
+  digits := line.chars() | filter(c => ord(c) >= 48 and ord(c) <= 57)
+  if digits.len() == 0
+    0
+  else
+    first := digits.first().to_int()
+    last := digits.last().to_int()
+    first * 10 + last
+
+-- Day 2: Count valid passwords (char appears n times)
+fn count_char text:Str ch:Str -> Int
+  text.chars() | filter(c => c == ch) | count()
+
+-- Day 3: Manhattan distance
+fn manhattan x1:Int y1:Int x2:Int y2:Int -> Int
+  (x1 - x2).abs() + (y1 - y2).abs()
+
+fn main
+  -- Calibration values
+  lines := ["abc1def2ghi3", "hello7world", "4only", "no_digits"]
+  for line in lines
+    print "{line} -> {calibration_value(line)}"
+
+  -- Character counting
+  print ""
+  passwords := ["aabcaa", "xyz", "banana"]
+  for pw in passwords
+    a_count := count_char(pw, "a")
+    print "{pw}: 'a' appears {a_count} times"
+
+  -- Manhattan distances
+  print ""
+  points := [[0, 0], [3, 4], [10, 10], [-5, 5]]
+  for p in points
+    d := manhattan(p[0], p[1], 0, 0)
+    print "({p[0]}, {p[1]}) -> distance {d}"
+
+  -- Grid processing
+  print ""
+  grid := "###\n#.#\n###"
+  rows := grid.lines()
+  mut hash_count := 0
+  for row in rows
+    for ch in row.chars()
+      if ch == "#"
+        hash_count = hash_count + 1
+  print "# count in grid: {hash_count}"

@@ -1,0 +1,57 @@
+-- Showcase 141: Impl blocks and method chaining
+
+type Vec2 { x:Float, y:Float }
+
+impl Vec2
+  fn add self:Self other:Vec2 -> Vec2
+    Vec2(x: self.x + other.x, y: self.y + other.y)
+
+  fn scale self:Self factor:Float -> Vec2
+    Vec2(x: self.x * factor, y: self.y * factor)
+
+  fn length self:Self -> Float
+    sqrt(self.x * self.x + self.y * self.y)
+
+  fn dot self:Self other:Vec2 -> Float
+    self.x * other.x + self.y * other.y
+
+  fn to_str self:Self -> Str
+    "({self.x}, {self.y})"
+
+type Counter { value:Int }
+
+fn counter_new -> Counter
+  Counter(value: 0)
+
+impl Counter
+  fn increment self:Self -> Counter
+    Counter(value: self.value + 1)
+
+  fn add self:Self n:Int -> Counter
+    Counter(value: self.value + n)
+
+  fn get self:Self -> Int
+    self.value
+
+fn main
+  -- Vec2 operations
+  a := Vec2(x: 3.0, y: 4.0)
+  b := Vec2(x: 1.0, y: 2.0)
+
+  sum := a.add(b)
+  print "a + b = {sum.to_str()}"
+  print "a.length = {a.length()}"
+  print "a.scale(2) = {a.scale(2.0).to_str()}"
+  print "a dot b = {a.dot(b)}"
+
+  -- Counter chaining
+  print ""
+  c := counter_new()
+  c2 := c.increment().increment().add(5).increment()
+  print "counter: {c2.get()}"
+
+  -- More Vec2 operations
+  print ""
+  origin := Vec2(x: 0.0, y: 0.0)
+  point := origin.add(Vec2(x: 5.0, y: 0.0)).add(Vec2(x: 0.0, y: 12.0))
+  print "distance from origin: {point.length()}"

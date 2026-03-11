@@ -2890,6 +2890,25 @@ fn showcase140_test_driven() {
 }
 
 #[test]
+fn showcase141_impl_blocks() {
+    let out = run_ore("showcase141.ore");
+    assert!(out.contains("a.length = 5.0"));
+    assert!(out.contains("a dot b = 11.0"));
+    assert!(out.contains("counter: 8"));
+    assert!(out.contains("distance from origin: 13.0"));
+}
+
+#[test]
+fn showcase142_aoc_style() {
+    let out = run_ore("showcase142.ore");
+    assert!(out.contains("abc1def2ghi3 -> 13"));
+    assert!(out.contains("no_digits -> 0"));
+    assert!(out.contains("banana: 'a' appears 3 times"));
+    assert!(out.contains("(-5, 5) -> distance 10"));
+    assert!(out.contains("# count in grid: 8"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
