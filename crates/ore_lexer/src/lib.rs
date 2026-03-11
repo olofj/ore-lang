@@ -91,7 +91,65 @@ pub struct Spanned {
 pub fn lex(source: &str) -> Result<Vec<Spanned>, LexError> {
     let mut lexer = Lexer::new(source);
     lexer.run()?;
-    Ok(lexer.tokens)
+    let tokens = fixup_multiline_pipes(lexer.tokens);
+    Ok(tokens)
+}
+
+/// Post-processing: enable multi-line pipe continuation.
+/// When a line starts with `|` at a deeper indent, remove the Newline + Indent
+/// tokens so the pipe is parsed as a continuation of the previous expression.
+/// Also removes the matching Dedent.
+fn fixup_multiline_pipes(tokens: Vec<Spanned>) -> Vec<Spanned> {
+    let len = tokens.len();
+    let mut remove = vec![false; len];
+    let mut pending_dedent_removes: usize = 0;
+
+    let mut i = 0;
+    while i + 2 < len {
+        // Pattern: Newline [Indent] Pipe
+        if matches!(tokens[i].token, Token::Newline) {
+            let mut j = i + 1;
+            let mut indent_count = 0;
+            while j < len && matches!(tokens[j].token, Token::Indent) {
+                indent_count += 1;
+                j += 1;
+            }
+            if j < len && matches!(tokens[j].token, Token::Pipe) {
+                // Remove the Newline and all Indent tokens
+                remove[i] = true;
+                for k in (i + 1)..j {
+                    remove[k] = true;
+                }
+                pending_dedent_removes += indent_count;
+                i = j; // skip to Pipe
+                continue;
+            }
+        }
+        // Remove matching Dedent tokens
+        if pending_dedent_removes > 0 && matches!(tokens[i].token, Token::Dedent) {
+            remove[i] = true;
+            pending_dedent_removes -= 1;
+            i += 1;
+            continue;
+        }
+        i += 1;
+    }
+    // Handle remaining dedent removes at end
+    if pending_dedent_removes > 0 {
+        let mut j = i;
+        while j < len && pending_dedent_removes > 0 {
+            if matches!(tokens[j].token, Token::Dedent) {
+                remove[j] = true;
+                pending_dedent_removes -= 1;
+            }
+            j += 1;
+        }
+    }
+
+    tokens.into_iter().enumerate()
+        .filter(|(idx, _)| !remove[*idx])
+        .map(|(_, t)| t)
+        .collect()
 }
 
 #[derive(Debug)]

@@ -296,3 +296,10 @@ fn control_match_keyword() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["red", "blue", "seven"]);
 }
+
+#[test]
+fn control_multiline_pipe() {
+    let out = run_ore("control/multiline_pipe.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["4, 16, 36, 64, 100", "60"]);
+}
