@@ -565,6 +565,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_float_to_str", ptr_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_str_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_eq", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_cmp", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // String methods
         self.module.add_function("ore_str_contains", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_trim", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3292,6 +3293,22 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "sconcat"))?;
                         let val = self.call_result_to_value(result)?;
                         Ok(val)
+                    }
+                    BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq => {
+                        // String ordering via ore_str_cmp
+                        let rt = self.module.get_function("ore_str_cmp").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "scmp"))?;
+                        let cmp_val = self.call_result_to_value(result)?.into_int_value();
+                        let zero = self.context.i64_type().const_int(0, false);
+                        let pred = match op {
+                            BinOp::Lt => IntPredicate::SLT,
+                            BinOp::Gt => IntPredicate::SGT,
+                            BinOp::LtEq => IntPredicate::SLE,
+                            BinOp::GtEq => IntPredicate::SGE,
+                            _ => unreachable!(),
+                        };
+                        let bool_val = bld!(self.builder.build_int_compare(pred, cmp_val, zero, "scmpres"))?;
+                        Ok(bool_val.into())
                     }
                     _ => Err(CodeGenError { msg: format!("unsupported pointer op {:?}", op) }),
                 }

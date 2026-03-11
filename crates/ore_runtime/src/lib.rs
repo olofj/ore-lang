@@ -198,6 +198,21 @@ pub extern "C" fn ore_str_eq(a: *mut OreStr, b: *mut OreStr) -> i8 {
     }
 }
 
+/// Compare two strings lexicographically. Returns -1, 0, or 1.
+#[no_mangle]
+pub extern "C" fn ore_str_cmp(a: *mut OreStr, b: *mut OreStr) -> i64 {
+    unsafe {
+        if a.is_null() && b.is_null() { return 0; }
+        if a.is_null() { return -1; }
+        if b.is_null() { return 1; }
+        match (*a).as_str().cmp((*b).as_str()) {
+            std::cmp::Ordering::Less => -1,
+            std::cmp::Ordering::Equal => 0,
+            std::cmp::Ordering::Greater => 1,
+        }
+    }
+}
+
 // ── String methods ──
 
 #[no_mangle]
