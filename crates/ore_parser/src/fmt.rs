@@ -460,6 +460,11 @@ impl Formatter {
                 self.out.push_str(s);
                 self.out.push('"');
             }
+            Pattern::Range(start, end) => {
+                self.out.push_str(&start.to_string());
+                self.out.push_str("..");
+                self.out.push_str(&end.to_string());
+            }
             Pattern::Or(alternatives) => {
                 for (i, alt) in alternatives.iter().enumerate() {
                     if i > 0 { self.out.push_str(" | "); }

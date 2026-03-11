@@ -1,0 +1,23 @@
+fn classify x:Int -> Str
+  match x
+    0 -> "zero"
+    1..10 -> "small"
+    11..100 -> "medium"
+    _ -> "large"
+
+fn temp_desc t:Int -> Str
+  match t
+    -40..-1 -> "freezing"
+    0..15 -> "cold"
+    16..25 -> "nice"
+    _ -> "hot"
+
+fn main
+  print classify(0)
+  print classify(5)
+  print classify(50)
+  print classify(200)
+  print temp_desc(-10)
+  print temp_desc(10)
+  print temp_desc(20)
+  print temp_desc(35)

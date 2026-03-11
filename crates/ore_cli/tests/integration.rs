@@ -497,6 +497,13 @@ fn control_or_patterns() {
 }
 
 #[test]
+fn control_range_patterns() {
+    let out = run_ore("control/range_patterns.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["zero", "small", "medium", "large", "freezing", "cold", "nice", "hot"]);
+}
+
+#[test]
 fn stdlib_reverse() {
     let out = run_ore("stdlib/reverse.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
@@ -544,8 +551,6 @@ fn showcase2() {
 }
 
 #[test]
-#[test]
-#[test]
 fn maps_typed_values() {
     let out = run_ore("maps/typed_values.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
@@ -555,6 +560,12 @@ fn maps_typed_values() {
     // keys() returns string keys (order may vary)
     assert!(lines[3].contains("first") && lines[3].contains("last"));
     assert_eq!(lines[4], "3");
+}
+
+#[test]
+fn maps_iteration() {
+    let out = run_ore("maps/iteration.ore");
+    assert_eq!(out.trim(), "6");
 }
 
 #[test]

@@ -249,6 +249,7 @@ pub enum Pattern {
     FloatLit(f64),
     BoolLit(bool),
     StringLit(String),
+    Range(i64, i64),
     Or(Vec<Pattern>),
 }
 

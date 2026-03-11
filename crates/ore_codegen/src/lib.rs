@@ -2951,7 +2951,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Check if patterns are literal patterns (Int, String, etc.)
         let has_literal_patterns = arms.iter().any(|arm| matches!(
             &arm.pattern,
-            Pattern::IntLit(_) | Pattern::FloatLit(_) | Pattern::BoolLit(_) | Pattern::StringLit(_) | Pattern::Or(_)
+            Pattern::IntLit(_) | Pattern::FloatLit(_) | Pattern::BoolLit(_) | Pattern::StringLit(_) | Pattern::Range(_, _) | Pattern::Or(_)
         ));
         if has_literal_patterns || matches!(subject_kind, ValKind::Int | ValKind::Float | ValKind::Bool | ValKind::Str) {
             return self.compile_literal_match(subject_val, &subject_kind, arms, func);
@@ -3322,6 +3322,15 @@ impl<'ctx> CodeGen<'ctx> {
                     IntPredicate::NE, i8_val,
                     self.context.i8_type().const_int(0, false), "tobool"
                 ))
+            }
+            Pattern::Range(start, end) => {
+                let i64_type = self.context.i64_type();
+                let start_val = i64_type.const_int(*start as u64, true);
+                let end_val = i64_type.const_int(*end as u64, true);
+                let subj = subject.into_int_value();
+                let ge = bld!(self.builder.build_int_compare(IntPredicate::SGE, subj, start_val, "rge"))?;
+                let le = bld!(self.builder.build_int_compare(IntPredicate::SLE, subj, end_val, "rle"))?;
+                bld!(self.builder.build_and(ge, le, "range_cmp"))
             }
             Pattern::Or(alternatives) => {
                 // Or pattern: check any alternative matches
@@ -4498,7 +4507,21 @@ impl<'ctx> CodeGen<'ctx> {
         body: &Block,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
-        let i64_type = self.context.i64_type();
+        // Check if the iterable is a map — if so, iterate over its keys
+        let is_map = if let Expr::Ident(name) = iterable {
+            self.map_value_kinds.contains_key(name)
+        } else {
+            false
+        };
+
+        if is_map {
+            // For maps: get keys list and iterate over it
+            let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
+            let keys_fn = self.module.get_function("ore_map_keys").unwrap();
+            let keys_result = bld!(self.builder.build_call(keys_fn, &[map_ptr.into()], "keys"))?;
+            let list_ptr = self.call_result_to_value(keys_result)?.into_pointer_value();
+            return self.compile_for_each_over_list(var, list_ptr, ValKind::Str, body, func);
+        }
 
         // Determine element kind from the iterable
         let elem_kind = if let Expr::Ident(name) = iterable {
@@ -4508,6 +4531,19 @@ impl<'ctx> CodeGen<'ctx> {
         };
 
         let list_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
+
+        self.compile_for_each_over_list(var, list_ptr, elem_kind, body, func)
+    }
+
+    fn compile_for_each_over_list(
+        &mut self,
+        var: &str,
+        list_ptr: PointerValue<'ctx>,
+        elem_kind: ValKind,
+        body: &Block,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let i64_type = self.context.i64_type();
 
         // Get list length
         let list_len_fn = self.module.get_function("ore_list_len").unwrap();

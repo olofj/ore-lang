@@ -1,0 +1,6 @@
+fn main
+  m := {"a": 1, "b": 2, "c": 3}
+  mut total := 0
+  for k in m
+    total = total + m.get(k)
+  print total
