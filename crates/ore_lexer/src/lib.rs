@@ -35,6 +35,7 @@ pub enum Token {
     Pub,
     Spawn,
     Match,
+    Continue,
 
     // Operators
     Plus,
@@ -596,6 +597,7 @@ impl<'a> Lexer<'a> {
             "pub" => Token::Pub,
             "spawn" => Token::Spawn,
             "match" => Token::Match,
+            "continue" => Token::Continue,
             _ => Token::Ident(text.to_string()),
         };
         self.emit(token, start);

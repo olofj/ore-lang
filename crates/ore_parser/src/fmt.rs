@@ -204,6 +204,10 @@ impl Formatter {
                 self.indent(level);
                 self.out.push_str("break\n");
             }
+            Stmt::Continue => {
+                self.indent(level);
+                self.out.push_str("continue\n");
+            }
             Stmt::Spawn(expr) => {
                 self.indent(level);
                 self.out.push_str("spawn ");

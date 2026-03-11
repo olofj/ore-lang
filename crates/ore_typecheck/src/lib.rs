@@ -301,6 +301,7 @@ impl TypeChecker {
                 Type::Unit
             }
             Stmt::Break => Type::Unit,
+            Stmt::Continue => Type::Unit,
             Stmt::Spawn(e) => {
                 self.infer_expr(e, env);
                 Type::Int

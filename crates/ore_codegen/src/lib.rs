@@ -119,7 +119,7 @@ fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<S
         Stmt::Assign { value, .. } => collect_free_vars(value, bound, free, seen),
         Stmt::Expr(e) => collect_free_vars(e, bound, free, seen),
         Stmt::Return(Some(e)) => collect_free_vars(e, bound, free, seen),
-        Stmt::Return(None) | Stmt::Break => {}
+        Stmt::Return(None) | Stmt::Break | Stmt::Continue => {}
         Stmt::Spawn(e) => collect_free_vars(e, bound, free, seen),
         Stmt::ForIn { start, end, body, .. } => {
             collect_free_vars(start, bound, free, seen);
@@ -218,6 +218,8 @@ pub struct CodeGen<'ctx> {
     variant_to_enum: HashMap<String, String>,
     /// Target block for `break` statements
     break_target: Option<inkwell::basic_block::BasicBlock<'ctx>>,
+    /// Target block for `continue` statements
+    continue_target: Option<inkwell::basic_block::BasicBlock<'ctx>>,
     str_counter: u32,
     lambda_counter: u32,
     /// Maps lambda function name -> capture info (only for closures with captures)
@@ -257,6 +259,7 @@ impl<'ctx> CodeGen<'ctx> {
             enums: HashMap::new(),
             variant_to_enum: HashMap::new(),
             break_target: None,
+            continue_target: None,
             str_counter: 0,
             lambda_counter: 0,
             lambda_captures: HashMap::new(),
@@ -788,6 +791,14 @@ impl<'ctx> CodeGen<'ctx> {
                     bld!(self.builder.build_unconditional_branch(target))?;
                 } else {
                     return Err(CodeGenError { msg: "break outside of loop".into() });
+                }
+                Ok(None)
+            }
+            Stmt::Continue => {
+                if let Some(target) = self.continue_target {
+                    bld!(self.builder.build_unconditional_branch(target))?;
+                } else {
+                    return Err(CodeGenError { msg: "continue outside of loop".into() });
                 }
                 Ok(None)
             }
@@ -2707,6 +2718,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         let cond_bb = self.context.append_basic_block(func, "for_cond");
         let body_bb = self.context.append_basic_block(func, "for_body");
+        let inc_bb = self.context.append_basic_block(func, "for_inc");
         let end_bb = self.context.append_basic_block(func, "for_end");
 
         bld!(self.builder.build_unconditional_branch(cond_bb))?;
@@ -2720,19 +2732,25 @@ impl<'ctx> CodeGen<'ctx> {
         // Body
         self.builder.position_at_end(body_bb);
         let saved_break = self.break_target;
+        let saved_continue = self.continue_target;
         self.break_target = Some(end_bb);
+        self.continue_target = Some(inc_bb);
         for stmt in &body.stmts {
             self.compile_stmt(stmt, func)?;
         }
         self.break_target = saved_break;
+        self.continue_target = saved_continue;
+
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            bld!(self.builder.build_unconditional_branch(inc_bb))?;
+        }
 
         // Increment
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
-            let current = bld!(self.builder.build_load(i64_type, var_alloca, var))?.into_int_value();
-            let next = bld!(self.builder.build_int_add(current, i64_type.const_int(1, false), "inc"))?;
-            bld!(self.builder.build_store(var_alloca, next))?;
-            bld!(self.builder.build_unconditional_branch(cond_bb))?;
-        }
+        self.builder.position_at_end(inc_bb);
+        let current = bld!(self.builder.build_load(i64_type, var_alloca, var))?.into_int_value();
+        let next = bld!(self.builder.build_int_add(current, i64_type.const_int(1, false), "inc"))?;
+        bld!(self.builder.build_store(var_alloca, next))?;
+        bld!(self.builder.build_unconditional_branch(cond_bb))?;
 
         self.builder.position_at_end(end_bb);
         Ok(())
@@ -2764,6 +2782,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         let cond_bb = self.context.append_basic_block(func, "foreach_cond");
         let body_bb = self.context.append_basic_block(func, "foreach_body");
+        let inc_bb = self.context.append_basic_block(func, "foreach_inc");
         let end_bb = self.context.append_basic_block(func, "foreach_end");
 
         bld!(self.builder.build_unconditional_branch(cond_bb))?;
@@ -2783,19 +2802,25 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_store(elem_alloca, elem_val))?;
 
         let saved_break = self.break_target;
+        let saved_continue = self.continue_target;
         self.break_target = Some(end_bb);
+        self.continue_target = Some(inc_bb);
         for stmt in &body.stmts {
             self.compile_stmt(stmt, func)?;
         }
         self.break_target = saved_break;
+        self.continue_target = saved_continue;
+
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            bld!(self.builder.build_unconditional_branch(inc_bb))?;
+        }
 
         // Increment index
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
-            let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-            let next = bld!(self.builder.build_int_add(idx, i64_type.const_int(1, false), "inc"))?;
-            bld!(self.builder.build_store(idx_alloca, next))?;
-            bld!(self.builder.build_unconditional_branch(cond_bb))?;
-        }
+        self.builder.position_at_end(inc_bb);
+        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+        let next = bld!(self.builder.build_int_add(idx, i64_type.const_int(1, false), "inc"))?;
+        bld!(self.builder.build_store(idx_alloca, next))?;
+        bld!(self.builder.build_unconditional_branch(cond_bb))?;
 
         self.builder.position_at_end(end_bb);
         Ok(())
@@ -2819,11 +2844,14 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(body_bb);
         let saved_break = self.break_target;
+        let saved_continue = self.continue_target;
         self.break_target = Some(end_bb);
+        self.continue_target = Some(cond_bb);
         for stmt in &body.stmts {
             self.compile_stmt(stmt, func)?;
         }
         self.break_target = saved_break;
+        self.continue_target = saved_continue;
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(cond_bb))?;
         }
@@ -2844,11 +2872,14 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(body_bb);
         let saved_break = self.break_target;
+        let saved_continue = self.continue_target;
         self.break_target = Some(end_bb);
+        self.continue_target = Some(body_bb);
         for stmt in &body.stmts {
             self.compile_stmt(stmt, func)?;
         }
         self.break_target = saved_break;
+        self.continue_target = saved_continue;
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(body_bb))?;
         }

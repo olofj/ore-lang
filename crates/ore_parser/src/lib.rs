@@ -473,6 +473,10 @@ impl Parser {
                 self.advance();
                 Ok(Stmt::Break)
             }
+            Token::Continue => {
+                self.advance();
+                Ok(Stmt::Continue)
+            }
             Token::Ident(name) if name == "print" => {
                 self.advance();
                 let expr = self.parse_expr(0)?;

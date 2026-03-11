@@ -131,6 +131,7 @@ pub enum Stmt {
         body: Block,
     },
     Break,
+    Continue,
     Spawn(Expr),
 }
 
