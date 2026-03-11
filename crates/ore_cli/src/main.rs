@@ -17,6 +17,9 @@ enum Commands {
     Run {
         /// Path to the .ore file
         file: PathBuf,
+        /// Enable LLVM optimizations
+        #[arg(long)]
+        opt: bool,
     },
     /// Compile an Ore source file to a native binary
     Build {
@@ -25,6 +28,9 @@ enum Commands {
         /// Output binary path
         #[arg(short, long, default_value = "a.out")]
         output: PathBuf,
+        /// Enable LLVM optimizations
+        #[arg(long)]
+        opt: bool,
     },
     /// Check an Ore source file for errors (parse + type check, no codegen)
     Check {
@@ -95,7 +101,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() >= 2 && args[1].ends_with(".ore") && !args[1].starts_with('-') {
         let file = PathBuf::from(&args[1]);
-        if let Err(e) = run_file(&file) {
+        if let Err(e) = run_file(&file, false) {
             print_error_with_context(&e, &file);
             std::process::exit(1);
         }
@@ -105,14 +111,14 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Run { file } => {
-            if let Err(e) = run_file(&file) {
+        Commands::Run { file, opt } => {
+            if let Err(e) = run_file(&file, opt) {
                 print_error_with_context(&e, &file);
                 std::process::exit(1);
             }
         }
-        Commands::Build { file, output } => {
-            if let Err(e) = build_file(&file, &output) {
+        Commands::Build { file, output, opt } => {
+            if let Err(e) = build_file(&file, &output, opt) {
                 print_error_with_context(&e, &file);
                 std::process::exit(1);
             }
@@ -657,12 +663,17 @@ fn map_runtime_functions(
     map_fn!("ore_assert_ne_str", ore_runtime::ore_assert_ne_str);
 }
 
-fn run_file(path: &std::path::Path) -> Result<(), String> {
+fn run_file(path: &std::path::Path, optimize: bool) -> Result<(), String> {
     let context = Context::create();
     let codegen = compile_source(path, &context)?;
 
+    let opt_level = if optimize {
+        inkwell::OptimizationLevel::Aggressive
+    } else {
+        inkwell::OptimizationLevel::None
+    };
     let ee = codegen.module
-        .create_jit_execution_engine(inkwell::OptimizationLevel::None)
+        .create_jit_execution_engine(opt_level)
         .map_err(|e| format!("JIT error: {}", e))?;
 
     map_runtime_functions(&ee, &codegen.module);
@@ -729,7 +740,7 @@ fn test_file(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn build_file(path: &Path, output: &Path) -> Result<(), String> {
+fn build_file(path: &Path, output: &Path, optimize: bool) -> Result<(), String> {
     use inkwell::targets::{
         CodeModel, InitializationConfig, RelocMode, Target, TargetMachine,
     };
@@ -742,6 +753,12 @@ fn build_file(path: &Path, output: &Path) -> Result<(), String> {
     Target::initialize_native(&InitializationConfig::default())
         .map_err(|e| format!("failed to initialize native target: {}", e))?;
 
+    let opt_level = if optimize {
+        OptimizationLevel::Aggressive
+    } else {
+        OptimizationLevel::Default
+    };
+
     let triple = TargetMachine::get_default_triple();
     let target = Target::from_triple(&triple)
         .map_err(|e| format!("failed to get target from triple: {}", e))?;
@@ -750,7 +767,7 @@ fn build_file(path: &Path, output: &Path) -> Result<(), String> {
             &triple,
             "generic",
             "",
-            OptimizationLevel::Default,
+            opt_level,
             RelocMode::PIC,
             CodeModel::Default,
         )
