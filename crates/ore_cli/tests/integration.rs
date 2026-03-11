@@ -1344,3 +1344,17 @@ fn function_defaults() {
         "1..100 step 5",
     ]);
 }
+
+#[test]
+fn lists_find_fold() {
+    let out = run_ore("lists/find_fold.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "1",      // find_index > 4
+        "-1",     // find_index not found
+        "26",     // fold sum
+        "120",    // fold product
+        "3",      // fold count > 3
+        "9",      // fold max
+    ]);
+}

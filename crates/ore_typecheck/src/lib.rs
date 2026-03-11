@@ -905,6 +905,7 @@ impl TypeChecker {
                 "reduce" => Type::Any,
                 "scan" => Type::List(Box::new(Type::Any)),
                 "find" | "min_by" | "max_by" => *elem.clone(),
+                "find_index" | "fold" => Type::Int,
                 "join" => Type::Str,
                 "sort" | "sort_by" | "reverse" | "window" | "chunks" | "take_while" | "drop_while" | "step" => obj_ty.clone(),
                 "count_by" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),

@@ -1258,6 +1258,35 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+/// find_index: returns index of first element matching predicate, or -1
+#[no_mangle]
+pub extern "C" fn ore_list_find_index(list: *mut OreList, func: *const u8, env: *mut u8) -> i64 {
+    unsafe {
+        let src = &*list;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            if call_closure(func, env, val) != 0 {
+                return i as i64;
+            }
+        }
+        -1
+    }
+}
+
+/// fold: left fold with initial accumulator value
+#[no_mangle]
+pub extern "C" fn ore_list_fold(list: *mut OreList, init: i64, func: *const u8, env: *mut u8) -> i64 {
+    unsafe {
+        let src = &*list;
+        let mut acc = init;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            acc = call_closure2(func, env, acc, val);
+        }
+        acc
+    }
+}
+
 /// min for string lists (lexicographic comparison)
 #[no_mangle]
 pub extern "C" fn ore_list_min_str(list: *mut OreList) -> *mut OreStr {

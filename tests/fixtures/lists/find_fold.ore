@@ -1,0 +1,26 @@
+fn main
+  nums := [1, 5, 3, 8, 2, 7]
+
+  -- find_index: first element > 4
+  idx := nums.find_index(n => n > 4)
+  print idx
+
+  -- find_index: not found
+  idx2 := nums.find_index(n => n > 10)
+  print idx2
+
+  -- fold: sum
+  total := nums.fold(0, (acc, n) => acc + n)
+  print total
+
+  -- fold: product
+  prod := [1, 2, 3, 4, 5].fold(1, (acc, n) => acc * n)
+  print prod
+
+  -- fold: count elements > 3
+  count := nums.fold(0, (acc, n) => acc + (n > 3 : 1 : 0))
+  print count
+
+  -- fold: max element
+  mx := [3, 1, 4, 1, 5, 9, 2, 6].fold(0, (acc, n) => (n > acc : n : acc))
+  print mx
