@@ -610,9 +610,11 @@ impl<'ctx> CodeGen<'ctx> {
             self.variant_to_enum.insert(v.name.clone(), ed.name.clone());
         }
 
-        // Enum layout: { i8 (tag), [max_payload_size x i8] (data) }
+        // Enum layout: { i8 (tag), [ceil(max_payload_size/8) x i64] (data) }
+        // Using i64 array ensures 8-byte alignment for float fields
         let i8_type = self.context.i8_type();
-        let data_array = i8_type.array_type(max_payload_size as u32);
+        let num_i64s = (max_payload_size + 7) / 8;
+        let data_array = self.context.i64_type().array_type(num_i64s as u32);
         let enum_type = self.context.struct_type(
             &[i8_type.into(), data_array.into()],
             false,

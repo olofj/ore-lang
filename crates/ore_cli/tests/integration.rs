@@ -2777,6 +2777,22 @@ fn showcase131_stress_test() {
 }
 
 #[test]
+fn showcase132_enum_float_fields() {
+    let out = run_ore("showcase132.ore");
+    assert!(out.contains("circle r=5.0"));
+    assert!(out.contains("area: 78.53975"));
+    assert!(out.contains("rect 3.0x4.0"));
+    assert!(out.contains("area: 12.0"));
+    assert!(out.contains("point"));
+    assert!(out.contains("area: 0.0"));
+    assert!(out.contains("100.5 meters"));
+    assert!(out.contains("23.7 C"));
+    assert!(out.contains("42 items"));
+    assert!(out.contains("combined area: 29.0"));
+    assert!(out.contains("circumference: 62.8318"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
