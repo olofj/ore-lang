@@ -1,0 +1,33 @@
+-- Showcase 229: Scan and running aggregates
+
+fn main
+  data := [5, 3, 8, 1, 9, 4, 7, 2, 6]
+
+  -- Running sum
+  running_sum := data | scan(0, (acc, v) => acc + v)
+  print "Data: {data | join(", ")}"
+  print "Running sum: {running_sum | join(", ")}"
+
+  -- Running max
+  running_max := data | scan(0, (acc, v) => if acc > v then acc else v)
+  print "Running max: {running_max | join(", ")}"
+
+  -- Running count of evens
+  running_evens := data | scan(0, (acc, v) => if v % 2 == 0 then acc + 1 else acc)
+  print "Running even count: {running_evens | join(", ")}"
+
+  -- Differences (delta between consecutive)
+  print ""
+  values := [10, 15, 12, 20, 18, 25]
+  print "Values: {values | join(", ")}"
+  mut deltas := []
+  for i in range(1, values | count())
+    deltas.push(values[i] - values[i-1])
+  print "Deltas: {deltas | join(", ")}"
+
+  -- Cumulative product
+  print ""
+  factors := [2, 3, 4, 5]
+  products := factors | scan(1, (acc, v) => acc * v)
+  print "Factors: {factors | join(", ")}"
+  print "Cumulative product: {products | join(", ")}"

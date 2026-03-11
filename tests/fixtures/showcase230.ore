@@ -1,0 +1,37 @@
+-- Showcase 230: Map operations comprehensive
+
+fn main
+  -- Map as cache
+  mut cache := {}
+  
+  -- Fibonacci with manual cache
+  mut fib_a := 0
+  mut fib_b := 1
+  for i in range(0, 15)
+    cache.set("{i}", fib_a)
+    c := fib_a + fib_b
+    fib_a = fib_b
+    fib_b = c
+  
+  print "Fibonacci cache:"
+  for i in range(0, 15)
+    print "  fib({i}) = {cache["{i}"]}"
+  
+  -- Map size operations
+  print ""
+  print "Cache size: {cache.len()}"
+  print "Contains fib(10): {cache.contains("10")}"
+  print "Contains fib(20): {cache.contains("20")}"
+  
+  -- Map as counter
+  print ""
+  mut counter := {}
+  words := "the cat sat on the mat the cat"
+  for word in words.split(" ")
+    current := counter.get_or(word, 0)
+    counter.set(word, current + 1)
+  
+  print "Word counts:"
+  for word in counter.keys()
+    print "  {word}: {counter[word]}"
+  print "Unique words: {counter.len()}"

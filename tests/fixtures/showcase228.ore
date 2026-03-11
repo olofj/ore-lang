@@ -1,0 +1,60 @@
+-- Showcase 228: Recursive descent mini-parser
+
+fn parse_number s:Str -> Int
+  -- Parse a simple non-negative integer from string
+  mut result := 0
+  for ch in s.chars()
+    if ch == "0"
+      result = result * 10
+    else if ch == "1"
+      result = result * 10 + 1
+    else if ch == "2"
+      result = result * 10 + 2
+    else if ch == "3"
+      result = result * 10 + 3
+    else if ch == "4"
+      result = result * 10 + 4
+    else if ch == "5"
+      result = result * 10 + 5
+    else if ch == "6"
+      result = result * 10 + 6
+    else if ch == "7"
+      result = result * 10 + 7
+    else if ch == "8"
+      result = result * 10 + 8
+    else if ch == "9"
+      result = result * 10 + 9
+  result
+
+fn main
+  -- Parse and evaluate simple expressions
+  tests := ["123", "0", "42", "9999", "007"]
+  for t in tests
+    result := parse_number(t)
+    print "parse('{t}') = {result}"
+
+  -- Build and evaluate string expressions
+  print ""
+  print "Expression builder:"
+  a := 15
+  b := 27
+  op := "+"
+  expr := "{a} {op} {b}"
+  mut result := 0
+  if op == "+"
+    result = a + b
+  else if op == "-"
+    result = a - b
+  else if op == "*"
+    result = a * b
+  print "{expr} = {result}"
+
+  op2 := "*"
+  expr2 := "{a} {op2} {b}"
+  if op2 == "+"
+    result = a + b
+  else if op2 == "-"
+    result = a - b
+  else if op2 == "*"
+    result = a * b
+  print "{expr2} = {result}"

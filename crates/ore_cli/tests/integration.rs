@@ -3691,6 +3691,50 @@ fn showcase225_validation() {
 }
 
 #[test]
+fn showcase226_rgb_records() {
+    let out = run_ore("showcase226.ore");
+    assert!(out.contains("Red: rgb(255, 0, 0)"));
+    assert!(out.contains("White: rgb(255, 255, 255), brightness=255"));
+    assert!(out.contains("Red + Green = rgb(127, 127, 0)"));
+}
+
+#[test]
+fn showcase227_loop_patterns() {
+    let out = run_ore("showcase227.ore");
+    assert!(out.contains("First n where n^2 > 100: 11"));
+    assert!(out.contains("3 * 14 = 42"));
+    assert!(out.contains("Liftoff!"));
+    assert!(out.contains("sum = 105"));
+}
+
+#[test]
+fn showcase228_parser() {
+    let out = run_ore("showcase228.ore");
+    assert!(out.contains("parse('123') = 123"));
+    assert!(out.contains("parse('007') = 7"));
+    assert!(out.contains("15 + 27 = 42"));
+    assert!(out.contains("15 * 27 = 405"));
+}
+
+#[test]
+fn showcase229_scan() {
+    let out = run_ore("showcase229.ore");
+    assert!(out.contains("Running sum: 0, 5, 8, 16, 17, 26, 30, 37, 39, 45"));
+    assert!(out.contains("Deltas: 5, -3, 8, -2, 7"));
+    assert!(out.contains("Cumulative product: 1, 2, 6, 24, 120"));
+}
+
+#[test]
+fn showcase230_map_operations() {
+    let out = run_ore("showcase230.ore");
+    assert!(out.contains("fib(10) = 55"));
+    assert!(out.contains("Cache size: 15"));
+    assert!(out.contains("Contains fib(10): true"));
+    assert!(out.contains("Contains fib(20): false"));
+    assert!(out.contains("the: 3"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
