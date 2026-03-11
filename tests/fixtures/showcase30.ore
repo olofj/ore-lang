@@ -1,0 +1,61 @@
+-- Showcase 30: Comprehensive pipeline showcase
+-- Demonstrates: end-to-end data processing with Ore's pipeline operator
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  mut i := 2
+  while i * i <= n
+    if n % i == 0
+      return false
+    i += 1
+  true
+
+fn collatz_length n:Int -> Int
+  mut count := 0
+  mut x := n
+  while x != 1
+    if x % 2 == 0
+      x = x / 2
+    else
+      x = 3 * x + 1
+    count += 1
+  count
+
+fn imax a:Int b:Int -> Int
+  if a > b
+    a
+  else
+    b
+
+fn main
+  -- Find primes using filter
+  primes := range(2, 50) | filter(n => is_prime(n))
+  print "Primes < 50: {primes.join(", ")}"
+  print "Count: {primes.len()}"
+
+  -- Sum of primes
+  prime_sum := primes.reduce((a, b) => a + b)
+  print "Sum of primes < 50: {prime_sum}"
+
+  -- Collatz sequence lengths
+  lengths := range(1, 21) | map(n => collatz_length(n))
+  print "Collatz lengths 1-20: {lengths.join(", ")}"
+
+  -- Longest Collatz in range
+  max_len := lengths.max()
+  print "Max Collatz length: {max_len}"
+
+  -- Pair numbers with their Collatz lengths
+  paired := range(1, 11) | map(n => str(n) + ":" + str(collatz_length(n)))
+  print "Pairs: {paired.join(", ")}"
+
+  -- Running max with scan
+  data := [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]
+  running_max := data.scan(0, (m, x) => imax(m, x))
+  print "Running max: {running_max.join(", ")}"
+
+  -- Count occurrences
+  freqs := data.frequencies()
+  print "Frequency of 1: {freqs.get_or("1", 0)}"
+  print "Frequency of 5: {freqs.get_or("5", 0)}"

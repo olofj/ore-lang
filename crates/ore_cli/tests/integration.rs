@@ -1541,3 +1541,22 @@ fn showcase28() {
     assert!(out.contains("2 + 3 * 4 = 20"));
     assert!(out.contains("Multiplication table:"));
 }
+
+#[test]
+fn showcase29() {
+    let out = run_ore("showcase29.ore");
+    assert!(out.contains("42 in binary: 101010"));
+    assert!(out.contains("255 in hex: FF"));
+    assert!(out.contains("Binary 101010 = 42"));
+    assert!(out.contains("Roundtrip: 12345 -> 3039 -> 12345"));
+}
+
+#[test]
+fn showcase30() {
+    let out = run_ore("showcase30.ore");
+    assert!(out.contains("Primes < 50: 2, 3, 5, 7, 11"));
+    assert!(out.contains("Count: 15"));
+    assert!(out.contains("Sum of primes < 50: 328"));
+    assert!(out.contains("Max Collatz length: 20"));
+    assert!(out.contains("Frequency of 1: 2"));
+}

@@ -1,0 +1,66 @@
+-- Showcase 29: Number base converter
+-- Demonstrates: recursive algorithms, string building, math
+
+fn to_base n:Int base:Int -> Str
+  digits := "0123456789ABCDEF"
+  if n == 0
+    return "0"
+  mut result := ""
+  mut num := n
+  if num < 0
+    num = 0 - num
+  while num > 0
+    remainder := num % base
+    result = digits.char_at(remainder) + result
+    num = num / base
+  if n < 0
+    "-" + result
+  else
+    result
+
+fn from_base s:Str base:Int -> Int
+  mut result := 0
+  mut negative := false
+  mut start := 0
+  if s.char_at(0) == "-"
+    negative = true
+    start = 1
+  for i in start..s.len()
+    c := s.char_at(i)
+    code := ord(c)
+    mut digit := 0
+    if code >= 48 and code <= 57
+      digit = code - 48
+    else if code >= 65 and code <= 70
+      digit = code - 55
+    else if code >= 97 and code <= 102
+      digit = code - 87
+    result = result * base + digit
+  if negative
+    0 - result
+  else
+    result
+
+fn main
+  -- Decimal to binary
+  print "42 in binary: {to_base(42, 2)}"
+  print "255 in binary: {to_base(255, 2)}"
+  
+  -- Decimal to hex
+  print "255 in hex: {to_base(255, 16)}"
+  print "1000 in hex: {to_base(1000, 16)}"
+  
+  -- Decimal to octal
+  print "8 in octal: {to_base(8, 8)}"
+  print "64 in octal: {to_base(64, 8)}"
+  
+  -- Parse back
+  print "Binary 101010 = {from_base("101010", 2)}"
+  print "Hex FF = {from_base("FF", 16)}"
+  print "Octal 100 = {from_base("100", 8)}"
+  
+  -- Roundtrip
+  n := 12345
+  hex := to_base(n, 16)
+  back := from_base(hex, 16)
+  print "Roundtrip: {n} -> {hex} -> {back}"
