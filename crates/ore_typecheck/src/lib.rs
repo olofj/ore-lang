@@ -887,7 +887,7 @@ impl TypeChecker {
                 "contains" | "is_empty" => Type::Bool,
                 "map" | "filter" => obj_ty.clone(),
                 "partition" => Type::List(Box::new(obj_ty.clone())),
-                "each" | "each_with_index" => Type::Unit,
+                "each" | "each_with_index" | "map_with_index" => Type::Unit,
                 "reduce" => Type::Any,
                 "scan" => Type::List(Box::new(Type::Any)),
                 "find" | "min_by" | "max_by" => *elem.clone(),

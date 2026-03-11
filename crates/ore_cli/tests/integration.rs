@@ -1199,6 +1199,19 @@ fn math_functions() {
 }
 
 #[test]
+fn showcase14() {
+    let out = run_ore("showcase14.ore");
+    assert!(out.contains("A: 3, B: 3, C: 2, F: 2"));
+    assert!(out.contains("median: 84"));
+    assert!(out.contains("range: 40"));
+    assert!(out.contains("passing: 72, 76, 84, 87, 89, 91, 93, 95"));
+    assert!(out.contains("sqrt(9.0) = 3.0"));
+    assert!(out.contains("sorted: apple, banana, cherry, date"));
+    assert!(out.contains("first: h, last: o"));
+    assert!(out.contains("showcase14 ok"));
+}
+
+#[test]
 fn lists_to_map() {
     let out = run_ore("lists/to_map.ore");
     let lines: Vec<&str> = out.lines().collect();

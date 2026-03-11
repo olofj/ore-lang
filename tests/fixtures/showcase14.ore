@@ -1,0 +1,56 @@
+-- Showcase 14: Complete data processing with all features
+
+fn grade score:Int -> Str
+  if score >= 90
+    "A"
+  else if score >= 80
+    "B"
+  else if score >= 70
+    "C"
+  else
+    "F"
+
+fn main
+  -- Student scores
+  scores := [95, 87, 72, 91, 68, 84, 93, 76, 89, 55]
+
+  -- Grade distribution
+  grades := scores | map(s => grade(s))
+  freq := grades.frequencies()
+  print "A: {freq.get_or("A", 0)}, B: {freq.get_or("B", 0)}, C: {freq.get_or("C", 0)}, F: {freq.get_or("F", 0)}"
+
+  -- Stats
+  sorted_scores := scores.sort()
+  print "median: {sorted_scores[4]}"
+  print "range: {scores.max() - scores.min()}"
+
+  -- Passing students
+  passing := scores | filter(s => s >= 70) | sort()
+  print "passing: {passing.join(", ")}"
+
+  -- Float calculations
+  floats := [1.0, 4.0, 9.0, 16.0, 25.0]
+  print "sum: {floats.sum()}"
+  print "min: {floats.min()}, max: {floats.max()}"
+
+  -- Print individual sqrt values
+  floats.each(x => print "sqrt({x}) = {sqrt(x)}")
+
+  -- Dedup + intersperse
+  data := [1, 1, 2, 2, 3, 3, 3, 4]
+  result := data.dedup().intersperse(0).join(" ")
+  print "dedup+inter: {result}"
+
+  -- Each with index
+  ["x", "y", "z"].each_with_index((i, v) => print "{i}={v}")
+
+  -- String sorting
+  words := ["banana", "cherry", "apple", "date"]
+  words.sort()
+  print "sorted: {words.join(", ")}"
+
+  -- Char at
+  msg := "hello"
+  print "first: {msg.char_at(0)}, last: {msg.char_at(-1)}"
+
+  print "showcase14 ok"

@@ -1212,6 +1212,21 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+/// map_with_index: call f(index, element) for each element, collect results
+#[no_mangle]
+pub extern "C" fn ore_list_map_with_index(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            let mapped = call_closure2(func, env, i as i64, val);
+            ore_list_push(result, mapped);
+        }
+        result
+    }
+}
+
 /// each_with_index: call f(index, element) for each element
 #[no_mangle]
 pub extern "C" fn ore_list_each_with_index(list: *mut OreList, func: *const u8, env: *mut u8) {
