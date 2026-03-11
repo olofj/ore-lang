@@ -1,0 +1,36 @@
+-- Showcase 314: Map as cache (memoization pattern)
+
+fn main
+  -- Fibonacci with memoization
+  mut cache := {}
+  cache.set("0", 0)
+  cache.set("1", 1)
+
+  for n in range(2, 31)
+    key := "{n}"
+    prev1 := "{n - 1}"
+    prev2 := "{n - 2}"
+    val := cache[prev1] + cache[prev2]
+    cache.set(key, val)
+
+  print "Fibonacci (memoized):"
+  for n in range(0, 11)
+    print "  F({n}) = {cache["{n}"]}"
+
+  -- Factorial cache
+  print ""
+  mut fact_cache := {}
+  fact_cache.set("0", 1)
+  for n in range(1, 13)
+    prev := "{n - 1}"
+    val := n * fact_cache[prev]
+    fact_cache.set("{n}", val)
+
+  print "Factorials (cached):"
+  for n in range(0, 13)
+    print "  {n}! = {fact_cache["{n}"]}"
+
+  -- Cache hit statistics
+  print ""
+  print "Fibonacci cache size: {cache.keys() | count()}"
+  print "Factorial cache size: {fact_cache.keys() | count()}"

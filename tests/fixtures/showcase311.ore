@@ -1,0 +1,53 @@
+-- Showcase 311: Huffman-like frequency analysis
+
+fn main
+  text := "abracadabra"
+  print "Text: {text}"
+
+  -- Count character frequencies
+  mut freq := {}
+  for i in range(0, text.len())
+    ch := text.substr(i, 1)
+    if freq.contains(ch)
+      freq.set(ch, freq[ch] + 1)
+    else
+      freq.set(ch, 1)
+
+  -- Display frequencies sorted by count
+  print ""
+  print "Frequencies:"
+  keys := freq.keys()
+  -- Selection sort by frequency (descending)
+  kc := keys | count()
+  for i in range(0, kc)
+    mut max_idx := i
+    for j in range(i + 1, kc)
+      if freq[keys[j]] > freq[keys[max_idx]]
+        max_idx = j
+    if max_idx != i
+      tmp := keys[i]
+      keys[i] = keys[max_idx]
+      keys[max_idx] = tmp
+
+  for k in keys
+    count := freq[k]
+    mut bar := ""
+    for j in range(0, count)
+      bar = "{bar}#"
+    print "  '{k}': {count} {bar}"
+
+  -- Shannon entropy approximation
+  total := text.len()
+  mut entropy_x100 := 0
+  for k in freq.keys()
+    p := freq[k] * 100 / total
+    if p > 0
+      -- log2 approximation: use integer math
+      mut bits := 0
+      mut v := 100 / p
+      while v > 1
+        v = v / 2
+        bits = bits + 1
+      entropy_x100 = entropy_x100 + p * bits
+  print ""
+  print "Approximate entropy*100: {entropy_x100}"

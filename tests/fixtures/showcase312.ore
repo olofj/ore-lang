@@ -1,0 +1,44 @@
+-- Showcase 312: Simple physics simulation
+
+fn main
+  -- Projectile motion (integer approximation)
+  -- v0 = 50 units/s, angle = 45 degrees
+  -- sin(45) ≈ cos(45) ≈ 0.707 ≈ 707/1000
+  v0 := 50
+  sin45 := 707
+  cos45 := 707
+  g := 10  -- gravity
+
+  vx := v0 * cos45 / 1000  -- horizontal velocity
+  vy := v0 * sin45 / 1000  -- initial vertical velocity
+
+  print "Projectile motion (v0={v0}, angle=45):"
+  print "  vx = {vx}, vy0 = {vy}"
+
+  -- Simulate trajectory
+  mut x := 0
+  mut y := 0
+  mut vy_curr := vy * 10  -- scale up for precision
+  mut t := 0
+  print ""
+  print "  t   x    y"
+  while y >= 0 and t <= 100
+    print "  {t}   {x}   {y}"
+    x = x + vx
+    vy_curr = vy_curr - g
+    y = y + vy_curr / 10
+    t = t + 1
+
+  print ""
+  print "  Range: {x} units"
+  print "  Time of flight: {t} steps"
+
+  -- Bouncing ball
+  print ""
+  print "Bouncing ball:"
+  mut height := 100
+  mut bounce := 0
+  while height > 5 and bounce < 8
+    print "  Bounce {bounce}: height = {height}"
+    height = height * 7 / 10  -- 70% restitution
+    bounce = bounce + 1

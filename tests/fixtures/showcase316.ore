@@ -1,0 +1,60 @@
+-- Showcase 316: Iterator adapter patterns
+
+fn main
+  -- take_while
+  data := [2, 4, 6, 7, 8, 10]
+  mut evens_prefix := []
+  mut done := false
+  for v in data
+    if not done and v % 2 == 0
+      evens_prefix.push(v)
+    else
+      done = true
+  print "take_while(even): {evens_prefix | join(", ")}"
+
+  -- skip_while
+  mut after_odd := []
+  mut skipping := true
+  for v in data
+    if skipping and v % 2 == 0
+      skipping = skipping
+    else
+      skipping = false
+      after_odd.push(v)
+  print "drop_while(even): {after_odd | join(", ")}"
+
+  -- chunk (simulate groups of 3)
+  print ""
+  items := range(1, 11) | map(n => n)
+  ic := items | count()
+  print "Chunks of 3:"
+  mut i := 0
+  while i < ic
+    mut chunk := []
+    for j in range(i, if i + 3 < ic then i + 3 else ic)
+      chunk.push(items[j])
+    print "  {chunk | join(", ")}"
+    i = i + 3
+
+  -- scan (running accumulation)
+  print ""
+  values := [1, 2, 3, 4, 5]
+  mut running := []
+  mut acc := 0
+  for v in values
+    acc = acc + v
+    running.push(acc)
+  print "Scan/prefix sum: {running | join(", ")}"
+
+  -- any/all
+  print ""
+  nums := [2, 4, 6, 8, 10]
+  mut all_even := true
+  mut any_gt_5 := false
+  for n in nums
+    if n % 2 != 0
+      all_even = false
+    if n > 5
+      any_gt_5 = true
+  print "All even: {all_even}"
+  print "Any > 5: {any_gt_5}"

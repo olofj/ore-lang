@@ -1,0 +1,40 @@
+-- Showcase 313: Advanced pipeline chains
+
+fn main
+  -- Multi-step data processing
+  data := range(1, 51)
+
+  -- Find primes using pipeline
+  mut primes := []
+  for n in data
+    if n >= 2
+      mut is_prime := true
+      mut d := 2
+      while d * d <= n
+        if n % d == 0
+          is_prime = false
+        d = d + 1
+      if is_prime
+        primes.push(n)
+
+  print "Primes 1-50: {primes | join(", ")}"
+  print "Count: {primes | count()}"
+  print "Sum: {primes | sum()}"
+
+  -- Pipeline transformations
+  doubled := primes | map(n => n * 2)
+  print "Doubled: {doubled | take(5) | join(", ")}..."
+
+  -- Find twin primes
+  print ""
+  print "Twin primes:"
+  pc := primes | count()
+  for i in range(0, pc - 1)
+    if primes[i + 1] - primes[i] == 2
+      print "  ({primes[i]}, {primes[i + 1]})"
+
+  -- Sum of first N primes
+  print ""
+  for n in [5, 10, 15]
+    partial := primes | take(n) | sum()
+    print "Sum of first {n} primes: {partial}"

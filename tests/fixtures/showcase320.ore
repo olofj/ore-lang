@@ -1,0 +1,45 @@
+-- Showcase 320: Testing framework showcase
+
+test "arithmetic"
+  assert_eq(2 + 2, 4)
+  assert_eq(10 - 3, 7)
+  assert_eq(6 * 7, 42)
+  assert_eq(100 / 4, 25)
+
+test "string operations"
+  s := "Hello, World!"
+  assert_eq(s.len(), 13)
+  assert(s.contains("World"))
+  assert(s.starts_with("Hello"))
+  assert(s.ends_with("!"))
+  assert_eq(s.to_upper(), "HELLO, WORLD!")
+
+test "list operations"
+  nums := [1, 2, 3, 4, 5]
+  assert_eq(nums | count(), 5)
+  assert_eq(nums | sum(), 15)
+  assert_eq(nums | min(), 1)
+  assert_eq(nums | max(), 5)
+
+  filtered := nums | filter(n => n > 3)
+  assert_eq(filtered | count(), 2)
+
+  doubled := nums | map(n => n * 2)
+  assert_eq(doubled | sum(), 30)
+
+test "boolean logic"
+  assert(true)
+  assert(not false)
+  assert(true and true)
+  assert(true or false)
+  assert(not (true and false))
+
+test "comparisons"
+  assert(5 > 3)
+  assert(3 < 5)
+  assert(5 >= 5)
+  assert(5 <= 5)
+  assert_ne(1, 2)
+
+fn main
+  print "Tests defined above run with 'ore test'"

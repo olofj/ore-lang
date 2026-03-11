@@ -1,0 +1,53 @@
+-- Showcase 318: Merge sort
+
+fn merge a:List b:List -> List
+  mut result := []
+  mut i := 0
+  mut j := 0
+  ac := a | count()
+  bc := b | count()
+  while i < ac and j < bc
+    if a[i] <= b[j]
+      result.push(a[i])
+      i = i + 1
+    else
+      result.push(b[j])
+      j = j + 1
+  while i < ac
+    result.push(a[i])
+    i = i + 1
+  while j < bc
+    result.push(b[j])
+    j = j + 1
+  result
+
+fn merge_sort arr:List -> List
+  n := arr | count()
+  if n <= 1
+    return arr
+  mid := n / 2
+  left := arr | take(mid)
+  right := arr | skip(mid)
+  merge(merge_sort(left), merge_sort(right))
+
+fn main
+  data := [38, 27, 43, 3, 9, 82, 10]
+  print "Original: {data | join(", ")}"
+  sorted := merge_sort(data)
+  print "Sorted:   {sorted | join(", ")}"
+
+  -- Sort strings alphabetically
+  words := ["banana", "apple", "cherry", "date", "elderberry"]
+  sorted_words := words | sort()
+  print ""
+  print "Words: {words | join(", ")}"
+  print "Sorted: {sorted_words | join(", ")}"
+
+  -- Already sorted
+  already := [1, 2, 3, 4, 5]
+  print ""
+  print "Already sorted: {merge_sort(already) | join(", ")}"
+
+  -- Reverse sorted
+  rev := [5, 4, 3, 2, 1]
+  print "Reverse: {merge_sort(rev) | join(", ")}"

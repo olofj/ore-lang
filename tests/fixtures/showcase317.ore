@@ -1,0 +1,53 @@
+-- Showcase 317: Graph coloring
+
+fn main
+  -- Simple graph: 5 nodes
+  -- Edges: 0-1, 0-2, 1-2, 1-3, 2-3, 2-4, 3-4
+  n := 5
+  edges_from := [0, 0, 1, 1, 2, 2, 3]
+  edges_to := [1, 2, 2, 3, 3, 4, 4]
+  ne := edges_from | count()
+
+  -- Greedy coloring
+  mut colors := []
+  for i in range(0, n)
+    colors.push(-1)
+
+  colors[0] = 0  -- Start with first node
+
+  for node in range(1, n)
+    -- Find colors of neighbors
+    mut used := {}
+    for e in range(0, ne)
+      if edges_from[e] == node and colors[edges_to[e]] >= 0
+        used.set("{colors[edges_to[e]]}", 1)
+      else if edges_to[e] == node and colors[edges_from[e]] >= 0
+        used.set("{colors[edges_from[e]]}", 1)
+
+    -- Find smallest unused color
+    mut color := 0
+    while used.contains("{color}")
+      color = color + 1
+    colors[node] = color
+
+  color_names := ["Red", "Blue", "Green", "Yellow"]
+  print "Graph coloring:"
+  for i in range(0, n)
+    cname := if colors[i] < color_names | count() then color_names[colors[i]] else "Color{colors[i]}"
+    print "  Node {i}: {cname}"
+
+  -- Verify: no adjacent nodes have same color
+  mut valid := true
+  for e in range(0, ne)
+    if colors[edges_from[e]] == colors[edges_to[e]]
+      valid = false
+      print "  CONFLICT: {edges_from[e]}-{edges_to[e]}"
+
+  print "Valid coloring: {valid}"
+
+  -- Count colors used
+  mut max_color := 0
+  for c in colors
+    if c > max_color
+      max_color = c
+  print "Colors used: {max_color + 1}"

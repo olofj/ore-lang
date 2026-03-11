@@ -1,0 +1,29 @@
+-- Showcase 319: Command pattern
+
+type Command
+  Print(text: Str)
+  Add(a: Int, b: Int)
+  Repeat(times: Int, text: Str)
+
+fn execute cmd:Command
+  match cmd
+    Print text -> print text
+    Add a b -> print "{a} + {b} = {a + b}"
+    Repeat n text ->
+      for i in range(0, n)
+        print text
+
+fn main
+  -- Build command list
+  commands := [
+    Print(text: "Hello from command pattern!"),
+    Add(a: 10, b: 20),
+    Add(a: 100, b: 200),
+    Print(text: "---"),
+    Repeat(times: 3, text: "echo!"),
+    Print(text: "Done!")
+  ]
+
+  print "Executing commands:"
+  for cmd in commands
+    execute(cmd)

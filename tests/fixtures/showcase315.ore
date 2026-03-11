@@ -1,0 +1,46 @@
+-- Showcase 315: Simple neural network (perceptron)
+
+fn main
+  -- AND gate perceptron
+  -- inputs: (0,0), (0,1), (1,0), (1,1)
+  -- weights: w1=1, w2=1, bias=-1 (threshold)
+
+  inputs_a := [0, 0, 1, 1]
+  inputs_b := [0, 1, 0, 1]
+  expected := [0, 0, 0, 1]  -- AND truth table
+
+  -- Simple perceptron with integer weights
+  w1 := 10
+  w2 := 10
+  threshold := 15
+
+  print "AND gate perceptron (w1={w1}, w2={w2}, t={threshold}):"
+  for i in range(0, 4)
+    a := inputs_a[i]
+    b := inputs_b[i]
+    activation := a * w1 + b * w2
+    output := if activation >= threshold then 1 else 0
+    correct := if output == expected[i] then "OK" else "WRONG"
+    print "  {a} AND {b} = {output} (expected {expected[i]}) {correct}"
+
+  -- OR gate
+  print ""
+  or_expected := [0, 1, 1, 1]
+  or_threshold := 5
+
+  print "OR gate perceptron (t={or_threshold}):"
+  for i in range(0, 4)
+    a := inputs_a[i]
+    b := inputs_b[i]
+    activation := a * w1 + b * w2
+    output := if activation >= or_threshold then 1 else 0
+    correct := if output == or_expected[i] then "OK" else "WRONG"
+    print "  {a} OR {b} = {output} (expected {or_expected[i]}) {correct}"
+
+  -- NOT gate
+  print ""
+  print "NOT gate:"
+  for a in [0, 1]
+    activation := 10 - a * 20
+    output := if activation >= 0 then 1 else 0
+    print "  NOT {a} = {output}"

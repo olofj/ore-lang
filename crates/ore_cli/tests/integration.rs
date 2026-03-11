@@ -4375,6 +4375,77 @@ fn showcase310_enums() {
 }
 
 #[test]
+fn showcase311_huffman() {
+    let out = run_ore("showcase311.ore");
+    assert!(out.contains("Text: abracadabra"));
+    assert!(out.contains("'a': 5"));
+}
+
+#[test]
+fn showcase312_physics() {
+    let out = run_ore("showcase312.ore");
+    assert!(out.contains("Projectile motion"));
+    assert!(out.contains("Bouncing ball:"));
+}
+
+#[test]
+fn showcase313_pipelines() {
+    let out = run_ore("showcase313.ore");
+    assert!(out.contains("Primes 1-50:"));
+    assert!(out.contains("Twin primes:"));
+}
+
+#[test]
+fn showcase314_memoization() {
+    let out = run_ore("showcase314.ore");
+    assert!(out.contains("F(10) = 55"));
+    assert!(out.contains("12! = 479001600"));
+}
+
+#[test]
+fn showcase315_perceptron() {
+    let out = run_ore("showcase315.ore");
+    assert!(out.contains("AND gate perceptron"));
+    assert!(out.contains("OR gate perceptron"));
+    assert!(out.contains("NOT 0 = 1"));
+}
+
+#[test]
+fn showcase316_iterators() {
+    let out = run_ore("showcase316.ore");
+    assert!(out.contains("take_while(even): 2, 4, 6"));
+    assert!(out.contains("Scan/prefix sum: 1, 3, 6, 10, 15"));
+    assert!(out.contains("All even: true"));
+}
+
+#[test]
+fn showcase317_graph_coloring() {
+    let out = run_ore("showcase317.ore");
+    assert!(out.contains("Valid coloring: true"));
+}
+
+#[test]
+fn showcase318_merge_sort() {
+    let out = run_ore("showcase318.ore");
+    assert!(out.contains("Sorted:   3, 9, 10, 27, 38, 43, 82"));
+    assert!(out.contains("apple, banana, cherry"));
+}
+
+#[test]
+fn showcase319_command_pattern() {
+    let out = run_ore("showcase319.ore");
+    assert!(out.contains("Hello from command pattern!"));
+    assert!(out.contains("10 + 20 = 30"));
+    assert!(out.contains("echo!"));
+}
+
+#[test]
+fn showcase320_testing() {
+    let out = run_ore("showcase320.ore");
+    assert!(out.contains("Tests defined above"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
