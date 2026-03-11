@@ -1,0 +1,78 @@
+-- Showcase 928: Voronoi Diagram (Nearest Neighbor)
+-- For each cell in a grid, finds the nearest seed point (site).
+-- This is the brute-force nearest-neighbor approach to Voronoi diagrams.
+-- Labels each grid cell with the index of its nearest site.
+
+fn dist2 ax:Int ay:Int bx:Int by:Int -> Int
+  dx := bx - ax
+  dy := by - ay
+  dx * dx + dy * dy
+
+fn nearest_site px:Int py:Int sxs:List sys:List -> Int
+  n := sxs.len()
+  mut best := 0
+  mut best_d := dist2(px, py, sxs[0], sys[0])
+  for i in range(1, n)
+    d := dist2(px, py, sxs[i], sys[i])
+    if d < best_d
+      best_d = d
+      best = i
+  best
+
+fn main
+  print "Voronoi Diagram (Nearest Neighbor)"
+  print "==================================="
+  print ""
+
+  -- 5 seed sites in a 12x8 grid
+  sites_x := [2, 9, 5, 1, 8]
+  sites_y := [1, 1, 4, 6, 6]
+  labels := ["A", "B", "C", "D", "E"]
+  n_sites := 5
+
+  print "Seed sites:"
+  for i in range(0, n_sites)
+    sx := sites_x[i]
+    sy := sites_y[i]
+    lbl := labels[i]
+    print "  {lbl}: ({sx},{sy})"
+
+  cols := 12
+  rows := 8
+  print ""
+  print "Voronoi regions ({cols}x{rows} grid, letter = nearest site):"
+  print ""
+
+  for row in range(0, rows)
+    mut line := "  "
+    for col in range(0, cols)
+      best := nearest_site(col, row, sites_x, sites_y)
+      -- Check if this is a site itself
+      mut is_site := false
+      for s in range(0, n_sites)
+        if sites_x[s] == col and sites_y[s] == row
+          is_site = true
+      lbl := labels[best]
+      if is_site
+        line = line + lbl
+      else
+        line = line + lbl.to_lower()
+    print line
+
+  print ""
+  -- Count cells per region
+  print "Region cell counts:"
+  for s in range(0, n_sites)
+    lbl := labels[s]
+    mut cnt := 0
+    for row in range(0, rows)
+      for col in range(0, cols)
+        best := nearest_site(col, row, sites_x, sites_y)
+        if best == s
+          cnt = cnt + 1
+    print "  {lbl}: {cnt} cells"
+
+  total := rows * cols
+  print ""
+  print "Total grid cells: {total}"
+  print "Voronoi partitions plane into {n_sites} regions"

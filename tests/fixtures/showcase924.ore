@@ -1,0 +1,72 @@
+-- Showcase 924: Polygon Area (Shoelace Formula)
+-- Computes the signed and unsigned area of a polygon using the
+-- Shoelace (Gauss) formula: A = 0.5 * |sum(x_i*(y_{i+1} - y_{i-1}))|
+
+fn shoelace_area xs:List ys:List -> Float
+  n := xs.len()
+  mut sum := 0.0
+  for i in range(0, n)
+    j := (i + 1) - n * ((i + 1) / n)
+    xi := xs[i]
+    yj := ys[j]
+    yi := ys[i]
+    xj := xs[j]
+    sum = sum + xi.to_float() * yj.to_float() - xj.to_float() * yi.to_float()
+  mut area := sum / 2.0
+  if area < 0.0
+    area = 0.0 - area
+  area
+
+fn round3 v:Float -> Float
+  r := (v * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+fn main
+  print "Polygon Area: Shoelace Formula"
+  print "=============================="
+  print ""
+
+  -- Unit square: (0,0),(1,0),(1,1),(0,1) -> area=1
+  sq_x := [0, 1, 1, 0]
+  sq_y := [0, 0, 1, 1]
+  sq_area := shoelace_area(sq_x, sq_y)
+  print "Unit square (0,0)-(1,0)-(1,1)-(0,1):"
+  print "  Area = {sq_area} (expected: 1.0)"
+
+  -- 3-4-5 right triangle: (0,0),(4,0),(0,3) -> area=6
+  tri_x := [0, 4, 0]
+  tri_y := [0, 0, 3]
+  tri_area := shoelace_area(tri_x, tri_y)
+  print ""
+  print "Right triangle (0,0)-(4,0)-(0,3):"
+  print "  Area = {tri_area} (expected: 6.0)"
+
+  -- Regular hexagon approximation with 6 vertices
+  -- radius=2: vertices at angles 0,60,120,180,240,300 degrees
+  -- area = 3*sqrt(3)/2 * r^2 = 10.392... for r=2
+  hex_x := [2, 1, -1, -2, -1, 1]
+  hex_y := [0, 2, 2, 0, -2, -2]
+  hex_area := shoelace_area(hex_x, hex_y)
+  print ""
+  print "Regular hexagon (r=2, integer vertices):"
+  print "  Area = {hex_area} (exact for integer coords)"
+
+  -- L-shaped polygon
+  l_x := [0, 3, 3, 1, 1, 0]
+  l_y := [0, 0, 1, 1, 3, 3]
+  l_area := shoelace_area(l_x, l_y)
+  print ""
+  print "L-shaped polygon:"
+  print "  Area = {l_area} (expected: 5.0)"
+
+  -- Pentagon: (0,2),(2,3),(3,1),(2,-1),(0,0)
+  pent_x := [0, 2, 3, 2, 0]
+  pent_y := [2, 3, 1, -1, 0]
+  pent_area := shoelace_area(pent_x, pent_y)
+  print ""
+  print "Irregular pentagon:"
+  print "  Area = {round3(pent_area)}"
+
+  print ""
+  print "Shoelace formula: A = 0.5 * |sum(xi*y(i+1) - x(i+1)*yi)|"
+  print "Works for any simple (non-self-intersecting) polygon"

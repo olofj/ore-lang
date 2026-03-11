@@ -1,0 +1,101 @@
+-- Showcase 930: Catmull-Rom Spline Interpolation
+-- Evaluates a Catmull-Rom spline through a set of control points.
+-- The spline passes through all control points (unlike Bezier).
+-- Uses centripetal parameterization for smooth curves.
+
+fn round3 v:Float -> Float
+  r := (v * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+-- Catmull-Rom basis: evaluate position at parameter t in [0,1]
+-- between p1 and p2, with p0 and p3 as tangent guides
+fn catmull_rom_x p0x:Float p1x:Float p2x:Float p3x:Float t:Float -> Float
+  t2 := t * t
+  t3 := t2 * t
+  a := 2.0 * p1x
+  b := (p2x - p0x) * t
+  c := (2.0 * p0x - 5.0 * p1x + 4.0 * p2x - p3x) * t2
+  d := (3.0 * p1x - p0x - 3.0 * p2x + p3x) * t3
+  0.5 * (a + b + c + d)
+
+fn catmull_rom_y p0y:Float p1y:Float p2y:Float p3y:Float t:Float -> Float
+  t2 := t * t
+  t3 := t2 * t
+  a := 2.0 * p1y
+  b := (p2y - p0y) * t
+  c := (2.0 * p0y - 5.0 * p1y + 4.0 * p2y - p3y) * t2
+  d := (3.0 * p1y - p0y - 3.0 * p2y + p3y) * t3
+  0.5 * (a + b + c + d)
+
+fn main
+  print "Catmull-Rom Spline Interpolation"
+  print "================================="
+  print ""
+
+  -- 6 control points forming an S-like curve
+  cxs := [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  cys := [0.0, 2.0, 0.0, 2.0, 0.0, 2.0]
+  n := 6
+
+  print "Control points (spline passes through all):"
+  for i in range(0, n)
+    print "  P{i}: ({cxs[i]},{cys[i]})"
+
+  print ""
+  print "Sampled spline points (4 samples per segment):"
+  print "  t_glob   x        y"
+  print "  -------  -------  -------"
+
+  -- Phantom endpoints: all_x = [P0, P0, P1, P2, P3, P4, P5, P5] (len=8)
+  -- Segments 0..4 use all_x[seg..seg+3]
+  mut all_x := [cxs[0]]
+  for i in range(0, n)
+    all_x.push(cxs[i])
+  all_x.push(cxs[n - 1])
+
+  mut all_y := [cys[0]]
+  for i in range(0, n)
+    all_y.push(cys[i])
+  all_y.push(cys[n - 1])
+
+  -- n_segs=5, segs 0..4 each access all_x[seg..seg+3], max index = 4+3=7 (ok, len=8)
+  n_segs := n - 1
+  for seg in range(0, n_segs)
+    p0x := all_x[seg]
+    p1x := all_x[seg + 1]
+    p2x := all_x[seg + 2]
+    p3x := all_x[seg + 3]
+    p0y := all_y[seg]
+    p1y := all_y[seg + 1]
+    p2y := all_y[seg + 2]
+    p3y := all_y[seg + 3]
+    for si in range(0, 4)
+      t := si.to_float() / 4.0
+      x := catmull_rom_x(p0x, p1x, p2x, p3x, t)
+      y := catmull_rom_y(p0y, p1y, p2y, p3y, t)
+      t_glob := seg.to_float() + t
+      tgs := str(round3(t_glob)).pad_right(7, " ")
+      xs := str(round3(x)).pad_right(7, " ")
+      ys := str(round3(y)).pad_right(7, " ")
+      print "  {tgs}  {xs}  {ys}"
+
+  -- Print the final point: last segment (seg=4) at t=1.0
+  last_seg := n_segs - 1
+  lp0x := all_x[last_seg]
+  lp1x := all_x[last_seg + 1]
+  lp2x := all_x[last_seg + 2]
+  lp3x := all_x[last_seg + 3]
+  lp0y := all_y[last_seg]
+  lp1y := all_y[last_seg + 1]
+  lp2y := all_y[last_seg + 2]
+  lp3y := all_y[last_seg + 3]
+  lx := catmull_rom_x(lp0x, lp1x, lp2x, lp3x, 1.0)
+  ly := catmull_rom_y(lp0y, lp1y, lp2y, lp3y, 1.0)
+  tgs := str(round3(n_segs.to_float())).pad_right(7, " ")
+  xs := str(round3(lx)).pad_right(7, " ")
+  ys := str(round3(ly)).pad_right(7, " ")
+  print "  {tgs}  {xs}  {ys}"
+
+  print ""
+  print "Segments: {n_segs}, Control points: {n}"
+  print "Catmull-Rom: C1 continuous, passes through all control points"

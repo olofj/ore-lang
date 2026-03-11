@@ -11276,6 +11276,166 @@ fn showcase_910() {
 }
 
 #[test]
+fn showcase_911() {
+    let out = run_ore("showcase911.ore");
+    assert!(out.contains("Moving Average Filter"), "got: {out}");
+    assert!(out.contains("Signal mean: 6.0"), "got: {out}");
+    assert!(out.contains("Moving average filter complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_912() {
+    let out = run_ore("showcase912.ore");
+    assert!(out.contains("Discrete Convolution"), "got: {out}");
+    assert!(out.contains("identity convolution"), "got: {out}");
+    assert!(out.contains("Discrete convolution complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_913() {
+    let out = run_ore("showcase913.ore");
+    assert!(out.contains("Autocorrelation Function"), "got: {out}");
+    assert!(out.contains("detected period: 4"), "got: {out}");
+    assert!(out.contains("Autocorrelation analysis complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_914() {
+    let out = run_ore("showcase914.ore");
+    assert!(out.contains("FIR Filter Design"), "got: {out}");
+    assert!(out.contains("DC gain"), "got: {out}");
+    assert!(out.contains("FIR filter design complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_915() {
+    let out = run_ore("showcase915.ore");
+    assert!(out.contains("Signal Peak Detection"), "got: {out}");
+    assert!(out.contains("Found 2 peaks and 1 valleys"), "got: {out}");
+    assert!(out.contains("Signal peak detection complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_916() {
+    let out = run_ore("showcase916.ore");
+    assert!(out.contains("Cross-Correlation"), "got: {out}");
+    assert!(out.contains("Detected time delay: 4 samples"), "got: {out}");
+    assert!(out.contains("Cross-correlation analysis complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_917() {
+    let out = run_ore("showcase917.ore");
+    assert!(out.contains("Digital Phase-Locked Loop"), "got: {out}");
+    assert!(out.contains("LOCKED"), "got: {out}");
+    assert!(out.contains("Digital PLL simulation complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_918() {
+    let out = run_ore("showcase918.ore");
+    assert!(out.contains("Hamming Window Function"), "got: {out}");
+    assert!(out.contains("Hamming:    0.51125"), "got: {out}");
+    assert!(out.contains("Window function analysis complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_919() {
+    let out = run_ore("showcase919.ore");
+    assert!(out.contains("Goertzel Algorithm"), "got: {out}");
+    assert!(out.contains("440.0"), "got: {out}");
+    assert!(out.contains("Goertzel algorithm complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_920() {
+    let out = run_ore("showcase920.ore");
+    assert!(out.contains("Delta-Sigma Modulation"), "got: {out}");
+    assert!(out.contains("Noise shaping"), "got: {out}");
+    assert!(out.contains("Delta-sigma modulation complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_921() {
+    let out = run_ore("showcase921.ore");
+    assert!(out.contains("Bresenham's Line Algorithm"), "got: {out}");
+    assert!(out.contains("Points plotted: 10"), "got: {out}");
+    assert!(out.contains("Algorithm uses integer arithmetic only"), "got: {out}");
+}
+
+#[test]
+fn showcase_922() {
+    let out = run_ore("showcase922.ore");
+    assert!(out.contains("Cohen-Sutherland Line Clipping"), "got: {out}");
+    assert!(out.contains("cross-left: ACCEPTED (1.0,3.0) to (5.0,3.0)"), "got: {out}");
+    assert!(out.contains("inside: ACCEPTED (2.0,2.0) to (7.0,5.0)"), "got: {out}");
+}
+
+#[test]
+fn showcase_923() {
+    let out = run_ore("showcase923.ore");
+    assert!(out.contains("Bezier Curve Evaluation (De Casteljau)"), "got: {out}");
+    assert!(out.contains("t=0: (0.0,0.0)  t=1: (3.0,0.0)"), "got: {out}");
+    assert!(out.contains("De Casteljau interpolation complete"), "got: {out}");
+}
+
+#[test]
+fn showcase_924() {
+    let out = run_ore("showcase924.ore");
+    assert!(out.contains("Polygon Area: Shoelace Formula"), "got: {out}");
+    assert!(out.contains("Area = 1.0 (expected: 1.0)"), "got: {out}");
+    assert!(out.contains("Area = 6.0 (expected: 6.0)"), "got: {out}");
+}
+
+#[test]
+fn showcase_925() {
+    let out = run_ore("showcase925.ore");
+    assert!(out.contains("Point-in-Polygon: Ray Casting Algorithm"), "got: {out}");
+    assert!(out.contains("[center]: INSIDE"), "got: {out}");
+    assert!(out.contains("[right-out]: OUTSIDE"), "got: {out}");
+}
+
+#[test]
+fn showcase_926() {
+    let out = run_ore("showcase926.ore");
+    assert!(out.contains("Convex Hull: Graham Scan"), "got: {out}");
+    assert!(out.contains("Hull size: 6 points"), "got: {out}");
+    assert!(out.contains("Interior points: 4"), "got: {out}");
+}
+
+#[test]
+fn showcase_927() {
+    let out = run_ore("showcase927.ore");
+    assert!(out.contains("Delaunay Triangulation Check"), "got: {out}");
+    assert!(out.contains("INSIDE (violates Delaunay)"), "got: {out}");
+    assert!(out.contains("In-circle determinant < 0 guarantees Delaunay condition holds"), "got: {out}");
+}
+
+#[test]
+fn showcase_928() {
+    let out = run_ore("showcase928.ore");
+    assert!(out.contains("Voronoi Diagram (Nearest Neighbor)"), "got: {out}");
+    assert!(out.contains("Total grid cells: 96"), "got: {out}");
+    assert!(out.contains("Voronoi partitions plane into 5 regions"), "got: {out}");
+}
+
+#[test]
+fn showcase_929() {
+    let out = run_ore("showcase929.ore");
+    assert!(out.contains("2D Rotation and Transformation Matrices"), "got: {out}");
+    assert!(out.contains("After translation (tx=3.0, ty=2.0)"), "got: {out}");
+    assert!(out.contains("2D rotation matrix: [cos -sin; sin cos]"), "got: {out}");
+}
+
+#[test]
+fn showcase_930() {
+    let out = run_ore("showcase930.ore");
+    assert!(out.contains("Catmull-Rom Spline Interpolation"), "got: {out}");
+    assert!(out.contains("Segments: 5, Control points: 6"), "got: {out}");
+    assert!(out.contains("Catmull-Rom: C1 continuous, passes through all control points"), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

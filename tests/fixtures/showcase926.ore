@@ -1,0 +1,104 @@
+-- Showcase 926: Convex Hull (Graham Scan)
+-- Computes the convex hull of a set of 2D points using the Graham scan
+-- algorithm. Finds the lowest point, sorts by polar angle, then sweeps.
+
+fn cross_z ax:Int ay:Int bx:Int by:Int cx:Int cy:Int -> Int
+  (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+fn dist2 ax:Int ay:Int bx:Int by:Int -> Int
+  dx := bx - ax
+  dy := by - ay
+  dx * dx + dy * dy
+
+fn main
+  print "Convex Hull: Graham Scan"
+  print "========================"
+  print ""
+
+  -- 10 points, some interior, some on hull
+  pts_x := [1, 4, 2, 6, 3, 5, 0, 7, 2, 5]
+  pts_y := [1, 4, 6, 2, 4, 6, 3, 3, 2, 1]
+  n := pts_x.len()
+
+  print "Input points:"
+  for i in range(0, n)
+    print "  P{i}: ({pts_x[i]},{pts_y[i]})"
+
+  -- Find lowest (then leftmost) point as pivot
+  mut pivot := 0
+  for i in range(1, n)
+    py := pts_y[i]
+    best_y := pts_y[pivot]
+    if py < best_y
+      pivot = i
+    else if py == best_y
+      if pts_x[i] < pts_x[pivot]
+        pivot = i
+
+  px := pts_x[pivot]
+  py := pts_y[pivot]
+  print ""
+  print "Pivot (lowest-leftmost): P{pivot} = ({px},{py})"
+
+  -- Sort indices by polar angle from pivot (insertion sort by cross product)
+  mut order := []
+  for i in range(0, n)
+    if i != pivot
+      order.push(i)
+
+  -- Simple insertion sort by angle (use cross product for comparison)
+  mut sorted := []
+  for i in range(0, order.len())
+    idx := order[i]
+    mut pos := sorted.len()
+    for j in range(0, sorted.len())
+      s := sorted[j]
+      cross := cross_z(px, py, pts_x[idx], pts_y[idx], pts_x[s], pts_y[s])
+      if cross > 0
+        pos = j
+        break
+      else if cross == 0
+        -- collinear: keep closer one first
+        d1 := dist2(px, py, pts_x[idx], pts_y[idx])
+        d2 := dist2(px, py, pts_x[s], pts_y[s])
+        if d1 < d2
+          pos = j
+          break
+    -- Insert at pos (rebuild with insert logic)
+    mut new_sorted := []
+    for k in range(0, pos)
+      new_sorted.push(sorted[k])
+    new_sorted.push(idx)
+    for k in range(pos, sorted.len())
+      new_sorted.push(sorted[k])
+    sorted = new_sorted
+
+  -- Graham scan: build hull
+  mut hull := [pivot, sorted[0]]
+  for i in range(1, sorted.len())
+    cur := sorted[i]
+    loop
+      hlen := hull.len()
+      if hlen < 2
+        break
+      a := hull[hlen - 2]
+      b := hull[hlen - 1]
+      cross := cross_z(pts_x[a], pts_y[a], pts_x[b], pts_y[b], pts_x[cur], pts_y[cur])
+      if cross > 0
+        break
+      -- Remove last hull point (pop)
+      mut trimmed := []
+      for k in range(0, hlen - 1)
+        trimmed.push(hull[k])
+      hull = trimmed
+    hull.push(cur)
+
+  print ""
+  print "Convex hull vertices (in order):"
+  for i in range(0, hull.len())
+    hi := hull[i]
+    print "  P{hi}: ({pts_x[hi]},{pts_y[hi]})"
+
+  print ""
+  print "Hull size: {hull.len()} points"
+  print "Interior points: {n - hull.len()}"

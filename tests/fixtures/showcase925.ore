@@ -1,0 +1,70 @@
+-- Showcase 925: Point-in-Polygon (Ray Casting)
+-- Determines if a point is inside a polygon by counting how many times
+-- a horizontal ray from the point crosses the polygon's edges.
+-- An odd count means the point is inside.
+
+fn point_in_polygon px:Float py:Float xs:List ys:List -> Bool
+  n := xs.len()
+  mut inside := false
+  mut j := n - 1
+  for i in range(0, n)
+    xi := xs[i].to_float()
+    yi := ys[i].to_float()
+    xj := xs[j].to_float()
+    yj := ys[j].to_float()
+    -- Check if ray crosses this edge
+    cond1 := (yi > py) != (yj > py)
+    cond2 := px < (xj - xi) * (py - yi) / (yj - yi) + xi
+    if cond1 and cond2
+      if inside
+        inside = false
+      else
+        inside = true
+    j = i
+  inside
+
+fn main
+  print "Point-in-Polygon: Ray Casting Algorithm"
+  print "========================================"
+  print ""
+
+  -- Square polygon: (0,0),(4,0),(4,4),(0,4)
+  sq_x := [0, 4, 4, 0]
+  sq_y := [0, 0, 4, 4]
+  print "Square polygon: (0,0)-(4,0)-(4,4)-(0,4)"
+  print ""
+
+  test_px := [2.0, 5.0, 0.0, 2.0, -1.0, 3.5]
+  test_py := [2.0, 2.0, 0.0, 4.1, 2.0, 3.5]
+  labels  := ["center", "right-out", "corner", "above", "left-out", "inside-tr"]
+
+  for i in range(0, 6)
+    px := test_px[i]
+    py := test_py[i]
+    label := labels[i]
+    inside := point_in_polygon(px, py, sq_x, sq_y)
+    result := if inside then "INSIDE" else "OUTSIDE"
+    print "  ({px},{py}) [{label}]: {result}"
+
+  -- Triangle polygon: (0,0),(6,0),(3,5)
+  print ""
+  tri_x := [0, 6, 3]
+  tri_y := [0, 0, 5]
+  print "Triangle polygon: (0,0)-(6,0)-(3,5)"
+  print ""
+
+  t_px := [3.0, 0.5, 5.5, 3.0, 3.0]
+  t_py := [2.0, 0.2, 0.2, 5.5, 0.0]
+  t_labels := ["centroid", "bot-left", "bot-right", "above-apex", "base-mid"]
+
+  for i in range(0, 5)
+    px := t_px[i]
+    py := t_py[i]
+    label := t_labels[i]
+    inside := point_in_polygon(px, py, tri_x, tri_y)
+    result := if inside then "INSIDE" else "OUTSIDE"
+    print "  ({px},{py}) [{label}]: {result}"
+
+  print ""
+  print "Ray casting: count crossings of horizontal ray from point"
+  print "Odd crossings = inside, Even = outside (Jordan curve theorem)"

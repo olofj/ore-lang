@@ -1,0 +1,116 @@
+-- Showcase 922: Cohen-Sutherland Line Clipping
+-- Clips line segments to a rectangular window using region outcodes.
+-- Each endpoint is assigned an outcode based on its position relative
+-- to the clipping rectangle. INSIDE=0, LEFT=1, RIGHT=2, BOTTOM=4, TOP=8.
+
+fn compute_outcode x:Float y:Float xmin:Float ymin:Float xmax:Float ymax:Float -> Int
+  mut code := 0
+  if x < xmin
+    code = code + 1
+  if x > xmax
+    code = code + 2
+  if y < ymin
+    code = code + 4
+  if y > ymax
+    code = code + 8
+  code
+
+fn round2 v:Float -> Float
+  r := (v * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+fn clip_x x0:Float y0:Float x1:Float y1:Float boundary:Float -> Float
+  dx := x1 - x0
+  dy := y1 - y0
+  if dx < 0.001 and dx > -0.001
+    y0
+  else
+    y0 + dy * (boundary - x0) / dx
+
+fn clip_y x0:Float y0:Float x1:Float y1:Float boundary:Float -> Float
+  dx := x1 - x0
+  dy := y1 - y0
+  if dy < 0.001 and dy > -0.001
+    x0
+  else
+    x0 + dx * (boundary - y0) / dy
+
+fn main
+  print "Cohen-Sutherland Line Clipping"
+  print "=============================="
+  print ""
+
+  xmin := 1.0
+  ymin := 1.0
+  xmax := 8.0
+  ymax := 6.0
+  print "Clip window: ({xmin},{ymin}) to ({xmax},{ymax})"
+  print ""
+
+  -- Test cases
+  cases_x0 := [0.0, 2.0, 9.0, 0.0, 3.0]
+  cases_y0 := [3.0, 2.0, 7.0, 0.0, 2.0]
+  cases_x1 := [5.0, 7.0, 6.0, 10.0, 6.0]
+  cases_y1 := [3.0, 5.0, 1.0, 7.0, 5.0]
+  names := ["cross-left", "inside", "corner", "diagonal", "inside2"]
+
+  for i in range(0, 5)
+    mut x0 := cases_x0[i]
+    mut y0 := cases_y0[i]
+    mut x1 := cases_x1[i]
+    mut y1 := cases_y1[i]
+    name := names[i]
+    mut accepted := false
+    mut rejected := false
+    mut iters := 0
+
+    loop
+      oc0 := compute_outcode(x0, y0, xmin, ymin, xmax, ymax)
+      oc1 := compute_outcode(x1, y1, xmin, ymin, xmax, ymax)
+      if oc0 == 0 and oc1 == 0
+        accepted = true
+        break
+      if oc0 != 0 and oc1 != 0
+        rejected = true
+        break
+      iters = iters + 1
+      if iters > 10
+        break
+      mut oc_out := oc0
+      mut ox := x0
+      mut oy := y0
+      if oc0 == 0
+        oc_out = oc1
+        ox = x1
+        oy = y1
+      mut nx := ox
+      mut ny := oy
+      if oc_out >= 8
+        ny = ymax
+        nx = clip_y(x0, y0, x1, y1, ymax)
+        oc_out = oc_out - 8
+      if oc_out >= 4
+        ny = ymin
+        nx = clip_y(x0, y0, x1, y1, ymin)
+        oc_out = oc_out - 4
+      if oc_out >= 2
+        nx = xmax
+        ny = clip_x(x0, y0, x1, y1, xmax)
+        oc_out = oc_out - 2
+      if oc_out >= 1
+        nx = xmin
+        ny = clip_x(x0, y0, x1, y1, xmin)
+      if oc0 != 0
+        x0 = nx
+        y0 = ny
+      else
+        x1 = nx
+        y1 = ny
+
+    if accepted
+      print "  {name}: ACCEPTED ({round2(x0)},{round2(y0)}) to ({round2(x1)},{round2(y1)})"
+    else
+      print "  {name}: REJECTED (entirely outside window)"
+
+  print ""
+  print "Outcode bits: INSIDE=0 LEFT=1 RIGHT=2 BOTTOM=4 TOP=8"

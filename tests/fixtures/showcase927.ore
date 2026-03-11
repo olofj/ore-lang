@@ -1,0 +1,92 @@
+-- Showcase 927: Delaunay Triangulation Check
+-- Verifies whether a set of triangles satisfies the Delaunay condition:
+-- no point lies strictly inside the circumcircle of any triangle.
+-- Uses the in-circle test via a 3x3 determinant.
+
+fn round4 v:Float -> Float
+  r := (v * 10000.0 + 0.5).to_int()
+  r.to_float() / 10000.0
+
+-- In-circle test: positive if d is inside circumcircle of (a,b,c) CCW
+fn in_circle ax:Float ay:Float bx:Float by:Float cx:Float cy:Float dx:Float dy:Float -> Float
+  adx := ax - dx
+  ady := ay - dy
+  bdx := bx - dx
+  bdy := by - dy
+  cdx := cx - dx
+  cdy := cy - dy
+  ad2 := adx * adx + ady * ady
+  bd2 := bdx * bdx + bdy * bdy
+  cd2 := cdx * cdx + cdy * cdy
+  -- 3x3 determinant
+  adx * (bdy * cd2 - bd2 * cdy) - ady * (bdx * cd2 - bd2 * cdx) + ad2 * (bdx * cdy - bdy * cdx)
+
+-- Circumradius of triangle
+fn circumradius ax:Float ay:Float bx:Float by:Float cx:Float cy:Float -> Float
+  ax2 := ax * ax
+  ay2 := ay * ay
+  bx2 := bx * bx
+  by2 := by * by
+  cx2 := cx * cx
+  cy2 := cy * cy
+  d := 2.0 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
+  if d < 0.001 and d > -0.001
+    999999.0
+  else
+    ux := (ax2 + ay2) * (by - cy) + (bx2 + by2) * (cy - ay) + (cx2 + cy2) * (ay - by)
+    uy := (ax2 + ay2) * (cx - bx) + (bx2 + by2) * (ax - cx) + (cx2 + cy2) * (bx - ax)
+    cx2r := ux / d
+    cy2r := uy / d
+    dx := ax - cx2r
+    dy := ay - cy2r
+    sqrt(dx * dx + dy * dy)
+
+fn main
+  print "Delaunay Triangulation Check"
+  print "============================"
+  print ""
+
+  -- 5 points forming two triangles
+  -- P0=(0,0), P1=(4,0), P2=(2,3), P3=(2,1), P4=(6,2)
+  xs := [0.0, 4.0, 2.0, 2.0, 6.0]
+  ys := [0.0, 0.0, 3.0, 1.0, 2.0]
+  names := ["P0", "P1", "P2", "P3", "P4"]
+  print "Points:"
+  for i in range(0, 5)
+    print "  {names[i]} = ({xs[i]},{ys[i]})"
+
+  print ""
+  print "Triangle circumradii:"
+  -- Triangle (P0,P1,P2)
+  r012 := circumradius(xs[0], ys[0], xs[1], ys[1], xs[2], ys[2])
+  print "  T(P0,P1,P2): R = {round4(r012)}"
+
+  -- Triangle (P0,P1,P3)
+  r013 := circumradius(xs[0], ys[0], xs[1], ys[1], xs[3], ys[3])
+  print "  T(P0,P1,P3): R = {round4(r013)}"
+
+  -- Triangle (P1,P4,P2)
+  r142 := circumradius(xs[1], ys[1], xs[4], ys[4], xs[2], ys[2])
+  print "  T(P1,P4,P2): R = {round4(r142)}"
+
+  print ""
+  print "In-circle tests (positive = point inside circumcircle = violates Delaunay):"
+
+  -- Does P3 lie inside circumcircle of (P0,P1,P2)?
+  ic_p3_012 := in_circle(xs[0], ys[0], xs[1], ys[1], xs[2], ys[2], xs[3], ys[3])
+  result1 := if ic_p3_012 > 0.0 then "INSIDE (violates Delaunay)" else "OUTSIDE (ok)"
+  print "  P3 in circumcircle of T(P0,P1,P2): {round4(ic_p3_012)} -> {result1}"
+
+  -- Does P2 lie inside circumcircle of (P0,P1,P3)?
+  ic_p2_013 := in_circle(xs[0], ys[0], xs[1], ys[1], xs[3], ys[3], xs[2], ys[2])
+  result2 := if ic_p2_013 > 0.0 then "INSIDE (violates Delaunay)" else "OUTSIDE (ok)"
+  print "  P2 in circumcircle of T(P0,P1,P3): {round4(ic_p2_013)} -> {result2}"
+
+  -- Does P4 lie inside circumcircle of (P1,P2,P3)?
+  ic_p4_123 := in_circle(xs[1], ys[1], xs[2], ys[2], xs[3], ys[3], xs[4], ys[4])
+  result3 := if ic_p4_123 > 0.0 then "INSIDE (violates Delaunay)" else "OUTSIDE (ok)"
+  print "  P4 in circumcircle of T(P1,P2,P3): {round4(ic_p4_123)} -> {result3}"
+
+  print ""
+  print "Delaunay property: maximizes minimum angle of all triangles"
+  print "In-circle determinant < 0 guarantees Delaunay condition holds"

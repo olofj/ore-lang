@@ -1,0 +1,66 @@
+-- Showcase 921: Bresenham's Line Algorithm
+-- Rasterizes a line on a grid using integer-only arithmetic.
+-- Produces a compact ASCII grid showing the plotted pixels.
+
+fn bresenham x0:Int y0:Int x1:Int y1:Int -> List
+  mut pts := []
+  mut x := x0
+  mut y := y0
+  dx := (x1 - x0).abs()
+  dy := (y1 - y0).abs()
+  mut sx := 1
+  if x0 > x1
+    sx = -1
+  mut sy := 1
+  if y0 > y1
+    sy = -1
+  mut err := dx - dy
+  mut running := true
+  loop
+    pts.push(x * 100 + y)
+    if x == x1 and y == y1
+      running = false
+      break
+    e2 := err * 2
+    if e2 > (0 - dy)
+      err = err - dy
+      x = x + sx
+    if e2 < dx
+      err = err + dx
+      y = y + sy
+  pts
+
+fn main
+  print "Bresenham's Line Algorithm"
+  print "=========================="
+  print ""
+
+  -- Draw line from (0,0) to (9,4) on a 5x10 grid
+  pts := bresenham(0, 0, 9, 4)
+  rows := 5
+  cols := 10
+  print "Line from (0,0) to (9,4) on 5x10 grid:"
+  for r in range(0, rows)
+    mut row_str := ""
+    for c in range(0, cols)
+      key := c * 100 + r
+      hit := pts.contains(key)
+      if hit
+        row_str = row_str + "*"
+      else
+        row_str = row_str + "."
+    print "  {row_str}"
+
+  print ""
+  print "Points plotted: {pts.len()}"
+
+  -- Second line: steep slope
+  pts2 := bresenham(0, 0, 3, 7)
+  print ""
+  print "Line from (0,0) to (3,7) - steep slope:"
+  print "Points: {pts2.len()}"
+  p0 := pts2[0]
+  plast := pts2[pts2.len() - 1]
+  print "First point key: {p0}"
+  print "Last point key: {plast}"
+  print "Algorithm uses integer arithmetic only"

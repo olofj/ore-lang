@@ -1,0 +1,94 @@
+-- Showcase 929: 2D Rotation and Transformation Matrices
+-- Demonstrates 2D affine transformations: rotation, scaling, translation,
+-- and their composition. Applies transforms to polygon vertices.
+
+fn round3 v:Float -> Float
+  r := (v * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+-- Rotate point (x,y) by angle_deg degrees around origin
+fn rotate_x x:Float y:Float angle_deg:Float -> Float
+  rad := angle_deg * pi() / 180.0
+  x * cos(rad) - y * sin(rad)
+
+fn rotate_y x:Float y:Float angle_deg:Float -> Float
+  rad := angle_deg * pi() / 180.0
+  x * sin(rad) + y * cos(rad)
+
+-- Scale point
+fn scale_x x:Float sx:Float -> Float
+  x * sx
+
+fn scale_y y:Float sy:Float -> Float
+  y * sy
+
+-- Translate
+fn translate_x x:Float tx:Float -> Float
+  x + tx
+
+fn translate_y y:Float ty:Float -> Float
+  y + ty
+
+fn main
+  print "2D Rotation and Transformation Matrices"
+  print "========================================"
+  print ""
+
+  -- Unit square vertices
+  vx := [0.0, 1.0, 1.0, 0.0]
+  vy := [0.0, 0.0, 1.0, 1.0]
+  vnames := ["P0", "P1", "P2", "P3"]
+  print "Original unit square:"
+  for i in range(0, 4)
+    print "  {vnames[i]}: ({vx[i]},{vy[i]})"
+
+  -- Rotation by 45 degrees
+  angle := 45.0
+  print ""
+  print "After {angle}-degree rotation:"
+  for i in range(0, 4)
+    rx := round3(rotate_x(vx[i], vy[i], angle))
+    ry := round3(rotate_y(vx[i], vy[i], angle))
+    print "  {vnames[i]}: ({rx},{ry})"
+
+  -- Rotation by 90 degrees
+  angle90 := 90.0
+  print ""
+  print "After {angle90}-degree rotation:"
+  for i in range(0, 4)
+    rx := round3(rotate_x(vx[i], vy[i], angle90))
+    ry := round3(rotate_y(vx[i], vy[i], angle90))
+    print "  {vnames[i]}: ({rx},{ry})"
+
+  -- Scaling by (2, 0.5)
+  print ""
+  print "After scaling (sx=2.0, sy=0.5):"
+  for i in range(0, 4)
+    sx := scale_x(vx[i], 2.0)
+    sy := scale_y(vy[i], 0.5)
+    print "  {vnames[i]}: ({sx},{sy})"
+
+  -- Translation by (3, 2)
+  print ""
+  print "After translation (tx=3.0, ty=2.0):"
+  for i in range(0, 4)
+    tx := translate_x(vx[i], 3.0)
+    ty := translate_y(vy[i], 2.0)
+    print "  {vnames[i]}: ({tx},{ty})"
+
+  -- Composition: scale then rotate 30 degrees then translate
+  print ""
+  print "Composition: scale(2,2) then rotate(30) then translate(1,1):"
+  angle30 := 30.0
+  for i in range(0, 4)
+    sx := scale_x(vx[i], 2.0)
+    sy := scale_y(vy[i], 2.0)
+    rx := rotate_x(sx, sy, angle30)
+    ry := rotate_y(sx, sy, angle30)
+    fx := round3(translate_x(rx, 1.0))
+    fy := round3(translate_y(ry, 1.0))
+    print "  {vnames[i]}: ({fx},{fy})"
+
+  print ""
+  print "2D rotation matrix: [cos -sin; sin cos]"
+  print "Transforms are composable via matrix multiplication"

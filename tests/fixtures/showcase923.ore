@@ -1,0 +1,83 @@
+-- Showcase 923: Bezier Curve Evaluation
+-- Evaluates cubic and quadratic Bezier curves using De Casteljau's algorithm.
+-- Samples the curve at uniform parameter values t in [0,1].
+
+fn lerp a:Float b:Float t:Float -> Float
+  a + (b - a) * t
+
+fn round3 v:Float -> Float
+  r := (v * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+-- Quadratic Bezier: 3 control points
+fn bezier_quad_x p0x:Float p1x:Float p2x:Float t:Float -> Float
+  a := lerp(p0x, p1x, t)
+  b := lerp(p1x, p2x, t)
+  lerp(a, b, t)
+
+fn bezier_quad_y p0y:Float p1y:Float p2y:Float t:Float -> Float
+  a := lerp(p0y, p1y, t)
+  b := lerp(p1y, p2y, t)
+  lerp(a, b, t)
+
+-- Cubic Bezier: 4 control points
+fn bezier_cubic_x p0x:Float p1x:Float p2x:Float p3x:Float t:Float -> Float
+  a := lerp(p0x, p1x, t)
+  b := lerp(p1x, p2x, t)
+  c := lerp(p2x, p3x, t)
+  d := lerp(a, b, t)
+  e := lerp(b, c, t)
+  lerp(d, e, t)
+
+fn bezier_cubic_y p0y:Float p1y:Float p2y:Float p3y:Float t:Float -> Float
+  a := lerp(p0y, p1y, t)
+  b := lerp(p1y, p2y, t)
+  c := lerp(p2y, p3y, t)
+  d := lerp(a, b, t)
+  e := lerp(b, c, t)
+  lerp(d, e, t)
+
+fn main
+  print "Bezier Curve Evaluation (De Casteljau)"
+  print "======================================="
+  print ""
+
+  -- Quadratic Bezier: P0=(0,0), P1=(1,2), P2=(2,0)
+  print "Quadratic Bezier: P0=(0,0) P1=(1,2) P2=(2,0)"
+  print "  t     x       y"
+  print "  ----  ------  ------"
+  steps := [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  for i in range(0, 9)
+    ti := steps[i]
+    t := ti.to_float() / 8.0
+    x := bezier_quad_x(0.0, 1.0, 2.0, t)
+    y := bezier_quad_y(0.0, 2.0, 0.0, t)
+    ts := str(round3(t)).pad_right(6, " ")
+    xs := str(round3(x)).pad_right(6, " ")
+    ys := str(round3(y)).pad_right(6, " ")
+    print "  {ts}  {xs}  {ys}"
+
+  print ""
+  -- Cubic Bezier: P0=(0,0), P1=(0,3), P2=(3,3), P3=(3,0) - S-curve
+  print "Cubic Bezier (S-curve): P0=(0,0) P1=(0,3) P2=(3,3) P3=(3,0)"
+  print "  t     x       y"
+  print "  ----  ------  ------"
+  for i in range(0, 9)
+    ti := steps[i]
+    t := ti.to_float() / 8.0
+    x := bezier_cubic_x(0.0, 0.0, 3.0, 3.0, t)
+    y := bezier_cubic_y(0.0, 3.0, 3.0, 0.0, t)
+    ts := str(round3(t)).pad_right(6, " ")
+    xs := str(round3(x)).pad_right(6, " ")
+    ys := str(round3(y)).pad_right(6, " ")
+    print "  {ts}  {xs}  {ys}"
+
+  print ""
+  -- Verify endpoints
+  x_start := bezier_cubic_x(0.0, 0.0, 3.0, 3.0, 0.0)
+  x_end   := bezier_cubic_x(0.0, 0.0, 3.0, 3.0, 1.0)
+  y_start := bezier_cubic_y(0.0, 3.0, 3.0, 0.0, 0.0)
+  y_end   := bezier_cubic_y(0.0, 3.0, 3.0, 0.0, 1.0)
+  print "Verification: curve passes through endpoints"
+  print "  t=0: ({x_start},{y_start})  t=1: ({x_end},{y_end})"
+  print "De Casteljau interpolation complete"
