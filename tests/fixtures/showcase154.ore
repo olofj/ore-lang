@@ -1,0 +1,51 @@
+-- Showcase 154: State machine pattern
+
+type State
+  Idle
+  Loading(progress: Int)
+  Failed(code: Int)
+  Complete(result: Int)
+
+fn state_name s:State -> Str
+  match s
+    Idle -> "idle"
+    Loading p -> "loading ({p}%)"
+    Failed c -> "failed ({c})"
+    Complete r -> "complete ({r})"
+
+fn main
+  -- Enum construction and matching
+  s1 := Idle
+  print state_name(s1)
+
+  s2 := Loading(progress: 25)
+  print state_name(s2)
+
+  s3 := Loading(progress: 50)
+  print state_name(s3)
+
+  s4 := Complete(result: 100)
+  print state_name(s4)
+
+  s5 := Failed(code: 404)
+  print state_name(s5)
+
+  -- Match with guards
+  print ""
+  s6 := Loading(progress: 75)
+  match s6
+    Loading p if p >= 50 -> print "more than halfway ({p}%)"
+    Loading p -> print "just started ({p}%)"
+    _ -> print "other state"
+
+  s7 := Loading(progress: 10)
+  match s7
+    Loading p if p >= 50 -> print "more than halfway ({p}%)"
+    Loading p -> print "just started ({p}%)"
+    _ -> print "other state"
+
+  -- Pattern exhaustiveness
+  print ""
+  for code in [200, 404, 500]
+    status := if code == 200 then Complete(result: code) else Failed(code: code)
+    print "{code}: {state_name(status)}"

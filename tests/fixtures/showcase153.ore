@@ -1,0 +1,36 @@
+-- Showcase 153: Matrix operations (using lists of lists)
+
+fn matrix_add a:List[Int] b:List[Int] size:Int -> List[Int]
+  range(0, size * size) | map(i => a[i] + b[i])
+
+fn matrix_get m:List[Int] row:Int col:Int size:Int -> Int
+  m[row * size + col]
+
+fn main
+  -- 3x3 matrix operations
+  a := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  b := [9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+  -- Matrix addition
+  c := matrix_add(a, b, 3)
+  for row in range(0, 3)
+    line := range(0, 3) | map(col => matrix_get(c, row, col, 3)) | join(" ")
+    print line
+  -- Each element should be 10
+
+  -- Transpose
+  print ""
+  for row in range(0, 3)
+    line := range(0, 3) | map(col => matrix_get(a, col, row, 3)) | join(" ")
+    print line
+
+  -- Row sums
+  print ""
+  for row in range(0, 3)
+    row_sum := range(0, 3) | map(col => matrix_get(a, row, col, 3)) | sum()
+    print "row {row}: {row_sum}"
+
+  -- Diagonal
+  diag := range(0, 3) | map(i => matrix_get(a, i, i, 3)) | join(", ")
+  print "diagonal: {diag}"
+  print "trace: {range(0, 3) | map(i => matrix_get(a, i, i, 3)) | sum()}"

@@ -3012,6 +3012,26 @@ fn showcase152_math_numerical() {
 }
 
 #[test]
+fn showcase153_matrix_ops() {
+    let out = run_ore("showcase153.ore");
+    assert!(out.contains("10 10 10"));
+    assert!(out.contains("row 0: 6"));
+    assert!(out.contains("trace: 15"));
+    assert!(out.contains("diagonal: 1, 5, 9"));
+}
+
+#[test]
+fn showcase154_state_machine() {
+    let out = run_ore("showcase154.ore");
+    assert!(out.contains("idle"));
+    assert!(out.contains("loading (25%)"));
+    assert!(out.contains("complete (100)"));
+    assert!(out.contains("more than halfway (75%)"));
+    assert!(out.contains("just started (10%)"));
+    assert!(out.contains("404: failed (404)"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
