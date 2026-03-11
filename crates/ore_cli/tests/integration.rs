@@ -2711,6 +2711,16 @@ fn showcase125_impl_blocks() {
 }
 
 #[test]
+fn showcase126_self_type() {
+    let out = run_ore("showcase126.ore");
+    assert!(out.contains("rgb(255, 0, 0)"));
+    assert!(out.contains("rgb(127, 127, 0)"));
+    assert!(out.contains("area: 15.0"));
+    assert!(out.contains("scaled area: 60.0"));
+    assert!(out.contains("is square: true"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

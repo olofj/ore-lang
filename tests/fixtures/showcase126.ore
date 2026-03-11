@@ -1,0 +1,59 @@
+-- Showcase 126: Self type in impl blocks
+
+type Color { r: Int, g: Int, b: Int }
+
+fn color_red -> Color
+  Color(r: 255, g: 0, b: 0)
+
+fn color_green -> Color
+  Color(r: 0, g: 255, b: 0)
+
+impl Color
+  fn mix self:Self other:Self -> Self
+    Color(
+      r: (self.r + other.r) / 2,
+      g: (self.g + other.g) / 2,
+      b: (self.b + other.b) / 2
+    )
+
+  fn display self:Self -> Str
+    "rgb({self.r}, {self.g}, {self.b})"
+
+  fn is_bright self:Self -> Bool
+    self.r + self.g + self.b > 380
+
+type Rect { width: Float, height: Float }
+
+impl Rect
+  fn area self:Self -> Float
+    self.width * self.height
+
+  fn perimeter self:Self -> Float
+    2.0 * (self.width + self.height)
+
+  fn scale self:Self factor:Float -> Self
+    Rect(width: self.width * factor, height: self.height * factor)
+
+  fn is_square self:Self -> Bool
+    self.width == self.height
+
+fn main
+  -- Colors with Self
+  r := color_red()
+  g := color_green()
+  mixed := r.mix(g)
+  print r.display()
+  print g.display()
+  print mixed.display()
+  print "bright: {r.is_bright()}"
+
+  -- Rect with Self
+  print ""
+  rect := Rect(width: 5.0, height: 3.0)
+  print "area: {rect.area()}"
+  print "perimeter: {rect.perimeter()}"
+  big := rect.scale(2.0)
+  print "scaled area: {big.area()}"
+  print "is square: {rect.is_square()}"
+  sq := Rect(width: 4.0, height: 4.0)
+  print "is square: {sq.is_square()}"
