@@ -868,12 +868,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_time_ms", i64_type.fn_type(&[], false), ext);
         // Random
         self.module.add_function("ore_rand_int", i64_type.fn_type(&[i64_type.into(), i64_type.into()], false), ext);
-        // Process
-        self.module.add_function("ore_exit", void_type.fn_type(&[i64_type.into()], false), ext);
         self.module.add_function("ore_exec", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_type_of", ptr_type.fn_type(&[i8_type.into()], false), ext);
-        // Environment
-        self.module.add_function("ore_env_get", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_env_set", void_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_dynamic_to_str(i64, i8) -> ptr — dynamic dispatch for Result/Option payload to string
         self.module.add_function("ore_dynamic_to_str", ptr_type.fn_type(&[i64_type.into(), i8_type.into()], false), ext);
@@ -1652,7 +1648,14 @@ impl<'ctx> CodeGen<'ctx> {
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Channel));
                     }
-                    "readln" => {
+                    "readln" | "input" => {
+                        // input("prompt") prints prompt then reads line
+                        // input() / readln() just reads line
+                        if args.len() == 1 {
+                            let (prompt, _) = self.compile_expr_with_kind(&args[0], func)?;
+                            let print_fn = self.module.get_function("ore_str_print_no_newline").unwrap();
+                            bld!(self.builder.build_call(print_fn, &[prompt.into()], ""))?;
+                        }
                         let rt = self.module.get_function("ore_readln").unwrap();
                         let result = bld!(self.builder.build_call(rt, &[], "readln"))?;
                         let val = self.call_result_to_value(result)?;

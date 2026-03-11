@@ -519,7 +519,7 @@ impl TypeChecker {
                     Expr::Ident(name) => {
                         // Built-in functions
                         match name.as_str() {
-                            "print" | "readln" => return Type::Str,
+                            "print" | "readln" | "input" => return Type::Str,
                             "abs" | "min" | "max" => return Type::Int,
                             "int" | "len" | "ord" => return Type::Int,
                             "float" => return Type::Float,

@@ -42,6 +42,7 @@ pub extern "C" fn ore_str_print_no_newline(s: *mut OreStr) {
     unsafe {
         let _ = write!(handle, "{}", (*s).as_str());
     }
+    let _ = handle.flush();
 }
 
 #[no_mangle]
@@ -1581,9 +1582,12 @@ pub extern "C" fn ore_list_par_each(list: *mut OreList, func: *const u8, env: *m
 pub extern "C" fn ore_list_set(list: *mut OreList, index: i64, value: i64) {
     unsafe {
         let list = &mut *list;
-        if index >= 0 && (index as usize) < list.len as usize {
-            *list.data.add(index as usize) = value;
+        let idx = if index < 0 { list.len + index } else { index };
+        if idx < 0 || idx >= list.len {
+            eprintln!("index out of bounds: {} (len {})", index, list.len);
+            std::process::exit(1);
         }
+        *list.data.add(idx as usize) = value;
     }
 }
 
