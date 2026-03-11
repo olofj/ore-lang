@@ -1,0 +1,145 @@
+-- Showcase 960: CIDR Subnet Calculator
+-- Comprehensive subnet calculations: split a network into subnets, VLSM planning.
+
+fn ip_to_int a:Int b:Int c:Int d:Int -> Int
+  a * 16777216 + b * 65536 + c * 256 + d
+
+fn octet0 n:Int -> Int
+  n / 16777216
+
+fn octet1 n:Int -> Int
+  tmp := n / 65536
+  tmp % 256
+
+fn octet2 n:Int -> Int
+  tmp := n / 256
+  tmp % 256
+
+fn octet3 n:Int -> Int
+  n % 256
+
+fn mask_from_prefix prefix:Int -> Int
+  host_bits := 32 - prefix
+  mut host_size := 1
+  for i in range(0, host_bits)
+    host_size = host_size * 2
+  4294967296 - host_size
+
+fn network_of ip:Int prefix:Int -> Int
+  host_bits := 32 - prefix
+  mut host_size := 1
+  for i in range(0, host_bits)
+    host_size = host_size * 2
+  tmp := ip / host_size
+  tmp * host_size
+
+fn host_count prefix:Int -> Int
+  host_bits := 32 - prefix
+  mut total := 1
+  for i in range(0, host_bits)
+    total = total * 2
+  total - 2
+
+fn print_cidr ip:Int prefix:Int label:Str
+  net := network_of(ip, prefix)
+  mask := mask_from_prefix(prefix)
+  hosts := host_count(prefix)
+  host_bits := 32 - prefix
+  mut subnet_size := 1
+  for i in range(0, host_bits)
+    subnet_size = subnet_size * 2
+  bcast := net + subnet_size - 1
+
+  na := octet0(net)
+  nb := octet1(net)
+  nc := octet2(net)
+  nd := octet3(net)
+
+  ma := octet0(mask)
+  mb := octet1(mask)
+  mc := octet2(mask)
+  md := octet3(mask)
+
+  ba := octet0(bcast)
+  bb := octet1(bcast)
+  bc := octet2(bcast)
+  bd := octet3(bcast)
+
+  first := net + 1
+  fa := octet0(first)
+  fb := octet1(first)
+  fc := octet2(first)
+  fd := octet3(first)
+
+  last := bcast - 1
+  la := octet0(last)
+  lb := octet1(last)
+  lc := octet2(last)
+  ld := octet3(last)
+
+  print "{label}"
+  print "  Network:    {na}.{nb}.{nc}.{nd}/{prefix}"
+  print "  Mask:       {ma}.{mb}.{mc}.{md}"
+  print "  Broadcast:  {ba}.{bb}.{bc}.{bd}"
+  print "  First host: {fa}.{fb}.{fc}.{fd}"
+  print "  Last host:  {la}.{lb}.{lc}.{ld}"
+  print "  Usable:     {hosts} hosts"
+
+fn main
+  print "CIDR Subnet Calculator"
+  print "======================"
+  print ""
+
+  -- Single network analysis
+  print_cidr(ip_to_int(192, 168, 10, 0), 24, "Network: 192.168.10.0/24")
+  print ""
+  print_cidr(ip_to_int(10, 0, 0, 0), 8, "Network: 10.0.0.0/8")
+  print ""
+  print_cidr(ip_to_int(172, 16, 0, 0), 20, "Network: 172.16.0.0/20")
+  print ""
+
+  -- Subnet splitting: divide 192.168.1.0/24 into /26 subnets
+  print "=== Splitting 192.168.1.0/24 into /26 subnets ==="
+  base := ip_to_int(192, 168, 1, 0)
+  sub_prefix := 26
+  sub_size := 64  -- 2^(32-26) = 64
+  num_subnets := 4  -- 256 / 64
+
+  for s in range(0, num_subnets)
+    sub_net := base + s * sub_size
+    sub_bcast := sub_net + sub_size - 1
+    sub_first := sub_net + 1
+    sub_last := sub_bcast - 1
+    na := octet2(sub_net)
+    nd := octet3(sub_net)
+    fa := octet3(sub_first)
+    la := octet3(sub_last)
+    bd := octet3(sub_bcast)
+    hosts := sub_size - 2
+    print "  Subnet {s}: 192.168.1.{nd}/{sub_prefix}  hosts: 192.168.1.{fa}-192.168.1.{la}  bcast: 192.168.1.{bd}  ({hosts} hosts)"
+
+  print ""
+
+  -- VLSM: Variable Length Subnet Masking
+  print "=== VLSM Planning for 192.168.100.0/24 ==="
+  print "Requirements:"
+  mut dept_names := ["Engineering", "Marketing", "Sales", "Management"]
+  mut dept_req := [60, 28, 12, 5]
+  mut dept_pfx := [26, 27, 28, 29]
+  mut dept_sz := [64, 32, 16, 8]
+
+  mut cur := ip_to_int(192, 168, 100, 0)
+  for i in range(0, 4)
+    dept := dept_names[i]
+    req := dept_req[i]
+    pfx := dept_pfx[i]
+    sz := dept_sz[i]
+    bcast := cur + sz - 1
+    hosts := sz - 2
+    n3 := octet3(cur)
+    b3 := octet3(bcast)
+    print "  {dept}: need {req} hosts -> /{pfx} (192.168.100.{n3}-{b3}, {hosts} usable)"
+    cur = cur + sz
+
+  print ""
+  print "CIDR enables flexible IP allocation with minimal waste."

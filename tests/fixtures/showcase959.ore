@@ -1,0 +1,138 @@
+-- Showcase 959: Hamming Distance for Error Detection/Correction
+-- Computes Hamming distances and demonstrates Hamming(7,4) error correction.
+
+fn hamming_distance_bits a:Int b:Int bits:Int -> Int
+  -- Count differing bits in the first 'bits' bit positions
+  mut diff := 0
+  mut aa := a
+  mut bb := b
+  for i in range(0, bits)
+    ba := aa % 2
+    bbb := bb % 2
+    if ba != bbb
+      diff = diff + 1
+    aa = aa / 2
+    bb = bb / 2
+  diff
+
+fn to_bin7 n:Int -> Str
+  -- 7-bit binary string, MSB first
+  mut result := ""
+  mut x := n
+  mut bits := [0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 7)
+    bits[i] = x % 2
+    x = x / 2
+  for i in range(0, 7)
+    idx := 6 - i
+    result = result + str(bits[idx])
+  result
+
+fn to_bin4 n:Int -> Str
+  -- 4-bit binary string
+  mut result := ""
+  mut x := n
+  mut bits := [0, 0, 0, 0]
+  for i in range(0, 4)
+    bits[i] = x % 2
+    x = x / 2
+  for i in range(0, 4)
+    result = result + str(bits[3 - i])
+  result
+
+-- Hamming(7,4): data bits d1..d4 at positions 3,5,6,7
+-- parity bits p1,p2,p4 at positions 1,2,4
+fn hamming74_encode data:Int -> Int
+  d1 := data % 2
+  d2 := (data / 2) % 2
+  d3 := (data / 4) % 2
+  d4 := (data / 8) % 2
+  p1 := (d1 + d2 + d4) % 2
+  p2 := (d1 + d3 + d4) % 2
+  p4 := (d2 + d3 + d4) % 2
+  -- Codeword bit positions (1-indexed): p1 p2 d1 p4 d2 d3 d4
+  p1 + p2 * 2 + d1 * 4 + p4 * 8 + d2 * 16 + d3 * 32 + d4 * 64
+
+fn hamming74_syndrome cw:Int -> Int
+  b1 := cw % 2
+  b2 := (cw / 2) % 2
+  b3 := (cw / 4) % 2
+  b4 := (cw / 8) % 2
+  b5 := (cw / 16) % 2
+  b6 := (cw / 32) % 2
+  b7 := (cw / 64) % 2
+  s1 := (b1 + b3 + b5 + b7) % 2
+  s2 := (b2 + b3 + b6 + b7) % 2
+  s4 := (b4 + b5 + b6 + b7) % 2
+  s1 + s2 * 2 + s4 * 4
+
+fn hamming74_decode cw:Int -> Int
+  d1 := (cw / 4) % 2
+  d2 := (cw / 16) % 2
+  d3 := (cw / 32) % 2
+  d4 := (cw / 64) % 2
+  d1 + d2 * 2 + d3 * 4 + d4 * 8
+
+fn flip_bit cw:Int pos:Int -> Int
+  -- flip bit at position pos (1-indexed), pos in 1..7
+  mut weight := 1
+  for i in range(1, pos)
+    weight = weight * 2
+  cur_bit := (cw / weight) % 2
+  if cur_bit == 0
+    cw + weight
+  else
+    cw - weight
+
+fn main
+  print "Hamming Distance and Error Correction"
+  print "======================================"
+  print ""
+
+  -- Hamming distance examples (4-bit values)
+  print "=== Hamming Distance (4-bit words) ==="
+  mut a_vals := [0, 7, 10, 15, 3]
+  mut b_vals := [15, 8, 5, 0, 12]
+  for i in range(0, 5)
+    a := a_vals[i]
+    b := b_vals[i]
+    d := hamming_distance_bits(a, b, 4)
+    sa := to_bin4(a)
+    sb := to_bin4(b)
+    print "  d({sa}, {sb}) = {d}"
+
+  print ""
+
+  -- Hamming(7,4) encoding
+  print "=== Hamming(7,4) Encoding ==="
+  print "  data -> codeword [parity check]"
+  mut dvals := [0, 1, 5, 9, 13, 15]
+  for d in dvals
+    cw := hamming74_encode(d)
+    cw_str := to_bin7(cw)
+    syn := hamming74_syndrome(cw)
+    decoded := hamming74_decode(cw)
+    d_str := to_bin4(d)
+    print "  {d_str} -> {cw_str}  syn={syn}  decode={decoded}"
+
+  print ""
+
+  -- Error detection and correction demo
+  print "=== Single-Bit Error Correction ==="
+  d_in := 9
+  cw_orig := hamming74_encode(d_in)
+  orig_str := to_bin7(cw_orig)
+  print "Data: {to_bin4(d_in)} ({d_in}), codeword: {orig_str}"
+
+  -- Introduce single-bit errors at different positions
+  for pos in range(1, 8)
+    cw_err := flip_bit(cw_orig, pos)
+    syn := hamming74_syndrome(cw_err)
+    cw_fix := flip_bit(cw_err, syn)
+    data_out := hamming74_decode(cw_fix)
+    ok := data_out == d_in
+    err_str := to_bin7(cw_err)
+    print "  flip bit {pos}: {err_str}  syn={syn}  corrected={ok}"
+
+  print ""
+  print "Hamming(7,4) corrects all single-bit errors, detects double-bit errors."

@@ -1,0 +1,120 @@
+-- Showcase 957: Base64 Encode/Decode
+-- Implements Base64 encoding and decoding of ASCII strings.
+
+fn b64_char idx:Int -> Str
+  -- Returns the Base64 character at the given index (0-63)
+  if idx < 26 then chr(ord("A") + idx)
+  else if idx < 52 then chr(ord("a") + idx - 26)
+  else if idx < 62 then chr(ord("0") + idx - 52)
+  else if idx == 62 then "+"
+  else "/"
+
+fn b64_index c:Str -> Int
+  code := ord(c)
+  a_code := ord("A")
+  z_code := ord("Z")
+  la_code := ord("a")
+  lz_code := ord("z")
+  zero_code := ord("0")
+  nine_code := ord("9")
+  if code >= a_code and code <= z_code
+    code - a_code
+  else if code >= la_code and code <= lz_code
+    code - la_code + 26
+  else if code >= zero_code and code <= nine_code
+    code - zero_code + 52
+  else if c == "+" then 62
+  else if c == "/" then 63
+  else -1
+
+fn encode_base64 s:Str -> Str
+  n := s.len()
+  mut result := ""
+  mut i := 0
+  loop
+    if i >= n
+      break
+    b0 := ord(s.char_at(i))
+    mut b1 := 0
+    mut b2 := 0
+    mut chars := 1
+    if i + 1 < n
+      b1 = ord(s.char_at(i + 1))
+      chars = 2
+    if i + 2 < n
+      b2 = ord(s.char_at(i + 2))
+      chars = 3
+    -- Pack 3 bytes into 24 bits, emit 4 base64 chars
+    c0 := b0 / 4
+    c1 := (b0 % 4) * 16 + b1 / 16
+    c2 := (b1 % 16) * 4 + b2 / 64
+    c3 := b2 % 64
+    result = result + b64_char(c0) + b64_char(c1)
+    if chars >= 2
+      result = result + b64_char(c2)
+    else
+      result = result + "="
+    if chars == 3
+      result = result + b64_char(c3)
+    else
+      result = result + "="
+    i = i + 3
+  result
+
+fn decode_base64 s:Str -> Str
+  n := s.len()
+  mut result := ""
+  mut i := 0
+  loop
+    if i >= n
+      break
+    v0 := b64_index(s.char_at(i))
+    mut v1 := 0
+    mut v2 := 0
+    mut v3 := 0
+    if i + 1 < n
+      v1 = b64_index(s.char_at(i + 1))
+    if i + 2 < n
+      c2 := s.char_at(i + 2)
+      if c2 != "="
+        v2 = b64_index(c2)
+    if i + 3 < n
+      c3 := s.char_at(i + 3)
+      if c3 != "="
+        v3 = b64_index(c3)
+    -- Decode 4 chars to 3 bytes
+    byte0 := v0 * 4 + v1 / 16
+    byte1 := (v1 % 16) * 16 + v2 / 4
+    byte2 := (v2 % 4) * 64 + v3
+    result = result + chr(byte0)
+    -- Only add bytes 1 and 2 if they were encoded
+    if i + 2 < n
+      c2check := s.char_at(i + 2)
+      if c2check != "="
+        result = result + chr(byte1)
+    if i + 3 < n
+      c3check := s.char_at(i + 3)
+      if c3check != "="
+        result = result + chr(byte2)
+    i = i + 4
+  result
+
+fn main
+  print "Base64 Encode / Decode"
+  print "======================"
+  print ""
+
+  mut inputs := ["Hello", "Man", "A", "ore lang"]
+  inputs.push("networking")
+  inputs.push("Base64 is fun!")
+
+  for s in inputs
+    encoded := encode_base64(s)
+    decoded := decode_base64(encoded)
+    ok := decoded == s
+    print "Input:   {s}"
+    print "Encoded: {encoded}"
+    print "Decoded: {decoded}  (ok={ok})"
+    print ""
+
+  print "Base64 uses A-Z, a-z, 0-9, +, / with = padding."

@@ -1,0 +1,117 @@
+-- Showcase 956: URL Parser
+-- Parses URLs into scheme, host, port, path, query, and fragment components.
+
+fn extract_scheme url:Str -> Str
+  idx := url.index_of("://")
+  if idx < 0
+    ""
+  else
+    url.substr(0, idx)
+
+fn after_scheme url:Str -> Str
+  idx := url.index_of("://")
+  if idx < 0
+    url
+  else
+    url.substr(idx + 3, url.len())
+
+fn extract_host_part authority:Str -> Str
+  -- Remove path, query, fragment
+  pi := authority.index_of("/")
+  qi := authority.index_of("?")
+  fi := authority.index_of("#")
+  mut end := authority.len()
+  if pi >= 0 and pi < end
+    end = pi
+  if qi >= 0 and qi < end
+    end = qi
+  if fi >= 0 and fi < end
+    end = fi
+  authority.substr(0, end)
+
+fn extract_host host_port:Str -> Str
+  ci := host_port.index_of(":")
+  if ci < 0
+    host_port
+  else
+    host_port.substr(0, ci)
+
+fn extract_port host_port:Str scheme:Str -> Int
+  ci := host_port.index_of(":")
+  if ci < 0
+    -- Default ports
+    if scheme == "https" then 443
+    else if scheme == "ftp" then 21
+    else 80
+  else
+    port_str := host_port.substr(ci + 1, host_port.len())
+    port_str.to_int()
+
+fn extract_path authority:Str -> Str
+  pi := authority.index_of("/")
+  if pi < 0
+    "/"
+  else
+    path_and_rest := authority.substr(pi, authority.len())
+    qi := path_and_rest.index_of("?")
+    fi := path_and_rest.index_of("#")
+    mut end := path_and_rest.len()
+    if qi >= 0 and qi < end
+      end = qi
+    if fi >= 0 and fi < end
+      end = fi
+    path_and_rest.substr(0, end)
+
+fn extract_query authority:Str -> Str
+  qi := authority.index_of("?")
+  if qi < 0
+    ""
+  else
+    fi := authority.index_of("#")
+    if fi < 0
+      authority.substr(qi + 1, authority.len())
+    else
+      authority.substr(qi + 1, fi)
+
+fn extract_fragment authority:Str -> Str
+  fi := authority.index_of("#")
+  if fi < 0
+    ""
+  else
+    authority.substr(fi + 1, authority.len())
+
+fn parse_and_print url:Str
+  scheme := extract_scheme(url)
+  rest := after_scheme(url)
+  host_part := extract_host_part(rest)
+  host := extract_host(host_part)
+  port := extract_port(host_part, scheme)
+  path := extract_path(rest)
+  query := extract_query(rest)
+  fragment := extract_fragment(rest)
+
+  print "URL: {url}"
+  print "  Scheme:   {scheme}"
+  print "  Host:     {host}"
+  print "  Port:     {port}"
+  print "  Path:     {path}"
+  print "  Query:    {query}"
+  print "  Fragment: {fragment}"
+
+fn main
+  print "URL Parser"
+  print "=========="
+  print ""
+
+  parse_and_print("https://www.example.com/index.html")
+  print ""
+  parse_and_print("http://api.example.com:8080/api/v1/users?page=2&limit=10")
+  print ""
+  parse_and_print("https://docs.example.org/guide/intro#section-3")
+  print ""
+  parse_and_print("ftp://files.example.net/pub/data.tar.gz")
+  print ""
+  parse_and_print("http://localhost:3000/health")
+
+  print ""
+  print "URL structure: scheme://host:port/path?query#fragment"

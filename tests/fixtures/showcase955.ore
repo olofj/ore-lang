@@ -1,0 +1,130 @@
+-- Showcase 955: HTTP Request Parser
+-- Parses HTTP/1.1 request lines and headers, extracts method, path, version, headers.
+
+fn parse_method line:Str -> Str
+  idx := line.index_of(" ")
+  if idx < 0
+    "UNKNOWN"
+  else
+    line.substr(0, idx)
+
+fn parse_path line:Str -> Str
+  idx1 := line.index_of(" ")
+  if idx1 < 0
+    "/"
+  else
+    rest := line.substr(idx1 + 1, line.len())
+    idx2 := rest.index_of(" ")
+    if idx2 < 0
+      rest
+    else
+      rest.substr(0, idx2)
+
+fn parse_version line:Str -> Str
+  idx1 := line.index_of(" ")
+  if idx1 < 0
+    "HTTP/1.0"
+  else
+    after_method := line.substr(idx1 + 1, line.len())
+    idx2 := after_method.index_of(" ")
+    if idx2 < 0
+      "HTTP/1.0"
+    else
+      after_method.substr(idx2 + 1, after_method.len())
+
+fn parse_header_name h:Str -> Str
+  idx := h.index_of(":")
+  if idx < 0
+    h
+  else
+    h.substr(0, idx)
+
+fn parse_header_value h:Str -> Str
+  idx := h.index_of(":")
+  if idx < 0
+    ""
+  else
+    rest := h.substr(idx + 1, h.len())
+    rest.trim()
+
+fn method_is_safe m:Str -> Bool
+  m == "GET" or m == "HEAD" or m == "OPTIONS"
+
+fn method_has_body m:Str -> Bool
+  m == "POST" or m == "PUT" or m == "PATCH"
+
+fn print_headers headers:List
+  for hdr in headers
+    hname := parse_header_name(hdr)
+    hval := parse_header_value(hdr)
+    print "    {hname}: {hval}"
+
+fn main
+  print "HTTP Request Parser"
+  print "==================="
+  print ""
+
+  -- Request 1: GET
+  req1 := "GET /index.html HTTP/1.1"
+  m1 := parse_method(req1)
+  p1 := parse_path(req1)
+  v1 := parse_version(req1)
+  safe1 := method_is_safe(m1)
+  body1 := method_has_body(m1)
+  print "Request 1: {req1}"
+  print "  Method:  {m1}"
+  print "  Path:    {p1}"
+  print "  Version: {v1}"
+  print "  Safe: {safe1}, Has body: {body1}"
+  mut h1 := ["Host: www.example.com", "Accept: text/html"]
+  h1.push("Connection: keep-alive")
+  h1.push("User-Agent: OreHTTP/1.0")
+  print "  Headers:"
+  print_headers(h1)
+
+  print ""
+
+  -- Request 2: POST
+  req2 := "POST /api/users HTTP/1.1"
+  m2 := parse_method(req2)
+  p2 := parse_path(req2)
+  v2 := parse_version(req2)
+  safe2 := method_is_safe(m2)
+  body2 := method_has_body(m2)
+  print "Request 2: {req2}"
+  print "  Method:  {m2}"
+  print "  Path:    {p2}"
+  print "  Version: {v2}"
+  print "  Safe: {safe2}, Has body: {body2}"
+  mut h2 := ["Host: api.example.com", "Content-Type: application/json"]
+  h2.push("Content-Length: 42")
+  h2.push("Authorization: Bearer token123")
+  print "  Headers:"
+  print_headers(h2)
+
+  print ""
+
+  -- Request 3: DELETE
+  req3 := "DELETE /api/users/42 HTTP/1.1"
+  m3 := parse_method(req3)
+  p3 := parse_path(req3)
+  print "Request 3: {req3}"
+  print "  Method:  {m3}"
+  print "  Path:    {p3}"
+
+  -- Status codes
+  print ""
+  print "Common HTTP Status Codes:"
+  mut codes := [200, 201, 301, 302, 400, 401, 403, 404, 500]
+  mut descs := ["OK", "Created", "Moved Permanently", "Found", "Bad Request"]
+  descs.push("Unauthorized")
+  descs.push("Forbidden")
+  descs.push("Not Found")
+  descs.push("Internal Server Error")
+  for i in range(0, 9)
+    c := codes[i]
+    d := descs[i]
+    print "  {c} {d}"
+
+  print ""
+  print "HTTP parsing: method, path, version extracted from request line."

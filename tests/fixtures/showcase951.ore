@@ -1,0 +1,113 @@
+-- Showcase 951: IP Address Manipulation (CIDR, Subnet)
+-- Parse IPv4 addresses, compute network address, broadcast, host range from CIDR notation.
+
+fn ip_to_int a:Int b:Int c:Int d:Int -> Int
+  a * 16777216 + b * 65536 + c * 256 + d
+
+fn octet0 n:Int -> Int
+  n / 16777216
+
+fn octet1 n:Int -> Int
+  tmp := n / 65536
+  tmp % 256
+
+fn octet2 n:Int -> Int
+  tmp := n / 256
+  tmp % 256
+
+fn octet3 n:Int -> Int
+  n % 256
+
+fn cidr_mask prefix:Int -> Int
+  -- Build 32-bit mask: prefix ones followed by zeros
+  -- We compute total = 2^32 - 2^(32-prefix)
+  host_bits := 32 - prefix
+  mut host_size := 1
+  for i in range(0, host_bits)
+    host_size = host_size * 2
+  4294967296 - host_size
+
+fn network_addr ip:Int mask:Int -> Int
+  -- integer division trick: (ip / host_size) * host_size
+  host_size := 4294967296 - mask
+  tmp := ip / host_size
+  tmp * host_size
+
+fn count_hosts prefix:Int -> Int
+  host_bits := 32 - prefix
+  mut total := 1
+  for i in range(0, host_bits)
+    total = total * 2
+  total - 2
+
+fn print_ip label:Str ip:Int
+  a := octet0(ip)
+  b := octet1(ip)
+  c := octet2(ip)
+  d := octet3(ip)
+  print "  {label}: {a}.{b}.{c}.{d}"
+
+fn main
+  print "IP Address Manipulation (CIDR / Subnet)"
+  print "========================================"
+  print ""
+
+  -- Example 1: 192.168.1.100/24
+  ip1 := ip_to_int(192, 168, 1, 100)
+  mask1 := cidr_mask(24)
+  net1 := network_addr(ip1, mask1)
+  bcast1 := net1 + 255
+  hosts1 := count_hosts(24)
+
+  print "CIDR: 192.168.1.100/24"
+  print_ip("Network  ", net1)
+  print_ip("Broadcast", bcast1)
+  print "  Usable hosts: {hosts1}"
+
+  -- Example 2: 10.10.20.0/16
+  ip2 := ip_to_int(10, 10, 20, 55)
+  mask2 := cidr_mask(16)
+  net2 := network_addr(ip2, mask2)
+  bcast2 := net2 + 65535
+  hosts2 := count_hosts(16)
+
+  print ""
+  print "CIDR: 10.10.20.55/16"
+  print_ip("Network  ", net2)
+  print_ip("Broadcast", bcast2)
+  print "  Usable hosts: {hosts2}"
+
+  -- Example 3: 172.16.5.10/20
+  ip3 := ip_to_int(172, 16, 5, 10)
+  mask3 := cidr_mask(20)
+  net3 := network_addr(ip3, mask3)
+  host_size3 := 4096
+  bcast3 := net3 + host_size3 - 1
+  hosts3 := count_hosts(20)
+
+  print ""
+  print "CIDR: 172.16.5.10/20"
+  print_ip("Network  ", net3)
+  print_ip("Broadcast", bcast3)
+  print "  Usable hosts: {hosts3}"
+
+  -- Same-subnet check
+  ip_a := ip_to_int(192, 168, 1, 50)
+  ip_b := ip_to_int(192, 168, 1, 200)
+  ip_c := ip_to_int(192, 168, 2, 5)
+  mask24 := cidr_mask(24)
+  net_a := network_addr(ip_a, mask24)
+  net_b := network_addr(ip_b, mask24)
+  net_c := network_addr(ip_c, mask24)
+
+  print ""
+  print "Same-subnet check (/24):"
+  if net_a == net_b
+    print "  192.168.1.50 and 192.168.1.200 -> same subnet"
+  if net_a == net_c
+    print "  192.168.1.50 and 192.168.2.5 -> same subnet"
+  else
+    print "  192.168.1.50 and 192.168.2.5 -> different subnet"
+
+  print ""
+  print "CIDR notation enables hierarchical IP address allocation."

@@ -1,0 +1,105 @@
+-- Showcase 952: TCP State Machine Simulation
+-- Simulates the TCP connection lifecycle through all major states.
+
+-- TCP states: 0=CLOSED, 1=LISTEN, 2=SYN_SENT, 3=SYN_RECEIVED,
+--             4=ESTABLISHED, 5=FIN_WAIT_1, 6=FIN_WAIT_2,
+--             7=CLOSE_WAIT, 8=LAST_ACK, 9=TIME_WAIT
+
+fn state_name s:Int -> Str
+  if s == 0 then "CLOSED"
+  else if s == 1 then "LISTEN"
+  else if s == 2 then "SYN_SENT"
+  else if s == 3 then "SYN_RECEIVED"
+  else if s == 4 then "ESTABLISHED"
+  else if s == 5 then "FIN_WAIT_1"
+  else if s == 6 then "FIN_WAIT_2"
+  else if s == 7 then "CLOSE_WAIT"
+  else if s == 8 then "LAST_ACK"
+  else "TIME_WAIT"
+
+fn event_name e:Int -> Str
+  if e == 0 then "passive_open"
+  else if e == 1 then "active_open"
+  else if e == 2 then "recv_SYN"
+  else if e == 3 then "recv_SYN+ACK"
+  else if e == 4 then "recv_ACK"
+  else if e == 5 then "close()"
+  else if e == 6 then "recv_FIN"
+  else "timeout"
+
+-- Transition table using a flat key: state * 10 + event
+fn transition state:Int event:Int -> Int
+  key := state * 10 + event
+  -- CLOSED transitions
+  if key == 1 then 2      -- CLOSED + active_open -> SYN_SENT
+  else if key == 0 then 1 -- CLOSED + passive_open -> LISTEN
+  -- LISTEN transitions
+  else if key == 12 then 3   -- LISTEN + recv_SYN -> SYN_RECEIVED
+  -- SYN_SENT transitions
+  else if key == 23 then 4   -- SYN_SENT + recv_SYN+ACK -> ESTABLISHED
+  -- SYN_RECEIVED transitions
+  else if key == 34 then 4   -- SYN_RECEIVED + recv_ACK -> ESTABLISHED
+  -- ESTABLISHED transitions
+  else if key == 45 then 5   -- ESTABLISHED + close -> FIN_WAIT_1
+  else if key == 46 then 7   -- ESTABLISHED + recv_FIN -> CLOSE_WAIT
+  -- FIN_WAIT_1 transitions
+  else if key == 54 then 6   -- FIN_WAIT_1 + recv_ACK -> FIN_WAIT_2
+  -- FIN_WAIT_2 transitions
+  else if key == 66 then 9   -- FIN_WAIT_2 + recv_FIN -> TIME_WAIT
+  -- CLOSE_WAIT transitions
+  else if key == 75 then 8   -- CLOSE_WAIT + close -> LAST_ACK
+  -- LAST_ACK transitions
+  else if key == 84 then 0   -- LAST_ACK + recv_ACK -> CLOSED
+  -- TIME_WAIT transitions
+  else if key == 97 then 0   -- TIME_WAIT + timeout -> CLOSED
+  else state
+
+fn step state:Int event:Int -> Int
+  new_state := transition(state, event)
+  from_name := state_name(state)
+  ev_name := event_name(event)
+  to_name := state_name(new_state)
+  print "  [{from_name}] --{ev_name}--> [{to_name}]"
+  new_state
+
+fn main
+  print "TCP State Machine Simulation"
+  print "============================="
+  print ""
+
+  -- Client-side: active open (three-way handshake + active close)
+  print "=== Client-side connection ==="
+  mut cs := 0
+  cs = step(cs, 1)   -- active_open -> SYN_SENT
+  cs = step(cs, 3)   -- recv_SYN+ACK -> ESTABLISHED
+  print "  [Data transfer in ESTABLISHED state]"
+  cs = step(cs, 5)   -- close() -> FIN_WAIT_1
+  cs = step(cs, 4)   -- recv_ACK -> FIN_WAIT_2
+  cs = step(cs, 6)   -- recv_FIN -> TIME_WAIT
+  cs = step(cs, 7)   -- timeout -> CLOSED
+  final_c := state_name(cs)
+  print "  Final client state: {final_c}"
+  print ""
+
+  -- Server-side: passive open + passive close
+  print "=== Server-side connection ==="
+  mut ss := 0
+  ss = step(ss, 0)   -- passive_open -> LISTEN
+  ss = step(ss, 2)   -- recv_SYN -> SYN_RECEIVED
+  ss = step(ss, 4)   -- recv_ACK -> ESTABLISHED
+  print "  [Data transfer in ESTABLISHED state]"
+  ss = step(ss, 6)   -- recv_FIN -> CLOSE_WAIT
+  ss = step(ss, 5)   -- close() -> LAST_ACK
+  ss = step(ss, 4)   -- recv_ACK -> CLOSED
+  final_s := state_name(ss)
+  print "  Final server state: {final_s}"
+  print ""
+
+  -- Invalid transition demo
+  print "=== Invalid transition (no-op) ==="
+  mut bad := 4       -- ESTABLISHED
+  bad = step(bad, 7) -- timeout: no transition defined -> stays
+  bad_name := state_name(bad)
+  print "  State remains: {bad_name}"
+  print ""
+  print "TCP uses a well-defined state machine for reliable connection management."

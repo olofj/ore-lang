@@ -1,0 +1,104 @@
+-- Showcase 953: Routing Table Lookup (Longest Prefix Match)
+-- Simulates an IPv4 routing table with longest prefix match algorithm.
+
+fn ip_to_int a:Int b:Int c:Int d:Int -> Int
+  a * 16777216 + b * 65536 + c * 256 + d
+
+fn network_of ip:Int prefix:Int -> Int
+  host_bits := 32 - prefix
+  mut host_size := 1
+  for i in range(0, host_bits)
+    host_size = host_size * 2
+  tmp := ip / host_size
+  tmp * host_size
+
+-- Routing table: stored as parallel lists
+-- Each route: network address, prefix length, next-hop description
+-- We simulate 8 routes
+fn main
+  print "Routing Table Lookup (Longest Prefix Match)"
+  print "============================================="
+  print ""
+
+  -- Routing table (network, prefix, next-hop)
+  mut rt_net := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut rt_pfx := [0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Route 0: 0.0.0.0/0 -> default gateway
+  rt_net[0] = ip_to_int(0, 0, 0, 0)
+  rt_pfx[0] = 0
+
+  -- Route 1: 10.0.0.0/8 -> internal-A
+  rt_net[1] = ip_to_int(10, 0, 0, 0)
+  rt_pfx[1] = 8
+
+  -- Route 2: 10.10.0.0/16 -> internal-B
+  rt_net[2] = ip_to_int(10, 10, 0, 0)
+  rt_pfx[2] = 16
+
+  -- Route 3: 10.10.20.0/24 -> internal-C
+  rt_net[3] = ip_to_int(10, 10, 20, 0)
+  rt_pfx[3] = 24
+
+  -- Route 4: 192.168.1.0/24 -> office-LAN
+  rt_net[4] = ip_to_int(192, 168, 1, 0)
+  rt_pfx[4] = 24
+
+  -- Route 5: 192.168.0.0/16 -> office-WAN
+  rt_net[5] = ip_to_int(192, 168, 0, 0)
+  rt_pfx[5] = 16
+
+  -- Route 6: 172.16.0.0/12 -> datacenter
+  rt_net[6] = ip_to_int(172, 16, 0, 0)
+  rt_pfx[6] = 12
+
+  -- Route 7: 8.8.8.0/24 -> dns-server
+  rt_net[7] = ip_to_int(8, 8, 8, 0)
+  rt_pfx[7] = 24
+
+  mut route_names := ["default-gw", "internal-A", "internal-B", "internal-C"]
+  route_names.push("office-LAN")
+  route_names.push("office-WAN")
+  route_names.push("datacenter")
+  route_names.push("dns-server")
+
+  -- Lookup function: find longest matching prefix
+  mut lookup_ips := [0, 0, 0, 0, 0, 0]
+  lookup_ips[0] = ip_to_int(10, 10, 20, 55)
+  lookup_ips[1] = ip_to_int(10, 10, 5, 1)
+  lookup_ips[2] = ip_to_int(10, 20, 1, 1)
+  lookup_ips[3] = ip_to_int(192, 168, 1, 100)
+  lookup_ips[4] = ip_to_int(192, 168, 5, 1)
+  lookup_ips[5] = ip_to_int(8, 8, 8, 8)
+
+  mut lookup_labels := ["10.10.20.55", "10.10.5.1", "10.20.1.1"]
+  lookup_labels.push("192.168.1.100")
+  lookup_labels.push("192.168.5.1")
+  lookup_labels.push("8.8.8.8")
+
+  print "Routing table (8 routes):"
+  for r in range(0, 8)
+    pfx := rt_pfx[r]
+    name := route_names[r]
+    print "  Route {r}: prefix={pfx} -> {name}"
+  print ""
+
+  print "Lookup results (longest prefix match):"
+  for q in range(0, 6)
+    dest := lookup_ips[q]
+    label := lookup_labels[q]
+    mut best_pfx := -1
+    mut best_idx := 0
+    for r in range(0, 8)
+      pfx := rt_pfx[r]
+      net := rt_net[r]
+      dest_net := network_of(dest, pfx)
+      if dest_net == net
+        if pfx > best_pfx
+          best_pfx = pfx
+          best_idx = r
+    via := route_names[best_idx]
+    print "  {label} -> {via} (/{best_pfx})"
+
+  print ""
+  print "Longest prefix match ensures most specific route wins."

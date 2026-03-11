@@ -1,0 +1,107 @@
+-- Showcase 954: DNS Resolution Simulation
+-- Simulates a recursive DNS resolver with a small cache and hierarchy.
+
+-- DNS record types: 0=A, 1=NS, 2=CNAME, 3=MX
+fn rtype_name t:Int -> Str
+  if t == 0 then "A"
+  else if t == 1 then "NS"
+  else if t == 2 then "CNAME"
+  else "MX"
+
+-- Simulated DNS hierarchy
+-- We represent the DNS tree as a lookup table of names -> values
+-- Using parallel lists: domain names and their IP addresses / answers
+
+fn lookup_a name:Str -> Str
+  -- Authoritative records for our simulated zone
+  if name == "www.example.com" then "93.184.216.34"
+  else if name == "mail.example.com" then "93.184.216.50"
+  else if name == "ftp.example.com" then "93.184.216.60"
+  else if name == "ns1.example.com" then "93.184.216.1"
+  else if name == "ns2.example.com" then "93.184.216.2"
+  else if name == "www.test.org" then "203.0.113.10"
+  else if name == "api.test.org" then "203.0.113.20"
+  else if name == "blog.test.org" then "203.0.113.30"
+  else "NXDOMAIN"
+
+fn lookup_cname name:Str -> Str
+  if name == "ftp.example.com" then ""
+  else if name == "web.example.com" then "www.example.com"
+  else if name == "www.alias.com" then "www.example.com"
+  else ""
+
+fn lookup_mx domain:Str -> Str
+  if domain == "example.com" then "mail.example.com (priority 10)"
+  else if domain == "test.org" then "mail.test.org (priority 20)"
+  else "no MX record"
+
+fn lookup_ns domain:Str -> Str
+  if domain == "example.com" then "ns1.example.com, ns2.example.com"
+  else if domain == "test.org" then "ns1.test.org"
+  else "."
+
+fn resolve name:Str -> Str
+  -- Check for CNAME first
+  cname := lookup_cname(name)
+  if cname == ""
+    -- Direct A record lookup
+    ip := lookup_a(name)
+    ip
+  else
+    -- Follow CNAME
+    ip := lookup_a(cname)
+    ip
+
+fn main
+  print "DNS Resolution Simulation"
+  print "=========================="
+  print ""
+
+  -- Simulate resolver cache (TTL tracking)
+  print "=== A Record Lookups ==="
+  mut queries := ["www.example.com", "mail.example.com", "www.test.org"]
+  queries.push("api.test.org")
+  queries.push("unknown.example.com")
+
+  for q in queries
+    result := lookup_a(q)
+    print "  {q} -> {result}"
+
+  print ""
+  print "=== CNAME Resolution ==="
+  mut cname_queries := ["web.example.com", "www.alias.com"]
+  for cq in cname_queries
+    cname := lookup_cname(cq)
+    if cname == ""
+      print "  {cq} -> no CNAME"
+    else
+      ip := resolve(cq)
+      print "  {cq} -> CNAME {cname} -> {ip}"
+
+  print ""
+  print "=== MX Record Lookups ==="
+  mut mx_queries := ["example.com", "test.org", "unknown.com"]
+  for mq in mx_queries
+    mx := lookup_mx(mq)
+    print "  {mq} MX -> {mx}"
+
+  print ""
+  print "=== NS Record Lookups ==="
+  mut ns_queries := ["example.com", "test.org"]
+  for nq in ns_queries
+    ns := lookup_ns(nq)
+    print "  {nq} NS -> {ns}"
+
+  print ""
+  print "=== Resolution with TTL simulation ==="
+  mut ttl_cache := [300, 300, 3600, 300]  -- TTLs in seconds
+  mut cache_names := ["www.example.com", "mail.example.com", "ns1.example.com", "api.test.org"]
+  print "Cached records (simulated TTL):"
+  for i in range(0, 4)
+    name := cache_names[i]
+    ttl := ttl_cache[i]
+    ip := lookup_a(name)
+    print "  {name} -> {ip} [TTL: {ttl}s]"
+
+  print ""
+  print "DNS resolution hierarchy: client -> recursive resolver -> root -> TLD -> authoritative"

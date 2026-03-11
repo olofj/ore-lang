@@ -1,0 +1,106 @@
+-- Showcase 958: Checksum Algorithms (Fletcher-16, Fletcher-32, Adler-32)
+-- Computes checksums for data integrity verification in network protocols.
+
+fn fletcher16 data:List n:Int -> Int
+  -- Fletcher-16: two 8-bit accumulators, mod 255
+  mut sum1 := 0
+  mut sum2 := 0
+  for i in range(0, n)
+    sum1 = (sum1 + data[i]) % 255
+    sum2 = (sum2 + sum1) % 255
+  sum2 * 256 + sum1
+
+fn fletcher32 data:List n:Int -> Int
+  -- Fletcher-32: two 16-bit accumulators, mod 65535
+  mut sum1 := 0
+  mut sum2 := 0
+  for i in range(0, n)
+    sum1 = (sum1 + data[i]) % 65535
+    sum2 = (sum2 + sum1) % 65535
+  sum2 * 65536 + sum1
+
+fn adler32 data:List n:Int -> Int
+  -- Adler-32: sum1 starts at 1, both mod 65521 (largest prime < 2^16)
+  mut sum1 := 1
+  mut sum2 := 0
+  for i in range(0, n)
+    sum1 = (sum1 + data[i]) % 65521
+    sum2 = (sum2 + sum1) % 65521
+  sum2 * 65536 + sum1
+
+fn simple_checksum data:List n:Int -> Int
+  -- Simple 8-bit sum checksum (used in IP/ICMP)
+  mut s := 0
+  for i in range(0, n)
+    s = (s + data[i]) % 256
+  s
+
+fn str_to_bytes s:Str -> List
+  mut bytes := [0]
+  bytes.pop()
+  n := s.len()
+  for i in range(0, n)
+    bytes.push(ord(s.char_at(i)))
+  bytes
+
+fn main
+  print "Checksum Algorithms: Fletcher-16, Fletcher-32, Adler-32"
+  print "========================================================="
+  print ""
+
+  -- Test data 1: ASCII string "hello"
+  d1 := str_to_bytes("hello")
+  n1 := 5
+  f16_1 := fletcher16(d1, n1)
+  f32_1 := fletcher32(d1, n1)
+  a32_1 := adler32(d1, n1)
+  sc1 := simple_checksum(d1, n1)
+  print "Data: \"hello\" (bytes: 104 101 108 108 111)"
+  print "  Simple sum:   {sc1}"
+  print "  Fletcher-16:  {f16_1}"
+  print "  Fletcher-32:  {f32_1}"
+  print "  Adler-32:     {a32_1}"
+
+  print ""
+
+  -- Test data 2: "Wikipedia" (classic Adler-32 example)
+  d2 := str_to_bytes("Wikipedia")
+  n2 := 9
+  f16_2 := fletcher16(d2, n2)
+  f32_2 := fletcher32(d2, n2)
+  a32_2 := adler32(d2, n2)
+  print "Data: \"Wikipedia\""
+  print "  Fletcher-16:  {f16_2}"
+  print "  Fletcher-32:  {f32_2}"
+  print "  Adler-32:     {a32_2}"
+
+  print ""
+
+  -- Test data 3: byte sequence [1, 2, 3, 4, 5]
+  mut d3 := [1, 2, 3, 4, 5]
+  n3 := 5
+  f16_3 := fletcher16(d3, n3)
+  f32_3 := fletcher32(d3, n3)
+  a32_3 := adler32(d3, n3)
+  sc3 := simple_checksum(d3, n3)
+  print "Data: [1, 2, 3, 4, 5]"
+  print "  Simple sum:   {sc3}"
+  print "  Fletcher-16:  {f16_3}"
+  print "  Fletcher-32:  {f32_3}"
+  print "  Adler-32:     {a32_3}"
+
+  print ""
+
+  -- Error detection demo: modify one byte
+  mut d4 := [1, 2, 3, 4, 5]
+  orig_ck := fletcher16(d4, 5)
+  d4[2] = 99   -- corrupt byte at index 2
+  corrupt_ck := fletcher16(d4, 5)
+  detected := orig_ck != corrupt_ck
+  print "Error detection demo (Fletcher-16):"
+  print "  Original checksum:  {orig_ck}"
+  print "  Corrupted checksum: {corrupt_ck}"
+  print "  Error detected: {detected}"
+
+  print ""
+  print "Fletcher and Adler checksums detect burst errors missed by simple sum."
