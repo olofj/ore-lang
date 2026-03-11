@@ -752,6 +752,14 @@ impl<'ctx> CodeGen<'ctx> {
         // JSON
         self.module.add_function("ore_json_parse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_json_stringify", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        // Time
+        self.module.add_function("ore_time_now", i64_type.fn_type(&[], false), ext);
+        self.module.add_function("ore_time_ms", i64_type.fn_type(&[], false), ext);
+        // Random
+        self.module.add_function("ore_rand_int", i64_type.fn_type(&[i64_type.into(), i64_type.into()], false), ext);
+        // Process
+        self.module.add_function("ore_exit", void_type.fn_type(&[i64_type.into()], false), ext);
+        self.module.add_function("ore_type_of", ptr_type.fn_type(&[i8_type.into()], false), ext);
         // ore_dynamic_to_str(i64, i8) -> ptr — dynamic dispatch for Result/Option payload to string
         self.module.add_function("ore_dynamic_to_str", ptr_type.fn_type(&[i64_type.into(), i8_type.into()], false), ext);
         // Channels
@@ -1468,6 +1476,45 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[path_val.into(), content_val.into()], "file_write"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Bool));
+                    }
+                    "exit" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "exit takes 1 argument (exit code)".into() });
+                        }
+                        let code = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_exit").unwrap();
+                        bld!(self.builder.build_call(rt, &[code.into()], ""))?;
+                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Int));
+                    }
+                    "type_of" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "type_of takes 1 argument".into() });
+                        }
+                        let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                        let kind_tag = self.valkind_to_tag(&kind);
+                        let kind_val = self.context.i8_type().const_int(kind_tag as u64, false);
+                        let rt = self.module.get_function("ore_type_of").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[kind_val.into()], "typeof"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Str));
+                    }
+                    "rand_int" => {
+                        if args.len() != 2 {
+                            return Err(CodeGenError { line: None, msg: "rand_int takes 2 arguments (low, high)".into() });
+                        }
+                        let low = self.compile_expr(&args[0], func)?;
+                        let high = self.compile_expr(&args[1], func)?;
+                        let rt = self.module.get_function("ore_rand_int").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[low.into(), high.into()], "rand"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Int));
+                    }
+                    "time_now" | "time_ms" => {
+                        let rt_name = format!("ore_{}", name);
+                        let rt = self.module.get_function(&rt_name).unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[], name.as_str()))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Int));
                     }
                     "json_parse" => {
                         if args.len() != 1 {

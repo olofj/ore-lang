@@ -1,0 +1,17 @@
+-- Time functions
+
+fn main
+  t := time_now()
+  -- Should be a reasonable Unix timestamp (after 2024)
+  assert t > 1700000000
+
+  ms := time_ms()
+  -- Milliseconds should be much larger
+  assert ms > 1700000000000
+
+  -- time_ms should be roughly time_now * 1000
+  diff := ms - t * 1000
+  assert diff >= 0
+  assert diff < 2000
+
+  print "time ok"

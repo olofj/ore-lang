@@ -1,0 +1,21 @@
+-- Random number generation
+
+fn main
+  -- Generate random numbers in range
+  r := rand_int(1, 10)
+  assert r >= 1
+  assert r <= 10
+
+  -- Generate multiple randoms, verify all in range
+  mut i := 0
+  while i < 100
+    x := rand_int(0, 5)
+    assert x >= 0
+    assert x <= 5
+    i = i + 1
+
+  -- Single value range
+  single := rand_int(42, 42)
+  assert single == 42
+
+  print "random ok"

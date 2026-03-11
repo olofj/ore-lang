@@ -1526,6 +1526,85 @@ pub extern "C" fn ore_assert(cond: i8, msg: *const u8, line: i64) {
     }
 }
 
+// ── Time functions ────────────────────────────────────────────
+
+#[no_mangle]
+pub extern "C" fn ore_time_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_time_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
+// ── Process ──────────────────────────────────────────────────
+
+#[no_mangle]
+pub extern "C" fn ore_exit(code: i64) {
+    std::process::exit(code as i32);
+}
+
+#[no_mangle]
+pub extern "C" fn ore_type_of(kind: i8) -> *mut OreStr {
+    let name = match kind {
+        0 => "Int",
+        1 => "Float",
+        2 => "Bool",
+        3 => "Str",
+        4 => "Record",
+        5 => "Enum",
+        6 => "Option",
+        7 => "Result",
+        8 => "Result",
+        9 => "List",
+        10 => "Map",
+        11 => "Channel",
+        _ => "Unknown",
+    };
+    ore_str_new(name.as_ptr(), name.len() as u32)
+}
+
+// ── Random ───────────────────────────────────────────────────
+
+use std::cell::Cell;
+
+thread_local! {
+    static RNG_STATE: Cell<u64> = Cell::new(0);
+}
+
+fn next_rand() -> u64 {
+    RNG_STATE.with(|state| {
+        let mut s = state.get();
+        if s == 0 {
+            // Seed from time and address
+            s = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos() as u64)
+                .unwrap_or(12345);
+        }
+        // xorshift64
+        s ^= s << 13;
+        s ^= s >> 7;
+        s ^= s << 17;
+        state.set(s);
+        s
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn ore_rand_int(low: i64, high: i64) -> i64 {
+    let range = (high - low + 1) as u64;
+    if range == 0 { return low; }
+    low + (next_rand() % range) as i64
+}
+
 // ── JSON support ──────────────────────────────────────────────
 
 fn json_value_to_ore(val: &serde_json::Value) -> (i64, i8) {

@@ -1,0 +1,10 @@
+-- type_of returns the type name as a string
+
+fn main
+  print type_of(42)
+  print type_of(3.14)
+  print type_of(true)
+  print type_of("hello")
+  print type_of([1, 2, 3])
+
+  print "typeof ok"

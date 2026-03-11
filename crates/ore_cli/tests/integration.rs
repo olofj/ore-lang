@@ -295,6 +295,25 @@ fn stdlib_json() {
 }
 
 #[test]
+fn stdlib_time() {
+    let out = run_ore("stdlib/time.ore");
+    assert_eq!(out.trim(), "time ok");
+}
+
+#[test]
+fn stdlib_random() {
+    let out = run_ore("stdlib/random.ore");
+    assert_eq!(out.trim(), "random ok");
+}
+
+#[test]
+fn stdlib_typeof() {
+    let out = run_ore("stdlib/typeof.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["Int", "Float", "Bool", "Str", "List", "typeof ok"]);
+}
+
+#[test]
 fn stdlib_float_interp() {
     let out = run_ore("stdlib/interp.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

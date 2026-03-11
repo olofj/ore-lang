@@ -446,6 +446,14 @@ fn map_runtime_functions(
     // JSON
     map_fn!("ore_json_parse", ore_runtime::ore_json_parse);
     map_fn!("ore_json_stringify", ore_runtime::ore_json_stringify);
+    // Time
+    map_fn!("ore_time_now", ore_runtime::ore_time_now);
+    map_fn!("ore_time_ms", ore_runtime::ore_time_ms);
+    // Random
+    map_fn!("ore_rand_int", ore_runtime::ore_rand_int);
+    // Process
+    map_fn!("ore_exit", ore_runtime::ore_exit);
+    map_fn!("ore_type_of", ore_runtime::ore_type_of);
     // Assert
     map_fn!("ore_assert", ore_runtime::ore_assert);
     map_fn!("ore_assert_eq_int", ore_runtime::ore_assert_eq_int);
