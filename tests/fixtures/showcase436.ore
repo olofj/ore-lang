@@ -1,0 +1,144 @@
+-- Showcase 436: Simple SAT solver (brute force for small formulas)
+
+-- Evaluate CNF formulas by trying all variable assignments
+-- A clause is satisfied if at least one literal is true
+-- A literal is (var_index, is_negated)
+
+fn main
+  print "SAT Solver (Brute Force):"
+  print ""
+
+  -- Formula 1: (x1 OR x2) AND (NOT x1 OR x3) AND (NOT x2 OR NOT x3)
+  -- 3 variables, 3 clauses
+  print "=== Formula 1 ==="
+  print "  (x1 OR x2) AND (NOT x1 OR x3) AND (NOT x2 OR NOT x3)"
+  print "  Variables: 3, Clauses: 3"
+
+  -- Try all 8 assignments for 3 variables
+  mut sat1 := false
+  mut sol1 := ""
+  mut models1 := 0
+
+  for mask in range(0, 8)
+    x1 := mask / 4 % 2
+    x2 := mask / 2 % 2
+    x3 := mask % 2
+
+    -- Clause 1: x1 OR x2
+    c1 := x1 == 1 or x2 == 1
+    -- Clause 2: NOT x1 OR x3
+    c2 := x1 == 0 or x3 == 1
+    -- Clause 3: NOT x2 OR NOT x3
+    c3 := x2 == 0 or x3 == 0
+
+    if c1 and c2 and c3
+      models1 = models1 + 1
+      if not sat1
+        sol1 = "x1={x1}, x2={x2}, x3={x3}"
+      sat1 = true
+
+  if sat1
+    print "  SATISFIABLE"
+    print "  First solution: {sol1}"
+    print "  Total models: {models1}"
+  else
+    print "  UNSATISFIABLE"
+
+  -- Formula 2: (x1) AND (NOT x1) - unsatisfiable
+  print ""
+  print "=== Formula 2 ==="
+  print "  (x1) AND (NOT x1)"
+  print "  Variables: 1, Clauses: 2"
+
+  mut sat2 := false
+  for mask in range(0, 2)
+    x1 := mask
+    c1 := x1 == 1
+    c2 := x1 == 0
+    if c1 and c2
+      sat2 = true
+
+  if sat2
+    print "  SATISFIABLE"
+  else
+    print "  UNSATISFIABLE"
+
+  -- Formula 3: (x1 OR x2 OR x3) AND (NOT x1 OR NOT x2) AND (NOT x2 OR NOT x3) AND (NOT x1 OR NOT x3)
+  print ""
+  print "=== Formula 3 ==="
+  print "  (x1 OR x2 OR x3) AND (NOT x1 OR NOT x2) AND (NOT x2 OR NOT x3) AND (NOT x1 OR NOT x3)"
+  print "  Variables: 3, Clauses: 4"
+
+  mut sat3 := false
+  mut sol3 := ""
+  mut models3 := 0
+
+  for mask in range(0, 8)
+    x1 := mask / 4 % 2
+    x2 := mask / 2 % 2
+    x3 := mask % 2
+
+    c1 := x1 == 1 or x2 == 1 or x3 == 1
+    c2 := x1 == 0 or x2 == 0
+    c3 := x2 == 0 or x3 == 0
+    c4 := x1 == 0 or x3 == 0
+
+    if c1 and c2 and c3 and c4
+      models3 = models3 + 1
+      if not sat3
+        sol3 = "x1={x1}, x2={x2}, x3={x3}"
+      sat3 = true
+
+  if sat3
+    print "  SATISFIABLE"
+    print "  First solution: {sol3}"
+    print "  Total models: {models3}"
+  else
+    print "  UNSATISFIABLE"
+
+  -- Formula 4: 4-variable formula
+  -- (x1 OR x2) AND (x3 OR x4) AND (NOT x1 OR NOT x3) AND (NOT x2 OR NOT x4) AND (x1 OR x3)
+  print ""
+  print "=== Formula 4 ==="
+  print "  (x1 OR x2) AND (x3 OR x4) AND (NOT x1 OR NOT x3) AND (NOT x2 OR NOT x4) AND (x1 OR x3)"
+  print "  Variables: 4, Clauses: 5"
+
+  mut sat4 := false
+  mut sol4 := ""
+  mut models4 := 0
+
+  for mask in range(0, 16)
+    x1 := mask / 8 % 2
+    x2 := mask / 4 % 2
+    x3 := mask / 2 % 2
+    x4 := mask % 2
+
+    c1 := x1 == 1 or x2 == 1
+    c2 := x3 == 1 or x4 == 1
+    c3 := x1 == 0 or x3 == 0
+    c4 := x2 == 0 or x4 == 0
+    c5 := x1 == 1 or x3 == 1
+
+    if c1 and c2 and c3 and c4 and c5
+      models4 = models4 + 1
+      if not sat4
+        sol4 = "x1={x1}, x2={x2}, x3={x3}, x4={x4}"
+      sat4 = true
+
+  if sat4
+    print "  SATISFIABLE"
+    print "  First solution: {sol4}"
+    print "  Total models: {models4}"
+  else
+    print "  UNSATISFIABLE"
+
+  -- Summary statistics
+  print ""
+  print "=== Summary ==="
+  print "  Formula 1: SAT ({models1} models out of 8)"
+  print "  Formula 2: UNSAT (0 models out of 2)"
+  print "  Formula 3: SAT ({models3} models out of 8)"
+  print "  Formula 4: SAT ({models4} models out of 16)"
+
+  print ""
+  print "SAT solver: exhaustive search over boolean assignments."

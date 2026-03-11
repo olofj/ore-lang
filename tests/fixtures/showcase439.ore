@@ -1,0 +1,192 @@
+-- Showcase 439: Topological sort with cycle detection
+
+-- Using Kahn's algorithm (BFS-based)
+-- Graph stored as adjacency list using parallel arrays
+
+fn main
+  print "Topological Sort with Cycle Detection:"
+  print ""
+
+  -- Graph 1: DAG (course prerequisites)
+  -- 6 nodes: 0=Math, 1=CS101, 2=CS201, 3=CS301, 4=DB, 5=AI
+  -- Edges: Math->CS101, Math->CS201, CS101->CS201, CS101->DB, CS201->CS301, CS201->AI, DB->AI
+  print "=== Graph 1: Course Prerequisites ==="
+  names1 := ["Math", "CS101", "CS201", "CS301", "DB", "AI"]
+  n1 := 6
+  -- Adjacency list stored flat: for each node, store edges
+  -- edge_from, edge_to arrays
+  e1_from := [0, 0, 1, 1, 2, 2, 4]
+  e1_to := [1, 2, 2, 4, 3, 5, 5]
+  e1_count := 7
+
+  print "  Nodes: {names1 | join(", ")}"
+  print "  Edges:"
+  for i in range(0, e1_count)
+    fi := e1_from[i]
+    ti := e1_to[i]
+    f := str(names1[fi])
+    t := str(names1[ti])
+    print "    {f} -> {t}"
+
+  -- Compute in-degrees
+  mut in_deg := []
+  for i in range(0, n1)
+    in_deg.push(0)
+  for i in range(0, e1_count)
+    to := e1_to[i]
+    in_deg[to] = in_deg[to] + 1
+
+  -- Initialize queue with nodes having in-degree 0
+  mut queue := []
+  for i in range(0, n1)
+    if in_deg[i] == 0
+      queue.push(i)
+
+  mut order := []
+  mut q_front := 0
+
+  loop
+    if q_front >= queue | count()
+      break
+    node := queue[q_front]
+    q_front = q_front + 1
+    order.push(node)
+
+    -- Process neighbors
+    for i in range(0, e1_count)
+      if e1_from[i] == node
+        nb := e1_to[i]
+        in_deg[nb] = in_deg[nb] - 1
+        if in_deg[nb] == 0
+          queue.push(nb)
+
+  if order | count() == n1
+    mut order_names := []
+    for i in range(0, n1)
+      oi := order[i]
+      order_names.push(str(names1[oi]))
+    print "  Topological order: {order_names | join(" -> ")}"
+    print "  No cycle detected"
+  else
+    print "  CYCLE DETECTED! Could only order {order | count()} of {n1} nodes"
+
+  -- Graph 2: Has a cycle
+  print ""
+  print "=== Graph 2: Cyclic Graph ==="
+  names2 := ["A", "B", "C", "D"]
+  n2 := 4
+  -- Edges: A->B, B->C, C->D, D->B (cycle: B->C->D->B)
+  e2_from := [0, 1, 2, 3]
+  e2_to := [1, 2, 3, 1]
+  e2_count := 4
+
+  print "  Nodes: {names2 | join(", ")}"
+  print "  Edges:"
+  for i in range(0, e2_count)
+    fi := e2_from[i]
+    ti := e2_to[i]
+    f := str(names2[fi])
+    t := str(names2[ti])
+    print "    {f} -> {t}"
+
+  mut in_deg2 := []
+  for i in range(0, n2)
+    in_deg2.push(0)
+  for i in range(0, e2_count)
+    to := e2_to[i]
+    in_deg2[to] = in_deg2[to] + 1
+
+  mut queue2 := []
+  for i in range(0, n2)
+    if in_deg2[i] == 0
+      queue2.push(i)
+
+  mut order2 := []
+  mut q2_front := 0
+
+  loop
+    if q2_front >= queue2 | count()
+      break
+    node := queue2[q2_front]
+    q2_front = q2_front + 1
+    order2.push(node)
+
+    for i in range(0, e2_count)
+      if e2_from[i] == node
+        nb := e2_to[i]
+        in_deg2[nb] = in_deg2[nb] - 1
+        if in_deg2[nb] == 0
+          queue2.push(nb)
+
+  if order2 | count() == n2
+    print "  No cycle detected"
+  else
+    print "  CYCLE DETECTED! Could only order {order2 | count()} of {n2} nodes"
+    -- Identify nodes in cycle
+    mut cycle_nodes := ""
+    mut cycle_count := 0
+    for i in range(0, n2)
+      if in_deg2[i] > 0
+        if cycle_count > 0
+          cycle_nodes = cycle_nodes + ", "
+        cycle_nodes = cycle_nodes + str(names2[i])
+        cycle_count = cycle_count + 1
+    print "  Nodes involved in cycle: {cycle_nodes}"
+
+  -- Graph 3: Build order (Makefile dependencies)
+  print ""
+  print "=== Graph 3: Build Dependencies ==="
+  names3 := ["libutil", "libcore", "libnet", "app", "tests", "docs"]
+  n3 := 6
+  -- libutil -> libcore, libutil -> libnet, libcore -> app, libnet -> app, app -> tests, app -> docs
+  e3_from := [0, 0, 1, 2, 3, 3]
+  e3_to := [1, 2, 3, 3, 4, 5]
+  e3_count := 6
+
+  print "  Modules: {names3 | join(", ")}"
+
+  mut in_deg3 := []
+  for i in range(0, n3)
+    in_deg3.push(0)
+  for i in range(0, e3_count)
+    to := e3_to[i]
+    in_deg3[to] = in_deg3[to] + 1
+
+  mut queue3 := []
+  for i in range(0, n3)
+    if in_deg3[i] == 0
+      queue3.push(i)
+
+  mut order3 := []
+  mut q3_front := 0
+
+  loop
+    if q3_front >= queue3 | count()
+      break
+    node := queue3[q3_front]
+    q3_front = q3_front + 1
+    order3.push(node)
+    for i in range(0, e3_count)
+      if e3_from[i] == node
+        nb := e3_to[i]
+        in_deg3[nb] = in_deg3[nb] - 1
+        if in_deg3[nb] == 0
+          queue3.push(nb)
+
+  if order3 | count() == n3
+    print "  Build order:"
+    for i in range(0, n3)
+      oi := order3[i]
+      print "    {i + 1}. {str(names3[oi])}"
+  else
+    print "  CYCLE DETECTED!"
+
+  -- Statistics
+  print ""
+  print "=== Summary ==="
+  print "  Graph 1: {n1} nodes, {e1_count} edges -> DAG (valid order found)"
+  print "  Graph 2: {n2} nodes, {e2_count} edges -> Cyclic (no valid order)"
+  print "  Graph 3: {n3} nodes, {e3_count} edges -> DAG (valid order found)"
+
+  print ""
+  print "Topological sort: ordering nodes respecting directed dependencies."

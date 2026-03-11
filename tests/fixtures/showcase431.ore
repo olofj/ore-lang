@@ -1,0 +1,112 @@
+-- Showcase 431: Deque (double-ended queue) implementation
+
+-- Deque using a list as backing store
+-- Operations: push_front, push_back, pop_front, pop_back, peek_front, peek_back
+
+fn main
+  print "Deque (Double-Ended Queue):"
+  print ""
+
+  -- Represent deque as a list
+  mut deque := []
+  mut size := 0
+
+  -- push_back: append to end
+  print "=== Push Back ==="
+  mut vals := [10, 20, 30, 40, 50]
+  for i in range(0, 5)
+    v := vals[i]
+    deque.push(v)
+    size = size + 1
+    print "  push_back({v}) -> deque: {deque | join(", ")}"
+
+  print ""
+  print "=== Peek ==="
+  print "  front: {deque[0]}"
+  print "  back: {deque[size - 1]}"
+  print "  size: {size}"
+
+  -- pop_front: remove from front by shifting
+  print ""
+  print "=== Pop Front ==="
+  for i in range(0, 2)
+    front := deque[0]
+    mut new_deque := []
+    for j in range(1, size)
+      new_deque.push(deque[j])
+    deque = new_deque
+    size = size - 1
+    print "  pop_front() -> {front}, deque: {deque | join(", ")}"
+
+  -- push_front: insert at front by shifting
+  print ""
+  print "=== Push Front ==="
+  mut front_vals := [5, 1]
+  for i in range(0, 2)
+    v := front_vals[i]
+    mut new_deque := [v]
+    for j in range(0, size)
+      new_deque.push(deque[j])
+    deque = new_deque
+    size = size + 1
+    print "  push_front({v}) -> deque: {deque | join(", ")}"
+
+  -- pop_back: remove from end
+  print ""
+  print "=== Pop Back ==="
+  for i in range(0, 2)
+    back := deque[size - 1]
+    mut new_deque := []
+    for j in range(0, size - 1)
+      new_deque.push(deque[j])
+    deque = new_deque
+    size = size - 1
+    print "  pop_back() -> {back}, deque: {deque | join(", ")}"
+
+  print ""
+  print "=== Final State ==="
+  print "  deque: {deque | join(", ")}"
+  print "  size: {size}"
+  print "  front: {deque[0]}"
+  print "  back: {deque[size - 1]}"
+
+  -- Use deque as a sliding window max
+  print ""
+  print "=== Sliding Window Maximum ==="
+  data := [1, 3, -1, -3, 5, 3, 6, 7]
+  k := 3
+  print "  data: {data | join(", ")}"
+  print "  window size: {k}"
+
+  mut results := []
+  data_len := data | count()
+
+  for i in range(0, data_len - k + 1)
+    mut window_max := data[i]
+    for j in range(i + 1, i + k)
+      if data[j] > window_max
+        window_max = data[j]
+    results.push(window_max)
+
+  print "  maximums: {results | join(", ")}"
+
+  -- Palindrome check using deque
+  print ""
+  print "=== Palindrome Check ==="
+  words := ["racecar", "hello", "madam", "world", "level"]
+  for wi in range(0, 5)
+    word := words[wi]
+    word_len := word | len()
+    mut is_palindrome := true
+    for i in range(0, word_len / 2)
+      left := word | substr(i, 1)
+      right := word | substr(word_len - 1 - i, 1)
+      if left != right
+        is_palindrome = false
+    if is_palindrome
+      print "  \"{word}\" is a palindrome"
+    else
+      print "  \"{word}\" is not a palindrome"
+
+  print ""
+  print "Deque: versatile double-ended queue for stacks, queues, and sliding windows."

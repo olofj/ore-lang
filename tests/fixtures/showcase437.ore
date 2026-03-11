@@ -1,0 +1,128 @@
+-- Showcase 437: Interval tree / segment operations
+
+fn max2 a:Int b:Int -> Int
+  if a > b then a else b
+
+fn min2 a:Int b:Int -> Int
+  if a < b then a else b
+
+fn main
+  print "Interval Operations:"
+  print ""
+
+  -- Intervals stored as parallel arrays [start, end)
+  mut starts := [1, 3, 5, 7, 2, 10, 15, 8]
+  mut ends := [4, 6, 9, 10, 5, 13, 20, 12]
+  n := 8
+
+  print "=== Intervals ==="
+  for i in range(0, n)
+    print "  I{i}: [{starts[i]}, {ends[i]})"
+
+  -- Sort intervals by start (bubble sort)
+  for i in range(0, n - 1)
+    for j in range(0, n - 1 - i)
+      if starts[j] > starts[j + 1]
+        -- Swap starts
+        tmp := starts[j]
+        starts[j] = starts[j + 1]
+        starts[j + 1] = tmp
+        -- Swap ends
+        tmp2 := ends[j]
+        ends[j] = ends[j + 1]
+        ends[j + 1] = tmp2
+
+  print ""
+  print "=== Sorted by Start ==="
+  for i in range(0, n)
+    print "  [{starts[i]}, {ends[i]})"
+
+  -- Merge overlapping intervals
+  print ""
+  print "=== Merge Overlapping ==="
+  mut m_starts := []
+  mut m_ends := []
+  m_starts.push(starts[0])
+  m_ends.push(ends[0])
+  mut m_count := 1
+
+  for i in range(1, n)
+    last_end := m_ends[m_count - 1]
+    if starts[i] <= last_end
+      -- Overlapping, extend
+      m_ends[m_count - 1] = max2(last_end, ends[i])
+    else
+      -- New interval
+      m_starts.push(starts[i])
+      m_ends.push(ends[i])
+      m_count = m_count + 1
+
+  print "  Merged intervals ({m_count}):"
+  for i in range(0, m_count)
+    print "    [{m_starts[i]}, {m_ends[i]})"
+
+  -- Point query: which intervals contain a given point
+  print ""
+  print "=== Point Queries ==="
+  points := [3, 8, 11, 16, 1, 20]
+  for pi in range(0, 6)
+    p := points[pi]
+    mut containing := ""
+    mut cnt := 0
+    for i in range(0, n)
+      if starts[i] <= p and p < ends[i]
+        if cnt > 0
+          containing = containing + ", "
+        containing = containing + "[" + str(starts[i]) + "," + str(ends[i]) + ")"
+        cnt = cnt + 1
+    if cnt > 0
+      print "  Point {p}: in {cnt} interval(s) -> {containing}"
+    else
+      print "  Point {p}: not in any interval"
+
+  -- Interval intersection
+  print ""
+  print "=== Interval Intersections ==="
+  -- Find all pairs of overlapping intervals
+  mut pairs := 0
+  for i in range(0, n)
+    for j in range(i + 1, n)
+      if starts[i] < ends[j] and starts[j] < ends[i]
+        is := max2(starts[i], starts[j])
+        ie := min2(ends[i], ends[j])
+        print "  [{starts[i]},{ends[i]}) n [{starts[j]},{ends[j]}) = [{is},{ie})"
+        pairs = pairs + 1
+  print "  Total overlapping pairs: {pairs}"
+
+  -- Coverage: total length covered by union of intervals
+  print ""
+  print "=== Coverage ==="
+  mut total_cover := 0
+  for i in range(0, m_count)
+    total_cover = total_cover + m_ends[i] - m_starts[i]
+
+  -- Total span
+  span_start := m_starts[0]
+  span_end := m_ends[m_count - 1]
+  span := span_end - span_start
+  print "  Span: [{span_start}, {span_end}) = {span} units"
+  print "  Covered: {total_cover} units"
+  print "  Gaps: {span - total_cover} units"
+  pct := total_cover * 100 / span
+  print "  Coverage: {pct}%"
+
+  -- Gaps between merged intervals
+  print ""
+  print "=== Gaps ==="
+  mut gap_count := 0
+  for i in range(1, m_count)
+    if m_starts[i] > m_ends[i - 1]
+      gap_count = gap_count + 1
+      gap_len := m_starts[i] - m_ends[i - 1]
+      print "  Gap: [{m_ends[i - 1]}, {m_starts[i]}) length {gap_len}"
+  if gap_count == 0
+    print "  No gaps"
+  print "  Total gaps: {gap_count}"
+
+  print ""
+  print "Interval operations: merge, query, intersect, and coverage analysis."

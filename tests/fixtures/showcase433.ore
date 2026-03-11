@@ -1,0 +1,181 @@
+-- Showcase 433: Skip list simulation
+
+-- Simulate a skip list with multiple levels of sorted linked lists
+-- Using parallel arrays for node values and forward pointers
+
+fn main
+  print "Skip List Simulation:"
+  print ""
+
+  -- Skip list with max 4 levels
+  -- We simulate by maintaining sorted lists at each level
+  -- Level 0 has all elements, higher levels have fewer (express lanes)
+
+  -- Level data stored as sorted lists
+  mut level0 := []
+  mut level1 := []
+  mut level2 := []
+  mut level3 := []
+
+  -- Insert values with deterministic level assignment
+  -- Using a simple hash to determine level: val % 8 == 0 -> L3, val % 4 == 0 -> L2, val % 2 == 0 -> L1
+  values := [3, 6, 7, 9, 12, 17, 19, 21, 25, 26]
+  val_count := 10
+
+  print "Inserting values:"
+  for i in range(0, val_count)
+    v := values[i]
+    -- Always insert into level 0
+    -- Insert sorted into level0
+    mut inserted := false
+    mut new_l0 := []
+    l0_len := level0 | count()
+    for j in range(0, l0_len)
+      if not inserted and v < level0[j]
+        new_l0.push(v)
+        inserted = true
+      new_l0.push(level0[j])
+    if not inserted
+      new_l0.push(v)
+    level0 = new_l0
+
+    -- Determine level
+    mut lvl := 0
+    if v % 2 == 0
+      lvl = 1
+    if v % 4 == 0
+      lvl = 2
+    if v % 8 == 0
+      lvl = 3
+
+    -- Insert into higher levels sorted
+    if lvl >= 1
+      mut new_l1 := []
+      mut ins1 := false
+      l1_len := level1 | count()
+      for j in range(0, l1_len)
+        if not ins1 and v < level1[j]
+          new_l1.push(v)
+          ins1 = true
+        new_l1.push(level1[j])
+      if not ins1
+        new_l1.push(v)
+      level1 = new_l1
+
+    if lvl >= 2
+      mut new_l2 := []
+      mut ins2 := false
+      l2_len := level2 | count()
+      for j in range(0, l2_len)
+        if not ins2 and v < level2[j]
+          new_l2.push(v)
+          ins2 = true
+        new_l2.push(level2[j])
+      if not ins2
+        new_l2.push(v)
+      level2 = new_l2
+
+    if lvl >= 3
+      mut new_l3 := []
+      mut ins3 := false
+      l3_len := level3 | count()
+      for j in range(0, l3_len)
+        if not ins3 and v < level3[j]
+          new_l3.push(v)
+          ins3 = true
+        new_l3.push(level3[j])
+      if not ins3
+        new_l3.push(v)
+      level3 = new_l3
+
+    print "  insert({v}) at level {lvl}"
+
+  print ""
+  print "=== Skip List Structure ==="
+  print "  Level 3: {level3 | join(" -> ")}"
+  print "  Level 2: {level2 | join(" -> ")}"
+  print "  Level 1: {level1 | join(" -> ")}"
+  print "  Level 0: {level0 | join(" -> ")}"
+
+  -- Search simulation: search for value 19
+  print ""
+  print "=== Search for 19 ==="
+  target := 19
+  mut steps := 0
+  mut path := ""
+
+  -- Start at highest level with elements
+  -- Level 3
+  mut pos3 := -1
+  l3_len := level3 | count()
+  for i in range(0, l3_len)
+    if level3[i] <= target
+      pos3 = level3[i]
+      steps = steps + 1
+  if pos3 > 0
+    path = path + "L3:{pos3}"
+
+  -- Level 2
+  mut pos2 := -1
+  l2_len := level2 | count()
+  for i in range(0, l2_len)
+    if level2[i] <= target and level2[i] >= pos3
+      pos2 = level2[i]
+      steps = steps + 1
+  if pos2 > pos3
+    path = path + " -> L2:{pos2}"
+
+  -- Level 1
+  mut pos1 := -1
+  l1_len := level1 | count()
+  for i in range(0, l1_len)
+    if level1[i] <= target and level1[i] >= pos2
+      pos1 = level1[i]
+      steps = steps + 1
+  if pos1 > pos2
+    path = path + " -> L1:{pos1}"
+
+  -- Level 0
+  mut found := false
+  l0_len := level0 | count()
+  mut last0 := pos1
+  for i in range(0, l0_len)
+    if level0[i] >= last0 and level0[i] <= target
+      steps = steps + 1
+      if level0[i] == target
+        found = true
+
+  path = path + " -> L0:{target}"
+  print "  Path: {path}"
+  print "  Steps: {steps}"
+  if found
+    print "  Result: found"
+  else
+    print "  Result: not found"
+
+  -- Search for value 15 (not in list)
+  print ""
+  print "=== Search for 15 ==="
+  mut found15 := false
+  for i in range(0, l0_len)
+    if level0[i] == 15
+      found15 = true
+  if found15
+    print "  Result: found"
+  else
+    print "  Result: not found"
+
+  -- Statistics
+  print ""
+  print "=== Statistics ==="
+  print "  Level 0 nodes: {level0 | count()}"
+  print "  Level 1 nodes: {level1 | count()}"
+  print "  Level 2 nodes: {level2 | count()}"
+  print "  Level 3 nodes: {level3 | count()}"
+  total_nodes := level0 | count()
+  total_pointers := (level0 | count()) + (level1 | count()) + (level2 | count()) + (level3 | count())
+  print "  Total elements: {total_nodes}"
+  print "  Total pointers: {total_pointers}"
+
+  print ""
+  print "Skip list: probabilistic O(log n) search via express lanes."

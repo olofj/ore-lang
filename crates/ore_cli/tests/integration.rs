@@ -5764,6 +5764,134 @@ fn showcase430_dynamic_programming() {
 }
 
 #[test]
+fn showcase431_deque() {
+    let out = run_ore("showcase431.ore");
+    assert!(out.contains("Deque (Double-Ended Queue):"));
+    assert!(out.contains("push_back(30) -> deque: 10, 20, 30"));
+    assert!(out.contains("pop_front() -> 10, deque: 20, 30, 40, 50"));
+    assert!(out.contains("push_front(1) -> deque: 1, 5, 30, 40, 50"));
+    assert!(out.contains("pop_back() -> 50, deque: 1, 5, 30, 40"));
+    assert!(out.contains("maximums: 3, 3, 5, 5, 6, 7"));
+    assert!(out.contains("\"racecar\" is a palindrome"));
+    assert!(out.contains("\"hello\" is not a palindrome"));
+    assert!(out.contains("Deque: versatile double-ended queue for stacks, queues, and sliding windows."));
+}
+
+#[test]
+fn showcase432_trie() {
+    let out = run_ore("showcase432.ore");
+    assert!(out.contains("Trie (Prefix Tree):"));
+    assert!(out.contains("Total nodes: 14"));
+    assert!(out.contains("search(\"apple\") -> found"));
+    assert!(out.contains("search(\"ap\") -> prefix only, not a word"));
+    assert!(out.contains("search(\"bay\") -> not found"));
+    assert!(out.contains("LCP: \"ap\""));
+    assert!(out.contains("Trie: efficient prefix-based string storage and retrieval."));
+}
+
+#[test]
+fn showcase433_skip_list() {
+    let out = run_ore("showcase433.ore");
+    assert!(out.contains("Skip List Simulation:"));
+    assert!(out.contains("insert(12) at level 2"));
+    assert!(out.contains("Level 0: 3 -> 6 -> 7 -> 9 -> 12 -> 17 -> 19 -> 21 -> 25 -> 26"));
+    assert!(out.contains("Result: found"));
+    assert!(out.contains("Result: not found"));
+    assert!(out.contains("Total elements: 10"));
+    assert!(out.contains("Skip list: probabilistic O(log n) search via express lanes."));
+}
+
+#[test]
+fn showcase434_levenshtein() {
+    let out = run_ore("showcase434.ore");
+    assert!(out.contains("Levenshtein Distance and Fuzzy Matching:"));
+    assert!(out.contains("d(\"kitten\", \"sitting\") = 3"));
+    assert!(out.contains("d(\"abc\", \"abc\") = 0"));
+    assert!(out.contains("\"pythn\" -> best match: \"python\" (distance 1)"));
+    assert!(out.contains("\"teh\" -> \"the\""));
+    assert!(out.contains("Corrections made: 5"));
+    assert!(out.contains("\"ore\" vs \"ore\": 100% similar (distance 0)"));
+    assert!(out.contains("Levenshtein: foundational metric for fuzzy string matching."));
+}
+
+#[test]
+fn showcase435_kmeans() {
+    let out = run_ore("showcase435.ore");
+    assert!(out.contains("K-Means Clustering (1D):"));
+    assert!(out.contains("Initial centroids: 2, 15, 30"));
+    assert!(out.contains("Cluster 0 (5 points): 1, 2, 3, 4, 5"));
+    assert!(out.contains("Cluster 1 (5 points): 10, 11, 12, 14, 15"));
+    assert!(out.contains("Cluster 2 (5 points): 20, 22, 25, 28, 30"));
+    assert!(out.contains("Final centroids: 3, 12, 25"));
+    assert!(out.contains("WCSS (within-cluster sum of squares): 96"));
+    assert!(out.contains("K-means: iterative centroid-based clustering algorithm."));
+}
+
+#[test]
+fn showcase436_sat_solver() {
+    let out = run_ore("showcase436.ore");
+    assert!(out.contains("SAT Solver (Brute Force):"));
+    assert!(out.contains("SATISFIABLE"));
+    assert!(out.contains("UNSATISFIABLE"));
+    assert!(out.contains("First solution: x1=0, x2=1, x3=0"));
+    assert!(out.contains("Formula 1: SAT (2 models out of 8)"));
+    assert!(out.contains("Formula 2: UNSAT (0 models out of 2)"));
+    assert!(out.contains("Formula 3: SAT (3 models out of 8)"));
+    assert!(out.contains("SAT solver: exhaustive search over boolean assignments."));
+}
+
+#[test]
+fn showcase437_intervals() {
+    let out = run_ore("showcase437.ore");
+    assert!(out.contains("Interval Operations:"));
+    assert!(out.contains("Merged intervals (2):"));
+    assert!(out.contains("[1, 13)"));
+    assert!(out.contains("[15, 20)"));
+    assert!(out.contains("Point 3: in 3 interval(s)"));
+    assert!(out.contains("Point 20: not in any interval"));
+    assert!(out.contains("Total overlapping pairs: 8"));
+    assert!(out.contains("Coverage: 89%"));
+    assert!(out.contains("Interval operations: merge, query, intersect, and coverage analysis."));
+}
+
+#[test]
+fn showcase438_bwt() {
+    let out = run_ore("showcase438.ore");
+    assert!(out.contains("Burrows-Wheeler Transform:"));
+    assert!(out.contains("BWT output: annb.aa"));
+    assert!(out.contains("Original string at row: 4"));
+    assert!(out.contains("Reconstructed: banana."));
+    assert!(out.contains("Verification: PASSED"));
+    assert!(out.contains("Burrows-Wheeler: reversible transform for improved compression."));
+}
+
+#[test]
+fn showcase439_toposort() {
+    let out = run_ore("showcase439.ore");
+    assert!(out.contains("Topological Sort with Cycle Detection:"));
+    assert!(out.contains("Topological order: Math -> CS101 -> CS201 -> DB -> CS301 -> AI"));
+    assert!(out.contains("No cycle detected"));
+    assert!(out.contains("CYCLE DETECTED! Could only order 1 of 4 nodes"));
+    assert!(out.contains("Nodes involved in cycle: B, C, D"));
+    assert!(out.contains("1. libutil"));
+    assert!(out.contains("4. app"));
+    assert!(out.contains("Topological sort: ordering nodes respecting directed dependencies."));
+}
+
+#[test]
+fn showcase440_kmp() {
+    let out = run_ore("showcase440.ore");
+    assert!(out.contains("KMP String Matching Algorithm:"));
+    assert!(out.contains("Failure function: 0, 0, 1, 2, 0, 1, 2, 3, 4"));
+    assert!(out.contains("Found at position(s): 10"));
+    assert!(out.contains("Total matches: 7"));
+    assert!(out.contains("Not found"));
+    assert!(out.contains("Found at position(s): 0, 8, 12"));
+    assert!(out.contains("Naive comparisons: 85"));
+    assert!(out.contains("KMP: linear-time string matching with failure function preprocessing."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

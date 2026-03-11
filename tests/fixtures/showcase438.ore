@@ -1,0 +1,144 @@
+-- Showcase 438: Burrows-Wheeler Transform
+
+fn str_less a:Str b:Str n:Int -> Bool
+  mut result := false
+  mut done := false
+  for k in range(0, n)
+    if not done
+      ca := a | substr(k, 1)
+      cb := b | substr(k, 1)
+      if ca < cb
+        result = true
+        done = true
+      else if ca > cb
+        done = true
+  result
+
+fn main
+  print "Burrows-Wheeler Transform:"
+  print ""
+
+  input := "banana."
+  n := input | len()
+  print "Input: {input}"
+  print "Length: {n}"
+  print ""
+
+  -- Generate all rotations
+  print "=== All Rotations ==="
+  mut rotations := []
+  for i in range(0, n)
+    mut rot := ""
+    for j in range(0, n)
+      idx := (i + j) % n
+      ch := input | substr(idx, 1)
+      rot = rot + ch
+    rotations.push(rot)
+    print "  {i}: {rot}"
+
+  -- Sort indices by rotation string (bubble sort)
+  mut indices := []
+  for i in range(0, n)
+    indices.push(i)
+
+  for i in range(0, n - 1)
+    for j in range(0, n - 1 - i)
+      ri := indices[j]
+      rj := indices[j + 1]
+      si := rotations[ri]
+      sj := rotations[rj]
+      if str_less(sj, si, n)
+        tmp := indices[j]
+        indices[j] = indices[j + 1]
+        indices[j + 1] = tmp
+
+  print ""
+  print "=== Sorted Rotations ==="
+  mut bwt := ""
+  mut original_row := 0
+  for i in range(0, n)
+    ri := indices[i]
+    rot := rotations[ri]
+    last_char := rot | substr(n - 1, 1)
+    bwt = bwt + last_char
+    if ri == 0
+      original_row = i
+      print "  -> {i}: {rot}  [{last_char}]"
+    else
+      print "     {i}: {rot}  [{last_char}]"
+
+  print ""
+  print "BWT output: {bwt}"
+  print "Original string at row: {original_row}"
+
+  -- Inverse BWT using iterative reconstruction
+  -- Repeatedly prepend BWT column and sort
+  print ""
+  print "=== Inverse BWT ==="
+
+  -- Start with empty strings
+  mut table := []
+  for i in range(0, n)
+    table.push("")
+
+  -- Iterate n times: prepend BWT column, then sort
+  for iter in range(0, n)
+    -- Prepend BWT[i] to table[i]
+    for i in range(0, n)
+      bch := bwt | substr(i, 1)
+      table[i] = bch + table[i]
+    -- Sort table (bubble sort)
+    for i in range(0, n - 1)
+      for j in range(0, n - 1 - i)
+        if str_less(table[j + 1], table[j], iter + 1)
+          tmp := table[j]
+          table[j] = table[j + 1]
+          table[j + 1] = tmp
+
+  -- Find the row that ends with sentinel
+  mut result := ""
+  for i in range(0, n)
+    last := table[i] | substr(n - 1, 1)
+    if last == "."
+      result = table[i]
+
+  print "  Reconstructed: {result}"
+
+  if result == input
+    print "  Verification: PASSED"
+  else
+    print "  Verification: FAILED"
+
+  -- Run-length encoding of BWT
+  print ""
+  print "=== BWT Run-Length Encoding ==="
+  mut rle := ""
+  mut run_char := bwt | substr(0, 1)
+  mut run_len := 1
+  for i in range(1, n)
+    ch := bwt | substr(i, 1)
+    if ch == run_char
+      run_len = run_len + 1
+    else
+      rle = rle + run_char + str(run_len)
+      run_char = ch
+      run_len = 1
+  rle = rle + run_char + str(run_len)
+  print "  BWT: {bwt}"
+  print "  RLE: {rle}"
+  print "  Compression: {n} -> {rle | len()} chars"
+
+  -- Character frequency
+  print ""
+  print "=== Character Frequencies ==="
+  freq_chars := [".", "a", "b", "n"]
+  for ci in range(0, 4)
+    fc := freq_chars[ci]
+    mut freq := 0
+    for i in range(0, n)
+      if input | substr(i, 1) == fc
+        freq = freq + 1
+    print "  '{fc}': {freq}"
+
+  print ""
+  print "Burrows-Wheeler: reversible transform for improved compression."

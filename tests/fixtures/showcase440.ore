@@ -1,0 +1,166 @@
+-- Showcase 440: KMP (Knuth-Morris-Pratt) string matching algorithm
+
+fn build_failure pattern:Str -> List
+  m := pattern | len()
+  mut fail := []
+  for i in range(0, m)
+    fail.push(0)
+  fail[0] = 0
+  mut k := 0
+  for i in range(1, m)
+    loop
+      if k == 0
+        break
+      pi := pattern | substr(i, 1)
+      pk := pattern | substr(k, 1)
+      if pi == pk
+        break
+      k = fail[k - 1]
+    pi := pattern | substr(i, 1)
+    pk := pattern | substr(k, 1)
+    if pi == pk
+      k = k + 1
+    fail[i] = k
+  fail
+
+fn kmp_search text:Str pattern:Str fail:List -> List
+  n := text | len()
+  m := pattern | len()
+  mut matches := []
+  mut q := 0
+  for i in range(0, n)
+    loop
+      if q == 0
+        break
+      tc := text | substr(i, 1)
+      pc := pattern | substr(q, 1)
+      if tc == pc
+        break
+      q = fail[q - 1]
+    tc := text | substr(i, 1)
+    pc := pattern | substr(q, 1)
+    if tc == pc
+      q = q + 1
+    if q == m
+      pos := i - m + 1
+      matches.push(pos)
+      q = fail[q - 1]
+  matches
+
+fn main
+  print "KMP String Matching Algorithm:"
+  print ""
+
+  -- Example 1: Basic pattern matching
+  print "=== Example 1 ==="
+  text1 := "ABABDABACDABABCABAB"
+  pat1 := "ABABCABAB"
+  print "  Text:    {text1}"
+  print "  Pattern: {pat1}"
+
+  fail1 := build_failure(pat1)
+  print "  Failure function: {fail1 | join(", ")}"
+
+  matches1 := kmp_search(text1, pat1, fail1)
+  if matches1 | count() > 0
+    print "  Found at position(s): {matches1 | join(", ")}"
+  else
+    print "  Not found"
+
+  -- Example 2: Multiple occurrences
+  print ""
+  print "=== Example 2 ==="
+  text2 := "AAAAAAAAA"
+  pat2 := "AAA"
+  print "  Text:    {text2}"
+  print "  Pattern: {pat2}"
+
+  fail2 := build_failure(pat2)
+  print "  Failure function: {fail2 | join(", ")}"
+
+  matches2 := kmp_search(text2, pat2, fail2)
+  print "  Found at position(s): {matches2 | join(", ")}"
+  print "  Total matches: {matches2 | count()}"
+
+  -- Example 3: No match
+  print ""
+  print "=== Example 3 ==="
+  text3 := "ABCDEFGH"
+  pat3 := "XYZ"
+  print "  Text:    {text3}"
+  print "  Pattern: {pat3}"
+
+  fail3 := build_failure(pat3)
+  matches3 := kmp_search(text3, pat3, fail3)
+  if matches3 | count() > 0
+    print "  Found at position(s): {matches3 | join(", ")}"
+  else
+    print "  Not found"
+
+  -- Example 4: Pattern at edges
+  print ""
+  print "=== Example 4 ==="
+  text4 := "ABCXABCYABCXABCXABC"
+  pat4 := "ABCXABC"
+  print "  Text:    {text4}"
+  print "  Pattern: {pat4}"
+
+  fail4 := build_failure(pat4)
+  print "  Failure function: {fail4 | join(", ")}"
+
+  matches4 := kmp_search(text4, pat4, fail4)
+  print "  Found at position(s): {matches4 | join(", ")}"
+  print "  Total matches: {matches4 | count()}"
+
+  -- Show failure function step by step for a pattern
+  print ""
+  print "=== Failure Function Detail ==="
+  pat5 := "ABACABABC"
+  print "  Pattern: {pat5}"
+  fail5 := build_failure(pat5)
+  p5_len := pat5 | len()
+  for i in range(0, p5_len)
+    ch := pat5 | substr(i, 1)
+    prefix := pat5 | substr(0, fail5[i])
+    if fail5[i] > 0
+      print "    [{i}] '{ch}' fail={fail5[i]} (prefix: \"{prefix}\")"
+    else
+      print "    [{i}] '{ch}' fail=0"
+
+  -- Comparison count: KMP vs naive
+  print ""
+  print "=== Efficiency Comparison ==="
+  text6 := "AAAAAAAAAAAAAAAAAAAAB"
+  pat6 := "AAAAB"
+  t6_len := text6 | len()
+  p6_len := pat6 | len()
+  print "  Text length: {t6_len}"
+  print "  Pattern length: {p6_len}"
+
+  -- Naive: count comparisons
+  mut naive_cmp := 0
+  mut naive_matches := 0
+  for i in range(0, t6_len - p6_len + 1)
+    mut j := 0
+    mut matched := true
+    loop
+      if j >= p6_len
+        break
+      naive_cmp = naive_cmp + 1
+      tc := text6 | substr(i + j, 1)
+      pc := pat6 | substr(j, 1)
+      if tc != pc
+        matched = false
+        break
+      j = j + 1
+    if matched
+      naive_matches = naive_matches + 1
+
+  -- KMP comparisons (approximate: n + m)
+  kmp_approx := t6_len + p6_len
+  print "  Naive comparisons: {naive_cmp}"
+  print "  KMP comparisons (approx): {kmp_approx}"
+  print "  Matches found: {naive_matches}"
+
+  print ""
+  print "KMP: linear-time string matching with failure function preprocessing."
