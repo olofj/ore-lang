@@ -337,6 +337,10 @@ impl Formatter {
                 }
                 self.out.push('"');
             }
+            Expr::BlockExpr(block) => {
+                self.out.push('\n');
+                self.format_block(block, level + 1);
+            }
             Expr::Lambda { params, body } => {
                 if params.len() == 1 {
                     self.out.push_str(&params[0]);

@@ -81,6 +81,11 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
                 }
             }
         }
+        Expr::BlockExpr(block) => {
+            for s in block.iter_stmts() {
+                collect_free_vars_stmt(s, bound, free, seen);
+            }
+        }
         Expr::RecordConstruct { fields, .. } => {
             for (_, e) in fields {
                 collect_free_vars(e, bound, free, seen);
@@ -1104,6 +1109,11 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::StringInterp(parts) => {
                 let ptr = self.compile_string_interp(parts, func)?;
                 Ok((ptr.into(), ValKind::Str))
+            }
+            Expr::BlockExpr(block) => {
+                self.compile_block_stmts_with_kind(block, func).map(|(v, k)| {
+                    (v.unwrap_or_else(|| self.context.i64_type().const_int(0, false).into()), k)
+                })
             }
             Expr::Lambda { params, body } => {
                 let lambda_fn = self.compile_lambda(params, body, func)?;

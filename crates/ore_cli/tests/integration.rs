@@ -508,6 +508,13 @@ fn control_or_patterns() {
 }
 
 #[test]
+fn control_block_lambda() {
+    let out = run_ore("control/block_lambda.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["10", "20", "30", "[3, 5, 7]", "[16, 25, 36]"]);
+}
+
+#[test]
 fn control_ifelse_expr() {
     let out = run_ore("control/ifelse_expr.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

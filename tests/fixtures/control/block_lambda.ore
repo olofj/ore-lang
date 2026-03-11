@@ -1,0 +1,14 @@
+fn main
+  -- Multi-line lambda with each
+  [1, 2, 3].each(x =>
+    y := x * 10
+    print y
+  )
+  -- Multi-line lambda with map
+  result := [1, 2, 3] | map (n =>
+    doubled := n * 2
+    doubled + 1
+  )
+  print result
+  -- Single-line still works
+  print [4, 5, 6] | map (n => n * n)

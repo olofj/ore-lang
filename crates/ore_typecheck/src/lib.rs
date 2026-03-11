@@ -500,6 +500,15 @@ impl TypeChecker {
                 result_ty
             }
 
+            Expr::BlockExpr(block) => {
+                let mut child = Env::child(std::mem::replace(env, Env::new()));
+                let mut last_ty = Type::Unit;
+                for spanned in &block.stmts {
+                    last_ty = self.check_stmt(&spanned.stmt, &mut child, &Type::Any);
+                }
+                *env = *child.parent.unwrap();
+                last_ty
+            }
             Expr::Lambda { params, body } => {
                 let mut child = Env::child(std::mem::replace(env, Env::new()));
                 let param_types: Vec<Type> = params.iter().map(|_| Type::Any).collect();

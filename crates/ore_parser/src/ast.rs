@@ -196,6 +196,7 @@ pub enum Expr {
         arms: Vec<MatchArm>,
     },
     StringInterp(Vec<StringPart>),
+    BlockExpr(Block),
     Lambda {
         params: Vec<String>,
         body: Box<Expr>,

@@ -1108,7 +1108,7 @@ impl Parser {
                 // Bare lambda: ident [ident...] => expr (without parens)
                 if self.peek() == &Token::FatArrow {
                     self.advance(); // consume '=>'
-                    let body = self.parse_expr(0)?;
+                    let body = self.parse_lambda_body()?;
                     return Ok(Expr::Lambda {
                         params: vec![name],
                         body: Box::new(body),
@@ -1124,7 +1124,7 @@ impl Parser {
                         params.push(p);
                         if self.peek() == &Token::FatArrow {
                             self.advance(); // consume '=>'
-                            let body = self.parse_expr(0)?;
+                            let body = self.parse_lambda_body()?;
                             return Ok(Expr::Lambda {
                                 params,
                                 body: Box::new(body),
@@ -1247,7 +1247,7 @@ impl Parser {
                     self.advance(); // consume ')'
                     if self.peek() == &Token::FatArrow {
                         self.advance(); // consume '=>'
-                        let body = self.parse_expr(0)?;
+                        let body = self.parse_lambda_body()?;
                         return Ok(Some(Expr::Lambda {
                             params,
                             body: Box::new(body),
@@ -1266,12 +1266,27 @@ impl Parser {
 
         // Consume '=>' (for the (params => body) form)
         self.expect(&Token::FatArrow)?;
-        let body = self.parse_expr(0)?;
+        let body = self.parse_lambda_body()?;
         self.expect(&Token::RParen)?;
         Ok(Some(Expr::Lambda {
             params,
             body: Box::new(body),
         }))
+    }
+
+    /// Parse lambda body: either a block (after Newline+Indent) or a single expression
+    fn parse_lambda_body(&mut self) -> Result<Expr, ParseError> {
+        if self.peek() == &Token::Newline {
+            // Check if this is followed by an indent (block body)
+            if let Some(next) = self.tokens.get(self.pos + 1) {
+                if matches!(&next.token, Token::Indent) {
+                    self.skip_newlines();
+                    let block = self.parse_block()?;
+                    return Ok(Expr::BlockExpr(block));
+                }
+            }
+        }
+        self.parse_expr(0)
     }
 
     /// Parse match arms inside an indented block.
