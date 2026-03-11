@@ -1,0 +1,78 @@
+-- Showcase 190: Number theory functions
+
+fn gcd a:Int b:Int -> Int
+  if b == 0
+    return a
+  gcd(b, a % b)
+
+fn lcm a:Int b:Int -> Int
+  (a * b) / gcd(a, b)
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  if n < 4
+    return true
+  if n % 2 == 0
+    return false
+  mut i := 3
+  while i * i <= n
+    if n % i == 0
+      return false
+    i = i + 2
+  true
+
+fn main
+  -- GCD and LCM
+  print "gcd(48, 18) = {gcd(48, 18)}"
+  print "gcd(100, 75) = {gcd(100, 75)}"
+  print "lcm(12, 18) = {lcm(12, 18)}"
+  print "lcm(7, 5) = {lcm(7, 5)}"
+
+  -- Prime checking
+  print ""
+  print "Primes up to 50:"
+  mut primes := ""
+  for n in range(2, 51)
+    if is_prime(n)
+      if primes == ""
+        primes = "{n}"
+      else
+        primes = "{primes} {n}"
+  print primes
+
+  -- Sieve of Eratosthenes using list
+  print ""
+  print "Sieve of Eratosthenes (primes up to 30):"
+  mut sieve := range(0, 31) | map(n => 1)
+  sieve[0] = 0
+  sieve[1] = 0
+  for i in range(2, 6)
+    if sieve[i] == 1
+      mut j := i * i
+      while j <= 30
+        sieve[j] = 0
+        j = j + i
+  mut sieve_primes := ""
+  for i in range(2, 31)
+    if sieve[i] == 1
+      if sieve_primes == ""
+        sieve_primes = "{i}"
+      else
+        sieve_primes = "{sieve_primes} {i}"
+  print sieve_primes
+
+  -- Perfect numbers
+  print ""
+  print "Perfect numbers up to 1000:"
+  for n in range(2, 1001)
+    mut divisor_sum := 1
+    mut d := 2
+    while d * d <= n
+      if n % d == 0
+        divisor_sum = divisor_sum + d
+        if d != n / d
+          divisor_sum = divisor_sum + n / d
+      d = d + 1
+    if divisor_sum == n
+      print "  {n} is perfect"

@@ -1,0 +1,71 @@
+-- Showcase 196: Encoding and decoding
+
+fn char_to_int c:Str -> Int
+  if c == "a"
+    return 0
+  if c == "b"
+    return 1
+  if c == "c"
+    return 2
+  if c == "d"
+    return 3
+  if c == "e"
+    return 4
+  if c == "f"
+    return 5
+  -1
+
+fn int_to_char n:Int -> Str
+  match n
+    0 -> "a"
+    1 -> "b"
+    2 -> "c"
+    3 -> "d"
+    4 -> "e"
+    5 -> "f"
+    _ -> "?"
+
+fn main
+  -- Caesar cipher (shift by 3, mod 6 for simplicity)
+  message := "abcdef"
+  shift := 3
+  
+  mut encoded := ""
+  for ch in message.chars()
+    val := char_to_int(ch)
+    if val >= 0
+      new_val := (val + shift) % 6
+      encoded = "{encoded}{int_to_char(new_val)}"
+    else
+      encoded = "{encoded}{ch}"
+  print "Original: {message}"
+  print "Encoded (shift {shift}): {encoded}"
+
+  -- Decode
+  mut decoded := ""
+  for ch in encoded.chars()
+    val := char_to_int(ch)
+    if val >= 0
+      new_val := (val - shift + 6) % 6
+      decoded = "{decoded}{int_to_char(new_val)}"
+    else
+      decoded = "{decoded}{ch}"
+  print "Decoded: {decoded}"
+
+  -- Run-length encoding
+  print ""
+  input := "aaabbbccddddee"
+  mut rle := ""
+  mut current := ""
+  mut run_count := 0
+  for ch in input.chars()
+    if ch == current
+      run_count = run_count + 1
+    else
+      if run_count > 0
+        rle = "{rle}{run_count}{current}"
+      current = ch
+      run_count = 1
+  if run_count > 0
+    rle = "{rle}{run_count}{current}"
+  print "RLE of '{input}': {rle}"

@@ -1,0 +1,86 @@
+-- Showcase 200: Comprehensive Ore language showcase
+
+type Color
+  Red
+  Green
+  Blue
+
+fn color_name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+
+fn color_hex c:Color -> Str
+  match c
+    Red -> "#FF0000"
+    Green -> "#00FF00"
+    Blue -> "#0000FF"
+
+type Stats { min:Int, max:Int, sum:Int, count:Int }
+
+fn mix_value a:Int b:Int -> Int
+  (a + b) / 2
+
+fn main
+  print "=== Ore Language Showcase #200 ==="
+  print ""
+
+  -- Enums
+  colors := [Red, Green, Blue]
+  print "Colors:"
+  for c in colors
+    print "  {color_name(c)}: {color_hex(c)}"
+
+  -- Pipelines
+  print ""
+  numbers := range(1, 21)
+  even_sum := numbers | filter(n => n % 2 == 0) | sum()
+  odd_sum := numbers | filter(n => n % 2 != 0) | sum()
+  print "Sum of evens 1-20: {even_sum}"
+  print "Sum of odds 1-20: {odd_sum}"
+  print "Total: {even_sum + odd_sum}"
+
+  -- Records
+  print ""
+  data := [15, 8, 23, 42, 4, 31, 16, 27]
+  mut mn := data[0]
+  mut mx := data[0]
+  mut sm := 0
+  for v in data
+    if v < mn
+      mn = v
+    if v > mx
+      mx = v
+    sm = sm + v
+  stats := Stats(min: mn, max: mx, sum: sm, count: data | count())
+  print "Data stats:"
+  print "  min={stats.min} max={stats.max} sum={stats.sum} count={stats.count}"
+  print "  avg={stats.sum / stats.count}"
+
+  -- String processing
+  print ""
+  sentence := "the quick brown fox"
+  words := sentence.split(" ")
+  mut capitalized := ""
+  for word in words
+    first := word.substr(0, 1).to_upper()
+    rest := word.substr(1, word.len() - 1)
+    if capitalized == ""
+      capitalized = "{first}{rest}"
+    else
+      capitalized = "{capitalized} {first}{rest}"
+  print "Title case: {capitalized}"
+
+  -- Map operations
+  print ""
+  mut inventory := {}
+  inventory.set("sword", "1")
+  inventory.set("shield", "1")
+  inventory.set("potion", "5")
+  print "Inventory:"
+  for item in inventory.keys()
+    print "  {item}: {inventory[item]}"
+
+  print ""
+  print "=== Showcase Complete ==="

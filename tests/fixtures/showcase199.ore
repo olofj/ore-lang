@@ -1,0 +1,55 @@
+-- Showcase 199: Simple interpreter for a calculator language
+
+fn main
+  -- Evaluate postfix expressions
+  -- Tokens: numbers and operators as strings
+  tokens := ["3", "4", "+", "2", "*", "1", "-"]
+  
+  mut stack := [0]
+  -- Clear initial element
+  stack = []
+  
+  for token in tokens
+    if token == "+"
+      b := stack.pop()
+      a := stack.pop()
+      stack.push(a + b)
+    else if token == "-"
+      b := stack.pop()
+      a := stack.pop()
+      stack.push(a - b)
+    else if token == "*"
+      b := stack.pop()
+      a := stack.pop()
+      stack.push(a * b)
+    else
+      stack.push(token.to_int())
+  
+  print "Postfix '3 4 + 2 * 1 -' = {stack[0]}"
+
+  -- Evaluate another expression: 5 1 2 + 4 * + 3 -
+  stack = []
+  tokens2 := ["5", "1", "2", "+", "4", "*", "+", "3", "-"]
+  for token in tokens2
+    if token == "+"
+      b := stack.pop()
+      a := stack.pop()
+      stack.push(a + b)
+    else if token == "-"
+      b := stack.pop()
+      a := stack.pop()
+      stack.push(a - b)
+    else if token == "*"
+      b := stack.pop()
+      a := stack.pop()
+      stack.push(a * b)
+    else
+      stack.push(token.to_int())
+  print "Postfix '5 1 2 + 4 * + 3 -' = {stack[0]}"
+
+  -- Simple expression evaluator: precedence via two-pass
+  print ""
+  print "Direct calculations:"
+  print "  (3 + 4) * 2 - 1 = {(3 + 4) * 2 - 1}"
+  print "  5 + (1 + 2) * 4 - 3 = {5 + (1 + 2) * 4 - 3}"
+  print "  10 * 10 + 5 * 5 = {10 * 10 + 5 * 5}"

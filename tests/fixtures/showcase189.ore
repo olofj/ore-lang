@@ -1,0 +1,43 @@
+-- Showcase 189: Functional composition patterns
+
+fn pipe3 x:Int f:(Int -> Int) g:(Int -> Int) h:(Int -> Int) -> Int
+  h(g(f(x)))
+
+fn main
+  -- Map-reduce pattern
+  data := range(1, 101)
+  sum_of_squares := data | map(n => n * n) | sum()
+  print "sum of squares 1-100: {sum_of_squares}"
+
+  -- Filter-map-fold
+  result := range(1, 51)
+    | filter(n => n % 3 == 0)
+    | map(n => n * 2)
+    | fold(0, (acc, n) => acc + n)
+  print "sum of doubled multiples of 3 (1-50): {result}"
+
+  -- Group-by pattern using map
+  print ""
+  mut by_letter := {}
+  by_letter.set("a", "apple")
+  by_letter.set("b", "banana")
+  by_letter.set("c", "cherry")
+  -- Append more to existing keys
+  current_a := by_letter["a"]
+  by_letter.set("a", "{current_a}, avocado, apricot")
+  current_b := by_letter["b"]
+  by_letter.set("b", "{current_b}, blueberry")
+  for key in by_letter.keys()
+    print "  {key}: {by_letter[key]}"
+
+  -- Running statistics
+  print ""
+  values := [10, 20, 30, 40, 50]
+  running := values | scan(0, (acc, v) => acc + v)
+  print "running sums: {running | join(", ")}"
+  print "final sum: {values | sum()}"
+
+  -- Function composition
+  print ""
+  print "pipe3(5, *2, +10, *3) = {pipe3(5, n => n * 2, n => n + 10, n => n * 3)}"
+  print "pipe3(3, ^2, -1, *4) = {pipe3(3, n => n * n, n => n - 1, n => n * 4)}"

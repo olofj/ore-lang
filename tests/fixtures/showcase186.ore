@@ -1,0 +1,48 @@
+-- Showcase 186: State machine with enum transitions
+
+type Door
+  Locked
+  Closed
+  Open
+
+fn door_str d:Door -> Str
+  match d
+    Locked -> "locked"
+    Closed -> "closed"
+    Open -> "open"
+
+fn unlock d:Door -> Door
+  match d
+    Locked -> Closed
+    _ -> d
+
+fn open_door d:Door -> Door
+  match d
+    Closed -> Open
+    _ -> d
+
+fn close_door d:Door -> Door
+  match d
+    Open -> Closed
+    _ -> d
+
+fn lock d:Door -> Door
+  match d
+    Closed -> Locked
+    _ -> d
+
+fn main
+  mut door := Locked
+  actions := ["unlock", "open", "close", "lock", "open", "unlock", "open"]
+
+  for action in actions
+    old := door_str(door)
+    if action == "unlock"
+      door = unlock(door)
+    else if action == "open"
+      door = open_door(door)
+    else if action == "close"
+      door = close_door(door)
+    else if action == "lock"
+      door = lock(door)
+    print "{action}: {old} -> {door_str(door)}"

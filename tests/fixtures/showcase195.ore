@@ -1,0 +1,42 @@
+-- Showcase 195: Game simulation - simple RPG combat
+
+type Status
+  Alive
+  Dead
+
+fn status_str s:Status -> Str
+  match s
+    Alive -> "alive"
+    Dead -> "dead"
+
+fn main
+  -- Player stats
+  mut player_hp := 100
+  mut player_atk := 15
+
+  -- Monster stats
+  mut monster_hp := 80
+  mut monster_atk := 10
+
+  print "=== RPG Combat ==="
+  print "Player: {player_hp} HP, {player_atk} ATK"
+  print "Monster: {monster_hp} HP, {monster_atk} ATK"
+  print ""
+
+  mut round := 1
+  while player_hp > 0 and monster_hp > 0
+    -- Player attacks
+    monster_hp = monster_hp - player_atk
+    print "Round {round}: Player hits for {player_atk} -> Monster HP: {monster_hp}"
+
+    -- Monster attacks (if alive)
+    if monster_hp > 0
+      player_hp = player_hp - monster_atk
+      print "Round {round}: Monster hits for {monster_atk} -> Player HP: {player_hp}"
+    round = round + 1
+
+  print ""
+  if player_hp > 0
+    print "Player wins with {player_hp} HP remaining!"
+  else
+    print "Monster wins with {monster_hp} HP remaining!"

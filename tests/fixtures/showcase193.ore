@@ -1,0 +1,41 @@
+-- Showcase 193: Coordinate geometry
+
+type Point { x:Float, y:Float }
+
+fn distance a:Point b:Point -> Float
+  dx := a.x - b.x
+  dy := a.y - b.y
+  sqrt(dx * dx + dy * dy)
+
+fn midpoint a:Point b:Point -> Point
+  Point(x: (a.x + b.x) / 2.0, y: (a.y + b.y) / 2.0)
+
+fn main
+  p1 := Point(x: 0.0, y: 0.0)
+  p2 := Point(x: 3.0, y: 4.0)
+  p3 := Point(x: 6.0, y: 0.0)
+
+  -- Distances
+  d12 := distance(p1, p2)
+  d23 := distance(p2, p3)
+  d13 := distance(p1, p3)
+  print "Distance p1-p2: {d12}"
+  print "Distance p2-p3: {d23}"
+  print "Distance p1-p3: {d13}"
+
+  -- Midpoints
+  m := midpoint(p1, p2)
+  print "Midpoint p1-p2: ({m.x}, {m.y})"
+
+  -- Triangle perimeter
+  perimeter := d12 + d23 + d13
+  print "Triangle perimeter: {perimeter}"
+
+  -- Triangle area using cross product
+  area := abs((p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y)) / 2.0
+  print "Triangle area: {area}"
+
+  -- Centroid
+  cx := (p1.x + p2.x + p3.x) / 3.0
+  cy := (p1.y + p2.y + p3.y) / 3.0
+  print "Centroid: ({cx}, {cy})"

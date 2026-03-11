@@ -1,0 +1,54 @@
+-- Showcase 198: Sequence generators
+
+fn fibonacci n:Int -> List[Int]
+  mut fibs := [0, 1]
+  for i in range(2, n)
+    next := fibs[i-1] + fibs[i-2]
+    fibs.push(next)
+  fibs
+
+fn triangular n:Int -> Int
+  n * (n + 1) / 2
+
+fn main
+  -- Fibonacci sequence
+  fibs := fibonacci(15)
+  print "First 15 Fibonacci numbers:"
+  print fibs | join(", ")
+
+  -- Triangular numbers
+  print ""
+  print "First 10 triangular numbers:"
+  tri := range(1, 11) | map(n => triangular(n))
+  print tri | join(", ")
+
+  -- Collatz sequence
+  print ""
+  mut n := 27
+  mut steps := 0
+  mut max_val := n
+  while n != 1
+    if n % 2 == 0
+      n = n / 2
+    else
+      n = n * 3 + 1
+    steps = steps + 1
+    if n > max_val
+      max_val = n
+  print "Collatz(27): {steps} steps, max value: {max_val}"
+
+  -- Arithmetic progression
+  print ""
+  print "AP(start=3, diff=5, n=8):"
+  ap := range(0, 8) | map(i => 3 + i * 5)
+  print ap | join(", ")
+
+  -- Geometric-like using powers
+  print ""
+  print "Powers of 3:"
+  mut pow := 1
+  mut powers := [1]
+  for i in range(1, 8)
+    pow = pow * 3
+    powers.push(pow)
+  print powers | join(", ")

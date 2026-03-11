@@ -1,0 +1,53 @@
+-- Showcase 197: Recursive data processing
+
+fn power base:Int exp:Int -> Int
+  if exp == 0
+    return 1
+  base * power(base, exp - 1)
+
+fn sum_digits n:Int -> Int
+  if n < 10
+    return n
+  sum_digits(n / 10) + n % 10
+
+fn reverse_int n:Int -> Int
+  mut result := 0
+  mut remaining := n
+  while remaining > 0
+    result = result * 10 + remaining % 10
+    remaining = remaining / 10
+  result
+
+fn is_palindrome_num n:Int -> Bool
+  n == reverse_int(n)
+
+fn main
+  -- Powers
+  print "Powers of 2:"
+  for i in range(0, 11)
+    print "  2^{i} = {power(2, i)}"
+
+  -- Digital roots
+  print ""
+  print "Digital roots:"
+  nums := [12345, 9999, 493, 1]
+  for n in nums
+    s := sum_digits(n)
+    print "  sum_digits({n}) = {s}"
+
+  -- Palindrome numbers
+  print ""
+  print "Palindrome numbers up to 200:"
+  mut palins := ""
+  for n in range(1, 201)
+    if is_palindrome_num(n)
+      if palins == ""
+        palins = "{n}"
+      else
+        palins = "{palins} {n}"
+  print palins
+
+  -- Reverse numbers
+  print ""
+  print "reverse(12345) = {reverse_int(12345)}"
+  print "reverse(100) = {reverse_int(100)}"

@@ -1,0 +1,56 @@
+-- Showcase 192: Text analysis
+
+fn main
+  text := "the quick brown fox jumps over the lazy dog the fox"
+
+  -- Word count
+  words := text.split(" ")
+  print "Word count: {words | count()}"
+
+  -- Character frequency (count vowels and consonants)
+  mut vowels := 0
+  mut consonants := 0
+  mut spaces := 0
+  for ch in text.chars()
+    if ch == "a" or ch == "e" or ch == "i" or ch == "o" or ch == "u"
+      vowels = vowels + 1
+    else if ch == " "
+      spaces = spaces + 1
+    else
+      consonants = consonants + 1
+  print "Vowels: {vowels}"
+  print "Consonants: {consonants}"
+  print "Spaces: {spaces}"
+  print "Total chars: {text.len()}"
+
+  -- Word frequency using map
+  print ""
+  print "Word frequencies:"
+  mut freq := {}
+  for word in words
+    current := freq.get_or(word, 0)
+    freq.set(word, current + 1)
+  for word in freq.keys()
+    print "  {word}: {freq[word]}"
+
+  -- Longest word
+  print ""
+  mut longest := ""
+  mut longest_len := 0
+  for word in words
+    if word.len() > longest_len
+      longest = word
+      longest_len = word.len()
+  print "Longest word: {longest} ({longest_len} chars)"
+
+  -- Reverse words
+  print ""
+  mut reversed := ""
+  mut i := (words | count()) - 1
+  while i >= 0
+    if reversed == ""
+      reversed = words[i]
+    else
+      reversed = "{reversed} {words[i]}"
+    i = i - 1
+  print "Reversed: {reversed}"

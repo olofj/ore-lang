@@ -1,0 +1,50 @@
+-- Showcase 188: Math puzzle solver
+
+fn is_magic_square grid:List[Int] -> Bool
+  -- Check if 3x3 grid is a magic square (all rows, cols, diags sum to same value)
+  target := grid[0] + grid[1] + grid[2]
+  -- Rows
+  for r in range(0, 3)
+    s := grid[r*3] + grid[r*3+1] + grid[r*3+2]
+    if s != target
+      return false
+  -- Cols
+  for c in range(0, 3)
+    s := grid[c] + grid[c+3] + grid[c+6]
+    if s != target
+      return false
+  -- Diags
+  d1 := grid[0] + grid[4] + grid[8]
+  d2 := grid[2] + grid[4] + grid[6]
+  if d1 != target or d2 != target
+    return false
+  true
+
+fn main
+  -- Check a magic square
+  magic := [2, 7, 6, 9, 5, 1, 4, 3, 8]
+  print "Magic square test:"
+  for r in range(0, 3)
+    print "  {magic[r*3]} {magic[r*3+1]} {magic[r*3+2]}"
+  print "Is magic: {is_magic_square(magic)}"
+  print "Magic sum: {magic[0] + magic[1] + magic[2]}"
+
+  -- Non-magic square
+  print ""
+  regular := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  print "Regular grid:"
+  for r in range(0, 3)
+    print "  {regular[r*3]} {regular[r*3+1]} {regular[r*3+2]}"
+  print "Is magic: {is_magic_square(regular)}"
+
+  -- Pascal's triangle
+  print ""
+  print "Pascal's triangle:"
+  mut row := [1]
+  for i in range(0, 7)
+    print "  {row | join(" ")}"
+    mut next := [1]
+    for j in range(0, (row | count()) - 1)
+      next.push(row[j] + row[j+1])
+    next.push(1)
+    row = next

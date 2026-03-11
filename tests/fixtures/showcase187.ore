@@ -1,0 +1,37 @@
+-- Showcase 187: Mini database with maps
+
+fn main
+  -- Simple key-value store operations
+  mut db := {}
+
+  -- Insert records directly
+  db.set("alice", "engineer")
+  db.set("bob", "designer")
+  db.set("carol", "manager")
+  db.set("dave", "engineer")
+  db.set("eve", "designer")
+
+  -- Query all entries
+  print "=== All Employees ==="
+  for name in db.keys()
+    print "  {name}: {db[name]}"
+
+  -- Count by role
+  print ""
+  print "=== Role Counts ==="
+  mut roles := {}
+  for name in db.keys()
+    role := db[name]
+    current := roles.get_or(role, 0)
+    roles.set(role, current + 1)
+  for role in roles.keys()
+    print "  {role}: {roles[role]}"
+
+  -- Update a record
+  print ""
+  db.set("alice", "senior engineer")
+  print "Updated alice: {db["alice"]}"
+
+  -- Delete a record
+  db.remove("dave")
+  print "After removing dave: {db.len()} employees"

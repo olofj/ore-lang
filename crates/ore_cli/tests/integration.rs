@@ -3320,6 +3320,148 @@ fn showcase185_maze_solver() {
 }
 
 #[test]
+fn showcase186_state_machine() {
+    let out = run_ore("showcase186.ore");
+    assert!(out.contains("unlock: locked -> closed"));
+    assert!(out.contains("open: closed -> open"));
+    assert!(out.contains("close: open -> closed"));
+    assert!(out.contains("lock: closed -> locked"));
+    assert!(out.contains("open: locked -> locked"));
+}
+
+#[test]
+fn showcase187_mini_database() {
+    let out = run_ore("showcase187.ore");
+    assert!(out.contains("=== All Employees ==="));
+    assert!(out.contains("alice: engineer"));
+    assert!(out.contains("bob: designer"));
+    assert!(out.contains("=== Role Counts ==="));
+    assert!(out.contains("engineer: 2"));
+    assert!(out.contains("designer: 2"));
+    assert!(out.contains("Updated alice: senior engineer"));
+    assert!(out.contains("After removing dave: 4 employees"));
+}
+
+#[test]
+fn showcase188_math_puzzles() {
+    let out = run_ore("showcase188.ore");
+    assert!(out.contains("Is magic: true"));
+    assert!(out.contains("Magic sum: 15"));
+    assert!(out.contains("Is magic: false"));
+    assert!(out.contains("Pascal's triangle:"));
+    assert!(out.contains("1 4 6 4 1"));
+}
+
+#[test]
+fn showcase189_functional_composition() {
+    let out = run_ore("showcase189.ore");
+    assert!(out.contains("sum of squares 1-100: 338350"));
+    assert!(out.contains("sum of doubled multiples of 3 (1-50): 816"));
+    assert!(out.contains("running sums: 0, 10, 30, 60, 100, 150"));
+    assert!(out.contains("pipe3(5, *2, +10, *3) = 60"));
+    assert!(out.contains("pipe3(3, ^2, -1, *4) = 32"));
+}
+
+#[test]
+fn showcase190_number_theory() {
+    let out = run_ore("showcase190.ore");
+    assert!(out.contains("gcd(48, 18) = 6"));
+    assert!(out.contains("lcm(12, 18) = 36"));
+    assert!(out.contains("2 3 5 7 11 13"));
+    assert!(out.contains("6 is perfect"));
+    assert!(out.contains("28 is perfect"));
+    assert!(out.contains("496 is perfect"));
+}
+
+#[test]
+fn showcase191_matrix_operations() {
+    let out = run_ore("showcase191.ore");
+    assert!(out.contains("10 10 10"));
+    assert!(out.contains("30 24 18"));
+    assert!(out.contains("84 69 54"));
+    assert!(out.contains("det(A) = 0"));
+    assert!(out.contains("trace(A) = 15"));
+}
+
+#[test]
+fn showcase192_text_analysis() {
+    let out = run_ore("showcase192.ore");
+    assert!(out.contains("Word count: 11"));
+    assert!(out.contains("Vowels: 13"));
+    assert!(out.contains("the: 3"));
+    assert!(out.contains("fox: 2"));
+    assert!(out.contains("Longest word: quick"));
+}
+
+#[test]
+fn showcase193_coordinate_geometry() {
+    let out = run_ore("showcase193.ore");
+    assert!(out.contains("Distance p1-p2: 5.0"));
+    assert!(out.contains("Triangle area: 12.0"));
+    assert!(out.contains("Centroid:"));
+}
+
+#[test]
+fn showcase194_iterator_patterns() {
+    let out = run_ore("showcase194.ore");
+    assert!(out.contains("1. Alice - 95"));
+    assert!(out.contains("take_while < 6: 1, 3, 5"));
+    assert!(out.contains("drop_while < 6: 7, 2, 4, 6, 8"));
+    assert!(out.contains("Sum of all groups: 45"));
+}
+
+#[test]
+fn showcase195_rpg_combat() {
+    let out = run_ore("showcase195.ore");
+    assert!(out.contains("=== RPG Combat ==="));
+    assert!(out.contains("Player wins with 50 HP remaining!"));
+}
+
+#[test]
+fn showcase196_encoding() {
+    let out = run_ore("showcase196.ore");
+    assert!(out.contains("Encoded (shift 3): defabc"));
+    assert!(out.contains("Decoded: abcdef"));
+    assert!(out.contains("RLE of 'aaabbbccddddee': 3a3b2c4d2e"));
+}
+
+#[test]
+fn showcase197_recursive_data() {
+    let out = run_ore("showcase197.ore");
+    assert!(out.contains("2^10 = 1024"));
+    assert!(out.contains("sum_digits(12345) = 15"));
+    assert!(out.contains("reverse(12345) = 54321"));
+    assert!(out.contains("1 2 3 4 5 6 7 8 9 11"));
+}
+
+#[test]
+fn showcase198_sequences() {
+    let out = run_ore("showcase198.ore");
+    assert!(out.contains("0, 1, 1, 2, 3, 5, 8, 13, 21, 34"));
+    assert!(out.contains("1, 3, 6, 10, 15, 21, 28, 36, 45, 55"));
+    assert!(out.contains("Collatz(27): 111 steps"));
+    assert!(out.contains("1, 3, 9, 27, 81, 243, 729, 2187"));
+}
+
+#[test]
+fn showcase199_calculator() {
+    let out = run_ore("showcase199.ore");
+    assert!(out.contains("Postfix '3 4 + 2 * 1 -' = 13"));
+    assert!(out.contains("Postfix '5 1 2 + 4 * + 3 -' = 14"));
+    assert!(out.contains("(3 + 4) * 2 - 1 = 13"));
+}
+
+#[test]
+fn showcase200_comprehensive() {
+    let out = run_ore("showcase200.ore");
+    assert!(out.contains("=== Ore Language Showcase #200 ==="));
+    assert!(out.contains("red: #FF0000"));
+    assert!(out.contains("Sum of evens 1-20: 110"));
+    assert!(out.contains("Title case: The Quick Brown Fox"));
+    assert!(out.contains("=== Showcase Complete ==="));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

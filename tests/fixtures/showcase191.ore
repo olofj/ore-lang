@@ -1,0 +1,49 @@
+-- Showcase 191: Matrix operations
+
+fn mat_mul_elem a:List[Int] b:List[Int] r:Int c:Int -> Int
+  a[r*3+0] * b[0*3+c] + a[r*3+1] * b[1*3+c] + a[r*3+2] * b[2*3+c]
+
+fn main
+  -- 3x3 matrix as flat list
+  a := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  b := [9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+  -- Matrix addition
+  print "Matrix A + B:"
+  for r in range(0, 3)
+    c0 := a[r*3+0] + b[r*3+0]
+    c1 := a[r*3+1] + b[r*3+1]
+    c2 := a[r*3+2] + b[r*3+2]
+    print "  {c0} {c1} {c2}"
+
+  -- Matrix multiplication
+  print ""
+  print "Matrix A * B:"
+  for r in range(0, 3)
+    v0 := mat_mul_elem(a, b, r, 0)
+    v1 := mat_mul_elem(a, b, r, 1)
+    v2 := mat_mul_elem(a, b, r, 2)
+    print "  {v0} {v1} {v2}"
+
+  -- Transpose
+  print ""
+  print "Transpose of A:"
+  for r in range(0, 3)
+    c0 := a[0*3+r]
+    c1 := a[1*3+r]
+    c2 := a[2*3+r]
+    print "  {c0} {c1} {c2}"
+
+  -- Determinant of 3x3
+  det := a[0]*(a[4]*a[8] - a[5]*a[7]) - a[1]*(a[3]*a[8] - a[5]*a[6]) + a[2]*(a[3]*a[7] - a[4]*a[6])
+  print ""
+  print "det(A) = {det}"
+
+  -- Trace
+  trace := a[0] + a[4] + a[8]
+  print "trace(A) = {trace}"
+
+  -- Identity check
+  identity := [1, 0, 0, 0, 1, 0, 0, 0, 1]
+  trace_i := identity[0] + identity[4] + identity[8]
+  print "trace(I) = {trace_i}"
