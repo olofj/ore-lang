@@ -2609,6 +2609,26 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
+    /// Create a global constant string and return a pointer to its data.
+    fn builder_string_const(&mut self, s: &str) -> PointerValue<'ctx> {
+        let bytes = s.as_bytes();
+        let global_name = format!(".str.{}", self.str_counter);
+        self.str_counter += 1;
+        let i8_type = self.context.i8_type();
+        let arr_type = i8_type.array_type(bytes.len() as u32);
+        let global = self.module.add_global(arr_type, None, &global_name);
+        global.set_initializer(&i8_type.const_array(
+            &bytes.iter().map(|&b| i8_type.const_int(b as u64, false)).collect::<Vec<_>>(),
+        ));
+        global.set_constant(true);
+        // build_pointer_cast can't fail for globals in practice
+        self.builder.build_pointer_cast(
+            global.as_pointer_value(),
+            self.ptr_type(),
+            "strptr",
+        ).unwrap()
+    }
+
     fn compile_string_interp(
         &mut self,
         parts: &[StringPart],
@@ -2730,6 +2750,9 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(bool_to_str, &[ext.into()], "btos"))?;
                 Ok(self.call_result_to_value(result)?.into_pointer_value())
             }
+            ValKind::Record(ref name) => {
+                self.record_to_str(val, name)
+            }
             _ => {
                 // Fallback: convert as int
                 let int_to_str = self.module.get_function("ore_int_to_str").unwrap();
@@ -2737,6 +2760,67 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(self.call_result_to_value(result)?.into_pointer_value())
             }
         }
+    }
+
+    fn record_to_str(
+        &mut self,
+        val: BasicValueEnum<'ctx>,
+        type_name: &str,
+    ) -> Result<PointerValue<'ctx>, CodeGenError> {
+        let info = self.records.get(type_name).ok_or_else(|| CodeGenError {
+            msg: format!("undefined type '{}' for display", type_name),
+        })?;
+        let struct_type = info.struct_type;
+        let field_names = info.field_names.clone();
+        let field_kinds = info.field_kinds.clone();
+
+        let str_new = self.module.get_function("ore_str_new").unwrap();
+        let concat_fn = self.module.get_function("ore_str_concat").unwrap();
+        let release_fn = self.module.get_function("ore_str_release").unwrap();
+
+        // Store the struct to an alloca so we can GEP into it
+        let alloca = bld!(self.builder.build_alloca(struct_type, "rec_tmp"))?;
+        bld!(self.builder.build_store(alloca, val))?;
+
+        // Helper: call ore_str_new and get pointer
+        let make_str = |cg: &mut Self, s: &str| -> Result<PointerValue<'ctx>, CodeGenError> {
+            let ptr = cg.builder_string_const(s);
+            let len = cg.context.i32_type().const_int(s.len() as u64, false);
+            let result = bld!(cg.builder.build_call(str_new, &[ptr.into(), len.into()], "s"))?;
+            Ok(cg.call_result_to_value(result)?.into_pointer_value())
+        };
+
+        // Helper: concat two strings, releasing both inputs
+        let concat_and_release = |cg: &mut Self, a: PointerValue<'ctx>, b: PointerValue<'ctx>| -> Result<PointerValue<'ctx>, CodeGenError> {
+            let result = bld!(cg.builder.build_call(concat_fn, &[a.into(), b.into()], "cat"))?;
+            let p = cg.call_result_to_value(result)?.into_pointer_value();
+            bld!(cg.builder.build_call(release_fn, &[a.into()], ""))?;
+            bld!(cg.builder.build_call(release_fn, &[b.into()], ""))?;
+            Ok(p)
+        };
+
+        // Start with "TypeName("
+        let prefix = format!("{}(", type_name);
+        let mut current = make_str(self, &prefix)?;
+
+        for (i, (fname, fkind)) in field_names.iter().zip(field_kinds.iter()).enumerate() {
+            let label = if i == 0 { format!("{}: ", fname) } else { format!(", {}: ", fname) };
+            let label_str = make_str(self, &label)?;
+            current = concat_and_release(self, current, label_str)?;
+
+            // Extract field value and convert to string
+            let field_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, i as u32, &format!("f_{}", fname)))?;
+            let field_ty = struct_type.get_field_type_at_index(i as u32).unwrap();
+            let field_val = bld!(self.builder.build_load(field_ty, field_ptr, fname))?;
+            let field_str = self.value_to_str(field_val, fkind.clone())?;
+            current = concat_and_release(self, current, field_str)?;
+        }
+
+        // Append ")"
+        let suffix_str = make_str(self, ")")?;
+        current = concat_and_release(self, current, suffix_str)?;
+
+        Ok(current)
     }
 
     fn compile_print(
@@ -2766,6 +2850,13 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Map => {
                 let pf = self.module.get_function("ore_map_print").unwrap();
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+            }
+            ValKind::Record(ref name) => {
+                let s = self.record_to_str(val, name)?;
+                let pf = self.module.get_function("ore_str_print").unwrap();
+                bld!(self.builder.build_call(pf, &[s.into()], ""))?;
+                let release = self.module.get_function("ore_str_release").unwrap();
+                bld!(self.builder.build_call(release, &[s.into()], ""))?;
             }
             _ => {
                 let pf = self.module.get_function("ore_print_int").unwrap();

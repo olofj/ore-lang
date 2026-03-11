@@ -1,0 +1,9 @@
+type Point { x:Int, y:Int }
+type Person { name:Str, age:Int }
+
+fn main
+  p := Point(x: 3, y: 4)
+  print p
+  bob := Person(name: "Bob", age: 25)
+  print bob
+  print "{p}"

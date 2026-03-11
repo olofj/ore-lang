@@ -1255,7 +1255,7 @@ mod tests {
             Item::FnDef(f) => {
                 assert_eq!(f.name, "main");
                 assert_eq!(f.body.stmts.len(), 1);
-                match &f.body.stmts[0] {
+                match &f.body.stmts[0].stmt {
                     Stmt::Let { name, mutable, value } => {
                         assert_eq!(name, "x");
                         assert!(!mutable);
@@ -1273,7 +1273,7 @@ mod tests {
         let prog = parse_src("fn main\n  x := 1 + 2 * 3\n");
         match &prog.items[0] {
             Item::FnDef(f) => {
-                match &f.body.stmts[0] {
+                match &f.body.stmts[0].stmt {
                     Stmt::Let { value, .. } => {
                         // Should be 1 + (2 * 3) due to precedence
                         match value {
@@ -1299,7 +1299,7 @@ mod tests {
         let prog = parse_src("fn main\n  print 42\n");
         match &prog.items[0] {
             Item::FnDef(f) => {
-                match &f.body.stmts[0] {
+                match &f.body.stmts[0].stmt {
                     Stmt::Expr(Expr::Print(inner)) => {
                         assert_eq!(**inner, Expr::IntLit(42));
                     }
@@ -1330,7 +1330,7 @@ mod tests {
         let prog = parse_src("fn main\n  foo(1, 2)\n");
         match &prog.items[0] {
             Item::FnDef(f) => {
-                match &f.body.stmts[0] {
+                match &f.body.stmts[0].stmt {
                     Stmt::Expr(Expr::Call { func, args }) => {
                         assert_eq!(**func, Expr::Ident("foo".into()));
                         assert_eq!(args.len(), 2);
@@ -1347,7 +1347,7 @@ mod tests {
         let prog = parse_src("fn main\n  x := -42\n");
         match &prog.items[0] {
             Item::FnDef(f) => {
-                match &f.body.stmts[0] {
+                match &f.body.stmts[0].stmt {
                     Stmt::Let { value, .. } => {
                         match value {
                             Expr::UnaryMinus(inner) => {
@@ -1368,7 +1368,7 @@ mod tests {
         let prog = parse_src("fn main\n  if true\n    1\n  else\n    2\n");
         match &prog.items[0] {
             Item::FnDef(f) => {
-                match &f.body.stmts[0] {
+                match &f.body.stmts[0].stmt {
                     Stmt::Expr(Expr::IfElse { cond, then_block, else_block }) => {
                         assert_eq!(**cond, Expr::BoolLit(true));
                         assert_eq!(then_block.stmts.len(), 1);

@@ -331,3 +331,14 @@ fn control_multiline_pipe() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["4, 16, 36, 64, 100", "60"]);
 }
+
+#[test]
+fn records_display() {
+    let out = run_ore("records/display.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "Point(x: 3, y: 4)",
+        "Person(name: Bob, age: 25)",
+        "Point(x: 3, y: 4)",
+    ]);
+}
