@@ -3032,6 +3032,17 @@ fn showcase154_state_machine() {
 }
 
 #[test]
+fn showcase155_iterators() {
+    let out = run_ore("showcase155.ore");
+    assert!(out.contains("primes <= 50: 2, 3, 5, 7, 11, 13"));
+    assert!(out.contains("count: 15"));
+    assert!(out.contains("(3, 5)"));
+    assert!(out.contains("(41, 43)"));
+    assert!(out.contains("1-100 sum: 5050"));
+    assert!(out.contains("running max: 0, 4, 7, 7, 9, 9, 9, 9, 9, 9, 10"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

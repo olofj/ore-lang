@@ -1,0 +1,44 @@
+-- Showcase 155: Iterator patterns and lazy evaluation
+
+fn sieve_of_eratosthenes limit:Int -> List[Int]
+  mut is_prime := []
+  for i in range(0, limit + 1)
+    is_prime.push(1)
+  is_prime.set(0, 0)
+  is_prime.set(1, 0)
+
+  mut p := 2
+  while p * p <= limit
+    if is_prime[p] == 1
+      mut multiple := p * p
+      while multiple <= limit
+        is_prime.set(multiple, 0)
+        multiple = multiple + p
+    p = p + 1
+
+  range(2, limit + 1) | filter(n => is_prime[n] == 1)
+
+fn main
+  -- Sieve of Eratosthenes
+  primes := sieve_of_eratosthenes(50)
+  print "primes <= 50: {primes | join(", ")}"
+  print "count: {primes | count()}"
+
+  -- Twin primes
+  print ""
+  twins := primes | filter(p => primes.contains(p + 2))
+  for p in twins
+    print "({p}, {p + 2})"
+
+  -- Pipeline chaining
+  print ""
+  stats := range(1, 101)
+  print "1-100 sum: {stats | sum()}"
+  print "1-100 even count: {stats | filter(n => n % 2 == 0) | count()}"
+  print "1-100 divisible by 7: {stats | filter(n => n % 7 == 0) | join(", ")}"
+
+  -- Running statistics
+  print ""
+  data := [4, 7, 2, 9, 1, 8, 3, 6, 5, 10]
+  running_max := data | scan(0, (max, n) => if n > max then n else max)
+  print "running max: {running_max | join(", ")}"
