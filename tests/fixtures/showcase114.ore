@@ -1,0 +1,51 @@
+-- Showcase 114: Comprehensive pipeline showcase
+
+fn double x:Int -> Int
+  x * 2
+
+fn square x:Int -> Int
+  x * x
+
+fn is_even x:Int -> Bool
+  x % 2 == 0
+
+fn main
+  -- Basic pipeline
+  result := 5 | double | double
+  print result
+
+  -- Pipeline with lambda
+  val := 7 | (x => x * x + 1)
+  print val
+
+  -- Pipeline with filter and map
+  nums := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  evens := nums | filter(is_even) | map(double)
+  print evens.join(", ")
+
+  -- Chained transformations
+  words := ["hello", "world", "ore", "lang"]
+  result2 := words
+    | map(w => w.to_upper())
+    | filter(w => w.len() > 3)
+    | join(" + ")
+  print result2
+
+  -- Pipeline with fold
+  total := [1, 2, 3, 4, 5] | fold(0, (acc, x) => acc + x)
+  print "total: {total}"
+
+  -- Multi-step data processing
+  data := [15, 42, 7, 91, 23, 56, 3, 88]
+  processed := data
+    | filter(n => n > 10)
+    | sort()
+    | map(n => n * 2)
+    | take(4)
+  print processed.join(", ")
+
+  -- Pipeline with string methods
+  greeting := "  Hello, Ore World!  "
+    | trim()
+    | to_upper()
+  print greeting

@@ -1,0 +1,40 @@
+-- Showcase 115: Map data structures
+
+fn main
+  -- Basic map
+  scores := {"alice": 95, "bob": 87, "carol": 92}
+  print scores.get("alice")
+  print scores.get("bob")
+  print scores.len()
+
+  -- Map iteration
+  print ""
+  config := {"host": "localhost", "port": "8080", "debug": "true"}
+  for key in config.keys()
+    print "{key} = {config.get(key)}"
+
+  -- Map merge
+  print ""
+  defaults := {"color": "blue", "size": "10", "visible": "true"}
+  overrides := {"color": "red", "size": "20"}
+  merged := defaults.merge(overrides)
+  for key in merged.keys().sort()
+    print "{key}: {merged.get(key)}"
+
+  -- Map from list
+  print ""
+  items := ["apple", "banana", "apple", "cherry", "banana", "apple"]
+  freq := items.frequencies()
+  print "apple: {freq.get("apple")}"
+  print "banana: {freq.get("banana")}"
+  print "cherry: {freq.get("cherry")}"
+
+  -- Dynamic map building
+  print ""
+  mut inventory := {}
+  inventory.set("sword", 1)
+  inventory.set("shield", 2)
+  inventory.set("potion", 5)
+  print inventory.len()
+  print inventory.contains("sword")
+  print inventory.get_or("armor", 0)

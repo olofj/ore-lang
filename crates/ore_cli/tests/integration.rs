@@ -2555,6 +2555,57 @@ fn showcase110_performance() {
 }
 
 #[test]
+fn showcase111_advanced_lists() {
+    let out = run_ore("showcase111.ore");
+    assert!(out.contains("1, 2, 3, 5, 8, 9"));
+    assert!(out.contains("1, 2, 3, 4"));
+    assert!(out.contains("10, 20, 30"));
+    assert!(out.contains("60, 70, 80"));
+    assert!(out.contains("1, 2, 3, 4, 5, 6"));
+    assert!(out.contains("hello-world-ore"));
+    assert!(out.contains("has_big: true"));
+    assert!(out.contains("all_pos: true"));
+}
+
+#[test]
+fn showcase112_math() {
+    let out = run_ore("showcase112.ore");
+    assert!(out.contains("12.0"));
+    assert!(out.contains("1024.0"));
+    assert!(out.contains("3.14159"));
+    assert!(out.contains("65536"));
+    assert!(out.contains("42.0"));
+    assert!(out.contains("456"));
+}
+
+#[test]
+fn showcase113_concurrency() {
+    let out = run_ore("showcase113.ore");
+    assert!(out.contains("10, 20, 30, 40, 50"));
+    assert!(out.contains("sum: 100"));
+}
+
+#[test]
+fn showcase114_pipelines() {
+    let out = run_ore("showcase114.ore");
+    assert!(out.contains("20"));
+    assert!(out.contains("4, 8, 12, 16, 20"));
+    assert!(out.contains("HELLO + WORLD + LANG"));
+    assert!(out.contains("total: 15"));
+    assert!(out.contains("HELLO, ORE WORLD!"));
+}
+
+#[test]
+fn showcase115_maps() {
+    let out = run_ore("showcase115.ore");
+    assert!(out.contains("95"));
+    assert!(out.contains("host = localhost"));
+    assert!(out.contains("color: red"));
+    assert!(out.contains("apple: 3"));
+    assert!(out.contains("banana: 2"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

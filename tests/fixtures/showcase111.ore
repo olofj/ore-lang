@@ -1,0 +1,60 @@
+-- Showcase 111: Advanced list operations
+
+fn main
+  -- Sorting
+  nums := [5, 2, 8, 1, 9, 3]
+  print nums.sort().join(", ")
+
+  -- Unique
+  dupes := [1, 2, 2, 3, 3, 3, 4]
+  print dupes.unique().join(", ")
+
+  -- Window
+  data := [1, 2, 3, 4, 5, 6]
+  windows := data.window(3)
+  print windows.len()
+
+  -- Chunks
+  chunks := data.chunks(2)
+  print chunks.len()
+
+  -- Take, skip
+  big := [10, 20, 30, 40, 50, 60, 70, 80]
+  print big.take(3).join(", ")
+  print big.skip(5).join(", ")
+
+  -- Flatten
+  nested := [[1, 2], [3, 4], [5, 6]]
+  print nested.flatten().join(", ")
+
+  -- Frequencies
+  letters := ["a", "b", "a", "c", "b", "a"]
+  freq := letters.frequencies()
+  print freq.get("a")
+
+  -- Partition
+  nums2 := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  parts := nums2.partition(n => n % 2 == 0)
+  print parts.len()
+
+  -- Reduce
+  total := [1, 2, 3, 4, 5].reduce((a, b) => a + b)
+  print total
+
+  -- Scan
+  running := [1, 2, 3, 4, 5].scan(0, (acc, x) => acc + x)
+  print running.join(", ")
+
+  -- Step
+  stepped := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].step(3)
+  print stepped.join(", ")
+
+  -- Intersperse
+  words := ["hello", "world", "ore"]
+  print words.intersperse("-").join("")
+
+  -- Any/all
+  has_big := [1, 2, 3, 10, 5].any(n => n > 8)
+  all_pos := [1, 2, 3, 4, 5].all(n => n > 0)
+  print "has_big: {has_big}"
+  print "all_pos: {all_pos}"

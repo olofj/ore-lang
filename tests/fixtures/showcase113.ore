@@ -1,0 +1,33 @@
+-- Showcase 113: Concurrency with channels
+
+fn producer ch:Channel limit:Int
+  for i in range(1, limit + 1)
+    ch.send(i * 10)
+
+fn consumer ch:Channel count:Int -> List[Int]
+  mut results := []
+  for i in range(0, count)
+    results.push(ch.recv())
+  results
+
+fn main
+  -- Basic spawn with channel
+  ch := channel()
+  spawn producer(ch, 5)
+  results := consumer(ch, 5)
+  print results.sort().join(", ")
+
+  -- Multiple producers
+  ch2 := channel()
+  spawn producer(ch2, 3)
+  spawn producer(ch2, 3)
+  all := consumer(ch2, 6)
+  print all.sort().join(", ")
+
+  -- Simple parallel sum
+  ch3 := channel()
+  spawn producer(ch3, 4)
+  mut sum := 0
+  for i in range(0, 4)
+    sum = sum + ch3.recv()
+  print "sum: {sum}"

@@ -1,0 +1,42 @@
+-- Showcase 112: Math functions
+
+fn main
+  -- Basic math
+  print sqrt(144.0)
+  print abs(-42)
+  print pow(2.0, 10.0)
+
+  -- Trig
+  print sin(0.0)
+  print cos(0.0)
+
+  -- Constants
+  print pi()
+  print euler()
+
+  -- Rounding
+  print floor(3.7)
+  print ceil(3.2)
+  print round(3.5)
+
+  -- Logarithms
+  print log(euler())
+  print log10(100.0)
+
+  -- Int math
+  print 2.pow(16)
+  print 15.clamp(0, 10)
+  print 3.min(7)
+  print 3.max(7)
+
+  -- Float conversions
+  x := 42
+  print x.to_float()
+  y := 3.14
+  print y.to_int()
+
+  -- String conversions
+  n := 123
+  print n.to_str()
+  s := "456"
+  print s.to_int()
