@@ -454,6 +454,9 @@ fn map_runtime_functions(
     // Process
     map_fn!("ore_exit", ore_runtime::ore_exit);
     map_fn!("ore_type_of", ore_runtime::ore_type_of);
+    // Environment
+    map_fn!("ore_env_get", ore_runtime::ore_env_get);
+    map_fn!("ore_env_set", ore_runtime::ore_env_set);
     // Assert
     map_fn!("ore_assert", ore_runtime::ore_assert);
     map_fn!("ore_assert_eq_int", ore_runtime::ore_assert_eq_int);

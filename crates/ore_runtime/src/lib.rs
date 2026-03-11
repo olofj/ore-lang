@@ -1571,6 +1571,24 @@ pub extern "C" fn ore_type_of(kind: i8) -> *mut OreStr {
     ore_str_new(name.as_ptr(), name.len() as u32)
 }
 
+// ── Environment ──────────────────────────────────────────────
+
+#[no_mangle]
+pub extern "C" fn ore_env_get(key: *mut OreStr) -> *mut OreStr {
+    let key_str = unsafe { (*key).as_str() };
+    match std::env::var(key_str) {
+        Ok(val) => ore_str_new(val.as_ptr(), val.len() as u32),
+        Err(_) => ore_str_new(std::ptr::null(), 0),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_env_set(key: *mut OreStr, value: *mut OreStr) {
+    let key_str = unsafe { (*key).as_str() };
+    let val_str = unsafe { (*value).as_str() };
+    unsafe { std::env::set_var(key_str, val_str) };
+}
+
 // ── Random ───────────────────────────────────────────────────
 
 use std::cell::Cell;

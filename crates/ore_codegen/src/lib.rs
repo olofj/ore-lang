@@ -760,6 +760,9 @@ impl<'ctx> CodeGen<'ctx> {
         // Process
         self.module.add_function("ore_exit", void_type.fn_type(&[i64_type.into()], false), ext);
         self.module.add_function("ore_type_of", ptr_type.fn_type(&[i8_type.into()], false), ext);
+        // Environment
+        self.module.add_function("ore_env_get", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_env_set", void_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_dynamic_to_str(i64, i8) -> ptr — dynamic dispatch for Result/Option payload to string
         self.module.add_function("ore_dynamic_to_str", ptr_type.fn_type(&[i64_type.into(), i8_type.into()], false), ext);
         // Channels
@@ -1476,6 +1479,26 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[path_val.into(), content_val.into()], "file_write"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Bool));
+                    }
+                    "env_get" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "env_get takes 1 argument (key)".into() });
+                        }
+                        let key = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_env_get").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[key.into()], "env_get"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Str));
+                    }
+                    "env_set" => {
+                        if args.len() != 2 {
+                            return Err(CodeGenError { line: None, msg: "env_set takes 2 arguments (key, value)".into() });
+                        }
+                        let key = self.compile_expr(&args[0], func)?;
+                        let value = self.compile_expr(&args[1], func)?;
+                        let rt = self.module.get_function("ore_env_set").unwrap();
+                        bld!(self.builder.build_call(rt, &[key.into(), value.into()], ""))?;
+                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Int));
                     }
                     "exit" => {
                         if args.len() != 1 {
