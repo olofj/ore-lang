@@ -191,12 +191,16 @@ impl Formatter {
                 self.format_expr(expr, level);
                 self.out.push('\n');
             }
-            Stmt::ForIn { var, start, end, body } => {
+            Stmt::ForIn { var, start, end, step, body } => {
                 self.indent(level);
                 self.out.push_str(&format!("for {} in ", var));
                 self.format_expr(start, level);
                 self.out.push_str("..");
                 self.format_expr(end, level);
+                if let Some(step_expr) = step {
+                    self.out.push_str(" step ");
+                    self.format_expr(step_expr, level);
+                }
                 self.out.push('\n');
                 self.format_block(body, level + 1);
             }

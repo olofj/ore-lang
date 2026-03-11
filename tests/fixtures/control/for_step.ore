@@ -1,0 +1,22 @@
+fn main
+  -- Step by 2
+  mut evens := ""
+  for i in 0..10 step 2
+    if evens.len() > 0
+      evens = evens + " "
+    evens = evens + "{i}"
+  print evens
+
+  -- Step by 3
+  mut threes := ""
+  for i in 0..15 step 3
+    if threes.len() > 0
+      threes = threes + " "
+    threes = threes + "{i}"
+  print threes
+
+  -- Normal (step 1, no step keyword)
+  mut count := 0
+  for i in 0..5
+    count += 1
+  print count

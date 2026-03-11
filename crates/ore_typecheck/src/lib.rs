@@ -372,9 +372,12 @@ impl TypeChecker {
                 }
                 Type::Unit
             }
-            Stmt::ForIn { var, start, end, body } => {
+            Stmt::ForIn { var, start, end, step, body } => {
                 self.check_int_expr(start, env, "for-in start");
                 self.check_int_expr(end, env, "for-in end");
+                if let Some(s) = step {
+                    self.check_int_expr(s, env, "for-in step");
+                }
                 let mut child = Env::child(std::mem::replace(env, Env::new()));
                 child.insert(var.clone(), Type::Int, false);
                 self.check_block(body, &mut child, ret_ty);

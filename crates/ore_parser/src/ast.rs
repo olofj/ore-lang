@@ -146,6 +146,7 @@ pub enum Stmt {
         var: String,
         start: Expr,
         end: Expr,
+        step: Option<Expr>,
         body: Block,
     },
     While {

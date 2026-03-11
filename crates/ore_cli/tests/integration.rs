@@ -1374,3 +1374,10 @@ fn showcase17() {
     assert!(out.contains("Hello, Ore!"));
     assert!(out.contains("Bonjour, Ore!"));
 }
+
+#[test]
+fn control_for_step() {
+    let out = run_ore("control/for_step.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["0 2 4 6 8", "0 3 6 9 12", "5"]);
+}

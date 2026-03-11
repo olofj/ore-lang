@@ -516,12 +516,18 @@ impl Parser {
                     self.expect(&Token::In)?;
                     let start = self.parse_expr(3)?; // Parse at higher precedence to stop at ..
                     if self.peek() == &Token::DotDot {
-                        // Range loop: for x in start..end
+                        // Range loop: for x in start..end [step n]
                         self.advance();
                         let end = self.parse_expr(0)?;
+                        let step = if matches!(self.peek(), Token::Ident(s) if s == "step") {
+                            self.advance();
+                            Some(self.parse_expr(0)?)
+                        } else {
+                            None
+                        };
                         self.skip_newlines();
                         let body = self.parse_block()?;
-                        Ok(Stmt::ForIn { var, start, end, body })
+                        Ok(Stmt::ForIn { var, start, end, step, body })
                     } else {
                         // Collection iteration: for x in list
                         self.skip_newlines();

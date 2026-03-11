@@ -1203,8 +1203,8 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_return(None))?;
                 Ok(None)
             }
-            Stmt::ForIn { var, start, end, body } => {
-                self.compile_for_in(var, start, end, body, func)?;
+            Stmt::ForIn { var, start, end, step, body } => {
+                self.compile_for_in(var, start, end, step.as_ref(), body, func)?;
                 Ok(None)
             }
             Stmt::ForEach { var, iterable, body } => {
@@ -6245,12 +6245,18 @@ impl<'ctx> CodeGen<'ctx> {
         var: &str,
         start_expr: &Expr,
         end_expr: &Expr,
+        step_expr: Option<&Expr>,
         body: &Block,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
         let i64_type = self.context.i64_type();
         let start_val = self.compile_expr(start_expr, func)?.into_int_value();
         let end_val = self.compile_expr(end_expr, func)?.into_int_value();
+        let step_val = if let Some(se) = step_expr {
+            self.compile_expr(se, func)?.into_int_value()
+        } else {
+            i64_type.const_int(1, false)
+        };
 
         // Alloca for loop variable
         let var_alloca = bld!(self.builder.build_alloca(i64_type, var))?;
@@ -6284,10 +6290,10 @@ impl<'ctx> CodeGen<'ctx> {
             bld!(self.builder.build_unconditional_branch(inc_bb))?;
         }
 
-        // Increment
+        // Increment by step value
         self.builder.position_at_end(inc_bb);
         let current = bld!(self.builder.build_load(i64_type, var_alloca, var))?.into_int_value();
-        let next = bld!(self.builder.build_int_add(current, i64_type.const_int(1, false), "inc"))?;
+        let next = bld!(self.builder.build_int_add(current, step_val, "inc"))?;
         bld!(self.builder.build_store(var_alloca, next))?;
         bld!(self.builder.build_unconditional_branch(cond_bb))?;
 
