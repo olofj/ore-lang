@@ -1388,3 +1388,18 @@ fn strings_triple_quoted() {
     let lines: Vec<&str> = out.lines().collect();
     assert_eq!(lines, vec!["3", "Line one", "Line three", "hello", "world"]);
 }
+
+#[test]
+fn showcase18() {
+    let out = run_ore("showcase18.ore");
+    assert!(out.contains("*****"));
+    assert!(out.contains("*-*-*-*-*"));
+    assert!(out.contains("Even squares: 0, 4, 16, 36, 64"));
+    assert!(out.contains("Fibs: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55"));
+    assert!(out.contains("First fib > 20 at index: 8"));
+    assert!(out.contains("5! = 120"));
+    assert!(out.contains("Lines in poem: 4"));
+    assert!(out.contains("First line: Roses are red,"));
+    assert!(out.contains("Long words: Brown, Jumps, Lazy, Over, Quick"));
+    assert!(out.contains("Twin prime pairs up to 30: 4"));
+}

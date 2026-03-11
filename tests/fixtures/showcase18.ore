@@ -1,0 +1,82 @@
+-- Showcase 18: Comprehensive language feature demonstration
+-- Tests: defaults, step ranges, fold, find_index, triple strings, pipeline chains
+
+fn repeat_char ch:Str n:Int separator:Str = "" -> Str
+  mut result := ""
+  for i in 0..n
+    if i > 0 and separator.len() > 0
+      result = result + separator
+    result = result + ch
+  result
+
+fn fibonacci n:Int -> Int
+  if n < 2
+    return n
+  mut a := 0
+  mut b := 1
+  for i in 2..n + 1
+    tmp := a + b
+    a = b
+    b = tmp
+  b
+
+fn main
+  -- Default parameters
+  print repeat_char("*", 5)
+  print repeat_char("*", 5, "-")
+
+  -- For with step
+  mut squares := [0, 0, 0, 0, 0]
+  for i in 0..10 step 2
+    idx := i / 2
+    squares.push(i * i)
+  evens := [0, 2, 4, 6, 8] | map(n => n * n) | join(", ")
+  print "Even squares: {evens}"
+
+  -- Fibonacci with fold
+  fibs := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] | map(n => fibonacci(n))
+  print "Fibs: {fibs.join(", ")}"
+
+  -- find_index
+  idx := fibs.find_index(n => n > 20)
+  print "First fib > 20 at index: {idx}"
+
+  -- fold to build a running sum
+  nums := [1, 2, 3, 4, 5]
+  factorial := nums.fold(1, (acc, n) => acc * n)
+  print "5! = {factorial}"
+
+  -- Triple-quoted string
+  poem := """
+    Roses are red,
+    Violets are blue,
+    Ore is great,
+    And so are you.
+    """
+  print "Lines in poem: {poem.lines().len()}"
+  print "First line: {poem.lines().get(0)}"
+
+  -- Complex pipeline
+  words := "the quick brown fox jumps over the lazy dog"
+  result := words.words()
+    | filter(w => w.len() > 3)
+    | map(w => w.capitalize())
+    | sort
+    | unique
+    | join(", ")
+  print "Long words: {result}"
+
+  -- List comprehension with pipeline
+  primes := [n for n in 2..30 if is_prime(n)]
+  twin_count := primes.fold(0, (acc, p) => acc + (primes.contains(p + 2) : 1 : 0))
+  print "Twin prime pairs up to 30: {twin_count}"
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  mut i := 2
+  while i * i <= n
+    if n % i == 0
+      return false
+    i += 1
+  true
