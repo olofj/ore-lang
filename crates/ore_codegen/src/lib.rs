@@ -1187,8 +1187,14 @@ impl<'ctx> CodeGen<'ctx> {
                         bld!(self.builder.build_call(rt, &[obj_val.into(), idx_val.into(), val.into()], ""))?;
                     }
                     ValKind::Map => {
+                        // Convert non-string keys to strings for map
+                        let map_key = if idx_val.is_pointer_value() {
+                            idx_val
+                        } else {
+                            self.value_to_str(idx_val, ValKind::Int)?.into()
+                        };
                         let rt = self.module.get_function("ore_map_set").unwrap();
-                        bld!(self.builder.build_call(rt, &[obj_val.into(), idx_val.into(), val.into()], ""))?;
+                        bld!(self.builder.build_call(rt, &[obj_val.into(), map_key.into(), val.into()], ""))?;
                     }
                     _ => return Err(CodeGenError { line: None, msg: "index assignment only supported on lists and maps".into() }),
                 }
@@ -4370,7 +4376,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 2 {
                     return Err(CodeGenError { line: None, msg: "set takes 2 arguments (key, value)".into() });
                 }
-                let key = self.compile_expr(&args[0], func)?;
+                let key = self.compile_map_key(&args[0], func)?;
                 let (val, val_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let i64_val = match val_kind {
                     ValKind::Int => val.into_int_value(),
@@ -4394,7 +4400,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "get takes 1 argument (key)".into() });
                 }
-                let key = self.compile_expr(&args[0], func)?;
+                let key = self.compile_map_key(&args[0], func)?;
                 let rt = self.module.get_function("ore_map_get").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mget"))?;
                 let i64_val = self.call_result_to_value(result)?;
@@ -4423,7 +4429,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "contains takes 1 argument (key)".into() });
                 }
-                let key = self.compile_expr(&args[0], func)?;
+                let key = self.compile_map_key(&args[0], func)?;
                 let rt = self.module.get_function("ore_map_contains").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mcontains"))?;
                 let i8_val = self.call_result_to_value(result)?.into_int_value();
@@ -4445,7 +4451,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "remove takes 1 argument (key)".into() });
                 }
-                let key = self.compile_expr(&args[0], func)?;
+                let key = self.compile_map_key(&args[0], func)?;
                 let rt = self.module.get_function("ore_map_remove").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mremove"))?;
                 let val = self.call_result_to_value(result)?;
@@ -4569,7 +4575,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 2 {
                     return Err(CodeGenError { line: None, msg: "get_or takes 2 arguments (key, default)".into() });
                 }
-                let key = self.compile_expr(&args[0], func)?;
+                let key = self.compile_map_key(&args[0], func)?;
                 let (default_val, default_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let default_i64 = match default_kind {
                     ValKind::Str | ValKind::List | ValKind::Map => {
@@ -5530,7 +5536,13 @@ impl<'ctx> CodeGen<'ctx> {
 
         let mut first_val_kind = None;
         for (key, value) in entries {
-            let key_val = self.compile_expr(key, func)?;
+            let (raw_key, key_kind) = self.compile_expr_with_kind(key, func)?;
+            // Map keys must be strings — convert non-string keys automatically
+            let key_val = if key_kind == ValKind::Str {
+                raw_key
+            } else {
+                self.value_to_str(raw_key, key_kind)?.into()
+            };
             let (val, val_kind) = self.compile_expr_with_kind(value, func)?;
             if first_val_kind.is_none() {
                 first_val_kind = Some(val_kind.clone());
@@ -5598,10 +5610,16 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             ValKind::Map => {
+                // Convert non-string keys to strings for map access
+                let map_key = if idx_val.is_pointer_value() {
+                    idx_val // already a string pointer
+                } else {
+                    self.value_to_str(idx_val, ValKind::Int)?.into()
+                };
                 let map_get = self.module.get_function("ore_map_get").unwrap();
                 let result = bld!(self.builder.build_call(
                     map_get,
-                    &[obj_val.into(), idx_val.into()],
+                    &[obj_val.into(), map_key.into()],
                     "map_get"
                 ))?;
                 let val = self.call_result_to_value(result)?;
@@ -5767,6 +5785,20 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(bld!(self.builder.build_ptr_to_int(v, self.context.i64_type(), "p2i"))?)
             }
             _ => Ok(val.into_int_value()),
+        }
+    }
+
+    /// Compile a map key expression, converting non-string keys to strings.
+    fn compile_map_key(
+        &mut self,
+        expr: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        let (val, kind) = self.compile_expr_with_kind(expr, func)?;
+        if kind == ValKind::Str {
+            Ok(val)
+        } else {
+            Ok(self.value_to_str(val, kind)?.into())
         }
     }
 
