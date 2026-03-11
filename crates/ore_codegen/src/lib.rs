@@ -1024,6 +1024,50 @@ impl<'ctx> CodeGen<'ctx> {
                     ValKind::Int
                 }
             }
+            Expr::MethodCall { method, .. } => {
+                // Infer return kind from well-known methods
+                match method.as_str() {
+                    "to_upper" | "to_lower" | "trim" | "substr" | "replace"
+                    | "join" | "to_str" | "repeat" | "reverse" => ValKind::Str,
+                    "len" | "count" | "to_int" | "sum" | "min" | "max"
+                    | "index_of" | "pop" | "first" | "last" => ValKind::Int,
+                    "to_float" => ValKind::Float,
+                    "contains" | "starts_with" | "ends_with"
+                    | "is_empty" | "is_some" | "is_none" | "is_ok" | "is_err" => ValKind::Bool,
+                    "split" | "keys" | "values" | "entries"
+                    | "map" | "filter" | "take" | "drop" | "sort" | "flatten" => ValKind::List,
+                    _ => ValKind::Int,
+                }
+            }
+            Expr::BinOp { op, left, right } => {
+                match op {
+                    BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
+                        // If either operand is Float, result is Float
+                        let lk = self.infer_expr_kind(left);
+                        let rk = self.infer_expr_kind(right);
+                        if lk == ValKind::Float || rk == ValKind::Float {
+                            ValKind::Float
+                        } else {
+                            ValKind::Int
+                        }
+                    }
+                    BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq
+                    | BinOp::Eq | BinOp::NotEq | BinOp::And | BinOp::Or => ValKind::Bool,
+                    BinOp::Pipe => {
+                        // Pipeline result depends on the function being piped to
+                        self.infer_expr_kind(right)
+                    }
+                }
+            }
+            Expr::IfElse { then_block, .. } => {
+                // Infer from then branch's last expression
+                if let Some(last) = then_block.stmts.last() {
+                    if let Stmt::Expr(e) = &last.stmt {
+                        return self.infer_expr_kind(e);
+                    }
+                }
+                ValKind::Int
+            }
             _ => ValKind::Int,
         }
     }
