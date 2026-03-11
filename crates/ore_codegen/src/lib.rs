@@ -655,6 +655,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_max", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_count", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_sort_by", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_index_of", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_list_unique", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_reverse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_reverse_new", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
@@ -2271,6 +2273,22 @@ impl<'ctx> CodeGen<'ctx> {
                 let end = self.compile_expr(&args[1], func)?;
                 let rt = self.module.get_function("ore_list_slice").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), start.into(), end.into()], "lslice"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            "index_of" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "index_of takes 1 argument".into() });
+                }
+                let val = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_list_index_of").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lidx"))?;
+                let v = self.call_result_to_value(result)?;
+                Ok((v, ValKind::Int))
+            }
+            "unique" => {
+                let rt = self.module.get_function("ore_list_unique").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "luniq"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
             }

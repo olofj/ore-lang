@@ -485,6 +485,32 @@ pub extern "C" fn ore_list_count(
     count
 }
 
+#[no_mangle]
+pub extern "C" fn ore_list_index_of(list: *mut OreList, value: i64) -> i64 {
+    if list.is_null() { return -1; }
+    let l = unsafe { &*list };
+    for i in 0..l.len {
+        let val = unsafe { *l.data.offset(i as isize) };
+        if val == value { return i; }
+    }
+    -1
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_unique(list: *mut OreList) -> *mut OreList {
+    let result = ore_list_new();
+    if list.is_null() { return result; }
+    let l = unsafe { &*list };
+    let mut seen = std::collections::HashSet::new();
+    for i in 0..l.len {
+        let val = unsafe { *l.data.offset(i as isize) };
+        if seen.insert(val) {
+            ore_list_push(result, val);
+        }
+    }
+    result
+}
+
 // ── Assert ──
 
 #[no_mangle]

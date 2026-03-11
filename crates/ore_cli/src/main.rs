@@ -364,6 +364,8 @@ fn map_runtime_functions(
     map_fn!("ore_list_max", ore_runtime::ore_list_max);
     map_fn!("ore_list_count", ore_runtime::ore_list_count);
     map_fn!("ore_list_sort_by", ore_runtime::ore_list_sort_by);
+    map_fn!("ore_list_index_of", ore_runtime::ore_list_index_of);
+    map_fn!("ore_list_unique", ore_runtime::ore_list_unique);
     // Lists
     map_fn!("ore_list_new", ore_runtime::ore_list_new);
     map_fn!("ore_list_push", ore_runtime::ore_list_push);
