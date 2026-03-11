@@ -1,0 +1,49 @@
+-- Showcase 109: String builder pattern
+
+fn repeat_char ch:Str n:Int -> Str
+  ch.repeat(n)
+
+fn box_text text:Str padding:Int = 1 -> Str
+  width := text.len() + padding * 2 + 2
+  border := "+" + "-".repeat(width - 2) + "+"
+  spaces := " ".repeat(padding)
+  middle := "|" + spaces + text + spaces + "|"
+  "{border}\n{middle}\n{border}"
+
+fn center text:Str width:Int -> Str
+  if text.len() >= width
+    text
+  else
+    pad := width - text.len()
+    left := pad / 2
+    right := pad - left
+    " ".repeat(left) + text + " ".repeat(right)
+
+fn main
+  -- Box text
+  print box_text("Hello, Ore!")
+  print ""
+  print box_text("Welcome", 3)
+
+  -- Center text
+  print ""
+  titles := ["Ore", "Programming", "Language"]
+  for t in titles
+    print center(t, 20)
+
+  -- Build a formatted report
+  print ""
+  print "=".repeat(30)
+  print center("Status Report", 30)
+  print "=".repeat(30)
+  print ""
+
+  items := ["compile", "test", "format", "check"]
+  for item in items
+    dots := ".".repeat(20 - item.len())
+    print "  {item} {dots} OK"
+
+  print ""
+  print "=".repeat(30)
+  print center("All systems go!", 30)
+  print "=".repeat(30)

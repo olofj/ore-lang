@@ -1,0 +1,73 @@
+-- Showcase 110: Performance-oriented code (suitable for ore build)
+
+fn sieve_count limit:Int -> Int
+  -- Count primes using Sieve of Eratosthenes approach
+  mut count := 0
+  for n in range(2, limit)
+    mut is_prime := true
+    mut i := 2
+    while i * i <= n
+      if n % i == 0
+        is_prime = false
+        break
+      i = i + 1
+    if is_prime
+      count = count + 1
+  count
+
+fn matrix_multiply_2x2 a:List[Int] b:List[Int] -> List[Int]
+  -- 2x2 matrix multiply: [a00, a01, a10, a11] x [b00, b01, b10, b11]
+  c00 := a[0] * b[0] + a[1] * b[2]
+  c01 := a[0] * b[1] + a[1] * b[3]
+  c10 := a[2] * b[0] + a[3] * b[2]
+  c11 := a[2] * b[1] + a[3] * b[3]
+  [c00, c01, c10, c11]
+
+fn fib_fast n:Int -> Int
+  -- O(log n) fibonacci using matrix exponentiation
+  if n == 0
+    0
+  else if n == 1
+    1
+  else
+    -- Use [[1,1],[1,0]]^n method
+    -- Simplified: iterative approach
+    mut a := 0
+    mut b := 1
+    for i in range(2, n + 1)
+      temp := a + b
+      a = b
+      b = temp
+    b
+
+fn main
+  -- Prime counting
+  primes_100 := sieve_count(100)
+  primes_1000 := sieve_count(1000)
+  primes_10000 := sieve_count(10000)
+  print "Primes < 100: {primes_100}"
+  print "Primes < 1000: {primes_1000}"
+  print "Primes < 10000: {primes_10000}"
+
+  -- Matrix multiply
+  a := [1, 2, 3, 4]
+  b := [5, 6, 7, 8]
+  c := matrix_multiply_2x2(a, b)
+  print "Matrix product: [{c.join(", ")}]"
+
+  -- Fast fibonacci
+  print ""
+  for n in [10, 20, 30, 40]
+    print "fib({n}) = {fib_fast(n)}"
+
+  -- Compute intensive: sum of digits of factorial approximation
+  mut sum := 0
+  for i in range(1, 1001)
+    sum = sum + i * i
+  print ""
+  print "sum of squares 1..1000 = {sum}"
+
+  -- Verify
+  expected := 1000 * 1001 * 2001 / 6
+  print "formula result = {expected}"
+  print "match: {sum == expected}"

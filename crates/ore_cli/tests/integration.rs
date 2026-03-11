@@ -2531,6 +2531,30 @@ fn showcase108_type_system() {
 }
 
 #[test]
+fn showcase109_string_builder() {
+    let out = run_ore("showcase109.ore");
+    assert!(out.contains("+-------------+"));
+    assert!(out.contains("| Hello, Ore! |"));
+    assert!(out.contains("|   Welcome   |"));
+    assert!(out.contains("Status Report"));
+    assert!(out.contains("compile"));
+    assert!(out.contains("All systems go!"));
+}
+
+#[test]
+fn showcase110_performance() {
+    let out = run_ore("showcase110.ore");
+    assert!(out.contains("Primes < 100: 25"));
+    assert!(out.contains("Primes < 1000: 168"));
+    assert!(out.contains("Primes < 10000: 1229"));
+    assert!(out.contains("Matrix product: [19, 22, 43, 50]"));
+    assert!(out.contains("fib(10) = 55"));
+    assert!(out.contains("fib(40) = 102334155"));
+    assert!(out.contains("sum of squares 1..1000 = 333833500"));
+    assert!(out.contains("match: true"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
