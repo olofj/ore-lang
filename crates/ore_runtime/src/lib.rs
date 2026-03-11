@@ -1341,3 +1341,29 @@ pub extern "C" fn ore_channel_recv(ch: *mut OreChannel) -> i64 {
     let ch = unsafe { &*ch };
     ch.receiver.lock().unwrap().recv().unwrap()
 }
+
+// ── Int math ──
+
+#[no_mangle]
+pub extern "C" fn ore_int_pow(base: i64, exp: i64) -> i64 {
+    if exp < 0 {
+        return 0; // integer pow with negative exponent → 0
+    }
+    (base as i128).pow(exp as u32) as i64
+}
+
+// ── String parsing ──
+
+#[no_mangle]
+pub extern "C" fn ore_str_parse_int(s: *mut OreStr) -> i64 {
+    let ore_str = unsafe { &*s };
+    let text = ore_str.as_str();
+    text.trim().parse::<i64>().unwrap_or(0)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_parse_float(s: *mut OreStr) -> f64 {
+    let ore_str = unsafe { &*s };
+    let text = ore_str.as_str();
+    text.trim().parse::<f64>().unwrap_or(0.0)
+}

@@ -707,6 +707,14 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_channel_new", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_channel_send", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_channel_recv", i64_type.fn_type(&[ptr_type.into()], false), ext);
+
+        // Int math
+        self.module.add_function("ore_int_pow", i64_type.fn_type(&[i64_type.into(), i64_type.into()], false), ext);
+
+        // String parsing
+        self.module.add_function("ore_str_parse_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        let f64_type = self.context.f64_type();
+        self.module.add_function("ore_str_parse_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
     }
 
     fn type_expr_to_kind(&self, ty: &TypeExpr) -> ValKind {
@@ -1924,7 +1932,6 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((f_val.into(), ValKind::Float));
                 }
                 "abs" => {
-                    // Inline: x < 0 ? -x : x
                     let int_val = obj_val.into_int_value();
                     let zero = self.context.i64_type().const_zero();
                     let is_neg = bld!(self.builder.build_int_compare(
@@ -1933,6 +1940,53 @@ impl<'ctx> CodeGen<'ctx> {
                     let neg_val = bld!(self.builder.build_int_neg(int_val, "neg"))?;
                     let result = bld!(self.builder.build_select(is_neg, neg_val, int_val, "abs"))?;
                     return Ok((result, ValKind::Int));
+                }
+                "max" => {
+                    if args.len() != 1 {
+                        return Err(CodeGenError { line: None, msg: "Int.max() takes 1 argument".into() });
+                    }
+                    let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
+                    let a = obj_val.into_int_value();
+                    let b = other.into_int_value();
+                    let cmp = bld!(self.builder.build_int_compare(IntPredicate::SGT, a, b, "gt"))?;
+                    let result = bld!(self.builder.build_select(cmp, a, b, "max"))?;
+                    return Ok((result, ValKind::Int));
+                }
+                "min" => {
+                    if args.len() != 1 {
+                        return Err(CodeGenError { line: None, msg: "Int.min() takes 1 argument".into() });
+                    }
+                    let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
+                    let a = obj_val.into_int_value();
+                    let b = other.into_int_value();
+                    let cmp = bld!(self.builder.build_int_compare(IntPredicate::SLT, a, b, "lt"))?;
+                    let result = bld!(self.builder.build_select(cmp, a, b, "min"))?;
+                    return Ok((result, ValKind::Int));
+                }
+                "clamp" => {
+                    if args.len() != 2 {
+                        return Err(CodeGenError { line: None, msg: "Int.clamp() takes 2 arguments (min, max)".into() });
+                    }
+                    let (lo_val, _) = self.compile_expr_with_kind(&args[0], func)?;
+                    let (hi_val, _) = self.compile_expr_with_kind(&args[1], func)?;
+                    let x = obj_val.into_int_value();
+                    let lo = lo_val.into_int_value();
+                    let hi = hi_val.into_int_value();
+                    let cmp_lo = bld!(self.builder.build_int_compare(IntPredicate::SLT, x, lo, "lt_lo"))?;
+                    let v1 = bld!(self.builder.build_select(cmp_lo, lo, x, "clamp_lo"))?;
+                    let cmp_hi = bld!(self.builder.build_int_compare(IntPredicate::SGT, v1.into_int_value(), hi, "gt_hi"))?;
+                    let result = bld!(self.builder.build_select(cmp_hi, hi, v1.into_int_value(), "clamp"))?;
+                    return Ok((result, ValKind::Int));
+                }
+                "pow" => {
+                    if args.len() != 1 {
+                        return Err(CodeGenError { line: None, msg: "Int.pow() takes 1 argument".into() });
+                    }
+                    let (exp_val, _) = self.compile_expr_with_kind(&args[0], func)?;
+                    let rt = self.module.get_function("ore_int_pow").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[obj_val.into(), exp_val.into()], "pow"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Int));
                 }
                 _ => return Err(CodeGenError { line: None, msg: format!("unknown Int method '{}'", method) }),
             }
@@ -2013,6 +2067,28 @@ impl<'ctx> CodeGen<'ctx> {
                     let result = bld!(self.builder.build_call(sqrt_fn, &[obj_val.into()], "sqrt"))?;
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Float));
+                }
+                "max" => {
+                    if args.len() != 1 {
+                        return Err(CodeGenError { line: None, msg: "Float.max() takes 1 argument".into() });
+                    }
+                    let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
+                    let a = obj_val.into_float_value();
+                    let b = other.into_float_value();
+                    let cmp = bld!(self.builder.build_float_compare(inkwell::FloatPredicate::OGT, a, b, "fgt"))?;
+                    let result = bld!(self.builder.build_select(cmp, a, b, "fmax"))?;
+                    return Ok((result, ValKind::Float));
+                }
+                "min" => {
+                    if args.len() != 1 {
+                        return Err(CodeGenError { line: None, msg: "Float.min() takes 1 argument".into() });
+                    }
+                    let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
+                    let a = obj_val.into_float_value();
+                    let b = other.into_float_value();
+                    let cmp = bld!(self.builder.build_float_compare(inkwell::FloatPredicate::OLT, a, b, "flt"))?;
+                    let result = bld!(self.builder.build_select(cmp, a, b, "fmin"))?;
+                    return Ok((result, ValKind::Float));
                 }
                 _ => return Err(CodeGenError { line: None, msg: format!("unknown Float method '{}'", method) }),
             }
@@ -2612,6 +2688,18 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "srev"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
+            }
+            "parse_int" => {
+                let rt = self.module.get_function("ore_str_parse_int").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "parse_int"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "parse_float" => {
+                let rt = self.module.get_function("ore_str_parse_float").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "parse_float"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Float))
             }
             _ => Err(CodeGenError { line: None, msg: format!("unknown string method '{}'", method) }),
         }

@@ -1,0 +1,21 @@
+fn main
+  -- Int methods
+  print 3.max(7)
+  print 7.min(3)
+  print (-5).abs()
+  print 15.clamp(0, 10)
+  print (-3).clamp(0, 10)
+  print 5.clamp(0, 10)
+  print 2.pow(10)
+  -- Float methods
+  print 3.14.round()
+  print 3.14.floor()
+  print 3.14.ceil()
+  print 2.5.max(1.5)
+  print 2.5.min(1.5)
+  -- String parsing
+  print "42".parse_int()
+  print "3.14".parse_float()
+  -- Chained
+  x := -8
+  print x.abs().max(5)

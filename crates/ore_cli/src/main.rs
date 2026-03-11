@@ -420,6 +420,11 @@ fn map_runtime_functions(
     map_fn!("ore_channel_new", ore_runtime::ore_channel_new);
     map_fn!("ore_channel_send", ore_runtime::ore_channel_send);
     map_fn!("ore_channel_recv", ore_runtime::ore_channel_recv);
+    // Int math
+    map_fn!("ore_int_pow", ore_runtime::ore_int_pow);
+    // String parsing
+    map_fn!("ore_str_parse_int", ore_runtime::ore_str_parse_int);
+    map_fn!("ore_str_parse_float", ore_runtime::ore_str_parse_float);
     // I/O
     map_fn!("ore_readln", ore_runtime::ore_readln);
     map_fn!("ore_file_read", ore_runtime::ore_file_read);
