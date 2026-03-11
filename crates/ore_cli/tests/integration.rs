@@ -594,6 +594,13 @@ fn lists_enumerate() {
 }
 
 #[test]
+fn maps_merge() {
+    let out = run_ore("maps/merge.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["3", "1", "3", "4"]);
+}
+
+#[test]
 fn maps_for_kv() {
     let out = run_ore("maps/for_kv.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

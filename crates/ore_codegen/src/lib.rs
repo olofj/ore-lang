@@ -697,6 +697,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_map_values", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_map_print", void_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_map_print_str", void_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_merge", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_clear", void_type.fn_type(&[ptr_type.into()], false), ext);
         // I/O
         self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -2950,6 +2952,21 @@ impl<'ctx> CodeGen<'ctx> {
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 self.last_list_elem_kind = Some(val_kind);
                 Ok((val, ValKind::List))
+            }
+            "merge" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "merge takes 1 argument (other map)".into() });
+                }
+                let other = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_map_merge").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into(), other.into()], "mmerge"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Map))
+            }
+            "clear" => {
+                let rt = self.module.get_function("ore_map_clear").unwrap();
+                bld!(self.builder.build_call(rt, &[map_val.into()], ""))?;
+                Ok((map_val, ValKind::Map))
             }
             _ => Err(CodeGenError { line: None, msg: format!("unknown map method '{}'", method) }),
         }

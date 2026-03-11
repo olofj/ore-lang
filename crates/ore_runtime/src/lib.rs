@@ -1281,6 +1281,33 @@ pub extern "C" fn ore_map_print_str(map: *mut OreMap) {
     }
 }
 
+/// Merge other map into a copy of self, returning new map
+#[no_mangle]
+pub extern "C" fn ore_map_merge(a: *mut OreMap, b: *mut OreMap) -> *mut OreMap {
+    let result = ore_map_new();
+    unsafe {
+        // Copy all entries from a
+        for (k, v) in &(*a).inner {
+            let key_str = ore_str_new(k.as_ptr(), k.len() as u32);
+            ore_map_set(result, key_str, *v);
+        }
+        // Copy all entries from b (overwriting duplicates)
+        for (k, v) in &(*b).inner {
+            let key_str = ore_str_new(k.as_ptr(), k.len() as u32);
+            ore_map_set(result, key_str, *v);
+        }
+    }
+    result
+}
+
+/// Clear all entries from map
+#[no_mangle]
+pub extern "C" fn ore_map_clear(map: *mut OreMap) {
+    unsafe {
+        (*map).inner.clear();
+    }
+}
+
 // ── Concurrency ──
 
 static THREADS: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new());

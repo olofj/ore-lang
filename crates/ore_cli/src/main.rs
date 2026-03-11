@@ -422,6 +422,9 @@ fn map_runtime_functions(
     map_fn!("ore_channel_recv", ore_runtime::ore_channel_recv);
     // Int math
     map_fn!("ore_int_pow", ore_runtime::ore_int_pow);
+    // Map methods
+    map_fn!("ore_map_merge", ore_runtime::ore_map_merge);
+    map_fn!("ore_map_clear", ore_runtime::ore_map_clear);
     // String parsing
     map_fn!("ore_str_parse_int", ore_runtime::ore_str_parse_int);
     map_fn!("ore_str_parse_float", ore_runtime::ore_str_parse_float);
