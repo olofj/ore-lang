@@ -1,0 +1,39 @@
+-- Showcase 123: Typed function parameters with List[T]
+
+fn format_names names:List[Str] -> Str
+  mut result := ""
+  for i in range(0, names.len())
+    if i > 0
+      result = result + ", "
+    result = result + names[i]
+  result
+
+fn sum_list nums:List[Int] -> Int
+  mut total := 0
+  for i in range(0, nums.len())
+    total = total + nums[i]
+  total
+
+fn find_longest words:List[Str] -> Str
+  mut longest := words[0]
+  for i in range(1, words.len())
+    if words[i].len() > longest.len()
+      longest = words[i]
+  longest
+
+fn main
+  -- String list parameter
+  names := ["Alice", "Bob", "Carol", "Dave"]
+  print format_names(names)
+
+  -- Int list parameter
+  nums := [10, 20, 30, 40, 50]
+  print "sum: {sum_list(nums)}"
+
+  -- Finding longest word
+  words := ["cat", "elephant", "dog", "rhinoceros", "bee"]
+  print "longest: {find_longest(words)}"
+
+  -- Passing literal lists
+  print format_names(["X", "Y", "Z"])
+  print "sum: {sum_list([1, 2, 3, 4, 5])}"

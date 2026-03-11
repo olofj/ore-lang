@@ -2680,6 +2680,15 @@ fn showcase122_generic_data_structures() {
 }
 
 #[test]
+fn showcase123_typed_list_params() {
+    let out = run_ore("showcase123.ore");
+    assert!(out.contains("Alice, Bob, Carol, Dave"));
+    assert!(out.contains("sum: 150"));
+    assert!(out.contains("longest: rhinoceros"));
+    assert!(out.contains("X, Y, Z"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
