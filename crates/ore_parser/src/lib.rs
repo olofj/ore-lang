@@ -271,8 +271,10 @@ impl Parser {
 
     fn parse_record_body(&mut self, name: String, type_params: Vec<String>) -> Result<TypeDef, ParseError> {
         self.expect(&Token::LBrace)?;
+        self.skip_whitespace_tokens();
         let mut fields = Vec::new();
         while self.peek() != &Token::RBrace {
+            self.skip_whitespace_tokens();
             let field_name = match self.peek().clone() {
                 Token::Ident(n) => { self.advance(); n }
                 _ => return Err(self.error("expected field name".into())),
@@ -280,10 +282,13 @@ impl Parser {
             self.expect(&Token::Colon)?;
             let ty = self.parse_type_expr()?;
             fields.push(FieldDef { name: field_name, ty });
+            self.skip_whitespace_tokens();
             if self.peek() == &Token::Comma {
                 self.advance();
+                self.skip_whitespace_tokens();
             }
         }
+        self.skip_whitespace_tokens();
         self.expect(&Token::RBrace)?;
         Ok(TypeDef { name, type_params, fields })
     }
@@ -587,14 +592,22 @@ impl Parser {
                         // Check if this is a method call: field followed by '('
                         if self.peek() == &Token::LParen {
                             self.advance(); // consume '('
+                            self.skip_whitespace_tokens();
                             let mut args = Vec::new();
                             if self.peek() != &Token::RParen {
                                 args.push(self.parse_expr(0)?);
+                                self.skip_whitespace_tokens();
                                 while self.peek() == &Token::Comma {
                                     self.advance();
+                                    self.skip_whitespace_tokens();
+                                    if self.peek() == &Token::RParen {
+                                        break; // trailing comma
+                                    }
                                     args.push(self.parse_expr(0)?);
+                                    self.skip_whitespace_tokens();
                                 }
                             }
+                            self.skip_whitespace_tokens();
                             self.expect(&Token::RParen)?;
                             lhs = Expr::MethodCall {
                                 object: Box::new(lhs),
@@ -920,12 +933,15 @@ impl Parser {
 
                     // Check if this is record construction: Name(field: expr, ...)
                     // Peek: Ident followed by Colon
+                    self.skip_whitespace_tokens();
                     if name.chars().next().map_or(false, |c| c.is_uppercase()) {
                         if let Token::Ident(_) = self.peek() {
                             if let Some(Token::Colon) = self.tokens.get(self.pos + 1).map(|s| &s.token) {
                                 // Record construction
                                 let mut fields = Vec::new();
+                                self.skip_whitespace_tokens();
                                 while self.peek() != &Token::RParen {
+                                    self.skip_whitespace_tokens();
                                     let field_name = match self.peek().clone() {
                                         Token::Ident(f) => { self.advance(); f }
                                         _ => return Err(self.error("expected field name".into())),
@@ -933,10 +949,13 @@ impl Parser {
                                     self.expect(&Token::Colon)?;
                                     let val = self.parse_expr(0)?;
                                     fields.push((field_name, val));
+                                    self.skip_whitespace_tokens();
                                     if self.peek() == &Token::Comma {
                                         self.advance();
+                                        self.skip_whitespace_tokens();
                                     }
                                 }
+                                self.skip_whitespace_tokens();
                                 self.expect(&Token::RParen)?;
                                 return Ok(Expr::RecordConstruct {
                                     type_name: name,
@@ -949,14 +968,22 @@ impl Parser {
                     // Regular function call
                     self.pos = saved;
                     self.advance(); // consume '('
+                    self.skip_whitespace_tokens();
                     let mut args = Vec::new();
                     if self.peek() != &Token::RParen {
                         args.push(self.parse_expr(0)?);
+                        self.skip_whitespace_tokens();
                         while self.peek() == &Token::Comma {
                             self.advance();
+                            self.skip_whitespace_tokens();
+                            if self.peek() == &Token::RParen {
+                                break; // trailing comma
+                            }
                             args.push(self.parse_expr(0)?);
+                            self.skip_whitespace_tokens();
                         }
                     }
+                    self.skip_whitespace_tokens();
                     self.expect(&Token::RParen)?;
                     Ok(Expr::Call {
                         func: Box::new(Expr::Ident(name)),
