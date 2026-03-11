@@ -26,7 +26,7 @@ enum Commands {
         #[arg(short, long, default_value = "a.out")]
         output: PathBuf,
     },
-    /// Check an Ore source file for errors (parse only, no codegen)
+    /// Check an Ore source file for errors (parse + type check, no codegen)
     Check {
         /// Path to the .ore file
         file: PathBuf,

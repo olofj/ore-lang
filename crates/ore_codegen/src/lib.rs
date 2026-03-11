@@ -4051,7 +4051,8 @@ impl<'ctx> CodeGen<'ctx> {
                     "list_get"
                 ))?;
                 let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                Ok((val, elem_kind))
             }
             ValKind::Map => {
                 let map_get = self.module.get_function("ore_map_get").unwrap();
@@ -4061,7 +4062,13 @@ impl<'ctx> CodeGen<'ctx> {
                     "map_get"
                 ))?;
                 let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                // Look up tracked value kind for this map variable
+                let val_kind = if let Expr::Ident(name) = object {
+                    self.map_value_kinds.get(name).cloned().unwrap_or(ValKind::Int)
+                } else {
+                    ValKind::Int
+                };
+                Ok((val, val_kind))
             }
             _ => Err(CodeGenError { line: None, msg: "indexing only supported on lists and maps".into() }),
         }

@@ -826,6 +826,13 @@ fn maps_merge() {
 }
 
 #[test]
+fn maps_string_values() {
+    let out = run_ore("maps/string_values.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["Alice", "admin", "alice", "charlie", "5", "string_values ok"]);
+}
+
+#[test]
 fn maps_for_kv() {
     let out = run_ore("maps/for_kv.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

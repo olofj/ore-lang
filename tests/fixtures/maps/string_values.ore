@@ -1,0 +1,17 @@
+-- Map with string values, indexing returns correct types
+
+fn main
+  m := {"name": "Alice", "role": "admin"}
+  print m["name"]
+  print m["role"]
+
+  -- String list indexing
+  names := ["alice", "bob", "charlie"]
+  print names[0]
+  print names[2]
+
+  -- Use indexed value in string operations
+  first := m["name"]
+  print first.len()
+
+  print "string_values ok"
