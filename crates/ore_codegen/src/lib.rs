@@ -781,6 +781,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_reduce(ptr, i64, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_reduce", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_reduce1", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_find(ptr, fn_ptr, env_ptr, default) -> i64
         self.module.add_function("ore_list_find", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_join(ptr, sep) -> ptr
@@ -3270,15 +3271,14 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "reduce" => {
-                // reduce(init, fn(acc, elem) -> acc)
-                if args.len() != 2 {
-                    return Err(CodeGenError { line: None, msg: "reduce takes 2 arguments (init, fn)".into() });
+                // reduce(fn) uses first element as init, or reduce(init, fn)
+                if args.is_empty() || args.len() > 2 {
+                    return Err(CodeGenError { line: None, msg: "reduce takes 1 or 2 arguments".into() });
                 }
-                let init_val = self.compile_expr(&args[0], func)?;
                 let elem_kind = self.last_list_elem_kind.clone();
-                let lambda_fn = match &args[1] {
+                let fn_arg = if args.len() == 1 { &args[0] } else { &args[1] };
+                let lambda_fn = match fn_arg {
                     Expr::Lambda { params, body } => {
-                        // reduce lambda gets (acc, elem) - acc is same type as init, elem is list element
                         let kinds: Vec<ValKind> = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
                         self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
                     }
@@ -3286,7 +3286,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let (f, _) = self.resolve_function(name)?;
                         f
                     }
-                    _ => return Err(CodeGenError { line: None, msg: "reduce second argument must be a function".into() }),
+                    _ => return Err(CodeGenError { line: None, msg: "reduce argument must be a function".into() }),
                 };
                 let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
@@ -3295,12 +3295,22 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_reduce").unwrap();
-                let result = bld!(self.builder.build_call(
-                    rt, &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "reduce"
-                ))?;
-                let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                if args.len() == 1 {
+                    let rt = self.module.get_function("ore_list_reduce1").unwrap();
+                    let result = bld!(self.builder.build_call(
+                        rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "reduce"
+                    ))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ValKind::Int))
+                } else {
+                    let init_val = self.compile_expr(&args[0], func)?;
+                    let rt = self.module.get_function("ore_list_reduce").unwrap();
+                    let result = bld!(self.builder.build_call(
+                        rt, &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "reduce"
+                    ))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ValKind::Int))
+                }
             }
             "scan" => {
                 // scan(init, fn(acc, elem) -> acc) -> list of all acc values

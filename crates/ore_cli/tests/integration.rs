@@ -1494,6 +1494,14 @@ fn strings_ord_chr() {
 }
 
 #[test]
+fn lists_reduce_1arg() {
+    let out = run_ore("lists/reduce_1arg.ore");
+    assert!(out.contains("Product: 120"));
+    assert!(out.contains("Sum: 15"));
+    assert!(out.contains("Total with init 100: 115"));
+}
+
+#[test]
 fn showcase25() {
     let out = run_ore("showcase25.ore");
     assert!(out.contains("Encrypted: Khoor Zruog"));

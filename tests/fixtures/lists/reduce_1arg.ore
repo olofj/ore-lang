@@ -1,0 +1,10 @@
+fn main
+  nums := [1, 2, 3, 4, 5]
+  product := nums.reduce((a, b) => a * b)
+  print "Product: {product}"
+
+  sum := nums.reduce((a, b) => a + b)
+  print "Sum: {sum}"
+
+  total := nums.reduce(100, (a, b) => a + b)
+  print "Total with init 100: {total}"

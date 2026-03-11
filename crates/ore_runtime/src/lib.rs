@@ -1527,6 +1527,20 @@ pub extern "C" fn ore_list_reduce(list: *mut OreList, init: i64, func: *const u8
     }
 }
 
+/// Reduce without init — uses first element as initial, starts from index 1.
+#[no_mangle]
+pub extern "C" fn ore_list_reduce1(list: *mut OreList, func: *const u8, env: *mut u8) -> i64 {
+    unsafe {
+        let src = &*list;
+        if src.len == 0 { return 0; }
+        let mut acc = *src.data;
+        for i in 1..src.len as usize {
+            acc = call_closure2(func, env, acc, *src.data.add(i));
+        }
+        acc
+    }
+}
+
 /// Find first element matching predicate. Returns the element, or the default value if not found.
 #[no_mangle]
 pub extern "C" fn ore_list_find(list: *mut OreList, func: *const u8, env: *mut u8, default: i64) -> i64 {
