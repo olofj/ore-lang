@@ -1,0 +1,117 @@
+-- Showcase 687: Suffix Tree Concepts
+
+fn main
+  print "Suffix Tree Concepts:"
+  print ""
+
+  -- A suffix tree stores all suffixes of a string for fast pattern matching
+  -- We simulate key concepts using arrays
+
+  -- Part 1: Generate suffixes
+  print "=== Part 1: Suffixes of 'banana' ==="
+  -- Represent "banana$" as indices: b=0,a=1,n=2,a=3,n=4,a=5,$=6
+  mut chars := ["b", "a", "n", "a", "n", "a", "$"]
+  str_len := 7
+  print "  String: banana$"
+  print "  Length: {str_len}"
+  -- Suffix starting positions
+  for i in range(0, str_len)
+    mut suffix := ""
+    for j in range(i, str_len)
+      suffix = suffix + chars[j]
+    print "  Suffix {i}: {suffix}"
+
+  -- Part 2: Suffix array (sorted suffix positions)
+  print ""
+  print "=== Part 2: Suffix Array ==="
+  -- Manually sorted suffixes of "banana$":
+  -- 6: $, 5: a$, 3: ana$, 1: anana$, 0: banana$, 4: na$, 2: nana$
+  mut sa := [6, 5, 3, 1, 0, 4, 2]
+  for i in range(0, str_len)
+    pos := sa[i]
+    mut suffix := ""
+    for j in range(pos, str_len)
+      suffix = suffix + chars[j]
+    print "  SA[{i}] = {pos}: {suffix}"
+
+  -- Part 3: LCP array
+  print ""
+  print "=== Part 3: LCP Array ==="
+  -- LCP[i] = length of longest common prefix between SA[i-1] and SA[i]
+  mut lcp := [0, 0, 1, 3, 0, 0, 2]
+  -- LCP[0] = 0 (no previous), LCP[1] = 0 ($,a), LCP[2] = 1 (a$,ana$)
+  -- LCP[3] = 3 (ana$,anana$), LCP[4] = 0 (anana$,banana$)
+  -- LCP[5] = 0 (banana$,na$), LCP[6] = 2 (na$,nana$)
+  for i in range(1, str_len)
+    print "  LCP[{i}] = {lcp[i]} (between suffixes at {sa[i - 1]} and {sa[i]})"
+  -- Max LCP
+  mut max_lcp := 0
+  for i in range(1, str_len)
+    if lcp[i] > max_lcp
+      max_lcp = lcp[i]
+  print "  Longest repeated substring length: {max_lcp}"
+
+  -- Part 4: Pattern search
+  print ""
+  print "=== Part 4: Pattern Search ==="
+  -- Search for "ana" using suffix array binary search
+  -- "ana" would match suffixes starting at positions 1 and 3
+  target := "ana"
+  mut match_count := 0
+  -- Check each suffix for prefix match with "ana"
+  for i in range(0, str_len)
+    pos := sa[i]
+    if pos + 3 <= str_len
+      -- Check if chars at pos, pos+1, pos+2 match "ana"
+      if chars[pos] == "a" and chars[pos + 1] == "n" and chars[pos + 2] == "a"
+        match_count = match_count + 1
+        print "  Found '{target}' at position {pos}"
+  print "  Occurrences of '{target}': {match_count}"
+
+  -- Part 5: Tree node simulation
+  print ""
+  print "=== Part 5: Tree Structure ==="
+  -- Simulate internal nodes of the suffix tree
+  num_internal := 4
+  mut node_depth := [0, 1, 3, 2]
+  mut node_label := ["root", "a", "ana", "na"]
+  mut node_leaf_count := [7, 3, 2, 2]
+  for i in range(0, num_internal)
+    print "  Node '{node_label[i]}': depth={node_depth[i]}, leaves={node_leaf_count[i]}"
+  -- Total leaves should equal string length
+  print "  Total suffixes: {str_len}"
+
+  -- Part 6: Applications
+  print ""
+  print "=== Part 6: Applications ==="
+  -- Count distinct substrings = sum of (str_len - sa[i] - lcp[i])
+  mut distinct := 0
+  for i in range(0, str_len)
+    suffix_len := str_len - sa[i]
+    contribution := suffix_len - lcp[i]
+    distinct = distinct + contribution
+  print "  Distinct substrings: {distinct}"
+  -- Count character frequencies
+  mut freq_a := 0
+  mut freq_n := 0
+  mut freq_b := 0
+  for i in range(0, str_len - 1)
+    if chars[i] == "a"
+      freq_a = freq_a + 1
+    if chars[i] == "n"
+      freq_n = freq_n + 1
+    if chars[i] == "b"
+      freq_b = freq_b + 1
+  print "  Char frequencies: a={freq_a}, n={freq_n}, b={freq_b}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Suffix tree: all suffixes in O(n) space"
+  print "  Pattern matching: O(m) time for pattern length m"
+  print "  Suffix array: space-efficient alternative"
+  print "  LCP array: enables substring queries"
+  print "  Used in: bioinformatics, text indexing, data compression"
+
+  print ""
+  print "Suffix tree concepts: efficient substring operations via suffix arrays and LCP computation."

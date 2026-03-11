@@ -1,0 +1,183 @@
+-- Showcase 685: Pairing Heap
+
+fn main
+  print "Pairing Heap:"
+  print ""
+
+  -- A pairing heap is a simple self-adjusting heap with excellent amortized bounds
+  -- It uses a tree where each node's key <= children's keys (min-heap)
+
+  -- Part 1: Heap representation
+  print "=== Part 1: Heap Setup ==="
+  max_nodes := 12
+  mut hkey := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- child[i] = first child of i, sibling[i] = next sibling of i
+  mut child := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut sibling := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut heap_size := 0
+  mut root := -1
+
+  -- Insert: create single-node heap, merge with existing root
+  -- merge(a, b): compare keys, smaller becomes root, other becomes child
+  -- Insert values: 5, 3, 8, 1, 7, 2, 9, 4
+  mut values := [5, 3, 8, 1, 7, 2, 9, 4]
+  num_values := 8
+
+  for i in range(0, num_values)
+    idx := heap_size
+    hkey[idx] = values[i]
+    child[idx] = -1
+    sibling[idx] = -1
+    heap_size = heap_size + 1
+    if root == -1
+      root = idx
+    else
+      -- Merge: smaller key becomes root
+      if hkey[idx] < hkey[root]
+        -- idx becomes new root, old root becomes child of idx
+        sibling[root] = child[idx]
+        child[idx] = root
+        root = idx
+      else
+        -- idx becomes child of root
+        sibling[idx] = child[root]
+        child[root] = idx
+  print "  Inserted {heap_size} elements"
+  print "  Root (min): {hkey[root]}"
+
+  -- Part 2: Find minimum
+  print ""
+  print "=== Part 2: Find Minimum ==="
+  print "  Min element: {hkey[root]}"
+  print "  Find-min: O(1) - just return root"
+
+  -- Part 3: Merge operation
+  print ""
+  print "=== Part 3: Merge Two Heaps ==="
+  -- Create a second small heap: 6, 10
+  idx_a := heap_size
+  hkey[idx_a] = 6
+  child[idx_a] = -1
+  sibling[idx_a] = -1
+  heap_size = heap_size + 1
+
+  idx_b := heap_size
+  hkey[idx_b] = 10
+  child[idx_b] = -1
+  sibling[idx_b] = -1
+  heap_size = heap_size + 1
+
+  -- Merge idx_b under idx_a (6 < 10)
+  sibling[idx_b] = child[idx_a]
+  child[idx_a] = idx_b
+  -- Merge this sub-heap with main heap
+  if hkey[idx_a] < hkey[root]
+    sibling[root] = child[idx_a]
+    child[idx_a] = root
+    root = idx_a
+  else
+    sibling[idx_a] = child[root]
+    child[root] = idx_a
+  print "  Merged heap with {6} and {10}"
+  print "  New root (min): {hkey[root]}"
+  print "  Heap size: {heap_size}"
+
+  -- Part 4: Delete-min simulation
+  print ""
+  print "=== Part 4: Delete-Min ==="
+  -- Delete-min: remove root, two-pass pairing of children
+  old_min := hkey[root]
+  print "  Removing min: {old_min}"
+  -- Collect children of root into a list
+  mut children := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut num_children := 0
+  mut c := child[root]
+  while c != -1
+    children[num_children] = c
+    num_children = num_children + 1
+    next := sibling[c]
+    sibling[c] = -1
+    c = next
+  print "  Children of root: {num_children}"
+
+  -- Two-pass pairing: first pass - pair adjacent children
+  mut paired := [-1, -1, -1, -1, -1, -1]
+  mut num_paired := 0
+  mut ci := 0
+  while ci + 1 < num_children
+    a := children[ci]
+    b := children[ci + 1]
+    -- Merge a and b
+    if hkey[a] <= hkey[b]
+      sibling[b] = child[a]
+      child[a] = b
+      paired[num_paired] = a
+    else
+      sibling[a] = child[b]
+      child[b] = a
+      paired[num_paired] = b
+    num_paired = num_paired + 1
+    ci = ci + 2
+  if ci < num_children
+    paired[num_paired] = children[ci]
+    num_paired = num_paired + 1
+  print "  After pairing pass: {num_paired} sub-heaps"
+
+  -- Second pass: merge right to left
+  mut new_root := paired[num_paired - 1]
+  mut pi := num_paired - 2
+  while pi >= 0
+    p := paired[pi]
+    if hkey[p] <= hkey[new_root]
+      sibling[new_root] = child[p]
+      child[p] = new_root
+      new_root = p
+    else
+      sibling[p] = child[new_root]
+      child[new_root] = p
+    pi = pi - 1
+  root = new_root
+  print "  New min after delete: {hkey[root]}"
+
+  -- Part 5: Decrease-key concept
+  print ""
+  print "=== Part 5: Decrease-Key ==="
+  -- Cut the node from its parent and merge with root
+  -- Simulate: decrease key of node with value 9 to 0
+  target_val := 9
+  new_val := 0
+  mut target_idx := -1
+  for i in range(0, heap_size)
+    if hkey[i] == target_val
+      target_idx = i
+  if target_idx != -1
+    hkey[target_idx] = new_val
+    print "  Decreased key {target_val} to {new_val}"
+    -- Merge with root
+    if hkey[target_idx] < hkey[root]
+      sibling[root] = child[target_idx]
+      child[target_idx] = root
+      root = target_idx
+    print "  New min: {hkey[root]}"
+
+  -- Part 6: Complexity analysis
+  print ""
+  print "=== Part 6: Complexity ==="
+  print "  Find-min: O(1)"
+  print "  Insert: O(1)"
+  print "  Merge: O(1)"
+  print "  Delete-min: O(log n) amortized"
+  print "  Decrease-key: O(log n) amortized"
+  print "  Simpler than Fibonacci heaps"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Final heap size: {heap_size}"
+  print "  Pairing heap: simple tree-based priority queue"
+  print "  Two-pass pairing during delete-min"
+  print "  Excellent practical performance"
+  print "  Used in: Dijkstra's algorithm, event simulation"
+
+  print ""
+  print "Pairing heap: simple self-adjusting heap with two-pass pairing for efficient priority queue operations."

@@ -1,0 +1,146 @@
+-- Showcase 684: Simple Control Flow Graph Analysis
+
+fn main
+  print "Control Flow Graph Analysis:"
+  print ""
+
+  -- A CFG represents the flow of a program as a directed graph of basic blocks
+
+  -- Part 1: Basic blocks
+  print "=== Part 1: Basic Blocks ==="
+  num_blocks := 6
+  -- Block names: entry=0, cond=1, body=2, update=3, exit=4, error=5
+  mut block_names := ["entry", "cond", "body", "update", "exit", "error"]
+  -- Edge list: from_block, to_block
+  mut edge_from := [0, 1, 1, 2, 3, 2]
+  mut edge_to := [1, 2, 4, 3, 1, 5]
+  num_edges := 6
+  print "  Blocks: {num_blocks}"
+  print "  Edges: {num_edges}"
+  for i in range(0, num_edges)
+    f := edge_from[i]
+    t := edge_to[i]
+    print "    {block_names[f]} -> {block_names[t]}"
+
+  -- Part 2: Predecessor and successor counts
+  print ""
+  print "=== Part 2: Block Connectivity ==="
+  mut pred_count := [0, 0, 0, 0, 0, 0]
+  mut succ_count := [0, 0, 0, 0, 0, 0]
+  for i in range(0, num_edges)
+    f := edge_from[i]
+    t := edge_to[i]
+    succ_count[f] = succ_count[f] + 1
+    pred_count[t] = pred_count[t] + 1
+  for i in range(0, num_blocks)
+    print "  {block_names[i]}: {pred_count[i]} preds, {succ_count[i]} succs"
+
+  -- Part 3: Dominator analysis
+  print ""
+  print "=== Part 3: Dominators ==="
+  -- dom[i * num_blocks + j] = 1 if j dominates i
+  mut dom := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Initialize: entry dominates only itself, others dominated by all
+  dom[0 * num_blocks + 0] = 1
+  for i in range(1, num_blocks)
+    for j in range(0, num_blocks)
+      dom[i * num_blocks + j] = 1
+  -- Iterate until fixed point
+  mut dom_changed := true
+  mut dom_iters := 0
+  while dom_changed
+    dom_changed = false
+    dom_iters = dom_iters + 1
+    for i in range(1, num_blocks)
+      -- new_dom = intersection of dominators of all predecessors, plus self
+      for j in range(0, num_blocks)
+        if j == i
+          -- skip self
+          dom[i * num_blocks + i] = 1
+        else
+          -- j dominates i iff j dominates all predecessors of i
+          mut dominates_all := true
+          mut has_pred := false
+          for e in range(0, num_edges)
+            if edge_to[e] == i
+              has_pred = true
+              p := edge_from[e]
+              if dom[p * num_blocks + j] == 0
+                dominates_all = false
+          if has_pred
+            mut old_val := dom[i * num_blocks + j]
+            if dominates_all
+              dom[i * num_blocks + j] = 1
+            else
+              dom[i * num_blocks + j] = 0
+            if dom[i * num_blocks + j] != old_val
+              dom_changed = true
+  print "  Dominator iterations: {dom_iters}"
+  -- Print dominators for each block
+  for i in range(0, num_blocks)
+    mut dom_count := 0
+    for j in range(0, num_blocks)
+      if dom[i * num_blocks + j] == 1
+        dom_count = dom_count + 1
+    print "  {block_names[i]} dominated by {dom_count} blocks"
+
+  -- Part 4: Loop detection
+  print ""
+  print "=== Part 4: Loop Detection ==="
+  -- A back edge goes from a node to its dominator
+  mut back_edges := 0
+  for e in range(0, num_edges)
+    f := edge_from[e]
+    t := edge_to[e]
+    if dom[f * num_blocks + t] == 1 and t != f
+      print "  Back edge: {block_names[f]} -> {block_names[t]}"
+      back_edges = back_edges + 1
+  print "  Back edges found: {back_edges}"
+  if back_edges > 0
+    print "  Natural loops detected"
+
+  -- Part 5: Reachability
+  print ""
+  print "=== Part 5: Reachability from Entry ==="
+  mut reachable := [0, 0, 0, 0, 0, 0]
+  reachable[0] = 1
+  mut reach_changed := true
+  while reach_changed
+    reach_changed = false
+    for e in range(0, num_edges)
+      f := edge_from[e]
+      t := edge_to[e]
+      if reachable[f] == 1 and reachable[t] == 0
+        reachable[t] = 1
+        reach_changed = true
+  mut reach_count := 0
+  for i in range(0, num_blocks)
+    if reachable[i] == 1
+      reach_count = reach_count + 1
+  print "  Reachable blocks: {reach_count}"
+  unreachable := num_blocks - reach_count
+  print "  Unreachable blocks: {unreachable}"
+
+  -- Part 6: Critical edges
+  print ""
+  print "=== Part 6: Critical Edges ==="
+  -- Critical edge: source has multiple succs AND target has multiple preds
+  mut critical := 0
+  for e in range(0, num_edges)
+    f := edge_from[e]
+    t := edge_to[e]
+    if succ_count[f] > 1 and pred_count[t] > 1
+      print "  Critical: {block_names[f]} -> {block_names[t]}"
+      critical = critical + 1
+  print "  Critical edges: {critical}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  CFG analysis: foundation of compiler optimization"
+  print "  Dominators enable loop detection and SSA construction"
+  print "  Back edges identify natural loops"
+  print "  Used in: optimizing compilers, static analysis, JIT compilers"
+
+  print ""
+  print "CFG analysis: dominator computation, loop detection, and reachability on control flow graphs."

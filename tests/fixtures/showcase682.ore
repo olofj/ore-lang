@@ -1,0 +1,122 @@
+-- Showcase 682: Simple Garbage Collection Safepoints
+
+fn main
+  print "Garbage Collection Safepoints:"
+  print ""
+
+  -- Safepoints are locations where GC can safely interrupt a thread
+  -- At safepoints, all object references are known and enumerable
+
+  -- Part 1: Simulated object heap
+  print "=== Part 1: Object Heap ==="
+  max_objects := 12
+  mut obj_marked := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut obj_alive := [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]
+  mut obj_size := [8, 16, 32, 8, 24, 16, 8, 32, 0, 0, 0, 0]
+  -- References: obj_ref[i] = index of object i's reference (-1 = none)
+  mut obj_ref := [1, 2, -1, 4, -1, -1, -1, 5, -1, -1, -1, -1]
+  num_objects := 8
+  mut total_size := 0
+  for i in range(0, num_objects)
+    total_size = total_size + obj_size[i]
+  print "  Live objects: {num_objects}"
+  print "  Total heap size: {total_size} bytes"
+
+  -- Part 2: Root set identification
+  print ""
+  print "=== Part 2: Root Set ==="
+  -- Roots are objects directly reachable from stack/globals
+  mut is_root := [1, 0, 0, 1, 0, 0, 0, 1]
+  mut root_count := 0
+  for i in range(0, num_objects)
+    if is_root[i] == 1
+      root_count = root_count + 1
+      print "  Root: object {i} (size={obj_size[i]})"
+  print "  Total roots: {root_count}"
+
+  -- Part 3: Safepoint locations
+  print ""
+  print "=== Part 3: Safepoint Locations ==="
+  -- Safepoints are at: function calls, loop back-edges, method returns
+  mut sp_types := [0, 1, 2, 0, 1]
+  mut sp_names := ["call", "loop", "return", "call", "loop"]
+  num_safepoints := 5
+  mut call_count := 0
+  mut loop_count := 0
+  mut ret_count := 0
+  for i in range(0, num_safepoints)
+    if sp_types[i] == 0
+      call_count = call_count + 1
+    if sp_types[i] == 1
+      loop_count = loop_count + 1
+    if sp_types[i] == 2
+      ret_count = ret_count + 1
+  print "  Function call safepoints: {call_count}"
+  print "  Loop back-edge safepoints: {loop_count}"
+  print "  Method return safepoints: {ret_count}"
+  print "  Total safepoints: {num_safepoints}"
+
+  -- Part 4: Mark phase from roots
+  print ""
+  print "=== Part 4: Mark Phase ==="
+  -- Mark all objects reachable from roots
+  mut mark_count := 0
+  -- Simple iterative marking (follow reference chains)
+  for i in range(0, num_objects)
+    if is_root[i] == 1
+      -- Mark this root and follow its chain
+      mut cur := i
+      while cur != -1 and obj_marked[cur] == 0
+        obj_marked[cur] = 1
+        mark_count = mark_count + 1
+        cur = obj_ref[cur]
+  print "  Marked objects: {mark_count}"
+  mut marked_size := 0
+  for i in range(0, num_objects)
+    if obj_marked[i] == 1
+      marked_size = marked_size + obj_size[i]
+  print "  Marked heap size: {marked_size} bytes"
+
+  -- Part 5: Sweep phase
+  print ""
+  print "=== Part 5: Sweep Phase ==="
+  mut swept := 0
+  mut freed_size := 0
+  for i in range(0, num_objects)
+    if obj_alive[i] == 1 and obj_marked[i] == 0
+      obj_alive[i] = 0
+      swept = swept + 1
+      freed_size = freed_size + obj_size[i]
+      print "  Swept object {i} (size={obj_size[i]})"
+  print "  Objects swept: {swept}"
+  print "  Memory freed: {freed_size} bytes"
+
+  -- Part 6: Safepoint polling
+  print ""
+  print "=== Part 6: Safepoint Polling ==="
+  -- Simulate polling: each safepoint checks a flag
+  mut gc_requested := false
+  mut polls_before_gc := 0
+  for i in range(0, 10)
+    polls_before_gc = polls_before_gc + 1
+    if i == 4
+      gc_requested = true
+    if gc_requested
+      print "  Poll {i}: GC triggered, thread paused"
+      gc_requested = false
+      break
+  print "  Polls before GC: {polls_before_gc}"
+  print "  Safepoint polling overhead: minimal (single flag check)"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  surviving := num_objects - swept
+  print "  Surviving objects: {surviving}"
+  print "  Garbage collected: {swept}"
+  reclaim_pct := (freed_size * 100) / total_size
+  print "  Memory reclaimed: {reclaim_pct}%"
+  print "  Safepoints ensure consistent root enumeration"
+
+  print ""
+  print "GC safepoints: safe program locations where garbage collector can inspect and collect unreachable objects."

@@ -1,0 +1,142 @@
+-- Showcase 683: Consistent Hashing Ring
+
+fn main
+  print "Consistent Hashing Ring:"
+  print ""
+
+  -- Consistent hashing maps keys and nodes to positions on a ring
+  -- Adding/removing nodes only remaps nearby keys
+
+  -- Part 1: Hash ring setup
+  print "=== Part 1: Ring Setup ==="
+  ring_size := 360
+  num_nodes := 4
+  -- Node positions on ring (degrees)
+  mut node_pos := [45, 135, 225, 315]
+  mut node_names := ["A", "B", "C", "D"]
+  print "  Ring size: {ring_size} positions"
+  print "  Nodes: {num_nodes}"
+  for i in range(0, num_nodes)
+    print "    Node {node_names[i]} at position {node_pos[i]}"
+
+  -- Part 2: Key assignment
+  print ""
+  print "=== Part 2: Key Assignment ==="
+  -- Hash keys to positions and find nearest clockwise node
+  mut key_pos := [10, 80, 150, 200, 270, 340]
+  num_keys := 6
+  mut key_owner := [0, 0, 0, 0, 0, 0]
+  for k in range(0, num_keys)
+    kp := key_pos[k]
+    mut best_node := 0
+    mut best_dist := ring_size + 1
+    for n in range(0, num_nodes)
+      -- Clockwise distance from key to node
+      mut dist := node_pos[n] - kp
+      if dist < 0
+        dist = dist + ring_size
+      if dist < best_dist
+        best_dist = dist
+        best_node = n
+    key_owner[k] = best_node
+    print "  Key at {kp} -> Node {node_names[best_node]} (dist={best_dist})"
+
+  -- Part 3: Load distribution
+  print ""
+  print "=== Part 3: Load Distribution ==="
+  mut load := [0, 0, 0, 0]
+  for k in range(0, num_keys)
+    owner := key_owner[k]
+    load[owner] = load[owner] + 1
+  for i in range(0, num_nodes)
+    print "  Node {node_names[i]}: {load[i]} keys"
+  -- Check balance
+  mut max_load := 0
+  mut min_load := num_keys
+  for i in range(0, num_nodes)
+    if load[i] > max_load
+      max_load = load[i]
+    if load[i] < min_load
+      min_load = load[i]
+  imbalance := max_load - min_load
+  print "  Load imbalance: {imbalance}"
+
+  -- Part 4: Node addition
+  print ""
+  print "=== Part 4: Add Node E at 180 ==="
+  mut node_pos2 := [45, 135, 180, 225, 315]
+  mut node_names2 := ["A", "B", "E", "C", "D"]
+  num_nodes2 := 5
+  mut new_owner := [0, 0, 0, 0, 0, 0]
+  mut remapped := 0
+  for k in range(0, num_keys)
+    kp := key_pos[k]
+    mut best_node := 0
+    mut best_dist := ring_size + 1
+    for n in range(0, num_nodes2)
+      mut dist := node_pos2[n] - kp
+      if dist < 0
+        dist = dist + ring_size
+      if dist < best_dist
+        best_dist = dist
+        best_node = n
+    new_owner[k] = best_node
+    if new_owner[k] != key_owner[k]
+      -- Account for shifted indices
+      remapped = remapped + 1
+  print "  Keys remapped: {remapped}"
+  ratio := (remapped * 100) / num_keys
+  print "  Remap ratio: {ratio}%"
+  print "  Only nearby keys affected"
+
+  -- Part 5: Virtual nodes
+  print ""
+  print "=== Part 5: Virtual Nodes ==="
+  -- Each physical node gets multiple positions for better balance
+  vnodes_per := 3
+  total_vnodes := num_nodes * vnodes_per
+  print "  Physical nodes: {num_nodes}"
+  print "  Virtual nodes per physical: {vnodes_per}"
+  print "  Total virtual nodes: {total_vnodes}"
+  -- Simulate positions for node A: 45, 165, 285
+  -- Spread = ring_size / vnodes_per = 120 degrees apart
+  spread := ring_size / vnodes_per
+  print "  Spread between vnodes: {spread} degrees"
+  print "  Virtual nodes improve load balance significantly"
+
+  -- Part 6: Node removal
+  print ""
+  print "=== Part 6: Remove Node B ==="
+  -- Remove node B (pos 135), reassign its keys
+  mut node_pos3 := [45, 225, 315]
+  mut node_names3 := ["A", "C", "D"]
+  num_nodes3 := 3
+  mut removed_keys := 0
+  for k in range(0, num_keys)
+    kp := key_pos[k]
+    mut best_node := 0
+    mut best_dist := ring_size + 1
+    for n in range(0, num_nodes3)
+      mut dist := node_pos3[n] - kp
+      if dist < 0
+        dist = dist + ring_size
+      if dist < best_dist
+        best_dist = dist
+        best_node = n
+    old_owner := key_owner[k]
+    old_name := node_names[old_owner]
+    if old_name == "B"
+      removed_keys = removed_keys + 1
+      print "  Key at {kp}: B -> {node_names3[best_node]}"
+  print "  Keys from removed node: {removed_keys}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Consistent hashing: minimal key remapping"
+  print "  Add/remove node: O(K/N) keys move"
+  print "  Virtual nodes: improve load balance"
+  print "  Used in: distributed caches, load balancers, DHTs"
+
+  print ""
+  print "Consistent hashing: ring-based key distribution with minimal remapping on topology changes."

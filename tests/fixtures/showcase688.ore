@@ -1,0 +1,132 @@
+-- Showcase 688: Simple Bounded Model Checking
+
+fn main
+  print "Bounded Model Checking:"
+  print ""
+
+  -- BMC checks if a property holds within k steps of a system
+  -- Unroll the transition relation k times and check for violations
+
+  -- Part 1: State machine definition
+  print "=== Part 1: State Machine ==="
+  num_states := 4
+  -- States: idle=0, request=1, critical=2, release=3
+  mut state_names := ["idle", "request", "critical", "release"]
+  -- Transition table: trans[state * num_states + next] = 1 if transition exists
+  mut trans := [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0]
+  -- idle->request, request->critical, critical->release, release->idle
+  print "  States: idle, request, critical, release"
+  print "  Transitions:"
+  for s in range(0, num_states)
+    for n in range(0, num_states)
+      if trans[s * num_states + n] == 1
+        print "    {state_names[s]} -> {state_names[n]}"
+
+  -- Part 2: Property specification
+  print ""
+  print "=== Part 2: Properties to Check ==="
+  -- Property 1: mutual exclusion - at most one process in critical
+  -- Property 2: no deadlock - always has a successor state
+  -- Property 3: liveness - request eventually leads to critical
+  print "  P1: Mutual exclusion (at most one in critical)"
+  print "  P2: No deadlock (every state has successor)"
+  print "  P3: Bounded liveness (request -> critical within k steps)"
+
+  -- Part 3: Bounded unrolling
+  print ""
+  print "=== Part 3: Bounded Unrolling (k=8) ==="
+  bound := 8
+  mut trace := [0, 0, 0, 0, 0, 0, 0, 0]
+  -- Generate a trace: follow transitions from idle
+  trace[0] = 0
+  for step in range(1, bound)
+    cur := trace[step - 1]
+    -- Find first valid transition
+    mut found := false
+    for n in range(0, num_states)
+      if not found and trans[cur * num_states + n] == 1
+        trace[step] = n
+        found = true
+  print "  Trace of {bound} steps:"
+  for i in range(0, bound)
+    si := trace[i]
+    print "    Step {i}: {state_names[si]}"
+
+  -- Part 4: Check mutual exclusion
+  print ""
+  print "=== Part 4: Mutual Exclusion Check ==="
+  -- For a two-process system, check both never in critical simultaneously
+  -- Simulate second process offset by 2 steps
+  mut proc1 := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut proc2 := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, bound)
+    proc1[i] = trace[i]
+  -- Process 2 starts 2 steps behind
+  proc2[0] = 0
+  proc2[1] = 0
+  for i in range(2, bound)
+    proc2[i] = trace[i - 2]
+  mut mutex_violation := false
+  for i in range(0, bound)
+    if proc1[i] == 2 and proc2[i] == 2
+      print "  VIOLATION at step {i}: both in critical!"
+      mutex_violation = true
+  if not mutex_violation
+    print "  No mutual exclusion violation in {bound} steps"
+  print "  Mutual exclusion holds: {not mutex_violation}"
+
+  -- Part 5: Deadlock check
+  print ""
+  print "=== Part 5: Deadlock Freedom ==="
+  mut deadlock_free := true
+  for s in range(0, num_states)
+    mut has_succ := false
+    for n in range(0, num_states)
+      if trans[s * num_states + n] == 1
+        has_succ = true
+    if not has_succ
+      print "  Deadlock state: {state_names[s]}"
+      deadlock_free = false
+  print "  Deadlock free: {deadlock_free}"
+
+  -- Part 6: Bounded liveness
+  print ""
+  print "=== Part 6: Bounded Liveness ==="
+  -- Check: from request, can we reach critical within 3 steps?
+  liveness_bound := 3
+  -- Start from request (state 1)
+  mut reachable := [0, 0, 0, 0]
+  reachable[1] = 1
+  mut reaches_critical := false
+  for step in range(0, liveness_bound)
+    mut new_reach := [0, 0, 0, 0]
+    for s in range(0, num_states)
+      if reachable[s] == 1
+        for n in range(0, num_states)
+          if trans[s * num_states + n] == 1
+            new_reach[n] = 1
+    for s in range(0, num_states)
+      if new_reach[s] == 1
+        reachable[s] = 1
+    if reachable[2] == 1
+      reaches_critical = true
+  print "  From request, critical reachable in {liveness_bound} steps: {reaches_critical}"
+  -- Count reachable states
+  mut reach_count := 0
+  for s in range(0, num_states)
+    if reachable[s] == 1
+      reach_count = reach_count + 1
+  print "  Reachable states from request: {reach_count}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Bound k={bound}"
+  print "  Properties checked: 3"
+  print "  Mutual exclusion: verified"
+  print "  Deadlock freedom: {deadlock_free}"
+  print "  Bounded liveness: {reaches_critical}"
+  print "  BMC is sound for bounded depth, incomplete for unbounded"
+
+  print ""
+  print "Bounded model checking: verifying system properties by unrolling transitions up to k steps."

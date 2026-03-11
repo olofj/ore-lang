@@ -1,0 +1,136 @@
+-- Showcase 690: Simple Effect System
+
+fn main
+  print "Simple Effect System:"
+  print ""
+
+  -- An effect system tracks computational effects (IO, state, exceptions)
+  -- alongside types, ensuring functions only perform declared effects
+
+  -- Part 1: Effect declarations
+  print "=== Part 1: Effect Types ==="
+  -- Effects: 0=Pure, 1=IO, 2=State, 3=Exception, 4=Async
+  mut effect_names := ["Pure", "IO", "State", "Exception", "Async"]
+  num_effects := 5
+  for i in range(0, num_effects)
+    print "  Effect {i}: {effect_names[i]}"
+
+  -- Part 2: Function effect annotations
+  print ""
+  print "=== Part 2: Function Effects ==="
+  -- Each function has a set of effects (bitmask)
+  -- bit 0=Pure, bit 1=IO, bit 2=State, bit 3=Exception, bit 4=Async
+  num_funcs := 6
+  mut func_names := ["readFile", "parseInt", "increment", "compute", "httpGet", "pureAdd"]
+  mut func_effects := [2, 8, 4, 0, 18, 0]
+  -- readFile: IO(2), parseInt: Exception(8), increment: State(4)
+  -- compute: Pure(0), httpGet: IO+Async(2+16=18), pureAdd: Pure(0)
+  for i in range(0, num_funcs)
+    mut effs := ""
+    if func_effects[i] == 0
+      effs = "Pure"
+    else
+      if func_effects[i] % 4 >= 2
+        effs = effs + "IO "
+      if func_effects[i] % 8 >= 4
+        effs = effs + "State "
+      if func_effects[i] % 16 >= 8
+        effs = effs + "Exception "
+      if func_effects[i] >= 16
+        effs = effs + "Async "
+    print "  {func_names[i]}: {effs}"
+
+  -- Part 3: Effect composition
+  print ""
+  print "=== Part 3: Effect Composition ==="
+  -- When function A calls function B, A's effects include B's effects
+  -- Effects combine with bitwise OR
+  -- compose(readFile, parseInt) = IO | Exception
+  compose1 := 2 + 8
+  print "  readFile + parseInt = IO, Exception (mask={compose1})"
+  -- compose(httpGet, increment) = IO | Async | State
+  compose2 := 18 + 4
+  print "  httpGet + increment = IO, Async, State (mask={compose2})"
+  -- compose(pureAdd, compute) = Pure
+  compose3 := 0
+  print "  pureAdd + compute = Pure (mask={compose3})"
+
+  -- Part 4: Effect checking
+  print ""
+  print "=== Part 4: Effect Checking ==="
+  -- A function can only call functions whose effects are subset of its declared effects
+  -- Check: can function with effects=IO call readFile?
+  mut checks := 0
+  mut passes := 0
+  -- Caller effects vs callee effects
+  mut caller_eff := [2, 0, 4, 18, 2]
+  mut callee_eff := [2, 8, 0, 2, 18]
+  mut caller_names := ["ioFunc", "pureFunc", "stateFunc", "asyncFunc", "ioFunc"]
+  mut callee_names := ["readFile", "parseInt", "pureAdd", "readFile", "httpGet"]
+  num_checks := 5
+  for i in range(0, num_checks)
+    checks = checks + 1
+    -- Check if callee effects are subset of caller effects
+    -- callee_eff & ~caller_eff == 0 means subset
+    -- Simplified: callee must not have effects outside caller
+    mut extra := 0
+    mut ce := callee_eff[i]
+    mut ca := caller_eff[i]
+    -- Check each bit
+    if ce % 4 >= 2 and ca % 4 < 2
+      extra = extra + 1
+    if ce % 8 >= 4 and ca % 8 < 4
+      extra = extra + 1
+    if ce % 16 >= 8 and ca % 16 < 8
+      extra = extra + 1
+    if ce >= 16 and ca < 16
+      extra = extra + 1
+    if extra == 0
+      passes = passes + 1
+      print "  {caller_names[i]} -> {callee_names[i]}: OK"
+    else
+      print "  {caller_names[i]} -> {callee_names[i]}: REJECTED ({extra} extra effects)"
+  print "  Checks: {checks}, Passed: {passes}, Rejected: {checks - passes}"
+
+  -- Part 5: Effect handlers
+  print ""
+  print "=== Part 5: Effect Handlers ==="
+  -- Handlers provide implementations for effects and can transform them
+  mut handler_names := ["IOHandler", "StateHandler", "ExceptionHandler"]
+  mut handler_effect := ["IO", "State", "Exception"]
+  num_handlers := 3
+  for i in range(0, num_handlers)
+    print "  {handler_names[i]} handles: {handler_effect[i]}"
+  -- After handling, the effect is removed from the type
+  print "  Handling IO in readFile: IO -> Pure"
+  print "  Handling Exception in parseInt: Exception -> Pure"
+  print "  Handlers transform effectful to pure code"
+
+  -- Part 6: Effect polymorphism
+  print ""
+  print "=== Part 6: Effect Polymorphism ==="
+  -- A function can be polymorphic over effects
+  -- map: (a -> b / e) -> List a -> List b / e
+  -- The effect 'e' is determined by the callback
+  print "  map with pure callback: List a -> List b / Pure"
+  print "  map with IO callback: List a -> List b / IO"
+  print "  Effect polymorphism preserves caller effects"
+  -- Count pure functions
+  mut pure_count := 0
+  for i in range(0, num_funcs)
+    if func_effects[i] == 0
+      pure_count = pure_count + 1
+  print "  Pure functions: {pure_count} of {num_funcs}"
+  print "  Effect inference can auto-detect effects"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Effects tracked: {num_effects}"
+  print "  Functions analyzed: {num_funcs}"
+  print "  Effect checking prevents unhandled side effects"
+  print "  Handlers convert effectful code to pure code"
+  print "  Used in: Koka, Eff, Frank, Unison"
+
+  print ""
+  print "Effect system: tracking and controlling computational side effects through type-level effect annotations."

@@ -1,0 +1,142 @@
+-- Showcase 686: Simple Data Race Detection
+
+fn main
+  print "Data Race Detection:"
+  print ""
+
+  -- A data race occurs when two threads access shared memory concurrently
+  -- and at least one access is a write, with no synchronization
+
+  -- Part 1: Memory access log
+  print "=== Part 1: Access Log ==="
+  num_accesses := 10
+  -- Each access: thread_id, variable_id, is_write (1=write, 0=read), timestamp
+  mut acc_thread := [0, 1, 0, 1, 0, 2, 1, 2, 0, 1]
+  mut acc_var := [0, 0, 1, 1, 0, 2, 0, 0, 2, 2]
+  mut acc_write := [1, 0, 1, 1, 0, 1, 1, 0, 0, 1]
+  mut acc_time := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  print "  Total accesses: {num_accesses}"
+  print "  Threads: 3 (0, 1, 2)"
+  print "  Variables: 3 (0, 1, 2)"
+
+  -- Count reads and writes
+  mut total_reads := 0
+  mut total_writes := 0
+  for i in range(0, num_accesses)
+    if acc_write[i] == 1
+      total_writes = total_writes + 1
+    else
+      total_reads = total_reads + 1
+  print "  Reads: {total_reads}, Writes: {total_writes}"
+
+  -- Part 2: Happens-before relation
+  print ""
+  print "=== Part 2: Happens-Before ==="
+  -- Within same thread, earlier timestamp happens before later
+  -- hb[i * num_accesses + j] = 1 if access i happens before access j
+  -- Simplified: same thread and earlier time means HB
+  mut hb_pairs := 0
+  for i in range(0, num_accesses)
+    for j in range(i + 1, num_accesses)
+      if acc_thread[i] == acc_thread[j] and acc_time[i] < acc_time[j]
+        hb_pairs = hb_pairs + 1
+  print "  Happens-before pairs (same thread): {hb_pairs}"
+  print "  Program order establishes intra-thread HB"
+
+  -- Part 3: Race detection
+  print ""
+  print "=== Part 3: Race Detection ==="
+  -- Two accesses race if:
+  -- 1. Different threads
+  -- 2. Same variable
+  -- 3. At least one is a write
+  -- 4. No happens-before between them
+  mut races := 0
+  mut race_vars := [0, 0, 0]
+  for i in range(0, num_accesses)
+    for j in range(i + 1, num_accesses)
+      if acc_thread[i] != acc_thread[j]
+        if acc_var[i] == acc_var[j]
+          if acc_write[i] == 1 or acc_write[j] == 1
+            -- Check HB: no HB if different threads (simplified)
+            races = races + 1
+            v := acc_var[i]
+            race_vars[v] = race_vars[v] + 1
+  print "  Potential races detected: {races}"
+  for v in range(0, 3)
+    if race_vars[v] > 0
+      print "  Variable {v}: {race_vars[v]} race pairs"
+
+  -- Part 4: Vector clocks
+  print ""
+  print "=== Part 4: Vector Clocks ==="
+  -- Each thread maintains a vector of timestamps
+  -- vc[thread][other_thread] = last known time of other_thread
+  num_threads := 3
+  mut vc := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Initialize: each thread knows its own time
+  for t in range(0, num_threads)
+    vc[t * num_threads + t] = 1
+  -- Simulate: after synchronization between thread 0 and 1
+  -- Thread 1 gets thread 0's clock
+  vc[1 * num_threads + 0] = vc[0 * num_threads + 0]
+  print "  Vector clocks after sync(T0, T1):"
+  for t in range(0, num_threads)
+    v0 := vc[t * num_threads + 0]
+    v1 := vc[t * num_threads + 1]
+    v2 := vc[t * num_threads + 2]
+    print "    T{t}: [{v0}, {v1}, {v2}]"
+
+  -- Part 5: Lock-set analysis
+  print ""
+  print "=== Part 5: Lock-Set Analysis ==="
+  -- Track which locks are held during each access
+  -- If two conflicting accesses share no common lock, potential race
+  mut acc_lock := [0, 1, 0, -1, 0, 2, 1, -1, 0, 2]
+  -- -1 means no lock held
+  mut unprotected := 0
+  for i in range(0, num_accesses)
+    if acc_lock[i] == -1 and acc_write[i] == 1
+      unprotected = unprotected + 1
+      print "  Unprotected write: T{acc_thread[i]} on var {acc_var[i]} at t={acc_time[i]}"
+  print "  Unprotected writes: {unprotected}"
+
+  -- Check lock intersection for racing pairs
+  mut lockset_races := 0
+  for i in range(0, num_accesses)
+    for j in range(i + 1, num_accesses)
+      if acc_thread[i] != acc_thread[j] and acc_var[i] == acc_var[j]
+        if acc_write[i] == 1 or acc_write[j] == 1
+          if acc_lock[i] == -1 or acc_lock[j] == -1 or acc_lock[i] != acc_lock[j]
+            lockset_races = lockset_races + 1
+  print "  Lock-set races: {lockset_races}"
+
+  -- Part 6: Race severity
+  print ""
+  print "=== Part 6: Race Classification ==="
+  mut ww_races := 0
+  mut wr_races := 0
+  mut rw_races := 0
+  for i in range(0, num_accesses)
+    for j in range(i + 1, num_accesses)
+      if acc_thread[i] != acc_thread[j] and acc_var[i] == acc_var[j]
+        if acc_write[i] == 1 and acc_write[j] == 1
+          ww_races = ww_races + 1
+        else if acc_write[i] == 1 and acc_write[j] == 0
+          wr_races = wr_races + 1
+        else if acc_write[i] == 0 and acc_write[j] == 1
+          rw_races = rw_races + 1
+  print "  Write-Write races: {ww_races}"
+  print "  Write-Read races: {wr_races}"
+  print "  Read-Write races: {rw_races}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Total potential races: {races}"
+  print "  Detection methods: happens-before, lock-set, vector clocks"
+  print "  Prevention: locks, atomic operations, message passing"
+  print "  Used in: ThreadSanitizer, Helgrind, RacerD"
+
+  print ""
+  print "Data race detection: identifying concurrent unsynchronized memory accesses using happens-before and lock-sets."

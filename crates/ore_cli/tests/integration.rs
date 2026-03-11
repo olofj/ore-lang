@@ -8853,6 +8853,143 @@ fn showcase680_dfa_minimization() {
 }
 
 #[test]
+fn showcase681_splay_tree() {
+    let out = run_ore("showcase681.ore");
+    assert!(out.contains("Splay Tree:"));
+    assert!(out.contains("Inserted 7 nodes"));
+    assert!(out.contains("Root key: 50"));
+    assert!(out.contains("After first rotation, root: 30"));
+    assert!(out.contains("After second rotation, root: 20"));
+    assert!(out.contains("Root is now: 20"));
+    assert!(out.contains("Accessed node at root: true"));
+    assert!(out.contains("Most accessed key: 20 (5 times)"));
+    assert!(out.contains("Sorted keys: 20, 30, 40, 50, 60, 70, 80"));
+    assert!(out.contains("Splay tree: self-adjusting BST that splays accessed nodes to root for amortized efficiency."));
+}
+
+#[test]
+fn showcase682_gc_safepoints() {
+    let out = run_ore("showcase682.ore");
+    assert!(out.contains("Garbage Collection Safepoints:"));
+    assert!(out.contains("Live objects: 8"));
+    assert!(out.contains("Total roots: 3"));
+    assert!(out.contains("Total safepoints: 5"));
+    assert!(out.contains("Marked objects: 7"));
+    assert!(out.contains("Objects swept: 1"));
+    assert!(out.contains("Memory freed: 8 bytes"));
+    assert!(out.contains("Surviving objects: 7"));
+    assert!(out.contains("GC safepoints: safe program locations where garbage collector can inspect and collect unreachable objects."));
+}
+
+#[test]
+fn showcase683_consistent_hashing() {
+    let out = run_ore("showcase683.ore");
+    assert!(out.contains("Consistent Hashing Ring:"));
+    assert!(out.contains("Ring size: 360 positions"));
+    assert!(out.contains("Key at 10 -> Node A (dist=35)"));
+    assert!(out.contains("Load imbalance: 1"));
+    assert!(out.contains("Keys remapped: 2"));
+    assert!(out.contains("Only nearby keys affected"));
+    assert!(out.contains("Virtual nodes per physical: 3"));
+    assert!(out.contains("Consistent hashing: ring-based key distribution with minimal remapping on topology changes."));
+}
+
+#[test]
+fn showcase684_cfg_analysis() {
+    let out = run_ore("showcase684.ore");
+    assert!(out.contains("Control Flow Graph Analysis:"));
+    assert!(out.contains("Blocks: 6"));
+    assert!(out.contains("Edges: 6"));
+    assert!(out.contains("Dominator iterations: 2"));
+    assert!(out.contains("Back edge: update -> cond"));
+    assert!(out.contains("Back edges found: 1"));
+    assert!(out.contains("Reachable blocks: 6"));
+    assert!(out.contains("CFG analysis: dominator computation, loop detection, and reachability on control flow graphs."));
+}
+
+#[test]
+fn showcase685_pairing_heap() {
+    let out = run_ore("showcase685.ore");
+    assert!(out.contains("Pairing Heap:"));
+    assert!(out.contains("Inserted 8 elements"));
+    assert!(out.contains("Root (min): 1"));
+    assert!(out.contains("Min element: 1"));
+    assert!(out.contains("Heap size: 10"));
+    assert!(out.contains("Children of root: 6"));
+    assert!(out.contains("New min after delete: 2"));
+    assert!(out.contains("Decreased key 9 to 0"));
+    assert!(out.contains("Pairing heap: simple self-adjusting heap with two-pass pairing for efficient priority queue operations."));
+}
+
+#[test]
+fn showcase686_data_race_detection() {
+    let out = run_ore("showcase686.ore");
+    assert!(out.contains("Data Race Detection:"));
+    assert!(out.contains("Reads: 4, Writes: 6"));
+    assert!(out.contains("Happens-before pairs (same thread): 13"));
+    assert!(out.contains("Potential races detected: 9"));
+    assert!(out.contains("Unprotected writes: 1"));
+    assert!(out.contains("Lock-set races: 8"));
+    assert!(out.contains("Write-Write races: 3"));
+    assert!(out.contains("Data race detection: identifying concurrent unsynchronized memory accesses using happens-before and lock-sets."));
+}
+
+#[test]
+fn showcase687_suffix_tree() {
+    let out = run_ore("showcase687.ore");
+    assert!(out.contains("Suffix Tree Concepts:"));
+    assert!(out.contains("String: banana$"));
+    assert!(out.contains("Suffix 0: banana$"));
+    assert!(out.contains("Longest repeated substring length: 3"));
+    assert!(out.contains("Occurrences of 'ana': 2"));
+    assert!(out.contains("Distinct substrings: 22"));
+    assert!(out.contains("Char frequencies: a=3, n=2, b=1"));
+    assert!(out.contains("Suffix tree concepts: efficient substring operations via suffix arrays and LCP computation."));
+}
+
+#[test]
+fn showcase688_bounded_model_checking() {
+    let out = run_ore("showcase688.ore");
+    assert!(out.contains("Bounded Model Checking:"));
+    assert!(out.contains("idle -> request"));
+    assert!(out.contains("Step 0: idle"));
+    assert!(out.contains("Step 2: critical"));
+    assert!(out.contains("Mutual exclusion holds: true"));
+    assert!(out.contains("Deadlock free: true"));
+    assert!(out.contains("From request, critical reachable in 3 steps: true"));
+    assert!(out.contains("Bounded model checking: verifying system properties by unrolling transitions up to k steps."));
+}
+
+#[test]
+fn showcase689_aa_tree() {
+    let out = run_ore("showcase689.ore");
+    assert!(out.contains("AA Tree:"));
+    assert!(out.contains("Nodes: 6"));
+    assert!(out.contains("Root: 4 (level 2)"));
+    assert!(out.contains("Rule 1 (left < parent): true"));
+    assert!(out.contains("Rule 2 (right <= parent): true"));
+    assert!(out.contains("Rule 3 (right-right < parent): true"));
+    assert!(out.contains("All invariants satisfied: true"));
+    assert!(out.contains("Skew needed: true"));
+    assert!(out.contains("Split needed: true"));
+    assert!(out.contains("BST property: true"));
+    assert!(out.contains("AA tree: balanced BST using level-based invariants with skew and split rebalancing operations."));
+}
+
+#[test]
+fn showcase690_effect_system() {
+    let out = run_ore("showcase690.ore");
+    assert!(out.contains("Simple Effect System:"));
+    assert!(out.contains("readFile: IO"));
+    assert!(out.contains("compute: Pure"));
+    assert!(out.contains("pureFunc -> parseInt: REJECTED (1 extra effects)"));
+    assert!(out.contains("Checks: 5, Passed: 3, Rejected: 2"));
+    assert!(out.contains("IOHandler handles: IO"));
+    assert!(out.contains("Pure functions: 2 of 6"));
+    assert!(out.contains("Effect system: tracking and controlling computational side effects through type-level effect annotations."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
