@@ -2346,6 +2346,12 @@ impl<'ctx> CodeGen<'ctx> {
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Int));
                 }
+                "to_str" => {
+                    let rt = self.module.get_function("ore_int_to_str").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[obj_val.into()], "i2s"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Str));
+                }
                 _ => return Err(CodeGenError { line: None, msg: format!("unknown Int method '{}'", method) }),
             }
         }
@@ -2447,6 +2453,12 @@ impl<'ctx> CodeGen<'ctx> {
                     let cmp = bld!(self.builder.build_float_compare(inkwell::FloatPredicate::OLT, a, b, "flt"))?;
                     let result = bld!(self.builder.build_select(cmp, a, b, "fmin"))?;
                     return Ok((result, ValKind::Float));
+                }
+                "to_str" => {
+                    let rt = self.module.get_function("ore_float_to_str").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[obj_val.into()], "f2s"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Str));
                 }
                 _ => return Err(CodeGenError { line: None, msg: format!("unknown Float method '{}'", method) }),
             }
