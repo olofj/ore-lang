@@ -2701,6 +2701,16 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Float))
             }
+            "repeat" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "repeat takes 1 argument".into() });
+                }
+                let count = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_str_repeat").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), count.into()], "srep"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
             _ => Err(CodeGenError { line: None, msg: format!("unknown string method '{}'", method) }),
         }
     }
