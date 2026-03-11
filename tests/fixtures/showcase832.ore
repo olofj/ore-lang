@@ -1,0 +1,63 @@
+-- Showcase 832: Tower of Hanoi (Recursive with move trace)
+
+fn total_moves n:Int -> Int
+  mut result := 1
+  for _ in range(0, n)
+    result = result * 2
+  result - 1
+
+-- Recursive Hanoi: move n disks from src to dst using aux
+-- Returns list of moves as strings
+fn hanoi n:Int src:Str dst:Str aux:Str -> List
+  if n == 0
+    []
+  else
+    sub1 := hanoi(n - 1, src, aux, dst)
+    this_move := "disk {n}: {src} -> {dst}"
+    sub2 := hanoi(n - 1, aux, dst, src)
+    -- Combine all moves
+    mut moves := []
+    for i in range(0, sub1.len())
+      moves.push(sub1[i])
+    moves.push(this_move)
+    for i in range(0, sub2.len())
+      moves.push(sub2[i])
+    moves
+
+fn main
+  print "Tower of Hanoi (Recursive Solution):"
+  print ""
+
+  print "=== Move Count Formula: 2^n - 1 ==="
+  for n in range(1, 7)
+    m := total_moves(n)
+    print "  n={n} disks: {m} moves"
+  print ""
+
+  print "=== 2-Disk Solution: A -> C using B ==="
+  moves2 := hanoi(2, "A", "C", "B")
+  for i in range(0, moves2.len())
+    print "  Move {i + 1}: {moves2[i]}"
+  print ""
+
+  print "=== 3-Disk Solution: A -> C using B ==="
+  moves3 := hanoi(3, "A", "C", "B")
+  for i in range(0, moves3.len())
+    print "  Move {i + 1}: {moves3[i]}"
+  print ""
+
+  print "=== 4-Disk Move Count Verification ==="
+  moves4 := hanoi(4, "A", "C", "B")
+  expected := total_moves(4)
+  print "  Actual moves: {moves4.len()}"
+  print "  Expected (2^4 - 1): {expected}"
+  print "  Matches: {moves4.len() == expected}"
+  print ""
+
+  print "=== First and Last Moves for 4 Disks ==="
+  print "  First: {moves4[0]}"
+  last4 := moves4.len() - 1
+  print "  Last:  {moves4[last4]}"
+  print ""
+
+  print "Tower of Hanoi: divide and conquer, optimal solution in exactly 2^n - 1 moves."

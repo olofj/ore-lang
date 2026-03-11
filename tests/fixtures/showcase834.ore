@@ -1,0 +1,109 @@
+-- Showcase 834: Sudoku Solver (Backtracking)
+
+-- Grid is represented as a flat list of 81 ints (9x9), 0 = empty
+
+fn cell row:Int col:Int -> Int
+  row * 9 + col
+
+fn get_cell grid:List row:Int col:Int -> Int
+  idx := cell(row, col)
+  grid[idx]
+
+fn is_valid grid:List row:Int col:Int val:Int -> Bool
+  -- Check row
+  mut ok := true
+  for c in range(0, 9)
+    if get_cell(grid, row, c) == val
+      ok = false
+  -- Check column
+  for r in range(0, 9)
+    if get_cell(grid, r, col) == val
+      ok = false
+  -- Check 3x3 box
+  box_row := (row / 3) * 3
+  box_col := (col / 3) * 3
+  for r in range(box_row, box_row + 3)
+    for c in range(box_col, box_col + 3)
+      if get_cell(grid, r, c) == val
+        ok = false
+  ok
+
+-- Find next empty cell, return row*9+col or -1 if none
+fn find_empty grid:List -> Int
+  mut pos := -1
+  for i in range(0, 81)
+    if grid[i] == 0 and pos == -1
+      pos = i
+  pos
+
+-- Recursive backtracking solver
+fn solve grid:List -> Bool
+  pos := find_empty(grid)
+  if pos == -1
+    true
+  else
+    row := pos / 9
+    col := pos - row * 9
+    mut solved := false
+    mut val := 1
+    loop
+      if val > 9 or solved
+        break
+      if is_valid(grid, row, col, val)
+        grid[pos] = val
+        if solve(grid)
+          solved = true
+        else
+          grid[pos] = 0
+      val = val + 1
+    solved
+
+fn print_grid grid:List
+  for r in range(0, 9)
+    mut line := ""
+    for c in range(0, 9)
+      v := get_cell(grid, r, c)
+      line = line + "{v} "
+      if c == 2 or c == 5
+        line = line + "| "
+    print "  {line}"
+    if r == 2 or r == 5
+      print "  ------+-------+------"
+
+fn main
+  print "Sudoku Solver (Backtracking):"
+  print ""
+
+  -- Classic easy sudoku puzzle
+  grid := [
+    5, 3, 0,  0, 7, 0,  0, 0, 0,
+    6, 0, 0,  1, 9, 5,  0, 0, 0,
+    0, 9, 8,  0, 0, 0,  0, 6, 0,
+
+    8, 0, 0,  0, 6, 0,  0, 0, 3,
+    4, 0, 0,  8, 0, 3,  0, 0, 1,
+    7, 0, 0,  0, 2, 0,  0, 0, 6,
+
+    0, 6, 0,  0, 0, 0,  2, 8, 0,
+    0, 0, 0,  4, 1, 9,  0, 0, 5,
+    0, 0, 0,  0, 8, 0,  0, 7, 9
+  ]
+
+  print "=== Puzzle ==="
+  print_grid(grid)
+  print ""
+
+  result := solve(grid)
+
+  print "=== Solution (solved={result}) ==="
+  print_grid(grid)
+  print ""
+
+  -- Verify a few cells
+  print "=== Verification ==="
+  print "  Cell (0,2) = {get_cell(grid, 0, 2)} (expect 4)"
+  print "  Cell (4,4) = {get_cell(grid, 4, 4)} (expect 5)"
+  print "  Cell (8,8) = {get_cell(grid, 8, 8)} (expect 9)"
+  print ""
+
+  print "Sudoku: 9x9 grid with 3x3 boxes, each row/col/box has digits 1-9 exactly once."

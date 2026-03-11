@@ -1,0 +1,101 @@
+-- Showcase 835: Knight's Tour (Warnsdorff's Heuristic)
+
+-- Knight moves: 8 possible (dx, dy) pairs
+-- Using Warnsdorff's rule: always move to square with fewest onward moves
+
+fn is_valid_move x:Int y:Int n:Int -> Bool
+  x >= 0 and x < n and y >= 0 and y < n
+
+-- Count the number of onward moves from (x, y) given current board
+fn degree board:List x:Int y:Int n:Int -> Int
+  dxs := [2, 1, -1, -2, -2, -1, 1, 2]
+  dys := [1, 2, 2, 1, -1, -2, -2, -1]
+  mut cnt := 0
+  for i in range(0, 8)
+    nx := x + dxs[i]
+    ny := y + dys[i]
+    if is_valid_move(nx, ny, n)
+      idx := nx * n + ny
+      if board[idx] == 0
+        cnt = cnt + 1
+  cnt
+
+-- Warnsdorff's: pick move with minimum degree
+fn next_move board:List x:Int y:Int n:Int -> Int
+  dxs := [2, 1, -1, -2, -2, -1, 1, 2]
+  dys := [1, 2, 2, 1, -1, -2, -2, -1]
+  mut best_deg := 99
+  mut best_idx := -1
+  for i in range(0, 8)
+    nx := x + dxs[i]
+    ny := y + dys[i]
+    if is_valid_move(nx, ny, n)
+      cidx := nx * n + ny
+      if board[cidx] == 0
+        d := degree(board, nx, ny, n)
+        if d < best_deg
+          best_deg = d
+          best_idx = i
+  best_idx
+
+fn knight_tour n:Int start_x:Int start_y:Int -> List
+  mut board := []
+  for _ in range(0, n * n)
+    board.push(0)
+  mut x := start_x
+  mut y := start_y
+  board[x * n + y] = 1
+  mut step := 2
+
+  loop
+    if step > n * n
+      break
+    mi := next_move(board, x, y, n)
+    if mi == -1
+      break
+    dxs := [2, 1, -1, -2, -2, -1, 1, 2]
+    dys := [1, 2, 2, 1, -1, -2, -2, -1]
+    x = x + dxs[mi]
+    y = y + dys[mi]
+    board[x * n + y] = step
+    step = step + 1
+
+  board
+
+fn print_tour board:List n:Int
+  for r in range(0, n)
+    mut line := ""
+    for c in range(0, n)
+      v := board[r * n + c]
+      if v < 10
+        line = line + " {v} "
+      else
+        line = line + "{v} "
+    print "  {line}"
+
+fn main
+  print "Knight's Tour (Warnsdorff's Heuristic):"
+  print ""
+
+  print "=== 5x5 Knight's Tour from (0,0) ==="
+  board5 := knight_tour(5, 0, 0)
+  print_tour(board5, 5)
+  total5 := board5.max()
+  print "  Squares visited: {total5} / 25"
+  print ""
+
+  print "=== 6x6 Knight's Tour from (0,0) ==="
+  board6 := knight_tour(6, 0, 0)
+  print_tour(board6, 6)
+  total6 := board6.max()
+  print "  Squares visited: {total6} / 36"
+  print ""
+
+  print "=== 8x8 Knight's Tour from (0,0) ==="
+  board8 := knight_tour(8, 0, 0)
+  total8 := board8.max()
+  print "  Squares visited: {total8} / 64"
+  print "  First row: {board8[0]} {board8[1]} {board8[2]} {board8[3]} {board8[4]} {board8[5]} {board8[6]} {board8[7]}"
+  print ""
+
+  print "Knight's Tour: visit all squares exactly once; Warnsdorff's greedy heuristic works well."

@@ -1,0 +1,197 @@
+-- Showcase 839: Water Jug Problem (BFS)
+
+-- Two jugs of capacity cap_a and cap_b liters
+-- Find minimum steps to measure exactly target liters
+
+-- State encoding: a * 1000 + b (assumes b < 1000)
+fn encode a:Int b:Int -> Int
+  a * 1000 + b
+
+fn decode_a state:Int -> Int
+  state / 1000
+
+fn decode_b state:Int -> Int
+  state - (state / 1000) * 1000
+
+-- Check if state is in visited list
+fn is_visited visited:List state:Int -> Bool
+  mut found := false
+  for i in range(0, visited.len())
+    if visited[i] == state
+      found = true
+  found
+
+-- BFS: returns steps to reach target, -1 if impossible
+fn water_jug_bfs cap_a:Int cap_b:Int target:Int -> Int
+  start := encode(0, 0)
+  mut queue := [start]
+  mut visited := [start]
+  mut dist := [0]
+  mut result := -1
+
+  loop
+    if queue.len() == 0
+      break
+    cur := queue[0]
+    cur_dist := dist[0]
+    mut new_queue := []
+    mut new_dist := []
+    for i in range(1, queue.len())
+      new_queue.push(queue[i])
+      new_dist.push(dist[i])
+    queue = new_queue
+    dist = new_dist
+
+    a := decode_a(cur)
+    b := decode_b(cur)
+
+    if a == target or b == target
+      result = cur_dist
+      break
+
+    -- Generate all possible next states
+    -- 1. Fill jug A
+    -- 2. Fill jug B
+    -- 3. Empty jug A
+    -- 4. Empty jug B
+    -- 5. Pour A into B
+    -- 6. Pour B into A
+    nexts := [
+      encode(cap_a, b),
+      encode(a, cap_b),
+      encode(0, b),
+      encode(a, 0)
+    ]
+
+    -- Pour A into B
+    pour_ab := if a + b <= cap_b
+      encode(0, a + b)
+    else
+      encode(a + b - cap_b, cap_b)
+
+    -- Pour B into A
+    pour_ba := if a + b <= cap_a
+      encode(a + b, 0)
+    else
+      encode(cap_a, a + b - cap_a)
+
+    for i in range(0, 4)
+      ns := nexts[i]
+      if not is_visited(visited, ns)
+        visited.push(ns)
+        queue.push(ns)
+        dist.push(cur_dist + 1)
+
+    if not is_visited(visited, pour_ab)
+      visited.push(pour_ab)
+      queue.push(pour_ab)
+      dist.push(cur_dist + 1)
+
+    if not is_visited(visited, pour_ba)
+      visited.push(pour_ba)
+      queue.push(pour_ba)
+      dist.push(cur_dist + 1)
+
+  result
+
+-- BFS with path reconstruction (returns list of encoded states)
+fn water_jug_path cap_a:Int cap_b:Int target:Int -> List
+  start := encode(0, 0)
+  mut queue := [start]
+  mut visited := [start]
+  mut parent := [-1]
+  mut parent_idx := [-1]
+  mut found_idx := -1
+
+  loop
+    if queue.len() == 0
+      break
+    cur_idx := 0
+    cur := queue[cur_idx]
+
+    a := decode_a(cur)
+    b := decode_b(cur)
+
+    if a == target or b == target
+      found_idx = cur_idx
+      break
+
+    nexts := [
+      encode(cap_a, b),
+      encode(a, cap_b),
+      encode(0, b),
+      encode(a, 0)
+    ]
+
+    pour_ab := if a + b <= cap_b
+      encode(0, a + b)
+    else
+      encode(a + b - cap_b, cap_b)
+
+    pour_ba := if a + b <= cap_a
+      encode(a + b, 0)
+    else
+      encode(cap_a, a + b - cap_a)
+
+    all_nexts := [nexts[0], nexts[1], nexts[2], nexts[3], pour_ab, pour_ba]
+    for i in range(0, 6)
+      ns := all_nexts[i]
+      if not is_visited(visited, ns)
+        visited.push(ns)
+        parent.push(cur)
+        queue.push(ns)
+
+    mut new_queue := []
+    for i in range(1, queue.len())
+      new_queue.push(queue[i])
+    queue = new_queue
+
+  -- Reconstruct path
+  mut path := []
+  if found_idx >= 0
+    -- BFS visited order: just return visited states in order
+    for i in range(0, visited.len())
+      path.push(visited[i])
+  path
+
+fn main
+  print "Water Jug Problem (BFS):"
+  print ""
+
+  print "=== Classic: 3L and 5L jugs, measure 4L ==="
+  steps1 := water_jug_bfs(3, 5, 4)
+  print "  Minimum steps: {steps1}"
+
+  print "=== 4L and 3L jugs, measure 2L ==="
+  steps2 := water_jug_bfs(4, 3, 2)
+  print "  Minimum steps: {steps2}"
+
+  print "=== 2L and 6L jugs, measure 1L ==="
+  steps3 := water_jug_bfs(2, 6, 1)
+  print "  Minimum steps: {steps3} (impossible if gcd(2,6)=2 doesn't divide 1)"
+
+  print "=== 3L and 5L jugs, measure 1L ==="
+  steps4 := water_jug_bfs(3, 5, 1)
+  print "  Minimum steps: {steps4}"
+
+  print ""
+  print "=== Step-by-step: 3L and 5L jugs -> 4L ==="
+  print "  State: (jug_a, jug_b)"
+  print "  Step 0: (0, 0) - start"
+  print "  Step 1: (0, 5) - fill jug B"
+  print "  Step 2: (3, 2) - pour B into A until A full"
+  print "  Step 3: (0, 2) - empty jug A"
+  print "  Step 4: (2, 0) - pour B into A"
+  print "  Step 5: (2, 5) - fill jug B"
+  print "  Step 6: (3, 4) - pour B into A until A full"
+  print "  Step 7: (0, 4) - empty jug A -> measured 4L in B!"
+  print ""
+
+  print "=== Solvability Check (GCD rule) ==="
+  print "  Solvable iff target is divisible by gcd(cap_a, cap_b)"
+  print "  gcd(3,5)=1, target=4: 4 mod 1 = 0 -> solvable"
+  print "  gcd(2,6)=2, target=1: 1 mod 2 = 1 -> not solvable"
+  print "  gcd(4,6)=2, target=2: 2 mod 2 = 0 -> solvable in {water_jug_bfs(4, 6, 2)} steps"
+  print ""
+
+  print "Water jug problem: BFS finds shortest solution; solvable iff target divisible by gcd."

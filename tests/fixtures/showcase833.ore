@@ -1,0 +1,93 @@
+-- Showcase 833: N-Queens Problem
+
+-- Check if placing a queen at (row, col) is safe given previous rows
+fn is_safe queens:List row:Int col:Int -> Bool
+  mut safe := true
+  for r in range(0, row)
+    c := queens[r]
+    if c == col
+      safe = false
+    diff := row - r
+    if c == col - diff or c == col + diff
+      safe = false
+  safe
+
+-- Recursive backtracking: count solutions
+fn solve_count n:Int row:Int queens:List -> Int
+  if row == n
+    1
+  else
+    mut total := 0
+    for col in range(0, n)
+      if is_safe(queens, row, col)
+        queens[row] = col
+        total = total + solve_count(n, row + 1, queens)
+    total
+
+fn count_solutions n:Int -> Int
+  queens := [0, 0, 0, 0, 0, 0, 0, 0]
+  solve_count(n, 0, queens)
+
+-- Find first solution
+fn solve_first n:Int row:Int queens:List -> Bool
+  if row == n
+    true
+  else
+    mut found := false
+    mut col := 0
+    loop
+      if col >= n or found
+        break
+      if is_safe(queens, row, col)
+        queens[row] = col
+        if solve_first(n, row + 1, queens)
+          found = true
+      col = col + 1
+    found
+
+fn print_board queens:List n:Int
+  for r in range(0, n)
+    mut row_str := ""
+    col := queens[r]
+    for c in range(0, n)
+      if c == col
+        row_str = row_str + "Q "
+      else
+        row_str = row_str + ". "
+    print "  {row_str}"
+
+fn main
+  print "N-Queens Problem:"
+  print ""
+
+  print "=== Solution Counts ==="
+  for n in range(1, 9)
+    sols := count_solutions(n)
+    print "  {n}-Queens: {sols} solutions"
+  print ""
+
+  print "=== First Solution for 4-Queens ==="
+  queens4 := [0, 0, 0, 0]
+  solve_first(4, 0, queens4)
+  q4c0 := queens4[0]
+  q4c1 := queens4[1]
+  q4c2 := queens4[2]
+  q4c3 := queens4[3]
+  print "  Column positions: {q4c0} {q4c1} {q4c2} {q4c3}"
+  print_board(queens4, 4)
+  print ""
+
+  print "=== First Solution for 6-Queens ==="
+  queens6 := [0, 0, 0, 0, 0, 0]
+  solve_first(6, 0, queens6)
+  q6c0 := queens6[0]
+  q6c1 := queens6[1]
+  q6c2 := queens6[2]
+  q6c3 := queens6[3]
+  q6c4 := queens6[4]
+  q6c5 := queens6[5]
+  print "  Column positions: {q6c0} {q6c1} {q6c2} {q6c3} {q6c4} {q6c5}"
+  print_board(queens6, 6)
+  print ""
+
+  print "N-Queens: classic backtracking problem, solutions grow rapidly with n."

@@ -1,0 +1,101 @@
+-- Showcase 836: Conway's Game of Life (Cellular Automaton)
+
+-- Grid stored as flat list of 0/1, row-major order
+
+fn get_cell grid:List r:Int c:Int rows:Int cols:Int -> Int
+  if r < 0 or r >= rows or c < 0 or c >= cols
+    0
+  else
+    grid[r * cols + c]
+
+-- Count living neighbors of cell (r, c)
+fn count_neighbors grid:List r:Int c:Int rows:Int cols:Int -> Int
+  mut n := 0
+  for dr in range(-1, 2)
+    for dc in range(-1, 2)
+      if dr != 0 or dc != 0
+        n = n + get_cell(grid, r + dr, c + dc, rows, cols)
+  n
+
+-- Advance one generation
+fn step_game grid:List rows:Int cols:Int -> List
+  mut next := []
+  for r in range(0, rows)
+    for c in range(0, cols)
+      v := get_cell(grid, r, c, rows, cols)
+      nb := count_neighbors(grid, r, c, rows, cols)
+      new_v := if v == 1
+        if nb == 2 or nb == 3
+          1
+        else
+          0
+      else
+        if nb == 3
+          1
+        else
+          0
+      next.push(new_v)
+  next
+
+fn count_alive grid:List -> Int
+  grid.sum()
+
+fn print_grid grid:List rows:Int cols:Int
+  for r in range(0, rows)
+    mut line := ""
+    for c in range(0, cols)
+      v := get_cell(grid, r, c, rows, cols)
+      if v == 1
+        line = line + "O"
+      else
+        line = line + "."
+    print "  {line}"
+
+fn main
+  print "Conway's Game of Life:"
+  print ""
+
+  rows := 8
+  cols := 12
+
+  -- Blinker (period 2 oscillator) at center
+  -- Plus a glider at top-left
+  grid := [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  ]
+
+  print "=== Generation 0 (alive={count_alive(grid)}) ==="
+  print_grid(grid, rows, cols)
+  print ""
+
+  g1 := step_game(grid, rows, cols)
+  print "=== Generation 1 (alive={count_alive(g1)}) ==="
+  print_grid(g1, rows, cols)
+  print ""
+
+  g2 := step_game(g1, rows, cols)
+  print "=== Generation 2 (alive={count_alive(g2)}) ==="
+  print_grid(g2, rows, cols)
+  print ""
+
+  g3 := step_game(g2, rows, cols)
+  print "=== Generation 3 (alive={count_alive(g3)}) ==="
+  print_grid(g3, rows, cols)
+  print ""
+
+  -- Check blinker period: column blinker should oscillate
+  print "=== Blinker Analysis (rows 4-6, cols 6-8) ==="
+  print "  Gen 0 blinker row: {get_cell(grid,4,6,rows,cols)} {get_cell(grid,4,7,rows,cols)} {get_cell(grid,4,8,rows,cols)}"
+  print "  Gen 1 blinker col: {get_cell(g1,3,7,rows,cols)} {get_cell(g1,4,7,rows,cols)} {get_cell(g1,5,7,rows,cols)}"
+  print "  Gen 2 blinker row: {get_cell(g2,4,6,rows,cols)} {get_cell(g2,4,7,rows,cols)} {get_cell(g2,4,8,rows,cols)}"
+  print "  Blinker period 2: gen0==gen2? {get_cell(grid,4,7,rows,cols) == get_cell(g2,4,7,rows,cols)}"
+  print ""
+
+  print "Game of Life: simple rules create complex emergent patterns like oscillators and gliders."

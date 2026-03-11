@@ -1,0 +1,134 @@
+-- Showcase 837: Tic-Tac-Toe (Perfect Play via Minimax)
+
+-- Board: list of 9 cells, 0=empty, 1=X, 2=O
+
+fn check_winner board:List player:Int -> Bool
+  p := player
+  r0 := board[0] == p and board[1] == p and board[2] == p
+  r1 := board[3] == p and board[4] == p and board[5] == p
+  r2 := board[6] == p and board[7] == p and board[8] == p
+  c0 := board[0] == p and board[3] == p and board[6] == p
+  c1 := board[1] == p and board[4] == p and board[7] == p
+  c2 := board[2] == p and board[5] == p and board[8] == p
+  d0 := board[0] == p and board[4] == p and board[8] == p
+  d1 := board[2] == p and board[4] == p and board[6] == p
+  r0 or r1 or r2 or c0 or c1 or c2 or d0 or d1
+
+fn is_terminal board:List -> Bool
+  mut full := true
+  for i in range(0, 9)
+    if board[i] == 0
+      full = false
+  full or check_winner(board, 1) or check_winner(board, 2)
+
+fn minimax board:List is_maximizing:Bool -> Int
+  if check_winner(board, 1)
+    1
+  else if check_winner(board, 2)
+    -1
+  else if is_terminal(board)
+    0
+  else if is_maximizing
+    mut best := -10
+    for i in range(0, 9)
+      if board[i] == 0
+        board[i] = 1
+        score := minimax(board, false)
+        board[i] = 0
+        if score > best
+          best = score
+    best
+  else
+    mut best := 10
+    for i in range(0, 9)
+      if board[i] == 0
+        board[i] = 2
+        score := minimax(board, true)
+        board[i] = 0
+        if score < best
+          best = score
+    best
+
+fn best_move board:List player:Int -> Int
+  is_max := player == 1
+  mut best_score := if is_max
+    -10
+  else
+    10
+  mut best_pos := -1
+  for i in range(0, 9)
+    if board[i] == 0
+      board[i] = player
+      score := minimax(board, not is_max)
+      board[i] = 0
+      if is_max and score > best_score
+        best_score = score
+        best_pos = i
+      if not is_max and score < best_score
+        best_score = score
+        best_pos = i
+  best_pos
+
+fn print_board board:List
+  syms := [".", "X", "O"]
+  for r in range(0, 3)
+    s0 := syms[board[r * 3]]
+    s1 := syms[board[r * 3 + 1]]
+    s2 := syms[board[r * 3 + 2]]
+    print "  {s0} {s1} {s2}"
+
+fn main
+  print "Tic-Tac-Toe (Perfect Play via Minimax):"
+  print ""
+
+  print "=== Minimax Scores from Various Positions ==="
+  empty := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  score_empty := minimax(empty, true)
+  print "  Empty board score (X first): {score_empty} (0 = draw with perfect play)"
+
+  -- X has two in a row, can win
+  x_win_next := [1, 1, 0, 0, 2, 0, 0, 0, 2]
+  score_x := minimax(x_win_next, true)
+  print "  X can win: score = {score_x} (1 = X wins)"
+
+  -- O has two in a row, X should block
+  o_win_next := [2, 2, 0, 0, 1, 0, 1, 0, 0]
+  score_o := minimax(o_win_next, true)
+  print "  O threatens win: score = {score_o}"
+  best_block := best_move(o_win_next, 1)
+  print "  X best block move: position {best_block} (expect 2)"
+  print ""
+
+  print "=== Full Game: Both Players Play Optimally ==="
+  board := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut turn := 1
+  mut move_num := 0
+  loop
+    if is_terminal(board)
+      break
+    pos := best_move(board, turn)
+    board[pos] = turn
+    move_num = move_num + 1
+    sym := if turn == 1
+      "X"
+    else
+      "O"
+    print "  Move {move_num}: {sym} -> pos {pos}"
+    turn = if turn == 1
+      2
+    else
+      1
+  print ""
+  print "  Final board:"
+  print_board(board)
+  x_wins := check_winner(board, 1)
+  o_wins := check_winner(board, 2)
+  if x_wins
+    print "  Result: X wins"
+  else if o_wins
+    print "  Result: O wins"
+  else
+    print "  Result: Draw (as expected with perfect play)"
+  print ""
+
+  print "Tic-tac-toe: minimax with perfect play from both sides always results in a draw."

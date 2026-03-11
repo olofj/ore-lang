@@ -1,0 +1,73 @@
+-- Showcase 831: Nim Game (Optimal Strategy)
+
+-- Nim: players take turns removing objects from heaps
+-- Optimal strategy: make XOR (nim-sum) of all heaps = 0
+
+-- Compute nim-sum (XOR) of two numbers via binary arithmetic
+fn xor_bits a:Int b:Int -> Int
+  mut result := 0
+  mut bit := 1
+  mut aa := a
+  mut bb := b
+  for _ in range(0, 30)
+    ba := aa - (aa / 2) * 2
+    bb2 := bb - (bb / 2) * 2
+    if ba != bb2
+      result = result + bit
+    aa = aa / 2
+    bb = bb / 2
+    bit = bit * 2
+  result
+
+fn nim_sum3 a:Int b:Int c:Int -> Int
+  ab := xor_bits(a, b)
+  xor_bits(ab, c)
+
+-- Find optimal move: which heap to reduce and by how much
+fn find_move h1:Int h2:Int h3:Int -> Str
+  ns := nim_sum3(h1, h2, h3)
+  if ns == 0
+    "No winning move (losing position)"
+  else
+    -- Try reducing heap 1
+    mut best := "none"
+    for take in range(1, h1 + 1)
+      new1 := h1 - take
+      if nim_sum3(new1, h2, h3) == 0
+        best = "Take {take} from heap 1 (leave {new1})"
+    for take in range(1, h2 + 1)
+      new2 := h2 - take
+      if nim_sum3(h1, new2, h3) == 0
+        best = "Take {take} from heap 2 (leave {new2})"
+    for take in range(1, h3 + 1)
+      new3 := h3 - take
+      if nim_sum3(h1, h2, new3) == 0
+        best = "Take {take} from heap 3 (leave {new3})"
+    best
+
+fn main
+  print "Nim Game (Optimal Strategy):"
+  print ""
+
+  print "=== Nim-Sum (XOR) Analysis ==="
+  print "Position (1, 2, 3): nim-sum = {nim_sum3(1, 2, 3)}"
+  print "Position (3, 5, 6): nim-sum = {nim_sum3(3, 5, 6)}"
+  print "Position (4, 5, 1): nim-sum = {nim_sum3(4, 5, 1)}"
+  print "Position (1, 4, 6): nim-sum = {nim_sum3(1, 4, 6)}"
+  print ""
+
+  print "=== Optimal Moves ==="
+  print "Heaps (1,2,3): {find_move(1, 2, 3)}"
+  print "Heaps (3,5,6): {find_move(3, 5, 6)}"
+  print "Heaps (1,4,6): {find_move(1, 4, 6)}"
+  print "Heaps (1,1,1): {find_move(1, 1, 1)}"
+  print ""
+
+  print "=== Nim-Sum Property ==="
+  print "A position is losing iff nim-sum of all heaps = 0"
+  print "Nim-sum of (3,5,6) = 0? {nim_sum3(3,5,6) == 0}"
+  print "Nim-sum of (1,2,3) = 0? {nim_sum3(1,2,3) == 0}"
+  print "Nim-sum of (1,4,6) = 0? {nim_sum3(1,4,6) == 0}"
+  print ""
+
+  print "Nim: optimal play uses XOR (nim-sum) to always leave opponent in losing position."
