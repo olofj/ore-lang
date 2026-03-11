@@ -1,0 +1,113 @@
+-- Showcase 984: TF-IDF Computation
+-- Computes Term Frequency - Inverse Document Frequency for text analysis
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn split_words text:Str -> List
+  text.to_lower().split(" ")
+
+fn count_term_in_doc words:List term:Str -> Int
+  mut count := 0
+  n := words.count()
+  mut i := 0
+  while i < n
+    if get_str(words, i) == term
+      count = count + 1
+    i = i + 1
+  count
+
+fn tf words:List term:Str -> Float
+  n := words.count()
+  if n == 0
+    0.0
+  else
+    c := count_term_in_doc(words, term)
+    c.to_float() / n.to_float()
+
+fn idf_score num_docs:Int docs_with_term:Int -> Float
+  if docs_with_term == 0
+    0.0
+  else
+    ratio := (num_docs + 1).to_float() / (docs_with_term + 1).to_float()
+    log(ratio) + 1.0
+
+fn count_docs_with_term w1:List w2:List w3:List term:Str -> Int
+  mut count := 0
+  if count_term_in_doc(w1, term) > 0
+    count = count + 1
+  if count_term_in_doc(w2, term) > 0
+    count = count + 1
+  if count_term_in_doc(w3, term) > 0
+    count = count + 1
+  count
+
+fn round2 x:Float -> Float
+  i := (x * 100.0).to_int()
+  i.to_float() / 100.0
+
+fn main
+  print "TF-IDF Computation"
+  print "=================="
+  print ""
+
+  doc1 := "the cat sat on the mat"
+  doc2 := "the dog sat on the log"
+  doc3 := "the cat and the dog are friends"
+
+  words1 := split_words(doc1)
+  words2 := split_words(doc2)
+  words3 := split_words(doc3)
+
+  print "Document 1: {doc1}"
+  print "Document 2: {doc2}"
+  print "Document 3: {doc3}"
+  print ""
+
+  num_docs := 3
+
+  terms := ["cat", "dog", "sat", "the", "friends"]
+
+  print "Term        TF(d1)  TF(d2)  TF(d3)  IDF     TFIDF(d1)"
+  print "----        ------  ------  ------  ---     ---------"
+  mut i := 0
+  while i < terms.count()
+    term := get_str(terms, i)
+    tf1 := tf(words1, term)
+    tf2 := tf(words2, term)
+    tf3 := tf(words3, term)
+    dc := count_docs_with_term(words1, words2, words3, term)
+    idf := idf_score(num_docs, dc)
+    tfidf1 := tf1 * idf
+    tf1r := round2(tf1)
+    tf2r := round2(tf2)
+    tf3r := round2(tf3)
+    idfr := round2(idf)
+    tfidf1r := round2(tfidf1)
+    padded := term.pad_right(12, " ")
+    print "{padded}{tf1r}  {tf2r}  {tf3r}  {idfr}   {tfidf1r}"
+    i = i + 1
+  print ""
+
+  -- Best discriminating term for doc1
+  dc_cat := count_docs_with_term(words1, words2, words3, "cat")
+  idf_cat := idf_score(num_docs, dc_cat)
+  tfidf_cat := tf(words1, "cat") * idf_cat
+
+  dc_sat := count_docs_with_term(words1, words2, words3, "sat")
+  idf_sat := idf_score(num_docs, dc_sat)
+  tfidf_sat := tf(words1, "sat") * idf_sat
+
+  dc_the := count_docs_with_term(words1, words2, words3, "the")
+  idf_the := idf_score(num_docs, dc_the)
+  tfidf_the := tf(words1, "the") * idf_the
+
+  print "TFIDF scores for doc1:"
+  cat_r := round2(tfidf_cat)
+  sat_r := round2(tfidf_sat)
+  the_r := round2(tfidf_the)
+  print "  cat={cat_r}  sat={sat_r}  the={the_r}"
+  best := if tfidf_cat > tfidf_sat then "cat" else "sat"
+  print "Best discriminating term for doc1: {best}"
+  print ""
+  print "TF-IDF computation complete."

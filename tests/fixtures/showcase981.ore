@@ -1,0 +1,93 @@
+-- Showcase 981: Text Tokenizer
+-- Splits text into word and sentence tokens, counts token types
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn is_punct c:Str -> Bool
+  c == "." or c == "!" or c == "?" or c == "," or c == ";" or c == ":"
+
+fn is_space c:Str -> Bool
+  c == " " or c == "\t" or c == "\n"
+
+fn tokenize_words text:Str -> List
+  mut tokens := [""]
+  tokens.pop()
+  n := text.len()
+  mut current := ""
+  mut i := 0
+  while i < n
+    c := text.char_at(i)
+    if is_space(c)
+      if current.len() > 0
+        tokens.push(current)
+        current = ""
+    else if is_punct(c)
+      if current.len() > 0
+        tokens.push(current)
+        current = ""
+      tokens.push(c)
+    else
+      current = current + c
+    i = i + 1
+  if current.len() > 0
+    tokens.push(current)
+  tokens
+
+fn count_words tokens:List -> Int
+  mut count := 0
+  n := tokens.count()
+  mut i := 0
+  while i < n
+    t := get_str(tokens, i)
+    if not is_punct(t.char_at(0))
+      count = count + 1
+    i = i + 1
+  count
+
+fn count_sentences tokens:List -> Int
+  mut count := 0
+  n := tokens.count()
+  mut i := 0
+  while i < n
+    t := get_str(tokens, i)
+    if t == "." or t == "!" or t == "?"
+      count = count + 1
+    i = i + 1
+  count
+
+fn main
+  print "Text Tokenizer"
+  print "=============="
+  print ""
+
+  text1 := "Hello world. How are you? I am fine!"
+  print "Input: {text1}"
+  tokens1 := tokenize_words(text1)
+  tc1 := tokens1.count()
+  wc1 := count_words(tokens1)
+  sc1 := count_sentences(tokens1)
+  print "Total tokens: {tc1}"
+  print "Word tokens: {wc1}"
+  print "Sentences: {sc1}"
+  print ""
+
+  text2 := "The quick, brown fox jumps over the lazy dog."
+  print "Input: {text2}"
+  tokens2 := tokenize_words(text2)
+  wc2 := count_words(tokens2)
+  sc2 := count_sentences(tokens2)
+  print "Word tokens: {wc2}"
+  print "Sentences: {sc2}"
+  print ""
+
+  text3 := "Wait! Really? Yes, indeed. Wow!"
+  print "Input: {text3}"
+  tokens3 := tokenize_words(text3)
+  wc3 := count_words(tokens3)
+  sc3 := count_sentences(tokens3)
+  print "Word tokens: {wc3}"
+  print "Sentences: {sc3}"
+  print ""
+
+  print "Tokenization complete."

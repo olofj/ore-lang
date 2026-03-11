@@ -11757,6 +11757,166 @@ fn showcase_970() {
 }
 
 #[test]
+fn showcase_971() {
+    let out = run_ore("showcase971.ore");
+    assert!(out.contains("Traffic Light State Machine"), "got: {out}");
+    assert!(out.contains("RED -> GREEN (after 30s)"), "got: {out}");
+    assert!(out.contains("YELLOW visited: 3 times"), "got: {out}");
+}
+
+#[test]
+fn showcase_972() {
+    let out = run_ore("showcase972.ore");
+    assert!(out.contains("Observer Pattern - Event System"), "got: {out}");
+    assert!(out.contains("[Analytics] Purchase tracked: user=alice amount=$49.99"), "got: {out}");
+    assert!(out.contains("[Security] ALERT: Error for user 'bob': payment failed"), "got: {out}");
+}
+
+#[test]
+fn showcase_973() {
+    let out = run_ore("showcase973.ore");
+    assert!(out.contains("Strategy Pattern - Sorting Algorithms"), "got: {out}");
+    assert!(out.contains("All strategies agree: true"), "got: {out}");
+    assert!(out.contains("Sorted result: [11, 12, 22, 25, 34, 64, 90]"), "got: {out}");
+}
+
+#[test]
+fn showcase_974() {
+    let out = run_ore("showcase974.ore");
+    assert!(out.contains("Command Pattern - Text Editor with Undo/Redo"), "got: {out}");
+    assert!(out.contains("After REPLACE 'Hello'->'Hi': 'Hi World!'"), "got: {out}");
+    assert!(out.contains("After UNDO: 'Hello World'"), "got: {out}");
+}
+
+#[test]
+fn showcase_975() {
+    let out = run_ore("showcase975.ore");
+    assert!(out.contains("Iterator Pattern - Custom Sequences"), "got: {out}");
+    assert!(out.contains("Fibonacci(10):   0, 1, 1, 2, 3, 5, 8, 13, 21, 34"), "got: {out}");
+    assert!(out.contains("Sum of first 5 primes: 28"), "got: {out}");
+}
+
+#[test]
+fn showcase_976() {
+    let out = run_ore("showcase976.ore");
+    assert!(out.contains("Builder Pattern - SQL Query Builder"), "got: {out}");
+    assert!(out.contains("SELECT * FROM users"), "got: {out}");
+    assert!(out.contains("LIMIT 3"), "got: {out}");
+}
+
+#[test]
+fn showcase_977() {
+    let out = run_ore("showcase977.ore");
+    assert!(out.contains("Pipeline Pattern - Data Processing"), "got: {out}");
+    assert!(out.contains("Engineering: 3 employees, avg score: 98"), "got: {out}");
+    assert!(out.contains("Passing: 6 / 9"), "got: {out}");
+}
+
+#[test]
+fn showcase_978() {
+    let out = run_ore("showcase978.ore");
+    assert!(out.contains("Middleware Pattern - Request Handler Chain"), "got: {out}");
+    assert!(out.contains("Response: HTTP 200 - OK - healthy"), "got: {out}");
+    assert!(out.contains("Response: HTTP 429 - Too Many Requests"), "got: {out}");
+}
+
+#[test]
+fn showcase_979() {
+    let out = run_ore("showcase979.ore");
+    assert!(out.contains("Publish-Subscribe System"), "got: {out}");
+    assert!(out.contains("[NewsFeed] Breaking: Major tech acquisition announced"), "got: {out}");
+    assert!(out.contains("Delivered to 2 subscriber(s)"), "got: {out}");
+}
+
+#[test]
+fn showcase_980() {
+    let out = run_ore("showcase980.ore");
+    assert!(out.contains("Actor Model Simulation"), "got: {out}");
+    assert!(out.contains("[Accumulator] GET -> 35"), "got: {out}");
+    assert!(out.contains("Counter-B (Counter): 11"), "got: {out}");
+}
+
+#[test]
+fn showcase_981() {
+    let out = run_ore("showcase981.ore");
+    assert!(out.contains("Text Tokenizer"), "got: {out}");
+    assert!(out.contains("Word tokens: 8"), "got: {out}");
+    assert!(out.contains("Sentences: 3"), "got: {out}");
+}
+
+#[test]
+fn showcase_982() {
+    let out = run_ore("showcase982.ore");
+    assert!(out.contains("Soundex Phonetic Algorithm"), "got: {out}");
+    assert!(out.contains("Robert        R163"), "got: {out}");
+    assert!(out.contains("Ashcraft (A226) vs Ashcroft (A226): MATCH"), "got: {out}");
+}
+
+#[test]
+fn showcase_983() {
+    let out = run_ore("showcase983.ore");
+    assert!(out.contains("Porter Stemmer"), "got: {out}");
+    assert!(out.contains("caresses          caress"), "got: {out}");
+    assert!(out.contains("Stemming complete."), "got: {out}");
+}
+
+#[test]
+fn showcase_984() {
+    let out = run_ore("showcase984.ore");
+    assert!(out.contains("TF-IDF Computation"), "got: {out}");
+    assert!(out.contains("Best discriminating term for doc1:"), "got: {out}");
+    assert!(out.contains("TF-IDF computation complete."), "got: {out}");
+}
+
+#[test]
+fn showcase_985() {
+    let out = run_ore("showcase985.ore");
+    assert!(out.contains("N-gram Generator"), "got: {out}");
+    assert!(out.contains("Bigrams (4 total)"), "got: {out}");
+    assert!(out.contains("[the quick brown]"), "got: {out}");
+}
+
+#[test]
+fn showcase_986() {
+    let out = run_ore("showcase986.ore");
+    assert!(out.contains("Jaccard Similarity"), "got: {out}");
+    assert!(out.contains("D1 vs D4: near-duplicate"), "got: {out}");
+    assert!(out.contains("D1 vs D2: J=0.428"), "got: {out}");
+}
+
+#[test]
+fn showcase_987() {
+    let out = run_ore("showcase987.ore");
+    assert!(out.contains("Cosine Similarity"), "got: {out}");
+    assert!(out.contains("D1 vs D2: 75%"), "got: {out}");
+    assert!(out.contains("Self-similarity D1 vs D1: 100%"), "got: {out}");
+}
+
+#[test]
+fn showcase_988() {
+    let out = run_ore("showcase988.ore");
+    assert!(out.contains("Spelling Corrector"), "got: {out}");
+    assert!(out.contains("kitten -> sitting: 3"), "got: {out}");
+    assert!(out.contains("aple         apple"), "got: {out}");
+}
+
+#[test]
+fn showcase_989() {
+    let out = run_ore("showcase989.ore");
+    assert!(out.contains("Morse Code Translator"), "got: {out}");
+    assert!(out.contains("... --- ..."), "got: {out}");
+    assert!(out.contains("-> SOS"), "got: {out}");
+}
+
+#[test]
+fn showcase_990() {
+    let out = run_ore("showcase990.ore");
+    assert!(out.contains("ROT13 / Caesar Cipher Toolkit"), "got: {out}");
+    assert!(out.contains("Hello, World! -> Uryyb, Jbeyq!"), "got: {out}");
+    assert!(out.contains("Cipher toolkit complete."), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

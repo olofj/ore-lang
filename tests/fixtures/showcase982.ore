@@ -1,0 +1,88 @@
+-- Showcase 982: Soundex Phonetic Algorithm
+-- Encodes English words into phonetic codes for fuzzy matching
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn soundex_code c:Str -> Str
+  cu := c.to_upper()
+  if cu == "B" or cu == "F" or cu == "P" or cu == "V"
+    "1"
+  else if cu == "C" or cu == "G" or cu == "J" or cu == "K" or cu == "Q" or cu == "S" or cu == "X" or cu == "Z"
+    "2"
+  else if cu == "D" or cu == "T"
+    "3"
+  else if cu == "L"
+    "4"
+  else if cu == "M" or cu == "N"
+    "5"
+  else if cu == "R"
+    "6"
+  else
+    "0"
+
+fn is_vowel c:Str -> Bool
+  cu := c.to_upper()
+  cu == "A" or cu == "E" or cu == "I" or cu == "O" or cu == "U"
+
+fn soundex word:Str -> Str
+  n := word.len()
+  if n == 0
+    "0000"
+  else
+    first := word.char_at(0).to_upper()
+    mut code := first
+    mut prev_code := soundex_code(word.char_at(0))
+    mut i := 1
+    while i < n and code.len() < 4
+      c := word.char_at(i)
+      cur_code := soundex_code(c)
+      if cur_code != "0" and cur_code != prev_code
+        code = code + cur_code
+      if not is_vowel(c)
+        prev_code = cur_code
+      else
+        prev_code = "0"
+      i = i + 1
+    while code.len() < 4
+      code = code + "0"
+    code
+
+fn main
+  print "Soundex Phonetic Algorithm"
+  print "=========================="
+  print ""
+
+  -- Classic soundex examples
+  words := ["Robert", "Rupert", "Rubin", "Ashcraft", "Ashcroft", "Tymczak", "Pfister", "Smith", "Smythe", "Johnson"]
+
+  print "Word          Soundex"
+  print "----          -------"
+  mut i := 0
+  while i < words.count()
+    w := get_str(words, i)
+    code := soundex(w)
+    padded := w.pad_right(14, " ")
+    print "{padded}{code}"
+    i = i + 1
+  print ""
+
+  -- Show similar-sounding groups
+  print "Similar-sounding pairs:"
+  r1 := soundex("Robert")
+  r2 := soundex("Rupert")
+  match1 := if r1 == r2 then "MATCH" else "different"
+  print "  Robert ({r1}) vs Rupert ({r2}): {match1}"
+
+  a1 := soundex("Ashcraft")
+  a2 := soundex("Ashcroft")
+  match2 := if a1 == a2 then "MATCH" else "different"
+  print "  Ashcraft ({a1}) vs Ashcroft ({a2}): {match2}"
+
+  s1 := soundex("Smith")
+  s2 := soundex("Smythe")
+  match3 := if s1 == s2 then "MATCH" else "different"
+  print "  Smith ({s1}) vs Smythe ({s2}): {match3}"
+  print ""
+
+  print "Soundex encoding complete."

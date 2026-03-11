@@ -1,0 +1,130 @@
+-- Showcase 988: Spelling Corrector (Edit Distance)
+-- Finds closest dictionary word using Levenshtein edit distance
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+fn min3 a:Int b:Int c:Int -> Int
+  ab := if a < b then a else b
+  if ab < c then ab else c
+
+fn levenshtein s:Str t:Str -> Int
+  sn := s.len()
+  tn := t.len()
+  if sn == 0
+    tn
+  else if tn == 0
+    sn
+  else
+    -- Use two rows: prev and curr
+    -- Initialize prev row
+    mut prev := [0]
+    prev.pop()
+    mut ci := 0
+    while ci <= tn
+      prev.push(ci)
+      ci = ci + 1
+    mut i := 1
+    while i <= sn
+      mut curr := [i]
+      mut j := 1
+      while j <= tn
+        sc := s.char_at(i - 1)
+        tc := t.char_at(j - 1)
+        cost := if sc == tc then 0 else 1
+        pj := get_int(prev, j)
+        pj1 := get_int(prev, j - 1)
+        cj1 := get_int(curr, j - 1)
+        val := min3(cj1 + 1, pj + 1, pj1 + cost)
+        curr.push(val)
+        j = j + 1
+      prev = curr
+      i = i + 1
+    get_int(prev, tn)
+
+fn find_closest misspelled:Str dictionary:List -> Str
+  n := dictionary.count()
+  mut best_word := get_str(dictionary, 0)
+  mut best_dist := levenshtein(misspelled, best_word)
+  mut i := 1
+  while i < n
+    w := get_str(dictionary, i)
+    d := levenshtein(misspelled, w)
+    if d < best_dist
+      best_dist = d
+      best_word = w
+    i = i + 1
+  best_word
+
+fn correct misspelled:Str dictionary:List -> Str
+  closest := find_closest(misspelled, dictionary)
+  exact := levenshtein(misspelled, misspelled)
+  -- check if exact match exists
+  n := dictionary.count()
+  mut found := false
+  mut i := 0
+  while i < n and not found
+    if get_str(dictionary, i) == misspelled
+      found = true
+    i = i + 1
+  if found
+    misspelled
+  else
+    closest
+
+fn main
+  print "Spelling Corrector (Edit Distance)"
+  print "==================================="
+  print ""
+
+  mut dictionary := ["the", "cat", "sat", "mat", "bat", "hat", "rat"]
+  dictionary.push("apple")
+  dictionary.push("apply")
+  dictionary.push("application")
+  dictionary.push("hello")
+  dictionary.push("help")
+  dictionary.push("held")
+  dictionary.push("helm")
+  dictionary.push("world")
+  dictionary.push("word")
+  dictionary.push("work")
+  dictionary.push("worn")
+  dictionary.push("spell")
+  dictionary.push("spill")
+  dictionary.push("skill")
+  dictionary.push("still")
+
+  print "Dictionary: {dictionary.count()} words"
+  print ""
+
+  mut misspelled := ["teh", "cta", "aple", "helo", "wrold", "speel", "wrk"]
+
+  print "Word         Correction  Distance"
+  print "----         ----------  --------"
+  mut i := 0
+  while i < misspelled.count()
+    w := get_str(misspelled, i)
+    corrected := find_closest(w, dictionary)
+    dist := levenshtein(w, corrected)
+    padded_w := w.pad_right(13, " ")
+    padded_c := corrected.pad_right(12, " ")
+    print "{padded_w}{padded_c}{dist}"
+    i = i + 1
+  print ""
+
+  -- Show edit distance matrix for a few pairs
+  print "Edit distances:"
+  pairs_a := ["kitten", "saturday", "hello", "abc"]
+  pairs_b := ["sitting", "sunday", "hallo", ""]
+  mut j := 0
+  while j < pairs_a.count()
+    wa := get_str(pairs_a, j)
+    wb := get_str(pairs_b, j)
+    d := levenshtein(wa, wb)
+    print "  {wa} -> {wb}: {d}"
+    j = j + 1
+  print ""
+  print "Spelling correction complete."

@@ -1,0 +1,161 @@
+-- Showcase 990: ROT13 / Caesar Cipher Toolkit
+-- Implements ROT13, Caesar cipher, and Vigenere cipher for text encoding
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn is_upper c:Str -> Bool
+  code := ord(c)
+  code >= 65 and code <= 90
+
+fn is_lower c:Str -> Bool
+  code := ord(c)
+  code >= 97 and code <= 122
+
+fn caesar_char c:Str shift:Int -> Str
+  if is_upper(c)
+    code := ord(c) - 65
+    new_code := (code + shift + 26) - ((code + shift + 26) / 26) * 26
+    chr(new_code + 65)
+  else if is_lower(c)
+    code := ord(c) - 97
+    new_code := (code + shift + 26) - ((code + shift + 26) / 26) * 26
+    chr(new_code + 97)
+  else
+    c
+
+fn caesar text:Str shift:Int -> Str
+  n := text.len()
+  mut result := ""
+  mut i := 0
+  while i < n
+    c := text.char_at(i)
+    result = result + caesar_char(c, shift)
+    i = i + 1
+  result
+
+fn rot13 text:Str -> Str
+  caesar(text, 13)
+
+fn vigenere_char c:Str key_char:Str encrypt:Bool -> Str
+  if is_upper(c) or is_lower(c)
+    shift := ord(key_char.to_lower()) - 97
+    actual_shift := if encrypt then shift else 26 - shift
+    caesar_char(c, actual_shift)
+  else
+    c
+
+fn vigenere text:Str key:Str encrypt:Bool -> Str
+  n := text.len()
+  kn := key.len()
+  mut result := ""
+  mut ki := 0
+  mut i := 0
+  while i < n
+    c := text.char_at(i)
+    if is_upper(c) or is_lower(c)
+      kc := key.char_at(ki)
+      result = result + vigenere_char(c, kc, encrypt)
+      ki = (ki + 1) - ((ki + 1) / kn) * kn
+    else
+      result = result + c
+    i = i + 1
+  result
+
+fn frequency_analysis text:Str -> List
+  -- Count letter frequencies, return top-5 letters
+  mut counts := [0]
+  counts.pop()
+  mut letters := [""]
+  letters.pop()
+  mut i := 0
+  while i < 26
+    counts.push(0)
+    letters.push(chr(i + 65))
+    i = i + 1
+  n := text.len()
+  mut j := 0
+  while j < n
+    c := text.char_at(j).to_upper()
+    if is_upper(c)
+      idx := ord(c) - 65
+      counts[idx] = counts[idx] + 1
+    j = j + 1
+  -- find top letter
+  mut best_i := 0
+  mut best_c := 0
+  mut k := 0
+  while k < 26
+    cnt := counts[k]
+    if cnt > best_c
+      best_c = cnt
+      best_i = k
+    k = k + 1
+  [best_i, best_c]
+
+fn main
+  print "ROT13 / Caesar Cipher Toolkit"
+  print "=============================="
+  print ""
+
+  -- ROT13 examples
+  print "ROT13:"
+  rot_tests := ["Hello, World!", "The quick brown fox", "Uryyb, Jbeyq!"]
+  mut i := 0
+  while i < rot_tests.count()
+    t := get_str(rot_tests, i)
+    encoded := rot13(t)
+    print "  {t} -> {encoded}"
+    i = i + 1
+  print ""
+
+  -- ROT13 is its own inverse
+  original := "Secret Message 123"
+  encoded := rot13(original)
+  decoded := rot13(encoded)
+  print "ROT13 self-inverse test:"
+  print "  Original: {original}"
+  print "  Encoded:  {encoded}"
+  print "  Decoded:  {decoded}"
+  print ""
+
+  -- Caesar cipher with different shifts
+  print "Caesar cipher:"
+  plaintext := "Attack at dawn"
+  shifts := [3, 7, 13, 25]
+  mut j := 0
+  while j < shifts.count()
+    shift := shifts[j]
+    enc := caesar(plaintext, shift)
+    dec := caesar(enc, 26 - shift)
+    print "  Shift {shift}: {enc} -> {dec}"
+    j = j + 1
+  print ""
+
+  -- Vigenere cipher
+  print "Vigenere cipher:"
+  vig_plain := "HELLO WORLD"
+  vig_key := "KEY"
+  vig_enc := vigenere(vig_plain, vig_key, true)
+  vig_dec := vigenere(vig_enc, vig_key, false)
+  print "  Plaintext:  {vig_plain}"
+  print "  Key:        {vig_key}"
+  print "  Encrypted:  {vig_enc}"
+  print "  Decrypted:  {vig_dec}"
+  print ""
+
+  -- Frequency analysis hint
+  cipher_text := "URYYB JBEYQ"
+  freq := frequency_analysis(cipher_text)
+  most_common_idx := freq[0]
+  most_common_count := freq[1]
+  most_common_letter := chr(most_common_idx + 65)
+  -- 'E' is usually most common (index 4), if top is 'Y' (index 24), shift = 24-4 = 20... or 13 for ROT13
+  shift_guess := (most_common_idx - 4 + 26) - ((most_common_idx - 4 + 26) / 26) * 26
+  print "Frequency analysis of: {cipher_text}"
+  print "  Most common letter: {most_common_letter} (appears {most_common_count} times)"
+  print "  Suggested shift: {shift_guess}"
+  decrypted := caesar(cipher_text, 26 - shift_guess)
+  print "  Decrypted: {decrypted}"
+  print ""
+  print "Cipher toolkit complete."

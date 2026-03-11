@@ -1,0 +1,130 @@
+-- Showcase 983: Porter Stemmer (Simplified)
+-- Implements key steps of the Porter stemming algorithm for English
+
+fn ends_with_str word:Str suffix:Str -> Bool
+  wn := word.len()
+  sn := suffix.len()
+  if sn > wn
+    false
+  else
+    word.substr(wn - sn, sn) == suffix
+
+fn strip_suffix word:Str suffix:Str -> Str
+  wn := word.len()
+  sn := suffix.len()
+  word.substr(0, wn - sn)
+
+fn count_vowel_consonant_pairs word:Str -> Int
+  -- Count VC sequences (measure) in the stem
+  n := word.len()
+  mut in_vowel := false
+  mut m := 0
+  mut i := 0
+  while i < n
+    c := word.char_at(i)
+    is_v := c == "a" or c == "e" or c == "i" or c == "o" or c == "u"
+    if is_v
+      in_vowel = true
+    else if in_vowel
+      m = m + 1
+      in_vowel = false
+    i = i + 1
+  m
+
+fn has_vowel stem:Str -> Bool
+  n := stem.len()
+  mut found := false
+  mut i := 0
+  while i < n and not found
+    c := stem.char_at(i)
+    if c == "a" or c == "e" or c == "i" or c == "o" or c == "u"
+      found = true
+    i = i + 1
+  found
+
+fn stem word:Str -> Str
+  mut w := word.to_lower()
+
+  -- Step 1a: sses -> ss, ies -> i, ss -> ss, s -> ""
+  if ends_with_str(w, "sses")
+    w = strip_suffix(w, "sses") + "ss"
+  else if ends_with_str(w, "ies")
+    w = strip_suffix(w, "ies") + "i"
+  else if ends_with_str(w, "ss")
+    w = w
+  else if ends_with_str(w, "s")
+    w = strip_suffix(w, "s")
+
+  -- Step 1b: eed -> ee (if m>0), ed/ing -> "" (if has vowel)
+  if ends_with_str(w, "eed")
+    base := strip_suffix(w, "eed")
+    if count_vowel_consonant_pairs(base) > 0
+      w = base + "ee"
+  else if ends_with_str(w, "ed")
+    base := strip_suffix(w, "ed")
+    if has_vowel(base)
+      w = base
+  else if ends_with_str(w, "ing")
+    base := strip_suffix(w, "ing")
+    if has_vowel(base)
+      w = base
+
+  -- Step 2: common suffixes (m > 0)
+  if ends_with_str(w, "ational") and count_vowel_consonant_pairs(strip_suffix(w, "ational")) > 0
+    w = strip_suffix(w, "ational") + "ate"
+  else if ends_with_str(w, "ization") and count_vowel_consonant_pairs(strip_suffix(w, "ization")) > 0
+    w = strip_suffix(w, "ization") + "ize"
+  else if ends_with_str(w, "fulness") and count_vowel_consonant_pairs(strip_suffix(w, "fulness")) > 0
+    w = strip_suffix(w, "fulness") + "ful"
+
+  -- Step 3: simplify (m > 0)
+  if ends_with_str(w, "icate") and count_vowel_consonant_pairs(strip_suffix(w, "icate")) > 0
+    w = strip_suffix(w, "icate") + "ic"
+  else if ends_with_str(w, "alize") and count_vowel_consonant_pairs(strip_suffix(w, "alize")) > 0
+    w = strip_suffix(w, "alize") + "al"
+
+  -- Step 4: remove derivational suffixes (m > 1)
+  if ends_with_str(w, "tion") and count_vowel_consonant_pairs(strip_suffix(w, "tion")) > 1
+    w = strip_suffix(w, "tion")
+  else if ends_with_str(w, "al") and count_vowel_consonant_pairs(strip_suffix(w, "al")) > 1
+    w = strip_suffix(w, "al")
+  else if ends_with_str(w, "er") and count_vowel_consonant_pairs(strip_suffix(w, "er")) > 1
+    w = strip_suffix(w, "er")
+
+  w
+
+fn main
+  print "Porter Stemmer (Simplified)"
+  print "==========================="
+  print ""
+
+  mut words := ["caresses", "ponies", "troubles", "matting", "agreed", "disabled"]
+  words.push("relational")
+  words.push("nationalization")
+  words.push("hopefulness")
+  words.push("electrical")
+  words.push("running")
+  words.push("happiness")
+  words.push("stemming")
+  words.push("generously")
+
+  print "Word              Stem"
+  print "----              ----"
+  mut i := 0
+  while i < words.count()
+    w := words[i]
+    s := stem(w)
+    padded := w.pad_right(18, " ")
+    print "{padded}{s}"
+    i = i + 1
+  print ""
+
+  -- Test groups: same stem?
+  s1 := stem("running")
+  s2 := stem("runner")
+  print "running -> {s1}"
+  print "runner -> {s2}"
+  same := if s1 == s2 then "same stem" else "different stems"
+  print "Result: {same}"
+  print ""
+  print "Stemming complete."

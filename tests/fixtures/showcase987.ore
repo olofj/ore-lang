@@ -1,0 +1,145 @@
+-- Showcase 987: Cosine Similarity (Term Vectors)
+-- Represents documents as term frequency vectors and computes cosine similarity
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+fn build_vocab_2 doc1:List doc2:List -> List
+  mut vocab := [""]
+  vocab.pop()
+  mut i := 0
+  while i < doc1.count()
+    w := get_str(doc1, i)
+    mut found := false
+    mut k := 0
+    while k < vocab.count() and not found
+      if get_str(vocab, k) == w
+        found = true
+      k = k + 1
+    if not found
+      vocab.push(w)
+    i = i + 1
+  mut j := 0
+  while j < doc2.count()
+    w := get_str(doc2, j)
+    mut found := false
+    mut k := 0
+    while k < vocab.count() and not found
+      if get_str(vocab, k) == w
+        found = true
+      k = k + 1
+    if not found
+      vocab.push(w)
+    j = j + 1
+  vocab
+
+fn count_word words:List term:Str -> Int
+  mut count := 0
+  n := words.count()
+  mut i := 0
+  while i < n
+    if get_str(words, i) == term
+      count = count + 1
+    i = i + 1
+  count
+
+fn build_vector words:List vocab:List -> List
+  mut vec := [0]
+  vec.pop()
+  n := vocab.count()
+  mut i := 0
+  while i < n
+    term := get_str(vocab, i)
+    c := count_word(words, term)
+    vec.push(c)
+    i = i + 1
+  vec
+
+fn dot_product a:List b:List -> Int
+  n := a.count()
+  mut sum := 0
+  mut i := 0
+  while i < n
+    av := get_int(a, i)
+    bv := get_int(b, i)
+    sum = sum + av * bv
+    i = i + 1
+  sum
+
+fn mag_sq v:List -> Int
+  n := v.count()
+  mut sum := 0
+  mut i := 0
+  while i < n
+    x := get_int(v, i)
+    sum = sum + x * x
+    i = i + 1
+  sum
+
+fn cosine_sim_pct a:List b:List -> Int
+  -- Returns cosine similarity * 100 as integer percentage
+  dp := dot_product(a, b)
+  ma := mag_sq(a)
+  mb := mag_sq(b)
+  if ma == 0 or mb == 0
+    0
+  else
+    -- cos * 100 = dp * 100 / sqrt(ma * mb)
+    denom := sqrt(ma.to_float() * mb.to_float())
+    result := dp.to_float() * 100.0 / denom
+    result.to_int()
+
+fn main
+  print "Cosine Similarity (Term Vectors)"
+  print "================================"
+  print ""
+
+  d1 := "the cat sat on the mat"
+  d2 := "the dog sat on the log"
+  d3 := "cats and dogs are great pets"
+
+  print "Document 1: {d1}"
+  print "Document 2: {d2}"
+  print "Document 3: {d3}"
+  print ""
+
+  words1 := d1.to_lower().split(" ")
+  words2 := d2.to_lower().split(" ")
+  words3 := d3.to_lower().split(" ")
+
+  vocab12 := build_vocab_2(words1, words2)
+  vocab13 := build_vocab_2(words1, words3)
+  vocab23 := build_vocab_2(words2, words3)
+
+  vec1_12 := build_vector(words1, vocab12)
+  vec2_12 := build_vector(words2, vocab12)
+  vec1_13 := build_vector(words1, vocab13)
+  vec3_13 := build_vector(words3, vocab13)
+  vec2_23 := build_vector(words2, vocab23)
+  vec3_23 := build_vector(words3, vocab23)
+
+  sim12 := cosine_sim_pct(vec1_12, vec2_12)
+  sim13 := cosine_sim_pct(vec1_13, vec3_13)
+  sim23 := cosine_sim_pct(vec2_23, vec3_23)
+
+  print "Cosine similarities (%):"
+  print "  D1 vs D2: {sim12}%"
+  print "  D1 vs D3: {sim13}%"
+  print "  D2 vs D3: {sim23}%"
+  print ""
+
+  -- Self-similarity
+  vocab11 := build_vocab_2(words1, words1)
+  vec1a := build_vector(words1, vocab11)
+  vec1b := build_vector(words1, vocab11)
+  sim11 := cosine_sim_pct(vec1a, vec1b)
+  print "Self-similarity D1 vs D1: {sim11}%"
+  print ""
+
+  best := if sim12 > sim13 then "D2" else "D3"
+  print "Most similar to D1: {best}"
+  print ""
+  print "Cosine similarity complete."

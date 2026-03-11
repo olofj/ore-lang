@@ -1,0 +1,136 @@
+-- Showcase 986: Jaccard Similarity
+-- Computes set-based Jaccard similarity between text documents
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn text_to_set text:Str -> List
+  words := text.to_lower().split(" ")
+  mut seen := [""]
+  seen.pop()
+  n := words.count()
+  mut i := 0
+  while i < n
+    w := get_str(words, i)
+    mut found := false
+    mut j := 0
+    while j < seen.count() and not found
+      if get_str(seen, j) == w
+        found = true
+      j = j + 1
+    if not found
+      seen.push(w)
+    i = i + 1
+  seen
+
+fn intersection a:List b:List -> List
+  mut result := [""]
+  result.pop()
+  na := a.count()
+  nb := b.count()
+  mut i := 0
+  while i < na
+    word := get_str(a, i)
+    mut found := false
+    mut j := 0
+    while j < nb and not found
+      if get_str(b, j) == word
+        found = true
+      j = j + 1
+    if found
+      result.push(word)
+    i = i + 1
+  result
+
+fn union_set a:List b:List -> List
+  mut result := [""]
+  result.pop()
+  na := a.count()
+  mut i := 0
+  while i < na
+    result.push(get_str(a, i))
+    i = i + 1
+  nb := b.count()
+  mut j := 0
+  while j < nb
+    word := get_str(b, j)
+    mut found := false
+    mut k := 0
+    while k < result.count() and not found
+      if get_str(result, k) == word
+        found = true
+      k = k + 1
+    if not found
+      result.push(word)
+    j = j + 1
+  result
+
+fn jaccard a:List b:List -> Float
+  inter := intersection(a, b)
+  uni := union_set(a, b)
+  ui := uni.count()
+  ii := inter.count()
+  if ui == 0
+    0.0
+  else
+    ii.to_float() / ui.to_float()
+
+fn round3 x:Float -> Float
+  i := (x * 1000.0).to_int()
+  i.to_float() / 1000.0
+
+fn print_similarity doc_a:Str doc_b:Str label_a:Str label_b:Str
+  sa := text_to_set(doc_a)
+  sb := text_to_set(doc_b)
+  j := jaccard(sa, sb)
+  jr := round3(j)
+  inter := intersection(sa, sb)
+  ic := inter.count()
+  uni := union_set(sa, sb)
+  uc := uni.count()
+  print "  {label_a} vs {label_b}: J={jr} (|inter|={ic}, |union|={uc})"
+
+fn main
+  print "Jaccard Similarity"
+  print "=================="
+  print ""
+
+  d1 := "the cat sat on the mat"
+  d2 := "the dog sat on the log"
+  d3 := "a completely different sentence about topics"
+  d4 := "the cat sat on the mat"
+
+  print "Documents:"
+  print "  D1: {d1}"
+  print "  D2: {d2}"
+  print "  D3: {d3}"
+  print "  D4: {d4}"
+  print ""
+
+  print "Pairwise Jaccard similarity:"
+  print_similarity(d1, d2, "D1", "D2")
+  print_similarity(d1, d3, "D1", "D3")
+  print_similarity(d1, d4, "D1", "D4")
+  print_similarity(d2, d3, "D2", "D3")
+  print ""
+
+  -- Thresholded similarity
+  print "Near-duplicate detection (threshold = 0.5):"
+  s1 := text_to_set(d1)
+  s2 := text_to_set(d2)
+  s3 := text_to_set(d3)
+  s4 := text_to_set(d4)
+
+  j12 := jaccard(s1, s2)
+  j14 := jaccard(s1, s4)
+  j13 := jaccard(s1, s3)
+
+  r12 := if j12 > 0.5 then "near-duplicate" else "different"
+  r14 := if j14 > 0.5 then "near-duplicate" else "different"
+  r13 := if j13 > 0.5 then "near-duplicate" else "different"
+
+  print "  D1 vs D2: {r12}"
+  print "  D1 vs D4: {r14}"
+  print "  D1 vs D3: {r13}"
+  print ""
+  print "Jaccard similarity complete."

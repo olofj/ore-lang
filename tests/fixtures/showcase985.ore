@@ -1,0 +1,113 @@
+-- Showcase 985: N-gram Generator
+-- Generates character and word n-grams from text
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn char_ngrams text:Str n:Int -> List
+  mut result := [""]
+  result.pop()
+  len := text.len()
+  mut i := 0
+  while i + n <= len
+    gram := text.substr(i, n)
+    result.push(gram)
+    i = i + 1
+  result
+
+fn word_ngrams words:List n:Int -> List
+  mut result := [""]
+  result.pop()
+  total := words.count()
+  mut i := 0
+  while i + n <= total
+    mut gram := get_str(words, i)
+    mut j := 1
+    while j < n
+      gram = gram + " " + get_str(words, i + j)
+      j = j + 1
+    result.push(gram)
+    i = i + 1
+  result
+
+fn unique_ngrams grams:List -> List
+  mut seen := [""]
+  seen.pop()
+  mut result := [""]
+  result.pop()
+  n := grams.count()
+  mut i := 0
+  while i < n
+    g := get_str(grams, i)
+    mut found := false
+    mut j := 0
+    while j < seen.count() and not found
+      if get_str(seen, j) == g
+        found = true
+      j = j + 1
+    if not found
+      seen.push(g)
+      result.push(g)
+    i = i + 1
+  result
+
+fn print_ngrams grams:List label:Str
+  n := grams.count()
+  print "{label} ({n} total):"
+  mut i := 0
+  while i < n and i < 8
+    g := get_str(grams, i)
+    print "  [{g}]"
+    i = i + 1
+  if n > 8
+    print "  ..."
+
+fn main
+  print "N-gram Generator"
+  print "================"
+  print ""
+
+  -- Character bigrams and trigrams
+  word := "hello"
+  print "Character n-grams of: {word}"
+  bi := char_ngrams(word, 2)
+  tri := char_ngrams(word, 3)
+  print_ngrams(bi, "  Bigrams")
+  print_ngrams(tri, "  Trigrams")
+  print ""
+
+  -- Word n-grams
+  sentence := "the quick brown fox jumps over the lazy dog"
+  words := sentence.split(" ")
+  wc := words.count()
+  print "Word n-grams of: {sentence}"
+  print "Total words: {wc}"
+  print ""
+
+  unigrams := word_ngrams(words, 1)
+  bigrams := word_ngrams(words, 2)
+  trigrams := word_ngrams(words, 3)
+
+  print_ngrams(unigrams, "  Unigrams")
+  print ""
+  print_ngrams(bigrams, "  Bigrams")
+  print ""
+  print_ngrams(trigrams, "  Trigrams")
+  print ""
+
+  -- Unique character trigrams for language detection
+  text2 := "statistics"
+  print "Unique character trigrams of: {text2}"
+  all_tri := char_ngrams(text2, 3)
+  uniq_tri := unique_ngrams(all_tri)
+  utc := uniq_tri.count()
+  atc := all_tri.count()
+  print "  Total trigrams: {atc}"
+  print "  Unique trigrams: {utc}"
+  mut k := 0
+  while k < utc
+    g := get_str(uniq_tri, k)
+    print "  [{g}]"
+    k = k + 1
+  print ""
+  print "N-gram generation complete."
