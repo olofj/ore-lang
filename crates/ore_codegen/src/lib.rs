@@ -2,7 +2,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::{BasicValue, BasicValueEnum, FunctionValue, IntValue, PointerValue};
-use inkwell::types::BasicType;
+use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::IntPredicate;
 use std::collections::{HashMap, HashSet};
 
@@ -658,11 +658,10 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_push", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_get(ptr, i64) -> i64
         self.module.add_function("ore_list_get", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_list_set", void_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_get_or", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_len(ptr) -> i64
         self.module.add_function("ore_list_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
-        // ore_list_set(ptr, i64, i64)
-        self.module.add_function("ore_list_set", void_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_print(ptr)
         self.module.add_function("ore_list_print", void_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_print_typed(ptr, i64)
@@ -2782,6 +2781,17 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => Ok((raw_val, elem_kind))
                 }
+            }
+            "set" => {
+                if args.len() != 2 {
+                    return Err(CodeGenError { line: None, msg: "set takes 2 arguments (index, value)".into() });
+                }
+                let idx = self.compile_expr(&args[0], func)?;
+                let val = self.compile_expr(&args[1], func)?;
+                let val_i64 = self.value_to_i64(val)?;
+                let rt = self.module.get_function("ore_list_set").unwrap();
+                bld!(self.builder.build_call(rt, &[list_val.into(), idx.into(), val_i64.into()], ""))?;
+                Ok((list_val, ValKind::List))
             }
             "get_or" => {
                 if args.len() != 2 {
@@ -4943,11 +4953,15 @@ impl<'ctx> CodeGen<'ctx> {
                     val.into_int_value(), self.context.i64_type(), "btoi64"
                 ))
             }
+            ValKind::Float => {
+                bld!(self.builder.build_bit_cast(val, self.context.i64_type(), "ftoi64")).map(|v| v.into_int_value())
+            }
             ValKind::Str | ValKind::List | ValKind::Map => {
                 bld!(self.builder.build_ptr_to_int(
                     val.into_pointer_value(), self.context.i64_type(), "ptoi64"
                 ))
             }
+            ValKind::Void => Ok(self.context.i64_type().const_int(0, false)),
             _ => Ok(val.into_int_value()),
         }
     }
@@ -6740,6 +6754,19 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
 
+    fn build_entry_alloca(&self, func: FunctionValue<'ctx>, ty: BasicTypeEnum<'ctx>, name: &str) -> Result<PointerValue<'ctx>, CodeGenError> {
+        let entry_bb = func.get_first_basic_block().unwrap();
+        let current_bb = self.builder.get_insert_block().unwrap();
+        if let Some(first_instr) = entry_bb.get_first_instruction() {
+            self.builder.position_before(&first_instr);
+        } else {
+            self.builder.position_at_end(entry_bb);
+        }
+        let alloca = bld!(self.builder.build_alloca(ty, name))?;
+        self.builder.position_at_end(current_bb);
+        Ok(alloca)
+    }
+
     fn compile_if_else_with_kind(
         &mut self,
         cond: &Expr,
@@ -6760,7 +6787,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         bld!(self.builder.build_conditional_branch(cond_int, then_bb, else_bb))?;
 
-        // Compile then branch — get last expression's value and kind
+        // Compile then branch
         self.builder.position_at_end(then_bb);
         let (then_val, then_kind) = self.compile_block_stmts_with_kind(then_block, func)?;
         let then_val = then_val.unwrap_or_else(|| i64_type.const_int(0, false).into());
@@ -6778,31 +6805,48 @@ impl<'ctx> CodeGen<'ctx> {
             (i64_type.const_int(0, false).into(), ValKind::Int)
         };
 
-        // Ensure both branches produce the same type for the phi node
-        // If types differ, coerce both to i64
-        let (then_coerced, else_coerced) = if then_val.get_type() != else_val.get_type() {
-            let t = self.coerce_to_i64(then_val, &then_kind)?;
-            // Need to position back in else block for the coercion
-            // Actually, coercions were already done in the right blocks
-            // We need to handle this differently
-            // For now, just use i64 for both
-            self.builder.position_at_end(then_end_bb);
-            // Re-do: we need to insert coercions before the branch
-            // This is getting complex. Let's just use an alloca approach instead.
-            (t.into(), else_val) // May fail if types differ
-        } else {
-            (then_val, else_val)
-        };
-
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(merge_bb))?;
         }
         let else_end_bb = self.builder.get_insert_block().unwrap();
 
         self.builder.position_at_end(merge_bb);
-        let phi = bld!(self.builder.build_phi(then_coerced.get_type(), "ifval"))?;
-        phi.add_incoming(&[(&then_coerced, then_end_bb), (&else_coerced, else_end_bb)]);
-        Ok((phi.as_basic_value(), then_kind))
+
+        // If types match, use phi node directly
+        if then_val.get_type() == else_val.get_type() {
+            let phi = bld!(self.builder.build_phi(then_val.get_type(), "ifval"))?;
+            phi.add_incoming(&[(&then_val, then_end_bb), (&else_val, else_end_bb)]);
+            return Ok((phi.as_basic_value(), then_kind));
+        }
+
+        // Types differ — use an alloca-based approach with i64 coercion.
+        // We need to rebuild with the alloca in the entry block.
+        // Remove the merge block contents and recompile.
+        // Actually, we need to insert stores before the branches. Use a different strategy:
+        // Build an alloca in the entry block, then patch stores into then/else before their terminators.
+        let result_alloca = self.build_entry_alloca(func, i64_type.into(), "if_result")?;
+
+        // Insert store in then block before its terminator
+        if let Some(term) = then_end_bb.get_terminator() {
+            self.builder.position_before(&term);
+        } else {
+            self.builder.position_at_end(then_end_bb);
+        }
+        let then_i64 = self.coerce_to_i64(then_val, &then_kind)?;
+        bld!(self.builder.build_store(result_alloca, then_i64))?;
+
+        // Insert store in else block before its terminator
+        if let Some(term) = else_end_bb.get_terminator() {
+            self.builder.position_before(&term);
+        } else {
+            self.builder.position_at_end(else_end_bb);
+        }
+        let else_i64 = self.coerce_to_i64(else_val, &_else_kind)?;
+        bld!(self.builder.build_store(result_alloca, else_i64))?;
+
+        self.builder.position_at_end(merge_bb);
+        let result = bld!(self.builder.build_load(i64_type, result_alloca, "ifval"))?;
+        Ok((result, then_kind))
     }
 
     fn compile_colon_match_with_kind(

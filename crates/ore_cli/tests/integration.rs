@@ -1410,3 +1410,20 @@ fn showcase18() {
     assert!(out.contains("Long words: Brown, Jumps, Lazy, Over, Quick"));
     assert!(out.contains("Twin prime pairs up to 30: 4"));
 }
+
+#[test]
+fn showcase19() {
+    let out = run_ore("showcase19.ore");
+    assert!(out.contains("Dot product: 11"));
+    assert!(out.contains("Magnitude: 5.0"));
+    assert!(out.contains("Squares: 1, 4, 9, 16, 25"));
+    assert!(out.contains("Safe access: -1"));
+    assert!(out.contains("Sorted: 11, 12, 22, 25, 64"));
+    assert!(out.contains("Mean: 86"));
+    assert!(out.contains("Min: 76"));
+    assert!(out.contains("Max: 95"));
+    assert!(out.contains("Variance: 33"));
+    assert!(out.contains("70s: 2"));
+    assert!(out.contains("80s: 4"));
+    assert!(out.contains("90s: 4"));
+}
