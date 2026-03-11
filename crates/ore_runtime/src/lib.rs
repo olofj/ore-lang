@@ -813,6 +813,47 @@ pub extern "C" fn ore_list_join(list: *mut OreList, sep: *mut OreStr) -> *mut Or
     }
 }
 
+/// Take first n elements from a list.
+#[no_mangle]
+pub extern "C" fn ore_list_take(list: *mut OreList, n: i64) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        let count = (n.max(0) as usize).min(src.len as usize);
+        for i in 0..count {
+            ore_list_push(result, *src.data.add(i));
+        }
+        result
+    }
+}
+
+/// Skip first n elements from a list.
+#[no_mangle]
+pub extern "C" fn ore_list_skip(list: *mut OreList, n: i64) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        let start = (n.max(0) as usize).min(src.len as usize);
+        for i in start..src.len as usize {
+            ore_list_push(result, *src.data.add(i));
+        }
+        result
+    }
+}
+
+/// Sum all i64 elements in a list.
+#[no_mangle]
+pub extern "C" fn ore_list_sum(list: *mut OreList) -> i64 {
+    unsafe {
+        let src = &*list;
+        let mut total: i64 = 0;
+        for i in 0..src.len as usize {
+            total += *src.data.add(i);
+        }
+        total
+    }
+}
+
 /// Flat map: applies func to each element (must return a list), concatenates results.
 #[no_mangle]
 pub extern "C" fn ore_list_flat_map(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {

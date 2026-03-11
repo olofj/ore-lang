@@ -432,3 +432,10 @@ fn stdlib_range() {
         "[1, 2, 3, 4, 5]", "55", "[1, 10, 2, 20, 3, 30]",
     ]);
 }
+
+#[test]
+fn lists_take_skip() {
+    let out = run_ore("lists/take_skip.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["[1, 2, 3]", "[3, 4, 5]", "15", "12"]);
+}

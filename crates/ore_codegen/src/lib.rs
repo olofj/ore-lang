@@ -599,6 +599,12 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_flat_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_range(i64, i64) -> ptr
         self.module.add_function("ore_range", ptr_type.fn_type(&[i64_type.into(), i64_type.into()], false), ext);
+        // ore_list_take(ptr, i64) -> ptr
+        self.module.add_function("ore_list_take", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        // ore_list_skip(ptr, i64) -> ptr
+        self.module.add_function("ore_list_skip", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        // ore_list_sum(ptr) -> i64
+        self.module.add_function("ore_list_sum", i64_type.fn_type(&[ptr_type.into()], false), ext);
         // String utilities
         self.module.add_function("ore_float_to_str", ptr_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_str_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -1869,6 +1875,23 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), sep.into()], "join"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
+            }
+            "take" | "skip" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: format!("{} takes 1 argument (count)", method) });
+                }
+                let n = self.compile_expr(&args[0], func)?;
+                let runtime_fn_name = format!("ore_list_{}", method);
+                let rt = self.module.get_function(&runtime_fn_name).unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), n.into()], method))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            "sum" => {
+                let rt = self.module.get_function("ore_list_sum").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sum"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
             }
             "any" | "all" => {
                 if args.len() != 1 {

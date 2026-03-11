@@ -1,0 +1,12 @@
+fn main
+  nums := [1, 2, 3, 4, 5]
+  print nums.take(3)
+  print nums.skip(2)
+  print nums.sum()
+
+  -- pipeline style
+  result := range(1, 11)
+    | filter(x => x % 2 == 0)
+    | take(3)
+    | sum()
+  print result
