@@ -1,0 +1,124 @@
+-- Showcase 563: Sparse Vector Operations
+
+fn main
+  print "Sparse Vector Operations:"
+  print ""
+
+  -- Part 1: Sparse vector representation
+  print "=== Part 1: Sparse Vector Representation ==="
+  -- Vector A: indices and values (dimension 10, only 4 non-zero)
+  mut a_indices := [1, 3, 5, 8]
+  mut a_values := [3, 7, 2, 5]
+  a_nnz := 4
+  dim := 10
+
+  -- Vector B: indices and values
+  mut b_indices := [0, 3, 5, 7, 9]
+  mut b_values := [4, 1, 6, 3, 2]
+  b_nnz := 5
+
+  print "  Dimension: {dim}"
+  print "  Vector A ({a_nnz} non-zeros):"
+  for i in range(0, a_nnz)
+    print "    [{a_indices[i]}] = {a_values[i]}"
+
+  print "  Vector B ({b_nnz} non-zeros):"
+  for i in range(0, b_nnz)
+    print "    [{b_indices[i]}] = {b_values[i]}"
+
+  -- Part 2: Dot product
+  print ""
+  print "=== Part 2: Dot Product ==="
+  mut dot := 0
+  for i in range(0, a_nnz)
+    for j in range(0, b_nnz)
+      if a_indices[i] == b_indices[j]
+        product := a_values[i] * b_values[j]
+        print "  A[{a_indices[i]}]*B[{b_indices[j]}] = {a_values[i]}*{b_values[j]} = {product}"
+        dot = dot + product
+  print "  Dot product: {dot}"
+
+  -- Part 3: Vector addition
+  print ""
+  print "=== Part 3: Vector Addition ==="
+  mut c_indices := []
+  mut c_values := []
+  mut ai := 0
+  mut bi := 0
+
+  for step in range(0, 20)
+    if ai < a_nnz and bi < b_nnz
+      if a_indices[ai] < b_indices[bi]
+        c_indices | push(a_indices[ai])
+        c_values | push(a_values[ai])
+        ai = ai + 1
+      else if a_indices[ai] > b_indices[bi]
+        c_indices | push(b_indices[bi])
+        c_values | push(b_values[bi])
+        bi = bi + 1
+      else
+        c_indices | push(a_indices[ai])
+        c_values | push(a_values[ai] + b_values[bi])
+        ai = ai + 1
+        bi = bi + 1
+    else if ai < a_nnz
+      c_indices | push(a_indices[ai])
+      c_values | push(a_values[ai])
+      ai = ai + 1
+    else if bi < b_nnz
+      c_indices | push(b_indices[bi])
+      c_values | push(b_values[bi])
+      bi = bi + 1
+
+  c_nnz := c_indices | count()
+  print "  A + B ({c_nnz} non-zeros):"
+  for i in range(0, c_nnz)
+    print "    [{c_indices[i]}] = {c_values[i]}"
+
+  -- Part 4: L2 norm (squared, using integers)
+  print ""
+  print "=== Part 4: Norms ==="
+  mut a_norm_sq := 0
+  for i in range(0, a_nnz)
+    a_norm_sq = a_norm_sq + a_values[i] * a_values[i]
+  print "  ||A||^2 = {a_norm_sq}"
+
+  mut b_norm_sq := 0
+  for i in range(0, b_nnz)
+    b_norm_sq = b_norm_sq + b_values[i] * b_values[i]
+  print "  ||B||^2 = {b_norm_sq}"
+
+  -- Part 5: Sparsity analysis
+  print ""
+  print "=== Part 5: Sparsity Analysis ==="
+  a_sparsity := (dim - a_nnz) * 100 / dim
+  b_sparsity := (dim - b_nnz) * 100 / dim
+  print "  Vector A: {a_nnz}/{dim} non-zeros ({a_sparsity}% sparse)"
+  print "  Vector B: {b_nnz}/{dim} non-zeros ({b_sparsity}% sparse)"
+  dense_ops := dim
+  sparse_ops := a_nnz + b_nnz
+  print "  Dense dot product ops: {dense_ops}"
+  print "  Sparse dot product ops: {sparse_ops}"
+  savings := (dense_ops - sparse_ops) * 100 / dense_ops
+  print "  Computation savings: {savings}%"
+
+  -- Part 6: Scalar multiplication
+  print ""
+  print "=== Part 6: Scalar Multiply ==="
+  scalar := 3
+  print "  {scalar} * A:"
+  for i in range(0, a_nnz)
+    scaled := a_values[i] * scalar
+    print "    [{a_indices[i]}] = {scaled}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Dimension: {dim}"
+  print "  A non-zeros: {a_nnz}"
+  print "  B non-zeros: {b_nnz}"
+  print "  A+B non-zeros: {c_nnz}"
+  print "  Dot product: {dot}"
+
+  print ""
+  print "Sparse vectors: dot product, addition, norms, scalar multiply, sparsity analysis."

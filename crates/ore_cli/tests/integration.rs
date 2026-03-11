@@ -7297,6 +7297,123 @@ fn showcase560_grand_algorithm() {
 }
 
 #[test]
+fn showcase561_raft_leader_election() {
+    let out = run_ore("showcase561.ore");
+    assert!(out.contains("Raft-like Leader Election:"));
+    assert!(out.contains("Node 3 times out first (120ms)"));
+    assert!(out.contains("Node 3 becomes candidate, term=1"));
+    assert!(out.contains("Majority reached!"));
+    assert!(out.contains("Node 3 is now LEADER (term 1)"));
+    assert!(out.contains("Entry 'SET x=1' committed (5/5 acks)"));
+    assert!(out.contains("Votes received: 5/5"));
+    assert!(out.contains("Raft consensus: election timeout, vote collection, leader establishment, log replication."));
+}
+
+#[test]
+fn showcase562_type_inference() {
+    let out = run_ore("showcase562.ore");
+    assert!(out.contains("Simple Type Inference Engine:"));
+    assert!(out.contains("E0: 42 => Int (literal rule)"));
+    assert!(out.contains("E3: sum > 0 => Bool (comparison rule)"));
+    assert!(out.contains("E6: len(x) => Int (function signature)"));
+    assert!(out.contains("Unify b ~ a => b = Int"));
+    assert!(out.contains("Types inferred: 7/7"));
+    assert!(out.contains("Type inference: literals, operators, unification, environment lookup."));
+}
+
+#[test]
+fn showcase563_sparse_vectors() {
+    let out = run_ore("showcase563.ore");
+    assert!(out.contains("Sparse Vector Operations:"));
+    assert!(out.contains("Dot product: 19"));
+    assert!(out.contains("A + B (7 non-zeros)"));
+    assert!(out.contains("||A||^2 = 87"));
+    assert!(out.contains("||B||^2 = 66"));
+    assert!(out.contains("Sparse vectors: dot product, addition, norms, scalar multiply, sparsity analysis."));
+}
+
+#[test]
+fn showcase564_garbage_collector() {
+    let out = run_ore("showcase564.ore");
+    assert!(out.contains("Simple Garbage Collector with Generations:"));
+    assert!(out.contains("Total allocated: 60 bytes in 8 objects"));
+    assert!(out.contains("Marked: 7/8"));
+    assert!(out.contains("Sweep obj[7] (freed 4 bytes)"));
+    assert!(out.contains("Promoted: 7 objects"));
+    assert!(out.contains("Live objects: 7"));
+    assert!(out.contains("GC simulation: mark-sweep, generational collection, promotion, reference tracing."));
+}
+
+#[test]
+fn showcase565_protobuf() {
+    let out = run_ore("showcase565.ore");
+    assert!(out.contains("Protocol Buffers Concepts:"));
+    assert!(out.contains("Encoded bytes: [172, 2]"));
+    assert!(out.contains("Decoded: 300"));
+    assert!(out.contains("Total message size: 23 bytes"));
+    assert!(out.contains("Space savings: 60%"));
+    assert!(out.contains("change type: UNSAFE"));
+    assert!(out.contains("Protobuf concepts: schema, wire types, varint encoding, serialization, evolution."));
+}
+
+#[test]
+fn showcase566_os_boot() {
+    let out = run_ore("showcase566.ore");
+    assert!(out.contains("Simple OS Boot Sequence:"));
+    assert!(out.contains("POST complete: 5/5 passed"));
+    assert!(out.contains("Total memory: 16384 KB (16 MB)"));
+    assert!(out.contains("Kernel init: 22ms"));
+    assert!(out.contains("Drivers loaded: 5/5"));
+    assert!(out.contains("Starting ssh ... PID 102"));
+    assert!(out.contains("OS boot: POST, memory detection, bootloader, kernel init, drivers, filesystem, services."));
+}
+
+#[test]
+fn showcase567_query_optimization() {
+    let out = run_ore("showcase567.ore");
+    assert!(out.contains("Query Optimization:"));
+    assert!(out.contains(">> Hash Join: cost=20 << SELECTED"));
+    assert!(out.contains("Speedup: 25000x"));
+    assert!(out.contains("Cost reduction: 500000 -> 20"));
+    assert!(out.contains("Query optimization: table stats, plan enumeration, cost estimation, index selection."));
+}
+
+#[test]
+fn showcase568_finite_element() {
+    let out = run_ore("showcase568.ore");
+    assert!(out.contains("Finite Element Method (1D):"));
+    assert!(out.contains("Elements: 5"));
+    assert!(out.contains("Diagonal: 5, 10, 10, 10, 10, 5"));
+    assert!(out.contains("Max error: 0 (exact for linear problem)"));
+    assert!(out.contains("DOF (degrees of freedom): 4"));
+    assert!(out.contains("FEM 1D: mesh generation, stiffness assembly, load vector, boundary conditions, solution."));
+}
+
+#[test]
+fn showcase569_smart_contract() {
+    let out = run_ore("showcase569.ore");
+    assert!(out.contains("Blockchain Smart Contract:"));
+    assert!(out.contains("TX1: Alice deposits 200 tokens"));
+    assert!(out.contains("Vault total: 450 tokens"));
+    assert!(out.contains("TX4: Alice withdraws 50 tokens"));
+    assert!(out.contains("TX REVERTED: Bob tried to withdraw 999 (only has 150)"));
+    assert!(out.contains("Total supply: 1800"));
+    assert!(out.contains("Smart contract: token vault, deposits, withdrawals, state queries, transaction log."));
+}
+
+#[test]
+fn showcase570_error_recovery() {
+    let out = run_ore("showcase570.ore");
+    assert!(out.contains("Compiler Error Recovery Strategies:"));
+    assert!(out.contains("ERROR: unexpected '@' -- skipping"));
+    assert!(out.contains("Syncing to next ';' ..."));
+    assert!(out.contains("Cascading errors prevented: 2"));
+    assert!(out.contains("... too many errors, aborting compilation"));
+    assert!(out.contains("Reported: 10, suppressed: 2"));
+    assert!(out.contains("Error recovery: panic mode, error productions, cascade prevention, error limiting."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

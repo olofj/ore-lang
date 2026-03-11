@@ -1,0 +1,128 @@
+-- Showcase 562: Simple Type Inference Engine
+
+fn main
+  print "Simple Type Inference Engine:"
+  print ""
+
+  -- Part 1: Type representation
+  print "=== Part 1: Type System ==="
+  mut type_names := ["Int", "Float", "Bool", "Str", "List_Int", "Fn_Int_Int", "Unknown"]
+  num_types := 7
+  print "  Known types:"
+  for i in range(0, num_types)
+    print "    T{i} = {type_names[i]}"
+
+  -- Part 2: Expression nodes
+  print ""
+  print "=== Part 2: Expressions ==="
+  -- Expressions: kind, left, right, inferred_type
+  -- Kinds: 0=literal_int, 1=literal_str, 2=literal_bool, 3=add, 4=compare, 5=var, 6=call
+  mut expr_kinds := [0, 0, 3, 4, 1, 5, 6]
+  mut expr_names := ["42", "10", "42 + 10", "sum > 0", "hello", "x", "len(x)"]
+  mut expr_types := [-1, -1, -1, -1, -1, -1, -1]
+  num_exprs := 7
+
+  print "  Expressions to infer:"
+  for i in range(0, num_exprs)
+    print "    E{i}: {expr_names[i]} (type: ?)"
+
+  -- Part 3: Inference rules
+  print ""
+  print "=== Part 3: Inference Rules ==="
+  print "  Rule 1: Integer literal -> Int"
+  print "  Rule 2: String literal -> Str"
+  print "  Rule 3: Bool literal -> Bool"
+  print "  Rule 4: Int + Int -> Int"
+  print "  Rule 5: compare -> Bool"
+  print "  Rule 6: variable lookup"
+  print "  Rule 7: function return type"
+
+  -- Part 4: Run inference
+  print ""
+  print "=== Part 4: Running Inference ==="
+  mut inferred := 0
+
+  -- E0: literal int 42 -> Int
+  expr_types[0] = 0
+  inferred = inferred + 1
+  print "  E0: 42 => Int (literal rule)"
+
+  -- E1: literal int 10 -> Int
+  expr_types[1] = 0
+  inferred = inferred + 1
+  print "  E1: 10 => Int (literal rule)"
+
+  -- E2: add(E0, E1) -> both Int, result Int
+  expr_types[2] = 0
+  inferred = inferred + 1
+  print "  E2: 42 + 10 => Int (both operands Int)"
+
+  -- E3: compare -> Bool
+  expr_types[3] = 2
+  inferred = inferred + 1
+  print "  E3: sum > 0 => Bool (comparison rule)"
+
+  -- E4: literal str -> Str
+  expr_types[4] = 3
+  inferred = inferred + 1
+  print "  E4: hello => Str (literal rule)"
+
+  -- E5: variable x, lookup in env -> Str
+  expr_types[5] = 3
+  inferred = inferred + 1
+  print "  E5: x => Str (environment lookup)"
+
+  -- E6: call len(Str) -> Int
+  expr_types[6] = 0
+  inferred = inferred + 1
+  print "  E6: len(x) => Int (function signature)"
+
+  -- Part 5: Results
+  print ""
+  print "=== Part 5: Inference Results ==="
+  for i in range(0, num_exprs)
+    t := expr_types[i]
+    if t >= 0
+      print "  E{i}: {expr_names[i]} :: {type_names[t]}"
+
+  -- Part 6: Type unification
+  print ""
+  print "=== Part 6: Unification ==="
+  -- Simulate unifying type variables
+  num_tvars := 4
+
+  print "  Initial type variables:"
+  print "    a = Unknown"
+  print "    b = Unknown"
+  print "    c = Unknown"
+  print "    d = Unknown"
+
+  -- Unify: a = Int (from literal)
+  print "  Unify a ~ Int => a = Int"
+
+  -- Unify: b = a (from assignment)
+  print "  Unify b ~ a => b = Int"
+
+  -- Unify: c = Bool (from condition)
+  print "  Unify c ~ Bool => c = Bool"
+
+  -- Unify: d = Str (from string op)
+  print "  Unify d ~ Str => d = Str"
+
+  print "  Resolved type variables:"
+  print "    a = Int"
+  print "    b = Int"
+  print "    c = Bool"
+  print "    d = Str"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Expressions analyzed: {num_exprs}"
+  print "  Types inferred: {inferred}/{num_exprs}"
+  print "  Type variables unified: {num_tvars}"
+  print "  Unresolved variables: 0"
+  print "  Success rate: 100%"
+
+  print ""
+  print "Type inference: literals, operators, unification, environment lookup."

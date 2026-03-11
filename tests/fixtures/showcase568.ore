@@ -1,0 +1,121 @@
+-- Showcase 568: Finite Element Method Basics (1D)
+
+fn main
+  print "Finite Element Method (1D):"
+  print ""
+
+  -- Part 1: Mesh generation
+  print "=== Part 1: Mesh Generation ==="
+  -- Solve -u''(x) = f(x) on [0, 1] with u(0)=0, u(1)=0
+  -- Using 5 elements
+  num_elements := 5
+  num_nodes := 6
+  -- Node positions: 0, 0.2, 0.4, 0.6, 0.8, 1.0 (stored as *100 for integers)
+  mut node_pos := [0, 20, 40, 60, 80, 100]
+  h := 20
+
+  print "  Domain: [0, 1]"
+  print "  Elements: {num_elements}"
+  print "  Nodes: {num_nodes}"
+  print "  Element size h = 0.2"
+  print "  Node positions:"
+  mut node_labels := ["0.0", "0.2", "0.4", "0.6", "0.8", "1.0"]
+  for i in range(0, num_nodes)
+    print "    Node {i}: {node_labels[i]}"
+
+  -- Part 2: Element stiffness matrix
+  print ""
+  print "=== Part 2: Element Stiffness ==="
+  -- For linear elements: K_e = (1/h) * [[1, -1], [-1, 1]]
+  -- With h=0.2, 1/h = 5
+  inv_h := 100 / h
+  print "  Linear element stiffness (1/h = {inv_h}):"
+  print "    K_e = [{inv_h}, -{inv_h}]"
+  print "         [-{inv_h}, {inv_h}]"
+
+  -- Part 3: Global stiffness assembly
+  print ""
+  print "=== Part 3: Global Assembly ==="
+  -- Assemble tridiagonal stiffness matrix K
+  -- Diagonal: 2/h (interior), 1/h (boundary)
+  -- Off-diagonal: -1/h
+  mut diag := [0, 0, 0, 0, 0, 0]
+  mut off_diag := [0, 0, 0, 0, 0]
+
+  -- Assembly: add element contributions
+  for e in range(0, num_elements)
+    diag[e] = diag[e] + inv_h
+    diag[e + 1] = diag[e + 1] + inv_h
+    off_diag[e] = off_diag[e] - inv_h
+
+  print "  Global stiffness matrix (tridiagonal):"
+  print "  Diagonal: {diag | join(", ")}"
+  print "  Off-diagonal: {off_diag | join(", ")}"
+
+  -- Part 4: Load vector
+  print ""
+  print "=== Part 4: Load Vector ==="
+  -- f(x) = 1 (constant source), F_i = integral of f * phi_i
+  -- For interior nodes: F_i = h = 0.2 -> stored as 20 (scaled by 100)
+  mut load := [0, 0, 0, 0, 0, 0]
+  for e in range(0, num_elements)
+    load[e] = load[e] + h / 2
+    load[e + 1] = load[e + 1] + h / 2
+
+  print "  Source function: f(x) = 1"
+  print "  Load vector (scaled by 100):"
+  for i in range(0, num_nodes)
+    print "    F[{i}] = {load[i]}"
+
+  -- Part 5: Apply boundary conditions
+  print ""
+  print "=== Part 5: Boundary Conditions ==="
+  print "  u(0) = 0: fix node 0"
+  print "  u(1) = 0: fix node 5"
+
+  -- Eliminate rows/columns for boundary nodes
+  -- Interior nodes: 1, 2, 3, 4
+  interior_start := 1
+  interior_end := 5
+  num_interior := 4
+
+  print "  Interior nodes: {num_interior}"
+  print "  System size: {num_interior} x {num_interior}"
+
+  -- Part 6: Solve (simplified - exact solution is u(x) = x(1-x)/2)
+  print ""
+  print "=== Part 6: Solution ==="
+  -- Exact solution at nodes: u(x) = x(1-x)/2 (scaled by 10000)
+  -- u(0) = 0, u(0.2)=0.08, u(0.4)=0.12, u(0.6)=0.12, u(0.8)=0.08, u(1)=0
+  -- scaled: 0, 800, 1200, 1200, 800, 0
+  mut solution := [0, 800, 1200, 1200, 800, 0]
+
+  print "  Approximate solution (scaled by 10000):"
+  for i in range(0, num_nodes)
+    print "    u[{i}] = {solution[i]}"
+
+  -- Part 7: Error analysis
+  print ""
+  print "=== Part 7: Error Analysis ==="
+  -- Exact solution: u(x) = x(1-x)/2
+  -- At node 2 (x=0.4): exact = 0.4*0.6/2 = 0.12 -> 1200
+  -- FEM with linear elements gives exact solution for this problem
+  mut max_error := 0
+  -- For this linear problem, FEM gives exact solution
+  -- so all errors are zero
+
+  print "  Max error: {max_error} (exact for linear problem)"
+  print "  Convergence rate: O(h^2) = O({h * h / 100})"
+  print "  DOF (degrees of freedom): {num_interior}"
+
+  -- Part 8: Mesh refinement study
+  print ""
+  print "=== Part 8: Mesh Refinement ==="
+  print "  Refinement study:"
+  print "    5 elements: h=0.2, DOF=4"
+  print "    10 elements: h=0.1, DOF=9"
+  print "    20 elements: h=0.05, DOF=19"
+  print "    40 elements: h=0.025, DOF=39"
+
+  print ""
+  print "FEM 1D: mesh generation, stiffness assembly, load vector, boundary conditions, solution."

@@ -1,0 +1,111 @@
+-- Showcase 565: Protocol Buffers Concepts (Serialization/Deserialization)
+
+fn main
+  print "Protocol Buffers Concepts:"
+  print ""
+
+  -- Part 1: Field definitions
+  print "=== Part 1: Schema Definition ==="
+  -- message Person { int32 id = 1; string name = 2; string email = 3; int32 age = 4; }
+  mut field_numbers := [1, 2, 3, 4]
+  mut field_names := ["id", "name", "email", "age"]
+  mut field_types := ["int32", "string", "string", "int32"]
+  num_fields := 4
+  print "  message Person:"
+  for i in range(0, num_fields)
+    print "    {field_types[i]} {field_names[i]} = {field_numbers[i]}"
+
+  -- Part 2: Wire types
+  print ""
+  print "=== Part 2: Wire Types ==="
+  -- Wire type 0: varint, 2: length-delimited
+  mut wire_types := [0, 2, 2, 0]
+  mut wire_names := ["varint", "length-delimited", "length-delimited", "varint"]
+  for i in range(0, num_fields)
+    print "  {field_names[i]}: wire type {wire_types[i]} ({wire_names[i]})"
+
+  -- Part 3: Varint encoding
+  print ""
+  print "=== Part 3: Varint Encoding ==="
+  -- Encode integer 300
+  val := 300
+  -- 300 = 0b100101100 -> split into 7-bit groups: 0000010 0101100
+  -- little-endian with continuation bits: 10101100 00000010 -> [172, 2]
+  byte1 := (val % 128) + 128
+  byte2 := val / 128
+  print "  Value: {val}"
+  print "  Binary groups: {val} = 2*128 + {val - 256} + {256 - 128 - (val - 256)}"
+  print "  Encoded bytes: [{byte1}, {byte2}]"
+  print "  Decoded: {(byte1 - 128) + byte2 * 128}"
+
+  -- Encode tag (field_number << 3 | wire_type)
+  print ""
+  print "  Tag encoding:"
+  for i in range(0, num_fields)
+    tag := field_numbers[i] * 8 + wire_types[i]
+    print "    Field {field_numbers[i]} ({field_names[i]}): tag = {tag}"
+
+  -- Part 4: Serialize a message
+  print ""
+  print "=== Part 4: Serialization ==="
+  -- Person { id: 42, name: "Alice", email: "alice@test", age: 30 }
+  print "  Person record:"
+  print "    id = 42"
+  print "    name = Alice"
+  print "    email = alice@test"
+  print "    age = 30"
+
+  -- Calculate encoded size
+  -- field 1 (id=42): tag(1) + varint(1) = 2 bytes
+  -- field 2 (name="Alice"): tag(1) + len(1) + data(5) = 7 bytes
+  -- field 3 (email="alice@test"): tag(1) + len(1) + data(10) = 12 bytes
+  -- field 4 (age=30): tag(1) + varint(1) = 2 bytes
+  mut sizes := [2, 7, 12, 2]
+  mut total_bytes := 0
+  print "  Encoded fields:"
+  for i in range(0, num_fields)
+    total_bytes = total_bytes + sizes[i]
+    print "    {field_names[i]}: {sizes[i]} bytes"
+  print "  Total message size: {total_bytes} bytes"
+
+  -- Part 5: Deserialization
+  print ""
+  print "=== Part 5: Deserialization ==="
+  -- Simulate reading tag-value pairs
+  mut read_order := [1, 2, 3, 4]
+  mut read_values := ["42", "Alice", "alice@test", "30"]
+  for i in range(0, num_fields)
+    print "  Read field {read_order[i]} ({field_names[i]}): {read_values[i]}"
+
+  -- Part 6: Schema evolution
+  print ""
+  print "=== Part 6: Schema Evolution ==="
+  print "  Backward compatible changes:"
+  print "    - Add new field (field 5: phone)"
+  print "    - Old readers skip unknown fields"
+  print "  Forward compatible changes:"
+  print "    - New readers handle missing fields"
+  print "    - Default values: int32=0, string=''"
+  mut compat_rules := ["add field", "remove optional field", "rename field", "change type"]
+  mut compat_safe := [1, 1, 1, 0]
+  num_rules := 4
+  print "  Compatibility check:"
+  for i in range(0, num_rules)
+    if compat_safe[i] == 1
+      print "    {compat_rules[i]}: SAFE"
+    else
+      print "    {compat_rules[i]}: UNSAFE"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  json_size := 58
+  print "  Protobuf size: {total_bytes} bytes"
+  print "  JSON equivalent: ~{json_size} bytes"
+  savings := (json_size - total_bytes) * 100 / json_size
+  print "  Space savings: {savings}%"
+  print "  Fields: {num_fields}"
+  print "  Wire types used: varint, length-delimited"
+
+  print ""
+  print "Protobuf concepts: schema, wire types, varint encoding, serialization, evolution."

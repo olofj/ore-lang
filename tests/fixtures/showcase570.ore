@@ -1,0 +1,129 @@
+-- Showcase 570: Compiler Error Recovery Strategies
+
+fn main
+  print "Compiler Error Recovery Strategies:"
+  print ""
+
+  -- Part 1: Token stream with errors
+  print "=== Part 1: Lexer Error Recovery ==="
+  mut tokens := ["fn", "main", "(", ")", "let", "x", "=", "42", "@", ";", "let", "y", "=", "10"]
+  mut token_types := ["keyword", "ident", "lparen", "rparen", "keyword", "ident", "assign", "int", "ERROR", "semi", "keyword", "ident", "assign", "int"]
+  num_tokens := 14
+
+  mut errors := 0
+  mut recovered := 0
+  print "  Token stream:"
+  for i in range(0, num_tokens)
+    if token_types[i] == "ERROR"
+      errors = errors + 1
+      print "    [{i}] ERROR: unexpected '{tokens[i]}' -- skipping"
+      recovered = recovered + 1
+    else
+      print "    [{i}] {token_types[i]}: {tokens[i]}"
+  print "  Lexer errors: {errors}, recovered: {recovered}"
+
+  -- Part 2: Panic mode recovery
+  print ""
+  print "=== Part 2: Panic Mode Recovery ==="
+  -- Simulated parse of: "let x = + 5; let y = 10;"
+  -- Error at '+', sync to ';'
+  mut stmt_starts := [0, 5, 10]
+  mut stmt_valid := [1, 0, 1]
+  mut stmt_texts := ["let x = 42", "let z = + 5", "let y = 10"]
+  num_stmts := 3
+
+  mut sync_points := 0
+  for i in range(0, num_stmts)
+    if stmt_valid[i] == 1
+      print "  Parse OK: '{stmt_texts[i]}'"
+    else
+      print "  Parse ERROR: '{stmt_texts[i]}'"
+      print "    Expected expression, found '+'"
+      print "    Syncing to next ';' ..."
+      sync_points = sync_points + 1
+      print "    Recovered at statement boundary"
+  print "  Sync points used: {sync_points}"
+
+  -- Part 3: Error productions
+  print ""
+  print "=== Part 3: Error Productions ==="
+  -- Missing closing paren: "fn foo(x, y { ... }"
+  mut error_prods := ["missing ')'", "missing ';'", "extra ','", "unclosed string"]
+  mut error_fixes := ["insert ')'", "insert ';'", "remove ','", "insert '\"'"]
+  num_prods := 4
+  print "  Common error productions:"
+  for i in range(0, num_prods)
+    print "    Error: {error_prods[i]} -> Fix: {error_fixes[i]}"
+
+  -- Part 4: Error cascading prevention
+  print ""
+  print "=== Part 4: Cascade Prevention ==="
+  -- One error can trigger many false errors
+  mut source_lines := ["let x = ;", "let y = x + 1;", "let z = y * 2;"]
+  mut line_errors := [1, 0, 0]
+  num_lines := 3
+  mut primary_errors := 0
+  mut cascade_prevented := 0
+
+  print "  Source with error:"
+  for i in range(0, num_lines)
+    if line_errors[i] == 1
+      print "    Line {i + 1}: {source_lines[i]}  <-- ERROR"
+      primary_errors = primary_errors + 1
+    else
+      print "    Line {i + 1}: {source_lines[i]}"
+
+  -- Without cascade prevention: 3 errors
+  -- With cascade prevention: 1 error
+  print "  Without recovery: 3 errors reported"
+  print "  With recovery: 1 error reported"
+  cascade_prevented = 2
+  print "  Cascading errors prevented: {cascade_prevented}"
+
+  -- Part 5: Error limit
+  print ""
+  print "=== Part 5: Error Limit ==="
+  max_errors := 10
+  mut found_errors := 0
+  mut error_lines := [3, 7, 12, 15, 22, 28, 31, 35, 42, 45, 50, 55]
+  total_possible := 12
+
+  print "  Max errors before abort: {max_errors}"
+  for i in range(0, total_possible)
+    if found_errors < max_errors
+      found_errors = found_errors + 1
+      print "  Error {found_errors} at line {error_lines[i]}"
+    else
+      if found_errors == max_errors
+        print "  ... too many errors, aborting compilation"
+        found_errors = found_errors + 1
+  print "  Reported: {max_errors}, suppressed: {total_possible - max_errors}"
+
+  -- Part 6: Error messages quality
+  print ""
+  print "=== Part 6: Error Messages ==="
+  mut bad_msgs := ["syntax error", "unexpected token", "parse error"]
+  mut good_msgs := ["expected ')' after argument list", "missing semicolon after expression", "unclosed string literal starting at line 5"]
+  num_msgs := 3
+  print "  Poor error messages:"
+  for i in range(0, num_msgs)
+    print "    x  {bad_msgs[i]}"
+  print "  Good error messages:"
+  for i in range(0, num_msgs)
+    print "    +  {good_msgs[i]}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Recovery strategies: 4"
+  print "    1. Panic mode (sync to delimiter)"
+  print "    2. Error productions (expected patterns)"
+  print "    3. Cascade prevention"
+  print "    4. Error limiting"
+  print "  Lexer errors found: {errors}"
+  print "  Parse sync points: {sync_points}"
+  print "  Error productions: {num_prods}"
+  print "  Cascades prevented: {cascade_prevented}"
+
+  print ""
+  print "Error recovery: panic mode, error productions, cascade prevention, error limiting."

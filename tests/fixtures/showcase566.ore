@@ -1,0 +1,102 @@
+-- Showcase 566: Simple Operating System Boot Sequence
+
+fn main
+  print "Simple OS Boot Sequence:"
+  print ""
+
+  -- Part 1: BIOS/POST
+  print "=== Part 1: POST (Power-On Self Test) ==="
+  mut components := ["CPU", "RAM", "VGA", "Keyboard", "Disk"]
+  mut check_results := [1, 1, 1, 1, 1]
+  num_components := 5
+  mut passed := 0
+  for i in range(0, num_components)
+    if check_results[i] == 1
+      print "  [{components[i]}] ... OK"
+      passed = passed + 1
+    else
+      print "  [{components[i]}] ... FAIL"
+  print "  POST complete: {passed}/{num_components} passed"
+
+  -- Part 2: Memory detection
+  print ""
+  print "=== Part 2: Memory Detection ==="
+  mut mem_regions := [0, 1048576, 2097152, 16777216]
+  mut mem_sizes := [1048576, 1048576, 14680064, 0]
+  mut mem_types := ["conventional", "extended", "high memory", "reserved"]
+  num_regions := 4
+  mut total_mem := 0
+  for i in range(0, num_regions)
+    total_mem = total_mem + mem_sizes[i]
+    if mem_sizes[i] > 0
+      size_kb := mem_sizes[i] / 1024
+      print "  Region {i}: {mem_types[i]} - {size_kb} KB"
+  total_kb := total_mem / 1024
+  print "  Total memory: {total_kb} KB ({total_kb / 1024} MB)"
+
+  -- Part 3: Bootloader stages
+  print ""
+  print "=== Part 3: Bootloader ==="
+  mut stages := ["Stage 1: MBR loaded (512 bytes)", "Stage 2: Extended loader", "Stage 3: Kernel loader"]
+  num_stages := 3
+  for i in range(0, num_stages)
+    print "  {stages[i]} ... loaded"
+
+  -- Part 4: Kernel initialization
+  print ""
+  print "=== Part 4: Kernel Init ==="
+  mut init_steps := ["GDT setup", "IDT setup", "Paging enabled", "Heap initialized", "Scheduler started"]
+  mut init_times := [2, 3, 5, 8, 4]
+  num_init := 5
+  mut total_time := 0
+  for i in range(0, num_init)
+    total_time = total_time + init_times[i]
+    print "  [{init_steps[i]}] {init_times[i]}ms"
+  print "  Kernel init: {total_time}ms"
+
+  -- Part 5: Device drivers
+  print ""
+  print "=== Part 5: Device Drivers ==="
+  mut drivers := ["PCI bus", "ATA disk", "VGA framebuffer", "PS/2 keyboard", "Timer (PIT)"]
+  mut driver_irqs := [0, 14, 0, 1, 0]
+  num_drivers := 5
+  mut loaded := 0
+  for i in range(0, num_drivers)
+    loaded = loaded + 1
+    if driver_irqs[i] > 0
+      print "  Driver: {drivers[i]} (IRQ {driver_irqs[i]}) ... loaded"
+    else
+      print "  Driver: {drivers[i]} ... loaded"
+  print "  Drivers loaded: {loaded}/{num_drivers}"
+
+  -- Part 6: Filesystem mount
+  print ""
+  print "=== Part 6: Filesystem ==="
+  mut fs_paths := ["/", "/boot", "/home", "/tmp"]
+  mut fs_types := ["ext4", "ext4", "ext4", "tmpfs"]
+  mut fs_sizes := [50, 1, 100, 2]
+  num_fs := 4
+  for i in range(0, num_fs)
+    print "  Mount {fs_paths[i]} ({fs_types[i]}) {fs_sizes[i]} GB"
+
+  -- Part 7: Init system
+  print ""
+  print "=== Part 7: Init System ==="
+  mut services := ["syslog", "network", "ssh", "cron"]
+  mut svc_pids := [100, 101, 102, 103]
+  num_services := 4
+  for i in range(0, num_services)
+    print "  Starting {services[i]} ... PID {svc_pids[i]}"
+
+  print ""
+  print "=== Boot Summary ==="
+  print "  POST checks: {passed}"
+  print "  Memory: {total_kb / 1024} MB"
+  print "  Boot stages: {num_stages}"
+  print "  Kernel init: {total_time}ms"
+  print "  Drivers: {loaded}"
+  print "  Filesystems: {num_fs}"
+  print "  Services: {num_services}"
+
+  print ""
+  print "OS boot: POST, memory detection, bootloader, kernel init, drivers, filesystem, services."

@@ -1,0 +1,117 @@
+-- Showcase 567: Query Optimization (Plan Selection)
+
+fn main
+  print "Query Optimization:"
+  print ""
+
+  -- Part 1: Table statistics
+  print "=== Part 1: Table Statistics ==="
+  mut table_names := ["users", "orders", "products"]
+  mut table_rows := [10000, 50000, 1000]
+  mut table_cols := [5, 6, 4]
+  mut row_sizes := [64, 48, 128]
+  num_tables := 3
+
+  for i in range(0, num_tables)
+    size_kb := table_rows[i] * row_sizes[i] / 1024
+    print "  {table_names[i]}: {table_rows[i]} rows, {table_cols[i]} cols, ~{size_kb} KB"
+
+  -- Part 2: Query parse tree
+  print ""
+  print "=== Part 2: Query Analysis ==="
+  print "  Query: SELECT u.name, o.total"
+  print "         FROM users u JOIN orders o ON u.id = o.user_id"
+  print "         WHERE o.total > 100"
+  print ""
+  print "  Parsed operations:"
+  print "    1. Scan: users (10000 rows)"
+  print "    2. Scan: orders (50000 rows)"
+  print "    3. Join: users.id = orders.user_id"
+  print "    4. Filter: orders.total > 100"
+  print "    5. Project: name, total"
+
+  -- Part 3: Candidate plans
+  print ""
+  print "=== Part 3: Candidate Plans ==="
+
+  -- Plan A: Nested loop join, then filter
+  plan_a_scans := 10000 * 50000
+  plan_a_cost := plan_a_scans / 1000
+  print "  Plan A: Nested Loop Join"
+  print "    Scan users x orders: {plan_a_cost}K comparisons"
+  print "    Then filter total > 100"
+  print "    Estimated cost: {plan_a_cost}"
+
+  -- Plan B: Filter orders first, then join
+  filtered_orders := 50000 / 5
+  plan_b_cost := 10000 * filtered_orders / 1000
+  print "  Plan B: Filter-First"
+  print "    Filter orders (50000 -> {filtered_orders})"
+  print "    Join users x filtered: {plan_b_cost}K comparisons"
+  print "    Estimated cost: {plan_b_cost}"
+
+  -- Plan C: Hash join with filter
+  plan_c_build := 10000
+  plan_c_probe := filtered_orders
+  plan_c_cost := (plan_c_build + plan_c_probe) / 1000
+  print "  Plan C: Hash Join"
+  print "    Build hash on users: {plan_c_build}"
+  print "    Probe with filtered orders: {plan_c_probe}"
+  print "    Estimated cost: {plan_c_cost}"
+
+  -- Part 4: Plan selection
+  print ""
+  print "=== Part 4: Plan Selection ==="
+  mut plan_names := ["Nested Loop", "Filter-First", "Hash Join"]
+  mut plan_costs := [plan_a_cost, plan_b_cost, plan_c_cost]
+  num_plans := 3
+
+  mut best_cost := plan_costs[0]
+  mut best_idx := 0
+  for i in range(1, num_plans)
+    if plan_costs[i] < best_cost
+      best_cost = plan_costs[i]
+      best_idx = i
+
+  for i in range(0, num_plans)
+    if i == best_idx
+      print "  >> {plan_names[i]}: cost={plan_costs[i]} << SELECTED"
+    else
+      print "     {plan_names[i]}: cost={plan_costs[i]}"
+
+  -- Part 5: Index analysis
+  print ""
+  print "=== Part 5: Index Analysis ==="
+  mut index_names := ["users_pkey", "orders_user_idx", "orders_total_idx"]
+  mut index_tables := ["users", "orders", "orders"]
+  mut index_cols := ["id", "user_id", "total"]
+  mut index_types := ["btree", "btree", "btree"]
+  num_indices := 3
+
+  for i in range(0, num_indices)
+    print "  {index_names[i]}: {index_tables[i]}.{index_cols[i]} ({index_types[i]})"
+
+  -- Using index on orders.total for filter
+  print "  Index scan on orders_total_idx: O(log n) lookup"
+  print "  Without index: full scan O(n) = {table_rows[1]}"
+
+  -- Part 6: Execution plan tree
+  print ""
+  print "=== Part 6: Execution Plan ==="
+  print "  Project [name, total]"
+  print "    Hash Join [users.id = orders.user_id]"
+  print "      Seq Scan [users] (10000 rows)"
+  print "      Index Scan [orders WHERE total > 100] ({filtered_orders} rows)"
+
+  -- Part 7: Cost comparison
+  print ""
+  print "=== Part 7: Statistics ==="
+  speedup := plan_a_cost / best_cost
+  print "  Best plan: {plan_names[best_idx]}"
+  print "  Cost reduction: {plan_a_cost} -> {best_cost}"
+  print "  Speedup: {speedup}x"
+  print "  Indices used: 1 (orders_total_idx)"
+  print "  Estimated result rows: {filtered_orders / 10}"
+
+  print ""
+  print "Query optimization: table stats, plan enumeration, cost estimation, index selection."

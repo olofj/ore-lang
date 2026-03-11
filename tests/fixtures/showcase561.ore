@@ -1,0 +1,108 @@
+-- Showcase 561: Consensus Algorithm (Raft-like Leader Election)
+
+fn main
+  print "Raft-like Leader Election:"
+  print ""
+
+  -- Part 1: Node setup
+  print "=== Part 1: Node Setup ==="
+  num_nodes := 5
+  mut node_ids := [1, 2, 3, 4, 5]
+  mut terms := [0, 0, 0, 0, 0]
+  mut states := ["follower", "follower", "follower", "follower", "follower"]
+  mut voted_for := [-1, -1, -1, -1, -1]
+  mut timeouts := [150, 200, 120, 180, 160]
+
+  print "  Cluster size: {num_nodes}"
+  for i in range(0, num_nodes)
+    print "  Node {node_ids[i]}: state={states[i]}, term={terms[i]}, timeout={timeouts[i]}ms"
+
+  -- Part 2: Election timeout (node 3 times out first with 120ms)
+  print ""
+  print "=== Part 2: Election Triggered ==="
+  mut min_timeout := 999
+  mut candidate_idx := 0
+  for i in range(0, num_nodes)
+    if timeouts[i] < min_timeout
+      min_timeout = timeouts[i]
+      candidate_idx = i
+
+  print "  Node {node_ids[candidate_idx]} times out first ({min_timeout}ms)"
+  states[candidate_idx] = "candidate"
+  terms[candidate_idx] = terms[candidate_idx] + 1
+  voted_for[candidate_idx] = node_ids[candidate_idx]
+  print "  Node {node_ids[candidate_idx]} becomes candidate, term={terms[candidate_idx]}"
+
+  -- Part 3: Vote request and collection
+  print ""
+  print "=== Part 3: Vote Collection ==="
+  mut votes := 1
+  print "  Node {node_ids[candidate_idx]} votes for self"
+  majority := num_nodes / 2 + 1
+  print "  Majority needed: {majority}"
+
+  for i in range(0, num_nodes)
+    if i != candidate_idx
+      if voted_for[i] == -1
+        voted_for[i] = node_ids[candidate_idx]
+        terms[i] = terms[candidate_idx]
+        votes = votes + 1
+        print "  Node {node_ids[i]} grants vote to Node {node_ids[candidate_idx]} (votes: {votes})"
+        if votes == majority
+          print "  Majority reached!"
+
+  -- Part 4: Leader established
+  print ""
+  print "=== Part 4: Leader Established ==="
+  states[candidate_idx] = "leader"
+  for i in range(0, num_nodes)
+    if i != candidate_idx
+      states[i] = "follower"
+  print "  Node {node_ids[candidate_idx]} is now LEADER (term {terms[candidate_idx]})"
+
+  for i in range(0, num_nodes)
+    print "  Node {node_ids[i]}: state={states[i]}, term={terms[i]}"
+
+  -- Part 5: Log replication
+  print ""
+  print "=== Part 5: Log Replication ==="
+  mut log_entries := ["SET x=1", "SET y=2", "DEL z"]
+  num_entries := 3
+  mut committed := [0, 0, 0]
+
+  for e in range(0, num_entries)
+    mut acks := 1
+    for i in range(0, num_nodes)
+      if i != candidate_idx
+        acks = acks + 1
+    if acks >= majority
+      committed[e] = 1
+      print "  Entry '{log_entries[e]}' committed ({acks}/{num_nodes} acks)"
+
+  -- Part 6: Heartbeat mechanism
+  print ""
+  print "=== Part 6: Heartbeat ==="
+  mut heartbeat_count := 0
+  for round in range(1, 4)
+    mut responses := 0
+    for i in range(0, num_nodes)
+      if i != candidate_idx
+        responses = responses + 1
+    heartbeat_count = heartbeat_count + 1
+    print "  Heartbeat {round}: {responses}/{num_nodes - 1} followers responded"
+
+  -- Part 7: Term history
+  print ""
+  print "=== Part 7: Statistics ==="
+  mut total_votes := 0
+  for i in range(0, num_nodes)
+    if voted_for[i] == node_ids[candidate_idx]
+      total_votes = total_votes + 1
+  print "  Leader: Node {node_ids[candidate_idx]}"
+  print "  Current term: {terms[candidate_idx]}"
+  print "  Votes received: {total_votes}/{num_nodes}"
+  print "  Log entries committed: {num_entries}"
+  print "  Heartbeats sent: {heartbeat_count}"
+
+  print ""
+  print "Raft consensus: election timeout, vote collection, leader establishment, log replication."

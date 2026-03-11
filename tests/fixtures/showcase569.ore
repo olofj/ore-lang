@@ -1,0 +1,118 @@
+-- Showcase 569: Simple Blockchain Smart Contract
+
+fn main
+  print "Blockchain Smart Contract:"
+  print ""
+
+  -- Part 1: Account setup
+  print "=== Part 1: Accounts ==="
+  mut accounts := ["Alice", "Bob", "Charlie", "Contract"]
+  mut balances := [1000, 500, 300, 0]
+  num_accounts := 4
+  for i in range(0, num_accounts)
+    print "  {accounts[i]}: {balances[i]} tokens"
+
+  -- Part 2: Smart contract: Token Vault
+  print ""
+  print "=== Part 2: Contract Deployment ==="
+  contract_idx := 3
+  mut vault_total := 0
+  mut vault_depositors := [0, 0, 0, 0]
+  mut vault_deposits := [0, 0, 0, 0]
+  mut tx_count := 0
+  print "  Contract: TokenVault"
+  print "  Address: {accounts[contract_idx]}"
+  print "  Functions: deposit(), withdraw(), get_balance()"
+
+  -- Part 3: Execute deposits
+  print ""
+  print "=== Part 3: Deposits ==="
+
+  -- Alice deposits 200
+  deposit1 := 200
+  balances[0] = balances[0] - deposit1
+  balances[contract_idx] = balances[contract_idx] + deposit1
+  vault_depositors[0] = 1
+  vault_deposits[0] = vault_deposits[0] + deposit1
+  vault_total = vault_total + deposit1
+  tx_count = tx_count + 1
+  print "  TX{tx_count}: Alice deposits {deposit1} tokens"
+  print "    Alice balance: {balances[0]}, Vault: {vault_total}"
+
+  -- Bob deposits 150
+  deposit2 := 150
+  balances[1] = balances[1] - deposit2
+  balances[contract_idx] = balances[contract_idx] + deposit2
+  vault_depositors[1] = 1
+  vault_deposits[1] = vault_deposits[1] + deposit2
+  vault_total = vault_total + deposit2
+  tx_count = tx_count + 1
+  print "  TX{tx_count}: Bob deposits {deposit2} tokens"
+  print "    Bob balance: {balances[1]}, Vault: {vault_total}"
+
+  -- Charlie deposits 100
+  deposit3 := 100
+  balances[2] = balances[2] - deposit3
+  balances[contract_idx] = balances[contract_idx] + deposit3
+  vault_depositors[2] = 1
+  vault_deposits[2] = vault_deposits[2] + deposit3
+  vault_total = vault_total + deposit3
+  tx_count = tx_count + 1
+  print "  TX{tx_count}: Charlie deposits {deposit3} tokens"
+  print "    Charlie balance: {balances[2]}, Vault: {vault_total}"
+
+  -- Part 4: Query state
+  print ""
+  print "=== Part 4: Contract State ==="
+  print "  Vault total: {vault_total} tokens"
+  for i in range(0, num_accounts - 1)
+    if vault_depositors[i] == 1
+      share := vault_deposits[i] * 100 / vault_total
+      print "  {accounts[i]}: deposited {vault_deposits[i]} ({share}%)"
+
+  -- Part 5: Withdraw
+  print ""
+  print "=== Part 5: Withdrawals ==="
+  -- Alice withdraws 50
+  withdraw1 := 50
+  if vault_deposits[0] >= withdraw1
+    vault_deposits[0] = vault_deposits[0] - withdraw1
+    vault_total = vault_total - withdraw1
+    balances[0] = balances[0] + withdraw1
+    balances[contract_idx] = balances[contract_idx] - withdraw1
+    tx_count = tx_count + 1
+    print "  TX{tx_count}: Alice withdraws {withdraw1} tokens"
+    print "    Alice balance: {balances[0]}, Vault: {vault_total}"
+
+  -- Bob tries to withdraw more than deposited (should fail)
+  withdraw2 := 999
+  if vault_deposits[1] >= withdraw2
+    print "  TX: Bob withdraws {withdraw2} tokens"
+  else
+    print "  TX REVERTED: Bob tried to withdraw {withdraw2} (only has {vault_deposits[1]})"
+
+  -- Part 6: Transaction log
+  print ""
+  print "=== Part 6: Transaction Log ==="
+  mut tx_types := ["deposit", "deposit", "deposit", "withdraw"]
+  mut tx_actors := ["Alice", "Bob", "Charlie", "Alice"]
+  mut tx_amounts := [200, 150, 100, 50]
+  mut tx_gas := [21000, 21000, 21000, 25000]
+  for i in range(0, tx_count)
+    print "  TX{i + 1}: {tx_actors[i]} {tx_types[i]} {tx_amounts[i]} (gas: {tx_gas[i]})"
+
+  mut total_gas := 0
+  for i in range(0, tx_count)
+    total_gas = total_gas + tx_gas[i]
+
+  -- Part 7: Final state
+  print ""
+  print "=== Part 7: Final State ==="
+  for i in range(0, num_accounts)
+    print "  {accounts[i]}: {balances[i]} tokens"
+  print "  Total supply: {balances[0] + balances[1] + balances[2] + balances[3]}"
+  print "  Transactions: {tx_count}"
+  print "  Total gas used: {total_gas}"
+
+  print ""
+  print "Smart contract: token vault, deposits, withdrawals, state queries, transaction log."
