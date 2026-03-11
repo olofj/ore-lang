@@ -2606,6 +2606,58 @@ fn showcase115_maps() {
 }
 
 #[test]
+fn showcase116_imports() {
+    let out = run_ore("showcase116.ore");
+    assert!(out.contains("5! = 120"));
+    assert!(out.contains("10! = 3628800"));
+    assert!(out.contains("gcd(12, 8) = 4"));
+    assert!(out.contains("lcm(12, 8) = 24"));
+    assert!(out.contains("17 is prime"));
+    assert!(out.contains("20 is not prime"));
+}
+
+#[test]
+fn showcase117_testing() {
+    let path = fixtures_dir().join("showcase117.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore test");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("4 passed"), "expected '4 passed' in stderr: {}", stderr);
+    assert!(stderr.contains("0 failed"));
+}
+
+#[test]
+fn showcase118_comprehensions() {
+    let out = run_ore("showcase118.ore");
+    assert!(out.contains("1, 4, 9, 16, 25"));
+    assert!(out.contains("4, 16, 36, 64, 100"));
+    assert!(out.contains("quick, brown, jumps, over, lazy"));
+}
+
+#[test]
+fn showcase119_data_processing() {
+    let out = run_ore("showcase119.ore");
+    assert!(out.contains("Employee Performance Report"));
+    assert!(out.contains("Alice"));
+    assert!(out.contains("[ACTIVE]"));
+    assert!(out.contains("Total:   391"));
+    assert!(out.contains("Average: 78"));
+}
+
+#[test]
+fn showcase120_iterators() {
+    let out = run_ore("showcase120.ore");
+    assert!(out.contains("1, 2, Fizz, 4, Buzz"));
+    assert!(out.contains("FizzBuzz"));
+    assert!(out.contains("collatz(9) = 19 steps"));
+    assert!(out.contains("6 is perfect"));
+    assert!(out.contains("28 is perfect"));
+    assert!(out.contains("1 3 3 1"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

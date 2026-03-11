@@ -1,0 +1,55 @@
+-- Showcase 120: Iterator chains and data transformations
+
+fn fizzbuzz n:Int -> Str
+  if n % 15 == 0
+    "FizzBuzz"
+  else if n % 3 == 0
+    "Fizz"
+  else if n % 5 == 0
+    "Buzz"
+  else
+    n.to_str()
+
+fn collatz_steps n:Int -> Int
+  mut current := n
+  mut steps := 0
+  while current != 1
+    if current % 2 == 0
+      current = current / 2
+    else
+      current = current * 3 + 1
+    steps = steps + 1
+  steps
+
+fn main
+  -- FizzBuzz with pipelines
+  result := range(1, 16) | map(fizzbuzz) | join(", ")
+  print result
+
+  -- Collatz conjecture exploration
+  print ""
+  for n in [7, 9, 15, 18, 19]
+    steps := collatz_steps(n)
+    print "collatz({n}) = {steps} steps"
+
+  -- Number theory: perfect numbers
+  print ""
+  for n in range(2, 29)
+    mut sum := 1
+    for d in range(2, n)
+      if n % d == 0
+        sum = sum + d
+    if sum == n
+      print "{n} is perfect"
+
+  -- Pascal's triangle (first 8 rows)
+  print ""
+  print "Pascal's Triangle:"
+  mut row := [1]
+  for i in range(0, 8)
+    print row.join(" ")
+    mut next := [1]
+    for j in range(0, row.len() - 1)
+      next.push(row[j] + row[j + 1])
+    next.push(1)
+    row = next

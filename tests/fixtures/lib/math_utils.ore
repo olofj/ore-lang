@@ -1,0 +1,29 @@
+-- Math utility library
+
+fn factorial n:Int -> Int
+  if n <= 1
+    1
+  else
+    n * factorial(n - 1)
+
+fn gcd a:Int b:Int -> Int
+  if b == 0
+    a
+  else
+    gcd(b, a % b)
+
+fn lcm a:Int b:Int -> Int
+  a / gcd(a, b) * b
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    false
+  else
+    mut i := 2
+    mut result := true
+    while i * i <= n
+      if n % i == 0
+        result = false
+        break
+      i = i + 1
+    result

@@ -1,0 +1,52 @@
+-- Showcase 119: Real-world data processing
+
+type Status
+  Active
+  Inactive
+  Pending
+
+fn status_label s:Status -> Str
+  match s
+    Active -> "ACTIVE"
+    Inactive -> "INACTIVE"
+    Pending -> "PENDING"
+
+fn format_row name:Str score:Int status:Status -> Str
+  label := status_label(status)
+  padded := name.pad_right(15, " ")
+  score_str := score.to_str().pad_left(5, " ")
+  "{padded} {score_str}  [{label}]"
+
+fn main
+  -- Data processing report
+  print "=" .repeat(40)
+  print "  Employee Performance Report"
+  print "=".repeat(40)
+  print ""
+
+  names := ["Alice", "Bob", "Carol", "Dave", "Eve"]
+  scores := [95, 72, 88, 45, 91]
+  statuses := [Active, Active, Pending, Inactive, Active]
+
+  -- Print each row
+  for i in range(0, 5)
+    print format_row(names[i], scores[i], statuses[i])
+
+  -- Summary stats
+  print ""
+  print "-".repeat(40)
+  total := scores.sum()
+  avg := total / scores.len()
+  best := scores.max()
+  worst := scores.min()
+  print "Total:   {total}"
+  print "Average: {avg}"
+  print "Best:    {best}"
+  print "Worst:   {worst}"
+
+  -- Count by status
+  active_count := [1, 1, 0, 0, 1].sum()
+  print ""
+  print "Active:   {active_count}"
+  print "Inactive: 1"
+  print "Pending:  1"

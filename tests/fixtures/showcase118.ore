@@ -1,0 +1,32 @@
+-- Showcase 118: List comprehension and functional composition
+
+fn main
+  -- List comprehensions
+  squares := [x * x for x in range(1, 11)]
+  print squares.join(", ")
+
+  -- Filtered comprehension
+  even_squares := [x * x for x in range(1, 11) if x % 2 == 0]
+  print even_squares.join(", ")
+
+  -- Nested data processing
+  data := [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5]
+  result := data
+    | unique()
+    | sort()
+    | map(n => n * n)
+    | filter(n => n > 5)
+    | take(5)
+  print result.join(", ")
+
+  -- Scan (running totals)
+  payments := [100, 250, 75, 300, 150]
+  running := payments.scan(0, (total, p) => total + p)
+  print running.join(" -> ")
+
+  -- String processing pipeline
+  sentence := "  The Quick Brown Fox Jumps Over The Lazy Dog  "
+  words := sentence.trim().split(" ")
+    | filter(w => w.len() > 3)
+    | map(w => w.to_lower())
+  print words.join(", ")

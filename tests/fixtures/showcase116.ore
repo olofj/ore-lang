@@ -1,0 +1,19 @@
+-- Showcase 116: Multi-file imports
+
+use "lib/math_utils.ore"
+
+fn main
+  -- Factorial
+  print "5! = {factorial(5)}"
+  print "10! = {factorial(10)}"
+
+  -- GCD and LCM
+  print "gcd(12, 8) = {gcd(12, 8)}"
+  print "lcm(12, 8) = {lcm(12, 8)}"
+
+  -- Prime check
+  for n in [2, 7, 10, 13, 17, 20, 23]
+    if is_prime(n)
+      print "{n} is prime"
+    else
+      print "{n} is not prime"
