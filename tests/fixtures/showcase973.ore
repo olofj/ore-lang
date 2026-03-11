@@ -1,0 +1,123 @@
+-- Showcase 973: Strategy Pattern (Sorting Strategies)
+-- Different sorting algorithms as interchangeable strategies
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+fn list_to_str lst:List -> Str
+  n := lst.count()
+  mut result := "["
+  mut i := 0
+  while i < n
+    v := get_int(lst, i)
+    if i == 0
+      result = result + str(v)
+    else
+      result = result + ", " + str(v)
+    i = i + 1
+  result + "]"
+
+-- Bubble sort strategy
+fn bubble_sort lst:List -> List
+  n := lst.count()
+  mut result := lst
+  mut i := 0
+  while i < n
+    mut j := 0
+    while j < n - i - 1
+      a := get_int(result, j)
+      b := get_int(result, j + 1)
+      if a > b
+        result[j] = b
+        result[j + 1] = a
+      j = j + 1
+    i = i + 1
+  result
+
+-- Selection sort strategy
+fn selection_sort lst:List -> List
+  n := lst.count()
+  mut result := lst
+  mut i := 0
+  while i < n
+    mut min_idx := i
+    mut j := i + 1
+    while j < n
+      if get_int(result, j) < get_int(result, min_idx)
+        min_idx = j
+      j = j + 1
+    a := get_int(result, i)
+    b := get_int(result, min_idx)
+    result[i] = b
+    result[min_idx] = a
+    i = i + 1
+  result
+
+-- Insertion sort strategy
+fn insertion_sort lst:List -> List
+  n := lst.count()
+  mut result := lst
+  mut i := 1
+  while i < n
+    key := get_int(result, i)
+    mut j := i - 1
+    while j >= 0 and get_int(result, j) > key
+      result[j + 1] = get_int(result, j)
+      j = j - 1
+    result[j + 1] = key
+    i = i + 1
+  result
+
+-- Context: apply strategy by name
+fn sort_with_strategy name:Str lst:List -> List
+  if name == "bubble"
+    bubble_sort(lst)
+  else if name == "selection"
+    selection_sort(lst)
+  else if name == "insertion"
+    insertion_sort(lst)
+  else
+    lst
+
+fn demo_strategy name:Str original_str:Str data:List
+  sorted := sort_with_strategy(name, data)
+  result := list_to_str(sorted)
+  print "  Strategy '{name}': {original_str} -> {result}"
+
+fn main
+  print "Strategy Pattern - Sorting Algorithms"
+  print "======================================"
+  print ""
+
+  orig1 := "[64, 34, 25, 12, 22, 11, 90]"
+  data1 := [64, 34, 25, 12, 22, 11, 90]
+  print "Dataset 1: {orig1}"
+  demo_strategy("bubble", orig1, data1)
+  data1b := [64, 34, 25, 12, 22, 11, 90]
+  demo_strategy("selection", orig1, data1b)
+  data1c := [64, 34, 25, 12, 22, 11, 90]
+  demo_strategy("insertion", orig1, data1c)
+  print ""
+
+  orig2 := "[5, 1, 4, 2, 8, 3, 7, 6]"
+  data2 := [5, 1, 4, 2, 8, 3, 7, 6]
+  print "Dataset 2: {orig2}"
+  demo_strategy("bubble", orig2, data2)
+  data2b := [5, 1, 4, 2, 8, 3, 7, 6]
+  demo_strategy("selection", orig2, data2b)
+  data2c := [5, 1, 4, 2, 8, 3, 7, 6]
+  demo_strategy("insertion", orig2, data2c)
+  print ""
+
+  -- Verify all strategies agree
+  s1 := sort_with_strategy("bubble", data1)
+  s2 := sort_with_strategy("selection", data1)
+  s3 := sort_with_strategy("insertion", data1)
+  r1 := list_to_str(s1)
+  r2 := list_to_str(s2)
+  r3 := list_to_str(s3)
+  all_agree := r1 == r2 and r2 == r3
+  print "All strategies agree: {all_agree}"
+  print "Sorted result: {r1}"
+  print ""
+  print "Strategy pattern demonstration complete."

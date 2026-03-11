@@ -1,0 +1,141 @@
+-- Showcase 975: Iterator Pattern (Custom Sequences)
+-- Implements custom iterators: range, fibonacci, primes, geometric
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+-- Range iterator: produces start, start+step, start+2*step, ...
+fn range_next current:Int step:Int -> Int
+  current + step
+
+fn collect_range start:Int stop:Int step:Int -> List
+  mut result := [0]
+  result.pop()
+  mut cur := start
+  while cur < stop
+    result.push(cur)
+    cur = cur + step
+  result
+
+-- Fibonacci iterator state: (a, b) -> next is a, advance to (b, a+b)
+fn fib_next_a a:Int b:Int -> Int
+  b
+
+fn fib_next_b a:Int b:Int -> Int
+  a + b
+
+fn collect_fib count:Int -> List
+  mut result := [0]
+  result.pop()
+  mut a := 0
+  mut b := 1
+  mut i := 0
+  while i < count
+    result.push(a)
+    new_b := a + b
+    a = b
+    b = new_b
+    i = i + 1
+  result
+
+-- Prime sieve iterator
+fn is_prime n:Int -> Bool
+  if n < 2
+    false
+  else if n == 2
+    true
+  else if n == 3
+    true
+  else
+    mut composite := false
+    mut d := 2
+    while d * d <= n and not composite
+      if n - (n / d) * d == 0
+        composite = true
+      d = d + 1
+    not composite
+
+fn collect_primes limit:Int -> List
+  mut result := [0]
+  result.pop()
+  mut n := 2
+  while n <= limit
+    if is_prime(n)
+      result.push(n)
+    n = n + 1
+  result
+
+-- Geometric sequence: a, a*r, a*r^2, ...
+fn collect_geometric start:Int ratio:Int count:Int -> List
+  mut result := [0]
+  result.pop()
+  mut cur := start
+  mut i := 0
+  while i < count
+    result.push(cur)
+    cur = cur * ratio
+    i = i + 1
+  result
+
+fn list_to_str lst:List -> Str
+  n := lst.count()
+  mut s := ""
+  mut i := 0
+  while i < n
+    v := get_int(lst, i)
+    if i == 0
+      s = str(v)
+    else
+      s = s + ", " + str(v)
+    i = i + 1
+  s
+
+fn main
+  print "Iterator Pattern - Custom Sequences"
+  print "===================================="
+  print ""
+
+  -- Range iterators
+  r1 := collect_range(0, 10, 1)
+  print "Range(0,10,1):   {list_to_str(r1)}"
+
+  r2 := collect_range(0, 20, 2)
+  print "Range(0,20,2):   {list_to_str(r2)}"
+
+  r3 := collect_range(1, 16, 3)
+  print "Range(1,16,3):   {list_to_str(r3)}"
+  print ""
+
+  -- Fibonacci iterator
+  fibs := collect_fib(10)
+  print "Fibonacci(10):   {list_to_str(fibs)}"
+
+  fibs15 := collect_fib(8)
+  fib_sum := fibs15.sum()
+  print "Fib sum(8):      {fib_sum}"
+  print ""
+
+  -- Prime iterator
+  primes := collect_primes(50)
+  print "Primes <= 50:    {list_to_str(primes)}"
+  p_count := primes.count()
+  print "Count: {p_count} primes"
+  print ""
+
+  -- Geometric sequence
+  geo1 := collect_geometric(1, 2, 8)
+  print "Geometric(1,2,8): {list_to_str(geo1)}"
+
+  geo2 := collect_geometric(3, 3, 6)
+  print "Geometric(3,3,6): {list_to_str(geo2)}"
+  geo2_sum := geo2.sum()
+  print "Sum: {geo2_sum}"
+  print ""
+
+  -- Chaining: take first 5 primes and compute sum
+  primes_all := collect_primes(100)
+  first5 := primes_all.take(5)
+  p5_sum := first5.sum()
+  print "Sum of first 5 primes: {p5_sum}"
+  print ""
+  print "Iterator pattern demonstration complete."

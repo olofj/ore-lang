@@ -1,0 +1,122 @@
+-- Showcase 979: Publish-Subscribe System
+-- Event bus where publishers emit topics and subscribers filter by interest
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+-- Subscription: subscriber name + topic filter ("*" = all topics)
+-- Message: topic + payload
+
+fn subscriber_matches sub_topic:Str msg_topic:Str -> Bool
+  sub_topic == "*" or sub_topic == msg_topic
+
+-- Subscriber handlers: each prints specific formatted output
+fn handle_news_feed topic:Str payload:Str
+  print "  [NewsFeed] Breaking: {payload}"
+
+fn handle_email_notifier topic:Str payload:Str
+  print "  [EmailNotifier] Sending email: [{topic}] {payload}"
+
+fn handle_analytics topic:Str payload:Str
+  print "  [Analytics] Tracking event '{topic}': {payload}"
+
+fn handle_mobile_push topic:Str payload:Str
+  print "  [MobilePush] Push notification: {payload}"
+
+fn handle_audit_log topic:Str payload:Str
+  print "  [AuditLog] LOG [{topic}] {payload}"
+
+-- Dispatch to a subscriber if topic matches
+fn dispatch_to_subscriber sub_name:Str sub_topic:Str msg_topic:Str payload:Str
+  if subscriber_matches(sub_topic, msg_topic)
+    if sub_name == "NewsFeed"
+      handle_news_feed(msg_topic, payload)
+    else if sub_name == "EmailNotifier"
+      handle_email_notifier(msg_topic, payload)
+    else if sub_name == "Analytics"
+      handle_analytics(msg_topic, payload)
+    else if sub_name == "MobilePush"
+      handle_mobile_push(msg_topic, payload)
+    else if sub_name == "AuditLog"
+      handle_audit_log(msg_topic, payload)
+
+-- Publish a message to all subscribers
+fn publish topic:Str payload:Str sub_names:List sub_topics:List
+  print "Publishing [{topic}]: {payload}"
+  n := sub_names.count()
+  mut i := 0
+  mut delivered := 0
+  while i < n
+    sn := get_str(sub_names, i)
+    st := get_str(sub_topics, i)
+    if subscriber_matches(st, topic)
+      dispatch_to_subscriber(sn, st, topic, payload)
+      delivered = delivered + 1
+    i = i + 1
+  print "  -> Delivered to {delivered} subscriber(s)"
+  print ""
+
+fn count_subscribers_for_topic sub_topics:List topic:Str -> Int
+  n := sub_topics.count()
+  mut count := 0
+  mut i := 0
+  while i < n
+    st := get_str(sub_topics, i)
+    if subscriber_matches(st, topic)
+      count = count + 1
+    i = i + 1
+  count
+
+fn main
+  print "Publish-Subscribe System"
+  print "========================"
+  print ""
+
+  -- Set up subscribers (name, topic filter)
+  mut sub_names := [""]
+  sub_names.pop()
+  mut sub_topics := [""]
+  sub_topics.pop()
+
+  -- Subscribe: NewsFeed -> "news" topic only
+  sub_names.push("NewsFeed")
+  sub_topics.push("news")
+  -- Subscribe: EmailNotifier -> "alerts" and uses wildcard via separate entry
+  sub_names.push("EmailNotifier")
+  sub_topics.push("alerts")
+  -- Subscribe: Analytics -> all topics (wildcard)
+  sub_names.push("Analytics")
+  sub_topics.push("*")
+  -- Subscribe: MobilePush -> "news" and "alerts"
+  sub_names.push("MobilePush")
+  sub_topics.push("news")
+  sub_names.push("MobilePush")
+  sub_topics.push("alerts")
+  -- Subscribe: AuditLog -> all topics
+  sub_names.push("AuditLog")
+  sub_topics.push("*")
+
+  total_subs := sub_names.count()
+  print "Registered {total_subs} subscriptions"
+  print ""
+
+  -- Show subscriber counts per topic
+  news_count := count_subscribers_for_topic(sub_topics, "news")
+  alerts_count := count_subscribers_for_topic(sub_topics, "alerts")
+  updates_count := count_subscribers_for_topic(sub_topics, "updates")
+  print "Subscribers per topic:"
+  print "  news:    {news_count}"
+  print "  alerts:  {alerts_count}"
+  print "  updates: {updates_count}"
+  print ""
+
+  -- Publish events
+  publish("news", "Major tech acquisition announced", sub_names, sub_topics)
+  publish("alerts", "System CPU at 95% capacity", sub_names, sub_topics)
+  publish("updates", "Version 2.0 released", sub_names, sub_topics)
+  publish("news", "Market closes up 3%", sub_names, sub_topics)
+
+  print "Publish-subscribe demonstration complete."

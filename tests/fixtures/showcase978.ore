@@ -1,0 +1,134 @@
+-- Showcase 978: Middleware Pattern (Request Handler Chain)
+-- HTTP-like middleware chain: logging, auth, rate-limit, routing
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+-- Request: method, path, token, body
+-- Response: status (200/401/429/404), body
+
+fn middleware_logger method:Str path:Str -> Str
+  print "  [Logger] {method} {path}"
+  "next"
+
+fn middleware_auth token:Str -> Str
+  if token == "secret123" or token == "admin456"
+    "next"
+  else if token == ""
+    "401:Unauthorized - missing token"
+  else
+    "401:Unauthorized - invalid token"
+
+fn middleware_rate_limit requests_this_minute:Int limit:Int -> Str
+  if requests_this_minute > limit
+    "429:Too Many Requests"
+  else
+    "next"
+
+fn middleware_cors origin:Str -> Str
+  if origin == "https://myapp.com" or origin == "https://api.myapp.com"
+    "next"
+  else if origin == ""
+    "next"
+  else
+    "403:Forbidden - CORS policy"
+
+fn router method:Str path:Str -> Str
+  if path == "/health"
+    "200:OK - healthy"
+  else if path == "/api/users" and method == "GET"
+    "200:OK - [user1, user2, user3]"
+  else if path == "/api/users" and method == "POST"
+    "201:Created - user added"
+  else if path == "/api/admin" and method == "GET"
+    "200:OK - admin data"
+  else
+    "404:Not Found"
+
+fn handle_request method:Str path:Str token:Str origin:Str requests_this_minute:Int -> Str
+  log_result := middleware_logger(method, path)
+  if log_result != "next"
+    log_result
+  else if path == "/health"
+    -- health check bypasses auth
+    print "  [Router] Routing to handler"
+    router(method, path)
+  else
+    cors_result := middleware_cors(origin)
+    if cors_result != "next"
+      print "  [CORS] Blocked"
+      cors_result
+    else
+      auth_result := middleware_auth(token)
+      if auth_result != "next"
+        print "  [Auth] Rejected"
+        auth_result
+      else
+        rate_result := middleware_rate_limit(requests_this_minute, 10)
+        if rate_result != "next"
+          print "  [RateLimit] Throttled"
+          rate_result
+        else
+          print "  [Router] Routing to handler"
+          router(method, path)
+
+fn print_response resp:Str
+  status := resp.substr(0, 3)
+  body := resp.substr(4, resp.len() - 4)
+  print "  Response: HTTP {status} - {body}"
+
+fn main
+  print "Middleware Pattern - Request Handler Chain"
+  print "=========================================="
+  print ""
+
+  -- Successful requests
+  print "Request 1: GET /health (no auth needed)"
+  r1 := handle_request("GET", "/health", "", "", 1)
+  print_response(r1)
+  print ""
+
+  print "Request 2: GET /api/users (valid token)"
+  r2 := handle_request("GET", "/api/users", "secret123", "", 2)
+  print_response(r2)
+  print ""
+
+  print "Request 3: POST /api/users (valid token)"
+  r3 := handle_request("POST", "/api/users", "admin456", "https://myapp.com", 3)
+  print_response(r3)
+  print ""
+
+  -- Auth failure
+  print "Request 4: GET /api/admin (no token)"
+  r4 := handle_request("GET", "/api/admin", "", "", 4)
+  print_response(r4)
+  print ""
+
+  -- Bad token
+  print "Request 5: GET /api/users (bad token)"
+  r5 := handle_request("GET", "/api/users", "badtoken", "", 5)
+  print_response(r5)
+  print ""
+
+  -- Rate limited
+  print "Request 6: GET /api/users (rate limited)"
+  r6 := handle_request("GET", "/api/users", "secret123", "", 15)
+  print_response(r6)
+  print ""
+
+  -- CORS blocked
+  print "Request 7: GET /api/users (CORS blocked)"
+  r7 := handle_request("GET", "/api/users", "secret123", "https://evil.com", 1)
+  print_response(r7)
+  print ""
+
+  -- Not found
+  print "Request 8: DELETE /api/users (not found)"
+  r8 := handle_request("DELETE", "/api/users", "secret123", "", 1)
+  print_response(r8)
+  print ""
+
+  print "Middleware pattern demonstration complete."

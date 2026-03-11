@@ -1,0 +1,165 @@
+-- Showcase 980: Actor Model Simulation
+-- Actors process messages from mailboxes; simulate message passing concurrency
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+-- Actor types: 0=Counter, 1=Accumulator, 2=Logger, 3=Supervisor
+fn actor_type_name kind:Int -> Str
+  if kind == 0 then "Counter"
+  else if kind == 1 then "Accumulator"
+  else if kind == 2 then "Logger"
+  else "Supervisor"
+
+-- Message types: "INC", "DEC", "ADD:n", "RESET", "GET", "LOG:msg", "STATUS"
+fn msg_type msg:Str -> Str
+  if msg.starts_with("ADD:")
+    "ADD"
+  else if msg.starts_with("LOG:")
+    "LOG"
+  else
+    msg
+
+fn msg_arg msg:Str -> Int
+  if msg.starts_with("ADD:")
+    rest := msg.substr(4, msg.len() - 4)
+    rest.to_int()
+  else
+    0
+
+fn msg_log_text msg:Str -> Str
+  if msg.starts_with("LOG:")
+    msg.substr(4, msg.len() - 4)
+  else
+    ""
+
+-- Process Counter actor message
+fn counter_process state:Int msg:Str -> Int
+  mt := msg_type(msg)
+  if mt == "INC" then state + 1
+  else if mt == "DEC" then state - 1
+  else if mt == "ADD" then state + msg_arg(msg)
+  else if mt == "RESET" then 0
+  else state
+
+-- Process Accumulator actor message
+fn accumulator_process state:Int msg:Str -> Int
+  mt := msg_type(msg)
+  if mt == "ADD" then state + msg_arg(msg)
+  else if mt == "RESET" then 0
+  else state
+
+-- Simulate processing mailbox for an actor
+fn process_mailbox actor_name:Str actor_kind:Int initial_state:Int messages:List -> Int
+  n := messages.count()
+  mut state := initial_state
+  mut i := 0
+  while i < n
+    msg := get_str(messages, i)
+    mt := msg_type(msg)
+    if actor_kind == 0
+      -- Counter
+      state = counter_process(state, msg)
+      if mt == "GET"
+        print "  [{actor_name}] GET -> {state}"
+    else if actor_kind == 1
+      -- Accumulator
+      state = accumulator_process(state, msg)
+      if mt == "GET"
+        print "  [{actor_name}] GET -> {state}"
+    else if actor_kind == 2
+      -- Logger
+      if mt == "LOG"
+        text := msg_log_text(msg)
+        print "  [{actor_name}] LOG: {text}"
+    i = i + 1
+  state
+
+fn simulate_round actors_names:List actors_kinds:List states:List round_msgs:List
+  n := actors_names.count()
+  mut i := 0
+  while i < n
+    nm := get_str(actors_names, i)
+    ak := get_int(actors_kinds, i)
+    st := get_int(states, i)
+    msgs_str := get_str(round_msgs, i)
+    -- Parse messages split by "|"
+    mut msgs := [""]
+    msgs.pop()
+    mut cur := ""
+    ml := msgs_str.len()
+    mut j := 0
+    while j < ml
+      c := msgs_str.char_at(j)
+      if c == "|"
+        if cur.len() > 0
+          msgs.push(cur)
+          cur = ""
+      else
+        cur = cur + c
+      j = j + 1
+    if cur.len() > 0
+      msgs.push(cur)
+    new_state := process_mailbox(nm, ak, st, msgs)
+    states[i] = new_state
+    i = i + 1
+
+fn main
+  print "Actor Model Simulation"
+  print "======================"
+  print ""
+
+  -- Create actors: names, kinds, states
+  mut actor_names := ["Counter-A", "Counter-B", "Accumulator", "Logger"]
+  mut actor_kinds := [0, 0, 1, 2]
+  mut actor_states := [0, 10, 0, 0]
+
+  total := actor_names.count()
+  print "Created {total} actors:"
+  mut i := 0
+  while i < total
+    nm := get_str(actor_names, i)
+    ak := get_int(actor_kinds, i)
+    kind_name := actor_type_name(ak)
+    st := get_int(actor_states, i)
+    print "  {nm} ({kind_name}) state={st}"
+    i = i + 1
+  print ""
+
+  -- Round 1: initial messages
+  print "Round 1 - Processing messages:"
+  mut round1 := [""]
+  round1.pop()
+  round1.push("INC|INC|INC|GET")
+  round1.push("DEC|DEC|GET")
+  round1.push("ADD:10|ADD:20|ADD:5|GET")
+  round1.push("LOG:System started|LOG:Round 1 complete")
+  simulate_round(actor_names, actor_kinds, actor_states, round1)
+  print ""
+
+  -- Round 2: more messages
+  print "Round 2 - Processing messages:"
+  mut round2 := [""]
+  round2.pop()
+  round2.push("ADD:5|DEC|GET")
+  round2.push("INC|INC|INC|GET")
+  round2.push("ADD:100|RESET|ADD:7|GET")
+  round2.push("LOG:Round 2 in progress")
+  simulate_round(actor_names, actor_kinds, actor_states, round2)
+  print ""
+
+  -- Final state
+  print "Final actor states:"
+  mut j := 0
+  while j < total
+    nm := get_str(actor_names, j)
+    st := get_int(actor_states, j)
+    ak := get_int(actor_kinds, j)
+    kind_name := actor_type_name(ak)
+    print "  {nm} ({kind_name}): {st}"
+    j = j + 1
+  print ""
+  print "Actor model simulation complete."

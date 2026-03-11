@@ -1,0 +1,150 @@
+-- Showcase 977: Pipeline Pattern (Data Processing)
+-- Chains data transformation stages: extract, transform, filter, aggregate
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+-- Stage 1: Parse CSV row "name,score,dept" -> extract fields
+fn parse_name row:Str -> Str
+  comma1 := row.index_of(",")
+  row.substr(0, comma1)
+
+fn parse_score row:Str -> Int
+  comma1 := row.index_of(",")
+  rest := row.substr(comma1 + 1, row.len() - comma1 - 1)
+  comma2 := rest.index_of(",")
+  score_str := rest.substr(0, comma2)
+  score_str.to_int()
+
+fn parse_dept row:Str -> Str
+  comma1 := row.index_of(",")
+  rest := row.substr(comma1 + 1, row.len() - comma1 - 1)
+  comma2 := rest.index_of(",")
+  rest.substr(comma2 + 1, rest.len() - comma2 - 1)
+
+-- Stage 2: Normalize scores (multiply by factor, integer math)
+fn normalize_score score:Int max_score:Int out_of:Int -> Int
+  score * out_of / max_score
+
+-- Stage 3: Filter by minimum score
+fn filter_by_score scores:List names:List depts:List min_score:Int -> List
+  -- returns indices of passing records
+  n := scores.count()
+  mut passing := [0]
+  passing.pop()
+  mut i := 0
+  while i < n
+    s := get_int(scores, i)
+    if s >= min_score
+      passing.push(i)
+    i = i + 1
+  passing
+
+-- Stage 4: Aggregate by department
+fn dept_avg scores:List depts:List target_dept:Str -> Int
+  n := scores.count()
+  mut total := 0
+  mut count := 0
+  mut i := 0
+  while i < n
+    if get_str(depts, i) == target_dept
+      total = total + get_int(scores, i)
+      count = count + 1
+    i = i + 1
+  if count == 0 then 0
+  else total / count
+
+fn dept_count depts:List target_dept:Str -> Int
+  n := depts.count()
+  mut count := 0
+  mut i := 0
+  while i < n
+    if get_str(depts, i) == target_dept
+      count = count + 1
+    i = i + 1
+  count
+
+fn main
+  print "Pipeline Pattern - Data Processing"
+  print "==================================="
+  print ""
+
+  -- Raw CSV data
+  mut raw := [""]
+  raw.pop()
+  raw.push("Alice,87,Engineering")
+  raw.push("Bob,45,Marketing")
+  raw.push("Carol,92,Engineering")
+  raw.push("Dave,78,Marketing")
+  raw.push("Eve,55,HR")
+  raw.push("Frank,96,Engineering")
+  raw.push("Grace,41,HR")
+  raw.push("Henry,83,Marketing")
+  raw.push("Ivy,70,HR")
+
+  print "Stage 1: Parse {raw.count()} CSV records"
+  mut names := [""]
+  names.pop()
+  mut scores := [0]
+  scores.pop()
+  mut depts := [""]
+  depts.pop()
+  n := raw.count()
+  mut i := 0
+  while i < n
+    row := get_str(raw, i)
+    names.push(parse_name(row))
+    scores.push(parse_score(row))
+    depts.push(parse_dept(row))
+    i = i + 1
+  print "  Parsed: {names.count()} records"
+  print ""
+
+  -- Stage 2: Normalize to 100 (already out of 100 in this case, scale by 1.1x capped)
+  print "Stage 2: Normalize scores (scale * 110 / 100)"
+  mut norm_scores := [0]
+  norm_scores.pop()
+  i = 0
+  while i < n
+    s := get_int(scores, i)
+    ns := normalize_score(s, 100, 110)
+    capped := if ns > 100 then 100 else ns
+    norm_scores.push(capped)
+    i = i + 1
+  first_name := get_str(names, 0)
+  first_orig := get_int(scores, 0)
+  first_norm := get_int(norm_scores, 0)
+  print "  {first_name}: {first_orig} -> {first_norm}"
+  print ""
+
+  -- Stage 3: Filter passing (>= 70 normalized)
+  print "Stage 3: Filter (normalized score >= 70)"
+  passing_idx := filter_by_score(norm_scores, names, depts, 70)
+  p_count := passing_idx.count()
+  print "  Passing: {p_count} / {n}"
+  mut j := 0
+  while j < p_count
+    idx := get_int(passing_idx, j)
+    nm := get_str(names, idx)
+    sc := get_int(norm_scores, idx)
+    dep := get_str(depts, idx)
+    print "  - {nm} ({dep}): {sc}"
+    j = j + 1
+  print ""
+
+  -- Stage 4: Aggregate by department
+  print "Stage 4: Department aggregates"
+  eng_avg := dept_avg(norm_scores, depts, "Engineering")
+  eng_cnt := dept_count(depts, "Engineering")
+  mkt_avg := dept_avg(norm_scores, depts, "Marketing")
+  mkt_cnt := dept_count(depts, "Marketing")
+  hr_avg := dept_avg(norm_scores, depts, "HR")
+  hr_cnt := dept_count(depts, "HR")
+  print "  Engineering: {eng_cnt} employees, avg score: {eng_avg}"
+  print "  Marketing:   {mkt_cnt} employees, avg score: {mkt_avg}"
+  print "  HR:          {hr_cnt} employees, avg score: {hr_avg}"
+  print ""
+  print "Pipeline processing complete."

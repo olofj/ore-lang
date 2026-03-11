@@ -1,0 +1,119 @@
+-- Showcase 976: Builder Pattern (Query Builder)
+-- Builds SQL-like queries fluently using a step-by-step builder
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+-- Query builder state: table, columns, conditions, order, limit
+-- We accumulate state as strings and build the final query
+
+fn build_select columns:Str table:Str -> Str
+  "SELECT " + columns + " FROM " + table
+
+fn build_where base:Str condition:Str -> Str
+  if condition == ""
+    base
+  else
+    base + " WHERE " + condition
+
+fn add_and_condition existing:Str new_cond:Str -> Str
+  if existing == ""
+    new_cond
+  else
+    existing + " AND " + new_cond
+
+fn add_or_condition existing:Str new_cond:Str -> Str
+  if existing == ""
+    new_cond
+  else
+    existing + " OR " + new_cond
+
+fn build_order_by base:Str column:Str direction:Str -> Str
+  if column == ""
+    base
+  else
+    base + " ORDER BY " + column + " " + direction
+
+fn build_limit base:Str lim:Int -> Str
+  if lim <= 0
+    base
+  else
+    lim_str := str(lim)
+    base + " LIMIT " + lim_str
+
+fn build_group_by base:Str column:Str -> Str
+  if column == ""
+    base
+  else
+    base + " GROUP BY " + column
+
+fn build_join base:Str join_table:Str on_cond:Str -> Str
+  if join_table == ""
+    base
+  else
+    base + " JOIN " + join_table + " ON " + on_cond
+
+-- Full builder function: constructs complete query
+fn build_query table:Str columns:Str join_table:Str join_on:Str condition:Str group:Str order:Str direction:Str lim:Int -> Str
+  mut q := build_select(columns, table)
+  q = build_join(q, join_table, join_on)
+  q = build_where(q, condition)
+  q = build_group_by(q, group)
+  q = build_order_by(q, order, direction)
+  q = build_limit(q, lim)
+  q
+
+fn main
+  print "Builder Pattern - SQL Query Builder"
+  print "===================================="
+  print ""
+
+  -- Query 1: Simple select all
+  q1 := build_query("users", "*", "", "", "", "", "", "", 0)
+  print "Query 1:"
+  print "  {q1}"
+  print ""
+
+  -- Query 2: Select with conditions
+  cond2 := add_and_condition("age > 18", "active = true")
+  q2 := build_query("users", "id, name, email", "", "", cond2, "", "name", "ASC", 10)
+  print "Query 2:"
+  print "  {q2}"
+  print ""
+
+  -- Query 3: Join with group by
+  cond3 := "orders.user_id = users.id"
+  join_on := "orders.user_id = users.id"
+  q3 := build_query("users", "users.name, COUNT(*) as order_count", "orders", join_on, "", "users.name", "order_count", "DESC", 5)
+  print "Query 3:"
+  print "  {q3}"
+  print ""
+
+  -- Query 4: Complex with OR conditions
+  mut cond4 := add_or_condition("status = 'pending'", "status = 'processing'")
+  cond4 = add_and_condition(cond4, "created_at > '2024-01-01'")
+  q4 := build_query("orders", "id, user_id, status, total", "", "", cond4, "", "created_at", "DESC", 20)
+  print "Query 4:"
+  print "  {q4}"
+  print ""
+
+  -- Query 5: Aggregation
+  q5 := build_query("products", "category, AVG(price) as avg_price, COUNT(*) as count", "", "", "in_stock = true", "category", "avg_price", "DESC", 0)
+  print "Query 5:"
+  print "  {q5}"
+  print ""
+
+  -- Demonstrate incremental building
+  print "Incremental build:"
+  mut q := build_select("name, score", "players")
+  print "  After SELECT:   {q}"
+  q = build_join(q, "teams", "players.team_id = teams.id")
+  print "  After JOIN:     {q}"
+  q = build_where(q, "score > 100")
+  print "  After WHERE:    {q}"
+  q = build_order_by(q, "score", "DESC")
+  print "  After ORDER BY: {q}"
+  q = build_limit(q, 3)
+  print "  Final:          {q}"
+  print ""
+  print "Builder pattern demonstration complete."

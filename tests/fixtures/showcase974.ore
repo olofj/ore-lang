@@ -1,0 +1,145 @@
+-- Showcase 974: Command Pattern (Undo/Redo)
+-- Text editor with command history for undo/redo operations
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+-- Command types: 0=INSERT, 1=DELETE, 2=REPLACE
+fn cmd_name kind:Int -> Str
+  if kind == 0 then "INSERT"
+  else if kind == 1 then "DELETE"
+  else "REPLACE"
+
+-- Execute a command on text, return new text
+fn execute_cmd kind:Int pos:Int text:Str arg1:Str arg2:Str -> Str
+  if kind == 0
+    -- Insert arg1 at position pos
+    before := text.substr(0, pos)
+    after := text.substr(pos, text.len() - pos)
+    before + arg1 + after
+  else if kind == 1
+    -- Delete len(arg1) chars at pos
+    n := arg1.len()
+    before := text.substr(0, pos)
+    after := text.substr(pos + n, text.len() - pos - n)
+    before + after
+  else
+    -- Replace arg1 with arg2 at pos
+    before := text.substr(0, pos)
+    rest := text.substr(pos + arg1.len(), text.len() - pos - arg1.len())
+    before + arg2 + rest
+
+-- Undo a command (inverse operation)
+fn undo_cmd kind:Int pos:Int text:Str arg1:Str arg2:Str -> Str
+  if kind == 0
+    -- Undo insert: delete what was inserted
+    n := arg1.len()
+    before := text.substr(0, pos)
+    after := text.substr(pos + n, text.len() - pos - n)
+    before + after
+  else if kind == 1
+    -- Undo delete: re-insert deleted text
+    before := text.substr(0, pos)
+    after := text.substr(pos, text.len() - pos)
+    before + arg1 + after
+  else
+    -- Undo replace: swap arg2 back to arg1
+    before := text.substr(0, pos)
+    rest := text.substr(pos + arg2.len(), text.len() - pos - arg2.len())
+    before + arg1 + rest
+
+fn print_history kinds:List positions:List arg1s:List arg2s:List cursor:Int
+  n := kinds.count()
+  mut i := 0
+  while i < n
+    k := get_int(kinds, i)
+    p := get_int(positions, i)
+    a1 := get_str(arg1s, i)
+    name := cmd_name(k)
+    marker := if i < cursor then "  [done]" else "  [undone]"
+    print "{marker} {name} at {p}: '{a1}'"
+    i = i + 1
+
+fn main
+  print "Command Pattern - Text Editor with Undo/Redo"
+  print "============================================="
+  print ""
+
+  mut text := "Hello"
+  print "Initial text: '{text}'"
+  print ""
+
+  -- Command history: parallel lists
+  mut cmd_kinds := [0]
+  cmd_kinds.pop()
+  mut cmd_positions := [0]
+  cmd_positions.pop()
+  mut cmd_arg1s := [""]
+  cmd_arg1s.pop()
+  mut cmd_arg2s := [""]
+  cmd_arg2s.pop()
+  mut cursor := 0
+
+  -- Execute command 1: INSERT " World" at pos 5
+  text = execute_cmd(0, 5, text, " World", "")
+  cmd_kinds.push(0)
+  cmd_positions.push(5)
+  cmd_arg1s.push(" World")
+  cmd_arg2s.push("")
+  cursor = cursor + 1
+  print "After INSERT ' World': '{text}'"
+
+  -- Execute command 2: INSERT "!" at pos 11
+  text = execute_cmd(0, 11, text, "!", "")
+  cmd_kinds.push(0)
+  cmd_positions.push(11)
+  cmd_arg1s.push("!")
+  cmd_arg2s.push("")
+  cursor = cursor + 1
+  print "After INSERT '!': '{text}'"
+
+  -- Execute command 3: REPLACE "Hello" with "Hi" at pos 0
+  text = execute_cmd(2, 0, text, "Hello", "Hi")
+  cmd_kinds.push(2)
+  cmd_positions.push(0)
+  cmd_arg1s.push("Hello")
+  cmd_arg2s.push("Hi")
+  cursor = cursor + 1
+  print "After REPLACE 'Hello'->'Hi': '{text}'"
+  print ""
+
+  -- Undo last command
+  cursor = cursor - 1
+  mut k := get_int(cmd_kinds, cursor)
+  mut p := get_int(cmd_positions, cursor)
+  mut a1 := get_str(cmd_arg1s, cursor)
+  mut a2 := get_str(cmd_arg2s, cursor)
+  text = undo_cmd(k, p, text, a1, a2)
+  print "After UNDO: '{text}'"
+
+  -- Undo again
+  cursor = cursor - 1
+  k = get_int(cmd_kinds, cursor)
+  p = get_int(cmd_positions, cursor)
+  a1 = get_str(cmd_arg1s, cursor)
+  a2 = get_str(cmd_arg2s, cursor)
+  text = undo_cmd(k, p, text, a1, a2)
+  print "After UNDO: '{text}'"
+
+  -- Redo (re-execute)
+  k = get_int(cmd_kinds, cursor)
+  p = get_int(cmd_positions, cursor)
+  a1 = get_str(cmd_arg1s, cursor)
+  a2 = get_str(cmd_arg2s, cursor)
+  text = execute_cmd(k, p, text, a1, a2)
+  cursor = cursor + 1
+  print "After REDO: '{text}'"
+  print ""
+
+  print "Command history (cursor={cursor}):"
+  print_history(cmd_kinds, cmd_positions, cmd_arg1s, cmd_arg2s, cursor)
+  print ""
+  print "Command pattern demonstration complete."

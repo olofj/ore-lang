@@ -1,0 +1,82 @@
+-- Showcase 972: Observer Pattern (Event System)
+-- Implements a simple event system where observers react to events
+
+fn get_str lst:List idx:Int -> Str
+  lst[idx]
+
+fn get_int lst:List idx:Int -> Int
+  lst[idx]
+
+-- Event types
+fn event_name kind:Int -> Str
+  if kind == 0 then "LOGIN"
+  else if kind == 1 then "LOGOUT"
+  else if kind == 2 then "PURCHASE"
+  else if kind == 3 then "ERROR"
+  else "UNKNOWN"
+
+-- Observer: logger reacts to all events
+fn observer_logger event:Int user:Str data:Str
+  name := event_name(event)
+  print "  [Logger] Event={name} user={user} data={data}"
+
+-- Observer: security reacts to login/logout/error
+fn observer_security event:Int user:Str data:Str
+  if event == 0
+    print "  [Security] User '{user}' logged in - recording IP: {data}"
+  else if event == 1
+    print "  [Security] User '{user}' logged out"
+  else if event == 3
+    print "  [Security] ALERT: Error for user '{user}': {data}"
+
+-- Observer: analytics reacts to purchase events
+fn observer_analytics event:Int user:Str data:Str
+  if event == 2
+    print "  [Analytics] Purchase tracked: user={user} amount={data}"
+
+-- Observer: email reacts to purchase and error
+fn observer_email event:Int user:Str data:Str
+  if event == 2
+    print "  [Email] Sending receipt to {user} for {data}"
+  else if event == 3
+    print "  [Email] Sending error notification to {user}"
+
+fn dispatch_event event:Int user:Str data:Str
+  name := event_name(event)
+  print "Event fired: {name}"
+  observer_logger(event, user, data)
+  observer_security(event, user, data)
+  observer_analytics(event, user, data)
+  observer_email(event, user, data)
+  print ""
+
+fn replay_events events:List users:List data_list:List
+  n := events.count()
+  mut i := 0
+  while i < n
+    ev := get_int(events, i)
+    u := get_str(users, i)
+    d := get_str(data_list, i)
+    dispatch_event(ev, u, d)
+    i = i + 1
+
+fn main
+  print "Observer Pattern - Event System"
+  print "================================"
+  print ""
+
+  -- Dispatch individual events
+  dispatch_event(0, "alice", "192.168.1.1")
+  dispatch_event(2, "alice", "$49.99")
+  dispatch_event(3, "bob", "payment failed")
+  dispatch_event(1, "alice", "")
+
+  -- Replay a batch of events
+  print "--- Batch replay ---"
+  print ""
+  mut evs := [0, 2, 2, 3, 1]
+  mut users := ["carol", "carol", "dave", "dave", "carol"]
+  mut data := ["10.0.0.1", "$29.99", "$9.99", "timeout", ""]
+  replay_events(evs, users, data)
+
+  print "Observer pattern demonstration complete."
