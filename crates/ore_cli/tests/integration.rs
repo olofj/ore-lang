@@ -2034,6 +2034,38 @@ fn showcase70() {
 }
 
 #[test]
+fn showcase71() {
+    let out = run_ore("showcase71.ore");
+    assert!(out.contains("Alice: 95"));
+    assert!(out.contains("Bob: 87"));
+    assert!(out.contains("Merged keys: 5"));
+    assert!(out.contains("c value: 30"));
+    assert!(out.contains("a: 5"));
+    assert!(out.contains("b: 2"));
+    assert!(out.contains("Before clear: 2"));
+    assert!(out.contains("After clear: 0"));
+    assert!(out.contains("hello freq: 3"));
+    assert!(out.contains("ore freq: 1"));
+}
+
+#[test]
+fn showcase72() {
+    let out = run_ore("showcase72.ore");
+    assert!(out.contains("Squares: 1, 4, 9, 16, 25, 36, 49, 64, 81, 100"));
+    assert!(out.contains("Even squares: 4, 16, 36, 64, 100"));
+    assert!(out.contains("Cubes: 1, 8, 27, 64, 125"));
+    assert!(out.contains("Take while <= 5: 1, 2, 3, 4, 5"));
+    assert!(out.contains("Drop while <= 5: 6, 7, 8, 9, 10"));
+    assert!(out.contains("Scan: 0, 1, 3, 6, 10, 15"));
+    assert!(out.contains("Reversed: 5, 4, 3, 2, 1"));
+    assert!(out.contains("Concat: 1, 2, 3, 4, 5, 6"));
+    assert!(out.contains("First: 10"));
+    assert!(out.contains("Last: 50"));
+    assert!(out.contains("Slice(1,4): 20, 30, 40"));
+    assert!(out.contains("Step 3: 0, 3, 6, 9, 12, 15, 18"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

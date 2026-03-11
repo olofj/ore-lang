@@ -1,0 +1,58 @@
+-- Showcase 71: Map iteration and functional map operations
+
+fn main
+  -- Map iteration with for k in map
+  scores := {"Alice": 95, "Bob": 87, "Carol": 92, "Dave": 78}
+  print "Scores:"
+  for name in scores
+    print "  {name}: {scores.get(name)}"
+
+  -- Map iteration with for k, v in map
+  settings := {"theme": "dark", "language": "en", "timezone": "UTC"}
+  print "Settings:"
+  for key, value in settings
+    print "  {key} = {value}"
+
+  -- Map merge
+  base := {"a": 1, "b": 2, "c": 3}
+  extra := {"c": 30, "d": 4, "e": 5}
+  merged := base.merge(extra)
+  print "Merged keys: {merged.len()}"
+  print "c value: {merged.get("c")}"
+
+  -- Map entries
+  colors := {"red": 1, "green": 2, "blue": 3}
+  entries := colors.entries()
+  print "Entry count: {entries.len()}"
+
+  -- Building a histogram
+  text := "abracadabra"
+  mut hist := {}
+  for ch in text.chars()
+    if hist.contains(ch)
+      hist.set(ch, hist.get(ch) + 1)
+    else
+      hist.set(ch, 1)
+  print "a: {hist.get("a")}"
+  print "b: {hist.get("b")}"
+  print "r: {hist.get("r")}"
+
+  -- Map clear
+  mut temp := {"x": 1, "y": 2}
+  print "Before clear: {temp.len()}"
+  temp.clear()
+  print "After clear: {temp.len()}"
+
+  -- get_or default values
+  config := {"port": 8080}
+  port := config.get_or("port", 3000)
+  host := config.get_or("host", 0)
+  print "port: {port}"
+  print "host default: {host}"
+
+  -- Map from list processing
+  words := ["hello", "world", "hello", "ore", "world", "hello"]
+  freq := words.frequencies()
+  print "hello freq: {freq.get("hello")}"
+  print "world freq: {freq.get("world")}"
+  print "ore freq: {freq.get("ore")}"
