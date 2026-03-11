@@ -10222,6 +10222,187 @@ fn showcase790_rate_limiter() {
 }
 
 #[test]
+fn showcase791_page_replacement() {
+    let out = run_ore("showcase791.ore");
+    assert!(out.contains("Page Replacement Algorithms (FIFO, LRU, Optimal):"), "got: {out}");
+    assert!(out.contains("FIFO:    15 faults"), "got: {out}");
+    assert!(out.contains("LRU:     12 faults"), "got: {out}");
+    assert!(out.contains("Optimal: 9 faults (theoretical minimum)"), "got: {out}");
+    assert!(out.contains("Page replacement: evict frames when memory full; optimal is offline bound."), "got: {out}");
+}
+
+#[test]
+fn showcase792_process_scheduler() {
+    let out = run_ore("showcase792.ore");
+    assert!(out.contains("Process Scheduler (Round Robin + Priority):"), "got: {out}");
+    assert!(out.contains("Avg turnaround: 22, Avg waiting: 16"), "got: {out}");
+    assert!(out.contains("Avg turnaround: 17, Avg waiting: 11"), "got: {out}");
+    assert!(out.contains("Process scheduler: decides which process runs on the CPU and when."), "got: {out}");
+}
+
+#[test]
+fn showcase793_memory_allocator() {
+    let out = run_ore("showcase793.ore");
+    assert!(out.contains("Memory Allocator (First Fit, Best Fit, Worst Fit):"), "got: {out}");
+    assert!(out.contains("First Fit: simple, fast, may cause fragmentation near start"), "got: {out}");
+    assert!(out.contains("Best Fit:  minimizes wasted space per allocation"), "got: {out}");
+    assert!(out.contains("Memory allocator: manages free/used blocks with fit strategies."), "got: {out}");
+}
+
+#[test]
+fn showcase794_disk_scheduling() {
+    let out = run_ore("showcase794.ore");
+    assert!(out.contains("Disk Scheduling (SSTF, SCAN, C-SCAN):"), "got: {out}");
+    assert!(out.contains("SSTF:   208 cylinders (greedy, low avg seek)"), "got: {out}");
+    assert!(out.contains("SCAN:   332 cylinders (fair, elevator-like)"), "got: {out}");
+    assert!(out.contains("Disk scheduling: minimizes head movement to reduce seek latency."), "got: {out}");
+}
+
+#[test]
+fn showcase795_producer_consumer() {
+    let out = run_ore("showcase795.ore");
+    assert!(out.contains("Producer-Consumer with Bounded Buffer:"), "got: {out}");
+    assert!(out.contains("Items produced:   11"), "got: {out}");
+    assert!(out.contains("Items consumed:   9"), "got: {out}");
+    assert!(out.contains("Producer-consumer: bounded buffer synchronization with semaphores."), "got: {out}");
+}
+
+#[test]
+fn showcase796_bankers_algorithm() {
+    let out = run_ore("showcase796.ore");
+    assert!(out.contains("Banker's Algorithm (Deadlock Avoidance):"), "got: {out}");
+    assert!(out.contains("System is in SAFE state!"), "got: {out}");
+    assert!(out.contains("Safe sequence: P1 -> P3 -> P4 -> P0 -> P2"), "got: {out}");
+    assert!(out.contains("Banker's algorithm: grants resources only if system remains in safe state."), "got: {out}");
+}
+
+#[test]
+fn showcase797_virtual_memory() {
+    let out = run_ore("showcase797.ore");
+    assert!(out.contains("Virtual Memory Page Table Simulation:"), "got: {out}");
+    assert!(out.contains("TLB hits:    6/8 (75%)"), "got: {out}");
+    assert!(out.contains("Page faults: 2"), "got: {out}");
+    assert!(out.contains("Virtual memory: abstracts physical RAM with page tables and TLB caching."), "got: {out}");
+}
+
+#[test]
+fn showcase798_inode_simulation() {
+    let out = run_ore("showcase798.ore");
+    assert!(out.contains("File System Inode Simulation:"), "got: {out}");
+    assert!(out.contains("Inode 6: 3072 bytes -> 6 data block(s), indirect_blocks=2"), "got: {out}");
+    assert!(out.contains("large.log  (inode 6, 3072 bytes, has indirect block)"), "got: {out}");
+    assert!(out.contains("File system inode: metadata structure linking filenames to data blocks."), "got: {out}");
+}
+
+#[test]
+fn showcase799_cache_replacement() {
+    let out = run_ore("showcase799.ore");
+    assert!(out.contains("Cache Replacement Policies (LFU, ARC):"), "got: {out}");
+    assert!(out.contains("LFU: hits=8, misses=10, hit_rate=44%"), "got: {out}");
+    assert!(out.contains("ARC: hits=10, misses=8, hit_rate=55%"), "got: {out}");
+    assert!(out.contains("Cache replacement: manages limited fast memory for frequently accessed data."), "got: {out}");
+}
+
+#[test]
+fn showcase800_pipeline_hazards() {
+    let out = run_ore("showcase800.ore");
+    assert!(out.contains("CPU Pipeline Hazard Detection:"), "got: {out}");
+    assert!(out.contains("RAW hazards detected: 4 (5 stall cycles)"), "got: {out}");
+    assert!(out.contains("Total stall cycles: 8"), "got: {out}");
+    assert!(out.contains("CPU pipeline: hazards from data/control dependencies reduce throughput."), "got: {out}");
+}
+
+#[test]
+fn showcase801_caesar_cipher() {
+    let out = run_ore("showcase801.ore");
+    assert!(out.contains("Caesar Cipher with Frequency Analysis:"), "got: {out}");
+    assert!(out.contains("Ciphertext: URYYB JBEYQ GUVF VF N FRPERG ZRFFNTR"), "got: {out}");
+    assert!(out.contains("Decrypted:  HELLO WORLD THIS IS A SECRET MESSAGE"), "got: {out}");
+    assert!(out.contains("Caesar cipher: simple substitution, shift=13 (ROT13) is self-inverse, broken by frequency analysis."), "got: {out}");
+}
+
+#[test]
+fn showcase802_vigenere_cipher() {
+    let out = run_ore("showcase802.ore");
+    assert!(out.contains("Vigenere Cipher:"), "got: {out}");
+    assert!(out.contains("Ciphertext: LXFOPVEFRNHR"), "got: {out}");
+    assert!(out.contains("Decrypted:  ATTACKATDAWN"), "got: {out}");
+    assert!(out.contains("Vigenere cipher: polyalphabetic substitution, harder than Caesar but broken by Kasiski examination."), "got: {out}");
+}
+
+#[test]
+fn showcase803_rsa_keygen() {
+    let out = run_ore("showcase803.ore");
+    assert!(out.contains("RSA Key Generation Simulation (small primes):"), "got: {out}");
+    assert!(out.contains("n = 61 * 53 = 3233"), "got: {out}");
+    assert!(out.contains("Original == Recovered: true"), "got: {out}");
+    assert!(out.contains("RSA: public-key cryptography based on difficulty of factoring large semiprimes."), "got: {out}");
+}
+
+#[test]
+fn showcase804_diffie_hellman() {
+    let out = run_ore("showcase804.ore");
+    assert!(out.contains("Diffie-Hellman Key Exchange Simulation:"), "got: {out}");
+    assert!(out.contains("Secrets match: true"), "got: {out}");
+    assert!(out.contains("For large p (2048+ bits), this is computationally infeasible"), "got: {out}");
+    assert!(out.contains("Diffie-Hellman: key exchange over public channel using discrete logarithm hardness."), "got: {out}");
+}
+
+#[test]
+fn showcase805_sha256_simulation() {
+    let out = run_ore("showcase805.ore");
+    assert!(out.contains("SHA-256 Simulation (simplified demonstration):"), "got: {out}");
+    assert!(out.contains("H0 = 1779033703"), "got: {out}");
+    assert!(out.contains("SHA-256('abc') actual = ba7816bf8f01cfea414140de5dae2223"), "got: {out}");
+    assert!(out.contains("SHA-256: cryptographic hash function with 256-bit output, avalanche effect, and collision resistance."), "got: {out}");
+}
+
+#[test]
+fn showcase806_hmac() {
+    let out = run_ore("showcase806.ore");
+    assert!(out.contains("HMAC Construction:"), "got: {out}");
+    assert!(out.contains("Matches msg1: true"), "got: {out}");
+    assert!(out.contains("Tamper detected: true"), "got: {out}");
+    assert!(out.contains("HMAC: message authentication code using nested hash with inner/outer key padding."), "got: {out}");
+}
+
+#[test]
+fn showcase807_aes_sbox() {
+    let out = run_ore("showcase807.ore");
+    assert!(out.contains("AES S-box and Key Schedule Simulation:"), "got: {out}");
+    assert!(out.contains("S(0x00) = 0x63 = 99"), "got: {out}");
+    assert!(out.contains("Round 1 key words:"), "got: {out}");
+    assert!(out.contains("AES: symmetric block cipher with S-box non-linearity and key schedule expansion."), "got: {out}");
+}
+
+#[test]
+fn showcase808_digital_signature() {
+    let out = run_ore("showcase808.ore");
+    assert!(out.contains("Digital Signature Simulation (RSA-based):"), "got: {out}");
+    assert!(out.contains("Valid signature: true"), "got: {out}");
+    assert!(out.contains("Tamper detected: true"), "got: {out}");
+    assert!(out.contains("Digital signatures: RSA private key signing, public key verification, ensures authenticity."), "got: {out}");
+}
+
+#[test]
+fn showcase809_merkle_tree() {
+    let out = run_ore("showcase809.ore");
+    assert!(out.contains("Merkle Tree:"), "got: {out}");
+    assert!(out.contains("Proof valid:   true"), "got: {out}");
+    assert!(out.contains("Hashes differ: true"), "got: {out}");
+    assert!(out.contains("Merkle tree: binary hash tree enabling O(log N) inclusion proofs and tamper detection."), "got: {out}");
+}
+
+#[test]
+fn showcase810_zkp_graph_coloring() {
+    let out = run_ore("showcase810.ore");
+    assert!(out.contains("Zero-Knowledge Proof Simulation (Graph 3-Coloring):"), "got: {out}");
+    assert!(out.contains("Coloring is valid (no adjacent same color): true"), "got: {out}");
+    assert!(out.contains("Round 3 passed: true"), "got: {out}");
+    assert!(out.contains("Zero-knowledge proof: convince verifier of knowledge without revealing the secret itself."), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

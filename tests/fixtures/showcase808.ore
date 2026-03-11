@@ -1,0 +1,123 @@
+-- Showcase 808: Digital Signature Simulation
+
+fn mod_pow base:Int exp:Int modulus:Int -> Int
+  mut result := 1
+  mut b := base % modulus
+  mut e := exp
+  while e > 0
+    if e % 2 == 1
+      result = (result * b) % modulus
+    e = e / 2
+    b = (b * b) % modulus
+  result
+
+fn mod_inverse a:Int m:Int -> Int
+  mut old_r := a
+  mut r := m
+  mut old_s := 1
+  mut s := 0
+  while r != 0
+    q := old_r / r
+    tmp_r := r
+    r = old_r - q * r
+    old_r = tmp_r
+    tmp_s := s
+    s = old_s - q * s
+    old_s = tmp_s
+  if old_s < 0
+    old_s = old_s + m
+  old_s
+
+fn simple_hash msg:Str -> Int
+  n := msg.len()
+  mut h := 1000003
+  for i in range(0, n)
+    c := ord(msg.char_at(i))
+    h = (h * 31 + c) % 9999991
+  h
+
+fn rsa_sign hash:Int d:Int n:Int -> Int
+  mod_pow(hash, d, n)
+
+fn rsa_verify sig:Int e:Int n:Int -> Int
+  mod_pow(sig, e, n)
+
+fn main
+  print "Digital Signature Simulation (RSA-based):"
+  print ""
+
+  -- RSA key setup (small primes for demo)
+  p := 61
+  q := 53
+  n := p * q         -- 3233
+  phi := (p - 1) * (q - 1)  -- 3120
+  e := 17
+  d := mod_inverse(e, phi)   -- 2753
+
+  print "=== Key Setup ==="
+  print "  p = {p}, q = {q}"
+  print "  n = {n} (public modulus)"
+  print "  e = {e} (public exponent)"
+  print "  d = {d} (private exponent)"
+  print "  Public key:  (e={e}, n={n})"
+  print "  Private key: (d={d}, n={n})"
+  print ""
+
+  -- Sign a document
+  doc := "Transfer 500 USD to Bob"
+  hash_val := simple_hash(doc) % n
+  print "=== Signing ==="
+  print "  Document: '{doc}'"
+  print "  Hash(doc) mod n = {hash_val}"
+  sig := rsa_sign(hash_val, d, n)
+  print "  Signature = Hash^d mod n = {sig}"
+  print ""
+
+  -- Verify signature
+  print "=== Verification ==="
+  recovered := rsa_verify(sig, e, n)
+  print "  Recovered hash = Sig^e mod n = {recovered}"
+  print "  Expected hash  = {hash_val}"
+  print "  Valid signature: {recovered == hash_val}"
+  print ""
+
+  -- Tampered document
+  print "=== Tamper Detection ==="
+  tampered := "Transfer 5000 USD to Eve"
+  tampered_hash := simple_hash(tampered) % n
+  tampered_check := rsa_verify(sig, e, n)
+  print "  Tampered doc: '{tampered}'"
+  print "  Hash(tampered) mod n = {tampered_hash}"
+  print "  Original sig recovered hash = {tampered_check}"
+  print "  Tamper detected: {tampered_hash != tampered_check}"
+  print ""
+
+  -- Wrong key verification
+  print "=== Wrong Key Detection ==="
+  e_wrong := 5
+  recovered_wrong := rsa_verify(sig, e_wrong, n)
+  print "  With wrong e={e_wrong}: recovered = {recovered_wrong}"
+  print "  Matches hash: {recovered_wrong == hash_val}"
+  print ""
+
+  -- Multiple documents
+  print "=== Signing Multiple Documents ==="
+  docs := ["Pay Alice 100", "Pay Bob 200", "Pay Carol 300"]
+  for i in range(0, 3)
+    doc_i := docs[i]
+    h_i := simple_hash(doc_i) % n
+    s_i := rsa_sign(h_i, d, n)
+    r_i := rsa_verify(s_i, e, n)
+    print "  '{doc_i}'"
+    print "    hash={h_i}, sig={s_i}, valid={r_i == h_i}"
+  print ""
+
+  -- Properties
+  print "=== Digital Signature Properties ==="
+  print "  Authentication: only private key holder can sign"
+  print "  Integrity: any document change invalidates signature"
+  print "  Non-repudiation: signer cannot deny signing"
+  print "  Public verification: anyone with public key can verify"
+
+  print ""
+  print "Digital signatures: RSA private key signing, public key verification, ensures authenticity."

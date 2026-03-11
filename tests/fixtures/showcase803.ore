@@ -1,0 +1,121 @@
+-- Showcase 803: RSA Key Generation Simulation (small primes)
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    false
+  else if n == 2
+    true
+  else if n % 2 == 0
+    false
+  else
+    mut i := 3
+    mut prime := true
+    while i * i <= n and prime
+      if n % i == 0
+        prime = false
+      i = i + 2
+    prime
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  while y != 0
+    t := y
+    y = x % y
+    x = t
+  x
+
+fn mod_pow base:Int exp:Int modulus:Int -> Int
+  mut result := 1
+  mut b := base % modulus
+  mut e := exp
+  while e > 0
+    if e % 2 == 1
+      result = (result * b) % modulus
+    e = e / 2
+    b = (b * b) % modulus
+  result
+
+fn mod_inverse a:Int m:Int -> Int
+  -- Extended Euclidean algorithm
+  mut old_r := a
+  mut r := m
+  mut old_s := 1
+  mut s := 0
+  while r != 0
+    q := old_r / r
+    tmp_r := r
+    r = old_r - q * r
+    old_r = tmp_r
+    tmp_s := s
+    s = old_s - q * s
+    old_s = tmp_s
+  if old_s < 0
+    old_s = old_s + m
+  old_s
+
+fn main
+  print "RSA Key Generation Simulation (small primes):"
+  print ""
+
+  -- Choose two small primes
+  p := 61
+  q := 53
+  print "=== Key Generation ==="
+  print "  Step 1: Choose two primes"
+  print "    p = {p} (prime: {is_prime(p)})"
+  print "    q = {q} (prime: {is_prime(q)})"
+  print ""
+
+  -- Compute n = p * q
+  n := p * q
+  print "  Step 2: Compute n = p * q"
+  print "    n = {p} * {q} = {n}"
+  print ""
+
+  -- Euler's totient phi(n) = (p-1)(q-1)
+  phi := (p - 1) * (q - 1)
+  print "  Step 3: Compute phi(n) = (p-1)(q-1)"
+  print "    phi({n}) = {p - 1} * {q - 1} = {phi}"
+  print ""
+
+  -- Choose e: 1 < e < phi, gcd(e, phi) = 1
+  e := 17
+  print "  Step 4: Choose public exponent e"
+  print "    e = {e}, gcd(e, phi) = {gcd(e, phi)} (must be 1)"
+  print ""
+
+  -- Compute d: modular inverse of e mod phi
+  d := mod_inverse(e, phi)
+  print "  Step 5: Compute private exponent d = e^-1 mod phi"
+  print "    d = {d}"
+  print "    Verify: e * d mod phi = {(e * d) % phi} (must be 1)"
+  print ""
+
+  -- Public and private keys
+  print "=== Keys ==="
+  print "  Public key:  (e={e}, n={n})"
+  print "  Private key: (d={d}, n={n})"
+  print ""
+
+  -- Encrypt and decrypt a message
+  m := 65  -- ASCII 'A'
+  print "=== Encrypt/Decrypt message m={m} ==="
+  c := mod_pow(m, e, n)
+  print "  Encrypt: c = m^e mod n = {m}^{e} mod {n} = {c}"
+  recovered := mod_pow(c, d, n)
+  print "  Decrypt: m = c^d mod n = {c}^{d} mod {n} = {recovered}"
+  print "  Original == Recovered: {m == recovered}"
+  print ""
+
+  -- Encrypt a few more values
+  print "=== Additional Messages ==="
+  msgs := [42, 100, 200, 300]
+  for i in range(0, 4)
+    mi := msgs[i]
+    ci := mod_pow(mi, e, n)
+    ri := mod_pow(ci, d, n)
+    print "  m={mi} -> enc={ci} -> dec={ri} (ok: {mi == ri})"
+
+  print ""
+  print "RSA: public-key cryptography based on difficulty of factoring large semiprimes."

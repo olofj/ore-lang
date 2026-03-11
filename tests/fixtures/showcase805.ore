@@ -1,0 +1,116 @@
+-- Showcase 805: SHA-256 Simulation (simplified demonstration)
+
+fn rotr32 x:Int n:Int -> Int
+  -- Rotate right 32-bit (simulate with masking)
+  mask := 4294967295  -- 0xFFFFFFFF
+  x32 := x % (mask + 1)
+  right := x32 / (1 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2)
+  right
+
+fn xor_bits a:Int b:Int -> Int
+  -- Simulate XOR using modular arithmetic (simplified)
+  (a + b) % 2
+
+fn mix_word a:Int b:Int c:Int d:Int -> Int
+  -- Simplified mixing step: add words mod 2^32
+  mask := 4294967295
+  ((a + b + c + d) % (mask + 1) + mask + 1) % (mask + 1)
+
+fn main
+  print "SHA-256 Simulation (simplified demonstration):"
+  print ""
+
+  -- SHA-256 initial hash values (first 8 prime square roots, fractional parts)
+  h0 := 1779033703
+  h1 := 3144134277
+  h2 := 1013904242
+  h3 := 2773480762
+  h4 := 1359893119
+  h5 := 2600822924
+  h6 := 528734635
+  h7 := 1541459225
+
+  print "=== SHA-256 Initial Hash Values (H0-H7) ==="
+  print "  H0 = {h0}"
+  print "  H1 = {h1}"
+  print "  H2 = {h2}"
+  print "  H3 = {h3}"
+  print "  H4 = {h4}"
+  print "  H5 = {h5}"
+  print "  H6 = {h6}"
+  print "  H7 = {h7}"
+  print "  (Fractional parts of sqrt of first 8 primes)"
+  print ""
+
+  -- First 8 round constants K (fractional parts of cube roots of primes)
+  k0 := 1116352408
+  k1 := 1899447441
+  k2 := 3049323471
+  k3 := 3921009573
+  k4 := 961987163
+  k5 := 1508970993
+  k6 := 2453635748
+  k7 := 2870763221
+
+  print "=== SHA-256 Round Constants K0-K7 (of 64 total) ==="
+  print "  K0 = {k0}"
+  print "  K1 = {k1}"
+  print "  K2 = {k2}"
+  print "  K3 = {k3}"
+  print "  (Fractional parts of cube roots of first 64 primes)"
+  print ""
+
+  -- Preprocessing: show how a message is padded
+  msg := "abc"
+  msg_len := msg.len()
+  bit_len := msg_len * 8
+  print "=== Message Preprocessing ==="
+  print "  Message: '{msg}'"
+  print "  Length: {msg_len} bytes = {bit_len} bits"
+  print "  ASCII bytes: {ord(msg.char_at(0))}, {ord(msg.char_at(1))}, {ord(msg.char_at(2))}"
+  print ""
+  print "  Padding: append 0x80 byte, then zeros, then 64-bit length"
+  padded_bits := 512  -- always one block for 'abc'
+  print "  Padded to: {padded_bits} bits (one 512-bit block)"
+  print ""
+
+  -- Message schedule (simplified, showing W0-W2 = the actual message words)
+  w0 := 1633837952  -- 'abc' + 0x80 padded to 32 bits: 0x61626380
+  print "=== Message Schedule (W) ==="
+  print "  W0 = {w0} (contains 'a','b','c' + padding byte 0x80)"
+  print "  W1..W13 = 0 (padding zeros)"
+  print "  W14 = 0 (high bits of message length)"
+  print "  W15 = {bit_len} (message length in bits)"
+  print ""
+
+  -- Simplified compression: show one round
+  mask32 := 4294967295
+  print "=== Compression Round 0 (simplified) ==="
+  -- Ch(e,f,g) = (e AND f) XOR (NOT e AND g) -> simplified
+  -- Sigma1(e): rotr(e,6) XOR rotr(e,11) XOR rotr(e,25)
+  -- T1 = h + Sigma1(e) + Ch(e,f,g) + K0 + W0
+  t1 := (h7 + h4 + k0 + w0) % (mask32 + 1)
+  t2 := (h0 + h1) % (mask32 + 1)
+  new_h := t1
+  print "  T1 (h+Sigma1(e)+Ch+K0+W0 simplified) = {t1}"
+  print "  T2 (Sigma0(a)+Maj simplified) = {t2}"
+  print "  New state: a'={t1}, e'={t1}"
+  print ""
+
+  -- SHA-256 produces 256-bit (32-byte) digest
+  print "=== Output: 256-bit (32-byte) Digest ==="
+  print "  SHA-256('abc') actual = ba7816bf8f01cfea414140de5dae2223..."
+  print "  (Full computation requires 64 rounds with all 64 K constants)"
+  print ""
+
+  -- Key properties
+  print "=== SHA-256 Properties ==="
+  print "  Output size: 256 bits (32 bytes)"
+  print "  Block size: 512 bits"
+  print "  Rounds: 64"
+  print "  Pre-image resistance: 2^256 work to reverse"
+  print "  Collision resistance: 2^128 work to find collision"
+  print "  Avalanche effect: 1-bit input change -> ~50% output bits change"
+
+  print ""
+  print "SHA-256: cryptographic hash function with 256-bit output, avalanche effect, and collision resistance."

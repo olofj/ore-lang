@@ -1,0 +1,124 @@
+-- Showcase 807: AES S-box and Key Schedule Simulation
+
+fn sbox_lookup val:Int -> Int
+  -- AES S-box: first 16 entries (row 0) for demonstration
+  -- Full S-box has 256 entries; showing the structure
+  sbox_row0 := [99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118]
+  sbox_row1 := [202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192]
+  row := val / 16
+  col := val % 16
+  if row == 0
+    sbox_row0[col]
+  else if row == 1
+    sbox_row1[col]
+  else
+    -- Simplified: return a deterministic value for other rows
+    (val * 251 + 101) % 256
+
+fn sub_word w:Int -> Int
+  -- Apply S-box to each byte of a 32-bit word
+  b3 := (w / 16777216) % 256
+  b2 := (w / 65536) % 256
+  b1 := (w / 256) % 256
+  b0 := w % 256
+  sb3 := sbox_lookup(b3)
+  sb2 := sbox_lookup(b2)
+  sb1 := sbox_lookup(b1)
+  sb0 := sbox_lookup(b0)
+  sb3 * 16777216 + sb2 * 65536 + sb1 * 256 + sb0
+
+fn rot_word w:Int -> Int
+  -- Rotate word left by one byte: [b3,b2,b1,b0] -> [b2,b1,b0,b3]
+  b3 := (w / 16777216) % 256
+  b2 := (w / 65536) % 256
+  b1 := (w / 256) % 256
+  b0 := w % 256
+  b2 * 16777216 + b1 * 65536 + b0 * 256 + b3
+
+fn xor_words a:Int b:Int -> Int
+  -- XOR two 32-bit words byte by byte
+  a3 := (a / 16777216) % 256
+  a2 := (a / 65536) % 256
+  a1 := (a / 256) % 256
+  a0 := a % 256
+  b3 := (b / 16777216) % 256
+  b2 := (b / 65536) % 256
+  b1 := (b / 256) % 256
+  b0 := b % 256
+  -- XOR each byte
+  x3 := (a3 + b3) % 256
+  x2 := (a2 + b2) % 256
+  x1 := (a1 + b1) % 256
+  x0 := (a0 + b0) % 256
+  x3 * 16777216 + x2 * 65536 + x1 * 256 + x0
+
+fn main
+  print "AES S-box and Key Schedule Simulation:"
+  print ""
+
+  -- Show S-box structure
+  print "=== AES S-box (partial) ==="
+  print "  S-box maps bytes via GF(2^8) multiplicative inverse + affine transform"
+  print "  S(0x00) = 0x63 = {sbox_lookup(0)}"
+  print "  S(0x01) = 0x7c = {sbox_lookup(1)}"
+  print "  S(0x02) = 0x77 = {sbox_lookup(2)}"
+  print "  S(0x03) = 0x7b = {sbox_lookup(3)}"
+  print "  S(0x10) = 0xca = {sbox_lookup(16)}"
+  print "  S(0x11) = 0x82 = {sbox_lookup(17)}"
+  print ""
+  print "  Row 0 of S-box (input 0x00-0x0F):"
+  sbox_row0 := [99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118]
+  mut row_str := ""
+  for i in range(0, 16)
+    v := sbox_row0[i]
+    row_str = "{row_str}{v} "
+  print "  {row_str}"
+  print ""
+
+  -- AES-128 key schedule (simplified, 4 words = 128-bit key)
+  print "=== AES-128 Key Schedule ==="
+  -- Key: 2b7e151628aed2a6abf7158809cf4f3c
+  w0 := 728975638   -- 0x2b7e1516
+  w1 := 685899430   -- 0x28aed2a6
+  w2 := 2885124488  -- 0xabf71588
+  w3 := 164466492   -- 0x09cf4f3c
+
+  print "  Original key (4 words):"
+  print "    W[0] = {w0}"
+  print "    W[1] = {w1}"
+  print "    W[2] = {w2}"
+  print "    W[3] = {w3}"
+  print ""
+
+  -- Round constants (Rcon) for first 4 rounds
+  rcon := [16777216, 33554432, 67108864, 134217728]
+  print "  Key expansion (first 4 round keys):"
+  mut words := [w0, w1, w2, w3]
+
+  for round in range(0, 4)
+    rc := rcon[round]
+    prev_last := words[round * 4 + 3]
+    prev_first := words[round * 4]
+    rw := rot_word(prev_last)
+    sw := sub_word(rw)
+    new_w0 := xor_words(xor_words(prev_first, sw), rc)
+    new_w1 := xor_words(words[round * 4 + 1], new_w0)
+    new_w2 := xor_words(words[round * 4 + 2], new_w1)
+    new_w3 := xor_words(words[round * 4 + 3], new_w2)
+    words.push(new_w0)
+    words.push(new_w1)
+    words.push(new_w2)
+    words.push(new_w3)
+    rk_idx := (round + 1) * 4
+    print "  Round {round + 1} key words: {words[rk_idx]}, {words[rk_idx + 1]}, {words[rk_idx + 2]}, {words[rk_idx + 3]}"
+
+  print ""
+  print "=== AES Operations Summary ==="
+  print "  SubBytes:    S-box substitution (non-linear)"
+  print "  ShiftRows:   cyclic row shifts in 4x4 state"
+  print "  MixColumns:  GF(2^8) matrix multiplication"
+  print "  AddRoundKey: XOR with round key"
+  print "  AES-128: 10 rounds, AES-192: 12, AES-256: 14"
+
+  print ""
+  print "AES: symmetric block cipher with S-box non-linearity and key schedule expansion."

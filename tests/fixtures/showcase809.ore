@@ -1,0 +1,112 @@
+-- Showcase 809: Merkle Tree
+
+fn hash_data data:Str -> Int
+  -- Polynomial hash to simulate leaf/node hashing
+  n := data.len()
+  mut h := 2166136261
+  for i in range(0, n)
+    c := ord(data.char_at(i))
+    h = ((h * 16777619) + c) % 1000000007
+  h
+
+fn hash_pair left:Int right:Int -> Int
+  -- Hash two child hashes together
+  combined := str(left) + ":" + str(right)
+  hash_data(combined)
+
+fn main
+  print "Merkle Tree:"
+  print ""
+
+  -- Build a Merkle tree over 8 transactions
+  print "=== Building Merkle Tree (8 transactions) ==="
+  txs := ["TX1:Alice->Bob:50", "TX2:Bob->Carol:30", "TX3:Carol->Dave:20", "TX4:Dave->Eve:15", "TX5:Eve->Frank:10", "TX6:Frank->Grace:5", "TX7:Grace->Heidi:25", "TX8:Heidi->Alice:40"]
+  n := 8
+  print "  Transactions:"
+  for i in range(0, n)
+    print "    [{i}] {txs[i]}"
+  print ""
+
+  -- Level 0: Leaf hashes
+  mut level0 := [0, 0, 0, 0, 0, 0, 0, 0]
+  print "=== Level 0: Leaf Hashes ==="
+  for i in range(0, n)
+    h := hash_data(txs[i])
+    level0[i] = h
+    print "  H({i}) = {h}"
+  print ""
+
+  -- Level 1: Pair hashes (4 nodes)
+  print "=== Level 1: Paired Hashes ==="
+  mut level1 := [0, 0, 0, 0]
+  for i in range(0, 4)
+    left := level0[i * 2]
+    right := level0[i * 2 + 1]
+    h := hash_pair(left, right)
+    level1[i] = h
+    print "  H({i*2},{i*2+1}) = hash({left}, {right}) = {h}"
+  print ""
+
+  -- Level 2: Pair hashes (2 nodes)
+  print "=== Level 2: Paired Hashes ==="
+  mut level2 := [0, 0]
+  for i in range(0, 2)
+    left := level1[i * 2]
+    right := level1[i * 2 + 1]
+    h := hash_pair(left, right)
+    level2[i] = h
+    print "  H({i*2},{i*2+1}) = hash({left}, {right}) = {h}"
+  print ""
+
+  -- Root
+  root := hash_pair(level2[0], level2[1])
+  print "=== Merkle Root ==="
+  print "  Root = hash({level2[0]}, {level2[1]}) = {root}"
+  print ""
+
+  -- Proof of inclusion for TX3 (index 2)
+  print "=== Merkle Proof for TX3 (index 2) ==="
+  print "  Proving TX3 is in the tree without revealing all transactions"
+  tx_idx := 2
+  leaf_hash := level0[tx_idx]
+  print "  Step 1: H(TX3) = {leaf_hash}"
+  -- Sibling at level 0: index 3
+  sib0 := level0[3]
+  node1 := hash_pair(leaf_hash, sib0)
+  print "  Step 2: hash(H(TX3), H(TX4=sibling)) = hash({leaf_hash}, {sib0}) = {node1}"
+  -- Sibling at level 1: index 0
+  sib1 := level1[0]
+  node2 := hash_pair(sib1, node1)
+  print "  Step 3: hash(H(0,1=sibling), prev) = hash({sib1}, {node1}) = {node2}"
+  -- Sibling at level 2: index 1
+  sib2 := level2[1]
+  computed_root := hash_pair(node2, sib2)
+  print "  Step 4: hash(prev, H(4-7=sibling)) = hash({node2}, {sib2}) = {computed_root}"
+  print "  Computed root = {computed_root}"
+  print "  Expected root = {root}"
+  print "  Proof valid:   {computed_root == root}"
+  print ""
+
+  -- Tamper detection
+  print "=== Tamper Detection ==="
+  tampered_tx := "TX3:Carol->Eve:200"
+  tampered_hash := hash_data(tampered_tx)
+  print "  Original TX3: {txs[2]}"
+  print "  Tampered TX3: {tampered_tx}"
+  print "  Original hash: {leaf_hash}"
+  print "  Tampered hash: {tampered_hash}"
+  print "  Hashes differ: {leaf_hash != tampered_hash}"
+  print "  Root would change -> tamper detected immediately"
+  print ""
+
+  -- Applications
+  print "=== Merkle Tree Applications ==="
+  print "  Bitcoin: transactions in each block"
+  print "  Ethereum: state/transactions/receipts tries"
+  print "  Git: content-addressed file storage"
+  print "  Certificate Transparency: append-only log"
+  print "  IPFS: content-addressed data chunks"
+  print "  Proof size: O(log N) vs O(N) for full tree"
+
+  print ""
+  print "Merkle tree: binary hash tree enabling O(log N) inclusion proofs and tamper detection."

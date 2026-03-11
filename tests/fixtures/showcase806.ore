@@ -1,0 +1,119 @@
+-- Showcase 806: HMAC Construction
+
+fn simple_hash data:Str -> Int
+  -- Simplified polynomial hash (not cryptographic, for demonstration)
+  n := data.len()
+  mut h := 5381
+  for i in range(0, n)
+    c := ord(data.char_at(i))
+    h = ((h * 31) + c) % 1000000007
+  h
+
+fn xor_pad data:Str pad_byte:Int -> Str
+  -- XOR each byte with pad_byte, keep as readable hex representation
+  n := data.len()
+  mut result := ""
+  for i in range(0, n)
+    c := ord(data.char_at(i))
+    xored := c % pad_byte + (pad_byte % c) -- simplified combination
+    result = result + str(xored % 10)
+  result
+
+fn hmac key:Str message:Str -> Int
+  -- HMAC(K, m) = Hash((K XOR opad) || Hash((K XOR ipad) || m))
+  -- Simplified: use polynomial hash
+  ipad := 54   -- 0x36
+  opad := 92   -- 0x5C
+  n := key.len()
+  -- Inner: hash(k_ipad || message)
+  mut inner_input := ""
+  for i in range(0, n)
+    kc := ord(key.char_at(i))
+    inner_input = inner_input + chr((kc + ipad) % 128)
+  inner_input = inner_input + message
+  inner_hash := simple_hash(inner_input)
+  -- Outer: hash(k_opad || inner_hash)
+  mut outer_input := ""
+  for i in range(0, n)
+    kc := ord(key.char_at(i))
+    outer_input = outer_input + chr((kc + opad) % 128)
+  outer_input = outer_input + str(inner_hash)
+  simple_hash(outer_input)
+
+fn main
+  print "HMAC Construction:"
+  print ""
+
+  print "=== HMAC Overview ==="
+  print "  HMAC(K, m) = H((K XOR opad) || H((K XOR ipad) || m))"
+  print "  ipad = 0x36 (repeated), opad = 0x5C (repeated)"
+  print "  Provides message authentication + integrity"
+  print ""
+
+  -- Basic HMAC example
+  key := "secretkey"
+  msg1 := "Hello, World!"
+  msg2 := "Hello, World?"
+  msg3 := "Hello, World!"
+
+  hmac1 := hmac(key, msg1)
+  hmac2 := hmac(key, msg2)
+  hmac3 := hmac(key, msg3)
+
+  print "=== Authentication Tag Generation ==="
+  print "  Key: '{key}'"
+  print ""
+  print "  Message 1: '{msg1}'"
+  print "  HMAC:       {hmac1}"
+  print ""
+  print "  Message 2: '{msg2}' (1 char changed)"
+  print "  HMAC:       {hmac2}"
+  print "  Different: {hmac1 != hmac2}"
+  print ""
+  print "  Message 3: '{msg3}' (same as msg1)"
+  print "  HMAC:       {hmac3}"
+  print "  Matches msg1: {hmac1 == hmac3}"
+  print ""
+
+  -- Wrong key
+  print "=== Wrong Key Detection ==="
+  wrong_key := "wrongkey!"
+  hmac_wrong := hmac(wrong_key, msg1)
+  print "  Correct key HMAC: {hmac1}"
+  print "  Wrong key HMAC:   {hmac_wrong}"
+  print "  Different: {hmac1 != hmac_wrong}"
+  print ""
+
+  -- HMAC verification
+  print "=== HMAC Verification ==="
+  print "  Sender computes: tag = HMAC(key, message)"
+  print "  Sends: (message, tag)"
+  print "  Receiver: recomputes HMAC, compares in constant time"
+  tag := hmac(key, "transfer 100 USD to Alice")
+  print "  tag = HMAC(key, 'transfer 100 USD to Alice') = {tag}"
+  tampered_tag := hmac(key, "transfer 9999 USD to Eve")
+  print "  tag for tampered msg = {tampered_tag}"
+  print "  Tamper detected: {tag != tampered_tag}"
+  print ""
+
+  -- Use cases
+  print "=== HMAC Use Cases ==="
+  print "  1. API authentication (e.g., AWS Signature v4)"
+  print "  2. JWT (JSON Web Token) signing"
+  print "  3. Cookie integrity verification"
+  print "  4. TLS MAC computation (HMAC-SHA256)"
+  print "  5. HKDF key derivation"
+  print ""
+
+  -- Security properties
+  print "=== Security Properties ==="
+  print "  1. PRF: indistinguishable from random with unknown key"
+  print "  2. Unforgeability: cannot produce valid tag without key"
+  print "  3. Two-level construction defends against length extension"
+  ipad_hex := "0x36"
+  opad_hex := "0x5C"
+  print "  Inner pad ({ipad_hex}): key schedule separation"
+  print "  Outer pad ({opad_hex}): prevents length extension attacks"
+
+  print ""
+  print "HMAC: message authentication code using nested hash with inner/outer key padding."

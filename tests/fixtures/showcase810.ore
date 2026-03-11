@@ -1,0 +1,125 @@
+-- Showcase 810: Zero-Knowledge Proof Simulation (Graph 3-Coloring)
+
+fn hash_commit color:Int salt:Int -> Int
+  -- Commitment: hash(color, salt) -> hiding and binding
+  (color * 1000003 + salt * 17 + 999983) % 9999991
+
+fn permute_color color:Int perm:Int -> Int
+  -- Apply a permutation of {0,1,2} to colors
+  -- perm 0: identity, perm 1: 0->1->2->0, perm 2: 0->2->1->0
+  if perm == 0
+    color
+  else if perm == 1
+    (color + 1) % 3
+  else
+    (color + 2) % 3
+
+fn main
+  print "Zero-Knowledge Proof Simulation (Graph 3-Coloring):"
+  print ""
+
+  -- Graph: 6 vertices with edges (must be 3-colorable)
+  -- V0-V1, V0-V2, V1-V2, V1-V3, V2-V4, V3-V4, V3-V5, V4-V5
+  -- Valid 3-coloring: V0=0, V1=1, V2=2, V3=0, V4=1, V5=2
+  n_vertices := 6
+  colors := [0, 1, 2, 0, 1, 2]
+  -- Edges as pairs (flattened)
+  edges := [0, 1, 0, 2, 1, 2, 1, 3, 2, 4, 3, 4, 3, 5, 4, 5]
+  n_edges := 8
+
+  print "=== Graph Structure ==="
+  print "  Vertices: {n_vertices}"
+  print "  Edges: (V0,V1) (V0,V2) (V1,V2) (V1,V3) (V2,V4) (V3,V4) (V3,V5) (V4,V5)"
+  print ""
+
+  -- Verify actual coloring
+  print "=== Prover's Secret Coloring ==="
+  color_names := ["Red", "Green", "Blue"]
+  for v in range(0, n_vertices)
+    c := colors[v]
+    cn := color_names[c]
+    print "  V{v} = color {c} ({cn})"
+  print ""
+
+  -- Verify it's valid
+  mut valid := true
+  for e in range(0, n_edges)
+    u := edges[e * 2]
+    v := edges[e * 2 + 1]
+    cu := colors[u]
+    cv := colors[v]
+    if cu == cv
+      valid = false
+  print "  Coloring is valid (no adjacent same color): {valid}"
+  print ""
+
+  -- ZKP Protocol: 3 rounds
+  print "=== Zero-Knowledge Proof Protocol (3 rounds) ==="
+  print "  Protocol: Prover commits to permuted colors, Verifier picks edge, Prover reveals"
+  print ""
+
+  -- Use different permutations per round to prevent learning
+  perms := [1, 2, 0]        -- permutation applied each round
+  salts := [42, 137, 2048]  -- random salts for commitments
+  challenge_edges := [2, 5, 7]  -- verifier challenges (edge indices)
+
+  for round in range(0, 3)
+    perm := perms[round]
+    salt_base := salts[round]
+    print "  --- Round {round + 1} ---"
+
+    -- Prover commits to permuted colors
+    print "  Prover commits (hashed, color hidden):"
+    mut commitments := [0, 0, 0, 0, 0, 0]
+    for v in range(0, n_vertices)
+      orig_color := colors[v]
+      perm_color := permute_color(orig_color, perm)
+      commit := hash_commit(perm_color, salt_base + v)
+      commitments[v] = commit
+      print "    commit(V{v}) = {commit}"
+
+    -- Verifier picks a challenge edge
+    e_idx := challenge_edges[round]
+    eu := edges[e_idx * 2]
+    ev := edges[e_idx * 2 + 1]
+    print "  Verifier challenges edge (V{eu}, V{ev})"
+
+    -- Prover reveals colors for that edge
+    cu_perm := permute_color(colors[eu], perm)
+    cv_perm := permute_color(colors[ev], perm)
+    salt_u := salt_base + eu
+    salt_v := salt_base + ev
+    print "  Prover reveals: V{eu}=color{cu_perm}, salt={salt_u}; V{ev}=color{cv_perm}, salt={salt_v}"
+
+    -- Verifier checks commitments
+    check_u := hash_commit(cu_perm, salt_u)
+    check_v := hash_commit(cv_perm, salt_v)
+    commit_ok_u := check_u == commitments[eu]
+    commit_ok_v := check_v == commitments[ev]
+    colors_differ := cu_perm != cv_perm
+    print "  Verifier: commit(V{eu}) match={commit_ok_u}, commit(V{ev}) match={commit_ok_v}, colors differ={colors_differ}"
+    round_ok := commit_ok_u and commit_ok_v and colors_differ
+    print "  Round {round + 1} passed: {round_ok}"
+    print ""
+
+  -- Soundness analysis
+  print "=== Soundness Analysis ==="
+  print "  If prover cheats (bad coloring), probability of detection per round:"
+  n_possible_edges := n_edges
+  cheat_caught := n_possible_edges - 1
+  print "  P(catch cheater) = (edges with conflict) / (total edges)"
+  print "  After k rounds: P(not caught) = (1 - 1/E)^k"
+  print "  With {n_edges} edges, 40 rounds: P(cheat) < (7/8)^40 ~= 0.6%"
+  print ""
+
+  -- Zero-knowledge property
+  print "=== Zero-Knowledge Property ==="
+  print "  Verifier learns: two endpoint colors are different and valid"
+  print "  Verifier does NOT learn: actual color scheme (permutation hides it)"
+  print "  Each round uses fresh random permutation -> no information leaks"
+  print "  Completeness: honest prover always passes"
+  print "  Soundness: cheating prover caught with high probability"
+  print "  Zero-knowledge: verifier learns nothing about coloring"
+
+  print ""
+  print "Zero-knowledge proof: convince verifier of knowledge without revealing the secret itself."

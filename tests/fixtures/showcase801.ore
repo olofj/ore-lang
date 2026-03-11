@@ -1,0 +1,83 @@
+-- Showcase 801: Caesar Cipher with Frequency Analysis
+
+fn caesar_encrypt text:Str shift:Int -> Str
+  n := text.len()
+  mut result := ""
+  for i in range(0, n)
+    c := text.char_at(i)
+    code := ord(c)
+    if code >= 65 and code <= 90
+      result = result + chr(((code - 65 + shift) % 26) + 65)
+    else if code >= 97 and code <= 122
+      result = result + chr(((code - 97 + shift) % 26) + 97)
+    else
+      result = result + c
+  result
+
+fn caesar_decrypt text:Str shift:Int -> Str
+  caesar_encrypt(text, 26 - shift % 26)
+
+fn count_char text:Str target:Str -> Int
+  n := text.len()
+  mut cnt := 0
+  for i in range(0, n)
+    if text.char_at(i) == target
+      cnt = cnt + 1
+  cnt
+
+fn main
+  print "Caesar Cipher with Frequency Analysis:"
+  print ""
+
+  -- Encrypt a message
+  plaintext := "HELLO WORLD THIS IS A SECRET MESSAGE"
+  shift := 13
+  ciphertext := caesar_encrypt(plaintext, shift)
+  decrypted := caesar_decrypt(ciphertext, shift)
+
+  print "=== Encryption ==="
+  print "  Plaintext:  {plaintext}"
+  print "  Shift:      {shift}"
+  print "  Ciphertext: {ciphertext}"
+  print "  Decrypted:  {decrypted}"
+  print ""
+
+  -- ROT13 (shift 13, self-inverse)
+  print "=== ROT13 (self-inverse) ==="
+  msg := "THE QUICK BROWN FOX"
+  rot13 := caesar_encrypt(msg, 13)
+  rot13_back := caesar_encrypt(rot13, 13)
+  print "  Original: {msg}"
+  print "  ROT13:    {rot13}"
+  print "  Back:     {rot13_back}"
+  print ""
+
+  -- Frequency analysis on ciphertext
+  print "=== Frequency Analysis ==="
+  print "  Ciphertext letter counts (selected):"
+  common := ["U", "R", "V", "F", "H", "E", "W"]
+  for i in range(0, 7)
+    letter := common[i]
+    cnt := count_char(ciphertext, letter)
+    print "    {letter}: {cnt}"
+
+  -- Brute force: try a few shifts
+  print ""
+  print "=== Brute Force Attack ==="
+  brute_shifts := [0, 3, 7, 13, 20]
+  for i in range(0, 5)
+    s := brute_shifts[i]
+    attempt := caesar_decrypt(ciphertext, s)
+    print "  Shift {s}: {attempt}"
+
+  -- Show that English 'E' maps to 'R' under shift 13
+  print ""
+  print "=== Frequency Hint ==="
+  e_enc := caesar_encrypt("E", 13)
+  r_dec := caesar_decrypt("R", 13)
+  print "  'E' encrypted with shift 13 -> '{e_enc}'"
+  print "  'R' decrypted with shift 13 -> '{r_dec}'"
+  print "  Most frequent ciphertext letter reveals the shift!"
+
+  print ""
+  print "Caesar cipher: simple substitution, shift=13 (ROT13) is self-inverse, broken by frequency analysis."

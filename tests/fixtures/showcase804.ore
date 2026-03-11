@@ -1,0 +1,104 @@
+-- Showcase 804: Diffie-Hellman Key Exchange Simulation
+
+fn mod_pow base:Int exp:Int modulus:Int -> Int
+  mut result := 1
+  mut b := base % modulus
+  mut e := exp
+  while e > 0
+    if e % 2 == 1
+      result = (result * b) % modulus
+    e = e / 2
+    b = (b * b) % modulus
+  result
+
+fn is_primitive_root g:Int p:Int -> Bool
+  -- Check that g generates all non-zero residues mod p
+  -- For small p, verify g^k mod p != 1 for k < p-1
+  mut ok := true
+  for k in range(1, p - 1)
+    if mod_pow(g, k, p) == 1
+      ok = false
+  ok
+
+fn main
+  print "Diffie-Hellman Key Exchange Simulation:"
+  print ""
+
+  -- Public parameters
+  p := 23   -- prime modulus
+  g := 5    -- primitive root (generator)
+  print "=== Public Parameters ==="
+  print "  Prime modulus p = {p}"
+  print "  Generator g = {g}"
+  print "  g is primitive root mod p: {is_primitive_root(g, p)}"
+  print ""
+
+  -- Alice's private key
+  a := 6
+  -- Bob's private key
+  b := 15
+
+  print "=== Private Keys (secret) ==="
+  print "  Alice's private key: a = {a}"
+  print "  Bob's private key:   b = {b}"
+  print ""
+
+  -- Public keys
+  A := mod_pow(g, a, p)
+  B := mod_pow(g, b, p)
+  print "=== Public Keys (exchanged openly) ==="
+  print "  Alice sends: A = g^a mod p = {g}^{a} mod {p} = {A}"
+  print "  Bob sends:   B = g^b mod p = {g}^{b} mod {p} = {B}"
+  print ""
+
+  -- Shared secret
+  s_alice := mod_pow(B, a, p)
+  s_bob := mod_pow(A, b, p)
+  print "=== Shared Secret Computation ==="
+  print "  Alice computes: s = B^a mod p = {B}^{a} mod {p} = {s_alice}"
+  print "  Bob computes:   s = A^b mod p = {A}^{b} mod {p} = {s_bob}"
+  print "  Secrets match: {s_alice == s_bob}"
+  print ""
+
+  -- Security analysis
+  print "=== Security Analysis ==="
+  print "  Attacker knows: p={p}, g={g}, A={A}, B={B}"
+  print "  Must solve discrete log: find a where g^a mod p = A"
+  print "  For small p={p}, attacker can brute-force:"
+  mut found_a := 0
+  for k in range(1, p)
+    if mod_pow(g, k, p) == A
+      found_a = k
+  print "  Found a={found_a} by trying all {p - 1} values"
+  print "  For large p (2048+ bits), this is computationally infeasible"
+  print ""
+
+  -- Show DH with different parameters
+  print "=== Second Example (p=47, g=5) ==="
+  p2 := 47
+  g2 := 5
+  a2 := 8
+  b2 := 19
+  A2 := mod_pow(g2, a2, p2)
+  B2 := mod_pow(g2, b2, p2)
+  s2_alice := mod_pow(B2, a2, p2)
+  s2_bob := mod_pow(A2, b2, p2)
+  print "  p={p2}, g={g2}, a={a2}, b={b2}"
+  print "  A = {A2}, B = {B2}"
+  print "  Shared secret = {s2_alice} (Alice) = {s2_bob} (Bob)"
+  print "  Match: {s2_alice == s2_bob}"
+  print ""
+
+  -- Man-in-the-middle warning
+  print "=== Man-in-the-Middle Vulnerability ==="
+  print "  Eve intercepts A and B in transit"
+  e_priv := 9  -- Eve's secret
+  E := mod_pow(g, e_priv, p)
+  s_eve_alice := mod_pow(A, e_priv, p)
+  s_eve_bob := mod_pow(B, e_priv, p)
+  print "  Eve's private key: e={e_priv}, public E={E}"
+  print "  Eve shares s={s_eve_alice} with Alice, s={s_eve_bob} with Bob"
+  print "  Solution: authenticate public keys via certificates (PKI)"
+
+  print ""
+  print "Diffie-Hellman: key exchange over public channel using discrete logarithm hardness."
