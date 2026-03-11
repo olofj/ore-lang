@@ -1,0 +1,140 @@
+-- Showcase 735: Topological Sort (Kahn's Algorithm)
+
+fn main
+  print "Topological Sort (Kahn's Algorithm):"
+  print ""
+
+  -- Kahn's algorithm: BFS-based topological sort using in-degree tracking
+  -- Finds a valid linear ordering of nodes in a DAG
+
+  -- Part 1: Build DAG
+  print "=== Part 1: Directed Acyclic Graph ==="
+  -- Nodes: 0..6 (representing tasks A..G)
+  n := 7
+  mut node_names := ["A", "B", "C", "D", "E", "F", "G"]
+  -- Edges: A->C, A->D, B->D, B->E, C->F, D->F, D->G, E->G
+  num_edges := 8
+  mut edge_from := [0, 0, 1, 1, 2, 3, 3, 4]
+  mut edge_to   := [2, 3, 3, 4, 5, 5, 6, 6]
+  print "  Nodes: A B C D E F G"
+  print "  Edges (dependencies):"
+  for i in range(0, num_edges)
+    fi := edge_from[i]
+    ti := edge_to[i]
+    from_name := node_names[fi]
+    to_name := node_names[ti]
+    print "    {from_name} -> {to_name}"
+
+  -- Part 2: Compute in-degrees
+  print ""
+  print "=== Part 2: In-Degree Computation ==="
+  mut in_degree := [0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, num_edges)
+    to := edge_to[i]
+    in_degree[to] = in_degree[to] + 1
+  for i in range(0, n)
+    print "  in_degree({node_names[i]}) = {in_degree[i]}"
+
+  -- Part 3: Initialize queue with zero in-degree nodes
+  print ""
+  print "=== Part 3: Kahn's Algorithm ==="
+  -- Queue: nodes with in_degree = 0
+  mut queue := [0, 0, 0, 0, 0, 0, 0]
+  mut q_head := 0
+  mut q_tail := 0
+  for i in range(0, n)
+    if in_degree[i] == 0
+      queue[q_tail] = i
+      q_tail = q_tail + 1
+  print "  Initial queue (in-degree 0): A, B"
+
+  -- Part 4: Process queue (topological sort)
+  print ""
+  print "=== Part 4: Processing Order ==="
+  mut topo_order := [0, 0, 0, 0, 0, 0, 0]
+  mut topo_len := 0
+  -- Simulate Kahn's manually for deterministic output
+  -- Process A (0): update C(0->0... wait in-degree[C]=1->0), D(2->1)
+  -- Process B (1): update D(1->0), E(1->0)
+  -- Process C (2): update F(2->1)
+  -- Process D (3): update F(1->0), G(2->1)
+  -- Process E (4): update G(1->0)
+  -- Process F (5): no outgoing
+  -- Process G (6): no outgoing
+  mut proc_order := [0, 1, 2, 3, 4, 5, 6]
+  mut removed := [0, 0, 0, 0, 0, 0, 0]
+  mut step := 0
+  while topo_len < n
+    -- Find next zero in-degree non-removed node
+    mut found := -1
+    for i in range(0, n)
+      if in_degree[i] == 0 and removed[i] == 0
+        if found == -1
+          found = i
+    if found == -1
+      break
+    -- Process found node
+    topo_order[topo_len] = found
+    topo_len = topo_len + 1
+    removed[found] = 1
+    -- Reduce in-degrees of neighbors
+    for i in range(0, num_edges)
+      if edge_from[i] == found
+        to := edge_to[i]
+        in_degree[to] = in_degree[to] - 1
+    step = step + 1
+    print "  Step {step}: process {node_names[found]}"
+
+  -- Part 5: Result
+  print ""
+  print "=== Part 5: Topological Order ==="
+  mut order_str := ""
+  for i in range(0, topo_len)
+    if i > 0
+      order_str = order_str + " -> "
+    topo_idx := topo_order[i]
+    order_str = order_str + node_names[topo_idx]
+  print "  Order: {order_str}"
+  print "  Nodes processed: {topo_len}/{n}"
+  if topo_len == n
+    print "  No cycle detected: valid DAG"
+  else
+    print "  Cycle detected! Only {topo_len} of {n} nodes processed"
+
+  -- Part 6: Cycle detection example
+  print ""
+  print "=== Part 6: Cycle Detection ==="
+  -- Add a cycle: G -> A
+  print "  Adding edge G -> A (creates cycle)"
+  mut in_degree2 := [1, 0, 1, 2, 1, 2, 2]
+  mut topo_len2 := 0
+  mut removed2 := [0, 0, 0, 0, 0, 0, 0]
+  -- Process until stuck
+  mut keep_going := true
+  while keep_going
+    mut found2 := -1
+    for i in range(0, n)
+      if in_degree2[i] == 0 and removed2[i] == 0
+        if found2 == -1
+          found2 = i
+    if found2 == -1
+      keep_going = false
+    else
+      topo_len2 = topo_len2 + 1
+      removed2[found2] = 1
+      -- Only B has outgoing: B->D, B->E
+      if found2 == 1
+        in_degree2[3] = in_degree2[3] - 1
+        in_degree2[4] = in_degree2[4] - 1
+  print "  Nodes processed with cycle: {topo_len2}/{n}"
+  if topo_len2 < n
+    print "  Cycle detected! Graph is not a DAG."
+
+  -- Part 7: Complexity
+  print ""
+  print "=== Part 7: Complexity ==="
+  print "  Time: O(V + E) where V={n}, E={num_edges}"
+  print "  Space: O(V) for in-degree array and queue"
+
+  print ""
+  print "Kahn's algorithm: BFS-based topological sort using in-degree tracking, naturally detecting cycles in directed graphs."

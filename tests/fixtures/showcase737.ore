@@ -1,0 +1,122 @@
+-- Showcase 737: Longest Increasing Subsequence
+
+fn main
+  print "Longest Increasing Subsequence:"
+  print ""
+
+  -- LIS: find the longest subsequence where elements are strictly increasing
+  -- Classic DP problem with O(n^2) and O(n log n) solutions
+
+  -- Part 1: Input sequence
+  print "=== Part 1: Input Sequence ==="
+  n := 10
+  mut seq := [3, 10, 2, 1, 20, 4, 15, 8, 12, 7]
+  mut seq_str := ""
+  for i in range(0, n)
+    if i > 0
+      seq_str = seq_str + ", "
+    seq_str = seq_str + str(seq[i])
+  print "  Sequence: [{seq_str}]"
+  print "  Length: {n}"
+
+  -- Part 2: O(n^2) DP solution
+  print ""
+  print "=== Part 2: DP Solution O(n^2) ==="
+  -- dp[i] = length of LIS ending at index i
+  mut dp := [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  -- prev[i] = index of previous element in LIS
+  mut prev_idx := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  for i in range(1, n)
+    for j in range(0, i)
+      if seq[j] < seq[i]
+        if dp[j] + 1 > dp[i]
+          dp[i] = dp[j] + 1
+          prev_idx[i] = j
+  print "  DP table:"
+  for i in range(0, n)
+    print "    dp[{i}]={dp[i]} (seq[{i}]={seq[i]})"
+
+  -- Find max
+  mut lis_len := 0
+  mut lis_end := 0
+  for i in range(0, n)
+    if dp[i] > lis_len
+      lis_len = dp[i]
+      lis_end = i
+  print "  LIS length: {lis_len}"
+
+  -- Part 3: Reconstruct LIS
+  print ""
+  print "=== Part 3: Reconstructing LIS ==="
+  -- Trace back from lis_end
+  mut lis_seq := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut lis_actual := 0
+  mut cur := lis_end
+  while cur >= 0
+    lis_seq[lis_actual] = seq[cur]
+    lis_actual = lis_actual + 1
+    cur = prev_idx[cur]
+  -- Reverse
+  mut lis_str := ""
+  for i in range(0, lis_actual)
+    rev_i := lis_actual - 1 - i
+    if i > 0
+      lis_str = lis_str + ", "
+    lis_str = lis_str + str(lis_seq[rev_i])
+  print "  One LIS: [{lis_str}]"
+  print "  Length: {lis_actual}"
+
+  -- Part 4: O(n log n) patience sorting approach
+  print ""
+  print "=== Part 4: Patience Sorting O(n log n) ==="
+  -- tails[i] = smallest tail element of IS with length i+1
+  mut tails := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut tail_len := 0
+  for i in range(0, n)
+    x := seq[i]
+    -- Binary search for leftmost tail >= x
+    mut lo := 0
+    mut hi := tail_len
+    while lo < hi
+      mid := (lo + hi) / 2
+      if tails[mid] < x
+        lo = mid + 1
+      else
+        hi = mid
+    tails[lo] = x
+    if lo == tail_len
+      tail_len = tail_len + 1
+    print "  Process {x}: tails[{lo}]={x}, LIS length so far={tail_len}"
+  print "  Final LIS length: {tail_len}"
+
+  -- Part 5: Counting LIS (number of distinct LIS)
+  print ""
+  print "=== Part 5: Counting LIS ==="
+  -- count[i] = number of LIS ending at i with length dp[i]
+  mut cnt := [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  for i in range(1, n)
+    for j in range(0, i)
+      if seq[j] < seq[i]
+        if dp[j] + 1 == dp[i]
+          cnt[i] = cnt[i] + cnt[j]
+        else
+          if dp[j] + 1 > dp[i]
+            -- dp[i] was just set, cnt[i] = cnt[j]
+            -- already handled above
+            cnt[i] = cnt[i]
+  mut total_count := 0
+  for i in range(0, n)
+    if dp[i] == lis_len
+      total_count = total_count + cnt[i]
+  print "  Number of distinct LIS: {total_count}"
+
+  -- Part 6: Complexity comparison
+  print ""
+  print "=== Part 6: Complexity ==="
+  print "  DP approach: O(n^2) time, O(n) space"
+  print "  Patience sort: O(n log n) time, O(n) space"
+  print "  Counting LIS: O(n^2) time"
+  print "  n={n}, LIS length={lis_len}"
+
+  print ""
+  print "LIS: fundamental subsequence problem with applications in edit distance, patience sorting, and longest common subsequence reduction."

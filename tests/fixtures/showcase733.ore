@@ -1,0 +1,124 @@
+-- Showcase 733: Skip List Simulation
+
+fn main
+  print "Skip List Simulation:"
+  print ""
+
+  -- Skip list: probabilistic data structure with O(log n) search/insert/delete
+  -- Uses multiple linked lists with decreasing density
+
+  -- Part 1: Structure overview
+  print "=== Part 1: Skip List Structure ==="
+  -- We simulate a skip list with 4 levels
+  -- Elements: 3, 7, 12, 17, 21, 25, 31 (sorted)
+  n := 7
+  mut elements := [3, 7, 12, 17, 21, 25, 31]
+  print "  Elements: 3, 7, 12, 17, 21, 25, 31"
+  print "  Max levels: 4"
+  print "  Probability p=0.5 per level promotion"
+
+  -- Part 2: Level membership (pre-determined for determinism)
+  print ""
+  print "=== Part 2: Level Membership ==="
+  -- level[i][j] = 1 if element j appears at level i
+  -- Level 0 (bottom): all elements
+  -- Level 1: 7, 17, 25, 31
+  -- Level 2: 17, 31
+  -- Level 3: 31
+  -- Stored as flat array: levels * n elements
+  mut level := [1,1,1,1,1,1,1, 0,1,0,1,0,1,1, 0,0,0,1,0,0,1, 0,0,0,0,0,0,1]
+  num_levels := 4
+  for l in range(0, num_levels)
+    mut count := 0
+    mut elems_at_l := ""
+    for i in range(0, n)
+      if level[l * n + i] == 1
+        count = count + 1
+        if elems_at_l.is_empty()
+          elems_at_l = str(elements[i])
+        else
+          elems_at_l = elems_at_l + ", " + str(elements[i])
+    print "  Level {l}: [{elems_at_l}] ({count} nodes)"
+
+  -- Part 3: Search operation
+  print ""
+  print "=== Part 3: Search Operation ==="
+  -- Search for 17: start at top level
+  -- Level 3: 31 > 17, drop down
+  -- Level 2: 17 found!
+  target := 17
+  print "  Search for {target}:"
+  mut comparisons := 0
+  mut found_level := -1
+  mut current_pos := -1
+  -- Simulate search from top level
+  for l_rev in range(0, num_levels)
+    l := num_levels - 1 - l_rev
+    if found_level == -1
+      for i in range(0, n)
+        if level[l * n + i] == 1
+          comparisons = comparisons + 1
+          if elements[i] == target
+            found_level = l
+            current_pos = i
+          else
+            if elements[i] < target
+              current_pos = i
+  if found_level >= 0
+    print "    Found at level {found_level}, position {current_pos}"
+    print "    Comparisons: {comparisons}"
+  else
+    print "    Not found"
+
+  -- Search for missing element
+  target2 := 15
+  print "  Search for {target2} (not present):"
+  mut comp2 := 0
+  for i in range(0, n)
+    comp2 = comp2 + 1
+    if elements[i] == target2
+      print "    Found (unexpected)"
+    else
+      if elements[i] > target2
+        print "    Not found after {comp2} comparisons, would insert before index {i}"
+        break
+
+  -- Part 4: Insert operation
+  print ""
+  print "=== Part 4: Insert Operation ==="
+  new_val := 15
+  print "  Insert {new_val}:"
+  -- Determine levels by coin flips (pre-set): level 0 only
+  print "    Promoted to level 0 only (coin=tails)"
+  print "    Find insertion position: between 12 and 17"
+  print "    Insert at level 0 between index 2 and 3"
+  n2 := n + 1
+  print "    New size: {n2}"
+
+  -- Part 5: Delete operation
+  print ""
+  print "=== Part 5: Delete Operation ==="
+  del_val := 7
+  print "  Delete {del_val}:"
+  print "    Found at levels: 0, 1"
+  print "    Unlink from level 0: update 3->12"
+  print "    Unlink from level 1: update head->17"
+  print "    Deleted, new size: {n - 1}"
+
+  -- Part 6: Complexity analysis
+  print ""
+  print "=== Part 6: Complexity Analysis ==="
+  print "  Expected search: O(log n)"
+  print "  Expected insert: O(log n)"
+  print "  Expected delete: O(log n)"
+  print "  Space: O(n log n) expected"
+  print "  Current n={n}, expected levels=log2({n})~3"
+  mut level_counts := [0, 0, 0, 0]
+  for l in range(0, num_levels)
+    for i in range(0, n)
+      if level[l * n + i] == 1
+        level_counts[l] = level_counts[l] + 1
+  print "  Actual level sizes: {level_counts[0]}, {level_counts[1]}, {level_counts[2]}, {level_counts[3]}"
+
+  print ""
+  print "Skip lists: randomized multilevel linked lists achieving O(log n) operations without complex rebalancing of balanced trees."

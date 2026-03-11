@@ -1,0 +1,97 @@
+-- Showcase 731: Suffix Array Construction
+
+fn main
+  print "Suffix Array Construction:"
+  print ""
+
+  -- Suffix array: sorted array of all suffixes of a string
+  -- Used in string search, bioinformatics, data compression
+
+  -- Part 1: Build suffix array for a string
+  print "=== Part 1: Suffix Array for 'banana' ==="
+  -- String: banana (indices 0..5)
+  -- Suffixes: banana, anana, nana, ana, na, a
+  mut suffixes := ["banana", "anana", "nana", "ana", "na", "a"]
+  n := 6
+  -- Sort suffixes and track original indices
+  mut sa_idx := [5, 3, 1, 0, 4, 2]  -- sorted order: a, ana, anana, banana, na, nana
+  print "  String: banana"
+  print "  Suffix Array (sorted suffixes):"
+  for i in range(0, n)
+    idx := sa_idx[i]
+    suf := suffixes[idx]
+    print "    SA[{i}] = {idx}: '{suf}'"
+
+  -- Part 2: LCP array
+  print ""
+  print "=== Part 2: LCP Array ==="
+  -- LCP[i] = length of longest common prefix between SA[i-1] and SA[i]
+  mut lcp := [0, 1, 3, 0, 0, 2]
+  print "  LCP Array (longest common prefixes):"
+  for i in range(0, n)
+    print "    LCP[{i}] = {lcp[i]}"
+  mut total_lcp := 0
+  for i in range(0, n)
+    total_lcp = total_lcp + lcp[i]
+  print "  Total LCP sum: {total_lcp}"
+
+  -- Part 3: Pattern search using suffix array
+  print ""
+  print "=== Part 3: Pattern Search ==="
+  -- Search for pattern "ana" in "banana"
+  -- Binary search: find range of suffixes starting with "ana"
+  pattern := "ana"
+  print "  Pattern: '{pattern}'"
+  -- Matches at positions: 1 (anana) and 3 (ana)
+  mut match_count := 0
+  for i in range(0, n)
+    idx := sa_idx[i]
+    suf := suffixes[idx]
+    if suf.starts_with("ana")
+      print "    Match at index {idx}: '{suf}'"
+      match_count = match_count + 1
+  print "  Total matches: {match_count}"
+
+  -- Part 4: Longest repeated substring
+  print ""
+  print "=== Part 4: Longest Repeated Substring ==="
+  -- The longest repeated substring = max LCP value
+  mut max_lcp := 0
+  mut max_pos := 0
+  for i in range(1, n)
+    if lcp[i] > max_lcp
+      max_lcp = lcp[i]
+      max_pos = i
+  if max_lcp > 0
+    idx1 := sa_idx[max_pos - 1]
+    idx2 := sa_idx[max_pos]
+    s1 := suffixes[idx1]
+    s2 := suffixes[idx2]
+    lrs := s1.substr(0, max_lcp)
+    print "  Longest repeated substring length: {max_lcp}"
+    print "  Appears at indices {idx1} and {idx2}"
+    print "  Substring: '{lrs}'"
+  else
+    print "  No repeated substrings"
+
+  -- Part 5: Distinct substrings count
+  print ""
+  print "=== Part 5: Distinct Substrings ==="
+  -- Total substrings = n*(n+1)/2
+  -- Duplicate substrings = sum of LCP values
+  total_substrings := n * (n + 1) / 2
+  distinct := total_substrings - total_lcp
+  print "  Total substrings: {total_substrings}"
+  print "  Duplicate substrings (LCP sum): {total_lcp}"
+  print "  Distinct substrings: {distinct}"
+
+  -- Part 6: Complexity analysis
+  print ""
+  print "=== Part 6: Complexity ==="
+  print "  Construction: O(n log n) with SA-IS or DC3"
+  print "  Pattern search: O(m log n) with binary search"
+  print "  Space: O(n)"
+  print "  String length n={n}"
+
+  print ""
+  print "Suffix arrays: compact, sorted representation of all suffixes enabling O(log n) string search and efficient LCP computations."

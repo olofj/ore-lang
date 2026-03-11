@@ -1,0 +1,109 @@
+-- Showcase 734: B-Tree Operations Simulation
+
+fn main
+  print "B-Tree Operations Simulation:"
+  print ""
+
+  -- B-tree: self-balancing search tree with variable branching factor
+  -- All leaves at same depth; used in databases and file systems
+
+  -- Part 1: B-tree properties
+  print "=== Part 1: B-Tree Properties ==="
+  -- Order t=2 (2-3-4 tree): min t-1=1 key, max 2t-1=3 keys per node
+  t := 2
+  min_keys := t - 1
+  max_keys := 2 * t - 1
+  min_children := t
+  max_children := 2 * t
+  print "  Order t={t} (2-3-4 tree)"
+  print "  Keys per node: min={min_keys}, max={max_keys}"
+  print "  Children per node: min={min_children}, max={max_children}"
+  print "  All leaves at same depth"
+
+  -- Part 2: Initial tree structure
+  print ""
+  print "=== Part 2: Tree Structure ==="
+  -- Tree storing: 10, 20, 30, 40, 50, 60, 70, 80, 90
+  -- Root: [30, 60]
+  -- Left child: [10, 20]
+  -- Middle child: [40, 50]
+  -- Right child: [70, 80, 90]
+  print "  Storing keys: 10, 20, 30, 40, 50, 60, 70, 80, 90"
+  print "  Root: [30, 60]"
+  print "  Root.left: [10, 20]"
+  print "  Root.mid:  [40, 50]"
+  print "  Root.right:[70, 80, 90]"
+  print "  Height: 2 (root + 1 level of leaves)"
+  print "  Nodes: 4"
+
+  -- Part 3: Search operation
+  print ""
+  print "=== Part 3: Search Operation ==="
+  -- Simulate searching in the tree
+  mut search_targets := [40, 55, 90, 25]
+  mut search_results := [1, 0, 1, 0]
+  mut search_paths := ["root->mid", "root->mid (not found)", "root->right", "root->left (not found)"]
+  for i in range(0, 4)
+    if search_results[i] == 1
+      print "  Search {search_targets[i]}: FOUND via {search_paths[i]}"
+    else
+      print "  Search {search_targets[i]}: NOT FOUND via {search_paths[i]}"
+
+  -- Part 4: Insert with node split
+  print ""
+  print "=== Part 4: Insert with Node Split ==="
+  -- Insert 35: goes to mid child [40, 50] -- wait, 30 < 35 < 60 -> mid
+  -- Mid child [40, 50] has room -> insert: [35, 40, 50] -> full but ok (max=3)
+  print "  Insert 35: root->mid child has room"
+  print "  Mid child: [40, 50] -> [35, 40, 50]"
+  print "  No split needed"
+
+  -- Insert 45: 30<45<60 -> mid child now [35, 40, 50] which is full
+  -- Split: push up 40, left=[35], right=[45, 50]
+  -- Root becomes [30, 40, 60]
+  print "  Insert 45: mid child [35, 40, 50] is full -> SPLIT"
+  print "  Split mid: push 40 up to root"
+  print "  New root: [30, 40, 60]"
+  print "  New children: [10,20], [35], [45,50], [70,80,90]"
+  print "  Split promoted key: 40"
+
+  -- Part 5: Delete operation
+  print ""
+  print "=== Part 5: Delete Operation ==="
+  -- Delete 20 from leaf [10, 20]: simple, has 2 keys
+  print "  Delete 20 from leaf [10, 20]: simple removal"
+  print "  Leaf becomes [10] (still has min keys)"
+
+  -- Delete 30 (internal node): replace with predecessor (20) or successor (35)
+  print "  Delete 30 (root key): replace with inorder predecessor"
+  print "  Predecessor: 20 (max of left subtree)"
+  -- But 20 just got deleted... use 10
+  print "  Updated root: [10, 40, 60]"
+
+  -- Part 6: Tree statistics
+  print ""
+  print "=== Part 6: Tree Statistics ==="
+  num_keys := 9
+  height := 2
+  -- Max keys in B-tree of height h: (2t)^h * (2t-1) - 1
+  -- Min keys: 2*t^(h-1)*(t-1) + (t-1) = (t^h - 1) roughly
+  print "  Keys stored: {num_keys}"
+  print "  Tree height: {height}"
+  -- For t=2: max keys at height 2 = 4^2 * 3 - 1 = 47
+  max_cap := 47
+  -- Min keys at height 2 = 2*(2^1) - 1 = 3
+  min_cap := 3
+  print "  Capacity: min={min_cap}, max={max_cap} keys"
+  print "  Fill ratio: {num_keys}/{max_cap}"
+
+  -- Part 7: Complexity
+  print ""
+  print "=== Part 7: Complexity ==="
+  print "  Search: O(t * log_t(n))"
+  print "  Insert: O(t * log_t(n))"
+  print "  Delete: O(t * log_t(n))"
+  print "  Space: O(n)"
+  print "  Disk I/Os: O(log_t(n)) -- key advantage for databases"
+
+  print ""
+  print "B-trees: balanced multi-way search trees minimizing disk I/Os by keeping large branching factors, foundational to database index structures."

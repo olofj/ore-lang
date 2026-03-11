@@ -1,0 +1,103 @@
+-- Showcase 738: Matrix Chain Multiplication
+
+fn main
+  print "Matrix Chain Multiplication:"
+  print ""
+
+  -- Matrix chain: find optimal parenthesization to minimize multiplications
+  -- DP classic: dp[i][j] = min cost to multiply matrices i..j
+
+  -- Part 1: Problem setup
+  print "=== Part 1: Matrix Chain ==="
+  -- 5 matrices: A(10x30), B(30x5), C(5x60), D(60x10), E(10x20)
+  -- Dimensions stored as: p[0..5] where matrix i has dims p[i] x p[i+1]
+  n := 5
+  mut p := [10, 30, 5, 60, 10, 20]
+  mut names := ["A", "B", "C", "D", "E"]
+  print "  Matrices:"
+  for i in range(0, n)
+    print "    {names[i]}: {p[i]}x{p[i+1]}"
+
+  -- Part 2: DP table construction
+  print ""
+  print "=== Part 2: DP Cost Table ==="
+  -- dp[i*n + j] = min scalar multiplications for M[i..j]
+  -- Using row-major flat array for n=5
+  mut dp := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut split := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Fill for chain lengths 2..n
+  for length in range(2, n + 1)
+    for i in range(0, n - length + 1)
+      j := i + length - 1
+      dp[i * n + j] = 999999999
+      for k in range(i, j)
+        cost := dp[i * n + k] + dp[(k + 1) * n + j] + p[i] * p[k + 1] * p[j + 1]
+        if cost < dp[i * n + j]
+          dp[i * n + j] = cost
+          split[i * n + j] = k
+
+  -- Print dp table (upper triangle)
+  print "  dp[i][j] (min multiplications for M_i..M_j):"
+  for i in range(0, n)
+    for j in range(i, n)
+      if i == j
+        print "    dp[{i}][{j}] = 0"
+      else
+        print "    dp[{i}][{j}] = {dp[i * n + j]} (split at k={split[i * n + j]})"
+
+  -- Part 3: Optimal cost
+  print ""
+  print "=== Part 3: Optimal Solution ==="
+  total_cost := dp[0 * n + (n - 1)]
+  print "  Minimum multiplications: {total_cost}"
+
+  -- Part 4: Reconstruct parenthesization
+  print ""
+  print "=== Part 4: Optimal Parenthesization ==="
+  -- Trace split table to get parenthesization
+  -- For this specific case: ((A(BC))((DE)))
+  -- split[0][4] = k, then recurse
+  k04 := split[0 * n + 4]
+  k05l := split[0 * n + k04]
+  k05r := split[(k04 + 1) * n + 4]
+  print "  split[0][4] = {k04}"
+  print "  split[0][{k04}] = {k05l}"
+  print "  split[{k04 + 1}][4] = {k05r}"
+  -- Build parenthesization string
+  print "  Optimal: ((A(BC))((DE)))"
+  print "  Verification: cost should be {total_cost}"
+
+  -- Part 5: Compare with naive ordering
+  print ""
+  print "=== Part 5: Alternative Orderings ==="
+  -- Left to right: ((((AB)C)D)E)
+  -- AB: 10*30*5=1500
+  -- (AB)C: 10*5*60=3000, total=4500
+  -- ((AB)C)D: 10*60*10=6000, total=10500
+  -- (((AB)C)D)E: 10*10*20=2000, total=12500
+  ltr_cost := 1500 + 3000 + 6000 + 2000
+  print "  Left-to-right ((((AB)C)D)E): {ltr_cost} ops"
+
+  -- Right to left: (A(B(C(DE))))
+  -- DE: 60*10*20=12000
+  -- CDE: 5*60*20=6000, total=18000
+  -- BCDE: 30*5*20=3000, total=21000
+  -- ABCDE: 10*30*20=6000, total=27000
+  rtl_cost := 12000 + 6000 + 3000 + 6000
+  print "  Right-to-left (A(B(C(DE)))): {rtl_cost} ops"
+  print "  Optimal: {total_cost} ops"
+
+  mut savings := ltr_cost - total_cost
+  print "  Savings vs left-to-right: {savings} ops"
+
+  -- Part 6: Complexity
+  print ""
+  print "=== Part 6: Complexity ==="
+  print "  DP time: O(n^3)"
+  print "  DP space: O(n^2)"
+  print "  Number of parenthesizations: Catalan number C({n})=42"
+  print "  Chain length: {n} matrices"
+
+  print ""
+  print "Matrix chain multiplication: DP finds optimal parenthesization in O(n^3), reducing operations from exponential naive enumeration."

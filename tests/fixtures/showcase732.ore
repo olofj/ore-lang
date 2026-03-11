@@ -1,0 +1,111 @@
+-- Showcase 732: Bloom Filter Simulation
+
+fn main
+  print "Bloom Filter Simulation:"
+  print ""
+
+  -- Bloom filter: probabilistic data structure for set membership
+  -- Space-efficient, allows false positives, no false negatives
+
+  -- Part 1: Setup
+  print "=== Part 1: Filter Configuration ==="
+  -- Filter size: 16 bits (using array of 0/1)
+  m := 16
+  -- Number of hash functions: 3
+  k := 3
+  print "  Bit array size: {m}"
+  print "  Hash functions: {k}"
+  -- Expected false positive rate with n=4 items: (1-e^(-kn/m))^k ~ 0.07
+  print "  Target false positive rate: ~7% for 4 items"
+
+  -- Part 2: Hash functions (simple polynomial hashes mod m)
+  print ""
+  print "=== Part 2: Hash Functions ==="
+  -- hash1(x) = x mod 16
+  -- hash2(x) = (x * 3) mod 16
+  -- hash3(x) = (x * 7 + 5) mod 16
+  -- We encode strings as sum of char values (simplified)
+  -- "cat"=312, "dog"=314, "fox"=327, "bat"=310
+  mut keys := ["cat", "dog", "fox", "bat"]
+  mut key_vals := [312, 314, 327, 310]
+  print "  hash1(x) = x mod 16"
+  print "  hash2(x) = (3x) mod 16"
+  print "  hash3(x) = (7x+5) mod 16"
+
+  -- Part 3: Insert elements
+  print ""
+  print "=== Part 3: Inserting Elements ==="
+  mut bits := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 4)
+    v := key_vals[i]
+    h1 := v - (v / m) * m
+    h2 := (v * 3) - ((v * 3) / m) * m
+    h2_raw := v * 7 + 5
+    h3 := h2_raw - (h2_raw / m) * m
+    bits[h1] = 1
+    bits[h2] = 1
+    bits[h3] = 1
+    print "  Insert '{keys[i]}': set bits {h1}, {h2}, {h3}"
+  mut set_bits := 0
+  for i in range(0, m)
+    set_bits = set_bits + bits[i]
+  print "  Bits set: {set_bits}/{m}"
+
+  -- Part 4: Membership queries (true positives)
+  print ""
+  print "=== Part 4: Membership Queries (Inserted Items) ==="
+  for i in range(0, 4)
+    v := key_vals[i]
+    h1 := v - (v / m) * m
+    h2 := (v * 3) - ((v * 3) / m) * m
+    h2_raw := v * 7 + 5
+    h3 := h2_raw - (h2_raw / m) * m
+    if bits[h1] == 1 and bits[h2] == 1 and bits[h3] == 1
+      print "  '{keys[i]}': PRESENT (true positive)"
+    else
+      print "  '{keys[i]}': ABSENT (false negative -- impossible!)"
+
+  -- Part 5: False positive test
+  print ""
+  print "=== Part 5: False Positive Test ==="
+  -- Test items not inserted
+  mut test_keys := ["rat", "owl", "elk"]
+  mut test_vals := [329, 334, 315]
+  mut false_positives := 0
+  for i in range(0, 3)
+    v := test_vals[i]
+    h1 := v - (v / m) * m
+    h2 := (v * 3) - ((v * 3) / m) * m
+    h2_raw := v * 7 + 5
+    h3 := h2_raw - (h2_raw / m) * m
+    if bits[h1] == 1 and bits[h2] == 1 and bits[h3] == 1
+      print "  '{test_keys[i]}': PRESENT (false positive!)"
+      false_positives = false_positives + 1
+    else
+      print "  '{test_keys[i]}': ABSENT (correct)"
+  print "  False positives: {false_positives}/3"
+
+  -- Part 6: Bit array visualization
+  print ""
+  print "=== Part 6: Bit Array ==="
+  mut bit_str := ""
+  for i in range(0, m)
+    if bits[i] == 1
+      bit_str = bit_str + "1"
+    else
+      bit_str = bit_str + "0"
+  print "  Bits: {bit_str}"
+  print "  Set count: {set_bits}"
+
+  -- Part 7: Optimal parameters
+  print ""
+  print "=== Part 7: Optimal Parameters ==="
+  -- Optimal k = (m/n) * ln2 ~ 0.693 * m/n
+  -- For m=16, n=4: k_opt = 16/4 * 0.693 ~ 2.77 ~ 3
+  print "  n=4 items, m=16 bits"
+  print "  Optimal k = (m/n)*ln2 = 4*0.693 ~ 2.77 -> use k=3"
+  print "  Load factor: {set_bits}/{m} bits set"
+  print "  Expected false positive rate: ~7%"
+
+  print ""
+  print "Bloom filters: space-efficient probabilistic structures trading exactness for memory, ideal for cache pre-filtering and membership tests."
