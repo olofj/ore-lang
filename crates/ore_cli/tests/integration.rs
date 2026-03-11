@@ -504,6 +504,13 @@ fn stdlib_reverse() {
 }
 
 #[test]
+fn lists_min_max_count() {
+    let out = run_ore("lists/min_max_count.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["1", "9", "3", "35", "[hello, world, foo, bar]"]);
+}
+
+#[test]
 fn pipelines_comprehensive() {
     let out = run_ore("pipelines/comprehensive.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

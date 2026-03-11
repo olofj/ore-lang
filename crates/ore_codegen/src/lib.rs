@@ -650,6 +650,10 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_index_of", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_assert_fail", void_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_split_whitespace", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_min", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_max", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_count", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_reverse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_reverse_new", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
@@ -2248,6 +2252,46 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
             }
+            "min" => {
+                let rt = self.module.get_function("ore_list_min").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmin"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "max" => {
+                let rt = self.module.get_function("ore_list_max").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmax"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "count" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "count takes 1 argument (predicate)".into() });
+                }
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => self.compile_lambda(params, body, func)?,
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "count requires a function or lambda".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let rt = self.module.get_function("ore_list_count").unwrap();
+                let result = bld!(self.builder.build_call(
+                    rt,
+                    &[list_val.into(), fn_ptr.into(), env_ptr.into()],
+                    "count"
+                ))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
             _ => Err(CodeGenError { line: None, msg: format!("unknown list method '{}'", method) }),
         }
     }
@@ -2289,8 +2333,16 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Str))
             }
             "split" => {
+                if args.is_empty() {
+                    // split() with no args = split on whitespace
+                    let rt = self.module.get_function("ore_str_split_whitespace").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[str_val.into()], "ssplit"))?;
+                    let val = self.call_result_to_value(result)?;
+                    self.last_list_elem_kind = Some(ValKind::Str);
+                    return Ok((val, ValKind::List));
+                }
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: None, msg: "split takes 1 argument".into() });
+                    return Err(CodeGenError { line: None, msg: "split takes 0 or 1 arguments".into() });
                 }
                 let delim = self.compile_expr(&args[0], func)?;
                 let rt = self.module.get_function("ore_str_split").unwrap();

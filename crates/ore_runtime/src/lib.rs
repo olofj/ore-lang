@@ -429,6 +429,62 @@ pub extern "C" fn ore_list_slice(list: *mut OreList, start: i64, end: i64) -> *m
     result
 }
 
+#[no_mangle]
+pub extern "C" fn ore_str_split_whitespace(s: *mut OreStr) -> *mut OreList {
+    let list = ore_list_new();
+    if s.is_null() { return list; }
+    let str_val = unsafe { (*s).as_str() };
+    for word in str_val.split_whitespace() {
+        let ore_word = ore_str_new(word.as_ptr(), word.len() as u32);
+        ore_list_push(list, ore_word as i64);
+    }
+    list
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_min(list: *mut OreList) -> i64 {
+    if list.is_null() { return 0; }
+    let l = unsafe { &*list };
+    if l.len == 0 { return 0; }
+    let mut min = unsafe { *l.data };
+    for i in 1..l.len {
+        let val = unsafe { *l.data.offset(i as isize) };
+        if val < min { min = val; }
+    }
+    min
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_max(list: *mut OreList) -> i64 {
+    if list.is_null() { return 0; }
+    let l = unsafe { &*list };
+    if l.len == 0 { return 0; }
+    let mut max = unsafe { *l.data };
+    for i in 1..l.len {
+        let val = unsafe { *l.data.offset(i as isize) };
+        if val > max { max = val; }
+    }
+    max
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_count(
+    list: *mut OreList,
+    pred: extern "C" fn(i64, *mut u8) -> i8,
+    env_ptr: *mut u8,
+) -> i64 {
+    if list.is_null() { return 0; }
+    let l = unsafe { &*list };
+    let mut count = 0i64;
+    for i in 0..l.len {
+        let val = unsafe { *l.data.offset(i as isize) };
+        if pred(val, env_ptr) != 0 {
+            count += 1;
+        }
+    }
+    count
+}
+
 // ── Assert ──
 
 #[no_mangle]

@@ -359,6 +359,10 @@ fn map_runtime_functions(
     map_fn!("ore_assert_fail", ore_runtime::ore_assert_fail);
     map_fn!("ore_str_reverse", ore_runtime::ore_str_reverse);
     map_fn!("ore_list_reverse_new", ore_runtime::ore_list_reverse_new);
+    map_fn!("ore_str_split_whitespace", ore_runtime::ore_str_split_whitespace);
+    map_fn!("ore_list_min", ore_runtime::ore_list_min);
+    map_fn!("ore_list_max", ore_runtime::ore_list_max);
+    map_fn!("ore_list_count", ore_runtime::ore_list_count);
     // Lists
     map_fn!("ore_list_new", ore_runtime::ore_list_new);
     map_fn!("ore_list_push", ore_runtime::ore_list_push);

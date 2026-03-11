@@ -1,0 +1,9 @@
+fn main
+  nums := [5, 3, 8, 1, 9, 2, 7]
+  print nums.min()
+  print nums.max()
+  print nums.count(x => x > 5)
+  print nums.sum()
+
+  words := "hello world foo bar".split()
+  print words
