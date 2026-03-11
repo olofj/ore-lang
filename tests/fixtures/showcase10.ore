@@ -1,0 +1,50 @@
+-- Showcase 10: Functional data processing with all new features
+
+fn dot_product a:List b:List -> Int
+  a.zip_with(b, (x, y) => x * y).sum()
+
+fn moving_avg data:List window_size:Int -> List
+  data.window(window_size)
+  | map(w => w.sum() / w.len())
+
+fn main
+  -- Dot product
+  v1 := [1, 2, 3, 4, 5]
+  v2 := [5, 4, 3, 2, 1]
+  print "dot: {dot_product(v1, v2)}"
+
+  -- Moving average
+  prices := [100, 105, 103, 108, 110, 107, 112]
+  avgs := moving_avg(prices, 3)
+  sep := " "
+  print "avgs: {avgs | join(sep)}"
+
+  -- Partition and process
+  nums := range(1, 21)
+  [evens, odds] := nums.partition(x => x % 2 == 0)
+  print "even sum: {evens.sum()}"
+  print "odd sum: {odds.sum()}"
+
+  -- Sort by absolute distance from 50
+  scattered := [10, 90, 45, 55, 30, 70, 48, 52]
+  sorted := scattered.sort_by(x => (x - 50).abs())
+  print "near 50: {sorted | take(3) | join(sep)}"
+
+  -- String processing pipeline
+  text := "  Hello, World!  This is Ore!  "
+  word_count := text.trim().words().len()
+  print "words: {word_count}"
+
+  -- Count vowels
+  vowels := "aeiouAEIOU"
+  s := "Hello World"
+  vowel_count := s.chars() | filter(c => vowels.contains(c)) | len
+  print "vowels: {vowel_count}"
+
+  -- Range with step — sum of odd squares
+  total := range(1, 20, 2)
+  | map(x => x * x)
+  | sum
+  print "odd squares sum: {total}"
+
+  print "showcase10 ok"

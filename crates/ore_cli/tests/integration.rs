@@ -995,6 +995,16 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn showcase10() {
+    let out = run_ore("showcase10.ore");
+    assert!(out.contains("dot: 35"));
+    assert!(out.contains("even sum: 110"));
+    assert!(out.contains("odd sum: 100"));
+    assert!(out.contains("odd squares sum: 1330"));
+    assert!(out.contains("showcase10 ok"));
+}
+
+#[test]
 fn lists_zip_with() {
     let out = run_ore("lists/zip_with.ore");
     let lines: Vec<&str> = out.lines().collect();
