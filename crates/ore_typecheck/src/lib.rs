@@ -513,6 +513,17 @@ impl TypeChecker {
                                     "function '{}' expects {} args, got {}",
                                     name, params.len(), args.len()
                                 ));
+                            } else {
+                                // Check argument types
+                                let arg_types: Vec<Type> = args.iter().map(|a| self.infer_expr(a, env)).collect();
+                                for (i, (arg_ty, param_ty)) in arg_types.iter().zip(params.iter()).enumerate() {
+                                    if !arg_ty.compatible_with(param_ty) {
+                                        self.err(format!(
+                                            "argument {} of '{}' expects {}, got {}",
+                                            i + 1, name, param_ty, arg_ty
+                                        ));
+                                    }
+                                }
                             }
                             return ret;
                         }
