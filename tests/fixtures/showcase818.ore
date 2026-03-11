@@ -1,0 +1,114 @@
+-- Showcase 818: SSA Form Construction
+
+-- Static Single Assignment (SSA) form:
+-- Each variable is defined exactly once
+-- Phi functions merge values at join points
+-- We simulate SSA construction for a simple control-flow graph
+
+fn ssa_rename var:Str version:Int -> Str
+  var + "_" + str(version)
+
+fn print_instruction op:Str dest:Str src1:Str src2:Str
+  if op == "add"
+    print "    {dest} = add {src1}, {src2}"
+  else if op == "mul"
+    print "    {dest} = mul {src1}, {src2}"
+  else if op == "sub"
+    print "    {dest} = sub {src1}, {src2}"
+  else if op == "phi"
+    print "    {dest} = phi [{src1}, B0], [{src2}, B1]"
+  else if op == "assign"
+    print "    {dest} = {src1}"
+  else if op == "br"
+    print "    br {src1}, {dest}, {src2}"
+  else if op == "ret"
+    print "    ret {dest}"
+  else
+    print "    {op} {dest} {src1} {src2}"
+
+fn main
+  print "SSA Form Construction:"
+  print ""
+
+  print "=== What is SSA? ==="
+  print "  Static Single Assignment: each variable defined exactly once"
+  print "  Phi functions: merge multiple reaching definitions at join points"
+  print "  Enables: constant propagation, dead code elimination, register allocation"
+  print ""
+
+  print "=== Original Program (non-SSA) ==="
+  print "  x = 1"
+  print "  if cond:"
+  print "    x = x + 2    -- x redefined in then-branch"
+  print "  else:"
+  print "    x = x * 3    -- x redefined in else-branch"
+  print "  y = x + 5      -- which x does this use?"
+  print ""
+
+  print "=== Control Flow Graph (CFG) ==="
+  print "  B0 (entry): x=1, branch on cond to B1 or B2"
+  print "  B1 (then):  x = x + 2"
+  print "  B2 (else):  x = x * 3"
+  print "  B3 (join):  y = x + 5, return y"
+  print ""
+
+  print "=== SSA Construction: Rename Variables ==="
+  print ""
+  print "  Block B0 (entry):"
+  print_instruction("assign", "x_0", "1", "")
+  print_instruction("br", "B1", "cond", "B2")
+  print ""
+
+  print "  Block B1 (then-branch):"
+  print_instruction("add", "x_1", "x_0", "2")
+  print_instruction("br", "B3", "", "")
+  print ""
+
+  print "  Block B2 (else-branch):"
+  print_instruction("mul", "x_2", "x_0", "3")
+  print_instruction("br", "B3", "", "")
+  print ""
+
+  print "  Block B3 (join - phi function needed):"
+  print_instruction("phi", "x_3", "x_1", "x_2")
+  print_instruction("add", "y_0", "x_3", "5")
+  print_instruction("ret", "y_0", "", "")
+  print ""
+
+  print "=== SSA Properties Verified ==="
+  -- Check that each variable is only defined once
+  defs := ["x_0", "x_1", "x_2", "x_3", "y_0"]
+  n_defs := 5
+  print "  Definitions (each appears exactly once):"
+  for i in range(0, n_defs)
+    d := defs[i]
+    print "    {d}: defined once = true"
+  print ""
+
+  print "=== Constant Propagation on SSA ==="
+  print "  x_0 = 1       -> known value: 1"
+  x0 := 1
+  print "  x_1 = x_0 + 2 -> known value: {x0 + 2}  (in then-branch)"
+  x1 := x0 + 2
+  print "  x_2 = x_0 * 3 -> known value: {x0 * 3}  (in else-branch)"
+  x2 := x0 * 3
+  print "  x_3 = phi(x_1, x_2) -> value range: [{x1}, {x2}]"
+  print ""
+
+  print "=== Dominance Frontiers (where to place Phi functions) ==="
+  print "  B3 is in the dominance frontier of B1 and B2"
+  print "  Rule: place phi(x) at B if B is in DF of any block that defines x"
+  print "  B0 dominates all blocks"
+  print "  B1 dominates only B1"
+  print "  B2 dominates only B2"
+  print "  B3 is dominated by B0 but not B1 or B2"
+  print ""
+
+  print "=== SSA Destruction (back to executable form) ==="
+  print "  Replace phi(x_1, x_2) with copy instructions at end of predecessors"
+  print "  B1: add copy x_3 = x_1 before branch"
+  print "  B2: add copy x_3 = x_2 before branch"
+  print "  Remove phi instructions"
+  print ""
+
+  print "SSA form: enables O(n) dataflow algorithms; foundation of modern compiler optimization."

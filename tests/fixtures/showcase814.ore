@@ -1,0 +1,166 @@
+-- Showcase 814: LR(0) Item Sets and Parser
+
+-- Grammar:
+-- S' -> S
+-- S  -> S + T | T
+-- T  -> id
+
+-- LR(0) items are productions with a dot marking parse position
+-- We enumerate the canonical collection of LR(0) item sets
+
+fn item_to_str production:Str dot:Int -> Str
+  -- Show production with dot at given position
+  parts := production.split(" ")
+  n := parts.len()
+  mut result := ""
+  for i in range(0, n)
+    if i == dot
+      result = result + ". "
+    result = result + parts[i] + " "
+  if dot == n
+    result = result + "."
+  result.trim()
+
+fn action_lookup state:Int tok:Str -> Str
+  -- SLR(1) action table for the grammar
+  if state == 0
+    if tok == "id"
+      "shift 3"
+    else
+      "error"
+  else if state == 1
+    if tok == "+"
+      "shift 4"
+    else if tok == "$"
+      "accept"
+    else
+      "error"
+  else if state == 2
+    -- T -> id . (reduce)
+    if tok == "+" or tok == "$"
+      "reduce T -> id"
+    else
+      "error"
+  else if state == 3
+    -- S -> T . and S' -> S .
+    if tok == "+" or tok == "$"
+      "reduce S -> T"
+    else
+      "error"
+  else if state == 4
+    if tok == "id"
+      "shift 6"
+    else
+      "error"
+  else if state == 5
+    -- S -> S + T .
+    if tok == "+" or tok == "$"
+      "reduce S -> S + T"
+    else
+      "error"
+  else if state == 6
+    if tok == "+" or tok == "$"
+      "reduce T -> id"
+    else
+      "error"
+  else
+    "error"
+
+fn goto_lookup state:Int sym:Str -> Int
+  if state == 0
+    if sym == "S"
+      1
+    else if sym == "T"
+      3
+    else
+      -1
+  else if state == 4
+    if sym == "T"
+      5
+    else
+      -1
+  else
+    -1
+
+fn main
+  print "LR(0) Item Sets and Parser:"
+  print ""
+
+  print "=== Grammar ==="
+  print "  S' -> S"
+  print "  S  -> S + T"
+  print "  S  -> T"
+  print "  T  -> id"
+  print ""
+
+  print "=== LR(0) Item Sets (Canonical Collection) ==="
+  print ""
+  print "  I0 (start):"
+  print "    S' -> . S"
+  print "    S  -> . S + T"
+  print "    S  -> . T"
+  print "    T  -> . id"
+  print ""
+  print "  I1 = goto(I0, S):"
+  print "    S' -> S ."
+  print "    S  -> S . + T"
+  print ""
+  print "  I2 = goto(I0, id):"
+  print "    T  -> id ."
+  print ""
+  print "  I3 = goto(I0, T):"
+  print "    S  -> T ."
+  print ""
+  print "  I4 = goto(I1, +):"
+  print "    S  -> S + . T"
+  print "    T  -> . id"
+  print ""
+  print "  I5 = goto(I4, T):"
+  print "    S  -> S + T ."
+  print ""
+  print "  I6 = goto(I4, id):"
+  print "    T  -> id ."
+  print ""
+
+  print "=== SLR(1) Action/Goto Tables ==="
+  print "  State | id      | +        | $        || S  | T"
+  print "  ------+---------+----------+----------++----+---"
+  states := [0, 1, 2, 3, 4, 5, 6]
+  for i in range(0, 7)
+    s := states[i]
+    mut a_id := action_lookup(s, "id")
+    mut a_plus := action_lookup(s, "+")
+    mut a_end := action_lookup(s, "$")
+    g_s := goto_lookup(s, "S")
+    g_t := goto_lookup(s, "T")
+    mut gs := str(g_s)
+    mut gt := str(g_t)
+    if g_s == -1
+      gs = "-"
+    if g_t == -1
+      gt = "-"
+    if a_id == "error"
+      a_id = "-"
+    if a_plus == "error"
+      a_plus = "-"
+    if a_end == "error"
+      a_end = "-"
+    print "  {s}     | {a_id} | {a_plus} | {a_end} || {gs} | {gt}"
+  print ""
+
+  print "=== Parsing 'id + id' ==="
+  print "  Stack    | Input      | Action"
+  print "  ---------+------------+------------------"
+  print "  0        | id + id $  | shift 2"
+  print "  0 2      | + id $     | reduce T -> id"
+  print "  0 3      | + id $     | reduce S -> T"
+  print "  0 1      | + id $     | shift 4"
+  print "  0 1 4    | id $       | shift 6"
+  print "  0 1 4 6  | $          | reduce T -> id"
+  print "  0 1 4 5  | $          | reduce S -> S + T"
+  print "  0 1      | $          | accept"
+  print ""
+  print "  Parse result: ACCEPTED"
+  print ""
+
+  print "LR(0) items: dotted productions track parse state; shift/reduce drives bottom-up parsing."

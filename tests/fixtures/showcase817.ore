@@ -1,0 +1,131 @@
+-- Showcase 817: Continuation-Passing Style (CPS) Transform
+
+-- In CPS, every function takes an extra continuation argument k
+-- Instead of returning a value, it calls k with the result
+-- This makes control flow explicit and enables tail-call optimization
+
+-- Direct style functions
+fn direct_add a:Int b:Int -> Int
+  a + b
+
+fn direct_mul a:Int b:Int -> Int
+  a * b
+
+fn direct_factorial n:Int -> Int
+  if n == 0
+    1
+  else
+    n * direct_factorial(n - 1)
+
+fn direct_fib n:Int -> Int
+  if n <= 1
+    n
+  else
+    direct_fib(n - 1) + direct_fib(n - 2)
+
+-- CPS versions: continuation is simulated by tracking computation steps
+-- We use an accumulator + step counter to simulate CPS evaluation
+
+fn cps_add a:Int b:Int acc:Int -> Int
+  -- CPS: add_cps a b k = k (a + b)
+  -- Here we accumulate: acc + (a + b)
+  acc + a + b
+
+fn cps_mul a:Int b:Int acc:Int -> Int
+  acc * (a + b - a - b) + a * b + acc * 0
+  -- Simpler:
+  a * b
+
+fn cps_factorial_iter n:Int acc:Int -> Int
+  -- CPS factorial uses tail recursion via accumulator
+  -- fact_cps n k = if n==0 then k(1) else fact_cps (n-1) (lam m -> k(n*m))
+  -- This is equivalent to iterative with accumulator
+  if n == 0
+    acc
+  else
+    cps_factorial_iter(n - 1, n * acc)
+
+fn cps_factorial n:Int -> Int
+  cps_factorial_iter(n, 1)
+
+fn cps_sum_list_iter remaining:Int acc:Int -> Int
+  -- CPS sum: processes elements tail-recursively
+  if remaining == 0
+    acc
+  else
+    cps_sum_list_iter(remaining - 1, acc + remaining)
+
+-- Simulate CPS transform of: let x = f(a) in let y = g(x) in h(y)
+-- CPS: f_cps a (lam x -> g_cps x (lam y -> h_cps y k))
+fn cps_pipeline a:Int -> Int
+  -- Step 1: add 10 (continuation: feed to step 2)
+  x := a + 10
+  -- Step 2: multiply by 2 (continuation: feed to step 3)
+  y := x * 2
+  -- Step 3: subtract 5 (continuation: return final result)
+  y - 5
+
+fn main
+  print "Continuation-Passing Style (CPS) Transform:"
+  print ""
+
+  print "=== Direct Style vs CPS ==="
+  print "  Direct: f x = expr"
+  print "  CPS:    f_cps x k = k expr   (k is the continuation)"
+  print "  CPS makes return points explicit as first-class values"
+  print ""
+
+  print "=== CPS Transform Rules ==="
+  print "  Literal:    [v]_k = k v"
+  print "  Variable:   [x]_k = k x"
+  print "  Add:        [a+b]_k = [a]_(lam x -> [b]_(lam y -> k(x+y)))"
+  print "  App:        [f e]_k = [f]_(lam fn -> [e]_(lam v -> fn v k))"
+  print "  If:         [if c t e]_k = [c]_(lam b -> if b then [t]_k else [e]_k)"
+  print ""
+
+  print "=== Direct Style Computation ==="
+  d1 := direct_add(3, 4)
+  print "  direct_add(3, 4) = {d1}"
+  d2 := direct_mul(3, 4)
+  print "  direct_mul(3, 4) = {d2}"
+  print ""
+
+  print "=== CPS Factorial (tail-recursive) ==="
+  print "  fact_cps n k = if n==0 then k(1)"
+  print "               else fact_cps (n-1) (lam m -> k(n*m))"
+  for i in range(0, 8)
+    f_direct := direct_factorial(i)
+    f_cps := cps_factorial(i)
+    match_ok := f_direct == f_cps
+    print "  fact({i}): direct={f_direct}, cps={f_cps}, match={match_ok}"
+  print ""
+
+  print "=== CPS Sum (tail-recursive) ==="
+  print "  sum_cps n k = if n==0 then k(0)"
+  print "              else sum_cps (n-1) (lam m -> k(n+m))"
+  for i in range(1, 6)
+    n := i * 2
+    s := cps_sum_list_iter(n, 0)
+    expected := n * (n + 1) / 2
+    ok := s == expected
+    print "  sum(1..{n}) = {s}, expected={expected}, ok={ok}"
+  print ""
+
+  print "=== CPS Pipeline Transform ==="
+  print "  Direct: h(g(f(x)))"
+  print "  CPS: f_cps x (lam a -> g_cps a (lam b -> h_cps b k))"
+  for i in range(0, 5)
+    inp := i * 3
+    out := cps_pipeline(inp)
+    print "  pipeline({inp}) = (({inp}+10)*2)-5 = {out}"
+  print ""
+
+  print "=== Benefits of CPS ==="
+  print "  1. Tail-call optimization: all calls become tail calls"
+  print "  2. Explicit control flow: no hidden stack frames"
+  print "  3. First-class continuations: call/cc, coroutines"
+  print "  4. Compiler IR: easy to optimize, inline continuations"
+  print "  5. Exception handling: escape continuations"
+  print ""
+
+  print "CPS transform: make implicit control flow explicit via continuation functions."

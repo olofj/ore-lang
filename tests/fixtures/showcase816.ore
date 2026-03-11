@@ -1,0 +1,175 @@
+-- Showcase 816: Lambda Calculus Evaluator
+
+-- Lambda calculus terms:
+-- Var x      -> variable
+-- Abs x body -> lambda abstraction (lamx.body)
+-- App f arg  -> function application (f arg)
+-- We encode terms as strings: "var:x", "abs:x:body", "app:f:arg"
+-- For simplicity we evaluate Church numerals and combinators
+
+fn church_num n:Int -> Int
+  -- Church numeral: 0 = lamf.lamx.x, 1 = lamf.lamx.f x, etc.
+  -- We represent Church numeral by its integer value directly
+  n
+
+fn church_add m:Int n:Int -> Int
+  -- ADD = lamm.lamn.lamf.lamx. m f (n f x)
+  -- On Church numerals: ADD m n = m + n
+  m + n
+
+fn church_mul m:Int n:Int -> Int
+  -- MUL = lamm.lamn.lamf. m (n f)
+  -- On Church numerals: MUL m n = m * n
+  m * n
+
+fn church_succ n:Int -> Int
+  -- SUCC = lamn.lamf.lamx. f (n f x)
+  n + 1
+
+fn church_pred n:Int -> Int
+  -- PRED = lamn.lamf.lamx. n (lamg.lamh. h (g f)) (lamu.x) (lamu.u)
+  if n == 0
+    0
+  else
+    n - 1
+
+fn church_is_zero n:Int -> Bool
+  n == 0
+
+fn church_to_int n:Int -> Int
+  n
+
+-- Y combinator: Y = lamf.(lamx.f(x x))(lamx.f(x x))
+-- We simulate Y-combinator based factorial
+fn fact_step n:Int -> Int
+  if n == 0
+    1
+  else
+    n * fact_step(n - 1)
+
+-- SKI combinator calculus
+-- S = lamx.lamy.lamz. x z (y z)
+-- K = lamx.lamy. x
+-- I = lamx. x
+
+fn combinator_I x:Int -> Int
+  x
+
+fn combinator_K x:Int y:Int -> Int
+  x
+
+fn combinator_KI x:Int y:Int -> Int
+  -- KI = K I: returns second arg, like False
+  y
+
+-- Boolean encoding
+fn church_true a:Int b:Int -> Int
+  a
+
+fn church_false a:Int b:Int -> Int
+  b
+
+fn church_and p:Int q:Int -> Int
+  -- AND = lamp.lamq. p q p
+  -- p is 1 (true) or 0 (false)
+  if p == 1 and q == 1
+    1
+  else
+    0
+
+fn church_or p:Int q:Int -> Int
+  if p == 1 or q == 1
+    1
+  else
+    0
+
+fn church_not p:Int -> Int
+  if p == 1
+    0
+  else
+    1
+
+fn main
+  print "Lambda Calculus Evaluator:"
+  print ""
+
+  print "=== Lambda Calculus Fundamentals ==="
+  print "  Term    = Var x | Abs x Term | App Term Term"
+  print "  Beta reduction: (lamx.M) N -> M[N/x]"
+  print "  Alpha equivalence: lamx.x = lamy.y"
+  print "  Normal form: no more beta reductions possible"
+  print ""
+
+  print "=== Church Numerals ==="
+  print "  0 = lamf.lamx.x"
+  print "  1 = lamf.lamx.f x"
+  print "  2 = lamf.lamx.f (f x)"
+  print "  n = lamf.lamx.f^n x  (apply f n times)"
+  print ""
+
+  -- Church arithmetic
+  print "=== Church Numeral Arithmetic ==="
+  c0 := church_num(0)
+  c1 := church_num(1)
+  c2 := church_num(2)
+  c3 := church_num(3)
+  c5 := church_num(5)
+
+  add_result := church_add(c2, c3)
+  print "  ADD 2 3 = {add_result}"
+
+  mul_result := church_mul(c2, c3)
+  print "  MUL 2 3 = {mul_result}"
+
+  succ_result := church_succ(c5)
+  print "  SUCC 5 = {succ_result}"
+
+  pred_result := church_pred(c3)
+  print "  PRED 3 = {pred_result}"
+
+  iz_zero := church_is_zero(c0)
+  iz_two := church_is_zero(c2)
+  print "  ISZERO 0 = {iz_zero}"
+  print "  ISZERO 2 = {iz_two}"
+  print ""
+
+  print "=== SKI Combinators ==="
+  print "  I x     = x                  (identity)"
+  print "  K x y   = x                  (constant)"
+  print "  S x y z = x z (y z)          (substitution)"
+  print ""
+  i_result := combinator_I(42)
+  k_result := combinator_K(10, 99)
+  ki_result := combinator_KI(10, 99)
+  print "  I 42 = {i_result}"
+  print "  K 10 99 = {k_result}"
+  print "  KI 10 99 = {ki_result}  (returns second arg)"
+  print ""
+
+  print "=== Church Booleans ==="
+  print "  TRUE  = lama.lamb.a   (select first)"
+  print "  FALSE = lama.lamb.b   (select second)"
+  print ""
+  and_tt := church_and(1, 1)
+  and_tf := church_and(1, 0)
+  or_ff := church_or(0, 0)
+  or_tf := church_or(1, 0)
+  not_t := church_not(1)
+  not_f := church_not(0)
+  print "  AND TRUE TRUE  = {and_tt}"
+  print "  AND TRUE FALSE = {and_tf}"
+  print "  OR  FALSE FALSE = {or_ff}"
+  print "  OR  TRUE FALSE  = {or_tf}"
+  print "  NOT TRUE  = {not_t}"
+  print "  NOT FALSE = {not_f}"
+  print ""
+
+  print "=== Y Combinator (Factorial) ==="
+  print "  Y = lamf.(lamx.f(x x))(lamx.f(x x))"
+  print "  FACT = Y (lamf.lamn. if n==0 then 1 else n * f(n-1))"
+  for i in range(0, 8)
+    f := fact_step(i)
+    print "  FACT {i} = {f}"
+  print ""
+
+  print "Lambda calculus: Turing-complete with only variables, abstraction, and application."

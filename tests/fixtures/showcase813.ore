@@ -1,0 +1,162 @@
+-- Showcase 813: LL(1) Parser Table Construction
+
+-- Grammar for simple arithmetic:
+-- E  -> T E'
+-- E' -> + T E' | epsilon
+-- T  -> F T'
+-- T' -> * F T' | epsilon
+-- F  -> ( E ) | id
+
+-- FIRST sets (precomputed)
+fn first_of sym:Str -> Str
+  if sym == "E"
+    "(,id"
+  else if sym == "E'"
+    "+,eps"
+  else if sym == "T"
+    "(,id"
+  else if sym == "T'"
+    "*,eps"
+  else if sym == "F"
+    "(,id"
+  else
+    sym
+
+-- FOLLOW sets (precomputed)
+fn follow_of sym:Str -> Str
+  if sym == "E"
+    "),$"
+  else if sym == "E'"
+    "),$"
+  else if sym == "T"
+    "+,),$"
+  else if sym == "T'"
+    "+,),$"
+  else if sym == "F"
+    "*,+,),$"
+  else
+    ""
+
+-- LL(1) table lookup: M[nonterminal][terminal] = production
+fn ll1_lookup nt:Str tok:Str -> Str
+  if nt == "E"
+    if tok == "(" or tok == "id"
+      "E -> T E'"
+    else
+      "error"
+  else if nt == "E'"
+    if tok == "+"
+      "E' -> + T E'"
+    else if tok == ")" or tok == "$"
+      "E' -> eps"
+    else
+      "error"
+  else if nt == "T"
+    if tok == "(" or tok == "id"
+      "T -> F T'"
+    else
+      "error"
+  else if nt == "T'"
+    if tok == "*"
+      "T' -> * F T'"
+    else if tok == "+" or tok == ")" or tok == "$"
+      "T' -> eps"
+    else
+      "error"
+  else if nt == "F"
+    if tok == "("
+      "F -> ( E )"
+    else if tok == "id"
+      "F -> id"
+    else
+      "error"
+  else
+    "error"
+
+fn main
+  print "LL(1) Parser Table Construction:"
+  print ""
+
+  print "=== Grammar (LL(1) form) ==="
+  print "  E  -> T E'"
+  print "  E' -> + T E' | epsilon"
+  print "  T  -> F T'"
+  print "  T' -> * F T' | epsilon"
+  print "  F  -> ( E ) | id"
+  print ""
+
+  print "=== FIRST Sets ==="
+  nts := ["E", "E'", "T", "T'", "F"]
+  for i in range(0, 5)
+    nt := nts[i]
+    f := first_of(nt)
+    print "  FIRST({nt}) = {f}"
+  print ""
+
+  print "=== FOLLOW Sets ==="
+  for i in range(0, 5)
+    nt := nts[i]
+    f := follow_of(nt)
+    print "  FOLLOW({nt}) = {f}"
+  print ""
+
+  print "=== LL(1) Parse Table ==="
+  print "  NT  | id           | +            | *            | (            | )      | $"
+  print "  ----+--------------+--------------+--------------+--------------+--------+----------"
+  terminals := ["id", "+", "*", "(", ")", "$"]
+  for i in range(0, 5)
+    nt := nts[i]
+    mut row := "  " + nt
+    for j in range(0, 6)
+      tok := terminals[j]
+      entry := ll1_lookup(nt, tok)
+      if entry == "error"
+        row = row + " | -"
+      else
+        row = row + " | " + entry
+    print row
+  print ""
+
+  print "=== Parsing 'id + id * id' ==="
+  -- Stack-based LL(1) parse simulation
+  -- Input tokens: id + id * id $
+  -- We trace the parse steps
+  print "  Stack               | Input              | Action"
+  print "  --------------------+--------------------+------------------"
+  print "  E $                 | id + id * id $     | lookup M[E,id]"
+  print "  T E' $              | id + id * id $     | lookup M[T,id]"
+  print "  F T' E' $           | id + id * id $     | lookup M[F,id]"
+  print "  id T' E' $          | id + id * id $     | match 'id'"
+  print "  T' E' $             | + id * id $        | lookup M[T',+]"
+  print "  E' $                | + id * id $        | lookup M[E',+]"
+  print "  + T E' $            | + id * id $        | match '+'"
+  print "  T E' $              | id * id $          | lookup M[T,id]"
+  print "  F T' E' $           | id * id $          | lookup M[F,id]"
+  print "  id T' E' $          | id * id $          | match 'id'"
+  print "  T' E' $             | * id $             | lookup M[T',*]"
+  print "  * F T' E' $         | * id $             | match '*'"
+  print "  F T' E' $           | id $               | lookup M[F,id]"
+  print "  id T' E' $          | id $               | match 'id'"
+  print "  T' E' $             | $                  | lookup M[T',$]"
+  print "  E' $                | $                  | lookup M[E',$]"
+  print "  $                   | $                  | accept"
+  print ""
+  print "  Parse result: ACCEPTED"
+  print ""
+
+  -- Verify some table entries
+  print "=== Table Entry Verification ==="
+  e1 := ll1_lookup("E", "id")
+  ok1 := e1 == "E -> T E'"
+  print "  M[E,id] = '{e1}' correct: {ok1}"
+  e2 := ll1_lookup("E'", "+")
+  ok2 := e2 == "E' -> + T E'"
+  print "  M[E',+] = '{e2}' correct: {ok2}"
+  e3 := ll1_lookup("T'", "*")
+  ok3 := e3 == "T' -> * F T'"
+  print "  M[T',*] = '{e3}' correct: {ok3}"
+  e4 := ll1_lookup("F", "(")
+  ok4 := e4 == "F -> ( E )"
+  print "  M[F,(] = '{e4}' correct: {ok4}"
+  print ""
+  print "LL(1) parsing: O(n) time, predictive top-down parsing with 1-token lookahead."

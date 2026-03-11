@@ -1,0 +1,158 @@
+-- Showcase 819: Register Allocation (Graph Coloring)
+
+-- Register allocation via graph coloring (Chaitin's algorithm)
+-- Interference graph: variables interfere if both live at same program point
+-- Graph coloring: assign registers such that no two interfering vars share one
+
+fn vars_interfere a:Int b:Int edges:List -> Bool
+  -- Check if edge a-b exists in edge list (stored as flat pairs)
+  n := edges.len()
+  mut found := false
+  mut i := 0
+  while i < n
+    u := edges[i]
+    v := edges[i + 1]
+    if (u == a and v == b) or (u == b and v == a)
+      found = true
+    i = i + 2
+  found
+
+fn degree_of v:Int n_vars:Int edges:List -> Int
+  -- Count edges incident to v
+  mut deg := 0
+  for u in range(0, n_vars)
+    if u != v
+      if vars_interfere(v, u, edges)
+        deg = deg + 1
+  deg
+
+fn can_color_with v:Int color:Int n_vars:Int edges:List colors:List -> Bool
+  -- Check if assigning 'color' to v conflicts with neighbors
+  mut ok := true
+  for u in range(0, n_vars)
+    if u != v
+      if vars_interfere(v, u, edges)
+        neighbor_color := colors[u]
+        if neighbor_color == color
+          ok = false
+  ok
+
+fn main
+  print "Register Allocation (Graph Coloring):"
+  print ""
+
+  print "=== Program (SSA-like) ==="
+  print "  a = load x"
+  print "  b = a + 1"
+  print "  c = a * 2"
+  print "  d = b + c"
+  print "  e = d - 1"
+  print "  return e"
+  print ""
+
+  print "=== Live Ranges ==="
+  print "  Var | Defined | Last Use"
+  print "  ----+---------+---------"
+  print "  a   | line 1  | line 3"
+  print "  b   | line 2  | line 4"
+  print "  c   | line 3  | line 4"
+  print "  d   | line 4  | line 5"
+  print "  e   | line 5  | line 6"
+  print ""
+
+  -- Variables: a=0, b=1, c=2, d=3, e=4
+  n_vars := 5
+  var_names := ["a", "b", "c", "d", "e"]
+
+  -- Interference edges (pairs): variables whose live ranges overlap
+  -- a-b: a live at line 2 when b is defined
+  -- a-c: a live at line 3 when c is defined
+  -- b-c: both live at lines 3-4
+  -- b-d: b live when d defined, c live when d defined
+  -- c-d: same
+  edges := [0, 1,  0, 2,  1, 2,  1, 3,  2, 3]
+  n_edges := 5
+
+  print "=== Interference Graph ==="
+  print "  Edges (variables that interfere):"
+  for i in range(0, n_edges)
+    u := edges[i * 2]
+    v := edges[i * 2 + 1]
+    un := var_names[u]
+    vn := var_names[v]
+    print "    {un} -- {vn}"
+  print ""
+
+  print "=== Variable Degrees ==="
+  for i in range(0, n_vars)
+    d := degree_of(i, n_vars, edges)
+    vn := var_names[i]
+    print "    degree({vn}) = {d}"
+  print ""
+
+  -- Greedy graph coloring (with 3 registers: R0, R1, R2)
+  n_regs := 3
+  reg_names := ["R0", "R1", "R2"]
+  print "=== Greedy Graph Coloring ({n_regs} registers) ==="
+
+  -- Process in order, assign lowest available register
+  mut colors := [-1, -1, -1, -1, -1]
+
+  for v in range(0, n_vars)
+    -- Try each color in order
+    mut assigned := -1
+    mut c := 0
+    while c < n_regs and assigned == -1
+      if can_color_with(v, c, n_vars, edges, colors)
+        assigned = c
+      c = c + 1
+    colors[v] = assigned
+    vn := var_names[v]
+    if assigned >= 0
+      rn := reg_names[assigned]
+      print "    {vn} -> {rn}"
+    else
+      print "    {vn} -> SPILL (no register available)"
+
+  print ""
+
+  -- Verify coloring
+  print "=== Verify Coloring ==="
+  mut valid := true
+  for i in range(0, n_edges)
+    u := edges[i * 2]
+    v := edges[i * 2 + 1]
+    cu := colors[u]
+    cv := colors[v]
+    un := var_names[u]
+    vn := var_names[v]
+    if cu == cv
+      valid = false
+      print "    CONFLICT: {un} and {vn} both assigned {cu}"
+  print "    Coloring valid (no conflicts): {valid}"
+  print ""
+
+  -- Count registers used
+  print "=== Register Usage Summary ==="
+  for r in range(0, n_regs)
+    rn := reg_names[r]
+    mut users := ""
+    for v in range(0, n_vars)
+      if colors[v] == r
+        vn := var_names[v]
+        if users == ""
+          users = vn
+        else
+          users = users + ", " + vn
+    if users != ""
+      print "    {rn}: {users}"
+  print ""
+
+  print "=== Chaitin's Algorithm Steps ==="
+  print "  1. Build interference graph from live ranges"
+  print "  2. Simplify: remove low-degree vertices (< k registers)"
+  print "  3. Spill: if no low-degree vertex, mark one for spilling"
+  print "  4. Select: assign colors during stack unwind"
+  print "  5. Start over if spills occurred"
+  print ""
+  print "Graph coloring register allocation: NP-complete in general, but heuristics work well."

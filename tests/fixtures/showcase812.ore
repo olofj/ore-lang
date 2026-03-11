@@ -1,0 +1,113 @@
+-- Showcase 812: NFA to DFA (Subset Construction)
+
+-- Simulate subset construction converting NFA to DFA
+-- We represent an NFA for (a|b)*abb and construct the DFA
+
+fn set_contains states:List idx:Int -> Bool
+  states.contains(idx)
+
+fn compute_next_state cur_state:Int symbol:Str -> Int
+  -- DFA transitions for (a|b)*abb
+  -- States: 0=start, 1=seen-a, 2=seen-ab, 3=seen-abb (accept)
+  -- This DFA was pre-computed by subset construction
+  if cur_state == 0
+    if symbol == "a"
+      1
+    else
+      0
+  else if cur_state == 1
+    if symbol == "a"
+      1
+    else if symbol == "b"
+      2
+    else
+      0
+  else if cur_state == 2
+    if symbol == "a"
+      1
+    else if symbol == "b"
+      3
+    else
+      0
+  else if cur_state == 3
+    if symbol == "a"
+      1
+    else
+      0
+  else
+    0
+
+fn dfa_accepts input:Str -> Bool
+  n := input.len()
+  mut state := 0
+  for i in range(0, n)
+    sym := input.char_at(i)
+    state = compute_next_state(state, sym)
+  state == 3
+
+fn state_name s:Int -> Str
+  if s == 0
+    "q0 (start)"
+  else if s == 1
+    "q1 (saw a)"
+  else if s == 2
+    "q2 (saw ab)"
+  else
+    "q3 (accept)"
+
+fn main
+  print "NFA to DFA (Subset Construction):"
+  print ""
+
+  print "=== Original NFA for (a|b)*abb ==="
+  print "  States: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10"
+  print "  Alphabet: a, b"
+  print "  NFA uses epsilon transitions and multiple transitions per symbol"
+  print ""
+
+  print "=== Subset Construction Algorithm ==="
+  print "  1. Start: epsilon-closure of NFA start state"
+  print "  2. For each DFA state (set of NFA states):"
+  print "     For each symbol: compute move + epsilon-closure"
+  print "  3. New DFA states found until fixpoint"
+  print ""
+
+  print "=== Resulting DFA (4 states) ==="
+  print "  q0: start (no suffix matched)"
+  print "  q1: last char was 'a'"
+  print "  q2: last chars were 'ab'"
+  print "  q3: last chars were 'abb' (ACCEPT)"
+  print ""
+
+  print "=== DFA Transition Table ==="
+  print "  State    | 'a' -> | 'b' ->"
+  print "  ---------+--------+-------"
+  print "  q0       | q1     | q0"
+  print "  q1       | q1     | q2"
+  print "  q2       | q1     | q3"
+  print "  q3       | q1     | q0"
+  print ""
+
+  print "=== Testing DFA on Inputs ==="
+  inputs := ["abb", "aabb", "babb", "abbb", "ab", "b", "abababb", ""]
+  for i in range(0, 8)
+    inp := inputs[i]
+    result := dfa_accepts(inp)
+    print "  '{inp}' -> accepted: {result}"
+  print ""
+
+  print "=== Step-by-step trace for 'aabb' ==="
+  trace := ["a", "a", "b", "b"]
+  mut s := 0
+  mut sn := state_name(s)
+  print "  Start: {sn}"
+  for i in range(0, 4)
+    sym := trace[i]
+    s = compute_next_state(s, sym)
+    sn = state_name(s)
+    print "  Read '{sym}' -> {sn}"
+  accepted := s == 3
+  print "  Result: {accepted}"
+  print ""
+
+  print "Subset construction: DFA has at most 2^N states for N-state NFA."

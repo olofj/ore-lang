@@ -1,0 +1,108 @@
+-- Showcase 811: Regular Expression to NFA (Thompson's Construction)
+
+-- NFA state machine: each state has transitions
+-- We simulate Thompson's construction for patterns: a, b, a|b, ab, a*, a+
+
+fn nfa_match_literal pattern:Str input:Str -> Bool
+  -- Direct literal match
+  pattern == input
+
+fn nfa_match_star base:Str input:Str -> Bool
+  -- base* matches empty or one or more repetitions of base
+  if input == ""
+    true
+  else if input.len() < base.len()
+    false
+  else
+    -- Check if input starts with base
+    prefix := input.substr(0, base.len())
+    if prefix != base
+      false
+    else
+      rest := input.substr(base.len(), input.len())
+      nfa_match_star(base, rest)
+
+fn nfa_match_plus base:Str input:Str -> Bool
+  -- base+ matches one or more repetitions of base
+  if input.len() < base.len()
+    false
+  else
+    prefix := input.substr(0, base.len())
+    if prefix != base
+      false
+    else
+      rest := input.substr(base.len(), input.len())
+      nfa_match_star(base, rest)
+
+fn nfa_match_concat a:Str b:Str input:Str -> Bool
+  -- ab: a followed by b
+  n := input.len()
+  la := a.len()
+  lb := b.len()
+  if n != la + lb
+    false
+  else
+    prefix := input.substr(0, la)
+    suffix := input.substr(la, n)
+    prefix == a and suffix == b
+
+fn nfa_match_union a:Str b:Str input:Str -> Bool
+  -- a|b: either a or b
+  input == a or input == b
+
+fn main
+  print "Regular Expression to NFA (Thompson's Construction):"
+  print ""
+
+  print "=== Thompson's Construction Rules ==="
+  print "  Base:   single symbol -> 2-state NFA"
+  print "  Union:  r|s -> parallel NFA with epsilon transitions"
+  print "  Concat: rs -> chain NFAs with epsilon transition"
+  print "  Star:   r* -> loop NFA with epsilon bypass"
+  print ""
+
+  -- Test literal match
+  print "=== Pattern: 'ab' (concatenation) ==="
+  tests_concat := ["ab", "a", "b", "", "abc", "ba"]
+  for i in range(0, 6)
+    t := tests_concat[i]
+    m := nfa_match_concat("a", "b", t)
+    print "  'ab' matches '{t}': {m}"
+  print ""
+
+  -- Test union
+  print "=== Pattern: 'a|b' (union) ==="
+  tests_union := ["a", "b", "c", "", "ab"]
+  for i in range(0, 5)
+    t := tests_union[i]
+    m := nfa_match_union("a", "b", t)
+    print "  'a|b' matches '{t}': {m}"
+  print ""
+
+  -- Test star
+  print "=== Pattern: 'a*' (Kleene star) ==="
+  tests_star := ["", "a", "aa", "aaa", "b", "ab"]
+  for i in range(0, 6)
+    t := tests_star[i]
+    m := nfa_match_star("a", t)
+    print "  'a*' matches '{t}': {m}"
+  print ""
+
+  -- Test plus
+  print "=== Pattern: 'a+' (Kleene plus) ==="
+  tests_plus := ["", "a", "aa", "aaa", "b"]
+  for i in range(0, 5)
+    t := tests_plus[i]
+    m := nfa_match_plus("a", t)
+    print "  'a+' matches '{t}': {m}"
+  print ""
+
+  -- NFA state summary
+  print "=== NFA State Count (Thompson's) ==="
+  print "  Literal 'a':   2 states (start -a-> accept)"
+  print "  Concat 'ab':   4 states (chain two NFAs)"
+  print "  Union 'a|b':   6 states (2 new + 2 sub-NFAs)"
+  print "  Star 'a*':     4 states (epsilon bypass + loop)"
+  print "  Plus 'a+':     4 states (like star but no bypass)"
+  print ""
+  print "Thompson's NFA: O(n) states for regex of length n."
