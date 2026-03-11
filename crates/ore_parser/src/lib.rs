@@ -1246,6 +1246,8 @@ impl Parser {
                     let then_expr = self.parse_expr(0)?;
                     let line = self.peek_line();
                     let then_block = Block { stmts: vec![SpannedStmt { stmt: Stmt::Expr(then_expr), line }] };
+                    // Allow `else` on the next line for chained if/then/else
+                    self.skip_newlines();
                     let else_block = if self.peek() == &Token::Else {
                         self.advance();
                         let else_expr = self.parse_expr(0)?;
