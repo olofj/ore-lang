@@ -1227,6 +1227,18 @@ impl<'ctx> CodeGen<'ctx> {
 
         let last_val = self.compile_block_stmts(&fndef.body, func)?;
 
+        // Capture element kind for functions returning List without explicit List[T] annotation
+        if !self.fn_return_list_elem_kind.contains_key(&fndef.name) {
+            if let Some(ref ret_ty) = fndef.ret_type {
+                let is_plain_list = matches!(ret_ty, TypeExpr::Named(n) if n == "List");
+                if is_plain_list {
+                    if let Some(ref ek) = self.last_list_elem_kind {
+                        self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek.clone());
+                    }
+                }
+            }
+        }
+
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
             if fndef.name == "main" {
                 // Join all spawned threads before returning from main
