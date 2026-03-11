@@ -218,6 +218,20 @@ fn lists_foreach() {
 }
 
 #[test]
+fn collections_record_list() {
+    let out = run_ore("collections/record_list.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["Charlie", "35", "90"]);
+}
+
+#[test]
+fn collections_string_list() {
+    let out = run_ore("collections/string_list.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["Hello, Charlie!", "Hello, Alice!", "Hello, Bob!"]);
+}
+
+#[test]
 fn showcase() {
     let out = run_ore("showcase.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

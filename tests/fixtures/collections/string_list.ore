@@ -1,0 +1,4 @@
+fn main
+  names := ["Charlie", "Alice", "Bob"]
+  for name in names
+    print "Hello, {name}!"

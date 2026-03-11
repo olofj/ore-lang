@@ -228,6 +228,10 @@ pub struct CodeGen<'ctx> {
     method_map: HashMap<String, Vec<String>>,
     /// Maps variable name -> alloca for runtime kind tag (used for dynamic dispatch in Option/Result payloads)
     dynamic_kind_tags: HashMap<String, PointerValue<'ctx>>,
+    /// Maps variable name -> element ValKind for typed lists
+    list_element_kinds: HashMap<String, ValKind>,
+    /// Temporary: element kind from the last compiled list literal
+    last_list_elem_kind: Option<ValKind>,
 }
 
 #[derive(Debug)]
@@ -267,6 +271,8 @@ impl<'ctx> CodeGen<'ctx> {
             lambda_captures: HashMap::new(),
             method_map: HashMap::new(),
             dynamic_kind_tags: HashMap::new(),
+            list_element_kinds: HashMap::new(),
+            last_list_elem_kind: None,
         }
     }
 
@@ -750,11 +756,18 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<Option<BasicValueEnum<'ctx>>, CodeGenError> {
         match stmt {
             Stmt::Let { name, mutable, value } => {
+                self.last_list_elem_kind = None;
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
                 let ty = val.get_type();
                 let alloca = bld!(self.builder.build_alloca(ty, name))?;
                 bld!(self.builder.build_store(alloca, val))?;
-                self.variables.insert(name.clone(), (alloca, ty, kind, *mutable));
+                self.variables.insert(name.clone(), (alloca, ty, kind.clone(), *mutable));
+                // Track element kind for typed lists
+                if kind == ValKind::List {
+                    if let Some(ek) = self.last_list_elem_kind.take() {
+                        self.list_element_kinds.insert(name.clone(), ek);
+                    }
+                }
                 Ok(None)
             }
             Stmt::Assign { name, value } => {
@@ -2413,10 +2426,32 @@ impl<'ctx> CodeGen<'ctx> {
         let list_result = bld!(self.builder.build_call(list_new, &[], "list"))?;
         let list_ptr = self.call_result_to_value(list_result)?.into_pointer_value();
 
+        let mut elem_kind = ValKind::Int;
         for elem in elements {
-            let val = self.compile_expr(elem, func)?;
-            bld!(self.builder.build_call(list_push, &[list_ptr.into(), val.into()], ""))?;
+            let (val, kind) = self.compile_expr_with_kind(elem, func)?;
+            elem_kind = kind.clone();
+            // For records/enums, heap-allocate and push the pointer
+            let push_val = match &kind {
+                ValKind::Record(name) => {
+                    let info = &self.records[name];
+                    let st = info.struct_type;
+                    let heap_ptr = bld!(self.builder.build_malloc(st, "heap_rec"))?;
+                    bld!(self.builder.build_store(heap_ptr, val))?;
+                    let i64_val = bld!(self.builder.build_ptr_to_int(heap_ptr, self.context.i64_type(), "p2i"))?;
+                    i64_val.into()
+                }
+                ValKind::Str => {
+                    // Strings are already pointers, convert to i64
+                    let i64_val = bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), self.context.i64_type(), "p2i"))?;
+                    i64_val.into()
+                }
+                _ => val,
+            };
+            bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
         }
+
+        // Store element kind for later extraction
+        self.last_list_elem_kind = Some(elem_kind);
 
         Ok((list_ptr.into(), ValKind::List))
     }
@@ -2860,6 +2895,13 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(), CodeGenError> {
         let i64_type = self.context.i64_type();
 
+        // Determine element kind from the iterable
+        let elem_kind = if let Expr::Ident(name) = iterable {
+            self.list_element_kinds.get(name).cloned().unwrap_or(ValKind::Int)
+        } else {
+            ValKind::Int
+        };
+
         let list_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
 
         // Get list length
@@ -2871,9 +2913,24 @@ impl<'ctx> CodeGen<'ctx> {
         let idx_alloca = bld!(self.builder.build_alloca(i64_type, "idx"))?;
         bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
 
-        // Element variable
-        let elem_alloca = bld!(self.builder.build_alloca(i64_type, var))?;
-        self.variables.insert(var.to_string(), (elem_alloca, i64_type.into(), ValKind::Int, false));
+        // Element variable — use appropriate type based on element kind
+        let (elem_alloca, elem_ty): (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>) = match &elem_kind {
+            ValKind::Record(name) => {
+                let st = self.records[name].struct_type;
+                let alloca = bld!(self.builder.build_alloca(st, var))?;
+                (alloca, st.into())
+            }
+            ValKind::Str => {
+                let pt = self.context.ptr_type(inkwell::AddressSpace::default());
+                let alloca = bld!(self.builder.build_alloca(pt, var))?;
+                (alloca, pt.into())
+            }
+            _ => {
+                let alloca = bld!(self.builder.build_alloca(i64_type, var))?;
+                (alloca, i64_type.into())
+            }
+        };
+        self.variables.insert(var.to_string(), (elem_alloca, elem_ty, elem_kind.clone(), false));
 
         let cond_bb = self.context.append_basic_block(func, "foreach_cond");
         let body_bb = self.context.append_basic_block(func, "foreach_body");
@@ -2893,8 +2950,31 @@ impl<'ctx> CodeGen<'ctx> {
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
         let list_get_fn = self.module.get_function("ore_list_get").unwrap();
         let elem_result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "elem"))?;
-        let elem_val = self.call_result_to_value(elem_result)?;
-        bld!(self.builder.build_store(elem_alloca, elem_val))?;
+        let raw_val = self.call_result_to_value(elem_result)?;
+        // For records, the i64 is a heap pointer — dereference to get the struct
+        match &elem_kind {
+            ValKind::Record(name) => {
+                let st = self.records[name].struct_type;
+                let ptr = bld!(self.builder.build_int_to_ptr(
+                    raw_val.into_int_value(),
+                    self.context.ptr_type(inkwell::AddressSpace::default()),
+                    "i2p"
+                ))?;
+                let struct_val = bld!(self.builder.build_load(st, ptr, "rec_elem"))?;
+                bld!(self.builder.build_store(elem_alloca, struct_val))?;
+            }
+            ValKind::Str => {
+                let ptr = bld!(self.builder.build_int_to_ptr(
+                    raw_val.into_int_value(),
+                    self.context.ptr_type(inkwell::AddressSpace::default()),
+                    "i2p"
+                ))?;
+                bld!(self.builder.build_store(elem_alloca, ptr))?;
+            }
+            _ => {
+                bld!(self.builder.build_store(elem_alloca, raw_val))?;
+            }
+        }
 
         let saved_break = self.break_target;
         let saved_continue = self.continue_target;
