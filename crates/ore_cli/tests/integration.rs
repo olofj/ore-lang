@@ -2448,6 +2448,18 @@ fn showcase101_inline_if_then_else() {
 }
 
 #[test]
+fn showcase102_multiline_match_logic() {
+    let out = run_ore("showcase102.ore");
+    assert!(out.contains("zero"));
+    assert!(out.contains("positive number 42"));
+    assert!(out.contains("negative number -7"));
+    assert!(out.contains("3 + 4 = 7"));
+    assert!(out.contains("5 * 6 = 30"));
+    assert!(out.contains("negation of 10 = -10"));
+    assert!(out.contains("eval Add(3,4) = 7"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

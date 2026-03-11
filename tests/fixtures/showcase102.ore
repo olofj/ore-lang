@@ -1,0 +1,48 @@
+-- Showcase 102: Multiline match arms with complex logic
+
+type Expr
+  Num(val: Int)
+  Add(left: Int, right: Int)
+  Mul(left: Int, right: Int)
+  Neg(val: Int)
+
+fn eval e:Expr -> Int
+  match e
+    Num val -> val
+    Add left right -> left + right
+    Mul left right -> left * right
+    Neg val -> -val
+
+fn describe e:Expr -> Str
+  match e
+    Num val ->
+      if val == 0
+        "zero"
+      else if val > 0
+        "positive number {val}"
+      else
+        "negative number {val}"
+    Add left right ->
+      sum := left + right
+      "{left} + {right} = {sum}"
+    Mul left right ->
+      prod := left * right
+      "{left} * {right} = {prod}"
+    Neg val ->
+      "negation of {val} = {-val}"
+
+fn main
+  print describe(Num(val: 0))
+  print describe(Num(val: 42))
+  print describe(Num(val: -7))
+
+  print ""
+  print describe(Add(left: 3, right: 4))
+  print describe(Mul(left: 5, right: 6))
+  print describe(Neg(val: 10))
+
+  -- Eval
+  print ""
+  print "eval Add(3,4) = {eval(Add(left: 3, right: 4))}"
+  print "eval Mul(5,6) = {eval(Mul(left: 5, right: 6))}"
+  print "eval Neg(10) = {eval(Neg(val: 10))}"
