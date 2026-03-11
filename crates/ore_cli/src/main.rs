@@ -448,6 +448,8 @@ fn map_runtime_functions(
     map_fn!("ore_assert_eq_int", ore_runtime::ore_assert_eq_int);
     map_fn!("ore_assert_eq_float", ore_runtime::ore_assert_eq_float);
     map_fn!("ore_assert_eq_str", ore_runtime::ore_assert_eq_str);
+    map_fn!("ore_assert_ne_int", ore_runtime::ore_assert_ne_int);
+    map_fn!("ore_assert_ne_str", ore_runtime::ore_assert_ne_str);
 }
 
 fn run_file(path: &std::path::Path) -> Result<(), String> {

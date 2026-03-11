@@ -695,6 +695,16 @@ fn showcase3() {
 }
 
 #[test]
+fn showcase4() {
+    let out = run_ore("showcase4.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines[0], "Alice: active");
+    assert_eq!(lines[1], "2");
+    assert_eq!(lines[5], "10");
+    assert!(lines.last().unwrap().contains("showcase4 ok"));
+}
+
+#[test]
 fn maps_typed_values() {
     let out = run_ore("maps/typed_values.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

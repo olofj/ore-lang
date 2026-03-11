@@ -1,0 +1,39 @@
+-- Showcase 4: Testing framework, bare enum variants, trait enforcement
+
+type Status
+  Active
+  Inactive
+  Banned
+
+fn status_label s:Status -> Str
+  match s
+    Active -> "active"
+    Inactive -> "inactive"
+    Banned -> "banned"
+
+trait Describable
+  fn describe self:Self -> Str
+
+type User { name:Str, status:Status }
+
+impl Describable for User
+  fn describe self:User -> Str
+    "{self.name}: {status_label(self.status)}"
+
+fn main
+  -- Bare enum variants (no parens needed)
+  u := User(name: "Alice", status: Active)
+  print u.describe()
+
+  -- assert works in main
+  assert 2 + 2 == 4
+  assert_eq status_label(Banned), "banned"
+  assert_ne status_label(Active), "banned"
+
+  -- Multi-line lambda with block expressions
+  [1, 2, 3, 4, 5].each(n =>
+    doubled := n * 2
+    print doubled
+  )
+
+  print "showcase4 ok"

@@ -127,7 +127,7 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
         Expr::Assert { cond, .. } => {
             collect_free_vars(cond, bound, free, seen);
         }
-        Expr::AssertEq { left, right, .. } => {
+        Expr::AssertEq { left, right, .. } | Expr::AssertNe { left, right, .. } => {
             collect_free_vars(left, bound, free, seen);
             collect_free_vars(right, bound, free, seen);
         }
@@ -630,6 +630,10 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_assert_eq_float", void_type.fn_type(&[f64_type.into(), f64_type.into(), ptr_type.into(), i64_type.into()], false), ext);
         // ore_assert_eq_str(ptr, ptr, *const u8, i64)
         self.module.add_function("ore_assert_eq_str", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into(), i64_type.into()], false), ext);
+        // ore_assert_ne_int(i64, i64, *const u8, i64)
+        self.module.add_function("ore_assert_ne_int", void_type.fn_type(&[i64_type.into(), i64_type.into(), ptr_type.into(), i64_type.into()], false), ext);
+        // ore_assert_ne_str(ptr, ptr, *const u8, i64)
+        self.module.add_function("ore_assert_ne_str", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into(), i64_type.into()], false), ext);
         // List operations
         // ore_list_new() -> ptr
         self.module.add_function("ore_list_new", ptr_type.fn_type(&[], false), ext);
@@ -1339,6 +1343,31 @@ impl<'ctx> CodeGen<'ctx> {
                     (ValKind::Float, _) | (_, ValKind::Float) => "ore_assert_eq_float",
                     (ValKind::Str, _) | (_, ValKind::Str) => "ore_assert_eq_str",
                     _ => "ore_assert_eq_int",
+                };
+                let assert_fn = self.module.get_function(fn_name).unwrap();
+                bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
+                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+            }
+            Expr::AssertNe { left, right, message } => {
+                let (left_val, left_kind) = self.compile_expr_with_kind(left, func)?;
+                let (right_val, right_kind) = self.compile_expr_with_kind(right, func)?;
+                let msg_str = message.as_deref().unwrap_or("assert_ne failed");
+                let msg_bytes: Vec<u8> = msg_str.bytes().chain(std::iter::once(0)).collect();
+                let i8_type = self.context.i8_type();
+                let arr_type = i8_type.array_type(msg_bytes.len() as u32);
+                let global_name = format!("assert_ne_msg_{}", self.current_line);
+                let global = self.module.add_global(arr_type, None, &global_name);
+                global.set_initializer(&i8_type.const_array(
+                    &msg_bytes.iter().map(|&b| i8_type.const_int(b as u64, false)).collect::<Vec<_>>(),
+                ));
+                global.set_constant(true);
+                let msg_ptr = bld!(self.builder.build_pointer_cast(
+                    global.as_pointer_value(), self.ptr_type(), "ane_msg"
+                ))?;
+                let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
+                let fn_name = match (&left_kind, &right_kind) {
+                    (ValKind::Str, _) | (_, ValKind::Str) => "ore_assert_ne_str",
+                    _ => "ore_assert_ne_int",
                 };
                 let assert_fn = self.module.get_function(fn_name).unwrap();
                 bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
