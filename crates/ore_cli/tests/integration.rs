@@ -1192,6 +1192,17 @@ fn math_functions() {
 }
 
 #[test]
+fn lists_sort_strings() {
+    let out = run_ore("lists/sort_strings.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "apple, banana, cherry, date",
+        "0.5", "1.0", "2.71", "3.14",
+        "1 2 3 1",
+    ]);
+}
+
+#[test]
 fn showcase12() {
     let out = run_ore("showcase12.ore");
     assert!(out.contains("distance: 5.0"));

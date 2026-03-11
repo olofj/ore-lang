@@ -896,7 +896,7 @@ impl TypeChecker {
                 "count_by" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),
                 "group_by" => Type::Map(Box::new(Type::Str), Box::new(obj_ty.clone())),
                 "frequencies" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),
-                "intersperse" => obj_ty.clone(),
+                "intersperse" | "dedup" => obj_ty.clone(),
                 _ => Type::Any,
             },
             Type::Map(_, v) => match method {

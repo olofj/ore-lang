@@ -1,0 +1,15 @@
+fn main
+  -- Sort strings lexicographically
+  words := ["cherry", "apple", "banana", "date"]
+  words.sort()
+  print words.join(", ")
+
+  -- Sort floats
+  nums := [3.14, 1.0, 2.71, 0.5]
+  nums.sort()
+  nums.each(n => print n)
+
+  -- Dedup consecutive duplicates
+  data := [1, 1, 2, 2, 2, 3, 1, 1]
+  deduped := data.dedup()
+  print deduped.join(" ")

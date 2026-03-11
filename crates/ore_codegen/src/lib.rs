@@ -789,6 +789,9 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_map_entries", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_frequencies", ptr_type.fn_type(&[ptr_type.into(), i8_type.into()], false), ext);
         self.module.add_function("ore_list_intersperse", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_list_sort_str", void_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_sort_float", void_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_dedup", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         // Math functions
         self.module.add_function("ore_math_sqrt", f64_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_math_sin", f64_type.fn_type(&[f64_type.into()], false), ext);
@@ -2866,7 +2869,13 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "sort" => {
                 if args.is_empty() {
-                    let rt = self.module.get_function("ore_list_sort").unwrap();
+                    let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                    let rt_name = match elem_kind {
+                        ValKind::Str => "ore_list_sort_str",
+                        ValKind::Float => "ore_list_sort_float",
+                        _ => "ore_list_sort",
+                    };
+                    let rt = self.module.get_function(rt_name).unwrap();
                     bld!(self.builder.build_call(rt, &[list_val.into()], ""))?;
                     return Ok((list_val, ValKind::List));
                 }
@@ -3378,6 +3387,12 @@ impl<'ctx> CodeGen<'ctx> {
                 let val_kind = if method == "count_by" { ValKind::Int } else { ValKind::List };
                 self.last_map_val_kind = Some(val_kind);
                 Ok((val.into(), ValKind::Map))
+            }
+            "dedup" => {
+                let rt = self.module.get_function("ore_list_dedup").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "dedup"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
             }
             "frequencies" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);

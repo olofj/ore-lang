@@ -861,6 +861,52 @@ pub extern "C" fn ore_list_sort(list: *mut OreList) {
     }
 }
 
+/// Sort a list of strings lexicographically.
+#[no_mangle]
+pub extern "C" fn ore_list_sort_str(list: *mut OreList) {
+    unsafe {
+        let list = &mut *list;
+        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        slice.sort_by(|a, b| {
+            let sa = &*(*a as *mut OreStr);
+            let sb = &*(*b as *mut OreStr);
+            sa.as_str().cmp(sb.as_str())
+        });
+    }
+}
+
+/// Sort a list of floats.
+#[no_mangle]
+pub extern "C" fn ore_list_sort_float(list: *mut OreList) {
+    unsafe {
+        let list = &mut *list;
+        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        slice.sort_by(|a, b| {
+            let fa = f64::from_bits(*a as u64);
+            let fb = f64::from_bits(*b as u64);
+            fa.partial_cmp(&fb).unwrap_or(std::cmp::Ordering::Equal)
+        });
+    }
+}
+
+/// Remove consecutive duplicate elements.
+#[no_mangle]
+pub extern "C" fn ore_list_dedup(list: *mut OreList) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        let mut prev: Option<i64> = None;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            if prev != Some(val) {
+                ore_list_push(result, val);
+                prev = Some(val);
+            }
+        }
+        result
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_sort_by(
     list: *mut OreList,

@@ -514,6 +514,9 @@ fn map_runtime_functions(
     map_fn!("ore_map_entries", ore_runtime::ore_map_entries);
     map_fn!("ore_list_frequencies", ore_runtime::ore_list_frequencies);
     map_fn!("ore_list_intersperse", ore_runtime::ore_list_intersperse);
+    map_fn!("ore_list_sort_str", ore_runtime::ore_list_sort_str);
+    map_fn!("ore_list_sort_float", ore_runtime::ore_list_sort_float);
+    map_fn!("ore_list_dedup", ore_runtime::ore_list_dedup);
     // Math functions
     map_fn!("ore_math_sqrt", ore_runtime::ore_math_sqrt);
     map_fn!("ore_math_sin", ore_runtime::ore_math_sin);
