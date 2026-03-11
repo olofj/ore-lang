@@ -1,0 +1,46 @@
+-- Showcase 20: String processing utilities
+-- Demonstrates: string methods, pipeline processing, maps
+
+fn word_count text:Str -> Map
+  text.to_lower().words() | frequencies()
+
+fn is_palindrome word:Str -> Bool
+  word == word.reverse()
+
+fn main
+  -- Word frequency
+  text := "the cat sat on the mat the cat"
+  freq := word_count(text)
+  print "Word counts:"
+  print "  the: {freq.get_or("the", 0)}"
+  print "  cat: {freq.get_or("cat", 0)}"
+  print "  sat: {freq.get_or("sat", 0)}"
+  
+  -- Palindrome check
+  words := ["racecar", "hello", "madam", "world", "level"]
+  palindromes := words | filter(w => w == w.reverse())
+  print "Palindromes: {palindromes.join(", ")}"
+  
+  -- Title case
+  title := "hello world from ore"
+  result := title.words() | map(w => w.capitalize()) | join(" ")
+  print "Title case: {result}"
+  
+  -- Count vowels
+  sentence := "The quick brown fox jumps over the lazy dog"
+  vowels := sentence.to_lower().chars() | filter(c => c == "a" or c == "e" or c == "i" or c == "o" or c == "u")
+  print "Vowel count: {vowels.len()}"
+  
+  -- Longest word
+  words2 := sentence.words()
+  longest := words2 | sort_by(w => 0 - w.len()) | first()
+  print "Longest word: {longest}"
+
+  -- String repeat pattern
+  pattern := "*-" | repeat(5)
+  print "Pattern: {pattern}"
+
+  -- Replace chain
+  messy := "  Hello,   World!  "
+  clean := messy.trim().replace(",", "").replace("!", "")
+  print "Cleaned: {clean}"

@@ -501,6 +501,8 @@ fn map_runtime_functions(
     // Concurrency
     map_fn!("ore_spawn", ore_runtime::ore_spawn);
     map_fn!("ore_spawn_with_arg", ore_runtime::ore_spawn_with_arg);
+    map_fn!("ore_spawn_with_2args", ore_runtime::ore_spawn_with_2args);
+    map_fn!("ore_spawn_with_3args", ore_runtime::ore_spawn_with_3args);
     map_fn!("ore_thread_join_all", ore_runtime::ore_thread_join_all);
     map_fn!("ore_sleep", ore_runtime::ore_sleep);
     map_fn!("ore_channel_new", ore_runtime::ore_channel_new);

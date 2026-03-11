@@ -1,0 +1,53 @@
+-- Showcase 21: Functional data transformations
+-- Demonstrates: pipelines, maps, reduce, scan
+
+fn main
+  -- Running sum with scan
+  nums := [1, 2, 3, 4, 5]
+  running := nums.scan(0, (acc, x) => acc + x)
+  print "Running sum: {running.join(", ")}"
+
+  -- Group and aggregate
+  ages := [25, 30, 35, 22, 28, 40, 33, 27, 38, 31]
+  under30 := ages | filter(a => a < 30)
+  over30 := ages | filter(a => a >= 30)
+  print "Under 30: {under30.join(", ")}"
+  print "Over 30: {over30.join(", ")}"
+  print "Under 30 avg: {under30.sum() / under30.len()}"
+  print "Over 30 avg: {over30.sum() / over30.len()}"
+
+  -- Matrix as list of lists (flat)
+  -- 3x3 matrix multiplication (flat representation)
+  -- Just show element access patterns
+  matrix := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  -- Get row 1 (indices 3,4,5)
+  row1 := [matrix.get(3), matrix.get(4), matrix.get(5)]
+  print "Row 1: {row1.join(", ")}"
+
+  -- Zip two lists and compute
+  prices := [10, 20, 30, 40, 50]
+  quantities := [2, 3, 1, 5, 4]
+  totals := prices.zip_with(quantities, (p, q) => p * q)
+  print "Line totals: {totals.join(", ")}"
+  print "Grand total: {totals.sum()}"
+
+  -- Partition and process
+  numbers := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  [evens, odds] := numbers.partition(n => n % 2 == 0)
+  print "Even sum: {evens.sum()}"
+  print "Odd sum: {odds.sum()}"
+
+  -- Chain operations
+  result := [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    | filter(x => x > 25)
+    | map(x => x * 2)
+    | take(4)
+    | sum()
+  print "Chained result: {result}"
+
+  -- Unique with frequency
+  data := [1, 2, 2, 3, 3, 3, 4, 4, 4, 4]
+  uniq := data.unique()
+  print "Unique values: {uniq.join(", ")}"
+  freqs := data.frequencies()
+  print "Most common: 4 appears {freqs.get_or("4", 0)} times"

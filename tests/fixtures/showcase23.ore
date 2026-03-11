@@ -1,0 +1,54 @@
+-- Showcase 23: Error handling with Option and Result
+-- Demonstrates: Option, unwrap_or, map, pipe chains
+
+fn safe_div a:Int b:Int -> Option
+  if b == 0
+    None
+  else
+    Some(a / b)
+
+fn main
+  -- unwrap_or with default
+  print "10 / 3 = {safe_div(10, 3) | unwrap_or(0)}"
+  print "10 / 0 = {safe_div(10, 0) | unwrap_or(0)}"
+  
+  -- Option map then unwrap
+  doubled := safe_div(10, 2) | map(x => x * 2) | unwrap_or(-1)
+  print "Doubled: {doubled}"
+  
+  none_doubled := safe_div(10, 0) | map(x => x * 2) | unwrap_or(-1)
+  print "None doubled: {none_doubled}"
+
+  -- Chained computations
+  result := safe_div(100, 5)
+    | map(n => n + 10)
+    | map(n => n * 3)
+    | unwrap_or(0)
+  print "Chained: {result}"
+  
+  -- Chain with None propagation
+  result2 := safe_div(100, 0)
+    | map(n => n + 10)
+    | map(n => n * 3)
+    | unwrap_or(0)
+  print "None chain: {result2}"
+
+  -- Using if for Option checking
+  val := safe_div(42, 6)
+  extracted := val | unwrap_or(-1)
+  if extracted >= 0
+    print "Got value: {extracted}"
+  else
+    print "No value"
+  
+  -- Find with default
+  nums := [10, 20, 30, 40, 50]
+  idx := nums.find_index(x => x == 30)
+  print "Index of 30: {idx}"
+  
+  idx2 := nums.find_index(x => x == 99)
+  print "Index of 99: {idx2}"
+  
+  -- Pipeline with filter and first
+  first_big := nums | filter(x => x > 25) | first()
+  print "First > 25: {first_big}"

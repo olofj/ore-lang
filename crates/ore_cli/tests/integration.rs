@@ -1427,3 +1427,58 @@ fn showcase19() {
     assert!(out.contains("80s: 4"));
     assert!(out.contains("90s: 4"));
 }
+
+#[test]
+fn showcase20() {
+    let out = run_ore("showcase20.ore");
+    assert!(out.contains("the: 3"));
+    assert!(out.contains("cat: 2"));
+    assert!(out.contains("sat: 1"));
+    assert!(out.contains("Palindromes: racecar, madam, level"));
+    assert!(out.contains("Title case: Hello World From Ore"));
+    assert!(out.contains("Vowel count: 11"));
+    assert!(out.contains("Longest word: quick"));
+    assert!(out.contains("Pattern: *-*-*-*-*-"));
+    assert!(out.contains("Cleaned: Hello   World"));
+}
+
+#[test]
+fn showcase21() {
+    let out = run_ore("showcase21.ore");
+    assert!(out.contains("Running sum: 0, 1, 3, 6, 10, 15"));
+    assert!(out.contains("Under 30 avg: 25"));
+    assert!(out.contains("Over 30 avg: 34"));
+    assert!(out.contains("Row 1: 4, 5, 6"));
+    assert!(out.contains("Grand total: 510"));
+    assert!(out.contains("Even sum: 30"));
+    assert!(out.contains("Odd sum: 25"));
+    assert!(out.contains("Chained result: 360"));
+    assert!(out.contains("Unique values: 1, 2, 3, 4"));
+    assert!(out.contains("Most common: 4 appears 4 times"));
+}
+
+#[test]
+fn showcase23() {
+    let out = run_ore("showcase23.ore");
+    assert!(out.contains("10 / 3 = 3"));
+    assert!(out.contains("10 / 0 = 0"));
+    assert!(out.contains("Doubled: 10"));
+    assert!(out.contains("None doubled: -1"));
+    assert!(out.contains("Chained: 90"));
+    assert!(out.contains("None chain: 0"));
+    assert!(out.contains("Got value: 7"));
+    assert!(out.contains("Index of 30: 2"));
+    assert!(out.contains("Index of 99: -1"));
+    assert!(out.contains("First > 25: 30"));
+}
+
+#[test]
+fn showcase24() {
+    let out = run_ore("showcase24.ore");
+    // Thread order is non-deterministic, so check individual results exist
+    assert!(out.contains("120"));  // 5!
+    assert!(out.contains("40320"));  // 8!
+    assert!(out.contains("3628800"));  // 10!
+    assert!(out.contains("6820"));  // fib(10) + fib(20) = 55 + 6765
+    assert!(out.contains("Sum of squares 1..5: 55"));
+}

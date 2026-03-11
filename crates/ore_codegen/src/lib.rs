@@ -635,6 +635,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_spawn", void_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_spawn_with_arg(ptr, i64) — takes a function pointer and one i64 arg
         self.module.add_function("ore_spawn_with_arg", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_spawn_with_2args", void_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_spawn_with_3args", void_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_thread_join_all()
         self.module.add_function("ore_thread_join_all", void_type.fn_type(&[], false), ext);
         // ore_sleep(i64)
@@ -1252,13 +1254,22 @@ impl<'ctx> CodeGen<'ctx> {
                         if args.is_empty() {
                             let ore_spawn = self.module.get_function("ore_spawn").unwrap();
                             bld!(self.builder.build_call(ore_spawn, &[fn_ptr.into()], ""))?;
-                        } else if args.len() == 1 {
-                            let arg_val = self.compile_expr(&args[0], func)?;
-                            let i64_val = self.value_to_i64(arg_val)?;
-                            let ore_spawn = self.module.get_function("ore_spawn_with_arg").unwrap();
-                            bld!(self.builder.build_call(ore_spawn, &[fn_ptr.into(), i64_val.into()], ""))?;
                         } else {
-                            return Err(CodeGenError { line: None, msg: "spawn supports at most 1 argument".into() });
+                            let mut i64_args: Vec<BasicValueEnum> = vec![fn_ptr.into()];
+                            for arg in args {
+                                let arg_val = self.compile_expr(arg, func)?;
+                                let i64_val = self.value_to_i64(arg_val)?;
+                                i64_args.push(i64_val.into());
+                            }
+                            let spawn_fn_name = match args.len() {
+                                1 => "ore_spawn_with_arg",
+                                2 => "ore_spawn_with_2args",
+                                3 => "ore_spawn_with_3args",
+                                n => return Err(CodeGenError { line: None, msg: format!("spawn supports at most 3 arguments, got {}", n) }),
+                            };
+                            let ore_spawn = self.module.get_function(spawn_fn_name).unwrap();
+                            let call_args: Vec<_> = i64_args.iter().map(|a| (*a).into()).collect();
+                            bld!(self.builder.build_call(ore_spawn, &call_args, ""))?;
                         }
                         Ok(None)
                     }

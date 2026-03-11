@@ -1,0 +1,51 @@
+-- Showcase 24: Concurrency patterns
+-- Demonstrates: spawn with multiple args, channels, parallel work
+
+fn factorial ch:Channel n:Int
+  mut result := 1
+  for i in 1..n + 1
+    result = result * i
+  ch.send(result)
+
+fn fib_iter ch:Channel n:Int
+  mut a := 0
+  mut b := 1
+  for i in 0..n
+    tmp := b
+    b = a + b
+    a = tmp
+  ch.send(a)
+
+fn producer ch:Channel count:Int
+  for i in 1..count + 1
+    ch.send(i * i)
+
+fn main
+  -- Parallel factorial computations
+  ch := channel()
+  spawn factorial(ch, 5)
+  spawn factorial(ch, 8)
+  spawn factorial(ch, 10)
+  
+  mut results := [0, 0, 0]
+  for i in 0..3
+    results.set(i, ch.recv())
+  print "Factorials: {results.join(", ")}"
+
+  -- Parallel fibonacci
+  ch2 := channel()
+  spawn fib_iter(ch2, 10)
+  spawn fib_iter(ch2, 20)
+  
+  f1 := ch2.recv()
+  f2 := ch2.recv()
+  print "Fibs: {f1} + {f2} = {f1 + f2}"
+
+  -- Producer-consumer
+  ch3 := channel()
+  spawn producer(ch3, 5)
+  
+  mut total := 0
+  for i in 0..5
+    total += ch3.recv()
+  print "Sum of squares 1..5: {total}"

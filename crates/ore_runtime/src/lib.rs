@@ -2362,6 +2362,18 @@ pub extern "C" fn ore_spawn_with_arg(func: extern "C" fn(i64), arg: i64) {
 }
 
 #[no_mangle]
+pub extern "C" fn ore_spawn_with_2args(func: extern "C" fn(i64, i64), a: i64, b: i64) {
+    let handle = std::thread::spawn(move || func(a, b));
+    THREADS.lock().unwrap().push(handle);
+}
+
+#[no_mangle]
+pub extern "C" fn ore_spawn_with_3args(func: extern "C" fn(i64, i64, i64), a: i64, b: i64, c: i64) {
+    let handle = std::thread::spawn(move || func(a, b, c));
+    THREADS.lock().unwrap().push(handle);
+}
+
+#[no_mangle]
 pub extern "C" fn ore_thread_join_all() {
     let mut threads = THREADS.lock().unwrap();
     for handle in threads.drain(..) {
