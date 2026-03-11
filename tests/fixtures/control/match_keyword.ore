@@ -1,0 +1,21 @@
+type Color
+  Red()
+  Green()
+  Blue()
+
+fn color_name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+
+fn main
+  print color_name(Red())
+  print color_name(Blue())
+
+  x := 7
+  label := match x
+    1 -> "one"
+    7 -> "seven"
+    _ -> "other"
+  print label

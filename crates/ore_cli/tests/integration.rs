@@ -289,3 +289,10 @@ fn control_multiline() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["10, 20, 30", "20, 40, 60", "20, 30"]);
 }
+
+#[test]
+fn control_match_keyword() {
+    let out = run_ore("control/match_keyword.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["red", "blue", "seven"]);
+}

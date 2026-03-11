@@ -1071,6 +1071,16 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => {}
                 }
 
+                // Check if this is a variant construction (e.g. Red() or Circle(radius: 5.0))
+                if self.variant_to_enum.contains_key(&name) {
+                    // Treat as RecordConstruct with variant name
+                    let construct = Expr::RecordConstruct {
+                        type_name: name.clone(),
+                        fields: vec![], // Zero-field variant
+                    };
+                    return self.compile_expr_with_kind(&construct, func);
+                }
+
                 let (called_fn, ret_kind) = self.resolve_function(&name)?;
 
                 let mut compiled_args = Vec::new();

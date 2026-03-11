@@ -864,6 +864,28 @@ impl Parser {
                 self.expect(&Token::RParen)?;
                 Ok(Expr::ResultErr(Box::new(inner)))
             }
+            Token::Match => {
+                self.advance();
+                let subject = self.parse_expr(0)?;
+                self.skip_newlines();
+                self.expect(&Token::Indent)?;
+                let mut arms = Vec::new();
+                while self.peek() != &Token::Dedent && self.peek() != &Token::Eof {
+                    self.skip_newlines();
+                    if self.peek() == &Token::Dedent {
+                        break;
+                    }
+                    let pattern = self.parse_pattern()?;
+                    self.expect(&Token::Arrow)?;
+                    let body = self.parse_expr(0)?;
+                    arms.push(MatchArm { pattern, body });
+                    self.skip_newlines();
+                }
+                if self.peek() == &Token::Dedent {
+                    self.advance();
+                }
+                Ok(Expr::Match { subject: Box::new(subject), arms })
+            }
             Token::If => {
                 self.advance();
                 let cond = self.parse_expr(0)?;
