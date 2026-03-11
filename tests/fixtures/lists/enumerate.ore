@@ -1,0 +1,9 @@
+fn main
+  names := ["Alice", "Bob", "Charlie"]
+  for i, name in names
+    print "{i}: {name}"
+  nums := [10, 20, 30]
+  mut total := 0
+  for i, n in nums
+    total = total + n
+  print total

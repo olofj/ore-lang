@@ -576,6 +576,13 @@ fn maps_iteration() {
 }
 
 #[test]
+fn lists_enumerate() {
+    let out = run_ore("lists/enumerate.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["0: Alice", "1: Bob", "2: Charlie", "60"]);
+}
+
+#[test]
 fn maps_for_kv() {
     let out = run_ore("maps/for_kv.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
