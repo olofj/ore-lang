@@ -1,0 +1,59 @@
+-- Showcase 37: Game of Life (1D cellular automaton - Rule 110)
+-- Demonstrates: mutable lists, bit operations, string building
+
+fn rule110 left:Int center:Int right:Int -> Int
+  -- Rule 110: one of the simplest Turing-complete cellular automata
+  pattern := left * 4 + center * 2 + right
+  if pattern == 7
+    return 0
+  else if pattern == 6
+    return 1
+  else if pattern == 5
+    return 1
+  else if pattern == 4
+    return 0
+  else if pattern == 3
+    return 1
+  else if pattern == 2
+    return 1
+  else if pattern == 1
+    return 1
+  0
+
+fn print_cells cells:List[Int]
+  mut s := ""
+  for i in 0..cells.len()
+    c := cells.get(i)
+    if c == 1
+      s = s + "#"
+    else
+      s = s + "."
+  print s
+
+fn step cells:List[Int] -> List[Int]
+  n := cells.len()
+  mut next := [0]
+  next = []
+  for i in 0..n
+    left := cells.get((i - 1 + n) % n)
+    center := cells.get(i)
+    right := cells.get((i + 1) % n)
+    next = next + [rule110(left, center, right)]
+  next
+
+fn main
+  -- Initialize with a single cell in the middle
+  width := 40
+  mut cells := [0]
+  cells = []
+  for i in 0..width
+    if i == width - 1
+      cells = cells + [1]
+    else
+      cells = cells + [0]
+
+  -- Run for 20 generations
+  print "Rule 110 Cellular Automaton:"
+  for gen in 0..20
+    print_cells(cells)
+    cells = step(cells)

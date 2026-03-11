@@ -1592,3 +1592,69 @@ fn lists_pop() {
     let out = run_ore("lists/pop.ore");
     assert_eq!(out.trim(), "30\n2\n20\n1");
 }
+
+#[test]
+fn showcase34() {
+    let out = run_ore("showcase34.ore");
+    assert!(out.contains("Double 3 twice: 12"));
+    assert!(out.contains("Square 2 twice: 16"));
+    assert!(out.contains("Double 1, 10 times: 1024"));
+    assert!(out.contains("Sum of squares of multiples of 15 up to 100: 20475"));
+    assert!(out.contains("Word count: 9"));
+}
+
+#[test]
+fn showcase35() {
+    let out = run_ore("showcase35.ore");
+    assert!(out.contains("Vowels: 11"));
+    assert!(out.contains("Consonants: 24"));
+    assert!(out.contains("Freq of 'the': 2"));
+    assert!(out.contains("racecar is a palindrome"));
+    assert!(out.contains("hello is not a palindrome"));
+    assert!(out.contains("Capitalized: Hello World"));
+}
+
+#[test]
+fn showcase36() {
+    let out = run_ore("showcase36.ore");
+    assert!(out.contains("Perfect numbers < 500: 6, 28, 496"));
+    assert!(out.contains("Armstrong numbers (100-999): 153, 370, 371, 407"));
+    assert!(out.contains("10! = 3628800"));
+    assert!(out.contains("Sum of first 10 Fibonacci: 88"));
+}
+
+#[test]
+fn showcase37() {
+    let out = run_ore("showcase37.ore");
+    assert!(out.contains("Rule 110 Cellular Automaton:"));
+    assert!(out.contains(".......................................#"));
+    assert!(out.contains("......................................##"));
+}
+
+#[test]
+fn build_and_run_binary() {
+    // Test `ore build` produces a working native binary
+    let path = fixtures_dir().join("showcase36.ore");
+    let tmp_bin = std::env::temp_dir().join("ore_test_build_binary");
+
+    let build_output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["build", path.to_str().unwrap(), "-o", tmp_bin.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore build");
+
+    assert!(build_output.status.success(),
+        "ore build failed: {}", String::from_utf8_lossy(&build_output.stderr));
+
+    // Run the compiled binary
+    let run_output = Command::new(&tmp_bin)
+        .output()
+        .expect("failed to run compiled binary");
+
+    assert!(run_output.status.success(), "compiled binary failed");
+    let out = String::from_utf8(run_output.stdout).unwrap();
+    assert!(out.contains("10! = 3628800"));
+    assert!(out.contains("Perfect numbers < 500: 6, 28, 496"));
+
+    // Clean up
+    let _ = std::fs::remove_file(&tmp_bin);
+}

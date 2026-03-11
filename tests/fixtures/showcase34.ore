@@ -1,0 +1,51 @@
+-- Showcase 34: Higher-order function combinators
+-- Demonstrates: function composition, partial application patterns
+
+fn apply_twice f:(Int -> Int) x:Int -> Int
+  f(f(x))
+
+fn apply_n f:(Int -> Int) x:Int n:Int -> Int
+  mut result := x
+  for i in 0..n
+    result = f(result)
+  result
+
+fn compose f:(Int -> Int) g:(Int -> Int) x:Int -> Int
+  f(g(x))
+
+fn main
+  -- apply_twice
+  print "Double 3 twice: {apply_twice(n => n * 2, 3)}"
+  print "Add1 to 10 twice: {apply_twice(n => n + 1, 10)}"
+  print "Square 2 twice: {apply_twice(n => n * n, 2)}"
+
+  -- apply_n
+  print "Double 1, 10 times: {apply_n(n => n * 2, 1, 10)}"
+  print "Add 3, 5 times: {apply_n(n => n + 3, 0, 5)}"
+
+  -- compose
+  print "double then add1 of 5: {compose(n => n + 1, n => n * 2, 5)}"
+  print "add1 then double of 5: {compose(n => n * 2, n => n + 1, 5)}"
+
+  -- Chained pipelines with map/filter/reduce
+  result := range(1, 101)
+    | filter(n => n % 3 == 0)
+    | filter(n => n % 5 == 0)
+    | map(n => n * n)
+    | reduce((a, b) => a + b)
+  print "Sum of squares of multiples of 15 up to 100: {result}"
+
+  -- Pipeline with string operations
+  words := "the quick brown fox jumps over the lazy dog"
+  word_count := words.words().len()
+  print "Word count: {word_count}"
+
+  longest := words.words()
+    | map(w => str(w.len()))
+    | join(", ")
+  print "Word lengths: {longest}"
+
+  -- Count unique word lengths
+  lengths := words.words() | map(w => w.len())
+  unique_lens := lengths | unique()
+  print "Unique word lengths: {unique_lens.len()}"

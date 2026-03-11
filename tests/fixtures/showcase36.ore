@@ -1,0 +1,80 @@
+-- Showcase 36: Math utilities and number theory
+-- Demonstrates: recursive algorithms, pipelines, functional patterns
+
+fn fibonacci n:Int -> Int
+  if n < 2
+    return n
+  mut a := 0
+  mut b := 1
+  for i in 2..n+1
+    tmp := a + b
+    a = b
+    b = tmp
+  b
+
+fn is_perfect n:Int -> Bool
+  mut sum := 0
+  mut i := 1
+  while i < n
+    if n % i == 0
+      sum += i
+    i += 1
+  sum == n
+
+fn digit_sum n:Int -> Int
+  mut x := n
+  if x < 0
+    x = 0 - x
+  mut sum := 0
+  while x > 0
+    sum += x % 10
+    x = x / 10
+  sum
+
+fn is_armstrong n:Int -> Bool
+  -- Check if n is an Armstrong number (sum of cubes of digits = n)
+  -- Works for 3-digit numbers
+  mut x := n
+  mut sum := 0
+  while x > 0
+    d := x % 10
+    sum += d * d * d
+    x = x / 10
+  sum == n
+
+fn main
+  -- Fibonacci sequence
+  fibs := range(0, 15) | map(n => fibonacci(n))
+  print "Fibonacci: {fibs.join(", ")}"
+
+  -- Perfect numbers up to 1000
+  mut perfects := [0]
+  perfects = []
+  for n in 2..500
+    if is_perfect(n)
+      perfects = perfects + [n]
+  print "Perfect numbers < 500: {perfects.join(", ")}"
+
+  -- Digit sums
+  sums := [123, 456, 789, 1234, 9999] | map(n => digit_sum(n))
+  print "Digit sums: {sums.join(", ")}"
+
+  -- Armstrong numbers (narcissistic) in 100-999
+  mut armstrongs := [0]
+  armstrongs = []
+  for n in 100..1000
+    if is_armstrong(n)
+      armstrongs = armstrongs + [n]
+  print "Armstrong numbers (100-999): {armstrongs.join(", ")}"
+
+  -- Triangle numbers
+  triangles := range(1, 11) | map(n => n * (n + 1) / 2)
+  print "Triangle numbers: {triangles.join(", ")}"
+
+  -- Sum of first N fibonacci numbers
+  fib_sum := range(0, 10) | map(n => fibonacci(n)) | reduce((a, b) => a + b)
+  print "Sum of first 10 Fibonacci: {fib_sum}"
+
+  -- Factorial using reduce
+  factorial_10 := range(1, 11).reduce((a, b) => a * b)
+  print "10! = {factorial_10}"

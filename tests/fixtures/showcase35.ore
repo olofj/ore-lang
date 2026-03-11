@@ -1,0 +1,64 @@
+-- Showcase 35: Text statistics analyzer
+-- Demonstrates: string methods, pipelines, maps, comprehensive text processing
+
+fn count_vowels s:Str -> Int
+  mut count := 0
+  for i in 0..s.len()
+    c := s.char_at(i).to_lower()
+    if c == "a" or c == "e" or c == "i" or c == "o" or c == "u"
+      count += 1
+  count
+
+fn count_consonants s:Str -> Int
+  mut count := 0
+  for i in 0..s.len()
+    c := s.char_at(i).to_lower()
+    code := ord(c)
+    if code >= 97 and code <= 122
+      if c != "a" and c != "e" and c != "i" and c != "o" and c != "u"
+        count += 1
+  count
+
+fn is_palindrome s:Str -> Bool
+  lower := s.to_lower()
+  lower == lower.reverse()
+
+fn main
+  text := "The quick brown fox jumps over the lazy dog"
+  print "Text: {text}"
+  print "Length: {text.len()}"
+  print "Words: {text.words().len()}"
+  print "Vowels: {count_vowels(text)}"
+  print "Consonants: {count_consonants(text)}"
+
+  -- Word frequency
+  freqs := text.to_lower().words().frequencies()
+  print "Freq of 'the': {freqs.get_or("the", 0)}"
+
+  -- Longest word
+  words := text.words()
+  mut longest := ""
+  for i in 0..words.len()
+    w := words.get(i)
+    if w.len() > longest.len()
+      longest = w
+  print "Longest word: {longest}"
+
+  -- Palindrome check
+  test_words := ["racecar", "hello", "madam", "world", "level"]
+  for i in 0..test_words.len()
+    w := test_words.get(i)
+    if is_palindrome(w)
+      print "{w} is a palindrome"
+    else
+      print "{w} is not a palindrome"
+
+  -- Character frequency analysis
+  sample := "abracadabra"
+  char_freqs := sample.chars().frequencies()
+  print "Char freqs in '{sample}': a={char_freqs.get_or("a", 0)}, b={char_freqs.get_or("b", 0)}, r={char_freqs.get_or("r", 0)}"
+
+  -- String transformations pipeline
+  sentence := "  hello world  "
+  result := sentence.trim().split(" ") | map(w => w.capitalize()) | join(" ")
+  print "Capitalized: {result}"
