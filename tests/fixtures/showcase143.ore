@@ -1,0 +1,53 @@
+-- Showcase 143: String processing toolkit
+
+fn is_vowel c:Str -> Bool
+  "aeiouAEIOU".contains(c)
+
+fn count_vowels text:Str -> Int
+  text.chars() | filter(c => is_vowel(c)) | count()
+
+fn title_case text:Str -> Str
+  text.split(" ") | map(w => w.capitalize()) | join(" ")
+
+fn snake_case text:Str -> Str
+  text.split(" ") | map(w => w.to_lower()) | join("_")
+
+fn camel_case text:Str -> Str
+  parts := text.split(" ")
+  first := parts.first().to_lower()
+  rest := parts.skip(1) | map(w => w.capitalize()) | join("")
+  first + rest
+
+fn reverse_words text:Str -> Str
+  text.split(" ") | reverse() | join(" ")
+
+fn main
+  -- Title case
+  print title_case("hello world from ore")
+
+  -- Snake case
+  print snake_case("Hello World From Ore")
+
+  -- Reverse words
+  print reverse_words("one two three four")
+
+  -- Vowel counting
+  print ""
+  sentences := ["hello world", "the quick brown fox", "aeiou"]
+  for s in sentences
+    print "\"{s}\": {count_vowels(s)} vowels"
+
+  -- String methods showcase
+  print ""
+  s := "  Hello, World!  "
+  print "trim: '{s.trim()}'"
+  print "upper: '{s.trim().to_upper()}'"
+  print "replace: '{s.trim().replace("World", "Ore")}'"
+  print "starts_with: {s.trim().starts_with("Hello")}"
+  print "ends_with: {s.trim().ends_with("!")}"
+  ha := "ha"
+  print "repeat: '{ha.repeat(3)}'"
+  num := "42"
+  print "pad_left: '{num.pad_left(6, "0")}'"
+  hi := "hi"
+  print "pad_right: '{hi.pad_right(6, ".")}'"

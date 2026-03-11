@@ -2909,6 +2909,26 @@ fn showcase142_aoc_style() {
 }
 
 #[test]
+fn showcase143_string_processing() {
+    let out = run_ore("showcase143.ore");
+    assert!(out.contains("Hello World From Ore"));
+    assert!(out.contains("hello_world_from_ore"));
+    assert!(out.contains("four three two one"));
+    assert!(out.contains("3 vowels"));
+    assert!(out.contains("pad_left: '000042'"));
+    assert!(out.contains("pad_right: 'hi....'"));
+}
+
+#[test]
+fn showcase144_recursion_algorithms() {
+    let out = run_ore("showcase144.ore");
+    assert!(out.contains("found 23 at index 5"));
+    assert!(out.contains("1 not found"));
+    assert!(out.contains("2^10 mod 1000 = 24"));
+    assert!(out.contains("collatz(27): 111 steps"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

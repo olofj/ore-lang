@@ -1,0 +1,44 @@
+-- Showcase 144: Recursion and algorithms
+
+fn binary_search xs:List[Int] target:Int lo:Int hi:Int -> Int
+  if lo > hi
+    -1
+  else
+    mid := (lo + hi) / 2
+    val := xs[mid]
+    if val == target then mid
+    else if val < target then binary_search(xs, target, mid + 1, hi) else binary_search(xs, target, lo, mid - 1)
+
+fn power_mod base:Int exp:Int modulus:Int -> Int
+  if exp == 0
+    1
+  else if exp % 2 == 0
+    half := power_mod(base, exp / 2, modulus)
+    half * half % modulus
+  else
+    base * power_mod(base, exp - 1, modulus) % modulus
+
+fn collatz_length n:Int -> Int
+  if n == 1 then 0 else if n % 2 == 0 then 1 + collatz_length(n / 2) else 1 + collatz_length(3 * n + 1)
+
+fn main
+  -- Binary search
+  sorted := [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]
+  targets := [23, 72, 1, 56]
+  for t in targets
+    idx := binary_search(sorted, t, 0, sorted.len() - 1)
+    if idx >= 0
+      print "found {t} at index {idx}"
+    else
+      print "{t} not found"
+
+  -- Modular exponentiation
+  print ""
+  print "2^10 mod 1000 = {power_mod(2, 10, 1000)}"
+  print "3^13 mod 100 = {power_mod(3, 13, 100)}"
+  print "7^256 mod 13 = {power_mod(7, 256, 13)}"
+
+  -- Collatz sequence lengths
+  print ""
+  for n in [1, 5, 10, 27, 100]
+    print "collatz({n}): {collatz_length(n)} steps"
