@@ -1,0 +1,59 @@
+-- Showcase 165: Interpreter pattern with enum AST
+
+type Token
+  TNum(val: Int)
+  TPlus
+  TMinus
+  TStar
+
+fn token_str t:Token -> Str
+  match t
+    TNum v -> "{v}"
+    TPlus -> "+"
+    TMinus -> "-"
+    TStar -> "*"
+
+fn eval_rpn tokens:List[Token] -> Int
+  mut stack := []
+  for t in tokens
+    match t
+      TNum v -> stack.push(v)
+      TPlus ->
+        b := stack.pop()
+        a := stack.pop()
+        stack.push(a + b)
+      TMinus ->
+        b := stack.pop()
+        a := stack.pop()
+        stack.push(a - b)
+      TStar ->
+        b := stack.pop()
+        a := stack.pop()
+        stack.push(a * b)
+  stack[0]
+
+fn main
+  -- Display tokens
+  tokens := [TNum(val: 3), TPlus, TNum(val: 5), TStar, TNum(val: 2), TMinus, TNum(val: 1)]
+  mut token_strs := []
+  for t in tokens
+    token_strs.push(token_str(t))
+  print "expression: {token_strs | join(" ")}"
+
+  -- RPN evaluator: 3 5 2 * + 1 - = (3 + 5*2) - 1 = 12
+  print ""
+  rpn := [TNum(val: 3), TNum(val: 5), TNum(val: 2), TStar, TPlus, TNum(val: 1), TMinus]
+  print "RPN: 3 5 2 * + 1 -"
+  print "result: {eval_rpn(rpn)}"
+
+  -- Another RPN: 10 3 + 2 * = (10+3)*2 = 26
+  rpn2 := [TNum(val: 10), TNum(val: 3), TPlus, TNum(val: 2), TStar]
+  print ""
+  print "RPN: 10 3 + 2 *"
+  print "result: {eval_rpn(rpn2)}"
+
+  -- Simple: 7 3 - = 4
+  rpn3 := [TNum(val: 7), TNum(val: 3), TMinus]
+  print ""
+  print "RPN: 7 3 -"
+  print "result: {eval_rpn(rpn3)}"

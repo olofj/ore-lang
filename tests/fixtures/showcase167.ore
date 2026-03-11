@@ -1,0 +1,46 @@
+-- Showcase 167: Game of Life (1D cellular automaton)
+
+fn rule30 left:Int center:Int right:Int -> Int
+  pattern := left * 4 + center * 2 + right
+  -- Rule 30: 30 = 00011110 in binary
+  match pattern
+    0 -> 0
+    1 -> 1
+    2 -> 1
+    3 -> 1
+    4 -> 1
+    _ -> 0
+
+fn display_row cells:List[Int] -> Str
+  mut s := ""
+  for c in cells
+    if c == 1
+      s = s + "#"
+    else
+      s = s + "."
+  s
+
+fn main
+  -- 1D cellular automaton with Rule 30
+  width := 31
+  mut cells := []
+  for i in range(0, width)
+    cells.push(0)
+  cells.set(width / 2, 1)
+
+  print display_row(cells)
+
+  for gen in range(0, 14)
+    mut next := []
+    for i in range(0, width)
+      left := if i > 0 then cells[i - 1] else 0
+      center := cells[i]
+      right := if i < width - 1 then cells[i + 1] else 0
+      next.push(rule30(left, center, right))
+    cells = next
+    print display_row(cells)
+
+  -- Count live cells in final generation
+  print ""
+  live := cells | filter(c => c == 1) | count()
+  print "live cells: {live}/{width}"

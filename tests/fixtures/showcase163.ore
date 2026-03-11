@@ -1,0 +1,49 @@
+-- Showcase 163: Sorting and searching
+
+fn bubble_sort data:List[Int] -> List[Int]
+  mut arr := []
+  for v in data
+    arr.push(v)
+  n := arr | count()
+  for i in range(0, n)
+    for j in range(0, n - i - 1)
+      if arr[j] > arr[j + 1]
+        tmp := arr[j]
+        arr.set(j, arr[j + 1])
+        arr.set(j + 1, tmp)
+  arr
+
+fn binary_search arr:List[Int] target:Int -> Int
+  mut lo := 0
+  mut hi := (arr | count()) - 1
+  while lo <= hi
+    mid := (lo + hi) / 2
+    if arr[mid] == target
+      return mid
+    if arr[mid] < target
+      lo = mid + 1
+    else
+      hi = mid - 1
+  -1
+
+fn main
+  data := [64, 34, 25, 12, 22, 11, 90]
+  sorted := bubble_sort(data)
+  print "sorted: {sorted | join(", ")}"
+
+  -- Binary search
+  print ""
+  for target in [12, 25, 90, 50]
+    idx := binary_search(sorted, target)
+    if idx >= 0
+      print "found {target} at index {idx}"
+    else
+      print "{target} not found"
+
+  -- Selection sort variant: find min repeatedly
+  print ""
+  nums := [5, 3, 8, 1, 9, 2, 7, 4, 6, 10]
+  print "unsorted: {nums | join(", ")}"
+  print "sorted: {bubble_sort(nums) | join(", ")}"
+  print "min: {bubble_sort(nums) | first()}"
+  print "max: {bubble_sort(nums) | last()}"

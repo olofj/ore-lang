@@ -1,0 +1,43 @@
+-- Showcase 164: Graph algorithms (adjacency list)
+
+fn neighbors node:Int -> List[Int]
+  match node
+    0 -> [1, 2]
+    1 -> [0, 3]
+    2 -> [0, 3, 4]
+    3 -> [1, 2, 5]
+    4 -> [2]
+    5 -> [3]
+    _ -> []
+
+fn main
+  -- BFS from node 0
+  print "BFS traversal from node 0:"
+  mut visited := [0, 0, 0, 0, 0, 0]
+  mut queue := [0]
+  visited.set(0, 1)
+  mut order := []
+
+  while (queue | count()) > 0
+    node := queue[0]
+    queue.remove_at(0)
+    order.push(node)
+    for neighbor in neighbors(node)
+      if visited[neighbor] == 0
+        visited.set(neighbor, 1)
+        queue.push(neighbor)
+
+  print order | join(" -> ")
+
+  -- Degree of each node
+  print ""
+  print "Node degrees:"
+  for i in range(0, 6)
+    deg := neighbors(i) | count()
+    print "  node {i}: degree {deg}"
+
+  -- Check connectivity
+  print ""
+  total_visited := visited | sum()
+  print "nodes visited: {total_visited}/6"
+  print "graph is connected: {if total_visited == 6 then "yes" else "no"}"

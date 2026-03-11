@@ -1,0 +1,40 @@
+-- Showcase 160: Enum collections and processing
+
+type Shape
+  Circle(r: Int)
+  Square(s: Int)
+  Triangle(b: Int, h: Int)
+
+fn area s:Shape -> Int
+  match s
+    Circle r -> 3 * r * r
+    Square s -> s * s
+    Triangle b h -> b * h / 2
+
+fn describe s:Shape -> Str
+  match s
+    Circle r -> "circle(r={r})"
+    Square s -> "square(s={s})"
+    Triangle b h -> "triangle(b={b},h={h})"
+
+fn main
+  -- List of shapes with data
+  shapes := [Circle(r: 5), Square(s: 4), Triangle(b: 6, h: 3), Circle(r: 10)]
+
+  for s in shapes
+    print "{describe(s)}: area = {area(s)}"
+
+  -- Process shapes
+  print ""
+  mut total_area := 0
+  for s in shapes
+    total_area = total_area + area(s)
+  print "total area: {total_area}"
+
+  -- Build shapes dynamically
+  print ""
+  mut dynamic := []
+  for i in range(1, 6)
+    dynamic.push(Square(s: i))
+  for s in dynamic
+    print "{describe(s)}: {area(s)}"

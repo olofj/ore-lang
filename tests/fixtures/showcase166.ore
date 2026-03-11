@@ -1,0 +1,45 @@
+-- Showcase 166: Set operations using maps
+
+fn set_add s:Map[Str,Int] item:Str -> Map[Str,Int]
+  s.set(item, 1)
+  s
+
+fn set_contains s:Map[Str,Int] item:Str -> Bool
+  s.get_or(item, 0) == 1
+
+fn main
+  -- Build sets
+  mut a := {}
+  for item in ["apple", "banana", "cherry", "date"]
+    a.set(item, 1)
+
+  mut b := {}
+  for item in ["banana", "date", "elderberry", "fig"]
+    b.set(item, 1)
+
+  -- Display sets
+  print "A: {a.keys() | join(", ")}"
+  print "B: {b.keys() | join(", ")}"
+
+  -- Intersection
+  print ""
+  mut intersection := []
+  for key in a.keys()
+    if b.get_or(key, 0) == 1
+      intersection.push(key)
+  print "A ∩ B: {intersection | join(", ")}"
+
+  -- Difference (A - B)
+  mut diff := []
+  for key in a.keys()
+    if b.get_or(key, 0) != 1
+      diff.push(key)
+  print "A - B: {diff | join(", ")}"
+
+  -- Union size
+  mut union_set := {}
+  for key in a.keys()
+    union_set.set(key, 1)
+  for key in b.keys()
+    union_set.set(key, 1)
+  print "A ∪ B size: {union_set.keys() | count()}"

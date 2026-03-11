@@ -3088,6 +3088,78 @@ fn showcase159_enum_expressions() {
 }
 
 #[test]
+fn showcase160_enum_collections() {
+    let out = run_ore("showcase160.ore");
+    assert!(out.contains("circle(r=5): area = 75"));
+    assert!(out.contains("square(s=4): area = 16"));
+    assert!(out.contains("triangle(b=6,h=3): area = 9"));
+    assert!(out.contains("total area: 400"));
+    assert!(out.contains("square(s=3): 9"));
+}
+
+#[test]
+fn showcase161_command_pattern() {
+    let out = run_ore("showcase161.ore");
+    assert!(out.contains("add 10 -> 10"));
+    assert!(out.contains("mul 3 -> 30"));
+    assert!(out.contains("reset -> 0"));
+    assert!(out.contains("add 42 -> 42"));
+    assert!(out.contains("final state: 42"));
+}
+
+#[test]
+fn showcase162_stats_records() {
+    let out = run_ore("showcase162.ore");
+    assert!(out.contains("count: 10"));
+    assert!(out.contains("sum: 257"));
+    assert!(out.contains("min: 4"));
+    assert!(out.contains("max: 56"));
+    assert!(out.contains("avg: 25"));
+}
+
+#[test]
+fn showcase163_sorting_searching() {
+    let out = run_ore("showcase163.ore");
+    assert!(out.contains("sorted: 11, 12, 22, 25, 34, 64, 90"));
+    assert!(out.contains("found 25 at index 3"));
+    assert!(out.contains("50 not found"));
+    assert!(out.contains("min: 1"));
+    assert!(out.contains("max: 10"));
+}
+
+#[test]
+fn showcase164_graph_bfs() {
+    let out = run_ore("showcase164.ore");
+    assert!(out.contains("0 -> 1 -> 2 -> 3 -> 4 -> 5"));
+    assert!(out.contains("node 2: degree 3"));
+    assert!(out.contains("graph is connected: yes"));
+}
+
+#[test]
+fn showcase165_rpn_evaluator() {
+    let out = run_ore("showcase165.ore");
+    assert!(out.contains("expression: 3 + 5 * 2 - 1"));
+    assert!(out.contains("result: 12"));
+    assert!(out.contains("result: 26"));
+    assert!(out.contains("result: 4"));
+}
+
+#[test]
+fn showcase166_set_operations() {
+    let out = run_ore("showcase166.ore");
+    assert!(out.contains("banana"));
+    assert!(out.contains("date"));
+    assert!(out.contains("size: 6"));
+}
+
+#[test]
+fn showcase167_cellular_automaton() {
+    let out = run_ore("showcase167.ore");
+    assert!(out.contains("...............#..............."));
+    assert!(out.contains("live cells: 13/31"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

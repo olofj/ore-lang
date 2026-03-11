@@ -1,0 +1,30 @@
+-- Showcase 162: Multi-return with records
+
+type Stats { count: Int, sum: Int, min: Int, max: Int }
+
+fn compute_stats data:List[Int] -> Stats
+  mut s := 0
+  mut mn := data[0]
+  mut mx := data[0]
+  for v in data
+    s = s + v
+    if v < mn
+      mn = v
+    if v > mx
+      mx = v
+  Stats(count: data | count(), sum: s, min: mn, max: mx)
+
+fn main
+  data := [15, 42, 8, 23, 4, 56, 31, 12, 47, 19]
+  stats := compute_stats(data)
+  print "count: {stats.count}"
+  print "sum: {stats.sum}"
+  print "min: {stats.min}"
+  print "max: {stats.max}"
+  print "avg: {stats.sum / stats.count}"
+
+  -- Nested record access
+  print ""
+  data2 := [100, 200, 300]
+  s2 := compute_stats(data2)
+  print "sum of [100,200,300]: {s2.sum}"

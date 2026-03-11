@@ -1,0 +1,34 @@
+-- Showcase 161: Command pattern with enums
+
+type Command
+  Add(n: Int)
+  Sub(n: Int)
+  Mul(n: Int)
+  Reset
+
+fn apply state:Int cmd:Command -> Int
+  match cmd
+    Add n -> state + n
+    Sub n -> state - n
+    Mul n -> state * n
+    Reset -> 0
+
+fn show_cmd c:Command -> Str
+  match c
+    Add n -> "add {n}"
+    Sub n -> "sub {n}"
+    Mul n -> "mul {n}"
+    Reset -> "reset"
+
+fn main
+  -- Execute a sequence of commands
+  commands := [Add(n: 10), Mul(n: 3), Sub(n: 5), Add(n: 7), Reset, Add(n: 42)]
+
+  mut state := 0
+  for cmd in commands
+    state = apply(state, cmd)
+    print "{show_cmd(cmd)} -> {state}"
+
+  -- Undo stack pattern
+  print ""
+  print "final state: {state}"
