@@ -1,0 +1,177 @@
+-- Showcase 546: Cache Replacement Policies (LRU, FIFO, LFU)
+
+fn main
+  print "Cache Replacement Policies (LRU, FIFO, LFU):"
+  print ""
+
+  -- Access sequence
+  mut accesses := [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5]
+  num_accesses := 12
+  cache_size := 3
+
+  print "  Access sequence: {accesses | join(", ")}"
+  print "  Cache size: {cache_size}"
+
+  -- Part 1: FIFO (First In, First Out)
+  print ""
+  print "=== Part 1: FIFO Policy ==="
+  mut fifo_cache := [0, 0, 0]
+  mut fifo_count := 0
+  mut fifo_next := 0
+  mut fifo_hits := 0
+  mut fifo_misses := 0
+
+  for i in range(0, num_accesses)
+    page := accesses[i]
+    -- Check if in cache
+    mut found := false
+    for j in range(0, fifo_count)
+      if fifo_cache[j] == page
+        found = true
+
+    if found
+      fifo_hits = fifo_hits + 1
+      print "    Access {page}: HIT  cache=[{fifo_cache[0]},{fifo_cache[1]},{fifo_cache[2]}]"
+    else
+      fifo_misses = fifo_misses + 1
+      if fifo_count < cache_size
+        fifo_cache[fifo_count] = page
+        fifo_count = fifo_count + 1
+      else
+        fifo_cache[fifo_next] = page
+        fifo_next = (fifo_next + 1) % cache_size
+      print "    Access {page}: MISS cache=[{fifo_cache[0]},{fifo_cache[1]},{fifo_cache[2]}]"
+
+  fifo_rate := fifo_hits * 100 / num_accesses
+  print "  FIFO: {fifo_hits} hits, {fifo_misses} misses, rate={fifo_rate}%"
+
+  -- Part 2: LRU (Least Recently Used)
+  print ""
+  print "=== Part 2: LRU Policy ==="
+  mut lru_cache := [0, 0, 0]
+  mut lru_time := [0, 0, 0]
+  mut lru_count := 0
+  mut lru_hits := 0
+  mut lru_misses := 0
+
+  for i in range(0, num_accesses)
+    page := accesses[i]
+    -- Check if in cache
+    mut found := false
+    mut found_idx := 0
+    for j in range(0, lru_count)
+      if lru_cache[j] == page
+        found = true
+        found_idx = j
+
+    if found
+      lru_hits = lru_hits + 1
+      lru_time[found_idx] = i
+      print "    Access {page}: HIT  cache=[{lru_cache[0]},{lru_cache[1]},{lru_cache[2]}]"
+    else
+      lru_misses = lru_misses + 1
+      if lru_count < cache_size
+        lru_cache[lru_count] = page
+        lru_time[lru_count] = i
+        lru_count = lru_count + 1
+      else
+        -- Find LRU: smallest time
+        mut min_time := lru_time[0]
+        mut min_idx := 0
+        for j in range(1, cache_size)
+          if lru_time[j] < min_time
+            min_time = lru_time[j]
+            min_idx = j
+        lru_cache[min_idx] = page
+        lru_time[min_idx] = i
+      print "    Access {page}: MISS cache=[{lru_cache[0]},{lru_cache[1]},{lru_cache[2]}]"
+
+  lru_rate := lru_hits * 100 / num_accesses
+  print "  LRU: {lru_hits} hits, {lru_misses} misses, rate={lru_rate}%"
+
+  -- Part 3: LFU (Least Frequently Used)
+  print ""
+  print "=== Part 3: LFU Policy ==="
+  mut lfu_cache := [0, 0, 0]
+  mut lfu_freq := [0, 0, 0]
+  mut lfu_count := 0
+  mut lfu_hits := 0
+  mut lfu_misses := 0
+
+  for i in range(0, num_accesses)
+    page := accesses[i]
+    mut found := false
+    mut found_idx := 0
+    for j in range(0, lfu_count)
+      if lfu_cache[j] == page
+        found = true
+        found_idx = j
+
+    if found
+      lfu_hits = lfu_hits + 1
+      lfu_freq[found_idx] = lfu_freq[found_idx] + 1
+      print "    Access {page}: HIT  cache=[{lfu_cache[0]},{lfu_cache[1]},{lfu_cache[2]}] freq=[{lfu_freq[0]},{lfu_freq[1]},{lfu_freq[2]}]"
+    else
+      lfu_misses = lfu_misses + 1
+      if lfu_count < cache_size
+        lfu_cache[lfu_count] = page
+        lfu_freq[lfu_count] = 1
+        lfu_count = lfu_count + 1
+      else
+        -- Find LFU: smallest frequency
+        mut min_freq := lfu_freq[0]
+        mut min_idx := 0
+        for j in range(1, cache_size)
+          if lfu_freq[j] < min_freq
+            min_freq = lfu_freq[j]
+            min_idx = j
+        lfu_cache[min_idx] = page
+        lfu_freq[min_idx] = 1
+      print "    Access {page}: MISS cache=[{lfu_cache[0]},{lfu_cache[1]},{lfu_cache[2]}] freq=[{lfu_freq[0]},{lfu_freq[1]},{lfu_freq[2]}]"
+
+  lfu_rate := lfu_hits * 100 / num_accesses
+  print "  LFU: {lfu_hits} hits, {lfu_misses} misses, rate={lfu_rate}%"
+
+  -- Part 4: Comparison
+  print ""
+  print "=== Part 4: Policy Comparison ==="
+  print "  Policy  | Hits | Misses | Rate"
+  print "  --------|------|--------|-----"
+  print "  FIFO    | {fifo_hits}    | {fifo_misses}      | {fifo_rate}%"
+  print "  LRU     | {lru_hits}    | {lru_misses}      | {lru_rate}%"
+  print "  LFU     | {lfu_hits}    | {lfu_misses}      | {lfu_rate}%"
+
+  -- Find best policy
+  mut best := "FIFO"
+  mut best_hits := fifo_hits
+  if lru_hits > best_hits
+    best = "LRU"
+    best_hits = lru_hits
+  if lfu_hits > best_hits
+    best = "LFU"
+    best_hits = lfu_hits
+  print "  Best policy: {best} with {best_hits} hits"
+
+  -- Part 5: Working set analysis
+  print ""
+  print "=== Part 5: Working Set ==="
+  mut unique_pages := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_unique := 0
+  for i in range(0, num_accesses)
+    page := accesses[i]
+    mut exists := false
+    for j in range(0, num_unique)
+      if unique_pages[j] == page
+        exists = true
+    if not exists
+      unique_pages[num_unique] = page
+      num_unique = num_unique + 1
+  print "  Unique pages: {num_unique}"
+  print "  Cache size: {cache_size}"
+  if num_unique > cache_size
+    print "  Working set exceeds cache: thrashing likely"
+  else
+    print "  Working set fits in cache"
+
+  print ""
+  print "Cache policies: FIFO, LRU, LFU comparison, working set analysis."

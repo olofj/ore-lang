@@ -1,0 +1,119 @@
+-- Showcase 542: Simple CPU Pipeline Simulator
+
+fn main
+  print "Simple CPU Pipeline Simulator:"
+  print ""
+
+  -- Part 1: Pipeline stages
+  print "=== Part 1: Pipeline Stages ==="
+  mut stage_names := ["IF", "ID", "EX", "MEM", "WB"]
+  mut stage_desc := ["Instruction Fetch", "Instruction Decode", "Execute", "Memory Access", "Write Back"]
+  num_stages := 5
+
+  print "  5-stage pipeline:"
+  for i in range(0, num_stages)
+    print "    Stage {i + 1}: {stage_names[i]} - {stage_desc[i]}"
+
+  -- Part 2: Instruction stream
+  print ""
+  print "=== Part 2: Instruction Stream ==="
+  mut inst_names := ["ADD R1,R2,R3", "SUB R4,R1,R5", "LOAD R6,[100]", "MUL R7,R6,R2", "STORE R7,[200]", "BEQ R1,R0,skip"]
+  mut inst_types := ["ALU", "ALU", "MEM", "ALU", "MEM", "BRANCH"]
+  num_inst := 6
+
+  print "  Instructions:"
+  for i in range(0, num_inst)
+    print "    I{i + 1}: {inst_names[i]} ({inst_types[i]})"
+
+  -- Part 3: Pipeline execution without hazards
+  print ""
+  print "=== Part 3: Pipeline Diagram (no hazards) ==="
+  print "  Cycle:  1    2    3    4    5    6    7    8    9   10"
+
+  -- Each instruction enters pipeline one cycle after the previous
+  for i in range(0, num_inst)
+    mut line := "  I{i + 1}:  "
+    for c in range(0, 10)
+      if c < i
+        line = line + ".    "
+      else if c - i < num_stages
+        stage_idx := c - i
+        line = line + "{stage_names[stage_idx]}   "
+      else
+        line = line + ".    "
+    print line
+
+  ideal_cycles := num_inst + num_stages - 1
+  print "  Total cycles (ideal): {ideal_cycles}"
+
+  -- Part 4: Data hazard detection
+  print ""
+  print "=== Part 4: Data Hazards ==="
+  -- Check RAW (Read After Write) hazards
+  -- I1 writes R1, I2 reads R1 -> RAW hazard
+  mut hazard_from := [1, 3]
+  mut hazard_to := [2, 4]
+  mut hazard_reg := ["R1", "R6"]
+  mut hazard_type := ["RAW", "RAW"]
+  num_hazards := 2
+
+  print "  Detected hazards:"
+  for i in range(0, num_hazards)
+    print "    {hazard_type[i]}: I{hazard_from[i]} -> I{hazard_to[i]} on {hazard_reg[i]}"
+
+  -- Part 5: Pipeline with stalls
+  print ""
+  print "=== Part 5: Pipeline with Stalls ==="
+  stall_cycles := 2
+  print "  Stall cycles per RAW hazard: {stall_cycles}"
+  total_stalls := num_hazards * stall_cycles
+  stalled_cycles := ideal_cycles + total_stalls
+  print "  Total stalls: {total_stalls}"
+  print "  Cycles with stalls: {stalled_cycles}"
+
+  -- Part 6: Forwarding optimization
+  print ""
+  print "=== Part 6: Forwarding ==="
+  print "  With data forwarding (EX->EX bypass):"
+  forward_stalls := 0
+  for i in range(0, num_hazards)
+    -- Forwarding eliminates most stalls for ALU->ALU
+    print "    {hazard_reg[i]}: forwarded from EX stage"
+  forwarded_cycles := ideal_cycles + forward_stalls
+  print "  Cycles with forwarding: {forwarded_cycles}"
+  saved := stalled_cycles - forwarded_cycles
+  print "  Cycles saved: {saved}"
+
+  -- Part 7: Performance metrics
+  print ""
+  print "=== Part 7: Performance Metrics ==="
+  ipc_ideal := num_inst * 100 / ideal_cycles
+  ipc_stalled := num_inst * 100 / stalled_cycles
+  ipc_forwarded := num_inst * 100 / forwarded_cycles
+  print "  Instructions: {num_inst}"
+  print "  IPC (ideal): 0.{ipc_ideal}"
+  print "  IPC (stalled): 0.{ipc_stalled}"
+  print "  IPC (forwarded): 0.{ipc_forwarded}"
+  throughput := num_inst * 100 / forwarded_cycles
+  print "  Throughput: {throughput}% of peak"
+
+  -- Part 8: Branch prediction
+  print ""
+  print "=== Part 8: Branch Prediction ==="
+  mut predictions := [1, 0, 1, 1, 0, 1, 1, 1]
+  mut outcomes := [1, 1, 1, 1, 0, 1, 0, 1]
+  num_branches := 8
+  mut correct := 0
+  for i in range(0, num_branches)
+    if predictions[i] == outcomes[i]
+      correct = correct + 1
+  accuracy := correct * 100 / num_branches
+  print "  Predictions: {num_branches}"
+  print "  Correct: {correct}"
+  print "  Accuracy: {accuracy}%"
+  penalty := (num_branches - correct) * 3
+  print "  Misprediction penalty: 3 cycles each"
+  print "  Total branch penalty: {penalty} cycles"
+
+  print ""
+  print "CPU pipeline: stages, hazards, stalls, forwarding, branch prediction, IPC."

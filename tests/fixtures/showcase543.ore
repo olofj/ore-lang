@@ -1,0 +1,120 @@
+-- Showcase 543: Regular Expression Features Showcase
+
+fn main
+  print "Regular Expression Features Showcase:"
+  print ""
+
+  -- Part 1: Character matching
+  print "=== Part 1: Character Matching ==="
+  mut text := "abcdef123xyz"
+  text_len := 12
+
+  -- Simulate matching individual characters
+  mut chars := ["a", "b", "c", "d", "e", "f", "1", "2", "3", "x", "y", "z"]
+
+  -- Count digits and letters
+  mut digits := 0
+  mut letters := 0
+  for i in range(0, text_len)
+    c := chars[i]
+    if c == "0" or c == "1" or c == "2" or c == "3" or c == "4" or c == "5" or c == "6" or c == "7" or c == "8" or c == "9"
+      digits = digits + 1
+    else
+      letters = letters + 1
+  print "  Text: {text}"
+  print "  Letters: {letters}, Digits: {digits}"
+
+  -- Part 2: Pattern types
+  print ""
+  print "=== Part 2: Pattern Types ==="
+  mut patterns := ["abc", "[0-9]+", "a.*z", "^abc", "xyz$", "a|b"]
+  mut pat_desc := ["literal", "digit+", "wildcard", "start anchor", "end anchor", "alternation"]
+  mut pat_match := [1, 1, 1, 1, 1, 1]
+  num_patterns := 6
+
+  print "  Patterns against '{text}':"
+  for i in range(0, num_patterns)
+    mut status := "MATCH"
+    if pat_match[i] == 0
+      status = "NO MATCH"
+    print "    /{patterns[i]}/ ({pat_desc[i]}): {status}"
+
+  -- Part 3: NFA state machine simulation
+  print ""
+  print "=== Part 3: NFA Simulation ==="
+  print "  Pattern: a(b|c)*d"
+  print "  States:"
+  mut state_names := ["S0", "S1", "S2", "S3", "S4"]
+  mut state_desc := ["start", "saw 'a'", "saw 'b'", "saw 'c'", "saw 'd' (accept)"]
+  num_states := 5
+  for i in range(0, num_states)
+    print "    {state_names[i]}: {state_desc[i]}"
+
+  -- Transitions
+  mut trans_from := ["S0", "S1", "S1", "S2", "S3", "S1"]
+  mut trans_to := ["S1", "S2", "S3", "S1", "S1", "S4"]
+  mut trans_on := ["a", "b", "c", "eps", "eps", "d"]
+  num_trans := 6
+  print "  Transitions:"
+  for i in range(0, num_trans)
+    print "    {trans_from[i]} --{trans_on[i]}--> {trans_to[i]}"
+
+  -- Test strings
+  print "  Test strings:"
+  mut test_strs := ["ad", "abd", "abcd", "abbd", "acd", "abc"]
+  mut test_results := ["ACCEPT", "ACCEPT", "ACCEPT", "ACCEPT", "ACCEPT", "REJECT"]
+  num_tests := 6
+  for i in range(0, num_tests)
+    print "    '{test_strs[i]}' -> {test_results[i]}"
+
+  -- Part 4: Regex operations
+  print ""
+  print "=== Part 4: Regex Operations ==="
+
+  -- Simulate find all matches of pattern in text
+  print "  Find all digits in 'abc123def456':"
+  mut source := ["a", "b", "c", "1", "2", "3", "d", "e", "f", "4", "5", "6"]
+  mut matches := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut match_positions := []
+  for i in range(0, 12)
+    c := source[i]
+    if c == "0" or c == "1" or c == "2" or c == "3" or c == "4" or c == "5" or c == "6" or c == "7" or c == "8" or c == "9"
+      matches[i] = 1
+      match_positions = match_positions | push(i)
+  num_matches := match_positions | count()
+  print "    Found {num_matches} digit(s) at positions: {match_positions | join(", ")}"
+
+  -- Part 5: Quantifiers
+  print ""
+  print "=== Part 5: Quantifiers ==="
+  mut quant_sym := ["*", "+", "?", "3", "2,4"]
+  mut quant_name := ["zero or more", "one or more", "zero or one", "exactly 3", "2 to 4"]
+  mut quant_min := [0, 1, 0, 3, 2]
+  mut quant_max := [999, 999, 1, 3, 4]
+  num_quants := 5
+
+  print "  Quantifiers:"
+  for i in range(0, num_quants)
+    print "    {quant_sym[i]}: {quant_name[i]} (min={quant_min[i]}, max={quant_max[i]})"
+
+  -- Part 6: Capture groups
+  print ""
+  print "=== Part 6: Capture Groups ==="
+  print "  Pattern: (\\d+)-(\\d+)-(\\d+)"
+  print "  Input: 2024-01-15"
+  print "  Group 0 (full match): 2024-01-15"
+  print "  Group 1: 2024"
+  print "  Group 2: 01"
+  print "  Group 3: 15"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Pattern types: {num_patterns}"
+  print "  NFA states: {num_states}"
+  print "  NFA transitions: {num_trans}"
+  print "  Quantifier types: {num_quants}"
+  print "  Test cases: {num_tests}"
+
+  print ""
+  print "Regex features: matching, NFA, quantifiers, groups, alternation, anchors."

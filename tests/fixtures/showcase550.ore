@@ -1,0 +1,178 @@
+-- Showcase 550: Ray Marching (Signed Distance Functions)
+
+fn main
+  print "Ray Marching (Signed Distance Functions):"
+  print ""
+
+  -- Part 1: Signed Distance Functions
+  print "=== Part 1: SDF Primitives ==="
+
+  -- Sphere SDF: distance from point to sphere surface
+  -- sphere_sdf(px,py,pz, radius) = sqrt(px^2+py^2+pz^2) - radius
+  -- We use integer approximations (multiply by 100 for precision)
+
+  -- Test point (300, 0, 0) against sphere at origin, radius 100
+  px := 300
+  py := 0
+  pz := 0
+  radius := 100
+  -- dist = sqrt(300^2) - 100 = 300 - 100 = 200
+  sphere_dist := px - radius
+  print "  Sphere SDF (r={radius}):"
+  print "    Point ({px},{py},{pz}): distance = {sphere_dist}"
+
+  -- Box SDF: distance to axis-aligned box
+  -- For a box with half-extents (100,100,100) centered at origin
+  bx := 150
+  by := 50
+  bz := 30
+  box_hx := 100
+  box_hy := 100
+  box_hz := 100
+  -- Distance on each axis: max(abs(p) - half_extent, 0)
+  mut dx := bx - box_hx
+  if dx < 0
+    dx = 0
+  mut dy := by - box_hy
+  if dy < 0
+    dy = 0
+  mut dz := bz - box_hz
+  if dz < 0
+    dz = 0
+  -- Approximate distance (Manhattan for simplicity)
+  box_dist := dx + dy + dz
+  print "  Box SDF (half={box_hx}):"
+  print "    Point ({bx},{by},{bz}): distance ~ {box_dist}"
+
+  -- Part 2: SDF Operations
+  print ""
+  print "=== Part 2: SDF Operations ==="
+  -- Union: min(d1, d2)
+  d1 := 50
+  d2 := 80
+  mut union_d := d1
+  if d2 < d1
+    union_d = d2
+  print "  Union(50, 80) = {union_d}"
+
+  -- Intersection: max(d1, d2)
+  mut inter_d := d1
+  if d2 > d1
+    inter_d = d2
+  print "  Intersection(50, 80) = {inter_d}"
+
+  -- Subtraction: max(d1, -d2)
+  neg_d2 := 0 - d2
+  mut sub_d := d1
+  if neg_d2 > d1
+    sub_d = neg_d2
+  print "  Subtraction(50, 80) = {sub_d}"
+
+  -- Part 3: Ray marching algorithm
+  print ""
+  print "=== Part 3: Ray Marching ==="
+  -- March a ray from (0,0,0) toward (1,0,0)
+  -- Scene: sphere at (500,0,0) with radius 100
+  sphere_cx := 500
+  sphere_r := 100
+  max_steps := 20
+  max_dist := 1000
+
+  mut ray_x := 0
+  mut total_dist := 0
+  mut steps := 0
+  mut hit := false
+
+  print "  Ray: origin=(0,0,0), direction=(1,0,0)"
+  print "  Scene: sphere at ({sphere_cx},0,0), radius={sphere_r}"
+  print ""
+  print "  Marching steps:"
+
+  for step in range(0, max_steps)
+    if not hit and total_dist < max_dist
+      -- SDF: distance to sphere surface
+      mut sdf := ray_x - sphere_cx
+      if sdf < 0
+        sdf = 0 - sdf
+      sdf = sdf - sphere_r
+
+      if sdf < 1
+        hit = true
+        steps = step + 1
+        print "    Step {step + 1}: pos={ray_x}, sdf={sdf} -> HIT!"
+      else
+        steps = step + 1
+        print "    Step {step + 1}: pos={ray_x}, sdf={sdf}"
+        ray_x = ray_x + sdf
+        total_dist = total_dist + sdf
+
+  if hit
+    print "  Result: Hit at distance {total_dist} in {steps} steps"
+  else
+    print "  Result: Miss (max distance reached)"
+
+  -- Part 4: Simple 1D rendering
+  print ""
+  print "=== Part 4: 1D Scene Render ==="
+  -- Render a row of pixels looking at a sphere
+  -- Camera at (0,0,0), sphere at (500,0,0), r=200
+  -- Rays at different vertical angles
+  mut ray_hits := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut ray_dists := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Vertical offsets: -400,-300,-200,-100,0,100,200,300,400
+  mut offsets := [400, 300, 200, 100, 0, 100, 200, 300, 400]
+  render_sphere_r := 200
+
+  for p in range(0, 9)
+    offset := offsets[p]
+    -- Distance from ray to sphere center = offset (simplified)
+    -- Hit if offset < radius
+    if offset < render_sphere_r
+      ray_hits[p] = 1
+      ray_dists[p] = 500 - render_sphere_r + offset
+
+  mut render_line := "  "
+  for p in range(0, 9)
+    if ray_hits[p] == 1
+      render_line = render_line + "#"
+    else
+      render_line = render_line + "."
+  print "  Render: {render_line}"
+
+  mut hit_count := 0
+  for p in range(0, 9)
+    hit_count = hit_count + ray_hits[p]
+  print "  Pixels hit: {hit_count}/9"
+
+  -- Part 5: Shading
+  print ""
+  print "=== Part 5: Shading ==="
+  -- Simple distance-based shading for hit pixels
+  mut shading := [".", ".", ".", ".", ".", ".", ".", ".", "."]
+  for p in range(0, 9)
+    if ray_hits[p] == 1
+      d := ray_dists[p]
+      if d < 350
+        shading[p] = "@"
+      else if d < 450
+        shading[p] = "#"
+      else
+        shading[p] = "+"
+
+  mut shade_line := "  "
+  for p in range(0, 9)
+    shade_line = shade_line + shading[p]
+  print "  Shaded: {shade_line}"
+  print "  Legend: @ = close, # = mid, + = far, . = miss"
+
+  -- Part 6: Performance stats
+  print ""
+  print "=== Part 6: Performance ==="
+  print "  SDF evaluations: {steps}"
+  print "  Max march steps: {max_steps}"
+  print "  Total ray distance: {total_dist}"
+  print "  Pixels rendered: 9"
+  print "  Hit rate: {hit_count * 100 / 9}%"
+
+  print ""
+  print "Ray marching: SDF primitives, boolean ops, marching, rendering, shading."

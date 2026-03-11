@@ -1,0 +1,153 @@
+-- Showcase 544: Fractal Generation (Sierpinski, Koch)
+
+fn main
+  print "Fractal Generation (Sierpinski, Koch):"
+  print ""
+
+  -- Part 1: Sierpinski Triangle (text-based)
+  print "=== Part 1: Sierpinski Triangle ==="
+  -- Generate Sierpinski triangle using mod-2 Pascal's triangle
+  -- Row i, column j: if C(i,j) is odd -> draw, else space
+  -- Simpler: use bit pattern - draw if (i AND j) == j
+  size := 8
+  print "  Size: {size} rows"
+
+  -- We'll compute row by row using a simple rule
+  mut row := [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, size)
+    -- Print leading spaces for triangle shape
+    mut line := "  "
+    for s in range(0, size - i - 1)
+      line = line + " "
+    -- Print the row
+    for j in range(0, i + 1)
+      if row[j] == 1
+        line = line + "* "
+      else
+        line = line + "  "
+    print line
+
+    -- Compute next row using XOR (mod 2 addition)
+    mut next_row := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    next_row[0] = 1
+    for j in range(1, i + 2)
+      -- XOR: (a + b) mod 2
+      sum := row[j - 1] + row[j]
+      if sum == 1
+        next_row[j] = 1
+      else
+        next_row[j] = 0
+    for j in range(0, 16)
+      row[j] = next_row[j]
+
+  -- Part 2: Sierpinski statistics
+  print ""
+  print "=== Part 2: Fractal Dimension ==="
+  -- Count filled cells at each level
+  mut filled := [1, 0, 0, 0, 0, 0, 0, 0]
+  filled[0] = 1
+  filled[1] = 3
+  filled[2] = 9
+  filled[3] = 27
+  -- Pattern: 3^n filled cells at level n
+  print "  Sierpinski filled cells per level:"
+  for i in range(0, 4)
+    print "    Level {i}: {filled[i]} cells"
+  print "  Growth factor: 3x per level"
+  print "  Fractal dimension: log(3)/log(2) ~ 1.585"
+
+  -- Part 3: Koch Snowflake
+  print ""
+  print "=== Part 3: Koch Snowflake ==="
+  print "  Iteration 0: ___ (single line)"
+  print "  Iteration 1: _/\\_"
+  print "  Each iteration replaces ___ with _/\\_"
+
+  -- Track segments and length
+  mut koch_segments := [1, 4, 16, 64, 256]
+  mut koch_length := [100, 133, 177, 237, 316]
+  num_iter := 5
+
+  print "  Koch curve growth:"
+  for i in range(0, num_iter)
+    print "    Iteration {i}: {koch_segments[i]} segments, length ~{koch_length[i]}%"
+
+  -- Part 4: Cantor Set
+  print ""
+  print "=== Part 4: Cantor Set ==="
+  print "  Cantor set construction:"
+
+  -- Level 0: full line
+  -- Level 1: remove middle third
+  -- Level 2: remove middle third of each remaining segment
+  mut cantor_segs := [1, 2, 4, 8, 16]
+  mut cantor_frac := [100, 66, 44, 29, 19]
+  for i in range(0, 5)
+    mut line := "    Level {i}: "
+    seg_count := cantor_segs[i]
+    line = line + "{seg_count} segments, {cantor_frac[i]}% remaining"
+    print line
+
+  -- Part 5: Mandelbrot escape iteration
+  print ""
+  print "=== Part 5: Mandelbrot Escape ==="
+  -- Test a few points for escape behavior
+  -- Point (0,0): never escapes -> in set
+  -- Point (1,0): escapes after few iterations
+  -- Point (-2,0): boundary
+
+  print "  Testing escape iterations (max 20):"
+  -- Point (0,0)
+  mut zr := 0
+  mut zi := 0
+  cr := 0
+  ci := 0
+  mut iter := 0
+  mut escaped := false
+  for step in range(0, 20)
+    if not escaped
+      new_zr := zr * zr - zi * zi + cr
+      new_zi := 2 * zr * zi + ci
+      zr = new_zr
+      zi = new_zi
+      mag := zr * zr + zi * zi
+      if mag > 4
+        escaped = true
+        iter = step
+      else
+        iter = step + 1
+  if escaped
+    print "    (0,0): escaped at iteration {iter}"
+  else
+    print "    (0,0): in set (no escape in 20 iterations)"
+
+  -- Point (1,0)
+  zr = 0
+  zi = 0
+  mut iter2 := 0
+  escaped = false
+  for step in range(0, 20)
+    if not escaped
+      new_zr := zr * zr - zi * zi + 1
+      new_zi := 2 * zr * zi + 0
+      zr = new_zr
+      zi = new_zi
+      mag := zr * zr + zi * zi
+      if mag > 4
+        escaped = true
+        iter2 = step
+  if escaped
+    print "    (1,0): escaped at iteration {iter2}"
+  else
+    print "    (1,0): in set (no escape in 20 iterations)"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Fractal Summary ==="
+  print "  Sierpinski: self-similar, dimension ~1.585"
+  print "  Koch: infinite perimeter, finite area"
+  print "  Cantor: uncountable, measure zero"
+  print "  Mandelbrot: complex boundary, connected set"
+
+  print ""
+  print "Fractals: Sierpinski triangle, Koch snowflake, Cantor set, Mandelbrot escape."

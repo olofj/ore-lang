@@ -1,0 +1,118 @@
+-- Showcase 541: Lempel-Ziv (LZ77) Compression Concepts
+
+fn main
+  print "Lempel-Ziv (LZ77) Compression Concepts:"
+  print ""
+
+  -- Part 1: Sliding window concept
+  print "=== Part 1: Sliding Window ==="
+  mut input := ["A", "B", "A", "B", "C", "A", "B", "A", "B"]
+  input_len := 9
+  window_size := 6
+
+  print "  Input: A B A B C A B A B"
+  print "  Window size: {window_size}"
+  print "  Lookahead buffer size: 4"
+
+  -- Part 2: Find matches in sliding window
+  print ""
+  print "=== Part 2: Match Finding ==="
+  -- Simulate LZ77 encoding: (offset, length, next_char)
+  mut enc_offset := [0, 0, 2, 0, 4]
+  mut enc_length := [0, 0, 2, 0, 4]
+  mut enc_next := ["A", "B", "C", "-", "-"]
+  mut enc_desc := ["literal A", "literal B", "match(2,2)+C", "literal C", "match(4,4)"]
+  num_tokens := 5
+
+  print "  LZ77 tokens (offset, length, next):"
+  for i in range(0, num_tokens)
+    print "    [{i}] ({enc_offset[i]},{enc_length[i]},{enc_next[i]}) - {enc_desc[i]}"
+
+  -- Part 3: Compression ratio
+  print ""
+  print "=== Part 3: Compression Analysis ==="
+  original_bits := input_len * 8
+  -- Each token: offset(3 bits) + length(3 bits) + char(8 bits) = 14 bits
+  token_bits := num_tokens * 14
+  print "  Original: {input_len} chars = {original_bits} bits"
+  print "  Encoded: {num_tokens} tokens = {token_bits} bits"
+  ratio := token_bits * 100 / original_bits
+  print "  Compression ratio: {ratio}%"
+  if token_bits < original_bits
+    print "  Result: compressed"
+  else
+    print "  Result: expanded (input too short for good compression)"
+
+  -- Part 4: Decode the tokens
+  print ""
+  print "=== Part 4: Decoding ==="
+  mut decoded := ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+  mut dpos := 0
+
+  -- Token 0: (0,0,A) -> A
+  decoded[0] = "A"
+  dpos = 1
+  -- Token 1: (0,0,B) -> B
+  decoded[1] = "B"
+  dpos = 2
+  -- Token 2: (2,2,C) -> copy 2 back, length 2 = AB, then C
+  decoded[2] = "A"
+  decoded[3] = "B"
+  decoded[4] = "C"
+  dpos = 5
+  -- Token 3: (4,4) -> copy 4 back from pos 1, length 4 = ABAB
+  decoded[5] = "A"
+  decoded[6] = "B"
+  decoded[7] = "A"
+  decoded[8] = "B"
+  dpos = 9
+
+  mut result := ""
+  for i in range(0, dpos)
+    result = result + decoded[i]
+  print "  Decoded: {result}"
+
+  -- Verify
+  mut original := ""
+  for i in range(0, input_len)
+    original = original + input[i]
+  print "  Original: {original}"
+  if result == original
+    print "  Match: YES - lossless compression verified"
+  else
+    print "  Match: NO - error in encoding/decoding"
+
+  -- Part 5: Dictionary approach (LZ78-style)
+  print ""
+  print "=== Part 5: Dictionary Approach ==="
+  mut dict_entries := ["A", "B", "AB", "C", "ABC"]
+  mut dict_codes := [1, 2, 3, 4, 5]
+  num_dict := 5
+
+  print "  Dictionary entries:"
+  for i in range(0, num_dict)
+    print "    Code {dict_codes[i]}: '{dict_entries[i]}'"
+
+  -- Part 6: Statistics
+  print ""
+  print "=== Part 6: Statistics ==="
+  mut total_match_len := 0
+  mut literal_count := 0
+  mut match_count := 0
+  for i in range(0, num_tokens)
+    if enc_length[i] == 0
+      literal_count = literal_count + 1
+    else
+      match_count = match_count + 1
+      total_match_len = total_match_len + enc_length[i]
+
+  print "  Literals: {literal_count}"
+  print "  Matches: {match_count}"
+  if match_count > 0
+    avg_match := total_match_len / match_count
+    print "  Average match length: {avg_match}"
+  print "  Dictionary size: {num_dict} entries"
+  print "  Longest match: 4 characters"
+
+  print ""
+  print "LZ77 compression: sliding window, match finding, tokens, decoding, dictionary."

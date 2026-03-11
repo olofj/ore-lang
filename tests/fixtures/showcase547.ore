@@ -1,0 +1,159 @@
+-- Showcase 547: Network Topology Analysis
+
+fn main
+  print "Network Topology Analysis:"
+  print ""
+
+  -- Part 1: Define network as adjacency list
+  print "=== Part 1: Network Definition ==="
+  -- 6 nodes: 0-5
+  num_nodes := 6
+  mut node_names := ["Router-A", "Router-B", "Switch-C", "Switch-D", "Server-E", "Server-F"]
+
+  -- Edges: (from, to, weight/latency)
+  mut edge_from := [0, 0, 1, 1, 2, 2, 3, 4]
+  mut edge_to := [1, 2, 2, 3, 3, 4, 5, 5]
+  mut edge_weight := [10, 5, 3, 8, 2, 7, 4, 6]
+  num_edges := 8
+
+  print "  Nodes: {num_nodes}"
+  for i in range(0, num_nodes)
+    print "    [{i}] {node_names[i]}"
+
+  print "  Edges (latency in ms):"
+  for i in range(0, num_edges)
+    f := edge_from[i]
+    t := edge_to[i]
+    print "    {node_names[f]} -> {node_names[t]}: {edge_weight[i]}ms"
+
+  -- Part 2: Node degree calculation
+  print ""
+  print "=== Part 2: Node Degrees ==="
+  mut in_degree := [0, 0, 0, 0, 0, 0]
+  mut out_degree := [0, 0, 0, 0, 0, 0]
+
+  for i in range(0, num_edges)
+    f := edge_from[i]
+    t := edge_to[i]
+    out_degree[f] = out_degree[f] + 1
+    in_degree[t] = in_degree[t] + 1
+
+  print "  Node degrees:"
+  mut max_degree := 0
+  mut hub_idx := 0
+  for i in range(0, num_nodes)
+    total := in_degree[i] + out_degree[i]
+    print "    {node_names[i]}: in={in_degree[i]}, out={out_degree[i]}, total={total}"
+    if total > max_degree
+      max_degree = total
+      hub_idx = i
+  print "  Hub node: {node_names[hub_idx]} (degree {max_degree})"
+
+  -- Part 3: BFS traversal
+  print ""
+  print "=== Part 3: BFS from Router-A ==="
+  -- BFS from node 0
+  mut visited := [0, 0, 0, 0, 0, 0]
+  mut bfs_order := [0, 0, 0, 0, 0, 0]
+  mut bfs_dist := [0, 0, 0, 0, 0, 0]
+  mut queue := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut q_front := 0
+  mut q_back := 0
+
+  -- Enqueue start node
+  queue[q_back] = 0
+  q_back = q_back + 1
+  visited[0] = 1
+  bfs_dist[0] = 0
+  mut bfs_count := 0
+  bfs_order[0] = 0
+  bfs_count = 1
+
+  for step in range(0, 20)
+    if q_front < q_back
+      curr := queue[q_front]
+      q_front = q_front + 1
+      -- Check all edges from curr
+      for e in range(0, num_edges)
+        if edge_from[e] == curr and visited[edge_to[e]] == 0
+          neighbor := edge_to[e]
+          visited[neighbor] = 1
+          bfs_dist[neighbor] = bfs_dist[curr] + 1
+          queue[q_back] = neighbor
+          q_back = q_back + 1
+          bfs_order[bfs_count] = neighbor
+          bfs_count = bfs_count + 1
+
+  print "  BFS order:"
+  for i in range(0, bfs_count)
+    node := bfs_order[i]
+    print "    {node_names[node]} (distance {bfs_dist[node]})"
+
+  -- Part 4: Shortest path (Dijkstra-like)
+  print ""
+  print "=== Part 4: Shortest Paths from Router-A ==="
+  mut dist := [0, 999, 999, 999, 999, 999]
+  mut processed := [0, 0, 0, 0, 0, 0]
+
+  for step in range(0, num_nodes)
+    -- Find unprocessed node with minimum distance
+    mut min_d := 999
+    mut min_n := 0
+    for i in range(0, num_nodes)
+      if processed[i] == 0 and dist[i] < min_d
+        min_d = dist[i]
+        min_n = i
+    processed[min_n] = 1
+    -- Relax edges from min_n
+    for e in range(0, num_edges)
+      if edge_from[e] == min_n
+        t := edge_to[e]
+        new_dist := dist[min_n] + edge_weight[e]
+        if new_dist < dist[t]
+          dist[t] = new_dist
+
+  print "  Shortest distances from Router-A:"
+  for i in range(0, num_nodes)
+    if dist[i] == 999
+      print "    {node_names[i]}: unreachable"
+    else
+      print "    {node_names[i]}: {dist[i]}ms"
+
+  -- Part 5: Network metrics
+  print ""
+  print "=== Part 5: Network Metrics ==="
+  mut total_latency := 0
+  for i in range(0, num_edges)
+    total_latency = total_latency + edge_weight[i]
+  avg_latency := total_latency / num_edges
+  print "  Total edges: {num_edges}"
+  print "  Average latency: {avg_latency}ms"
+  print "  Total latency: {total_latency}ms"
+
+  -- Density
+  max_edges := num_nodes * (num_nodes - 1)
+  density := num_edges * 100 / max_edges
+  print "  Density: {density}% ({num_edges}/{max_edges} possible edges)"
+
+  -- Diameter (max shortest path)
+  mut diameter := 0
+  for i in range(0, num_nodes)
+    if dist[i] < 999 and dist[i] > diameter
+      diameter = dist[i]
+  print "  Diameter (from Router-A): {diameter}ms"
+
+  -- Part 6: Connectivity check
+  print ""
+  print "=== Part 6: Connectivity ==="
+  mut reachable := 0
+  for i in range(0, num_nodes)
+    if dist[i] < 999
+      reachable = reachable + 1
+  print "  Reachable from Router-A: {reachable}/{num_nodes}"
+  if reachable == num_nodes
+    print "  Network is connected from Router-A"
+  else
+    print "  Network has unreachable nodes"
+
+  print ""
+  print "Network topology: BFS, shortest paths, degrees, metrics, connectivity."

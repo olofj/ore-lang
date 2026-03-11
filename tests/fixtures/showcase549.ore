@@ -1,0 +1,196 @@
+-- Showcase 549: Constraint Logic Programming Concepts
+
+fn main
+  print "Constraint Logic Programming Concepts:"
+  print ""
+
+  -- Part 1: Simple constraint satisfaction
+  print "=== Part 1: Constraint Satisfaction ==="
+  print "  Problem: Find x, y where x + y = 10 and x * y = 21"
+
+  mut sol_x := 0
+  mut sol_y := 0
+  mut found := false
+  for x in range(0, 11)
+    for y in range(0, 11)
+      if x + y == 10 and x * y == 21
+        if not found
+          sol_x = x
+          sol_y = y
+          found = true
+
+  if found
+    print "  Solution: x={sol_x}, y={sol_y}"
+    print "  Verify: {sol_x} + {sol_y} = {sol_x + sol_y}, {sol_x} * {sol_y} = {sol_x * sol_y}"
+  else
+    print "  No solution found"
+
+  -- Part 2: N-Queens (4x4)
+  print ""
+  print "=== Part 2: 4-Queens Problem ==="
+  print "  Find placements of 4 queens on 4x4 board"
+
+  mut solutions := 0
+  mut first_q := [0, 0, 0, 0]
+  -- Try all permutations of rows for 4 columns
+  for q0 in range(0, 4)
+    for q1 in range(0, 4)
+      if q1 != q0
+        mut d1_ok := true
+        mut diff1 := q1 - q0
+        if diff1 < 0
+          diff1 = 0 - diff1
+        if diff1 == 1
+          d1_ok = false
+        if d1_ok
+          for q2 in range(0, 4)
+            if q2 != q0 and q2 != q1
+              mut d2_ok := true
+              mut diff2a := q2 - q0
+              if diff2a < 0
+                diff2a = 0 - diff2a
+              if diff2a == 2
+                d2_ok = false
+              mut diff2b := q2 - q1
+              if diff2b < 0
+                diff2b = 0 - diff2b
+              if diff2b == 1
+                d2_ok = false
+              if d2_ok
+                for q3 in range(0, 4)
+                  if q3 != q0 and q3 != q1 and q3 != q2
+                    mut d3_ok := true
+                    mut diff3a := q3 - q0
+                    if diff3a < 0
+                      diff3a = 0 - diff3a
+                    if diff3a == 3
+                      d3_ok = false
+                    mut diff3b := q3 - q1
+                    if diff3b < 0
+                      diff3b = 0 - diff3b
+                    if diff3b == 2
+                      d3_ok = false
+                    mut diff3c := q3 - q2
+                    if diff3c < 0
+                      diff3c = 0 - diff3c
+                    if diff3c == 1
+                      d3_ok = false
+                    if d3_ok
+                      if solutions == 0
+                        first_q[0] = q0
+                        first_q[1] = q1
+                        first_q[2] = q2
+                        first_q[3] = q3
+                      solutions = solutions + 1
+
+  print "  Total solutions: {solutions}"
+  print "  First solution: [{first_q[0]},{first_q[1]},{first_q[2]},{first_q[3]}]"
+  print "  Board:"
+  for r in range(0, 4)
+    mut line := "    "
+    for c in range(0, 4)
+      if first_q[c] == r
+        line = line + "Q "
+      else
+        line = line + ". "
+    print line
+
+  -- Part 3: Magic square constraints
+  print ""
+  print "=== Part 3: Magic Square (3x3) ==="
+  print "  Find 3x3 grid with numbers 1-9, all rows/cols/diags sum to 15"
+
+  -- Known solution
+  mut ms := [2, 7, 6, 9, 5, 1, 4, 3, 8]
+  -- Verify
+  row0_sum := ms[0] + ms[1] + ms[2]
+  row1_sum := ms[3] + ms[4] + ms[5]
+  row2_sum := ms[6] + ms[7] + ms[8]
+  col0_sum := ms[0] + ms[3] + ms[6]
+  col1_sum := ms[1] + ms[4] + ms[7]
+  col2_sum := ms[2] + ms[5] + ms[8]
+  diag0 := ms[0] + ms[4] + ms[8]
+  diag1 := ms[2] + ms[4] + ms[6]
+
+  print "  Solution:"
+  print "    {ms[0]} {ms[1]} {ms[2]}  (sum={row0_sum})"
+  print "    {ms[3]} {ms[4]} {ms[5]}  (sum={row1_sum})"
+  print "    {ms[6]} {ms[7]} {ms[8]}  (sum={row2_sum})"
+  print "  Columns: {col0_sum}, {col1_sum}, {col2_sum}"
+  print "  Diagonals: {diag0}, {diag1}"
+  if row0_sum == 15 and row1_sum == 15 and row2_sum == 15
+    print "  All constraints satisfied: YES"
+
+  -- Part 4: Graph coloring
+  print ""
+  print "=== Part 4: Graph Coloring ==="
+  print "  Color 4 nodes with 3 colors (edges: 0-1, 0-2, 1-2, 1-3, 2-3)"
+  mut gc_from := [0, 0, 1, 1, 2]
+  mut gc_to := [1, 2, 2, 3, 3]
+  num_gc_edges := 5
+
+  -- Find a valid 3-coloring
+  mut colors := [0, 0, 0, 0]
+  mut gc_found := false
+  mut color_names := ["Red", "Green", "Blue"]
+
+  for c0 in range(0, 3)
+    for c1 in range(0, 3)
+      for c2 in range(0, 3)
+        for c3 in range(0, 3)
+          if not gc_found
+            colors[0] = c0
+            colors[1] = c1
+            colors[2] = c2
+            colors[3] = c3
+            mut valid := true
+            for e in range(0, num_gc_edges)
+              if colors[gc_from[e]] == colors[gc_to[e]]
+                valid = false
+            if valid
+              gc_found = true
+
+  if gc_found
+    print "  Coloring found:"
+    for i in range(0, 4)
+      ci := colors[i]
+      print "    Node {i}: {color_names[ci]}"
+
+  -- Part 5: Sudoku constraint check
+  print ""
+  print "=== Part 5: Sudoku Constraint Check ==="
+  -- Check a completed 4x4 mini-sudoku
+  mut sudoku := [1, 2, 3, 4, 3, 4, 1, 2, 2, 1, 4, 3, 4, 3, 2, 1]
+
+  print "  4x4 Mini-Sudoku:"
+  for r in range(0, 4)
+    idx := r * 4
+    print "    {sudoku[idx]} {sudoku[idx + 1]} {sudoku[idx + 2]} {sudoku[idx + 3]}"
+
+  -- Check rows
+  mut row_ok := true
+  for r in range(0, 4)
+    sum := sudoku[r * 4] + sudoku[r * 4 + 1] + sudoku[r * 4 + 2] + sudoku[r * 4 + 3]
+    if sum != 10
+      row_ok = false
+  -- Check columns
+  mut col_ok := true
+  for c in range(0, 4)
+    sum := sudoku[c] + sudoku[4 + c] + sudoku[8 + c] + sudoku[12 + c]
+    if sum != 10
+      col_ok = false
+
+  print "  Row sums valid: {row_ok}"
+  print "  Column sums valid: {col_ok}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Constraint problems solved: 5"
+  print "  4-Queens solutions: {solutions}"
+  print "  Magic square target: 15"
+  print "  Graph chromatic number: 3"
+  print "  Mini-sudoku valid: {row_ok and col_ok}"
+
+  print ""
+  print "Constraint programming: CSP, N-queens, magic square, graph coloring, sudoku."

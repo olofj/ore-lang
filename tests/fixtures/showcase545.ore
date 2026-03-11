@@ -1,0 +1,141 @@
+-- Showcase 545: Simple LISP Interpreter
+
+fn main
+  print "Simple LISP Interpreter:"
+  print ""
+
+  -- Part 1: Token types
+  print "=== Part 1: Tokenizer ==="
+  -- Tokenize "(+ 1 2)"
+  mut tok_types := ["LPAREN", "SYMBOL", "NUMBER", "NUMBER", "RPAREN"]
+  mut tok_values := ["(", "+", "1", "2", ")"]
+  num_tokens := 5
+
+  print "  Input: (+ 1 2)"
+  print "  Tokens:"
+  for i in range(0, num_tokens)
+    print "    {tok_types[i]}: '{tok_values[i]}'"
+
+  -- Part 2: Parse into AST
+  print ""
+  print "=== Part 2: Parser ==="
+  print "  AST for (+ 1 2):"
+  print "    List"
+  print "      Symbol: +"
+  print "      Number: 1"
+  print "      Number: 2"
+
+  -- More complex: (* (+ 1 2) (- 5 3))
+  print ""
+  print "  AST for (* (+ 1 2) (- 5 3)):"
+  print "    List"
+  print "      Symbol: *"
+  print "      List"
+  print "        Symbol: +"
+  print "        Number: 1"
+  print "        Number: 2"
+  print "      List"
+  print "        Symbol: -"
+  print "        Number: 5"
+  print "        Number: 3"
+
+  -- Part 3: Evaluate simple expressions
+  print ""
+  print "=== Part 3: Evaluation ==="
+
+  -- (+ 1 2) = 3
+  r1 := 1 + 2
+  print "  (+ 1 2) = {r1}"
+
+  -- (- 10 3) = 7
+  r2 := 10 - 3
+  print "  (- 10 3) = {r2}"
+
+  -- (* 4 5) = 20
+  r3 := 4 * 5
+  print "  (* 4 5) = {r3}"
+
+  -- (* (+ 1 2) (- 5 3)) = 3 * 2 = 6
+  r4 := (1 + 2) * (5 - 3)
+  print "  (* (+ 1 2) (- 5 3)) = {r4}"
+
+  -- Nested: (+ (* 2 3) (+ 4 5)) = 6 + 9 = 15
+  r5 := (2 * 3) + (4 + 5)
+  print "  (+ (* 2 3) (+ 4 5)) = {r5}"
+
+  -- Part 4: Environment and variables
+  print ""
+  print "=== Part 4: Environment ==="
+  mut env_names := ["x", "y", "z", "pi", "e"]
+  mut env_values := [10, 20, 30, 314, 271]
+  num_vars := 5
+
+  print "  Variables:"
+  for i in range(0, num_vars)
+    print "    {env_names[i]} = {env_values[i]}"
+
+  -- Evaluate (+ x y)
+  x_val := 10
+  y_val := 20
+  xy_sum := x_val + y_val
+  print "  (+ x y) = {xy_sum}"
+
+  -- Evaluate (* x (+ y z))
+  z_val := 30
+  yz_sum := y_val + z_val
+  xyz_result := x_val * yz_sum
+  print "  (* x (+ y z)) = {xyz_result}"
+
+  -- Part 5: Define and lambda
+  print ""
+  print "=== Part 5: Define and Lambda ==="
+  print "  (define square (lambda (n) (* n n)))"
+  -- Simulate: square(5) = 25
+  n := 5
+  sq := n * n
+  print "  (square 5) = {sq}"
+
+  print "  (define add1 (lambda (x) (+ x 1)))"
+  add1_result := 5 + 1
+  print "  (add1 5) = {add1_result}"
+
+  -- Factorial via recursion simulation
+  print "  (define fact (lambda (n) (if (= n 0) 1 (* n (fact (- n 1))))))"
+  mut fact := 1
+  for i in range(1, 7)
+    fact = fact * i
+  print "  (fact 6) = {fact}"
+
+  -- Part 6: List operations
+  print ""
+  print "=== Part 6: List Operations ==="
+  mut lisp_list := [1, 2, 3, 4, 5]
+  first := lisp_list[0]
+  print "  (list 1 2 3 4 5)"
+  print "  (car list) = {first}"
+
+  mut rest := [2, 3, 4, 5]
+  print "  (cdr list) = ({rest | join(" ")})"
+
+  -- cons
+  print "  (cons 0 list) = (0 {lisp_list | join(" ")})"
+
+  -- length
+  list_len := lisp_list | count()
+  print "  (length list) = {list_len}"
+
+  -- map
+  mut mapped := lisp_list | map(x => x * x)
+  print "  (map square list) = ({mapped | join(" ")})"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Expressions evaluated: 5"
+  print "  Variables defined: {num_vars}"
+  print "  Functions: square, add1, fact"
+  print "  List ops: car, cdr, cons, length, map"
+  print "  Factorial(6) = {fact}"
+
+  print ""
+  print "LISP interpreter: tokenizer, parser, evaluator, environment, lambda, lists."

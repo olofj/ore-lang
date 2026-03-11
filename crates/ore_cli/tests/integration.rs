@@ -7074,6 +7074,108 @@ fn showcase540_code_generator() {
 }
 
 #[test]
+fn showcase541_lz77_compression() {
+    let out = run_ore("showcase541.ore");
+    assert!(out.contains("Lempel-Ziv (LZ77) Compression Concepts:"));
+    assert!(out.contains("Match: YES - lossless compression verified"));
+    assert!(out.contains("Compression ratio: 97%"));
+    assert!(out.contains("Literals: 3"));
+    assert!(out.contains("Matches: 2"));
+    assert!(out.contains("LZ77 compression: sliding window, match finding, tokens, decoding, dictionary."));
+}
+
+#[test]
+fn showcase542_cpu_pipeline() {
+    let out = run_ore("showcase542.ore");
+    assert!(out.contains("Simple CPU Pipeline Simulator:"));
+    assert!(out.contains("Total cycles (ideal): 10"));
+    assert!(out.contains("RAW: I1 -> I2 on R1"));
+    assert!(out.contains("Cycles saved: 4"));
+    assert!(out.contains("Accuracy: 75%"));
+    assert!(out.contains("CPU pipeline: stages, hazards, stalls, forwarding, branch prediction, IPC."));
+}
+
+#[test]
+fn showcase543_regex_features() {
+    let out = run_ore("showcase543.ore");
+    assert!(out.contains("Regular Expression Features Showcase:"));
+    assert!(out.contains("Letters: 9, Digits: 3"));
+    assert!(out.contains("Found 6 digit(s) at positions: 3, 4, 5, 9, 10, 11"));
+    assert!(out.contains("'abc' -> REJECT"));
+    assert!(out.contains("Regex features: matching, NFA, quantifiers, groups, alternation, anchors."));
+}
+
+#[test]
+fn showcase544_fractal_generation() {
+    let out = run_ore("showcase544.ore");
+    assert!(out.contains("Fractal Generation (Sierpinski, Koch):"));
+    assert!(out.contains("Fractal dimension: log(3)/log(2) ~ 1.585"));
+    assert!(out.contains("(0,0): in set (no escape in 20 iterations)"));
+    assert!(out.contains("(1,0): escaped at iteration 2"));
+    assert!(out.contains("Fractals: Sierpinski triangle, Koch snowflake, Cantor set, Mandelbrot escape."));
+}
+
+#[test]
+fn showcase545_lisp_interpreter() {
+    let out = run_ore("showcase545.ore");
+    assert!(out.contains("Simple LISP Interpreter:"));
+    assert!(out.contains("(* (+ 1 2) (- 5 3)) = 6"));
+    assert!(out.contains("(fact 6) = 720"));
+    assert!(out.contains("(map square list) = (1 4 9 16 25)"));
+    assert!(out.contains("LISP interpreter: tokenizer, parser, evaluator, environment, lambda, lists."));
+}
+
+#[test]
+fn showcase546_cache_policies() {
+    let out = run_ore("showcase546.ore");
+    assert!(out.contains("Cache Replacement Policies (LRU, FIFO, LFU):"));
+    assert!(out.contains("FIFO: 3 hits, 9 misses, rate=25%"));
+    assert!(out.contains("LRU: 2 hits, 10 misses, rate=16%"));
+    assert!(out.contains("Working set exceeds cache: thrashing likely"));
+    assert!(out.contains("Cache policies: FIFO, LRU, LFU comparison, working set analysis."));
+}
+
+#[test]
+fn showcase547_network_topology() {
+    let out = run_ore("showcase547.ore");
+    assert!(out.contains("Network Topology Analysis:"));
+    assert!(out.contains("Hub node: Switch-C (degree 4)"));
+    assert!(out.contains("Switch-D: 7ms"));
+    assert!(out.contains("Reachable from Router-A: 6/6"));
+    assert!(out.contains("Network topology: BFS, shortest paths, degrees, metrics, connectivity."));
+}
+
+#[test]
+fn showcase548_spreadsheet_engine() {
+    let out = run_ore("showcase548.ore");
+    assert!(out.contains("Simple Spreadsheet Formula Engine:"));
+    assert!(out.contains("SUM(Row 1): 100"));
+    assert!(out.contains("Grand total: 270"));
+    assert!(out.contains("COUNTIF(>20): 5 cells"));
+    assert!(out.contains("Spreadsheet engine: SUM, AVG, MIN, MAX, IF, COUNTIF, SUMIF, cell references."));
+}
+
+#[test]
+fn showcase549_constraint_programming() {
+    let out = run_ore("showcase549.ore");
+    assert!(out.contains("Constraint Logic Programming Concepts:"));
+    assert!(out.contains("Solution: x=3, y=7"));
+    assert!(out.contains("Total solutions: 2"));
+    assert!(out.contains("All constraints satisfied: YES"));
+    assert!(out.contains("Constraint programming: CSP, N-queens, magic square, graph coloring, sudoku."));
+}
+
+#[test]
+fn showcase550_ray_marching() {
+    let out = run_ore("showcase550.ore");
+    assert!(out.contains("Ray Marching (Signed Distance Functions):"));
+    assert!(out.contains("Union(50, 80) = 50"));
+    assert!(out.contains("Hit at distance 400 in 2 steps"));
+    assert!(out.contains("Pixels hit: 3/9"));
+    assert!(out.contains("Ray marching: SDF primitives, boolean ops, marching, rendering, shading."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
