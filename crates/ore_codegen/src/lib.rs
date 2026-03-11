@@ -6562,9 +6562,12 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Int
         };
 
-        let list_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
+        let (list_val, _) = self.compile_expr_with_kind(iterable, func)?;
+        // Use last_list_elem_kind if set by the expression (e.g. method calls)
+        let final_elem_kind = self.last_list_elem_kind.clone().unwrap_or(elem_kind);
+        let list_ptr = list_val.into_pointer_value();
 
-        self.compile_for_each_over_list(var, list_ptr, elem_kind, body, func)
+        self.compile_for_each_over_list(var, list_ptr, final_elem_kind, body, func)
     }
 
     fn compile_for_each_over_list(
@@ -6701,7 +6704,10 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Int
         };
 
-        let list_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
+        let (list_val, _) = self.compile_expr_with_kind(iterable, func)?;
+        let final_elem_kind = self.last_list_elem_kind.clone().unwrap_or(elem_kind);
+        let elem_kind = final_elem_kind;
+        let list_ptr = list_val.into_pointer_value();
 
         let list_len_fn = self.module.get_function("ore_list_len").unwrap();
         let len_result = bld!(self.builder.build_call(list_len_fn, &[list_ptr.into()], "len"))?;
