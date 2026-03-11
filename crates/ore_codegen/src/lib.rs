@@ -2996,7 +2996,37 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let (arg, arg_kind) = self.compile_expr_with_kind(&args[0], func)?;
                 let list_push = self.rt("ore_list_push")?;
-                bld!(self.builder.build_call(list_push, &[list_val.into(), arg.into()], ""))?;
+                // For enums/records, heap-allocate and push pointer as i64
+                let push_val: BasicValueEnum = match &arg_kind {
+                    ValKind::Enum(name) => {
+                        let et = self.enums[name].enum_type;
+                        let heap_ptr = bld!(self.builder.build_malloc(et, "heap_enum"))?;
+                        bld!(self.builder.build_store(heap_ptr, arg))?;
+                        let i64_val = bld!(self.builder.build_ptr_to_int(heap_ptr, self.context.i64_type(), "p2i"))?;
+                        i64_val.into()
+                    }
+                    ValKind::Record(name) => {
+                        let st = self.records[name].struct_type;
+                        let heap_ptr = bld!(self.builder.build_malloc(st, "heap_rec"))?;
+                        bld!(self.builder.build_store(heap_ptr, arg))?;
+                        let i64_val = bld!(self.builder.build_ptr_to_int(heap_ptr, self.context.i64_type(), "p2i"))?;
+                        i64_val.into()
+                    }
+                    ValKind::Float => {
+                        let i64_val = bld!(self.builder.build_bit_cast(arg, self.context.i64_type(), "f2i"))?;
+                        i64_val
+                    }
+                    ValKind::Bool => {
+                        let i64_val = bld!(self.builder.build_int_z_extend(arg.into_int_value(), self.context.i64_type(), "b2i"))?;
+                        i64_val.into()
+                    }
+                    ValKind::Str => {
+                        let i64_val = bld!(self.builder.build_ptr_to_int(arg.into_pointer_value(), self.context.i64_type(), "p2i"))?;
+                        i64_val.into()
+                    }
+                    _ => arg,
+                };
+                bld!(self.builder.build_call(list_push, &[list_val.into(), push_val.into()], ""))?;
                 // Track element kind so join/pop/iteration know the type
                 self.last_list_elem_kind = Some(arg_kind);
                 Ok((list_val, ValKind::List))
@@ -3006,20 +3036,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let list_pop = self.rt("ore_list_pop")?;
                 let result = bld!(self.builder.build_call(list_pop, &[list_val.into()], "pop"))?;
                 let raw_val = self.call_result_to_value(result)?;
-                match &elem_kind {
-                    ValKind::Str => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            raw_val.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
-                        ))?;
-                        Ok((ptr.into(), ValKind::Str))
-                    }
-                    ValKind::Float => {
-                        let f = bld!(self.builder.build_bit_cast(raw_val, self.context.f64_type(), "i2f"))?;
-                        Ok((f, ValKind::Float))
-                    }
-                    _ => Ok((raw_val, elem_kind))
-                }
+                let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
+                Ok((typed_val, elem_kind))
             }
             "insert" => {
                 if args.len() != 2 {
@@ -3061,21 +3079,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let list_get = self.rt("ore_list_get")?;
                 let result = bld!(self.builder.build_call(list_get, &[list_val.into(), idx.into()], "get"))?;
                 let raw_val = self.call_result_to_value(result)?;
-                // Convert i64 to the correct type based on element kind
-                match &elem_kind {
-                    ValKind::Str => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            raw_val.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
-                        ))?;
-                        Ok((ptr.into(), ValKind::Str))
-                    }
-                    ValKind::Float => {
-                        let f = bld!(self.builder.build_bit_cast(raw_val, self.context.f64_type(), "i2f"))?;
-                        Ok((f, ValKind::Float))
-                    }
-                    _ => Ok((raw_val, elem_kind))
-                }
+                let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
+                Ok((typed_val, elem_kind))
             }
             "set" => {
                 if args.len() != 2 {
@@ -3099,20 +3104,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let rt = self.rt("ore_list_get_or")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), idx.into(), default_i64.into()], "getor"))?;
                 let raw_val = self.call_result_to_value(result)?;
-                match &elem_kind {
-                    ValKind::Str => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            raw_val.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
-                        ))?;
-                        Ok((ptr.into(), ValKind::Str))
-                    }
-                    ValKind::Float => {
-                        let f = bld!(self.builder.build_bit_cast(raw_val, self.context.f64_type(), "i2f"))?;
-                        Ok((f, ValKind::Float))
-                    }
-                    _ => Ok((raw_val, elem_kind))
-                }
+                let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
+                Ok((typed_val, elem_kind))
             }
             "map" | "filter" | "flat_map" | "take_while" | "drop_while" => {
                 if args.len() != 1 {
@@ -5302,20 +5295,17 @@ impl<'ctx> CodeGen<'ctx> {
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         // Chain of if-else comparisons for literal patterns
+        // Uses phi nodes to handle any result type (including enums/structs)
         let merge_bb = self.context.append_basic_block(func, "lmatch_merge");
-        let i64_type = self.context.i64_type();
 
-        let result_alloca = bld!(self.builder.build_alloca(i64_type, "lmatch_result"))?;
         let mut result_kind = ValKind::Int;
         let mut has_wildcard = false;
+        let mut branch_results: Vec<(BasicValueEnum<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
 
         for (i, arm) in arms.iter().enumerate() {
-            let is_last = i == arms.len() - 1;
-            let else_bb = if is_last {
-                merge_bb
-            } else {
-                self.context.append_basic_block(func, &format!("lmatch_next_{}", i))
-            };
+            // Always create a separate else block (never reuse merge_bb directly)
+            // because phi nodes require every predecessor to have an incoming value
+            let else_bb = self.context.append_basic_block(func, &format!("lmatch_next_{}", i));
 
             // Check if pattern is a variable binding (identifier that's not a known variant)
             let is_var_binding = matches!(&arm.pattern, Pattern::Variant { name, bindings }
@@ -5347,18 +5337,18 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     let (body_val, bk) = self.compile_expr_with_kind(&arm.body, func)?;
                     result_kind = bk;
-                    let store_val = self.coerce_to_i64(body_val, &result_kind)?;
-                    bld!(self.builder.build_store(result_alloca, store_val))?;
-                    bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                    if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                    }
+                    let end_bb = self.builder.get_insert_block().unwrap();
+                    branch_results.push((body_val, end_bb));
 
                     // Restore variables
                     if let Some(saved) = saved_vars {
                         self.variables = saved;
                     }
 
-                    if else_bb != merge_bb {
-                        self.builder.position_at_end(else_bb);
-                    }
+                    self.builder.position_at_end(else_bb);
                 }
                 _ => {
                     // Build comparison
@@ -5381,31 +5371,44 @@ impl<'ctx> CodeGen<'ctx> {
 
                     let (body_val, bk) = self.compile_expr_with_kind(&arm.body, func)?;
                     result_kind = bk;
-                    let store_val = self.coerce_to_i64(body_val, &result_kind)?;
-                    bld!(self.builder.build_store(result_alloca, store_val))?;
-                    bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-                    if else_bb != merge_bb {
-                        self.builder.position_at_end(else_bb);
+                    if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                        bld!(self.builder.build_unconditional_branch(merge_bb))?;
                     }
+                    let end_bb = self.builder.get_insert_block().unwrap();
+                    branch_results.push((body_val, end_bb));
+
+                    self.builder.position_at_end(else_bb);
                 }
             }
         }
 
-        // If no wildcard, ensure we branch to merge from the last else block
+        // If no wildcard, the current block is the fallthrough from the last else.
+        // Branch to merge with a dummy value so the phi has an incoming for every predecessor.
         if !has_wildcard {
             if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
-                bld!(self.builder.build_store(result_alloca, i64_type.const_int(0, false)))?;
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                if !branch_results.is_empty() {
+                    let undef = branch_results[0].0.get_type().const_zero();
+                    let default_bb = self.builder.get_insert_block().unwrap();
+                    bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                    branch_results.push((undef, default_bb));
+                } else {
+                    bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                }
             }
         }
 
         self.builder.position_at_end(merge_bb);
-        let result = bld!(self.builder.build_load(i64_type, result_alloca, "lmatch_val"))?;
 
-        // Convert back from i64 if needed
-        let final_val = self.coerce_from_i64(result, &result_kind)?;
-        Ok((final_val, result_kind))
+        if branch_results.is_empty() {
+            return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+        }
+
+        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "lmatch_val"))?;
+        for (val, bb) in &branch_results {
+            phi.add_incoming(&[(val, *bb)]);
+        }
+
+        Ok((phi.as_basic_value(), result_kind))
     }
 
     fn compile_pattern_cmp(
@@ -5503,6 +5506,50 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(f)
             }
             _ => Ok(val),
+        }
+    }
+
+    /// Convert a raw i64 list element back to the correct type.
+    /// For enums/records, the i64 is a pointer to heap-allocated data that needs to be loaded.
+    fn list_elem_from_i64(&mut self, raw: BasicValueEnum<'ctx>, kind: &ValKind) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        match kind {
+            ValKind::Enum(name) => {
+                let et = self.enums[name].enum_type;
+                let ptr = bld!(self.builder.build_int_to_ptr(
+                    raw.into_int_value(),
+                    self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
+                ))?;
+                let val = bld!(self.builder.build_load(et, ptr, "load_enum"))?;
+                Ok(val)
+            }
+            ValKind::Record(name) => {
+                let st = self.records[name].struct_type;
+                let ptr = bld!(self.builder.build_int_to_ptr(
+                    raw.into_int_value(),
+                    self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
+                ))?;
+                let val = bld!(self.builder.build_load(st, ptr, "load_rec"))?;
+                Ok(val)
+            }
+            ValKind::Str | ValKind::List | ValKind::Map => {
+                let ptr = bld!(self.builder.build_int_to_ptr(
+                    raw.into_int_value(),
+                    self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
+                ))?;
+                Ok(ptr.into())
+            }
+            ValKind::Float => {
+                let f = bld!(self.builder.build_bit_cast(raw, self.context.f64_type(), "i2f"))?;
+                Ok(f)
+            }
+            ValKind::Bool => {
+                let b = bld!(self.builder.build_int_compare(
+                    IntPredicate::NE, raw.into_int_value(),
+                    self.context.i64_type().const_int(0, false), "i2b"
+                ))?;
+                Ok(b.into())
+            }
+            _ => Ok(raw),
         }
     }
 
@@ -5673,6 +5720,13 @@ impl<'ctx> CodeGen<'ctx> {
                 ValKind::Bool => {
                     // Bools need zero-extension to i64
                     let i64_val = bld!(self.builder.build_int_z_extend(val.into_int_value(), self.context.i64_type(), "b2i"))?;
+                    i64_val.into()
+                }
+                ValKind::Enum(name) => {
+                    let et = self.enums[name].enum_type;
+                    let heap_ptr = bld!(self.builder.build_malloc(et, "heap_enum"))?;
+                    bld!(self.builder.build_store(heap_ptr, val))?;
+                    let i64_val = bld!(self.builder.build_ptr_to_int(heap_ptr, self.context.i64_type(), "p2i"))?;
                     i64_val.into()
                 }
                 _ => val,
@@ -5956,18 +6010,8 @@ impl<'ctx> CodeGen<'ctx> {
                 ))?;
                 let val = self.call_result_to_value(result)?;
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                // If the element is a pointer type, convert i64 -> ptr
-                match elem_kind {
-                    ValKind::Str | ValKind::List | ValKind::Map => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            val.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()),
-                            "i2p"
-                        ))?;
-                        Ok((ptr.into(), elem_kind))
-                    }
-                    _ => Ok((val, elem_kind))
-                }
+                let typed_val = self.list_elem_from_i64(val, &elem_kind)?;
+                Ok((typed_val, elem_kind))
             }
             ValKind::Map => {
                 // Convert non-string keys to strings for map access
@@ -6992,6 +7036,11 @@ impl<'ctx> CodeGen<'ctx> {
                 let alloca = bld!(self.builder.build_alloca(st, var))?;
                 (alloca, st.into())
             }
+            ValKind::Enum(name) => {
+                let et = self.enums[name].enum_type;
+                let alloca = bld!(self.builder.build_alloca(et, var))?;
+                (alloca, et.into())
+            }
             ValKind::Str => {
                 let pt = self.context.ptr_type(inkwell::AddressSpace::default());
                 let alloca = bld!(self.builder.build_alloca(pt, var))?;
@@ -7028,39 +7077,9 @@ impl<'ctx> CodeGen<'ctx> {
         let list_get_fn = self.rt("ore_list_get")?;
         let elem_result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "elem"))?;
         let raw_val = self.call_result_to_value(elem_result)?;
-        // For records, the i64 is a heap pointer — dereference to get the struct
-        match &elem_kind {
-            ValKind::Record(name) => {
-                let st = self.records[name].struct_type;
-                let ptr = bld!(self.builder.build_int_to_ptr(
-                    raw_val.into_int_value(),
-                    self.context.ptr_type(inkwell::AddressSpace::default()),
-                    "i2p"
-                ))?;
-                let struct_val = bld!(self.builder.build_load(st, ptr, "rec_elem"))?;
-                bld!(self.builder.build_store(elem_alloca, struct_val))?;
-            }
-            ValKind::Str => {
-                let ptr = bld!(self.builder.build_int_to_ptr(
-                    raw_val.into_int_value(),
-                    self.context.ptr_type(inkwell::AddressSpace::default()),
-                    "i2p"
-                ))?;
-                bld!(self.builder.build_store(elem_alloca, ptr))?;
-            }
-            ValKind::Float => {
-                // List stores f64 bits as i64 — bitcast back to f64
-                let f_val: inkwell::values::BasicValueEnum = bld!(self.builder.build_bit_cast(
-                    raw_val.into_int_value(),
-                    self.context.f64_type(),
-                    "i2f"
-                ))?;
-                bld!(self.builder.build_store(elem_alloca, f_val))?;
-            }
-            _ => {
-                bld!(self.builder.build_store(elem_alloca, raw_val))?;
-            }
-        }
+        // Convert raw i64 from list back to the correct type
+        let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
+        bld!(self.builder.build_store(elem_alloca, typed_val))?;
 
         let saved_break = self.break_target;
         let saved_continue = self.continue_target;

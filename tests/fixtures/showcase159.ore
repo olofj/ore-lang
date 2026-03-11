@@ -1,0 +1,26 @@
+-- Showcase 159: Type-driven design with enums
+
+type Expr
+  Num(val: Int)
+  Add(a: Int, b: Int)
+  Mul(a: Int, b: Int)
+  Neg(val: Int)
+
+fn eval e:Expr -> Int
+  match e
+    Num v -> v
+    Add a b -> a + b
+    Mul a b -> a * b
+    Neg v -> 0 - v
+
+fn show e:Expr -> Str
+  match e
+    Num v -> "{v}"
+    Add a b -> "{a} + {b}"
+    Mul a b -> "{a} * {b}"
+    Neg v -> "-{v}"
+
+fn main
+  exprs := [Num(val: 42), Add(a: 3, b: 4), Mul(a: 5, b: 6), Neg(val: 10)]
+  for e in exprs
+    print "{show(e)} = {eval(e)}"

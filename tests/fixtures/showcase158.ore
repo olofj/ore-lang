@@ -1,0 +1,38 @@
+-- Showcase 158: Functional data processing
+
+fn main
+  -- Word frequency analysis
+  words := ["the", "cat", "sat", "on", "the", "mat", "the", "cat"]
+  mut freq := {}
+  for w in words
+    current := freq.get_or(w, 0)
+    freq.set(w, current + 1)
+  for key in freq.keys()
+    print "{key}: {freq[key]}"
+
+  -- Number classification pipeline
+  print ""
+  numbers := range(1, 21)
+  evens := numbers | filter(n => n % 2 == 0)
+  odds := numbers | filter(n => n % 2 != 0)
+  print "evens: {evens | join(", ")}"
+  print "odds: {odds | join(", ")}"
+  print "even sum: {evens | sum()}"
+  print "odd sum: {odds | sum()}"
+
+  -- Nested pipeline operations
+  print ""
+  result := range(1, 11)
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | join(" + ")
+  print "even squares: {result}"
+  total := range(1, 11) | filter(n => n % 2 == 0) | map(n => n * n) | sum()
+  print "total: {total}"
+
+  -- Zip-like operations using enumerate
+  print ""
+  labels := ["first", "second", "third"]
+  values := [100, 200, 300]
+  for i in range(0, 3)
+    print "{labels[i]}: {values[i]}"

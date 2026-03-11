@@ -3043,6 +3043,51 @@ fn showcase155_iterators() {
 }
 
 #[test]
+fn showcase156_literal_match_enums() {
+    let out = run_ore("showcase156.ore");
+    assert!(out.contains("success: 200"));
+    assert!(out.contains("failure: 404"));
+    assert!(out.contains("failure: 500"));
+    assert!(out.contains("failure: 418"));
+    assert!(out.contains("Monday"));
+    assert!(out.contains("Wednesday"));
+    assert!(out.contains("Weekend"));
+    assert!(out.contains("zero"));
+    assert!(out.contains("positive"));
+    assert!(out.contains("negative"));
+}
+
+#[test]
+fn showcase157_accumulator_patterns() {
+    let out = run_ore("showcase157.ore");
+    assert!(out.contains("running totals: 0, 10, 30, 60, 100, 150"));
+    assert!(out.contains("after 3 values: avg = 6"));
+    assert!(out.contains("FizzBuzz"));
+    assert!(out.contains("Fizz"));
+    assert!(out.contains("Buzz"));
+    assert!(out.contains("collatz(27): 111 steps"));
+}
+
+#[test]
+fn showcase158_functional_data() {
+    let out = run_ore("showcase158.ore");
+    assert!(out.contains("the: 3"));
+    assert!(out.contains("even sum: 110"));
+    assert!(out.contains("odd sum: 100"));
+    assert!(out.contains("even squares: 4 + 16 + 36 + 64 + 100"));
+    assert!(out.contains("total: 220"));
+}
+
+#[test]
+fn showcase159_enum_expressions() {
+    let out = run_ore("showcase159.ore");
+    assert!(out.contains("42 = 42"));
+    assert!(out.contains("3 + 4 = 7"));
+    assert!(out.contains("5 * 6 = 30"));
+    assert!(out.contains("-10 = -10"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

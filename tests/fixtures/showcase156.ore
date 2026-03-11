@@ -1,0 +1,48 @@
+-- Showcase 156: Literal match returning enums and complex types
+
+type Response
+  Success(val: Int)
+  Failure(code: Int)
+
+fn handle code:Int -> Response
+  match code
+    200 -> Success(val: code)
+    404 -> Failure(code: 404)
+    500 -> Failure(code: 500)
+    _ -> Failure(code: code)
+
+fn describe r:Response -> Str
+  match r
+    Success v -> "success: {v}"
+    Failure c -> "failure: {c}"
+
+fn day_name d:Int -> Str
+  match d
+    1 -> "Monday"
+    2 -> "Tuesday"
+    3 -> "Wednesday"
+    4 -> "Thursday"
+    5 -> "Friday"
+    _ -> "Weekend"
+
+fn classify n:Int -> Str
+  match n
+    0 -> "zero"
+    n if n > 0 -> "positive"
+    _ -> "negative"
+
+fn main
+  -- Literal match returning enums
+  for code in [200, 404, 500, 418]
+    r := handle(code)
+    print describe(r)
+
+  -- Literal match returning strings
+  print ""
+  for d in [1, 3, 5, 7]
+    print day_name(d)
+
+  -- Literal match with guards
+  print ""
+  for n in [0, 5, -3]
+    print classify(n)
