@@ -1,0 +1,98 @@
+-- Showcase 335: Date validation
+
+fn is_leap year:Int -> Bool
+  if year % 400 == 0
+    return true
+  if year % 100 == 0
+    return false
+  year % 4 == 0
+
+fn days_in_month month:Int year:Int -> Int
+  if month == 1 or month == 3 or month == 5 or month == 7 or month == 8 or month == 10 or month == 12
+    return 31
+  if month == 4 or month == 6 or month == 9 or month == 11
+    return 30
+  if month == 2
+    if is_leap(year)
+      return 29
+    return 28
+  0
+
+fn is_valid_date year:Int month:Int day:Int -> Bool
+  if year < 1 or year > 9999
+    return false
+  if month < 1 or month > 12
+    return false
+  if day < 1
+    return false
+  day <= days_in_month(month, year)
+
+fn day_of_year year:Int month:Int day:Int -> Int
+  mut total := 0
+  for m in range(1, month)
+    total = total + days_in_month(m, year)
+  total + day
+
+fn days_in_year year:Int -> Int
+  if is_leap(year) then 366 else 365
+
+fn month_name m:Int -> Str
+  names := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  names[m - 1]
+
+fn main
+  print "Date Validation:"
+  print ""
+
+  -- Valid dates
+  print "Valid dates:"
+  dates_y := [2024, 2023, 2000, 1900, 2024, 2024]
+  dates_m := [2, 2, 2, 2, 12, 1]
+  dates_d := [29, 28, 29, 28, 31, 1]
+  for i in range(0, 6)
+    y := dates_y[i]
+    m := dates_m[i]
+    d := dates_d[i]
+    valid := is_valid_date(y, m, d)
+    mn := month_name(m)
+    print "  {y}-{mn}-{d}: {valid}"
+
+  -- Invalid dates
+  print ""
+  print "Invalid dates:"
+  inv_y := [2023, 2024, 2024, 2024]
+  inv_m := [2, 13, 4, 0]
+  inv_d := [29, 1, 31, 15]
+  for i in range(0, 4)
+    y := inv_y[i]
+    m := inv_m[i]
+    d := inv_d[i]
+    valid := is_valid_date(y, m, d)
+    print "  {y}-{m}-{d}: {valid}"
+
+  -- Leap year checks
+  print ""
+  print "Leap years:"
+  test_years := [1900, 2000, 2024, 2023, 2100, 1600]
+  for y in test_years
+    leap := is_leap(y)
+    print "  {y}: {leap}"
+
+  -- Day of year
+  print ""
+  print "Day of year:"
+  print "  2024-01-01: day {day_of_year(2024, 1, 1)}"
+  print "  2024-03-01: day {day_of_year(2024, 3, 1)}"
+  print "  2023-03-01: day {day_of_year(2023, 3, 1)}"
+  print "  2024-12-31: day {day_of_year(2024, 12, 31)}"
+
+  -- Days in each month for 2024
+  print ""
+  print "Days per month (2024):"
+  mut total_days := 0
+  for m in range(1, 13)
+    d := days_in_month(m, 2024)
+    total_days = total_days + d
+    mn := month_name(m)
+    print "  {mn}: {d}"
+  print "Total: {total_days}"

@@ -1,0 +1,78 @@
+-- Showcase 331: Topological sort (Kahn's algorithm)
+
+fn find_in_degree n:Int edges:List -> List
+  mut deg := []
+  for i in range(0, n)
+    deg.push(0)
+  for e in edges
+    to_idx := e % 100
+    deg[to_idx] = deg[to_idx] + 1
+  deg
+
+fn topo_sort n:Int edges:List -> List
+  mut in_deg := find_in_degree(n, edges)
+  mut queue := []
+  for i in range(0, n)
+    if in_deg[i] == 0
+      queue.push(i)
+  mut result := []
+  while queue | count() > 0
+    idx := queue[0]
+    mut new_queue := []
+    qn := queue | count()
+    for qi in range(1, qn)
+      new_queue.push(queue[qi])
+    queue = new_queue
+    result.push(idx)
+    for e in edges
+      from_idx := e / 100
+      to_idx := e % 100
+      if from_idx == idx
+        in_deg[to_idx] = in_deg[to_idx] - 1
+        if in_deg[to_idx] == 0
+          queue.push(to_idx)
+  result
+
+fn name_at names:List idx:Int -> Str
+  names[idx]
+
+fn main
+  -- Course prerequisites example
+  -- Nodes: 0=Math, 1=Physics, 2=CS101, 3=CS201, 4=AI, 5=Graphics
+  names := ["Math", "Physics", "CS101", "CS201", "AI", "Graphics"]
+  -- Edges encoded as from_idx * 100 + to_idx
+  -- Math->Physics(1), Math->CS101(2), Physics->Graphics(105)
+  -- CS101->CS201(203), CS201->AI(304), CS201->Graphics(305)
+  edges := [1, 2, 105, 203, 304, 305]
+
+  print "Topological Sort (Course Prerequisites):"
+  print "Dependencies:"
+  print "  Math -> Physics"
+  print "  Math -> CS101"
+  print "  Physics -> Graphics"
+  print "  CS101 -> CS201"
+  print "  CS201 -> AI"
+  print "  CS201 -> Graphics"
+
+  order := topo_sort(6, edges)
+  print ""
+  print "Valid course order:"
+  for i in range(0, order | count())
+    idx := order[i]
+    nm := names[idx]
+    print "  {i + 1}. {nm}"
+
+  -- Second example: build system
+  print ""
+  print "Build System Dependencies:"
+  builds := ["libc", "libmath", "libio", "app_core", "app_ui", "app"]
+  -- libc->libmath(1), libc->libio(2), libc->app_core(3)
+  -- libmath->app_core(103), libio->app_ui(204)
+  -- app_core->app(305), app_ui->app(405)
+  build_edges := [1, 2, 3, 103, 204, 305, 405]
+  build_order := topo_sort(6, build_edges)
+  print "Build order:"
+  for i in range(0, build_order | count())
+    idx := build_order[i]
+    nm := builds[idx]
+    print "  {i + 1}. {nm}"

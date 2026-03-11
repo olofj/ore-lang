@@ -1,0 +1,65 @@
+-- Showcase 336: Pascal's triangle
+
+fn pascal_row n:Int -> List
+  -- Generate nth row of Pascal's triangle (0-indexed)
+  mut row := [1]
+  for k in range(1, n + 1)
+    prev_idx := k - 1
+    prev_val := row[prev_idx]
+    next_val := prev_val * (n - k + 1) / k
+    row.push(next_val)
+  row
+
+fn row_to_str row:List -> Str
+  row | join(" ")
+
+fn main
+  print "Pascal's Triangle:"
+  print ""
+
+  -- Print first 8 rows centered
+  for n in range(0, 8)
+    row := pascal_row(n)
+    -- Build padding
+    mut pad := ""
+    for i in range(0, 7 - n)
+      pad = pad + "  "
+    print "{pad}{row_to_str(row)}"
+
+  -- Properties of Pascal's triangle
+  print ""
+  print "Row sums (powers of 2):"
+  for n in range(0, 8)
+    row := pascal_row(n)
+    s := row | sum()
+    print "  Row {n}: sum = {s}"
+
+  -- Fibonacci from Pascal's diagonals
+  print ""
+  print "Diagonal sums (Fibonacci):"
+  for d in range(0, 8)
+    mut fib_sum := 0
+    for k in range(0, d + 1)
+      row_idx := d - k
+      col_idx := k
+      if col_idx <= row_idx
+        row := pascal_row(row_idx)
+        fib_sum = fib_sum + row[col_idx]
+    print "  Diagonal {d}: {fib_sum}"
+
+  -- Binomial coefficients
+  print ""
+  print "Binomial coefficients C(n,k):"
+  for n in range(0, 6)
+    mut line := "  C({n},k):"
+    row := pascal_row(n)
+    for k in range(0, n + 1)
+      v := row[k]
+      line = line + " {v}"
+    print line
+
+  -- Row 10
+  print ""
+  row10 := pascal_row(10)
+  print "Row 10: {row_to_str(row10)}"
+  print "Row 10 sum: {row10 | sum()}"

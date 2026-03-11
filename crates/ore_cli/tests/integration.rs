@@ -4547,6 +4547,111 @@ fn showcase330_rational() {
 }
 
 #[test]
+fn showcase331_topological_sort() {
+    let out = run_ore("showcase331.ore");
+    assert!(out.contains("Topological Sort (Course Prerequisites)"));
+    assert!(out.contains("1. Math"));
+    assert!(out.contains("6. Graphics"));
+    assert!(out.contains("Build order:"));
+    assert!(out.contains("1. libc"));
+    assert!(out.contains("6. app"));
+}
+
+#[test]
+fn showcase332_knapsack() {
+    let out = run_ore("showcase332.ore");
+    assert!(out.contains("0/1 Knapsack Problem"));
+    assert!(out.contains("Maximum value: 200"));
+    assert!(out.contains("Total weight: 10"));
+    assert!(out.contains("Smaller knapsack (capacity=5)"));
+    assert!(out.contains("Maximum value: 110"));
+}
+
+#[test]
+fn showcase333_gray_code() {
+    let out = run_ore("showcase333.ore");
+    assert!(out.contains("3-bit Gray code:"));
+    assert!(out.contains("0 -> 000"));
+    assert!(out.contains("7 -> 111"));
+    assert!(out.contains("All consecutive codes differ by exactly 1 bit"));
+    assert!(out.contains("5-bit: 32 codes"));
+}
+
+#[test]
+fn showcase334_isbn() {
+    let out = run_ore("showcase334.ore");
+    assert!(out.contains("0306406152: true"));
+    assert!(out.contains("0306406153: false"));
+    assert!(out.contains("9780306406157: true"));
+    assert!(out.contains("9780306406158: false"));
+    assert!(out.contains("check digit = 7"));
+    assert!(out.contains("check digit = 0"));
+}
+
+#[test]
+fn showcase335_date_validation() {
+    let out = run_ore("showcase335.ore");
+    assert!(out.contains("2024-Feb-29: true"));
+    assert!(out.contains("2023-2-29: false"));
+    assert!(out.contains("1900: false"));
+    assert!(out.contains("2000: true"));
+    assert!(out.contains("2024-12-31: day 366"));
+    assert!(out.contains("Total: 366"));
+}
+
+#[test]
+fn showcase336_pascal_triangle() {
+    let out = run_ore("showcase336.ore");
+    assert!(out.contains("1 4 6 4 1"));
+    assert!(out.contains("Row 7: sum = 128"));
+    assert!(out.contains("Diagonal 6: 13"));
+    assert!(out.contains("Diagonal 7: 21"));
+    assert!(out.contains("Row 10 sum: 1024"));
+}
+
+#[test]
+fn showcase337_dutch_flag() {
+    let out = run_ore("showcase337.ore");
+    assert!(out.contains("Sorted: R R R R W W W B B B"));
+    assert!(out.contains("Sorted: R R R W W W B B"));
+    assert!(out.contains("Red: 4, White: 3, Blue: 3"));
+    assert!(out.contains("array is correctly sorted"));
+}
+
+#[test]
+fn showcase338_lis() {
+    let out = run_ore("showcase338.ore");
+    assert!(out.contains("LIS length: 4"));
+    assert!(out.contains("LIS: 2, 5, 7, 101"));
+    assert!(out.contains("LIS: 0, 1, 2, 3"));
+    assert!(out.contains("LIS length: 5"));
+    assert!(out.contains("LIS length: 1"));
+    assert!(out.contains("LIS length: 6"));
+}
+
+#[test]
+fn showcase339_number_to_words() {
+    let out = run_ore("showcase339.ore");
+    assert!(out.contains("42 -> forty-two"));
+    assert!(out.contains("99 -> ninety-nine"));
+    assert!(out.contains("one hundred and one"));
+    assert!(out.contains("one thousand two hundred and thirty-four"));
+    assert!(out.contains("one million"));
+    assert!(out.contains("1234567 -> one million two hundred and thirty-four thousand five hundred and sixty-seven"));
+}
+
+#[test]
+fn showcase340_string_search() {
+    let out = run_ore("showcase340.ore");
+    assert!(out.contains("'the' found 3 time(s) at positions: 0, 15, 28"));
+    assert!(out.contains("'xyz' not found"));
+    assert!(out.contains("ATC: 3"));
+    assert!(out.contains("'hi world hello'"));
+    assert!(out.contains("b[an][an]a"));
+    assert!(out.contains("Count: 5"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

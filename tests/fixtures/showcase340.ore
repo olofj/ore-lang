@@ -1,0 +1,97 @@
+-- Showcase 340: Naive string search (pattern matching)
+
+fn string_search text:Str pattern:Str -> List
+  -- Find all occurrences of pattern in text
+  -- Returns list of starting positions
+  mut positions := []
+  tlen := text.len()
+  plen := pattern.len()
+  if plen == 0 or plen > tlen
+    return positions
+  for i in range(0, tlen - plen + 1)
+    sub := text.substr(i, plen)
+    if sub == pattern
+      positions.push(i)
+  positions
+
+fn count_occurrences text:Str pattern:Str -> Int
+  string_search(text, pattern) | count()
+
+fn replace_first text:Str pattern:Str replacement:Str -> Str
+  positions := string_search(text, pattern)
+  n := positions | count()
+  if n == 0
+    return text
+  pos := positions[0]
+  plen := pattern.len()
+  before := text.substr(0, pos)
+  after := text.substr(pos + plen, text.len() - pos - plen)
+  before + replacement + after
+
+fn highlight text:Str pattern:Str -> Str
+  -- Surround matches with brackets
+  positions := string_search(text, pattern)
+  n := positions | count()
+  if n == 0
+    return text
+  plen := pattern.len()
+  mut result := ""
+  mut last_end := 0
+  for p in positions
+    if p > last_end
+      result = result + text.substr(last_end, p - last_end)
+    result = result + "[" + pattern + "]"
+    last_end = p + plen
+  tlen := text.len()
+  if last_end < tlen
+    result = result + text.substr(last_end, tlen - last_end)
+  result
+
+fn main
+  print "Naive String Search:"
+  print ""
+
+  -- Basic search
+  text := "the cat sat on the mat near the hat"
+  print "Text: {text}"
+  print ""
+
+  patterns := ["the", "at", "cat", "xyz", "mat"]
+  for pat in patterns
+    pos := string_search(text, pat)
+    c := pos | count()
+    if c > 0
+      print "  '{pat}' found {c} time(s) at positions: {pos | join(", ")}"
+    else
+      print "  '{pat}' not found"
+
+  -- Count occurrences
+  print ""
+  print "Occurrence counts:"
+  dna := "ATCGATCGATCG"
+  print "  DNA: {dna}"
+  print "  ATC: {count_occurrences(dna, "ATC")}"
+  print "  GAT: {count_occurrences(dna, "GAT")}"
+  print "  TCG: {count_occurrences(dna, "TCG")}"
+
+  -- Replace first
+  print ""
+  print "Replace first occurrence:"
+  s := "hello world hello"
+  print "  '{s}' replace 'hello' with 'hi': '{replace_first(s, "hello", "hi")}'"
+
+  -- Highlight matches
+  print ""
+  print "Highlight matches:"
+  h1 := highlight("banana", "an")
+  print "  'banana' with 'an': {h1}"
+  h2 := highlight("abcabcabc", "abc")
+  print "  'abcabcabc' with 'abc': {h2}"
+
+  -- Overlapping matches
+  print ""
+  print "Overlapping pattern search:"
+  overlap_text := "aaaaaa"
+  pos := string_search(overlap_text, "aa")
+  print "  'aaaaaa' searching 'aa': found at {pos | join(", ")}"
+  print "  Count: {pos | count()}"

@@ -1,0 +1,97 @@
+-- Showcase 338: Longest increasing subsequence
+
+fn lis_length arr:List -> Int
+  n := arr | count()
+  if n == 0
+    return 0
+  -- dp[i] = length of LIS ending at index i
+  mut dp := []
+  for i in range(0, n)
+    dp.push(1)
+  for i in range(1, n)
+    for j in range(0, i)
+      if arr[j] < arr[i]
+        candidate := dp[j] + 1
+        if candidate > dp[i]
+          dp[i] = candidate
+  -- Find max in dp
+  mut best := 0
+  for v in dp
+    if v > best
+      best = v
+  best
+
+fn lis_sequence arr:List -> List
+  n := arr | count()
+  if n == 0
+    return []
+  mut dp := []
+  mut prev := []
+  for i in range(0, n)
+    dp.push(1)
+    prev.push(-1)
+  for i in range(1, n)
+    for j in range(0, i)
+      if arr[j] < arr[i]
+        candidate := dp[j] + 1
+        if candidate > dp[i]
+          dp[i] = candidate
+          prev[i] = j
+  -- Find index of max
+  mut best := 0
+  mut best_idx := 0
+  for i in range(0, n)
+    if dp[i] > best
+      best = dp[i]
+      best_idx = i
+  -- Reconstruct
+  mut result := []
+  mut idx := best_idx
+  while idx != -1
+    result.push(arr[idx])
+    idx = prev[idx]
+  result | reverse()
+
+fn main
+  print "Longest Increasing Subsequence:"
+  print ""
+
+  -- Example 1
+  a1 := [10, 9, 2, 5, 3, 7, 101, 18]
+  len1 := lis_length(a1)
+  seq1 := lis_sequence(a1)
+  print "Array: {a1 | join(", ")}"
+  print "LIS length: {len1}"
+  print "LIS: {seq1 | join(", ")}"
+
+  -- Example 2
+  print ""
+  a2 := [0, 1, 0, 3, 2, 3]
+  len2 := lis_length(a2)
+  seq2 := lis_sequence(a2)
+  print "Array: {a2 | join(", ")}"
+  print "LIS length: {len2}"
+  print "LIS: {seq2 | join(", ")}"
+
+  -- Example 3: already sorted
+  print ""
+  a3 := [1, 2, 3, 4, 5]
+  len3 := lis_length(a3)
+  print "Array: {a3 | join(", ")}"
+  print "LIS length: {len3}"
+
+  -- Example 4: reverse sorted
+  print ""
+  a4 := [5, 4, 3, 2, 1]
+  len4 := lis_length(a4)
+  print "Array: {a4 | join(", ")}"
+  print "LIS length: {len4}"
+
+  -- Example 5: longer sequence
+  print ""
+  a5 := [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9]
+  len5 := lis_length(a5)
+  seq5 := lis_sequence(a5)
+  print "Array: {a5 | join(", ")}"
+  print "LIS length: {len5}"
+  print "LIS: {seq5 | join(", ")}"

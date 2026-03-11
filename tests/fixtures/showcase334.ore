@@ -1,0 +1,89 @@
+-- Showcase 334: ISBN validation
+
+fn isbn10_check digits:List -> Bool
+  -- ISBN-10: sum of d[i] * (10-i) for i=0..9 must be divisible by 11
+  -- Last digit can be X (=10)
+  n := digits | count()
+  if n != 10
+    return false
+  mut total := 0
+  for i in range(0, 10)
+    total = total + digits[i] * (10 - i)
+  total % 11 == 0
+
+fn isbn13_check digits:List -> Bool
+  -- ISBN-13: alternating weights 1 and 3, sum mod 10 = 0
+  n := digits | count()
+  if n != 13
+    return false
+  mut total := 0
+  for i in range(0, 13)
+    if i % 2 == 0
+      total = total + digits[i]
+    else
+      total = total + digits[i] * 3
+  total % 10 == 0
+
+fn isbn13_check_digit first12:List -> Int
+  -- Calculate the check digit for ISBN-13
+  mut total := 0
+  for i in range(0, 12)
+    if i % 2 == 0
+      total = total + first12[i]
+    else
+      total = total + first12[i] * 3
+  rem := total % 10
+  if rem == 0 then 0 else 10 - rem
+
+fn main
+  print "ISBN Validation:"
+  print ""
+
+  -- ISBN-10 examples
+  print "ISBN-10 checks:"
+  -- 0-306-40615-2 is valid
+  valid10 := [0, 3, 0, 6, 4, 0, 6, 1, 5, 2]
+  print "  0306406152: {isbn10_check(valid10)}"
+  -- Change last digit to make invalid
+  invalid10 := [0, 3, 0, 6, 4, 0, 6, 1, 5, 3]
+  print "  0306406153: {isbn10_check(invalid10)}"
+  -- 0-201-53082-1 is valid
+  valid10b := [0, 2, 0, 1, 5, 3, 0, 8, 2, 1]
+  print "  0201530821: {isbn10_check(valid10b)}"
+
+  -- ISBN-13 examples
+  print ""
+  print "ISBN-13 checks:"
+  -- 978-0-306-40615-7 is valid
+  valid13 := [9, 7, 8, 0, 3, 0, 6, 4, 0, 6, 1, 5, 7]
+  print "  9780306406157: {isbn13_check(valid13)}"
+  -- Invalid
+  invalid13 := [9, 7, 8, 0, 3, 0, 6, 4, 0, 6, 1, 5, 8]
+  print "  9780306406158: {isbn13_check(invalid13)}"
+  -- 978-3-16-148410-0 is valid
+  valid13b := [9, 7, 8, 3, 1, 6, 1, 4, 8, 4, 1, 0, 0]
+  print "  9783161484100: {isbn13_check(valid13b)}"
+
+  -- Check digit calculation
+  print ""
+  print "ISBN-13 check digit calculation:"
+  prefix1 := [9, 7, 8, 0, 3, 0, 6, 4, 0, 6, 1, 5]
+  cd1 := isbn13_check_digit(prefix1)
+  print "  978030640615?: check digit = {cd1}"
+
+  prefix2 := [9, 7, 8, 3, 1, 6, 1, 4, 8, 4, 1, 0]
+  cd2 := isbn13_check_digit(prefix2)
+  print "  978316148410?: check digit = {cd2}"
+
+  prefix3 := [9, 7, 8, 0, 1, 3, 2, 3, 5, 0, 8, 8]
+  cd3 := isbn13_check_digit(prefix3)
+  print "  978013235088?: check digit = {cd3}"
+
+  -- Verify computed check digits
+  print ""
+  print "Verification:"
+  mut full := []
+  for d in prefix1
+    full.push(d)
+  full.push(cd1)
+  print "  978030640615{cd1} valid: {isbn13_check(full)}"

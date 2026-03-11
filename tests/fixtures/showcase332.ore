@@ -1,0 +1,98 @@
+-- Showcase 332: 0/1 Knapsack problem (dynamic programming)
+
+fn max_val a:Int b:Int -> Int
+  if a > b then a else b
+
+fn knapsack weights:List values:List capacity:Int -> Int
+  n := weights | count()
+  -- dp table: (n+1) * (capacity+1) flattened
+  -- dp[i][w] = dp[i * (capacity+1) + w]
+  cols := capacity + 1
+  rows := n + 1
+  mut dp := []
+  for i in range(0, rows * cols)
+    dp.push(0)
+  for i in range(1, rows)
+    wi := weights[i - 1]
+    vi := values[i - 1]
+    for w in range(0, cols)
+      -- Don't take item i
+      prev := dp[(i - 1) * cols + w]
+      if wi <= w
+        -- Take item i
+        take := dp[(i - 1) * cols + (w - wi)] + vi
+        dp[i * cols + w] = max_val(prev, take)
+      else
+        dp[i * cols + w] = prev
+  dp[n * cols + capacity]
+
+fn knapsack_items weights:List values:List capacity:Int -> List
+  n := weights | count()
+  cols := capacity + 1
+  rows := n + 1
+  mut dp := []
+  for i in range(0, rows * cols)
+    dp.push(0)
+  for i in range(1, rows)
+    wi := weights[i - 1]
+    vi := values[i - 1]
+    for w in range(0, cols)
+      prev := dp[(i - 1) * cols + w]
+      if wi <= w
+        take := dp[(i - 1) * cols + (w - wi)] + vi
+        dp[i * cols + w] = max_val(prev, take)
+      else
+        dp[i * cols + w] = prev
+  -- Backtrack to find items
+  mut selected := []
+  mut w := capacity
+  mut i := n
+  while i > 0 and w > 0
+    if dp[i * cols + w] != dp[(i - 1) * cols + w]
+      selected.push(i - 1)
+      w = w - weights[i - 1]
+    i = i - 1
+  selected | reverse()
+
+fn main
+  -- Example: camping gear
+  print "0/1 Knapsack Problem:"
+  print ""
+  items := ["Tent", "Sleeping bag", "Food", "Water", "Flashlight", "First aid", "Map"]
+  weights := [5, 3, 4, 2, 1, 2, 1]
+  values := [80, 60, 70, 40, 20, 50, 10]
+  capacity := 10
+
+  print "Items available (weight, value):"
+  for i in range(0, items | count())
+    nm := items[i]
+    w := weights[i]
+    v := values[i]
+    print "  {nm}: weight={w}, value={v}"
+
+  print ""
+  print "Knapsack capacity: {capacity}"
+  best := knapsack(weights, values, capacity)
+  print "Maximum value: {best}"
+
+  selected := knapsack_items(weights, values, capacity)
+  mut total_w := 0
+  print "Selected items:"
+  for idx in selected
+    nm := items[idx]
+    w := weights[idx]
+    v := values[idx]
+    total_w = total_w + w
+    print "  {nm} (w={w}, v={v})"
+  print "Total weight: {total_w}"
+
+  -- Second example: smaller knapsack
+  print ""
+  print "Smaller knapsack (capacity=5):"
+  best2 := knapsack(weights, values, 5)
+  print "Maximum value: {best2}"
+  sel2 := knapsack_items(weights, values, 5)
+  print "Selected:"
+  for idx in sel2
+    nm := items[idx]
+    print "  {nm}"

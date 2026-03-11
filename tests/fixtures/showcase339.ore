@@ -1,0 +1,115 @@
+-- Showcase 339: Number to English words
+
+fn ones_word n:Int -> Str
+  if n == 1 then "one"
+  else if n == 2 then "two"
+  else if n == 3 then "three"
+  else if n == 4 then "four"
+  else if n == 5 then "five"
+  else if n == 6 then "six"
+  else if n == 7 then "seven"
+  else if n == 8 then "eight"
+  else if n == 9 then "nine"
+  else ""
+
+fn teens_word n:Int -> Str
+  if n == 10 then "ten"
+  else if n == 11 then "eleven"
+  else if n == 12 then "twelve"
+  else if n == 13 then "thirteen"
+  else if n == 14 then "fourteen"
+  else if n == 15 then "fifteen"
+  else if n == 16 then "sixteen"
+  else if n == 17 then "seventeen"
+  else if n == 18 then "eighteen"
+  else if n == 19 then "nineteen"
+  else ""
+
+fn tens_word n:Int -> Str
+  if n == 2 then "twenty"
+  else if n == 3 then "thirty"
+  else if n == 4 then "forty"
+  else if n == 5 then "fifty"
+  else if n == 6 then "sixty"
+  else if n == 7 then "seventy"
+  else if n == 8 then "eighty"
+  else if n == 9 then "ninety"
+  else ""
+
+fn to_words n:Int -> Str
+  if n == 0
+    return "zero"
+  mut result := ""
+  mut remaining := n
+  if remaining < 0
+    result = "negative "
+    remaining = 0 - remaining
+  if remaining >= 1000000
+    millions := remaining / 1000000
+    result = result + to_words(millions) + " million"
+    remaining = remaining % 1000000
+    if remaining > 0
+      result = result + " "
+  if remaining >= 1000
+    thousands := remaining / 1000
+    result = result + to_words(thousands) + " thousand"
+    remaining = remaining % 1000
+    if remaining > 0
+      result = result + " "
+  if remaining >= 100
+    hundreds := remaining / 100
+    result = result + ones_word(hundreds) + " hundred"
+    remaining = remaining % 100
+    if remaining > 0
+      result = result + " and "
+  if remaining >= 20
+    t := remaining / 10
+    result = result + tens_word(t)
+    remaining = remaining % 10
+    if remaining > 0
+      result = result + "-"
+  if remaining >= 10
+    result = result + teens_word(remaining)
+    remaining = 0
+  if remaining >= 1
+    result = result + ones_word(remaining)
+  result
+
+fn main
+  print "Number to English Words:"
+  print ""
+
+  -- Basic numbers
+  print "Basic numbers:"
+  basics := [0, 1, 5, 10, 11, 12, 15, 19, 20, 42, 99, 100]
+  for n in basics
+    print "  {n} -> {to_words(n)}"
+
+  -- Hundreds
+  print ""
+  print "Hundreds:"
+  hundreds := [100, 101, 110, 115, 200, 305, 999]
+  for n in hundreds
+    print "  {n} -> {to_words(n)}"
+
+  -- Thousands
+  print ""
+  print "Thousands:"
+  thousands := [1000, 1001, 1234, 5000, 10000, 42195, 100000]
+  for n in thousands
+    print "  {n} -> {to_words(n)}"
+
+  -- Millions
+  print ""
+  print "Millions:"
+  millions := [1000000, 1000001, 2500000, 1234567]
+  for n in millions
+    print "  {n} -> {to_words(n)}"
+
+  -- Special cases
+  print ""
+  print "Round-trip check:"
+  test_vals := [7, 42, 256, 1024, 65536]
+  for n in test_vals
+    words := to_words(n)
+    print "  {n}: {words}"
