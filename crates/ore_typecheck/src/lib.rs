@@ -886,6 +886,7 @@ impl TypeChecker {
                 "join" => Type::Str,
                 "sort" | "reverse" => obj_ty.clone(),
                 "count_by" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),
+                "group_by" => Type::Map(Box::new(Type::Str), Box::new(obj_ty.clone())),
                 _ => Type::Any,
             },
             Type::Map(_, v) => match method {

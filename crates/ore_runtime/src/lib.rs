@@ -1200,6 +1200,29 @@ pub extern "C" fn ore_list_count_by(list: *mut OreList, func: *const u8, env: *m
     }
 }
 
+/// group_by: apply function to each element, group elements by result (as string key).
+/// Returns a new OreMap with string keys and list values.
+#[no_mangle]
+pub extern "C" fn ore_list_group_by(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreMap {
+    unsafe {
+        let src = &*list;
+        let result = ore_map_new();
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            let key_val = call_closure(func, env, val);
+            let key_str = &*(key_val as *mut OreStr);
+            let key = key_str.as_str().to_string();
+            let map = &mut *result;
+            let list_ptr = map.inner.entry(key.clone()).or_insert_with(|| {
+                ore_list_new() as i64
+            });
+            ore_list_push(*list_ptr as *mut OreList, val);
+            map.kinds.insert(key, 9); // 9 = List
+        }
+        result
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_map_new() -> *mut OreMap {
     Box::into_raw(Box::new(OreMap {
