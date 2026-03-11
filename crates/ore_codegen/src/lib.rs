@@ -4238,9 +4238,9 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
-            "index_of" => {
+            "index_of" | "find" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: None, msg: "index_of takes 1 argument".into() });
+                    return Err(CodeGenError { line: None, msg: "index_of/find takes 1 argument".into() });
                 }
                 let needle = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_index_of")?;
@@ -4332,7 +4332,7 @@ impl<'ctx> CodeGen<'ctx> {
             _ => Err(Self::unknown_method_error("Str", method, &[
                 "len", "contains", "starts_with", "ends_with", "to_upper", "to_lower",
                 "trim", "trim_start", "trim_end", "replace", "split", "join", "repeat",
-                "reverse", "chars", "char_at", "index_of", "slice", "substr",
+                "reverse", "chars", "char_at", "index_of", "find", "slice", "substr",
                 "parse_int", "parse_float", "pad_left", "pad_right",
                 "capitalize", "count", "strip_prefix", "strip_suffix", "is_empty",
                 "words", "lines",
