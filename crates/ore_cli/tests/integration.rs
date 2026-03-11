@@ -504,6 +504,13 @@ fn control_range_patterns() {
 }
 
 #[test]
+fn control_pipe_else() {
+    let out = run_ore("control/pipe_else.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["50", "99", "60", "14"]);
+}
+
+#[test]
 fn stdlib_reverse() {
     let out = run_ore("stdlib/reverse.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

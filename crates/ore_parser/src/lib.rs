@@ -744,6 +744,24 @@ impl Parser {
                             }
                         }
                     }
+                    // Check for `| else default` syntax: Option/Result fallback
+                    if let Some(next) = self.tokens.get(self.pos + 1) {
+                        if matches!(&next.token, Token::Else) {
+                            let l_bp = 1u8;
+                            if l_bp < min_bp {
+                                break;
+                            }
+                            self.advance(); // consume `|`
+                            self.advance(); // consume `else`
+                            let default_expr = self.parse_expr(2)?;
+                            lhs = Expr::MethodCall {
+                                object: Box::new(lhs),
+                                method: "unwrap_or".to_string(),
+                                args: vec![default_expr],
+                            };
+                            continue;
+                        }
+                    }
                     BinOp::Pipe
                 }
                 Token::Colon => {

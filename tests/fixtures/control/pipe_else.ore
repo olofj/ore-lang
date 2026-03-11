@@ -1,0 +1,20 @@
+fn find x:Int -> Int?
+  if x > 0
+    Some(x * 10)
+  else
+    None
+
+fn double x:Int -> Int
+  x * 2
+
+fn main
+  -- Basic pipe else
+  a := find(5) | else 0
+  print a
+  b := find(-1) | else 99
+  print b
+  -- Pipe else in chain
+  c := find(3) | else 0 | double
+  print c
+  d := find(-1) | else 7 | double
+  print d
