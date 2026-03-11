@@ -1,0 +1,73 @@
+-- Showcase 100: The Ore Language — A Celebration
+
+fn fizzbuzz n:Int -> Str
+  if n % 15 == 0
+    "FizzBuzz"
+  else if n % 3 == 0
+    "Fizz"
+  else if n % 5 == 0
+    "Buzz"
+  else
+    "{n}"
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    false
+  else
+    mut i := 2
+    mut prime := true
+    while i * i <= n
+      if n % i == 0
+        prime = false
+        break
+      i = i + 1
+    prime
+
+fn collatz n:Int -> Int
+  mut steps := 0
+  mut val := n
+  while val != 1
+    if val % 2 == 0
+      val = val / 2
+    else
+      val = val * 3 + 1
+    steps = steps + 1
+  steps
+
+fn main
+  print "=== Ore Language — Showcase 100 ==="
+  print ""
+
+  -- FizzBuzz
+  print "FizzBuzz 1-20:"
+  fb := range(1, 21).map(n => fizzbuzz(n))
+  print "  {fb.join(", ")}"
+
+  -- Primes
+  print ""
+  primes := range(2, 50).filter(n => is_prime(n))
+  print "Primes < 50: {primes.join(", ")}"
+  print "Count: {primes.len()}"
+
+  -- Collatz
+  print ""
+  print "Collatz steps:"
+  for n in [27, 42, 77, 100]
+    print "  {n} -> {collatz(n)} steps"
+
+  -- Pipeline showcase
+  print ""
+  result := range(1, 101)
+    .filter(n => is_prime(n))
+    .map(n => n * n)
+    .filter(n => n < 500)
+    .join(", ")
+  print "Prime squares < 500: {result}"
+
+  -- Summary
+  print ""
+  total_primes := range(2, 1001).filter(n => is_prime(n)).len()
+  print "Primes under 1000: {total_primes}"
+
+  print ""
+  print "100 showcases complete. Ore is ready."

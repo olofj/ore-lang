@@ -1,0 +1,71 @@
+-- Showcase 98: Comprehensive test suite using ore test
+
+test "arithmetic operations"
+  assert_eq 2 + 3, 5
+  assert_eq 10 - 3, 7
+  assert_eq 4 * 5, 20
+  assert_eq 15 / 3, 5
+  assert_eq 17 % 5, 2
+
+test "boolean logic"
+  assert true and true
+  assert not (true and false)
+  assert true or false
+  assert not false
+
+test "string operations"
+  s := "Hello, World!"
+  assert_eq s.len(), 13
+  assert_eq s.to_upper(), "HELLO, WORLD!"
+  assert_eq s.to_lower(), "hello, world!"
+  assert s.contains("World")
+  assert s.starts_with("Hello")
+  assert s.ends_with("!")
+
+test "list operations"
+  nums := [1, 2, 3, 4, 5]
+  assert_eq nums.len(), 5
+  assert_eq nums.sum(), 15
+  assert_eq nums[0], 1
+  assert_eq nums[4], 5
+  assert_eq nums.min(), 1
+  assert_eq nums.max(), 5
+
+test "list functional"
+  nums := [1, 2, 3, 4, 5]
+  doubled := nums.map(n => n * 2)
+  assert_eq doubled.join(", "), "2, 4, 6, 8, 10"
+  evens := nums.filter(n => n % 2 == 0)
+  assert_eq evens.join(", "), "2, 4"
+  prod := nums.reduce((a, b) => a * b)
+  assert_eq prod, 120
+
+test "string methods"
+  assert_eq "  hello  ".trim(), "hello"
+  assert_eq "a,b,c".split(",").len(), 3
+  assert_eq "hello".replace("l", "r"), "herro"
+  assert_eq "-".repeat(5), "-----"
+  assert_eq "hello".slice(1, 3), "el"
+  assert_eq "hello".index_of("ll"), 2
+
+test "comparisons"
+  assert 5 > 3
+  assert 3 < 5
+  assert 5 >= 5
+  assert 5 <= 5
+  assert_eq 5 == 5, true
+  assert_eq 5 != 3, true
+
+test "range and comprehension"
+  r := range(1, 6)
+  assert_eq r.len(), 5
+  assert_eq r.sum(), 15
+  squares := [n * n for n in range(1, 6)]
+  assert_eq squares.join(", "), "1, 4, 9, 16, 25"
+
+test "map operations"
+  m := {"a": "1", "b": "2", "c": "3"}
+  assert_eq m.len(), 3
+  assert_eq m["a"], "1"
+  assert m.contains("b")
+  assert not m.contains("z")

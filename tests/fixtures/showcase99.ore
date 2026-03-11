@@ -1,0 +1,84 @@
+-- Showcase 99: Building a complete mini-application
+
+-- Data types
+type Priority
+  Low
+  Medium
+  High
+
+type Task { name: Str, priority: Int, done: Bool }
+
+-- Priority helpers
+fn priority_name p:Priority -> Str
+  match p
+    Low -> "low"
+    Medium -> "medium"
+    High -> "high"
+
+fn priority_val p:Priority -> Int
+  match p
+    Low -> 1
+    Medium -> 2
+    High -> 3
+
+-- Task management
+fn make_task name:Str priority:Priority -> Task
+  Task(name: name, priority: priority_val(priority), done: false)
+
+fn complete_task t:Task -> Task
+  Task(name: t.name, priority: t.priority, done: true)
+
+fn task_str t:Task -> Str
+  status := if t.done
+    "done"
+  else
+    "todo"
+  p := if t.priority >= 3
+    "HIGH"
+  else if t.priority >= 2
+    "MED"
+  else
+    "LOW"
+  "[{status}] {t.name} ({p})"
+
+fn main
+  -- Create tasks
+  mut t1 := make_task("Write tests", High)
+  mut t2 := make_task("Fix bug", High)
+  t3 := make_task("Update docs", Medium)
+  t4 := make_task("Refactor", Low)
+  t5 := make_task("Deploy", High)
+
+  -- Complete some
+  t1 = complete_task(t1)
+
+  tasks := [t1, t2, t3, t4, t5]
+
+  -- Display all tasks
+  print "=== All Tasks ==="
+  for t in tasks
+    print "  {task_str(t)}"
+
+  -- Count by status
+  mut done_count := 0
+  mut todo_count := 0
+  for t in tasks
+    if t.done
+      done_count = done_count + 1
+    else
+      todo_count = todo_count + 1
+  print ""
+  print "done: {done_count}, todo: {todo_count}"
+
+  -- Find high priority undone tasks
+  print ""
+  print "=== Urgent ==="
+  for t in tasks
+    if not t.done and t.priority >= 3
+      print "  ! {t.name}"
+
+  -- Summary stats
+  priorities := [t1.priority, t2.priority, t3.priority, t4.priority, t5.priority]
+  print ""
+  print "avg priority: {priorities.sum() / priorities.len()}"
+  print "max priority: {priorities.max()}"

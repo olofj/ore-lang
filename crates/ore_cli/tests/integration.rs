@@ -2402,6 +2402,40 @@ fn showcase97_state_machine() {
 }
 
 #[test]
+fn showcase98_test_suite() {
+    // Run as ore test
+    let path = fixtures_dir().join("showcase98.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore test");
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("9 passed, 0 failed"));
+}
+
+#[test]
+fn showcase99_mini_application() {
+    let out = run_ore("showcase99.ore");
+    assert!(out.contains("[done] Write tests (HIGH)"));
+    assert!(out.contains("[todo] Fix bug (HIGH)"));
+    assert!(out.contains("done: 1, todo: 4"));
+    assert!(out.contains("! Fix bug"));
+    assert!(out.contains("! Deploy"));
+}
+
+#[test]
+fn showcase100_celebration() {
+    let out = run_ore("showcase100.ore");
+    assert!(out.contains("FizzBuzz 1-20:"));
+    assert!(out.contains("Primes < 50: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47"));
+    assert!(out.contains("27 -> 111 steps"));
+    assert!(out.contains("Prime squares < 500: 4, 9, 25, 49, 121, 169, 289, 361"));
+    assert!(out.contains("Primes under 1000: 168"));
+    assert!(out.contains("100 showcases complete. Ore is ready."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
