@@ -2031,7 +2031,7 @@ impl<'ctx> CodeGen<'ctx> {
                         return Ok((str_val.into(), ValKind::Str));
                     }
                     // Math functions
-                    "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "math_abs" | "math_floor" | "math_ceil" | "math_round" => {
+                    "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "floor" | "ceil" | "round" | "math_abs" | "math_floor" | "math_ceil" | "math_round" => {
                         if args.len() != 1 {
                             return Err(CodeGenError { line: None, msg: format!("{}() takes 1 argument", name) });
                         }

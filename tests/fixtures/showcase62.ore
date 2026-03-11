@@ -1,0 +1,69 @@
+-- Showcase 62: Map operations and data transformations
+
+fn main
+  -- Map creation and basic operations
+  mut config := {"host": "localhost", "port": "8080", "debug": "true"}
+  print "host: {config.get("host")}"
+  print "port: {config.get("port")}"
+  print "size: {config.len()}"
+
+  -- Update and remove
+  config.set("port", "3000")
+  print "new port: {config.get("port")}"
+  config.remove("debug")
+  print "after remove: {config.len()}"
+
+  -- Keys and values
+  scores := {"alice": 95, "bob": 87, "carol": 92}
+  keys := scores.keys()
+  print "keys count: {keys.len()}"
+
+  -- Map merge
+  defaults := {"color": "blue", "size": "medium", "shape": "circle"}
+  overrides := {"color": "red", "size": "large"}
+  merged := defaults.merge(overrides)
+  print "merged color: {merged.get("color")}"
+  print "merged size: {merged.get("size")}"
+  print "merged shape: {merged.get("shape")}"
+
+  -- Contains check
+  print "has alice: {scores.contains("alice")}"
+  print "has dave: {scores.contains("dave")}"
+
+  -- get_or with default
+  val := scores.get_or("dave", 0)
+  print "dave score: {val}"
+
+  -- Building maps from data
+  names := ["Alice", "Bob", "Carol", "Dave"]
+  mut name_lengths := {}
+  for name in names
+    name_lengths.set(name, name.len())
+  print "Alice len: {name_lengths.get("Alice")}"
+  print "Dave len: {name_lengths.get("Dave")}"
+
+  -- Counting pattern
+  text := "hello world hello ore hello world"
+  words := text.split(" ")
+  mut word_count := {}
+  for word in words
+    if word_count.contains(word)
+      word_count.set(word, word_count.get(word) + 1)
+    else
+      word_count.set(word, 1)
+  print "hello: {word_count.get("hello")}"
+  print "world: {word_count.get("world")}"
+  print "ore: {word_count.get("ore")}"
+
+  -- Grouping data
+  ages := {"Alice": 30, "Bob": 25, "Carol": 30, "Dave": 25, "Eve": 35}
+  print "Alice age: {ages.get("Alice")}"
+  print "Eve age: {ages.get("Eve")}"
+
+  -- Map as simple cache/memo
+  mut cache := {}
+  for n in range(1, 11)
+    key := str(n)
+    cache.set(key, n * n)
+  print "cached 5^2: {cache.get("5")}"
+  print "cached 10^2: {cache.get("10")}"

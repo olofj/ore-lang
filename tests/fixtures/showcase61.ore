@@ -1,0 +1,72 @@
+-- Showcase 61: Math functions and numerical computing
+
+fn main
+  -- Basic math functions
+  print "sqrt(144) = {sqrt(144.0)}"
+  print "abs(-42) = {abs(-42)}"
+  print "abs(-3.5) = {abs(-3.5)}"
+  print "floor(3.7) = {floor(3.7)}"
+  print "ceil(3.2) = {ceil(3.2)}"
+  print "round(3.5) = {round(3.5)}"
+
+  -- Powers and logarithms
+  print "pow(2, 10) = {pow(2.0, 10.0)}"
+  print "log(1) = {log(1.0)}"
+  print "exp(0) = {exp(0.0)}"
+
+  -- Constants
+  p := pi()
+  print "pi = {p}"
+
+  -- Trigonometry
+  print "sin(0) = {sin(0.0)}"
+  print "cos(0) = {cos(0.0)}"
+
+  -- List aggregate operations
+  nums := [10, 20, 30, 40, 50]
+  print "sum: {nums.sum()}"
+  print "product: {nums.product()}"
+  print "average: {nums.average()}"
+  print "min: {nums.min()}"
+  print "max: {nums.max()}"
+
+  -- List functional operations
+  data := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  print "any > 5: {data.any(n => n > 5)}"
+  print "all > 0: {data.all(n => n > 0)}"
+  print "all > 5: {data.all(n => n > 5)}"
+
+  -- Take and skip
+  print "take 3: {data.take(3).join(", ")}"
+  print "skip 7: {data.skip(7).join(", ")}"
+
+  -- Fold/reduce
+  sum := data.fold(0, (acc, n) => acc + n)
+  print "fold sum: {sum}"
+  prod := data.reduce((acc, n) => acc * n)
+  print "reduce product: {prod}"
+
+  -- Flat map
+  pairs := [1, 2, 3].flat_map(n => [n, n * 10])
+  print "flat_map: {pairs.join(", ")}"
+
+  -- Unique
+  dups := [1, 2, 2, 3, 3, 3, 4, 4, 4, 4]
+  print "unique: {dups.unique().join(", ")}"
+
+  -- Intersperse
+  abc := [1, 2, 3].intersperse(0)
+  print "intersperse: {abc.join(", ")}"
+
+  -- Sort and dedup
+  mixed := [5, 3, 1, 4, 2, 3, 5, 1]
+  sorted := mixed.sort()
+  print "sorted: {sorted.join(", ")}"
+  deduped := sorted.dedup()
+  print "dedup: {deduped.join(", ")}"
+
+  -- Index operations
+  items := [10, 20, 30, 40, 50]
+  print "index_of 30: {items.index_of(30)}"
+  print "contains 40: {items.contains(40)}"
+  print "contains 99: {items.contains(99)}"

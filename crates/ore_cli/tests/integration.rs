@@ -1868,6 +1868,46 @@ fn showcase60() {
 }
 
 #[test]
+fn showcase61() {
+    let out = run_ore("showcase61.ore");
+    assert!(out.contains("sqrt(144) = 12.0"));
+    assert!(out.contains("abs(-42) = 42"));
+    assert!(out.contains("abs(-3.5) = 3.5"));
+    assert!(out.contains("floor(3.7) = 3.0"));
+    assert!(out.contains("ceil(3.2) = 4.0"));
+    assert!(out.contains("round(3.5) = 4.0"));
+    assert!(out.contains("pow(2, 10) = 1024.0"));
+    assert!(out.contains("sum: 150"));
+    assert!(out.contains("product: 12000000"));
+    assert!(out.contains("any > 5: true"));
+    assert!(out.contains("all > 5: false"));
+    assert!(out.contains("take 3: 1, 2, 3"));
+    assert!(out.contains("fold sum: 55"));
+    assert!(out.contains("flat_map: 1, 10, 2, 20, 3, 30"));
+    assert!(out.contains("unique: 1, 2, 3, 4"));
+    assert!(out.contains("dedup: 1, 2, 3, 4, 5"));
+    assert!(out.contains("index_of 30: 2"));
+    assert!(out.contains("contains 40: true"));
+    assert!(out.contains("contains 99: false"));
+}
+
+#[test]
+fn showcase62() {
+    let out = run_ore("showcase62.ore");
+    assert!(out.contains("host: localhost"));
+    assert!(out.contains("new port: 3000"));
+    assert!(out.contains("after remove: 2"));
+    assert!(out.contains("merged color: red"));
+    assert!(out.contains("merged shape: circle"));
+    assert!(out.contains("has alice: true"));
+    assert!(out.contains("has dave: false"));
+    assert!(out.contains("dave score: 0"));
+    assert!(out.contains("hello: 3"));
+    assert!(out.contains("world: 2"));
+    assert!(out.contains("cached 5^2: 25"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
