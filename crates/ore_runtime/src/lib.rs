@@ -1086,6 +1086,22 @@ pub extern "C" fn ore_list_contains(list: *mut OreList, value: i64) -> i8 {
     }
 }
 
+/// Contains for string lists — compares by string value
+#[no_mangle]
+pub extern "C" fn ore_list_contains_str(list: *mut OreList, value: *mut OreStr) -> i8 {
+    unsafe {
+        let list = &*list;
+        let target = (*value).as_str();
+        for i in 0..list.len as usize {
+            let ptr = *list.data.add(i) as *mut OreStr;
+            if !ptr.is_null() && (*ptr).as_str() == target {
+                return 1;
+            }
+        }
+        0
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_print_str(list: *mut OreList) {
     let stdout = std::io::stdout();

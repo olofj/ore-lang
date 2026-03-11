@@ -799,6 +799,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_tap", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_map_with_index", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_each_with_index", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_contains_str", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_unique_by", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_unique_str", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_average", f64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3078,9 +3079,20 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "contains takes exactly 1 argument".into() });
                 }
-                let val = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_list_contains").unwrap();
-                let result = bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lcontains"))?;
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                let (val, _) = self.compile_expr_with_kind(&args[0], func)?;
+                let result = if matches!(elem_kind, ValKind::Str) {
+                    let rt = self.module.get_function("ore_list_contains_str").unwrap();
+                    bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lcontains"))?
+                } else {
+                    let rt = self.module.get_function("ore_list_contains").unwrap();
+                    let i64_val = if val.is_pointer_value() {
+                        bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), self.context.i64_type(), "p2i"))?.into()
+                    } else {
+                        val.into()
+                    };
+                    bld!(self.builder.build_call(rt, &[list_val.into(), i64_val], "lcontains"))?
+                };
                 let i8_val = self.call_result_to_value(result)?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
                     inkwell::IntPredicate::NE,
