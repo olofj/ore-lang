@@ -1,0 +1,62 @@
+-- Showcase 176: Text processing and formatting
+
+fn center text:Str width:Int -> Str
+  pad := width - text.len()
+  if pad <= 0
+    return text
+  left := pad / 2
+  right := pad - left
+  "{" ".repeat(left)}{text}{" ".repeat(right)}"
+
+fn box_text text:Str -> Str
+  width := text.len() + 4
+  border := "+{"-".repeat(width - 2)}+"
+  padded := "| {text} |"
+  "{border}\n{padded}\n{border}"
+
+fn word_wrap text:Str width:Int -> List[Str]
+  words := text.split(" ")
+  mut lines := []
+  mut current := ""
+  for word in words
+    if current.len() == 0
+      current = word
+    else if current.len() + 1 + word.len() <= width
+      current = "{current} {word}"
+    else
+      lines.push(current)
+      current = word
+  if current.len() > 0
+    lines.push(current)
+  lines
+
+fn main
+  -- Center text
+  print center("Hello", 20)
+  print center("Ore", 20)
+  print center("Programming", 20)
+
+  -- Box drawing
+  print ""
+  print box_text("Hello World")
+  print ""
+  print box_text("Ore Language")
+
+  -- Word wrap
+  print ""
+  text := "The quick brown fox jumps over the lazy dog and then runs away into the forest"
+  words := text.split(" ")
+  mut lines := []
+  mut current := ""
+  for word in words
+    if current.len() == 0
+      current = word
+    else if current.len() + 1 + word.len() <= 30
+      current = "{current} {word}"
+    else
+      lines.push(current)
+      current = word
+  if current.len() > 0
+    lines.push(current)
+  for line in lines
+    print "| {line}"

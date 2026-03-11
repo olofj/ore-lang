@@ -1,0 +1,44 @@
+-- Showcase 175: Bit manipulation
+
+fn count_bits n:Int -> Int
+  mut count := 0
+  mut x := n
+  while x > 0
+    count = count + x % 2
+    x = x / 2
+  count
+
+fn to_binary n:Int -> Str
+  if n == 0
+    return "0"
+  mut result := ""
+  mut x := n
+  while x > 0
+    result = "{x % 2}{result}"
+    x = x / 2
+  result
+
+fn from_binary s:Str -> Int
+  mut result := 0
+  for ch in s.chars()
+    result = result * 2
+    if ch == "1"
+      result = result + 1
+  result
+
+fn main
+  -- Binary representations
+  for n in [0, 1, 5, 10, 42, 255]
+    print "{n} -> {to_binary(n)} ({count_bits(n)} bits set)"
+
+  -- Binary to decimal
+  print ""
+  for s in ["0", "1", "101", "1010", "101010", "11111111"]
+    print "{s} -> {from_binary(s)}"
+
+  -- Powers of 2
+  print ""
+  mut p := 1
+  for i in range(0, 10)
+    print "2^{i} = {p} = {to_binary(p)}"
+    p = p * 2

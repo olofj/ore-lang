@@ -3228,6 +3228,31 @@ fn showcase174_game_of_life() {
 }
 
 #[test]
+fn showcase175_bit_manipulation() {
+    let out = run_ore("showcase175.ore");
+    assert!(out.contains("42 -> 101010 (3 bits set)"));
+    assert!(out.contains("255 -> 11111111 (8 bits set)"));
+    assert!(out.contains("101010 -> 42"));
+    assert!(out.contains("2^9 = 512"));
+}
+
+#[test]
+fn showcase176_text_formatting() {
+    let out = run_ore("showcase176.ore");
+    assert!(out.contains("Hello World"));
+    assert!(out.contains("+-------------+"));
+    assert!(out.contains("The quick brown fox"));
+}
+
+#[test]
+fn showcase177_stack_operations() {
+    let out = run_ore("showcase177.ore");
+    assert!(out.contains("5 -> 4 -> 3 -> 2 -> 1"));
+    assert!(out.contains("pushed 30, top = 30, size = 3"));
+    assert!(out.contains("popped 50, size = 4"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
