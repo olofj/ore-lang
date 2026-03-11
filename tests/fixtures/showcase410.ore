@@ -1,0 +1,202 @@
+-- Showcase 410: Lambda calculus evaluator (simple)
+
+-- Encoding lambda calculus terms as lists:
+-- Variable: [0, name_id]
+-- Abstraction: [1, param_id, body...]  (body is nested term)
+-- Application: [2, func..., arg...]    (both are nested terms)
+
+-- For simplicity, we'll use Church numerals and combinators
+-- represented as strings and evaluated symbolically
+
+-- Church numerals as functions
+fn church_to_int name:Str -> Int
+  if name == "zero" then 0
+  else if name == "one" then 1
+  else if name == "two" then 2
+  else if name == "three" then 3
+  else if name == "four" then 4
+  else if name == "five" then 5
+  else if name == "six" then 6
+  else -1
+
+-- Implement Church numerals directly as repeated application
+fn church_apply_n n:Int f_name:Str x:Int -> Int
+  -- Apply function n times to x
+  mut result := x
+  for i in range(0, n)
+    if f_name == "succ"
+      result = result + 1
+    else if f_name == "double"
+      result = result * 2
+    else if f_name == "square"
+      result = result * result
+  result
+
+-- Church encoding operations
+fn church_succ n:Int -> Int
+  n + 1
+
+fn church_plus a:Int b:Int -> Int
+  a + b
+
+fn church_mult a:Int b:Int -> Int
+  a * b
+
+fn church_pow base:Int exp_val:Int -> Int
+  mut result := 1
+  for i in range(0, exp_val)
+    result = result * base
+  result
+
+fn church_pred n:Int -> Int
+  if n == 0 then 0 else n - 1
+
+fn church_is_zero n:Int -> Bool
+  n == 0
+
+-- Boolean combinators
+fn bool_true -> Str
+  "true"
+
+fn bool_false -> Str
+  "false"
+
+fn bool_and a:Bool b:Bool -> Bool
+  a and b
+
+fn bool_or a:Bool b:Bool -> Bool
+  a or b
+
+fn bool_not a:Bool -> Bool
+  not a
+
+-- Pair encoding (using lists)
+fn pair_make a:Int b:Int -> List
+  mut p := []
+  p.push(a)
+  p.push(b)
+  p
+
+fn pair_first p:List -> Int
+  p[0]
+
+fn pair_second p:List -> Int
+  p[1]
+
+-- Demonstrate SKI combinator calculus
+-- S = \x.\y.\z. x z (y z)
+-- K = \x.\y. x
+-- I = \x. x
+
+fn ski_I x:Int -> Int
+  x
+
+fn ski_K x:Int y:Int -> Int
+  x
+
+-- S combinator: S f g x = f x (g x)
+-- We'll demonstrate with concrete functions
+fn ski_S_demo x:Int -> Int
+  -- S succ succ x = succ x (succ x) - doesn't type-check in general
+  -- Instead show: S K K x = K x (K x) = x = I x
+  ski_K(x, ski_K(x, 0))
+
+-- Y combinator / fixed-point: compute factorial
+fn fix_factorial n:Int -> Int
+  if n == 0
+    return 1
+  n * fix_factorial(n - 1)
+
+-- Demonstrate beta reduction as string transformation
+fn beta_reduce expr:Str var:Str val:Str -> Str
+  expr | replace(var, val)
+
+fn main
+  print "Lambda Calculus Evaluator:"
+  print ""
+
+  -- Church numerals
+  print "1. Church Numerals:"
+  print "  Church encoding: n = apply f n times to x"
+  for n in range(0, 6)
+    result := church_apply_n(n, "succ", 0)
+    print "  church({n}) applied to succ(0) = {result}"
+  print ""
+
+  -- Church arithmetic
+  print "2. Church Arithmetic:"
+  print "  plus(2, 3) = {church_plus(2, 3)}"
+  print "  mult(3, 4) = {church_mult(3, 4)}"
+  print "  pow(2, 5) = {church_pow(2, 5)}"
+  print "  succ(4) = {church_succ(4)}"
+  print "  pred(3) = {church_pred(3)}"
+  print "  pred(0) = {church_pred(0)}"
+  print "  is_zero(0) = {church_is_zero(0)}"
+  print "  is_zero(1) = {church_is_zero(1)}"
+  print ""
+
+  -- Higher-order application
+  print "3. Higher-Order Application:"
+  print "  apply double 3 times to 1: {church_apply_n(3, "double", 1)}"
+  print "  apply double 5 times to 1: {church_apply_n(5, "double", 1)}"
+  print "  apply succ 10 times to 0: {church_apply_n(10, "succ", 0)}"
+  print ""
+
+  -- Pairs
+  print "4. Church Pairs:"
+  p1 := pair_make(3, 7)
+  print "  pair(3, 7)"
+  print "  first = {pair_first(p1)}"
+  print "  second = {pair_second(p1)}"
+
+  -- Pair-based predecessor demonstration
+  -- pred(n) via pairs: start with (0,0), apply (a,b) -> (b, b+1) n times, take first
+  print "  Predecessor via pair shifting:"
+  for n in range(0, 6)
+    mut p := pair_make(0, 0)
+    for i in range(0, n)
+      p = pair_make(pair_second(p), pair_second(p) + 1)
+    pred_n := pair_first(p)
+    print "    pred({n}) = {pred_n}"
+  print ""
+
+  -- SKI combinators
+  print "5. SKI Combinator Calculus:"
+  print "  I(42) = {ski_I(42)}"
+  print "  K(5, 3) = {ski_K(5, 3)}"
+  print "  S K K x = I x (proof: S K K 7 = {ski_S_demo(7)})"
+  print ""
+
+  -- Beta reduction (string-based)
+  print "6. Beta Reduction (symbolic):"
+  expr1 := "(Lx. x + 1) 5"
+  reduced1 := beta_reduce("x + 1", "x", "5")
+  print "  {expr1} => {reduced1}"
+
+  expr2 := "(Ly. y * y) 3"
+  reduced2 := beta_reduce("y * y", "y", "3")
+  print "  {expr2} => {reduced2}"
+
+  expr3 := "(Lf. f (f 0)) succ"
+  reduced3 := beta_reduce("f (f 0)", "f", "succ")
+  print "  {expr3} => {reduced3}"
+  print ""
+
+  -- Fixed-point / Y combinator (factorial)
+  print "7. Fixed-Point Combinator (Factorial):"
+  print "  Y(factorial_step) computes factorial via recursion:"
+  for n in range(0, 8)
+    f := fix_factorial(n)
+    print "    {n}! = {f}"
+  print ""
+
+  -- Boolean logic
+  print "8. Church Booleans:"
+  print "  true AND true = {bool_and(true, true)}"
+  print "  true AND false = {bool_and(true, false)}"
+  print "  false OR true = {bool_or(false, true)}"
+  print "  NOT true = {bool_not(true)}"
+  print "  NOT false = {bool_not(false)}"
+
+  print ""
+  print "Lambda calculus: the foundation of functional programming."

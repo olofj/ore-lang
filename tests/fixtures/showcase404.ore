@@ -1,0 +1,173 @@
+-- Showcase 404: Sparse matrix operations
+
+-- Sparse matrix stored as three parallel lists: rows, cols, vals
+-- Plus dimensions: nrows, ncols
+
+fn sparse_create nrows:Int ncols:Int -> List
+  -- [nrows, ncols, nnz, ...rows, ...cols, ...vals]
+  -- Max 100 non-zero entries
+  mut m := [nrows, ncols, 0]
+  for i in range(0, 300)
+    m.push(0)
+  m
+
+fn sparse_nrows m:List -> Int
+  m[0]
+
+fn sparse_ncols m:List -> Int
+  m[1]
+
+fn sparse_nnz m:List -> Int
+  m[2]
+
+fn sparse_set m:List row:Int col:Int val:Int
+  nnz := m[2]
+  -- Check if entry already exists
+  for i in range(0, nnz)
+    if m[3 + i] == row and m[103 + i] == col
+      m[203 + i] = val
+      return
+  -- Add new entry
+  m[3 + nnz] = row
+  m[103 + nnz] = col
+  m[203 + nnz] = val
+  m[2] = nnz + 1
+
+fn sparse_get m:List row:Int col:Int -> Int
+  nnz := m[2]
+  for i in range(0, nnz)
+    if m[3 + i] == row and m[103 + i] == col
+      return m[203 + i]
+  0
+
+fn sparse_add a:List b:List -> List
+  nr := sparse_nrows(a)
+  nc := sparse_ncols(a)
+  mut result := sparse_create(nr, nc)
+
+  -- Add entries from a
+  nnz_a := sparse_nnz(a)
+  for i in range(0, nnz_a)
+    r := a[3 + i]
+    c := a[103 + i]
+    v := a[203 + i]
+    sparse_set(result, r, c, v)
+
+  -- Add entries from b
+  nnz_b := sparse_nnz(b)
+  for i in range(0, nnz_b)
+    r := b[3 + i]
+    c := b[103 + i]
+    v := b[203 + i]
+    old := sparse_get(result, r, c)
+    sparse_set(result, r, c, old + v)
+  result
+
+fn sparse_multiply a:List b:List -> List
+  nr_a := sparse_nrows(a)
+  nc_b := sparse_ncols(b)
+  mut result := sparse_create(nr_a, nc_b)
+
+  nnz_a := sparse_nnz(a)
+  nnz_b := sparse_nnz(b)
+
+  for i in range(0, nnz_a)
+    ra := a[3 + i]
+    ca := a[103 + i]
+    va := a[203 + i]
+    for j in range(0, nnz_b)
+      rb := b[3 + j]
+      cb := b[103 + j]
+      vb := b[203 + j]
+      if ca == rb
+        old := sparse_get(result, ra, cb)
+        sparse_set(result, ra, cb, old + va * vb)
+  result
+
+fn sparse_transpose m:List -> List
+  nr := sparse_nrows(m)
+  nc := sparse_ncols(m)
+  mut result := sparse_create(nc, nr)
+  nnz := sparse_nnz(m)
+  for i in range(0, nnz)
+    r := m[3 + i]
+    c := m[103 + i]
+    v := m[203 + i]
+    sparse_set(result, c, r, v)
+  result
+
+fn sparse_print m:List label:Str
+  print "  {label} ({sparse_nrows(m)}x{sparse_ncols(m)}, {sparse_nnz(m)} non-zeros):"
+  nr := sparse_nrows(m)
+  nc := sparse_ncols(m)
+  for r in range(0, nr)
+    mut row_str := "    "
+    for c in range(0, nc)
+      v := sparse_get(m, r, c)
+      if v < 10 and v >= 0
+        row_str = row_str + " " + str(v) + " "
+      else
+        row_str = row_str + str(v) + " "
+    print row_str
+
+fn sparse_density m:List -> Int
+  nr := sparse_nrows(m)
+  nc := sparse_ncols(m)
+  total := nr * nc
+  nnz := sparse_nnz(m)
+  -- Return percentage
+  nnz * 100 / total
+
+fn main
+  print "Sparse Matrix Operations:"
+  print ""
+
+  -- Create matrix A
+  mut a := sparse_create(4, 4)
+  sparse_set(a, 0, 0, 5)
+  sparse_set(a, 0, 2, 3)
+  sparse_set(a, 1, 1, 8)
+  sparse_set(a, 2, 0, 1)
+  sparse_set(a, 2, 3, 7)
+  sparse_set(a, 3, 3, 2)
+
+  sparse_print(a, "Matrix A")
+  print "  Density: {sparse_density(a)}%"
+  print ""
+
+  -- Create matrix B
+  mut b := sparse_create(4, 4)
+  sparse_set(b, 0, 1, 4)
+  sparse_set(b, 1, 0, 2)
+  sparse_set(b, 1, 2, 6)
+  sparse_set(b, 2, 1, 1)
+  sparse_set(b, 3, 3, 9)
+
+  sparse_print(b, "Matrix B")
+  print "  Density: {sparse_density(b)}%"
+  print ""
+
+  -- Addition
+  c := sparse_add(a, b)
+  sparse_print(c, "A + B")
+  print ""
+
+  -- Multiplication
+  d := sparse_multiply(a, b)
+  sparse_print(d, "A * B")
+  print ""
+
+  -- Transpose
+  at := sparse_transpose(a)
+  sparse_print(at, "A transposed")
+  print ""
+
+  -- Identity matrix
+  mut ident := sparse_create(4, 4)
+  for i in range(0, 4)
+    sparse_set(ident, i, i, 1)
+  ai := sparse_multiply(a, ident)
+  sparse_print(ai, "A * I (should equal A)")
+  print ""
+
+  print "Sparse matrices save memory for mostly-zero data."

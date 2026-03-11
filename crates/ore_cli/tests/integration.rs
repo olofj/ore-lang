@@ -5375,6 +5375,140 @@ fn showcase400_grand_showcase() {
 }
 
 #[test]
+fn showcase401_nqueens() {
+    let out = run_ore("showcase401.ore");
+    assert!(out.contains("N-Queens Problem (Backtracking):"));
+    assert!(out.contains("Queen positions (row->col): [1, 3, 0, 2]"));
+    assert!(out.contains("Queen positions: [0, 4, 7, 5, 2, 6, 1, 3]"));
+    assert!(out.contains("4-Queens: 2 solutions"));
+    assert!(out.contains("8-Queens: 92 solutions"));
+    assert!(out.contains("N-Queens solved via backtracking with pruning."));
+}
+
+#[test]
+fn showcase402_convex_hull() {
+    let out = run_ore("showcase402.ore");
+    assert!(out.contains("Convex Hull (Gift Wrapping):"));
+    assert!(out.contains("Convex hull (4 vertices):"));
+    assert!(out.contains("P0(0,0) -> P1(4,0) -> P2(4,4) -> P3(0,4)"));
+    assert!(out.contains("3 vertices (triangle itself)"));
+    assert!(out.contains("Convex hull (9 vertices):"));
+    assert!(out.contains("Manhattan perimeter: 32"));
+    assert!(out.contains("Gift wrapping computes convex hull in O(nh) time."));
+}
+
+#[test]
+fn showcase403_bitwise_ops() {
+    let out = run_ore("showcase403.ore");
+    assert!(out.contains("Bitwise Operations (Manual Bit Manipulation):"));
+    assert!(out.contains("42 = 00101010"));
+    assert!(out.contains("AND: 00000000 = 0"));
+    assert!(out.contains("OR:  11111111 = 255"));
+    assert!(out.contains("XOR: 11111111 = 255"));
+    assert!(out.contains("NOT 170: 01010101 = 85"));
+    assert!(out.contains("Set bit 0: 00101011 = 43"));
+    assert!(out.contains("128: 1 ones, power of 2: yes"));
+    assert!(out.contains("Encrypted: [98, 79, 70, 70, 69]"));
+    assert!(out.contains("Round-trip: OK"));
+}
+
+#[test]
+fn showcase404_sparse_matrix() {
+    let out = run_ore("showcase404.ore");
+    assert!(out.contains("Sparse Matrix Operations:"));
+    assert!(out.contains("Matrix A (4x4, 6 non-zeros):"));
+    assert!(out.contains("Density: 37%"));
+    assert!(out.contains("A + B (4x4, 10 non-zeros):"));
+    assert!(out.contains("A * B (4x4, 6 non-zeros):"));
+    assert!(out.contains("A transposed (4x4, 6 non-zeros):"));
+    assert!(out.contains("A * I (should equal A)"));
+    assert!(out.contains("Sparse matrices save memory for mostly-zero data."));
+}
+
+#[test]
+fn showcase405_assembler_vm() {
+    let out = run_ore("showcase405.ore");
+    assert!(out.contains("Simple Assembler/VM:"));
+    assert!(out.contains("LOAD R0, 5"));
+    assert!(out.contains("Output: [8]"));
+    assert!(out.contains("Output: [5, 4, 3, 2, 1]"));
+    assert!(out.contains("Output: [42]"));
+    assert!(out.contains("Output: [15]"));
+    assert!(out.contains("Output: [89]"));
+    assert!(out.contains("Simple VM executes bytecode with registers and branching."));
+}
+
+#[test]
+fn showcase406_fractions() {
+    let out = run_ore("showcase406.ore");
+    assert!(out.contains("Fraction Arithmetic:"));
+    assert!(out.contains("2/6 simplified = 1/3"));
+    assert!(out.contains("1/2 + 1/3 = 5/6"));
+    assert!(out.contains("3/4 - 1/2 = 1/4"));
+    assert!(out.contains("1/2 * 3/4 = 3/8"));
+    assert!(out.contains("3/4 / 1/3 = 9/4"));
+    assert!(out.contains("H(10) = 7381/2520"));
+    assert!(out.contains("5/7 = 1/2 + 1/5 + 1/70"));
+    assert!(out.contains("C6 = 239/169"));
+    assert!(out.contains("Exact fraction arithmetic avoids floating-point errors."));
+}
+
+#[test]
+fn showcase407_tsp() {
+    let out = run_ore("showcase407.ore");
+    assert!(out.contains("Traveling Salesman Problem:"));
+    assert!(out.contains("Tour: 0 -> 1 -> 3 -> 4 -> 2 -> 0 (cost: 85)"));
+    assert!(out.contains("Optimal cost: 85"));
+    assert!(out.contains("Best nearest-neighbor: 85"));
+    assert!(out.contains("Optimal tour: 0 -> 1 -> 2 -> 3 -> 0 (cost: 78)"));
+    assert!(out.contains("TSP: brute force guarantees optimality, NN is a fast heuristic."));
+}
+
+#[test]
+fn showcase408_btree() {
+    let out = run_ore("showcase408.ore");
+    assert!(out.contains("B-Tree Concepts (2-3 Tree):"));
+    assert!(out.contains("In-order traversal: [3, 5, 8, 10, 15, 20, 25, 30]"));
+    assert!(out.contains("Search(5): FOUND"));
+    assert!(out.contains("Search(10): FOUND"));
+    assert!(out.contains("Search(7): NOT FOUND"));
+    assert!(out.contains("Search(30): FOUND"));
+    assert!(out.contains("Total nodes: 7"));
+    assert!(out.contains("B-trees keep data sorted and balanced for efficient search."));
+}
+
+#[test]
+fn showcase409_image_processing() {
+    let out = run_ore("showcase409.ore");
+    assert!(out.contains("Image Processing (Kernel Convolution):"));
+    assert!(out.contains("Original image (7x7):"));
+    assert!(out.contains("Box blur (3x3 average) (5x5):"));
+    assert!(out.contains("Sharpen kernel (5x5):"));
+    assert!(out.contains("Combined edge magnitude (5x5):"));
+    assert!(out.contains("Edge threshold (>100) (5x5):"));
+    assert!(out.contains("Min: 0, Max: 200, Sum: 1600"));
+    assert!(out.contains("Convolution kernels transform images for blur, sharpen, and edge detection."));
+}
+
+#[test]
+fn showcase410_lambda_calculus() {
+    let out = run_ore("showcase410.ore");
+    assert!(out.contains("Lambda Calculus Evaluator:"));
+    assert!(out.contains("church(3) applied to succ(0) = 3"));
+    assert!(out.contains("plus(2, 3) = 5"));
+    assert!(out.contains("mult(3, 4) = 12"));
+    assert!(out.contains("pow(2, 5) = 32"));
+    assert!(out.contains("apply double 3 times to 1: 8"));
+    assert!(out.contains("pred(3) = 2"));
+    assert!(out.contains("I(42) = 42"));
+    assert!(out.contains("S K K x = I x (proof: S K K 7 = 7)"));
+    assert!(out.contains("(Lx. x + 1) 5 => 5 + 1"));
+    assert!(out.contains("5! = 120"));
+    assert!(out.contains("true AND false = false"));
+    assert!(out.contains("Lambda calculus: the foundation of functional programming."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

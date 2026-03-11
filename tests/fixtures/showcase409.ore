@@ -1,0 +1,164 @@
+-- Showcase 409: Image processing (kernel convolution on number grid)
+
+-- Image stored as flat list, row-major
+
+fn img_get img:List w:Int r:Int c:Int -> Int
+  img[r * w + c]
+
+fn img_set img:List w:Int r:Int c:Int val:Int
+  img[r * w + c] = val
+
+fn img_print img:List h:Int w:Int label:Str
+  print "  {label} ({h}x{w}):"
+  for r in range(0, h)
+    mut row := "    "
+    for c in range(0, w)
+      v := img_get(img, w, r, c)
+      if v >= 0 and v < 10
+        row = row + "   " + str(v)
+      else if v >= 10 and v < 100
+        row = row + "  " + str(v)
+      else if v >= 100 and v < 1000
+        row = row + " " + str(v)
+      else if v < 0 and v > -10
+        row = row + "  " + str(v)
+      else if v < -9 and v > -100
+        row = row + " " + str(v)
+      else
+        row = row + str(v)
+    print row
+
+fn convolve img:List h:Int w:Int kernel:List -> List
+  -- 3x3 kernel convolution (no padding, output is (h-2)x(w-2))
+  oh := h - 2
+  ow := w - 2
+  mut result := []
+  for i in range(0, oh * ow)
+    result.push(0)
+
+  for r in range(0, oh)
+    for c in range(0, ow)
+      mut sum := 0
+      for kr in range(0, 3)
+        for kc in range(0, 3)
+          pv := img_get(img, w, r + kr, c + kc)
+          kv := kernel[kr * 3 + kc]
+          sum = sum + pv * kv
+      img_set(result, ow, r, c, sum)
+  result
+
+fn apply_threshold img:List size:Int thresh:Int -> List
+  mut result := []
+  for i in range(0, size)
+    if img[i] > thresh
+      result.push(1)
+    else
+      result.push(0)
+  result
+
+fn img_abs img:List size:Int -> List
+  mut result := []
+  for i in range(0, size)
+    v := img[i]
+    if v < 0
+      result.push(0 - v)
+    else
+      result.push(v)
+  result
+
+fn img_add a:List b:List size:Int -> List
+  mut result := []
+  for i in range(0, size)
+    result.push(a[i] + b[i])
+  result
+
+fn img_stats img:List size:Int -> List
+  -- Returns [min, max, sum]
+  mut mn := img[0]
+  mut mx := img[0]
+  mut total := 0
+  for i in range(0, size)
+    v := img[i]
+    if v < mn
+      mn = v
+    if v > mx
+      mx = v
+    total = total + v
+  mut result := []
+  result.push(mn)
+  result.push(mx)
+  result.push(total)
+  result
+
+fn main
+  print "Image Processing (Kernel Convolution):"
+  print ""
+
+  -- Create a 7x7 test image
+  h := 7
+  w := 7
+  mut img := [0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 0, 0, 0, 50, 100, 100, 100, 50, 0, 0, 50, 100, 200, 100, 50, 0, 0, 50, 100, 100, 100, 50, 0, 0, 0, 50, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  img_print(img, h, w, "Original image")
+  print ""
+
+  -- Identity kernel (should produce same image)
+  identity := [0, 0, 0, 0, 1, 0, 0, 0, 0]
+  id_result := convolve(img, h, w, identity)
+  img_print(id_result, h - 2, w - 2, "Identity kernel")
+  print ""
+
+  -- Box blur (averaging) kernel - multiply by 1 each, we'll divide later
+  -- Using integer approximation: each cell = sum of 9 neighbors / 9
+  box_kernel := [1, 1, 1, 1, 1, 1, 1, 1, 1]
+  blur_raw := convolve(img, h, w, box_kernel)
+  -- Divide by 9
+  blur_size := (h - 2) * (w - 2)
+  mut blur := []
+  for i in range(0, blur_size)
+    blur.push(blur_raw[i] / 9)
+  img_print(blur, h - 2, w - 2, "Box blur (3x3 average)")
+  print ""
+
+  -- Sharpen kernel
+  sharpen := [0, -1, 0, -1, 5, -1, 0, -1, 0]
+  sharp := convolve(img, h, w, sharpen)
+  img_print(sharp, h - 2, w - 2, "Sharpen kernel")
+  print ""
+
+  -- Edge detection (Sobel-like horizontal)
+  sobel_h := [-1, 0, 1, -2, 0, 2, -1, 0, 1]
+  edges_h := convolve(img, h, w, sobel_h)
+  edges_h_abs := img_abs(edges_h, (h - 2) * (w - 2))
+  img_print(edges_h_abs, h - 2, w - 2, "Horizontal edges (abs)")
+  print ""
+
+  -- Edge detection (Sobel-like vertical)
+  sobel_v := [-1, -2, -1, 0, 0, 0, 1, 2, 1]
+  edges_v := convolve(img, h, w, sobel_v)
+  edges_v_abs := img_abs(edges_v, (h - 2) * (w - 2))
+  img_print(edges_v_abs, h - 2, w - 2, "Vertical edges (abs)")
+  print ""
+
+  -- Combined edge magnitude (|h| + |v|)
+  edge_size := (h - 2) * (w - 2)
+  combined := img_add(edges_h_abs, edges_v_abs, edge_size)
+  img_print(combined, h - 2, w - 2, "Combined edge magnitude")
+  print ""
+
+  -- Threshold the edges
+  binary := apply_threshold(combined, edge_size, 100)
+  img_print(binary, h - 2, w - 2, "Edge threshold (>100)")
+  print ""
+
+  -- Statistics
+  stats := img_stats(img, h * w)
+  print "Original image stats:"
+  print "  Min: {stats[0]}, Max: {stats[1]}, Sum: {stats[2]}"
+
+  blur_stats := img_stats(blur, blur_size)
+  print "Blurred image stats:"
+  print "  Min: {blur_stats[0]}, Max: {blur_stats[1]}, Sum: {blur_stats[2]}"
+
+  print ""
+  print "Convolution kernels transform images for blur, sharpen, and edge detection."

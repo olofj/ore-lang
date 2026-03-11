@@ -1,0 +1,240 @@
+-- Showcase 408: B-tree concepts (order-3 / 2-3 tree simulation)
+
+-- Simulating a sorted multi-way search tree using parallel arrays
+-- Each node has: keys (up to 2), children (up to 3), key_count, is_leaf
+-- Layout per node (8 slots): [key0, key1, child0, child1, child2, key_count, is_leaf, parent]
+-- Max 31 nodes, -1 = null
+
+fn node_offset i:Int -> Int
+  i * 8
+
+fn bt_create -> List
+  mut tree := [0, -1]
+  -- tree[0] = node_count, tree[1] = root index
+  -- Followed by node data
+  for i in range(0, 248)
+    tree.push(-1)
+  tree
+
+fn bt_node_count t:List -> Int
+  t[0]
+
+fn bt_root t:List -> Int
+  t[1]
+
+fn bt_alloc t:List -> Int
+  idx := t[0]
+  t[0] = idx + 1
+  off := 2 + node_offset(idx)
+  t[off] = -1
+  t[off + 1] = -1
+  t[off + 2] = -1
+  t[off + 3] = -1
+  t[off + 4] = -1
+  t[off + 5] = 0
+  t[off + 6] = 1
+  t[off + 7] = -1
+  idx
+
+fn bt_key t:List node:Int i:Int -> Int
+  t[2 + node_offset(node) + i]
+
+fn bt_set_key t:List node:Int i:Int val:Int
+  t[2 + node_offset(node) + i] = val
+
+fn bt_child t:List node:Int i:Int -> Int
+  t[2 + node_offset(node) + 2 + i]
+
+fn bt_set_child t:List node:Int i:Int child:Int
+  t[2 + node_offset(node) + 2 + i] = child
+
+fn bt_key_count t:List node:Int -> Int
+  t[2 + node_offset(node) + 5]
+
+fn bt_set_key_count t:List node:Int c:Int
+  t[2 + node_offset(node) + 5] = c
+
+fn bt_is_leaf t:List node:Int -> Bool
+  t[2 + node_offset(node) + 6] == 1
+
+fn bt_set_leaf t:List node:Int v:Int
+  t[2 + node_offset(node) + 6] = v
+
+fn bt_search t:List node:Int key:Int -> Bool
+  if node == -1
+    return false
+  kc := bt_key_count(t, node)
+  for i in range(0, kc)
+    if key == bt_key(t, node, i)
+      return true
+  if bt_is_leaf(t, node)
+    return false
+  -- Find correct child
+  if key < bt_key(t, node, 0)
+    return bt_search(t, bt_child(t, node, 0), key)
+  if kc == 1 or key < bt_key(t, node, 1)
+    return bt_search(t, bt_child(t, node, 1), key)
+  bt_search(t, bt_child(t, node, 2), key)
+
+fn bt_insert_simple t:List node:Int key:Int
+  -- Insert key into a non-full leaf node
+  kc := bt_key_count(t, node)
+  if kc == 0
+    bt_set_key(t, node, 0, key)
+    bt_set_key_count(t, node, 1)
+  else if kc == 1
+    if key < bt_key(t, node, 0)
+      bt_set_key(t, node, 1, bt_key(t, node, 0))
+      bt_set_key(t, node, 0, key)
+    else
+      bt_set_key(t, node, 1, key)
+    bt_set_key_count(t, node, 2)
+
+fn bt_insert t:List key:Int
+  root := bt_root(t)
+  if root == -1
+    -- Empty tree
+    r := bt_alloc(t)
+    bt_set_key(t, r, 0, key)
+    bt_set_key_count(t, r, 1)
+    t[1] = r
+    return
+
+  -- Simple insertion for demonstration (no splitting for simplicity)
+  -- Walk down to the correct leaf
+  mut curr := root
+  loop
+    if bt_is_leaf(t, curr)
+      kc := bt_key_count(t, curr)
+      if kc < 2
+        bt_insert_simple(t, curr, key)
+        return
+      else
+        -- Node is full, split it
+        -- For a proper B-tree we'd split and propagate up
+        -- Simplified: create new root with median
+        k0 := bt_key(t, curr, 0)
+        k1 := bt_key(t, curr, 1)
+        mut vals := [k0, k1, key]
+        -- Sort the three values
+        if vals[0] > vals[1]
+          tmp := vals[0]
+          vals[0] = vals[1]
+          vals[1] = tmp
+        if vals[1] > vals[2]
+          tmp := vals[1]
+          vals[1] = vals[2]
+          vals[2] = tmp
+        if vals[0] > vals[1]
+          tmp := vals[0]
+          vals[0] = vals[1]
+          vals[1] = tmp
+
+        -- Create two leaf children
+        left := bt_alloc(t)
+        bt_set_key(t, left, 0, vals[0])
+        bt_set_key_count(t, left, 1)
+
+        right := bt_alloc(t)
+        bt_set_key(t, right, 0, vals[2])
+        bt_set_key_count(t, right, 1)
+
+        -- Make current node the parent with median
+        bt_set_key(t, curr, 0, vals[1])
+        bt_set_key(t, curr, 1, -1)
+        bt_set_key_count(t, curr, 1)
+        bt_set_leaf(t, curr, 0)
+        bt_set_child(t, curr, 0, left)
+        bt_set_child(t, curr, 1, right)
+        return
+      break
+    else
+      kc := bt_key_count(t, curr)
+      if key < bt_key(t, curr, 0)
+        curr = bt_child(t, curr, 0)
+      else if kc == 1 or key < bt_key(t, curr, 1)
+        curr = bt_child(t, curr, 1)
+      else
+        curr = bt_child(t, curr, 2)
+
+fn bt_inorder t:List node:Int result:List
+  if node == -1
+    return
+  kc := bt_key_count(t, node)
+  if bt_is_leaf(t, node)
+    for i in range(0, kc)
+      result.push(bt_key(t, node, i))
+  else
+    bt_inorder(t, bt_child(t, node, 0), result)
+    result.push(bt_key(t, node, 0))
+    bt_inorder(t, bt_child(t, node, 1), result)
+    if kc > 1
+      result.push(bt_key(t, node, 1))
+      bt_inorder(t, bt_child(t, node, 2), result)
+
+fn bt_print t:List node:Int depth:Int
+  if node == -1
+    return
+  mut indent := ""
+  for i in range(0, depth)
+    indent = indent + "  "
+  kc := bt_key_count(t, node)
+  leaf_str := if bt_is_leaf(t, node) then "leaf" else "internal"
+  mut keys_str := ""
+  for i in range(0, kc)
+    if i > 0
+      keys_str = keys_str + ", "
+    keys_str = keys_str + str(bt_key(t, node, i))
+  print "  {indent}[{keys_str}] ({leaf_str})"
+  if not bt_is_leaf(t, node)
+    for i in range(0, kc + 1)
+      bt_print(t, bt_child(t, node, i), depth + 1)
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn main
+  print "B-Tree Concepts (2-3 Tree):"
+  print ""
+
+  mut tree := bt_create()
+
+  -- Insert values
+  values := [10, 20, 5, 15, 25, 30, 3, 8]
+  print "Inserting values: 10, 20, 5, 15, 25, 30, 3, 8"
+  for i in range(0, values | count())
+    bt_insert(tree, values[i])
+    print ""
+    print "After inserting {values[i]}:"
+    bt_print(tree, bt_root(tree), 0)
+
+  print ""
+
+  -- In-order traversal
+  mut sorted := []
+  bt_inorder(tree, bt_root(tree), sorted)
+  print "In-order traversal: {list_to_str(sorted)}"
+  print ""
+
+  -- Search
+  print "Search results:"
+  search_vals := [5, 10, 15, 20, 25, 7, 12, 30]
+  for i in range(0, search_vals | count())
+    v := search_vals[i]
+    found := bt_search(tree, bt_root(tree), v)
+    label := if found then "FOUND" else "NOT FOUND"
+    print "  Search({v}): {label}"
+
+  print ""
+  print "Tree statistics:"
+  print "  Total nodes: {bt_node_count(tree)}"
+  print "  Root index: {bt_root(tree)}"
+
+  print ""
+  print "B-trees keep data sorted and balanced for efficient search."

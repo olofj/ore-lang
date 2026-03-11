@@ -1,0 +1,200 @@
+-- Showcase 403: Bitwise operations (manual bit manipulation)
+
+-- Since Ore doesn't have native bitwise operators, we simulate them
+
+fn to_binary n:Int bits:Int -> Str
+  mut result := ""
+  mut val := n
+  for i in range(0, bits)
+    result = str(val % 2) + result
+    val = val / 2
+  result
+
+fn get_bit n:Int pos:Int -> Int
+  mut val := n
+  for i in range(0, pos)
+    val = val / 2
+  val % 2
+
+fn set_bit n:Int pos:Int -> Int
+  mut power := 1
+  for i in range(0, pos)
+    power = power * 2
+  if get_bit(n, pos) == 0
+    n + power
+  else
+    n
+
+fn clear_bit n:Int pos:Int -> Int
+  mut power := 1
+  for i in range(0, pos)
+    power = power * 2
+  if get_bit(n, pos) == 1
+    n - power
+  else
+    n
+
+fn toggle_bit n:Int pos:Int -> Int
+  if get_bit(n, pos) == 1
+    clear_bit(n, pos)
+  else
+    set_bit(n, pos)
+
+fn bit_and a:Int b:Int bits:Int -> Int
+  mut result := 0
+  mut power := 1
+  for i in range(0, bits)
+    ba := get_bit(a, i)
+    bb := get_bit(b, i)
+    if ba == 1 and bb == 1
+      result = result + power
+    power = power * 2
+  result
+
+fn bit_or a:Int b:Int bits:Int -> Int
+  mut result := 0
+  mut power := 1
+  for i in range(0, bits)
+    ba := get_bit(a, i)
+    bb := get_bit(b, i)
+    if ba == 1 or bb == 1
+      result = result + power
+    power = power * 2
+  result
+
+fn bit_xor a:Int b:Int bits:Int -> Int
+  mut result := 0
+  mut power := 1
+  for i in range(0, bits)
+    ba := get_bit(a, i)
+    bb := get_bit(b, i)
+    if ba != bb
+      result = result + power
+    power = power * 2
+  result
+
+fn bit_not n:Int bits:Int -> Int
+  mut result := 0
+  mut power := 1
+  for i in range(0, bits)
+    if get_bit(n, i) == 0
+      result = result + power
+    power = power * 2
+  result
+
+fn shift_left n:Int amount:Int -> Int
+  mut result := n
+  for i in range(0, amount)
+    result = result * 2
+  result
+
+fn shift_right n:Int amount:Int -> Int
+  mut result := n
+  for i in range(0, amount)
+    result = result / 2
+  result
+
+fn count_ones n:Int -> Int
+  mut val := n
+  mut cnt := 0
+  loop
+    if val == 0
+      break
+    if val % 2 == 1
+      cnt = cnt + 1
+    val = val / 2
+  cnt
+
+fn is_power_of_two n:Int -> Bool
+  n > 0 and count_ones(n) == 1
+
+fn main
+  print "Bitwise Operations (Manual Bit Manipulation):"
+  print ""
+
+  -- Binary representation
+  print "Binary representations (8-bit):"
+  nums := [0, 1, 42, 127, 255]
+  for i in range(0, nums | count())
+    n := nums[i]
+    print "  {n} = {to_binary(n, 8)}"
+  print ""
+
+  -- Bit operations
+  a := 170
+  b := 85
+  print "Bit operations on {a} ({to_binary(a, 8)}) and {b} ({to_binary(b, 8)}):"
+  and_r := bit_and(a, b, 8)
+  or_r := bit_or(a, b, 8)
+  xor_r := bit_xor(a, b, 8)
+  not_a := bit_not(a, 8)
+  print "  AND: {to_binary(and_r, 8)} = {and_r}"
+  print "  OR:  {to_binary(or_r, 8)} = {or_r}"
+  print "  XOR: {to_binary(xor_r, 8)} = {xor_r}"
+  print "  NOT {a}: {to_binary(not_a, 8)} = {not_a}"
+  print ""
+
+  -- Bit manipulation
+  print "Bit manipulation on 42 ({to_binary(42, 8)}):"
+  print "  Get bit 0: {get_bit(42, 0)}"
+  print "  Get bit 1: {get_bit(42, 1)}"
+  print "  Get bit 3: {get_bit(42, 3)}"
+  print "  Get bit 5: {get_bit(42, 5)}"
+  s := set_bit(42, 0)
+  print "  Set bit 0: {to_binary(s, 8)} = {s}"
+  c := clear_bit(42, 1)
+  print "  Clear bit 1: {to_binary(c, 8)} = {c}"
+  t := toggle_bit(42, 0)
+  print "  Toggle bit 0: {to_binary(t, 8)} = {t}"
+  print ""
+
+  -- Shifts
+  print "Shift operations:"
+  v := 13
+  print "  {v} ({to_binary(v, 8)}) << 2 = {shift_left(v, 2)} ({to_binary(shift_left(v, 2), 8)})"
+  print "  {v} ({to_binary(v, 8)}) >> 1 = {shift_right(v, 1)} ({to_binary(shift_right(v, 1), 8)})"
+  print ""
+
+  -- Popcount and power of two
+  print "Bit counting:"
+  test_vals := [0, 1, 7, 42, 128, 255]
+  for i in range(0, test_vals | count())
+    n := test_vals[i]
+    ones := count_ones(n)
+    p2 := is_power_of_two(n)
+    p2_str := if p2 then "yes" else "no"
+    print "  {n}: {ones} ones, power of 2: {p2_str}"
+
+  print ""
+
+  -- XOR cipher
+  print "XOR cipher demonstration:"
+  key := 42
+  message := [72, 101, 108, 108, 111]
+  mut encrypted := []
+  for i in range(0, message | count())
+    encrypted.push(bit_xor(message[i], key, 8))
+  mut enc_str := ""
+  for i in range(0, encrypted | count())
+    if i > 0
+      enc_str = enc_str + ", "
+    enc_str = enc_str + str(encrypted[i])
+  print "  Message:   [72, 101, 108, 108, 111]"
+  print "  Key:       {key}"
+  print "  Encrypted: [{enc_str}]"
+
+  -- Decrypt
+  mut decrypted := []
+  for i in range(0, encrypted | count())
+    decrypted.push(bit_xor(encrypted[i], key, 8))
+  mut dec_str := ""
+  for i in range(0, decrypted | count())
+    if i > 0
+      dec_str = dec_str + ", "
+    dec_str = dec_str + str(decrypted[i])
+  print "  Decrypted: [{dec_str}]"
+  match_ok := dec_str == "72, 101, 108, 108, 111"
+  print "  Round-trip: {if match_ok then "OK" else "FAIL"}"
+
+  print ""
+  print "Manual bitwise ops simulate hardware-level operations."

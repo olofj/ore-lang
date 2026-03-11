@@ -1,0 +1,122 @@
+-- Showcase 401: N-Queens problem (backtracking)
+
+-- Solve the N-Queens problem using backtracking
+-- queens[i] = column position of queen in row i
+
+fn abs_val n:Int -> Int
+  if n < 0 then 0 - n else n
+
+fn is_safe queens:List row:Int col:Int -> Bool
+  for i in range(0, row)
+    qc := queens[i]
+    if qc == col
+      return false
+    if abs_val(qc - col) == row - i
+      return false
+  true
+
+fn solve_queens n:Int queens:List row:Int solutions:List -> Int
+  if row == n
+    -- Found a solution, record it
+    mut sol := []
+    for i in range(0, n)
+      sol.push(queens[i])
+    solutions.push(sol | count())
+    return 1
+  mut count := 0
+  for col in range(0, n)
+    if is_safe(queens, row, col)
+      queens[row] = col
+      count = count + solve_queens(n, queens, row + 1, solutions)
+      queens[row] = -1
+  count
+
+fn print_board n:Int queens:List
+  for row in range(0, n)
+    mut line := "  "
+    for col in range(0, n)
+      if queens[col] == row
+        line = line + "Q "
+      else
+        line = line + ". "
+    print line
+
+fn solve_first_queen n:Int -> List
+  mut queens := []
+  for i in range(0, n)
+    queens.push(-1)
+  solve_first_helper(n, queens, 0)
+  queens
+
+fn solve_first_helper n:Int queens:List row:Int -> Bool
+  if row == n
+    return true
+  for col in range(0, n)
+    if is_safe(queens, row, col)
+      queens[row] = col
+      if solve_first_helper(n, queens, row + 1)
+        return true
+      queens[row] = -1
+  false
+
+fn count_solutions n:Int -> Int
+  mut queens := []
+  for i in range(0, n)
+    queens.push(-1)
+  mut dummy := []
+  solve_queens(n, queens, 0, dummy)
+
+fn main
+  print "N-Queens Problem (Backtracking):"
+  print ""
+
+  -- Show solution for 4-Queens
+  print "4-Queens first solution:"
+  q4 := solve_first_queen(4)
+  mut q4_str := ""
+  for i in range(0, 4)
+    if i > 0
+      q4_str = q4_str + ", "
+    q4_str = q4_str + str(q4[i])
+  print "  Queen positions (row->col): [{q4_str}]"
+  print ""
+  print "  Board:"
+  for row in range(0, 4)
+    mut line := "    "
+    for col in range(0, 4)
+      if q4[row] == col
+        line = line + "Q "
+      else
+        line = line + ". "
+    print line
+  print ""
+
+  -- Show solution for 8-Queens
+  print "8-Queens first solution:"
+  q8 := solve_first_queen(8)
+  mut q8_str := ""
+  for i in range(0, 8)
+    if i > 0
+      q8_str = q8_str + ", "
+    q8_str = q8_str + str(q8[i])
+  print "  Queen positions: [{q8_str}]"
+  print ""
+  print "  Board:"
+  for row in range(0, 8)
+    mut line := "    "
+    for col in range(0, 8)
+      if q8[row] == col
+        line = line + "Q "
+      else
+        line = line + ". "
+    print line
+  print ""
+
+  -- Count solutions for small N
+  print "Solution counts:"
+  for n in range(1, 9)
+    c := count_solutions(n)
+    print "  {n}-Queens: {c} solutions"
+
+  print ""
+  print "N-Queens solved via backtracking with pruning."

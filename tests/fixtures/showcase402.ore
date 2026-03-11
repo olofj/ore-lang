@@ -1,0 +1,117 @@
+-- Showcase 402: Convex hull (Gift wrapping algorithm)
+
+-- Points stored as flat list: [x0, y0, x1, y1, ...]
+
+fn cross_product ox:Int oy:Int ax:Int ay:Int bx:Int by:Int -> Int
+  (ax - ox) * (by - oy) - (ay - oy) * (bx - ox)
+
+fn gift_wrap px:List py:List n:Int -> List
+  -- Returns list of indices forming the convex hull
+  -- Find leftmost point
+  mut leftmost := 0
+  for i in range(1, n)
+    if px[i] < px[leftmost]
+      leftmost = i
+    else if px[i] == px[leftmost] and py[i] < py[leftmost]
+      leftmost = i
+
+  mut hull := []
+  mut current := leftmost
+  loop
+    hull.push(current)
+    mut candidate := 0
+    if candidate == current
+      candidate = 1
+    for i in range(0, n)
+      if i == current
+        continue
+      cp := cross_product(px[current], py[current], px[candidate], py[candidate], px[i], py[i])
+      if cp < 0
+        candidate = i
+      else if cp == 0
+        -- Collinear: pick the farthest point
+        dx1 := px[candidate] - px[current]
+        dy1 := py[candidate] - py[current]
+        dx2 := px[i] - px[current]
+        dy2 := py[i] - py[current]
+        d1 := dx1 * dx1 + dy1 * dy1
+        d2 := dx2 * dx2 + dy2 * dy2
+        if d2 > d1
+          candidate = i
+    current = candidate
+    if current == leftmost
+      break
+  hull
+
+fn main
+  print "Convex Hull (Gift Wrapping):"
+  print ""
+
+  -- Test case 1: Simple square with interior point
+  mut px := [0, 4, 4, 0, 2]
+  mut py := [0, 0, 4, 4, 2]
+  n := 5
+  print "Points:"
+  for i in range(0, n)
+    print "  P{i} = ({px[i]}, {py[i]})"
+
+  hull := gift_wrap(px, py, n)
+  hcount := hull | count()
+  print ""
+  print "Convex hull ({hcount} vertices):"
+  mut hull_str := ""
+  for i in range(0, hcount)
+    idx := hull[i]
+    if i > 0
+      hull_str = hull_str + " -> "
+    hull_str = hull_str + "P{idx}({px[idx]},{py[idx]})"
+  print "  {hull_str}"
+  print ""
+
+  -- Test case 2: Triangle
+  mut px2 := [1, 5, 3]
+  mut py2 := [1, 1, 7]
+  n2 := 3
+  print "Triangle points:"
+  for i in range(0, n2)
+    print "  P{i} = ({px2[i]}, {py2[i]})"
+  hull2 := gift_wrap(px2, py2, n2)
+  h2count := hull2 | count()
+  print "Convex hull: {h2count} vertices (triangle itself)"
+  print ""
+
+  -- Test case 3: More complex set
+  mut px3 := [0, 1, 3, 5, 7, 7, 6, 3, 1, 2, 4, 5]
+  mut py3 := [3, 0, 0, 1, 3, 6, 8, 9, 7, 4, 4, 6]
+  n3 := 12
+  print "Complex point set ({n3} points):"
+  for i in range(0, n3)
+    print "  P{i} = ({px3[i]}, {py3[i]})"
+
+  hull3 := gift_wrap(px3, py3, n3)
+  h3count := hull3 | count()
+  print ""
+  print "Convex hull ({h3count} vertices):"
+  mut hull3_str := ""
+  for i in range(0, h3count)
+    idx := hull3[i]
+    if i > 0
+      hull3_str = hull3_str + " -> "
+    hull3_str = hull3_str + "({px3[idx]},{py3[idx]})"
+  print "  {hull3_str}"
+
+  -- Compute hull perimeter (Manhattan approximation)
+  mut perimeter := 0
+  for i in range(0, h3count)
+    cur := hull3[i]
+    nxt_idx := (i + 1) % h3count
+    nxt := hull3[nxt_idx]
+    dx := px3[nxt] - px3[cur]
+    dy := py3[nxt] - py3[cur]
+    adx := if dx < 0 then 0 - dx else dx
+    ady := if dy < 0 then 0 - dy else dy
+    perimeter = perimeter + adx + ady
+  print "  Manhattan perimeter: {perimeter}"
+
+  print ""
+  print "Gift wrapping computes convex hull in O(nh) time."

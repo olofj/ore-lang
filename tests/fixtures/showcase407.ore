@@ -1,0 +1,175 @@
+-- Showcase 407: Traveling salesman (brute force + nearest neighbor)
+
+fn abs_val n:Int -> Int
+  if n < 0 then 0 - n else n
+
+-- Distance matrix stored as flat list (row-major)
+fn dist_get mat:List n:Int i:Int j:Int -> Int
+  mat[i * n + j]
+
+-- Generate all permutations of [1..n-1] and find minimum tour
+-- (City 0 is always start/end)
+fn tsp_brute n:Int mat:List -> List
+  -- For small n, enumerate all permutations of cities 1..n-1
+  -- Returns [best_cost, c0, c1, ..., c(n-1)]
+  mut cities := []
+  for i in range(1, n)
+    cities.push(i)
+  mut best_cost := 999999
+  mut best_tour := []
+  for i in range(0, n)
+    best_tour.push(0)
+
+  -- Generate permutations using Heap's algorithm iteratively
+  k := n - 1
+  mut c_arr := []
+  for i in range(0, k)
+    c_arr.push(0)
+
+  -- Evaluate initial permutation
+  mut cost := dist_get(mat, n, 0, cities[0])
+  for i in range(0, k - 1)
+    cost = cost + dist_get(mat, n, cities[i], cities[i + 1])
+  cost = cost + dist_get(mat, n, cities[k - 1], 0)
+  if cost < best_cost
+    best_cost = cost
+    best_tour[0] = 0
+    for i in range(0, k)
+      best_tour[i + 1] = cities[i]
+
+  mut i := 0
+  loop
+    if i >= k
+      break
+    if c_arr[i] < i
+      if i % 2 == 0
+        tmp := cities[0]
+        cities[0] = cities[i]
+        cities[i] = tmp
+      else
+        tmp := cities[c_arr[i]]
+        cities[c_arr[i]] = cities[i]
+        cities[i] = tmp
+
+      -- Evaluate this permutation
+      cost = dist_get(mat, n, 0, cities[0])
+      for j in range(0, k - 1)
+        cost = cost + dist_get(mat, n, cities[j], cities[j + 1])
+      cost = cost + dist_get(mat, n, cities[k - 1], 0)
+      if cost < best_cost
+        best_cost = cost
+        best_tour[0] = 0
+        for j in range(0, k)
+          best_tour[j + 1] = cities[j]
+
+      c_arr[i] = c_arr[i] + 1
+      i = 0
+    else
+      c_arr[i] = 0
+      i = i + 1
+
+  mut result := []
+  result.push(best_cost)
+  for i in range(0, n)
+    result.push(best_tour[i])
+  result
+
+fn tsp_nearest_neighbor n:Int mat:List start:Int -> List
+  mut visited := []
+  for i in range(0, n)
+    visited.push(0)
+  mut tour := []
+  mut total := 0
+  mut current := start
+  tour.push(current)
+  visited[current] = 1
+
+  for step in range(1, n)
+    mut best := -1
+    mut best_d := 999999
+    for j in range(0, n)
+      if visited[j] == 0
+        d := dist_get(mat, n, current, j)
+        if d < best_d
+          best_d = d
+          best = j
+    tour.push(best)
+    visited[best] = 1
+    total = total + best_d
+    current = best
+
+  -- Return to start
+  total = total + dist_get(mat, n, current, start)
+
+  mut result := []
+  result.push(total)
+  for i in range(0, n)
+    result.push(tour[i])
+  result
+
+fn tour_to_str result:List n:Int -> Str
+  cost := result[0]
+  mut s := ""
+  for i in range(0, n)
+    if i > 0
+      s = s + " -> "
+    s = s + str(result[i + 1])
+  s = s + " -> " + str(result[1])
+  s + " (cost: " + str(cost) + ")"
+
+fn main
+  print "Traveling Salesman Problem:"
+  print ""
+
+  -- 5 cities with distances
+  n := 5
+  -- Distance matrix (symmetric)
+  mat := [0, 10, 15, 20, 25, 10, 0, 35, 25, 30, 15, 35, 0, 30, 20, 20, 25, 30, 0, 15, 25, 30, 20, 15, 0]
+
+  print "Distance matrix ({n} cities):"
+  for i in range(0, n)
+    mut row := "  "
+    for j in range(0, n)
+      d := dist_get(mat, n, i, j)
+      if d < 10
+        row = row + " " + str(d) + " "
+      else
+        row = row + str(d) + " "
+    print row
+  print ""
+
+  -- Brute force (optimal)
+  print "Brute force (optimal):"
+  bf := tsp_brute(n, mat)
+  print "  Tour: {tour_to_str(bf, n)}"
+  print ""
+
+  -- Nearest neighbor from each starting city
+  print "Nearest neighbor heuristic:"
+  for s in range(0, n)
+    nn := tsp_nearest_neighbor(n, mat, s)
+    print "  Start {s}: {tour_to_str(nn, n)}"
+  print ""
+
+  -- Compare
+  optimal := bf[0]
+  print "Optimal cost: {optimal}"
+  mut best_nn := 999999
+  for s in range(0, n)
+    nn := tsp_nearest_neighbor(n, mat, s)
+    if nn[0] < best_nn
+      best_nn = nn[0]
+  print "Best nearest-neighbor: {best_nn}"
+  print ""
+
+  -- Second instance: 4 cities
+  print "Second instance (4 cities):"
+  n2 := 4
+  mat2 := [0, 12, 29, 22, 12, 0, 19, 13, 29, 19, 0, 25, 22, 13, 25, 0]
+  bf2 := tsp_brute(n2, mat2)
+  print "  Optimal tour: {tour_to_str(bf2, n2)}"
+  nn2 := tsp_nearest_neighbor(n2, mat2, 0)
+  print "  NN tour:      {tour_to_str(nn2, n2)}"
+
+  print ""
+  print "TSP: brute force guarantees optimality, NN is a fast heuristic."
