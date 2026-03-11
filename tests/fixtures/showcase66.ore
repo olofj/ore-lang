@@ -1,0 +1,61 @@
+-- Showcase 66: Pipeline-first programming style
+
+fn main
+  -- Classic pipeline: transform data step by step
+  result := range(1, 21)
+    .filter(n => n % 2 == 0)
+    .map(n => n * n)
+    .take(5)
+    .join(", ")
+  print "First 5 even squares: {result}"
+
+  -- Pipeline with reduce
+  total := range(1, 101)
+    .filter(n => n % 3 == 0 or n % 5 == 0)
+    .sum()
+  print "Sum of multiples of 3 or 5 below 100: {total}"
+
+  -- String pipeline
+  sentence := "  The Quick Brown Fox  "
+  processed := sentence
+    .trim()
+    .to_lower()
+    .replace("fox", "cat")
+  print "Processed: '{processed}'"
+
+  -- Data analysis pipeline
+  scores := [85, 92, 78, 95, 88, 72, 90, 83, 96, 70]
+
+  -- Grade distribution
+  a_count := scores.filter(s => s >= 90).len()
+  b_count := scores.filter(s => s >= 80 and s < 90).len()
+  c_count := scores.filter(s => s >= 70 and s < 80).len()
+  print "A: {a_count}, B: {b_count}, C: {c_count}"
+
+  -- Top 3 scores
+  top3 := scores.sort().reverse().take(3).join(", ")
+  print "Top 3: {top3}"
+
+  -- Pipeline with any/all
+  has_perfect := scores.any(s => s == 100)
+  all_passing := scores.all(s => s >= 60)
+  print "Has perfect: {has_perfect}"
+  print "All passing: {all_passing}"
+
+  -- Nested pipeline
+  data := range(1, 11)
+    .map(n => n * n)
+    .filter(n => n > 20)
+    .map(n => str(n))
+    .join(" > ")
+  print "Pipeline: {data}"
+
+  -- Flat map pipeline
+  words := ["hello", "world"]
+  chars := words.flat_map(w => w.chars())
+  print "All chars: {chars.join("")}"
+
+  -- Chained operations
+  range(1, 6)
+    .map(n => range(1, n + 1).sum())
+    .each(s => print "  cumulative: {s}")

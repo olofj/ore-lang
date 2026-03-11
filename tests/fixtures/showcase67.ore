@@ -1,0 +1,55 @@
+-- Showcase 67: Option type and safe operations
+
+fn safe_divide a:Int b:Int -> Option[Int]
+  if b == 0
+    None
+  else
+    Some(a / b)
+
+fn safe_head xs:List[Int] -> Option[Int]
+  if xs.len() == 0
+    None
+  else
+    Some(xs[0])
+
+fn main
+  -- Basic Option usage
+  result := safe_divide(10, 3)
+  match result
+    Some v -> print "10 / 3 = {v}"
+    None -> print "division failed"
+
+  result2 := safe_divide(10, 0)
+  match result2
+    Some v -> print "10 / 0 = {v}"
+    None -> print "Cannot divide by zero"
+
+  -- unwrap_or
+  a := safe_divide(10, 2).unwrap_or(0)
+  b := safe_divide(10, 0).unwrap_or(-1)
+  print "a = {a}, b = {b}"
+
+  -- Safe head
+  empty := []
+  full := [42, 7, 13]
+  h1 := safe_head(empty).unwrap_or(0)
+  h2 := safe_head(full).unwrap_or(0)
+  print "head of empty: {h1}"
+  print "head of full: {h2}"
+
+  -- Option with map
+  doubled := safe_divide(20, 4).map(v => v * 2).unwrap_or(0)
+  print "doubled: {doubled}"
+
+  -- Chained safe operations
+  val := safe_divide(100, 5)
+    .map(v => v + 10)
+    .unwrap_or(0)
+  print "chained: {val}"
+
+  -- Pipeline with | else
+  x := safe_divide(10, 0) | else 99
+  print "with else: {x}"
+
+  y := safe_divide(10, 2) | else 99
+  print "with value: {y}"

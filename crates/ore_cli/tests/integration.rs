@@ -1956,6 +1956,32 @@ fn showcase65() {
 }
 
 #[test]
+fn showcase66() {
+    let out = run_ore("showcase66.ore");
+    assert!(out.contains("First 5 even squares: 4, 16, 36, 64, 100"));
+    assert!(out.contains("Sum of multiples of 3 or 5 below 100: 2418"));
+    assert!(out.contains("Processed: 'the quick brown cat'"));
+    assert!(out.contains("A: 4, B: 3, C: 3"));
+    assert!(out.contains("Top 3: 96, 95, 92"));
+    assert!(out.contains("Pipeline: 25 > 36 > 49 > 64 > 81 > 100"));
+    assert!(out.contains("All chars: helloworld"));
+}
+
+#[test]
+fn showcase67() {
+    let out = run_ore("showcase67.ore");
+    assert!(out.contains("10 / 3 = 3"));
+    assert!(out.contains("Cannot divide by zero"));
+    assert!(out.contains("a = 5, b = -1"));
+    assert!(out.contains("head of empty: 0"));
+    assert!(out.contains("head of full: 42"));
+    assert!(out.contains("doubled: 10"));
+    assert!(out.contains("chained: 30"));
+    assert!(out.contains("with else: 99"));
+    assert!(out.contains("with value: 5"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
