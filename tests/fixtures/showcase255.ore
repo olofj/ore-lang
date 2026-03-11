@@ -13,16 +13,13 @@ fn main
   print ""
   words := ["apple", "banana", "avocado", "cherry", "apricot", "blueberry", "coconut"]
   mut groups := {}
-  -- Initialize with first of each letter, then append
   for word in words
     letter := word.substr(0, 1)
-    if not groups.contains(letter)
+    if groups.contains(letter)
+      existing := groups[letter]
+      groups.set(letter, "{existing}, {word}")
+    else
       groups.set(letter, word)
-  -- Now append remaining words
-  for word in ["avocado", "apricot", "blueberry", "coconut"]
-    letter := word.substr(0, 1)
-    existing := groups[letter]
-    groups.set(letter, "{existing}, {word}")
   
   print "Grouped by first letter:"
   for key in groups.keys()

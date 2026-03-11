@@ -951,6 +951,83 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_parse_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
     }
 
+    /// Pre-scan a block for map.set() calls to infer value kinds before compilation.
+    /// This allows map[key] indexing to work correctly even when .set() appears in
+    /// a later branch (e.g., else block) that is compiled after the indexing code.
+    fn prescan_map_value_kinds(&mut self, block: &Block) {
+        for spanned in &block.stmts {
+            self.prescan_stmt_for_map_kinds(&spanned.stmt);
+        }
+    }
+
+    fn prescan_stmt_for_map_kinds(&mut self, stmt: &Stmt) {
+        match stmt {
+            Stmt::Expr(expr) | Stmt::Let { value: expr, .. } | Stmt::Assign { value: expr, .. } => {
+                self.prescan_expr_for_map_kinds(expr);
+            }
+            Stmt::While { body, .. } | Stmt::Loop { body, .. } => {
+                self.prescan_map_value_kinds(body);
+            }
+            Stmt::ForIn { body, .. } | Stmt::ForEach { body, .. } | Stmt::ForEachKV { body, .. } => {
+                self.prescan_map_value_kinds(body);
+            }
+            _ => {}
+        }
+    }
+
+    fn prescan_expr_for_map_kinds(&mut self, expr: &Expr) {
+        match expr {
+            Expr::MethodCall { object, method, args } => {
+                if method == "set" && args.len() == 2 {
+                    if let Expr::Ident(map_name) = object.as_ref() {
+                        let val_kind = self.infer_expr_kind(&args[1]);
+                        if val_kind != ValKind::Int || !self.map_value_kinds.contains_key(map_name) {
+                            self.map_value_kinds.insert(map_name.clone(), val_kind);
+                        }
+                    }
+                }
+                self.prescan_expr_for_map_kinds(object);
+                for arg in args { self.prescan_expr_for_map_kinds(arg); }
+            }
+            Expr::IfElse { cond, then_block, else_block } => {
+                self.prescan_expr_for_map_kinds(cond);
+                self.prescan_map_value_kinds(then_block);
+                if let Some(eb) = else_block {
+                    self.prescan_map_value_kinds(eb);
+                }
+            }
+            Expr::Match { arms, .. } => {
+                for arm in arms {
+                    self.prescan_expr_for_map_kinds(&arm.body);
+                }
+            }
+            Expr::BlockExpr(block) => {
+                self.prescan_map_value_kinds(block);
+            }
+            _ => {}
+        }
+    }
+
+    /// Lightweight kind inference from expression syntax (no compilation needed).
+    fn infer_expr_kind(&self, expr: &Expr) -> ValKind {
+        match expr {
+            Expr::StringLit(_) | Expr::StringInterp(_) => ValKind::Str,
+            Expr::IntLit(_) => ValKind::Int,
+            Expr::FloatLit(_) => ValKind::Float,
+            Expr::BoolLit(_) => ValKind::Bool,
+            Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List,
+            Expr::MapLit(_) => ValKind::Map,
+            Expr::Ident(name) => {
+                if let Some((_, _, kind, _)) = self.variables.get(name) {
+                    kind.clone()
+                } else {
+                    ValKind::Int
+                }
+            }
+            _ => ValKind::Int,
+        }
+    }
+
     fn type_expr_to_kind(&self, ty: &TypeExpr) -> ValKind {
         match ty {
             TypeExpr::Named(n) => match n.as_str() {
@@ -1100,6 +1177,9 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
         }
+
+        // Pre-scan function body for map.set() calls to track value kinds
+        self.prescan_map_value_kinds(&fndef.body);
 
         let last_val = self.compile_block_stmts(&fndef.body, func)?;
 
@@ -2308,6 +2388,12 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             Expr::IfElse { cond, then_block, else_block } => {
+                // Pre-scan both branches for map.set() calls so map value kinds
+                // are available regardless of compilation order
+                self.prescan_map_value_kinds(then_block);
+                if let Some(eb) = else_block {
+                    self.prescan_map_value_kinds(eb);
+                }
                 self.compile_if_else_with_kind(cond, then_block, else_block.as_ref(), func)
             }
             Expr::ColonMatch { cond, then_expr, else_expr } => {
