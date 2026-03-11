@@ -564,6 +564,7 @@ fn map_runtime_functions(
     map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
     map_fn!("ore_list_reduce1", ore_runtime::ore_list_reduce1);
     map_fn!("ore_list_pop", ore_runtime::ore_list_pop);
+    map_fn!("ore_list_clear", ore_runtime::ore_list_clear);
     map_fn!("ore_list_insert", ore_runtime::ore_list_insert);
     map_fn!("ore_list_remove_at", ore_runtime::ore_list_remove_at);
     map_fn!("ore_list_scan", ore_runtime::ore_list_scan);

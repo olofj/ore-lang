@@ -949,6 +949,14 @@ pub extern "C" fn ore_list_pop(list: *mut OreList) -> i64 {
     }
 }
 
+/// Clear all elements from a list (sets length to 0 but keeps capacity).
+#[no_mangle]
+pub extern "C" fn ore_list_clear(list: *mut OreList) {
+    unsafe {
+        (*list).len = 0;
+    }
+}
+
 /// Insert a value at the given index, shifting elements right.
 #[no_mangle]
 pub extern "C" fn ore_list_insert(list: *mut OreList, index: i64, value: i64) {

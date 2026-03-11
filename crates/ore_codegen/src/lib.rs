@@ -664,6 +664,7 @@ impl<'ctx> CodeGen<'ctx> {
         // ore_list_push(ptr, i64)
         self.module.add_function("ore_list_push", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_pop", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_clear", void_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_insert", void_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_remove_at", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_get(ptr, i64) -> i64
@@ -2881,6 +2882,11 @@ impl<'ctx> CodeGen<'ctx> {
                     "is_empty"
                 ))?;
                 Ok((is_zero.into(), ValKind::Bool))
+            }
+            "clear" => {
+                let rt = self.module.get_function("ore_list_clear").unwrap();
+                bld!(self.builder.build_call(rt, &[list_val.into()], ""))?;
+                Ok((list_val, ValKind::List))
             }
             "push" => {
                 if args.len() != 1 {
