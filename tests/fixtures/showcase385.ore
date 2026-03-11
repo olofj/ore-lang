@@ -1,0 +1,196 @@
+-- Showcase 385: Huffman coding tree traversal
+
+-- Use integer codes for characters to avoid list element type issues
+-- Map a-z=0-25, space=26, other printable chars mapped by position in text
+
+fn char_code ch:Str -> Int
+  if ch == "a" then 0
+  else if ch == "b" then 1
+  else if ch == "c" then 2
+  else if ch == "d" then 3
+  else if ch == "e" then 4
+  else if ch == "f" then 5
+  else if ch == "g" then 6
+  else if ch == "h" then 7
+  else if ch == "i" then 8
+  else if ch == "j" then 9
+  else if ch == "k" then 10
+  else if ch == "l" then 11
+  else if ch == "m" then 12
+  else if ch == "n" then 13
+  else if ch == "o" then 14
+  else if ch == "p" then 15
+  else if ch == "q" then 16
+  else if ch == "r" then 17
+  else if ch == "s" then 18
+  else if ch == "t" then 19
+  else if ch == "u" then 20
+  else if ch == "v" then 21
+  else if ch == "w" then 22
+  else if ch == "x" then 23
+  else if ch == "y" then 24
+  else if ch == "z" then 25
+  else 26
+
+fn code_name c:Int -> Str
+  names := "a b c d e f g h i j k l m n o p q r s t u v w x y z SP"
+  parts := names | split(" ")
+  parts[c]
+
+fn huffman_encode text:Str
+  letters := text | chars()
+  tlen := letters | count()
+
+  -- Count frequencies for each char code (27 possible)
+  mut freq := []
+  for i in range(0, 27)
+    freq.push(0)
+  for i in range(0, tlen)
+    c := char_code(letters[i])
+    freq[c] = freq[c] + 1
+
+  -- Collect non-zero entries
+  mut chars_used := []
+  mut char_freq := []
+  for i in range(0, 27)
+    if freq[i] > 0
+      chars_used.push(i)
+      char_freq.push(freq[i])
+
+  n := chars_used | count()
+  if n <= 1
+    if n == 1
+      print "  '{code_name(chars_used[0])}': 0 (freq: {char_freq[0]})"
+    return
+
+  -- Build Huffman tree: parallel arrays
+  mut nf := []
+  mut nl := []
+  mut nr := []
+  mut nc := []
+
+  for i in range(0, n)
+    nf.push(char_freq[i])
+    nl.push(-1)
+    nr.push(-1)
+    nc.push(chars_used[i])
+
+  mut avail := []
+  for i in range(0, n)
+    avail.push(1)
+
+  mut merges := 0
+  loop
+    if merges >= n - 1
+      break
+    mut m1 := -1
+    mut m2 := -1
+    nlen := nf | count()
+    for i in range(0, nlen)
+      if avail[i] == 1
+        if m1 == -1 or nf[i] < nf[m1]
+          m2 = m1
+          m1 = i
+        else if m2 == -1 or nf[i] < nf[m2]
+          m2 = i
+    if m1 == -1 or m2 == -1
+      break
+    nf.push(nf[m1] + nf[m2])
+    nl.push(m1)
+    nr.push(m2)
+    nc.push(-1)
+    avail.push(1)
+    avail[m1] = 0
+    avail[m2] = 0
+    merges = merges + 1
+
+  total_nodes := nf | count()
+  root := total_nodes - 1
+
+  -- Generate codes via DFS using integer stack
+  -- Encode code as string built during traversal
+  mut stk_nd := []
+  mut stk_cd := []
+  stk_nd.push(root)
+  stk_cd.push("")
+
+  mut res_idx := []
+  mut res_code := []
+  mut res_freq := []
+
+  loop
+    slen := stk_nd | count()
+    if slen == 0
+      break
+    nd := stk_nd[slen - 1]
+    cd := stk_cd[slen - 1]
+    stk_nd.pop()
+    stk_cd.pop()
+
+    if nl[nd] == -1 and nr[nd] == -1
+      res_idx.push(nc[nd])
+      res_code.push(cd)
+      res_freq.push(nf[nd])
+    else
+      if nr[nd] != -1
+        stk_nd.push(nr[nd])
+        stk_cd.push(cd + "1")
+      if nl[nd] != -1
+        stk_nd.push(nl[nd])
+        stk_cd.push(cd + "0")
+
+  -- Sort by frequency descending
+  rlen := res_idx | count()
+  for i in range(0, rlen)
+    for j in range(0, rlen - 1 - i)
+      if res_freq[j] < res_freq[j + 1]
+        tf := res_freq[j]
+        res_freq[j] = res_freq[j + 1]
+        res_freq[j + 1] = tf
+        ti := res_idx[j]
+        res_idx[j] = res_idx[j + 1]
+        res_idx[j + 1] = ti
+        tp := res_code[j]
+        res_code[j] = res_code[j + 1]
+        res_code[j + 1] = tp
+
+  for i in range(0, rlen)
+    nm := code_name(res_idx[i])
+    print "  '{nm}': {res_code[i]} (freq: {res_freq[i]})"
+
+  -- Stats
+  mut orig := 0
+  mut comp := 0
+  for i in range(0, rlen)
+    clen := res_code[i] | len()
+    orig = orig + res_freq[i] * 8
+    comp = comp + res_freq[i] * clen
+  print "  Original: {orig} bits, Compressed: {comp} bits"
+  ratio := comp * 100 / orig
+  print "  Compression ratio: {ratio}%"
+
+fn main
+  print "Huffman Coding Tree Traversal:"
+  print ""
+
+  text1 := "hello world"
+  print "Text: \"{text1}\""
+  huffman_encode(text1)
+  print ""
+
+  text2 := "abracadabra"
+  print "Text: \"{text2}\""
+  huffman_encode(text2)
+  print ""
+
+  text3 := "mississippi"
+  print "Text: \"{text3}\""
+  huffman_encode(text3)
+  print ""
+
+  text4 := "the quick brown fox"
+  print "Text: \"{text4}\""
+  huffman_encode(text4)
+  print ""
+
+  print "Huffman coding: optimal prefix-free encoding based on symbol frequencies."

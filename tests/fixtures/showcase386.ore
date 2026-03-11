@@ -1,0 +1,129 @@
+-- Showcase 386: Bloom filter simulation
+
+fn hash1 val:Int size:Int -> Int
+  h := ((val * 2654435761) % 2147483648)
+  if h < 0
+    (h + 2147483648) % size
+  else
+    h % size
+
+fn hash2 val:Int size:Int -> Int
+  h := ((val * 40503) % 2147483648)
+  if h < 0
+    (h + 2147483648) % size
+  else
+    h % size
+
+fn hash3 val:Int size:Int -> Int
+  h := ((val * 1103515245 + 12345) % 2147483648)
+  if h < 0
+    (h + 2147483648) % size
+  else
+    h % size
+
+fn bloom_create size:Int -> List
+  mut bits := []
+  for i in range(0, size)
+    bits.push(0)
+  bits
+
+fn bloom_add bits:List size:Int val:Int -> List
+  h1 := hash1(val, size)
+  h2 := hash2(val, size)
+  h3 := hash3(val, size)
+  bits[h1] = 1
+  bits[h2] = 1
+  bits[h3] = 1
+  bits
+
+fn bloom_check bits:List size:Int val:Int -> Bool
+  h1 := hash1(val, size)
+  h2 := hash2(val, size)
+  h3 := hash3(val, size)
+  bits[h1] == 1 and bits[h2] == 1 and bits[h3] == 1
+
+fn count_ones bits:List -> Int
+  n := bits | count()
+  mut cnt := 0
+  for i in range(0, n)
+    if bits[i] == 1
+      cnt = cnt + 1
+  cnt
+
+fn main
+  print "Bloom Filter Simulation:"
+  print ""
+
+  size := 64
+  print "Filter size: {size} bits, 3 hash functions"
+  print ""
+
+  -- Add some elements
+  mut bits := bloom_create(size)
+  elements := [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+
+  print "Adding elements:"
+  for e in elements
+    bits = bloom_add(bits, size, e)
+    ones := count_ones(bits)
+    print "  Added {e}, bits set: {ones}/{size}"
+
+  print ""
+
+  -- Check membership
+  print "Membership checks (inserted elements):"
+  for e in elements
+    found := bloom_check(bits, size, e)
+    label := if found then "probably yes" else "definitely no"
+    print "  {e}: {label}"
+
+  print ""
+
+  -- Check non-members (some may be false positives)
+  print "Membership checks (non-inserted elements):"
+  mut false_positives := 0
+  check_vals := [11, 21, 31, 41, 51, 61, 71, 81, 91, 101, 15, 25, 35, 45, 55]
+  for v in check_vals
+    found := bloom_check(bits, size, v)
+    label := if found then "FALSE POSITIVE" else "correctly absent"
+    if found
+      false_positives = false_positives + 1
+    print "  {v}: {label}"
+
+  clen := check_vals | count()
+  print ""
+  print "False positive rate: {false_positives}/{clen}"
+
+  print ""
+
+  -- Demonstrate filter fill behavior
+  print "Fill rate analysis:"
+  mut bits2 := bloom_create(size)
+  checkpoints := [5, 10, 15, 20, 25, 30]
+  mut elem := 1000
+  for cp in checkpoints
+    loop
+      elem_count := count_ones(bits2)
+      if elem >= 1000 + cp
+        break
+      bits2 = bloom_add(bits2, size, elem)
+      elem = elem + 1
+    ones := count_ones(bits2)
+    fill_pct := ones * 100 / size
+    print "  After {cp} insertions: {ones}/{size} bits set ({fill_pct}%)"
+
+  print ""
+
+  -- Demonstrate that bloom filters never have false negatives
+  print "False negative check (should be zero):"
+  mut fn_count := 0
+  mut bits3 := bloom_create(size)
+  for i in range(0, 50)
+    bits3 = bloom_add(bits3, size, i * 3)
+  for i in range(0, 50)
+    if not bloom_check(bits3, size, i * 3)
+      fn_count = fn_count + 1
+  print "  Inserted 50 elements, false negatives: {fn_count}"
+
+  print ""
+  print "Bloom filters: space-efficient probabilistic set membership."

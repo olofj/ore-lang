@@ -1,0 +1,181 @@
+-- Showcase 390: Disjoint set / Union-Find
+
+-- Union-Find with path compression and union by rank
+-- parent[i] = parent of node i (initially i)
+-- rank[i] = rank of node i (initially 0)
+
+fn uf_create n:Int -> List
+  -- Returns flat list: [n, parent0..parentN-1, rank0..rankN-1]
+  mut result := []
+  result.push(n)
+  for i in range(0, n)
+    result.push(i)
+  for i in range(0, n)
+    result.push(0)
+  result
+
+fn uf_find uf:List x:Int -> Int
+  -- Find with path compression
+  n := uf[0]
+  mut curr := x
+  -- Find root
+  loop
+    parent := uf[1 + curr]
+    if parent == curr
+      break
+    curr = parent
+  root := curr
+  -- Path compression
+  mut curr2 := x
+  loop
+    parent := uf[1 + curr2]
+    if parent == curr2
+      break
+    uf[1 + curr2] = root
+    curr2 = parent
+  root
+
+fn uf_union uf:List x:Int y:Int -> Bool
+  -- Union by rank, returns true if they were in different sets
+  n := uf[0]
+  rx := uf_find(uf, x)
+  ry := uf_find(uf, y)
+  if rx == ry
+    return false
+  rank_x := uf[1 + n + rx]
+  rank_y := uf[1 + n + ry]
+  if rank_x < rank_y
+    uf[1 + rx] = ry
+  else if rank_x > rank_y
+    uf[1 + ry] = rx
+  else
+    uf[1 + ry] = rx
+    uf[1 + n + rx] = rank_x + 1
+  true
+
+fn uf_connected uf:List x:Int y:Int -> Bool
+  uf_find(uf, x) == uf_find(uf, y)
+
+fn count_components uf:List -> Int
+  n := uf[0]
+  mut cnt := 0
+  for i in range(0, n)
+    if uf_find(uf, i) == i
+      cnt = cnt + 1
+  cnt
+
+fn list_components uf:List
+  n := uf[0]
+  -- Group elements by their root
+  for i in range(0, n)
+    if uf_find(uf, i) == i
+      -- This is a root, list all elements in this component
+      mut members := ""
+      mut mem_count := 0
+      for j in range(0, n)
+        if uf_find(uf, j) == i
+          if mem_count > 0
+            members = members + ", "
+          members = members + str(j)
+          mem_count = mem_count + 1
+      print "    Root {i}: [{members}] (size: {mem_count})"
+
+fn main
+  print "Disjoint Set / Union-Find:"
+  print ""
+
+  -- Basic example: 10 nodes
+  n := 10
+  print "Creating {n} singleton sets:"
+  mut uf := uf_create(n)
+  print "  Components: {count_components(uf)}"
+  print ""
+
+  -- Perform unions
+  print "Performing unions:"
+  unions := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 2, 4, 6, 8, 0]
+  mut i := 0
+  loop
+    if i >= 16
+      break
+    x := unions[i]
+    y := unions[i + 1]
+    merged := uf_union(uf, x, y)
+    label := if merged then "merged" else "already same set"
+    print "  Union({x}, {y}): {label}"
+    print "    Components: {count_components(uf)}"
+    i = i + 2
+
+  print ""
+
+  -- Show components
+  print "Final components:"
+  list_components(uf)
+  print ""
+
+  -- Connectivity queries
+  print "Connectivity queries:"
+  queries := [0, 5, 1, 3, 2, 9, 7, 8, 0, 9]
+  mut qi := 0
+  loop
+    if qi >= 10
+      break
+    x := queries[qi]
+    y := queries[qi + 1]
+    conn := uf_connected(uf, x, y)
+    label := if conn then "YES" else "NO"
+    print "  Connected({x}, {y}): {label}"
+    qi = qi + 2
+
+  print ""
+
+  -- Kruskal's MST example using Union-Find
+  print "Application: Kruskal's MST"
+  print "Graph edges (weight, u, v):"
+  -- Edges sorted by weight: [w, u, v, w, u, v, ...]
+  edges := [1, 0, 1, 2, 1, 2, 3, 0, 3, 4, 2, 3, 5, 3, 4, 6, 1, 3, 7, 0, 4]
+  n_edges := 7
+  n_verts := 5
+
+  mut mst_uf := uf_create(n_verts)
+  mut mst_weight := 0
+  mut mst_edges := 0
+
+  print "Processing edges:"
+  for ei in range(0, n_edges)
+    w := edges[ei * 3]
+    u := edges[ei * 3 + 1]
+    v := edges[ei * 3 + 2]
+    if uf_union(mst_uf, u, v)
+      print "  Edge ({u}-{v}, weight {w}): ADDED to MST"
+      mst_weight = mst_weight + w
+      mst_edges = mst_edges + 1
+    else
+      print "  Edge ({u}-{v}, weight {w}): SKIPPED (would create cycle)"
+
+  print ""
+  print "MST total weight: {mst_weight}"
+  print "MST edges: {mst_edges}"
+  print ""
+
+  -- Demonstrate path compression
+  print "Path compression demonstration:"
+  mut uf2 := uf_create(8)
+  -- Create a long chain: 0->1->2->3->4->5->6->7
+  for i in range(0, 7)
+    uf2[1 + i] = i + 1
+
+  print "  Before find(0): chain 0->1->2->3->4->5->6->7"
+  root := uf_find(uf2, 0)
+  print "  After find(0): root = {root}"
+  -- Show parents after compression
+  mut parents := ""
+  for i in range(0, 8)
+    if i > 0
+      parents = parents + ", "
+    parents = parents + str(i) + "->" + str(uf2[1 + i])
+  print "  Parents: {parents}"
+  print "  (All nodes now point directly to root)"
+
+  print ""
+  print "Union-Find: near O(1) amortized time per operation with path compression."

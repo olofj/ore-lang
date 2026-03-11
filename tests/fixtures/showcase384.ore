@@ -1,0 +1,129 @@
+-- Showcase 384: Knight's tour (Warnsdorff's rule)
+
+fn get_board board:List size:Int x:Int y:Int -> Int
+  board[y * size + x]
+
+fn set_board board:List size:Int x:Int y:Int val:Int -> List
+  board[y * size + x] = val
+  board
+
+fn count_moves board:List size:Int x:Int y:Int -> Int
+  -- Count available moves from position (x, y)
+  dx := [2, 1, -1, -2, -2, -1, 1, 2]
+  dy := [1, 2, 2, 1, -1, -2, -2, -1]
+  mut cnt := 0
+  for i in range(0, 8)
+    nx := x + dx[i]
+    ny := y + dy[i]
+    if nx >= 0 and nx < size and ny >= 0 and ny < size
+      if get_board(board, size, nx, ny) == 0
+        cnt = cnt + 1
+  cnt
+
+fn knights_tour size:Int start_x:Int start_y:Int -> List
+  total := size * size
+  mut board := []
+  for i in range(0, total)
+    board.push(0)
+
+  board = set_board(board, size, start_x, start_y, 1)
+
+  dx := [2, 1, -1, -2, -2, -1, 1, 2]
+  dy := [1, 2, 2, 1, -1, -2, -2, -1]
+
+  mut cx := start_x
+  mut cy := start_y
+
+  for move_num in range(2, total + 1)
+    -- Find next move using Warnsdorff's rule
+    mut best_x := -1
+    mut best_y := -1
+    mut best_count := 9
+
+    for i in range(0, 8)
+      nx := cx + dx[i]
+      ny := cy + dy[i]
+      if nx >= 0 and nx < size and ny >= 0 and ny < size
+        if get_board(board, size, nx, ny) == 0
+          c := count_moves(board, size, nx, ny)
+          if c < best_count
+            best_count = c
+            best_x = nx
+            best_y = ny
+
+    if best_x == -1
+      -- No valid move, tour incomplete
+      return board
+
+    board = set_board(board, size, best_x, best_y, move_num)
+    cx = best_x
+    cy = best_y
+
+  board
+
+fn print_board board:List size:Int
+  for y in range(0, size)
+    mut line := "  "
+    for x in range(0, size)
+      val := get_board(board, size, x, y)
+      if val < 10
+        line = line + " " + str(val) + " "
+      else
+        line = line + str(val) + " "
+    print line
+
+fn verify_tour board:List size:Int -> Bool
+  total := size * size
+  -- Check every number 1..total appears exactly once
+  for target in range(1, total + 1)
+    mut found := false
+    for i in range(0, total)
+      if board[i] == target
+        found = true
+        break
+    if not found
+      return false
+  true
+
+fn main
+  print "Knight's Tour (Warnsdorff's Rule):"
+  print ""
+
+  -- 5x5 board
+  print "5x5 board starting at (0, 0):"
+  board5 := knights_tour(5, 0, 0)
+  print_board(board5, 5)
+  valid5 := verify_tour(board5, 5)
+  status5 := if valid5 then "Complete" else "Incomplete"
+  print "  Tour status: {status5}"
+  print ""
+
+  -- 6x6 board
+  print "6x6 board starting at (0, 0):"
+  board6 := knights_tour(6, 0, 0)
+  print_board(board6, 6)
+  valid6 := verify_tour(board6, 6)
+  status6 := if valid6 then "Complete" else "Incomplete"
+  print "  Tour status: {status6}"
+  print ""
+
+  -- 8x8 board
+  print "8x8 board starting at (0, 0):"
+  board8 := knights_tour(8, 0, 0)
+  print_board(board8, 8)
+  valid8 := verify_tour(board8, 8)
+  status8 := if valid8 then "Complete" else "Incomplete"
+  print "  Tour status: {status8}"
+  print ""
+
+  -- Try different starting positions on 5x5
+  print "5x5 tour completeness from various starts:"
+  for sx in range(0, 5)
+    for sy in range(0, 5)
+      b := knights_tour(5, sx, sy)
+      v := verify_tour(b, 5)
+      label := if v then "OK" else "--"
+      print "  ({sx},{sy}): {label}"
+
+  print ""
+  print "Warnsdorff's heuristic: always move to the square with fewest onward moves."

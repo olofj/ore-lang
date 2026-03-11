@@ -5111,6 +5111,120 @@ fn showcase380_number_theory() {
 }
 
 #[test]
+fn showcase381_reservoir_sampling() {
+    let out = run_ore("showcase381.ore");
+    assert!(out.contains("Reservoir Sampling Algorithm:"));
+    assert!(out.contains("Stream: 0 to 49 (50 elements)"));
+    assert!(out.contains("Seed 42:"));
+    assert!(out.contains("k=1: got 1 items [OK]"));
+    assert!(out.contains("k=5: got 5 items [OK]"));
+    assert!(out.contains("k=10: got 10 items [OK]"));
+    assert!(out.contains("O(n) time, O(k) space"));
+}
+
+#[test]
+fn showcase382_edit_distance() {
+    let out = run_ore("showcase382.ore");
+    assert!(out.contains("Edit Distance with Alignment:"));
+    assert!(out.contains("\"kitten\" -> \"sitting\" (distance: 3)"));
+    assert!(out.contains("\"saturday\" -> \"sunday\" (distance: 3)"));
+    assert!(out.contains("replace 'k' with 's'"));
+    assert!(out.contains("\"\" -> \"abc\" (distance: 3)"));
+    assert!(out.contains("Distance matrix:"));
+}
+
+#[test]
+fn showcase383_stack_interpreter() {
+    let out = run_ore("showcase383.ore");
+    assert!(out.contains("Simple Stack-Based Interpreter:"));
+    assert!(out.contains("output: 14"));
+    assert!(out.contains("output: 49"));
+    assert!(out.contains("output: 25"));
+    assert!(out.contains("0 is even"));
+    assert!(out.contains("1 is odd"));
+    assert!(out.contains("output: 120"));
+}
+
+#[test]
+fn showcase384_knights_tour() {
+    let out = run_ore("showcase384.ore");
+    assert!(out.contains("Knight's Tour (Warnsdorff's Rule):"));
+    assert!(out.contains("5x5 board starting at (0, 0):"));
+    assert!(out.contains("Tour status: Complete"));
+    assert!(out.contains("8x8 board starting at (0, 0):"));
+    assert!(out.contains("(0,0): OK"));
+    assert!(out.contains("Warnsdorff's heuristic"));
+}
+
+#[test]
+fn showcase385_huffman_coding() {
+    let out = run_ore("showcase385.ore");
+    assert!(out.contains("Huffman Coding Tree Traversal:"));
+    assert!(out.contains("'a': 0 (freq: 5)"));
+    assert!(out.contains("'s': 0 (freq: 4)"));
+    assert!(out.contains("'i': 11 (freq: 4)"));
+    assert!(out.contains("Compression ratio:"));
+}
+
+#[test]
+fn showcase386_bloom_filter() {
+    let out = run_ore("showcase386.ore");
+    assert!(out.contains("Bloom Filter Simulation:"));
+    assert!(out.contains("Filter size: 64 bits, 3 hash functions"));
+    assert!(out.contains("10: probably yes"));
+    assert!(out.contains("100: probably yes"));
+    assert!(out.contains("false negatives: 0"));
+    assert!(out.contains("space-efficient probabilistic"));
+}
+
+#[test]
+fn showcase387_lcg_prng() {
+    let out = run_ore("showcase387.ore");
+    assert!(out.contains("Linear Congruential Generator (PRNG):"));
+    assert!(out.contains("Parameters: a=1103515245"));
+    assert!(out.contains("Period: 25 (m = 101)"));
+    assert!(out.contains("Distribution test"));
+    assert!(out.contains("Dice roll simulation"));
+    assert!(out.contains("Seed sensitivity"));
+}
+
+#[test]
+fn showcase388_stable_marriage() {
+    let out = run_ore("showcase388.ore");
+    assert!(out.contains("Stable Marriage Problem (Gale-Shapley):"));
+    assert!(out.contains("Man 0 proposes to Woman 0 -> accepted (both free)"));
+    assert!(out.contains("Man 0 <-> Woman 0"));
+    assert!(out.contains("Stable: YES"));
+    assert!(out.contains("Man 1 proposes to Woman 0 -> accepted (dumped Man 0)"));
+    assert!(out.contains("guarantees a stable matching"));
+}
+
+#[test]
+fn showcase389_compression() {
+    let out = run_ore("showcase389.ore");
+    assert!(out.contains("Dictionary-Based Compression:"));
+    assert!(out.contains("\"aabbbcccc\" -> [0, 2, 1, 3, 2, 4] (3 pairs)"));
+    assert!(out.contains("Verify: OK"));
+    assert!(out.contains("\"aaaaaaa\" -> [0, 7] (1 pairs)"));
+    assert!(out.contains("Original: 45 chars -> 3 pairs"));
+    assert!(out.contains("'at' appears 3 times"));
+}
+
+#[test]
+fn showcase390_union_find() {
+    let out = run_ore("showcase390.ore");
+    assert!(out.contains("Disjoint Set / Union-Find:"));
+    assert!(out.contains("Components: 10"));
+    assert!(out.contains("Union(0, 1): merged"));
+    assert!(out.contains("Root 0: [0, 1, 2, 3, 8, 9] (size: 6)"));
+    assert!(out.contains("Connected(1, 3): YES"));
+    assert!(out.contains("Connected(0, 5): NO"));
+    assert!(out.contains("MST total weight: 11"));
+    assert!(out.contains("After find(0): root = 7"));
+    assert!(out.contains("(All nodes now point directly to root)"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,219 @@
+-- Showcase 389: Simple compression (LZW-style dictionary-based)
+
+-- Simplified LZW using integer codes for single characters
+-- We encode strings as lists of character codes (a=0..z=25, space=26)
+
+fn char_to_code ch:Str -> Int
+  if ch == "a" then 0
+  else if ch == "b" then 1
+  else if ch == "c" then 2
+  else if ch == "d" then 3
+  else if ch == "e" then 4
+  else if ch == "f" then 5
+  else if ch == "g" then 6
+  else if ch == "h" then 7
+  else if ch == "i" then 8
+  else if ch == "j" then 9
+  else if ch == "k" then 10
+  else if ch == "l" then 11
+  else if ch == "m" then 12
+  else if ch == "n" then 13
+  else if ch == "o" then 14
+  else if ch == "p" then 15
+  else if ch == "q" then 16
+  else if ch == "r" then 17
+  else if ch == "s" then 18
+  else if ch == "t" then 19
+  else if ch == "u" then 20
+  else if ch == "v" then 21
+  else if ch == "w" then 22
+  else if ch == "x" then 23
+  else if ch == "y" then 24
+  else if ch == "z" then 25
+  else 26
+
+fn code_to_char c:Int -> Str
+  chars := "a b c d e f g h i j k l m n o p q r s t u v w x y z  "
+  parts := chars | split(" ")
+  parts[c]
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn rle_encode text:Str -> List
+  -- Run-length encoding: returns [char_code, count, char_code, count, ...]
+  letters := text | chars()
+  n := letters | count()
+  if n == 0
+    return []
+
+  mut result := []
+  mut current := char_to_code(letters[0])
+  mut cnt := 1
+
+  for i in range(1, n)
+    c := char_to_code(letters[i])
+    if c == current
+      cnt = cnt + 1
+    else
+      result.push(current)
+      result.push(cnt)
+      current = c
+      cnt = 1
+  result.push(current)
+  result.push(cnt)
+  result
+
+fn rle_decode encoded:List -> Str
+  n := encoded | count()
+  mut result := ""
+  mut i := 0
+  loop
+    if i >= n
+      break
+    ch := code_to_char(encoded[i])
+    cnt := encoded[i + 1]
+    for j in range(0, cnt)
+      result = result + ch
+    i = i + 2
+  result
+
+fn dict_compress text:Str -> List
+  -- Simple dictionary compression
+  -- Looks for repeated 2-char and 3-char patterns
+  letters := text | chars()
+  n := letters | count()
+
+  -- Count bigram frequencies
+  mut bigram_codes := []
+  mut bigram_freqs := []
+  for i in range(0, n - 1)
+    c1 := char_to_code(letters[i])
+    c2 := char_to_code(letters[i + 1])
+    code := c1 * 100 + c2
+    -- Find in existing
+    mut found := -1
+    blen := bigram_codes | count()
+    for j in range(0, blen)
+      if bigram_codes[j] == code
+        found = j
+        break
+    if found == -1
+      bigram_codes.push(code)
+      bigram_freqs.push(1)
+    else
+      bigram_freqs[found] = bigram_freqs[found] + 1
+
+  -- Find top bigrams (freq >= 3)
+  mut top_bigrams := []
+  blen := bigram_codes | count()
+  for i in range(0, blen)
+    if bigram_freqs[i] >= 3
+      top_bigrams.push(bigram_codes[i])
+
+  -- Report
+  tlen := top_bigrams | count()
+  print "  Found {tlen} frequent bigrams (freq >= 3):"
+  for i in range(0, tlen)
+    bg := top_bigrams[i]
+    c1 := bg / 100
+    c2 := bg % 100
+    -- Find freq
+    mut f := 0
+    for j in range(0, blen)
+      if bigram_codes[j] == bg
+        f = bigram_freqs[j]
+        break
+    ch1 := code_to_char(c1)
+    ch2 := code_to_char(c2)
+    print "    '{ch1}{ch2}' appears {f} times"
+
+  -- Output stats
+  original_size := n
+  -- Estimate: each bigram replacement saves 1 byte per occurrence
+  mut savings := 0
+  for i in range(0, tlen)
+    bg := top_bigrams[i]
+    mut f := 0
+    for j in range(0, blen)
+      if bigram_codes[j] == bg
+        f = bigram_freqs[j]
+        break
+    savings = savings + f - 1
+
+  compressed_est := original_size - savings
+  print "  Original size: {original_size} chars"
+  print "  Estimated compressed: {compressed_est} chars"
+  if original_size > 0
+    ratio := compressed_est * 100 / original_size
+    print "  Ratio: {ratio}%"
+
+  top_bigrams
+
+fn main
+  print "Dictionary-Based Compression:"
+  print ""
+
+  -- Run-length encoding
+  print "Run-Length Encoding (RLE):"
+  print ""
+
+  texts := ["aabbbcccc", "aaaaaaa", "abcdef"]
+  for t in texts
+    encoded := rle_encode(t)
+    decoded := rle_decode(encoded)
+    orig_len := t | len()
+    enc_len := encoded | count()
+    -- Each pair is 2 ints, so compressed size = enc_len/2 pairs
+    pairs := enc_len / 2
+    print "  \"{t}\" -> {list_to_str(encoded)} ({pairs} pairs)"
+    print "  Decoded: \"{decoded}\""
+    match_str := if decoded == t then "OK" else "MISMATCH"
+    print "  Verify: {match_str}"
+    print ""
+
+  -- RLE on repetitive data
+  print "RLE on highly repetitive data:"
+  mut rep_text := ""
+  for i in range(0, 20)
+    rep_text = rep_text + "a"
+  for i in range(0, 15)
+    rep_text = rep_text + "b"
+  for i in range(0, 10)
+    rep_text = rep_text + "c"
+  encoded := rle_encode(rep_text)
+  decoded := rle_decode(encoded)
+  orig_len := rep_text | len()
+  pairs := encoded | count()
+  pair_count := pairs / 2
+  print "  Original: {orig_len} chars -> {pair_count} pairs"
+  match_str := if decoded == rep_text then "OK" else "MISMATCH"
+  print "  Verify: {match_str}"
+  print ""
+
+  -- Dictionary compression analysis
+  print "Dictionary Compression Analysis:"
+  print ""
+
+  t1 := "abracadabra"
+  print "Text: \"{t1}\""
+  dict_compress(t1)
+  print ""
+
+  t2 := "the cat sat on the mat"
+  print "Text: \"{t2}\""
+  dict_compress(t2)
+  print ""
+
+  t3 := "mississippi"
+  print "Text: \"{t3}\""
+  dict_compress(t3)
+  print ""
+
+  print "Compression trades compute time for smaller data representation."

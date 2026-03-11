@@ -1,0 +1,114 @@
+-- Showcase 387: Linear congruential generator (PRNG)
+
+fn lcg_next state:Int a:Int c:Int m:Int -> Int
+  result := (state * a + c) % m
+  if result < 0
+    result + m
+  else
+    result
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn main
+  print "Linear Congruential Generator (PRNG):"
+  print ""
+
+  -- Classic parameters: a=1103515245, c=12345, m=2^31 = 2147483648
+  a := 1103515245
+  c := 12345
+  m := 2147483648
+
+  print "Parameters: a={a}, c={c}, m={m}"
+  print ""
+
+  -- Generate sequence from seed 42
+  seed := 42
+  print "First 20 values (seed={seed}):"
+  mut state := seed
+  mut vals := []
+  for i in range(0, 20)
+    state = lcg_next(state, a, c, m)
+    vals.push(state)
+  print "  {list_to_str(vals)}"
+  print ""
+
+  -- Show periodicity: generate values until we see the seed state again
+  -- Use smaller modulus to demonstrate
+  sm := 101
+  sa := 37
+  sc := 1
+  print "Small LCG (a={sa}, c={sc}, m={sm}):"
+  print "  Finding period from seed 0:"
+  mut st := 0
+  mut period := 0
+  loop
+    st = lcg_next(st, sa, sc, sm)
+    period = period + 1
+    if st == 0 or period > sm + 1
+      break
+  if st == 0
+    print "  Period: {period} (m = {sm})"
+  else
+    print "  Period: {period} (partial)"
+
+  print ""
+
+  -- Distribution test: count values in buckets
+  print "Distribution test (10000 values in 10 buckets):"
+  mut buckets := []
+  for i in range(0, 10)
+    buckets.push(0)
+
+  mut st2 := 12345
+  for i in range(0, 10000)
+    st2 = lcg_next(st2, a, c, m)
+    -- Map to 0-9
+    bucket := st2 * 10 / m
+    if bucket >= 0 and bucket < 10
+      buckets[bucket] = buckets[bucket] + 1
+
+  for i in range(0, 10)
+    bar_len := buckets[i] / 50
+    mut bar := ""
+    for j in range(0, bar_len)
+      bar = bar + "#"
+    print "  Bucket {i}: {buckets[i]} {bar}"
+
+  print ""
+
+  -- Dice simulation
+  print "Dice roll simulation (1000 rolls):"
+  mut dice := []
+  for i in range(0, 6)
+    dice.push(0)
+  mut st3 := 7777
+  for i in range(0, 1000)
+    st3 = lcg_next(st3, a, c, m)
+    face := st3 * 6 / m
+    if face >= 0 and face < 6
+      dice[face] = dice[face] + 1
+  for i in range(0, 6)
+    print "  Face {i + 1}: {dice[i]} times"
+
+  print ""
+
+  -- Demonstrate seed sensitivity
+  print "Seed sensitivity (first 5 values):"
+  seeds := [0, 1, 2, 42, 100]
+  for sd in seeds
+    mut st4 := sd
+    mut first5 := []
+    for i in range(0, 5)
+      st4 = lcg_next(st4, a, c, m)
+      first5.push(st4 % 1000)
+    print "  Seed {sd}: {list_to_str(first5)}"
+
+  print ""
+  print "LCG: simple, fast, but predictable - not for cryptography."

@@ -1,0 +1,140 @@
+-- Showcase 382: Edit distance with alignment (showing the edits)
+
+fn min2 a:Int b:Int -> Int
+  if a <= b then a else b
+
+fn min3 a:Int b:Int c:Int -> Int
+  min2(min2(a, b), c)
+
+fn edit_distance s1:Str s2:Str -> Int
+  c1 := s1 | chars()
+  c2 := s2 | chars()
+  n := c1 | count()
+  m := c2 | count()
+
+  -- DP table as flat list, (n+1) x (m+1)
+  w := m + 1
+  total := (n + 1) * w
+  mut dp := []
+  for i in range(0, total)
+    dp.push(0)
+
+  -- Base cases
+  for i in range(0, n + 1)
+    dp[i * w] = i
+  for j in range(0, m + 1)
+    dp[j] = j
+
+  -- Fill DP
+  for i in range(1, n + 1)
+    for j in range(1, m + 1)
+      if c1[i - 1] == c2[j - 1]
+        dp[i * w + j] = dp[(i - 1) * w + (j - 1)]
+      else
+        dp[i * w + j] = 1 + min3(dp[(i - 1) * w + j], dp[i * w + (j - 1)], dp[(i - 1) * w + (j - 1)])
+
+  dp[n * w + m]
+
+fn show_alignment s1:Str s2:Str
+  c1 := s1 | chars()
+  c2 := s2 | chars()
+  n := c1 | count()
+  m := c2 | count()
+
+  w := m + 1
+  total := (n + 1) * w
+  mut dp := []
+  for i in range(0, total)
+    dp.push(0)
+
+  for i in range(0, n + 1)
+    dp[i * w] = i
+  for j in range(0, m + 1)
+    dp[j] = j
+
+  for i in range(1, n + 1)
+    for j in range(1, m + 1)
+      if c1[i - 1] == c2[j - 1]
+        dp[i * w + j] = dp[(i - 1) * w + (j - 1)]
+      else
+        dp[i * w + j] = 1 + min3(dp[(i - 1) * w + j], dp[i * w + (j - 1)], dp[(i - 1) * w + (j - 1)])
+
+  dist := dp[n * w + m]
+  print "  \"{s1}\" -> \"{s2}\" (distance: {dist})"
+
+  -- Backtrace to find edits
+  mut edits := []
+  mut i := n
+  mut j := m
+  loop
+    if i == 0 and j == 0
+      break
+    if i > 0 and j > 0 and c1[i - 1] == c2[j - 1]
+      edits.push("  keep '{c1[i - 1]}'")
+      i = i - 1
+      j = j - 1
+    else if i > 0 and j > 0 and dp[i * w + j] == dp[(i - 1) * w + (j - 1)] + 1
+      edits.push("  replace '{c1[i - 1]}' with '{c2[j - 1]}'")
+      i = i - 1
+      j = j - 1
+    else if j > 0 and dp[i * w + j] == dp[i * w + (j - 1)] + 1
+      edits.push("  insert '{c2[j - 1]}'")
+      j = j - 1
+    else
+      edits.push("  delete '{c1[i - 1]}'")
+      i = i - 1
+
+  -- Print edits in forward order
+  edit_count := edits | count()
+  mut idx := edit_count - 1
+  loop
+    if idx < 0
+      break
+    print "    {edits[idx]}"
+    idx = idx - 1
+
+fn main
+  print "Edit Distance with Alignment:"
+  print ""
+
+  -- Basic examples
+  print "Basic examples:"
+  show_alignment("kitten", "sitting")
+  print ""
+  show_alignment("saturday", "sunday")
+  print ""
+  show_alignment("", "abc")
+  print ""
+  show_alignment("abc", "")
+  print ""
+
+  -- Similar words
+  print "Similar words:"
+  show_alignment("intention", "execution")
+  print ""
+  show_alignment("horse", "ros")
+  print ""
+
+  -- Distance matrix for word set
+  print "Distance matrix:"
+  words := ["cat", "car", "bar", "bat", "hat"]
+  wcount := words | count()
+  mut header := "       "
+  for i in range(0, wcount)
+    w := words[i]
+    header = header + w + "  "
+  print header
+
+  for i in range(0, wcount)
+    mut line := "  " + words[i]
+    -- Pad to 5 chars
+    pad := 5 - (words[i] | len())
+    for p in range(0, pad)
+      line = line + " "
+    for j in range(0, wcount)
+      d := edit_distance(words[i], words[j])
+      line = line + "  " + str(d) + "  "
+    print line
+
+  print ""
+  print "Edit distance: the minimum number of single-character edits."
