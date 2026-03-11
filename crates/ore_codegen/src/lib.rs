@@ -4525,7 +4525,7 @@ impl<'ctx> CodeGen<'ctx> {
                 phi.add_incoming(&[(&some_result, some_end), (&none_result, none_bb)]);
                 Ok((phi.as_basic_value(), ValKind::Option))
             }
-            _ => Err(Self::unknown_method_error("Option", method, &["unwrap_or", "map", "is_some", "is_none"])),
+            _ => Err(Self::unknown_method_error("Option", method, &["unwrap_or", "unwrap", "map", "is_some", "is_none"])),
         }
     }
 
@@ -4587,7 +4587,68 @@ impl<'ctx> CodeGen<'ctx> {
                 ))?;
                 Ok((is_err.into(), ValKind::Bool))
             }
-            _ => Err(Self::unknown_method_error("Result", method, &["unwrap_or", "is_ok", "is_err"])),
+            "unwrap" => {
+                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+                // Default coercion to Int — same as Option.unwrap()
+                let coerced = self.coerce_from_i64(inner, &ValKind::Int)?;
+                Ok((coerced, ValKind::Int))
+            }
+            "map" => {
+                // result.map(fn) -> applies fn to inner value if Ok, returns Result
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "map takes 1 argument (function)".into() });
+                }
+                let is_ok = bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
+                ))?;
+                let ok_bb = self.context.append_basic_block(func, "resmap_ok");
+                let err_bb = self.context.append_basic_block(func, "resmap_err");
+                let merge_bb = self.context.append_basic_block(func, "resmap_merge");
+                bld!(self.builder.build_conditional_branch(is_ok, ok_bb, err_bb))?;
+
+                // Ok branch: unwrap, apply function, wrap result
+                self.builder.position_at_end(ok_bb);
+                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        self.compile_lambda(params, body, func)?
+                    }
+                    Expr::Ident(name) => {
+                        self.module.get_function(name).ok_or_else(|| CodeGenError {
+                            line: None, msg: format!("unknown function '{}'", name),
+                        })?
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "map requires a function or lambda".into() }),
+                };
+
+                let map_result = bld!(self.builder.build_call(lambda_fn, &[inner.into()], "mapped"))?;
+                let mapped_val = self.call_result_to_value(map_result)?;
+
+                // Wrap result in Ok
+                let res_ty = self.result_type();
+                let res_alloca = bld!(self.builder.build_alloca(res_ty, "resres"))?;
+                let res_tag_ptr = bld!(self.builder.build_struct_gep(res_ty, res_alloca, 0, "res_tag"))?;
+                bld!(self.builder.build_store(res_tag_ptr, self.context.i8_type().const_int(0, false)))?;
+                let res_kind_ptr = bld!(self.builder.build_struct_gep(res_ty, res_alloca, 1, "res_kind"))?;
+                bld!(self.builder.build_store(res_kind_ptr, self.context.i8_type().const_int(0, false)))?;
+                let res_val_ptr = bld!(self.builder.build_struct_gep(res_ty, res_alloca, 2, "res_val"))?;
+                let mapped_i64 = self.value_to_i64(mapped_val)?;
+                bld!(self.builder.build_store(res_val_ptr, mapped_i64))?;
+                let ok_result = bld!(self.builder.build_load(res_ty, res_alloca, "ok_res"))?;
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                let ok_end = self.builder.get_insert_block().unwrap();
+
+                // Err branch: pass through unchanged
+                self.builder.position_at_end(err_bb);
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+                self.builder.position_at_end(merge_bb);
+                let phi = bld!(self.builder.build_phi(res_ty, "resmap_result"))?;
+                phi.add_incoming(&[(&ok_result, ok_end), (&result_val, err_bb)]);
+                Ok((phi.as_basic_value(), ValKind::Result))
+            }
+            _ => Err(Self::unknown_method_error("Result", method, &["unwrap_or", "unwrap", "map", "is_ok", "is_err"])),
         }
     }
 

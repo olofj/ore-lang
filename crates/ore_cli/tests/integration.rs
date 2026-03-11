@@ -2793,6 +2793,20 @@ fn showcase132_enum_float_fields() {
 }
 
 #[test]
+fn showcase133_result_map_unwrap() {
+    let out = run_ore("showcase133.ore");
+    assert!(out.contains("10/2 doubled: 10"));
+    assert!(out.contains("10/0 doubled is_err: true"));
+    assert!(out.contains("10/0 doubled fallback: -1"));
+    assert!(out.contains("chained: 90"));
+    assert!(out.contains("unwrap: 7"));
+    assert!(out.contains("Ok is_ok: true"));
+    assert!(out.contains("Err is_ok: false"));
+    assert!(out.contains("Ok unwrap_or: 4"));
+    assert!(out.contains("Err unwrap_or: 0"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

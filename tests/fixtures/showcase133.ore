@@ -1,0 +1,34 @@
+-- Showcase 133: Result.map and Result.unwrap
+
+fn safe_divide a:Int b:Int -> Result[Int]
+  if b == 0 then Err("division by zero")
+  else Ok(a / b)
+
+fn main
+  -- Result.map
+  r1 := safe_divide(10, 2)
+  doubled := r1.map(n => n * 2)
+  print "10/2 doubled: {doubled | else 0}"
+
+  -- Result.map on Err passes through
+  r2 := safe_divide(10, 0)
+  doubled2 := r2.map(n => n * 2)
+  print "10/0 doubled is_err: {doubled2.is_err()}"
+  print "10/0 doubled fallback: {doubled2 | else -1}"
+
+  -- Chained maps
+  r3 := safe_divide(100, 5)
+  result := r3.map(n => n + 10).map(n => n * 3)
+  print "chained: {result | else 0}"
+
+  -- Result.unwrap
+  r4 := safe_divide(42, 6)
+  print "unwrap: {r4.unwrap()}"
+
+  -- is_ok / is_err
+  print "Ok is_ok: {safe_divide(1, 1).is_ok()}"
+  print "Err is_ok: {safe_divide(1, 0).is_ok()}"
+
+  -- unwrap_or
+  print "Ok unwrap_or: {safe_divide(8, 2).unwrap_or(0)}"
+  print "Err unwrap_or: {safe_divide(8, 0).unwrap_or(0)}"
