@@ -1,0 +1,129 @@
+-- Showcase 370: Persistent stack (functional data structure)
+
+-- Simulated persistent stack using lists
+-- Each stack version is a list [size, val1, val2, ...]
+-- Push creates a new list, old version remains unchanged
+
+fn stack_new -> List
+  [0]
+
+fn stack_push stk:List val:Int -> List
+  mut new_stk := []
+  old_size := stk[0]
+  new_stk.push(old_size + 1)
+  for i in range(1, old_size + 1)
+    new_stk.push(stk[i])
+  new_stk.push(val)
+  new_stk
+
+fn stack_pop stk:List -> List
+  -- Returns [new_stack..., popped_value] as two separate concepts
+  -- We return a new stack without the top element
+  old_size := stk[0]
+  if old_size == 0
+    return stk
+  mut new_stk := []
+  new_stk.push(old_size - 1)
+  for i in range(1, old_size)
+    new_stk.push(stk[i])
+  new_stk
+
+fn stack_top stk:List -> Int
+  sz := stk[0]
+  if sz == 0
+    return -1
+  stk[sz]
+
+fn stack_size stk:List -> Int
+  stk[0]
+
+fn stack_to_str stk:List -> Str
+  sz := stk[0]
+  if sz == 0
+    return "[]"
+  mut s := "["
+  -- Print top to bottom
+  for i in range(0, sz)
+    if i > 0
+      s = s + ", "
+    s = s + str(stk[sz - i])
+  s + "]"
+
+fn stack_reverse stk:List -> List
+  sz := stk[0]
+  mut new_stk := [0]
+  for i in range(1, sz + 1)
+    new_stk = stack_push(new_stk, stk[sz - i + 1])
+  new_stk
+
+fn main
+  print "Persistent Stack (Functional Data Structure):"
+  print ""
+
+  -- Create and manipulate stacks
+  s0 := stack_new()
+  print "s0 (empty): {stack_to_str(s0)}, size={stack_size(s0)}"
+
+  s1 := stack_push(s0, 10)
+  print "s1 (push 10): {stack_to_str(s1)}, size={stack_size(s1)}"
+
+  s2 := stack_push(s1, 20)
+  print "s2 (push 20): {stack_to_str(s2)}, size={stack_size(s2)}"
+
+  s3 := stack_push(s2, 30)
+  print "s3 (push 30): {stack_to_str(s3)}, size={stack_size(s3)}"
+
+  -- Demonstrate persistence: old versions unchanged
+  print ""
+  print "Persistence demonstration:"
+  print "  s1 still: {stack_to_str(s1)}"
+  print "  s2 still: {stack_to_str(s2)}"
+  print "  s3 still: {stack_to_str(s3)}"
+
+  -- Pop from s3
+  s3_popped := stack_pop(s3)
+  print ""
+  print "After pop from s3:"
+  print "  s3 (original): {stack_to_str(s3)}, top={stack_top(s3)}"
+  print "  s3_popped:     {stack_to_str(s3_popped)}, top={stack_top(s3_popped)}"
+
+  -- Branch from same version
+  print ""
+  print "Branching from s2:"
+  branch_a := stack_push(s2, 40)
+  branch_b := stack_push(s2, 50)
+  branch_c := stack_push(s2, 60)
+  print "  branch_a (push 40): {stack_to_str(branch_a)}"
+  print "  branch_b (push 50): {stack_to_str(branch_b)}"
+  print "  branch_c (push 60): {stack_to_str(branch_c)}"
+  print "  s2 unchanged:       {stack_to_str(s2)}"
+
+  -- Build a stack with multiple pushes
+  print ""
+  print "Building stack incrementally:"
+  mut current := stack_new()
+  for i in range(1, 8)
+    current = stack_push(current, i * 5)
+    print "  Push {i * 5}: {stack_to_str(current)}"
+
+  -- Pop several times
+  print ""
+  print "Popping from full stack:"
+  for i in range(0, 4)
+    top := stack_top(current)
+    print "  Top={top}, stack={stack_to_str(current)}"
+    current = stack_pop(current)
+  print "  Remaining: {stack_to_str(current)}"
+
+  -- Stack reversal
+  print ""
+  print "Stack reversal:"
+  r_in := stack_push(stack_push(stack_push(stack_new(), 1), 2), 3)
+  print "  Original:  {stack_to_str(r_in)}"
+  r_out := stack_reverse(r_in)
+  print "  Reversed:  {stack_to_str(r_out)}"
+
+  -- Summary
+  print ""
+  print "Key property: every push/pop creates a NEW stack"
+  print "Old versions remain accessible (structural sharing in real implementations)"

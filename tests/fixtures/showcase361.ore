@@ -1,0 +1,60 @@
+-- Showcase 361: Cellular automaton (Rule 30 and Rule 110)
+
+fn apply_rule rule:Int left:Int center:Int right:Int -> Int
+  pattern := left * 4 + center * 2 + right
+  mut divisor := 1
+  for i in range(0, pattern)
+    divisor = divisor * 2
+  rule / divisor % 2
+
+fn cells_to_str cells:List width:Int -> Str
+  mut line := ""
+  for i in range(0, width)
+    if cells[i] == 1
+      line = line + "#"
+    else
+      line = line + "."
+  line
+
+fn run_automaton rule:Int width:Int steps:Int
+  mut cells := []
+  for i in range(0, width)
+    cells.push(0)
+  cells[width / 2] = 1
+
+  for step in range(0, steps)
+    line := cells_to_str(cells, width)
+    ct := count_alive(cells, width)
+    print "  {line}  ({ct} alive)"
+
+    mut next := []
+    for i in range(0, width)
+      left := if i == 0 then 0 else cells[i - 1]
+      right := if i == width - 1 then 0 else cells[i + 1]
+      next.push(apply_rule(rule, left, cells[i], right))
+    cells = next
+
+fn count_alive cells:List width:Int -> Int
+  mut ct := 0
+  for i in range(0, width)
+    if cells[i] == 1
+      ct = ct + 1
+  ct
+
+fn main
+  print "Cellular Automaton:"
+  print ""
+
+  print "Rule 30 (15 cells, 8 generations):"
+  run_automaton(30, 15, 8)
+
+  print ""
+  print "Rule 110 (15 cells, 8 generations):"
+  run_automaton(110, 15, 8)
+
+  print ""
+  print "Rule 110 is proven to be Turing-complete!"
+
+  print ""
+  print "Rule 90 - Sierpinski triangle (21 cells, 10 generations):"
+  run_automaton(90, 21, 10)

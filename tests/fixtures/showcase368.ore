@@ -1,0 +1,105 @@
+-- Showcase 368: Catalan numbers and their applications
+
+fn catalan n:Int -> Int
+  -- C(n) = C(2n, n) / (n + 1) = (2n)! / ((n+1)! * n!)
+  -- Use iterative computation to avoid overflow
+  -- C(n) = product(n+2..2n) / (n-1)!
+  -- Better: C(0)=1, C(n+1) = C(n) * 2*(2n+1) / (n+2)
+  if n <= 0
+    return 1
+  mut result := 1
+  for i in range(0, n)
+    result = result * 2 * (2 * i + 1)
+    result = result / (i + 2)
+  result
+
+fn count_parenthesizations n:Int -> Int
+  -- Number of ways to parenthesize n+1 factors = C(n)
+  catalan(n)
+
+fn count_paths n:Int -> Int
+  -- Monotonic lattice paths from (0,0) to (n,n) not crossing diagonal
+  catalan(n)
+
+fn count_triangulations n:Int -> Int
+  -- Number of ways to triangulate a convex polygon with n+2 sides
+  catalan(n)
+
+fn generate_balanced_parens n:Int
+  -- Generate all balanced parenthesizations of n pairs
+  -- Using recursive approach, print them directly
+  mut buf := []
+  for i in range(0, 2 * n)
+    buf.push(0)
+  gen_parens(buf, n, 0, 0, 0)
+
+fn gen_parens buf:List n:Int pos:Int open:Int close:Int
+  if pos == 2 * n
+    mut s := ""
+    for i in range(0, 2 * n)
+      if buf[i] == 0
+        s = s + "("
+      else
+        s = s + ")"
+    print "    {s}"
+    return 0
+  if open < n
+    buf[pos] = 0
+    gen_parens(buf, n, pos + 1, open + 1, close)
+  if close < open
+    buf[pos] = 1
+    gen_parens(buf, n, pos + 1, open, close + 1)
+  0
+
+fn count_bst_trees n:Int -> Int
+  -- Number of structurally unique BSTs with n nodes = C(n)
+  catalan(n)
+
+fn main
+  print "Catalan Numbers:"
+  print ""
+
+  -- First several Catalan numbers
+  print "First 15 Catalan numbers:"
+  for i in range(0, 15)
+    c := catalan(i)
+    print "  C({i}) = {c}"
+
+  -- Application 1: Balanced parentheses
+  print ""
+  print "Balanced parenthesizations for n=3 (C(3)={catalan(3)} ways):"
+  generate_balanced_parens(3)
+
+  print ""
+  print "Balanced parenthesizations for n=4 (C(4)={catalan(4)} ways):"
+  generate_balanced_parens(4)
+
+  -- Application 2: Binary trees
+  print ""
+  print "Structurally unique BSTs with n nodes:"
+  for i in range(1, 8)
+    c := count_bst_trees(i)
+    print "  {i} nodes: {c} unique BSTs"
+
+  -- Application 3: Lattice paths
+  print ""
+  print "Monotonic lattice paths (n,n) staying below diagonal:"
+  for i in range(1, 8)
+    c := count_paths(i)
+    print "  ({i},{i}) grid: {c} valid paths"
+
+  -- Application 4: Polygon triangulations
+  print ""
+  print "Triangulations of convex polygon:"
+  for sides in range(3, 9)
+    c := count_triangulations(sides - 2)
+    print "  {sides}-gon: {c} triangulations"
+
+  -- Ratio of consecutive Catalan numbers approaches 4
+  print ""
+  print "Ratio C(n+1)/C(n) approaches 4:"
+  for i in range(1, 10)
+    c1 := catalan(i)
+    c2 := catalan(i + 1)
+    ratio := c2 / c1
+    print "  C({i + 1})/C({i}) = {c2}/{c1} = {ratio}"

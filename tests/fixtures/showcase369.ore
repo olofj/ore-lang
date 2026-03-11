@@ -1,0 +1,123 @@
+-- Showcase 369: Markov chain (deterministic transition simulation)
+
+fn main
+  print "Markov Chain Simulation:"
+  print ""
+
+  -- Weather model: Sunny(0), Cloudy(1), Rainy(2)
+  -- Transition probabilities (multiplied by 100 for integer math):
+  -- From Sunny:  60% Sunny, 30% Cloudy, 10% Rainy
+  -- From Cloudy: 25% Sunny, 50% Cloudy, 25% Rainy
+  -- From Rainy:  15% Sunny, 35% Cloudy, 50% Rainy
+
+  -- Transition matrix (row = from, col = to, values are cumulative percentages)
+  -- Sunny->:  [60, 90, 100]
+  -- Cloudy->: [25, 75, 100]
+  -- Rainy->:  [15, 50, 100]
+
+  -- We use deterministic "random" via a simple LCG
+  mut seed := 42
+  states := ["Sunny", "Cloudy", "Rainy"]
+
+  -- Cumulative transition matrix (flat: 3x3)
+  -- trans[from*3 + 0] = P(state 0), trans[from*3+1] = P(state 0 or 1), etc.
+  trans := [60, 90, 100, 25, 75, 100, 15, 50, 100]
+
+  print "Weather Markov chain (3 states):"
+  print "  Sunny  -> Sunny:60% Cloudy:30% Rainy:10%"
+  print "  Cloudy -> Sunny:25% Cloudy:50% Rainy:25%"
+  print "  Rainy  -> Sunny:15% Cloudy:35% Rainy:50%"
+  print ""
+
+  -- Simulate 20 steps
+  mut state := 0
+  print "Simulation (20 steps, starting Sunny):"
+  mut counts := [0, 0, 0]
+  mut history := ""
+
+  for step in range(0, 20)
+    -- LCG: seed = (seed * 1103515245 + 12345) % 2147483648
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    if seed < 0
+      seed = 0 - seed
+    r := seed % 100
+
+    -- Determine next state
+    base := state * 3
+    mut next := 2
+    if r < trans[base]
+      next = 0
+    else if r < trans[base + 1]
+      next = 1
+
+    sname := states[state]
+    nname := states[next]
+    if step > 0
+      history = history + " -> "
+    history = history + sname
+    counts[state] = counts[state] + 1
+    state = next
+
+  -- Count last state
+  counts[state] = counts[state] + 1
+  history = history + " -> " + states[state]
+  print "  {history}"
+
+  print ""
+  print "State frequencies:"
+  total := 21
+  for i in range(0, 3)
+    print "  {states[i]}: {counts[i]} times"
+
+  -- Steady state computation (power iteration)
+  -- Start with [100, 0, 0] (all probability on Sunny)
+  -- Multiply by transition matrix repeatedly
+  print ""
+  print "Steady state distribution (power iteration):"
+
+  -- Use scaled integers (multiply by 10000)
+  mut p := [10000, 0, 0]
+  -- Full transition matrix (row-major, scaled by 100)
+  tm := [60, 30, 10, 25, 50, 25, 15, 35, 50]
+
+  for iter in range(0, 30)
+    mut np := [0, 0, 0]
+    for j in range(0, 3)
+      for i in range(0, 3)
+        np[j] = np[j] + p[i] * tm[i * 3 + j]
+      np[j] = np[j] / 100
+    p = np
+
+  print "  Sunny:  {p[0] / 100}.{p[0] % 100}%"
+  print "  Cloudy: {p[1] / 100}.{p[1] % 100}%"
+  print "  Rainy:  {p[2] / 100}.{p[2] % 100}%"
+
+  -- Simple page rank analogy
+  print ""
+  print "Simple 4-page PageRank analogy:"
+  print "  Page 0 links to: 1, 2"
+  print "  Page 1 links to: 0, 2"
+  print "  Page 2 links to: 0"
+  print "  Page 3 links to: 0, 1, 2"
+
+  -- Rank with scaled integers
+  mut rank := [2500, 2500, 2500, 2500]
+  for iter in range(0, 20)
+    mut nr := [0, 0, 0, 0]
+    -- Page 0 gives 1/2 to pages 1, 2
+    nr[1] = nr[1] + rank[0] / 2
+    nr[2] = nr[2] + rank[0] / 2
+    -- Page 1 gives 1/2 to pages 0, 2
+    nr[0] = nr[0] + rank[1] / 2
+    nr[2] = nr[2] + rank[1] / 2
+    -- Page 2 gives all to page 0
+    nr[0] = nr[0] + rank[2]
+    -- Page 3 gives 1/3 to pages 0, 1, 2
+    nr[0] = nr[0] + rank[3] / 3
+    nr[1] = nr[1] + rank[3] / 3
+    nr[2] = nr[2] + rank[3] / 3
+    rank = nr
+
+  print "  Converged ranks (scaled):"
+  for i in range(0, 4)
+    print "    Page {i}: {rank[i]}"

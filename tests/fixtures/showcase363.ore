@@ -1,0 +1,114 @@
+-- Showcase 363: Egyptian fractions (greedy algorithm)
+
+fn ceil_div a:Int b:Int -> Int
+  -- Ceiling division for positive a, b
+  if a % b == 0
+    return a / b
+  a / b + 1
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  while y > 0
+    t := y
+    y = x % y
+    x = t
+  x
+
+fn egyptian num:Int den:Int max_terms:Int -> List
+  -- Greedy algorithm: find unit fractions 1/d1 + 1/d2 + ... = num/den
+  -- Returns list of denominators [d1, d2, ...]
+  mut n := num
+  mut d := den
+  mut result := []
+  mut terms := 0
+
+  while n > 0 and terms < max_terms
+    -- Find smallest unit fraction <= n/d
+    unit_den := ceil_div(d, n)
+    result.push(unit_den)
+
+    -- Subtract: n/d - 1/unit_den = (n*unit_den - d) / (d*unit_den)
+    new_n := n * unit_den - d
+    new_d := d * unit_den
+
+    -- Simplify
+    if new_n > 0
+      g := gcd(new_n, new_d)
+      n = new_n / g
+      d = new_d / g
+    else
+      n = 0
+    terms = terms + 1
+  result
+
+fn format_fraction denoms:List -> Str
+  mut s := ""
+  n := denoms | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + " + "
+    s = s + "1/" + str(denoms[i])
+  s
+
+fn main
+  print "Egyptian Fractions (Greedy Algorithm):"
+  print ""
+
+  -- Simple fractions
+  print "Basic fractions:"
+  e1 := egyptian(2, 3, 10)
+  print "  2/3 = {format_fraction(e1)}"
+
+  e2 := egyptian(3, 4, 10)
+  print "  3/4 = {format_fraction(e2)}"
+
+  e3 := egyptian(4, 5, 10)
+  print "  4/5 = {format_fraction(e3)}"
+
+  e4 := egyptian(5, 6, 10)
+  print "  5/6 = {format_fraction(e4)}"
+
+  e5 := egyptian(7, 8, 10)
+  print "  7/8 = {format_fraction(e5)}"
+
+  -- More complex ones
+  print ""
+  print "More examples:"
+  e6 := egyptian(3, 7, 10)
+  print "  3/7 = {format_fraction(e6)}"
+
+  e7 := egyptian(5, 9, 10)
+  print "  5/9 = {format_fraction(e7)}"
+
+  e8 := egyptian(7, 11, 10)
+  print "  7/11 = {format_fraction(e8)}"
+
+  e9 := egyptian(8, 13, 10)
+  print "  8/13 = {format_fraction(e9)}"
+
+  -- Count terms needed
+  print ""
+  print "Number of unit fractions needed:"
+  for d in range(2, 10)
+    terms := egyptian(1, d, 10)
+    tc := terms | count()
+    print "  1/{d} needs {tc} term(s)"
+
+  -- Verify: 2/3 = 1/2 + 1/6
+  print ""
+  print "Verification:"
+  print "  2/3 = 1/2 + 1/6"
+  -- 1/2 + 1/6 = 3/6 + 1/6 = 4/6 = 2/3
+  check_n := 3 + 1
+  check_d := 6
+  g := gcd(check_n, check_d)
+  print "  1/2 + 1/6 = {check_n / g}/{check_d / g} (correct!)"
+
+  -- Interesting: fractions that need many terms
+  print ""
+  print "Fractions with multiple terms:"
+  e10 := egyptian(5, 121, 10)
+  print "  5/121 = {format_fraction(e10)} ({e10 | count()} terms)"
+  e11 := egyptian(31, 311, 10)
+  print "  31/311 = {format_fraction(e11)} ({e11 | count()} terms)"

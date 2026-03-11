@@ -1,0 +1,105 @@
+-- Showcase 365: Perfect shuffle / riffle shuffle
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn out_shuffle deck:List -> List
+  -- Out-shuffle (Faro out): top and bottom cards stay in place
+  n := deck | count()
+  half := n / 2
+  mut result := []
+  for i in range(0, half)
+    result.push(deck[i])
+    result.push(deck[half + i])
+  result
+
+fn in_shuffle deck:List -> List
+  -- In-shuffle (Faro in): interleave starting from second half
+  n := deck | count()
+  half := n / 2
+  mut result := []
+  for i in range(0, half)
+    result.push(deck[half + i])
+    result.push(deck[i])
+  result
+
+fn decks_equal a:List b:List -> Bool
+  n := a | count()
+  if b | count() != n
+    return false
+  for i in range(0, n)
+    if a[i] != b[i]
+      return false
+  true
+
+fn shuffle_order deck_size:Int is_out:Bool -> Int
+  -- How many perfect shuffles to restore original order?
+  mut original := []
+  for i in range(0, deck_size)
+    original.push(i)
+  mut current := []
+  for i in range(0, deck_size)
+    current.push(i)
+
+  mut count := 0
+  loop
+    if is_out
+      current = out_shuffle(current)
+    else
+      current = in_shuffle(current)
+    count = count + 1
+    if decks_equal(current, original)
+      break
+    if count > 1000
+      break
+  count
+
+fn main
+  print "Perfect Shuffle (Riffle Shuffle):"
+  print ""
+
+  -- Demo with 8 cards
+  deck8 := [1, 2, 3, 4, 5, 6, 7, 8]
+  print "Starting deck: {list_to_str(deck8)}"
+  print ""
+
+  print "Out-shuffle sequence:"
+  mut d := [1, 2, 3, 4, 5, 6, 7, 8]
+  for i in range(0, 4)
+    d = out_shuffle(d)
+    print "  Shuffle {i + 1}: {list_to_str(d)}"
+
+  print ""
+  print "In-shuffle sequence:"
+  mut d2 := [1, 2, 3, 4, 5, 6, 7, 8]
+  for i in range(0, 4)
+    d2 = in_shuffle(d2)
+    print "  Shuffle {i + 1}: {list_to_str(d2)}"
+
+  -- Cycle lengths for various deck sizes
+  print ""
+  print "Out-shuffle cycles (shuffles to restore order):"
+  sizes := [4, 6, 8, 10, 12, 14, 16, 20, 24, 52]
+  for sz in sizes
+    cyc := shuffle_order(sz, true)
+    print "  {sz} cards: {cyc} shuffles"
+
+  print ""
+  print "In-shuffle cycles:"
+  for sz in sizes
+    cyc := shuffle_order(sz, false)
+    print "  {sz} cards: {cyc} shuffles"
+
+  -- Fun fact about 52-card deck
+  print ""
+  out52 := shuffle_order(52, true)
+  in52 := shuffle_order(52, false)
+  print "A standard 52-card deck:"
+  print "  Out-shuffle restores in {out52} perfect shuffles"
+  print "  In-shuffle restores in {in52} perfect shuffles"

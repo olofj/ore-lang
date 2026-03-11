@@ -4868,6 +4868,124 @@ fn showcase360_matrix_chain_multiplication() {
 }
 
 #[test]
+fn showcase361_cellular_automaton() {
+    let out = run_ore("showcase361.ore");
+    assert!(out.contains("Cellular Automaton:"));
+    assert!(out.contains("Rule 30 (15 cells, 8 generations):"));
+    assert!(out.contains(".......#.......  (1 alive)"));
+    assert!(out.contains("......###......  (3 alive)"));
+    assert!(out.contains("Rule 110 (15 cells, 8 generations):"));
+    assert!(out.contains("Rule 110 is proven to be Turing-complete!"));
+    assert!(out.contains("Rule 90 - Sierpinski triangle"));
+    assert!(out.contains(".........#.#.........  (2 alive)"));
+}
+
+#[test]
+fn showcase362_chinese_remainder_theorem() {
+    let out = run_ore("showcase362.ore");
+    assert!(out.contains("Chinese Remainder Theorem:"));
+    assert!(out.contains("Solution: x = 23 (mod 105)"));
+    assert!(out.contains("Solution: x = 23 (mod 30)"));
+    assert!(out.contains("Solution: x = 6 (mod 210)"));
+    assert!(out.contains("Verified: true"));
+    assert!(out.contains("gcd(35, 15) = 5"));
+    assert!(out.contains("Answer: 1 (and every 60 after that)"));
+}
+
+#[test]
+fn showcase363_egyptian_fractions() {
+    let out = run_ore("showcase363.ore");
+    assert!(out.contains("Egyptian Fractions (Greedy Algorithm):"));
+    assert!(out.contains("2/3 = 1/2 + 1/6"));
+    assert!(out.contains("3/4 = 1/2 + 1/4"));
+    assert!(out.contains("5/6 = 1/2 + 1/3"));
+    assert!(out.contains("3/7 = 1/3 + 1/11 + 1/231"));
+    assert!(out.contains("1/2 + 1/6 = 2/3 (correct!)"));
+}
+
+#[test]
+fn showcase364_stern_brocot_tree() {
+    let out = run_ore("showcase364.ore");
+    assert!(out.contains("Stern-Brocot Tree:"));
+    assert!(out.contains("Level 0: 1/1"));
+    assert!(out.contains("Level 1: 1/2  1/1  2/1"));
+    assert!(out.contains("3/5: LRL"));
+    assert!(out.contains("7/3: RRLL"));
+    assert!(out.contains("1/3: LL"));
+    assert!(out.contains("Path to 355/113:"));
+    assert!(out.contains("Adjacent fraction property"));
+}
+
+#[test]
+fn showcase365_perfect_shuffle() {
+    let out = run_ore("showcase365.ore");
+    assert!(out.contains("Perfect Shuffle (Riffle Shuffle):"));
+    assert!(out.contains("Shuffle 1: [1, 5, 2, 6, 3, 7, 4, 8]"));
+    assert!(out.contains("8 cards: 3 shuffles"));
+    assert!(out.contains("52 cards: 8 shuffles"));
+    assert!(out.contains("Out-shuffle restores in 8 perfect shuffles"));
+    assert!(out.contains("In-shuffle restores in 52 perfect shuffles"));
+}
+
+#[test]
+fn showcase366_langtons_ant() {
+    let out = run_ore("showcase366.ore");
+    assert!(out.contains("Langton's Ant:"));
+    assert!(out.contains("Grid after 80 steps (15x15):"));
+    assert!(out.contains("Ant position: (7, 3)"));
+    assert!(out.contains("Ant direction: up"));
+    assert!(out.contains("Black cells: 16"));
+    assert!(out.contains("Step 1: ant at (3,2) facing right"));
+}
+
+#[test]
+fn showcase367_counting_radix_sort() {
+    let out = run_ore("showcase367.ore");
+    assert!(out.contains("Counting Sort and Radix Sort:"));
+    assert!(out.contains("Sorted: [1, 2, 2, 3, 3, 4, 4, 5, 7, 8]"));
+    assert!(out.contains("Sorted: [2, 24, 45, 66, 75, 90, 170, 802]"));
+    assert!(out.contains("Sorted: [7, 42, 100, 1234, 3210, 5678, 8765, 9999]"));
+    assert!(out.contains("Both are non-comparison sorts!"));
+}
+
+#[test]
+fn showcase368_catalan_numbers() {
+    let out = run_ore("showcase368.ore");
+    assert!(out.contains("Catalan Numbers:"));
+    assert!(out.contains("C(0) = 1"));
+    assert!(out.contains("C(5) = 42"));
+    assert!(out.contains("C(10) = 16796"));
+    assert!(out.contains("C(14) = 2674440"));
+    assert!(out.contains("((()))"));
+    assert!(out.contains("()()()"));
+    assert!(out.contains("5-gon: 5 triangulations"));
+}
+
+#[test]
+fn showcase369_markov_chain() {
+    let out = run_ore("showcase369.ore");
+    assert!(out.contains("Markov Chain Simulation:"));
+    assert!(out.contains("Weather Markov chain (3 states):"));
+    assert!(out.contains("Sunny  -> Sunny:60% Cloudy:30% Rainy:10%"));
+    assert!(out.contains("Simulation (20 steps, starting Sunny):"));
+    assert!(out.contains("Steady state distribution (power iteration):"));
+    assert!(out.contains("Simple 4-page PageRank analogy:"));
+}
+
+#[test]
+fn showcase370_persistent_stack() {
+    let out = run_ore("showcase370.ore");
+    assert!(out.contains("Persistent Stack (Functional Data Structure):"));
+    assert!(out.contains("s0 (empty): [], size=0"));
+    assert!(out.contains("s3 (push 30): [30, 20, 10], size=3"));
+    assert!(out.contains("s3 (original): [30, 20, 10], top=30"));
+    assert!(out.contains("s3_popped:     [20, 10], top=20"));
+    assert!(out.contains("branch_a (push 40): [40, 20, 10]"));
+    assert!(out.contains("s2 unchanged:       [20, 10]"));
+    assert!(out.contains("Reversed:  [1, 2, 3]"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

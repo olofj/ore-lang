@@ -1,0 +1,125 @@
+-- Showcase 364: Stern-Brocot tree
+
+fn stern_brocot_path target_n:Int target_d:Int -> Str
+  -- Find the path from root to target_n/target_d in the Stern-Brocot tree
+  -- Returns string of L and R moves
+  mut path := ""
+  mut ln := 0
+  mut ld := 1
+  mut rn := 1
+  mut rd := 0
+  mut mn := ln + rn
+  mut md := ld + rd
+
+  mut steps := 0
+  while steps < 100
+    mn = ln + rn
+    md = ld + rd
+    if mn == target_n and md == target_d
+      return path
+    -- Compare target_n/target_d with mn/md using cross multiplication
+    if target_n * md < mn * target_d
+      -- Go left
+      path = path + "L"
+      rn = mn
+      rd = md
+    else
+      -- Go right
+      path = path + "R"
+      ln = mn
+      ld = md
+    steps = steps + 1
+  path
+
+fn generate_level level:Int -> List
+  -- Generate all fractions at a given level of the Stern-Brocot tree
+  -- Returns flat list: [n1, d1, n2, d2, ...]
+  -- Level 0: just 1/1
+  -- Level k: mediant insertions
+  -- We do BFS-like generation
+  -- Start with boundaries 0/1 and 1/0, plus initial mediant 1/1
+  -- For each level, insert mediants between adjacent fractions
+  mut nums := [0, 1, 1]
+  mut dens := [1, 1, 0]
+
+  for lev in range(0, level)
+    mut new_nums := []
+    mut new_dens := []
+    cnt := nums | count()
+    for i in range(0, cnt - 1)
+      new_nums.push(nums[i])
+      new_dens.push(dens[i])
+      -- Insert mediant between consecutive entries
+      mn := nums[i] + nums[i + 1]
+      md := dens[i] + dens[i + 1]
+      new_nums.push(mn)
+      new_dens.push(md)
+    new_nums.push(nums[cnt - 1])
+    new_dens.push(dens[cnt - 1])
+    nums = new_nums
+    dens = new_dens
+
+  -- Return just the inner fractions (skip 0/1 and 1/0)
+  mut result := []
+  cnt := nums | count()
+  for i in range(1, cnt - 1)
+    result.push(nums[i])
+    result.push(dens[i])
+  result
+
+fn main
+  print "Stern-Brocot Tree:"
+  print ""
+
+  -- Show levels of the tree
+  for lev in range(0, 5)
+    fracs := generate_level(lev)
+    mut line := ""
+    cnt := fracs | count()
+    i := 0
+    mut idx := 0
+    while idx < cnt
+      if idx > 0
+        line = line + "  "
+      line = line + str(fracs[idx]) + "/" + str(fracs[idx + 1])
+      idx = idx + 2
+    print "  Level {lev}: {line}"
+
+  -- Path finding
+  print ""
+  print "Paths from root:"
+  path1 := stern_brocot_path(3, 5)
+  print "  3/5: {path1}"
+  path2 := stern_brocot_path(7, 3)
+  print "  7/3: {path2}"
+  path3 := stern_brocot_path(1, 3)
+  print "  1/3: {path3}"
+  path4 := stern_brocot_path(5, 8)
+  print "  5/8: {path4}"
+  path5 := stern_brocot_path(2, 1)
+  print "  2/1: {path5}"
+  path6 := stern_brocot_path(1, 1)
+  print "  1/1: (root)"
+
+  -- Best rational approximations
+  print ""
+  print "Best rational approximations of pi (355/113):"
+  path_pi := stern_brocot_path(355, 113)
+  print "  Path to 355/113: {path_pi}"
+  print "  Path length: {path_pi.len()}"
+
+  -- Farey-like property: for adjacent a/b, c/d in tree: |ad - bc| = 1
+  print ""
+  print "Adjacent fraction property (|ad - bc| = 1):"
+  fracs3 := generate_level(3)
+  cnt3 := fracs3 | count()
+  mut idx := 0
+  while idx + 3 < cnt3
+    a := fracs3[idx]
+    b := fracs3[idx + 1]
+    c := fracs3[idx + 2]
+    d := fracs3[idx + 3]
+    raw := a * d - b * c
+    det := if raw < 0 then 0 - raw else raw
+    print "  |{a}*{d} - {b}*{c}| = {det}"
+    idx = idx + 2

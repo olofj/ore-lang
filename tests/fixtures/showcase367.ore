@@ -1,0 +1,135 @@
+-- Showcase 367: Counting sort and radix sort
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn counting_sort arr:List max_val:Int -> List
+  -- Count occurrences
+  mut counts := []
+  for i in range(0, max_val + 1)
+    counts.push(0)
+  for v in arr
+    counts[v] = counts[v] + 1
+
+  -- Build sorted output
+  mut result := []
+  for i in range(0, max_val + 1)
+    for j in range(0, counts[i])
+      result.push(i)
+  result
+
+fn get_digit num:Int place:Int -> Int
+  -- Extract digit at given place value (1, 10, 100, ...)
+  num / place % 10
+
+fn radix_sort arr:List -> List
+  -- LSD radix sort for non-negative integers
+  n := arr | count()
+  if n == 0
+    return arr
+
+  -- Find max to know number of digits
+  mut mx := arr[0]
+  for i in range(1, n)
+    if arr[i] > mx
+      mx = arr[i]
+
+  mut current := []
+  for v in arr
+    current.push(v)
+
+  mut place := 1
+  while place <= mx
+    -- Counting sort by current digit
+    mut buckets := []
+    for i in range(0, 10)
+      buckets.push(0)
+
+    -- Count
+    for v in current
+      d := get_digit(v, place)
+      buckets[d] = buckets[d] + 1
+
+    -- Prefix sums
+    for i in range(1, 10)
+      buckets[i] = buckets[i] + buckets[i - 1]
+
+    -- Build output (stable, right to left)
+    mut output := []
+    for i in range(0, n)
+      output.push(0)
+
+    mut idx := n - 1
+    while idx >= 0
+      d := get_digit(current[idx], place)
+      buckets[d] = buckets[d] - 1
+      output[buckets[d]] = current[idx]
+      idx = idx - 1
+
+    current = output
+    place = place * 10
+  current
+
+fn main
+  print "Counting Sort and Radix Sort:"
+  print ""
+
+  -- Counting sort examples
+  print "Counting Sort:"
+  a1 := [4, 2, 2, 8, 3, 3, 1, 7, 5, 4]
+  print "  Input:  {list_to_str(a1)}"
+  s1 := counting_sort(a1, 9)
+  print "  Sorted: {list_to_str(s1)}"
+
+  a2 := [1, 4, 1, 2, 7, 5, 2, 0, 0, 3]
+  print "  Input:  {list_to_str(a2)}"
+  s2 := counting_sort(a2, 9)
+  print "  Sorted: {list_to_str(s2)}"
+
+  -- Radix sort examples
+  print ""
+  print "Radix Sort:"
+  b1 := [170, 45, 75, 90, 802, 24, 2, 66]
+  print "  Input:  {list_to_str(b1)}"
+  r1 := radix_sort(b1)
+  print "  Sorted: {list_to_str(r1)}"
+
+  b2 := [329, 457, 657, 839, 436, 720, 355]
+  print "  Input:  {list_to_str(b2)}"
+  r2 := radix_sort(b2)
+  print "  Sorted: {list_to_str(r2)}"
+
+  -- Larger example
+  b3 := [9999, 1234, 5678, 42, 100, 7, 3210, 8765]
+  print "  Input:  {list_to_str(b3)}"
+  r3 := radix_sort(b3)
+  print "  Sorted: {list_to_str(r3)}"
+
+  -- Frequency distribution with counting sort
+  print ""
+  print "Frequency distribution:"
+  data := [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9]
+  mut freq := []
+  for i in range(0, 10)
+    freq.push(0)
+  for v in data
+    freq[v] = freq[v] + 1
+  for i in range(0, 10)
+    if freq[i] > 0
+      mut bar := ""
+      for j in range(0, freq[i])
+        bar = bar + "*"
+      print "  {i}: {bar} ({freq[i]})"
+
+  -- Performance comparison note
+  print ""
+  print "Complexity comparison:"
+  print "  Counting sort: O(n + k) where k is max value"
+  print "  Radix sort: O(d * (n + b)) where d is digits, b is base"
+  print "  Both are non-comparison sorts!"
