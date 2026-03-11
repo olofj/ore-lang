@@ -596,6 +596,7 @@ fn map_runtime_functions(
     map_fn!("ore_list_enumerate", ore_runtime::ore_list_enumerate);
     map_fn!("ore_list_flat_map", ore_runtime::ore_list_flat_map);
     map_fn!("ore_list_count_by", ore_runtime::ore_list_count_by);
+    map_fn!("ore_list_count_by_int", ore_runtime::ore_list_count_by_int);
     map_fn!("ore_list_group_by", ore_runtime::ore_list_group_by);
     map_fn!("ore_range", ore_runtime::ore_range);
     map_fn!("ore_range_step", ore_runtime::ore_range_step);

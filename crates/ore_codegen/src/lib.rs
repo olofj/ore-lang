@@ -742,6 +742,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_flat_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_count_by(ptr, fn_ptr, env_ptr) -> ptr (map)
         self.module.add_function("ore_list_count_by", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_count_by_int", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_group_by(ptr, fn_ptr, env_ptr) -> ptr (map)
         self.module.add_function("ore_list_group_by", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_range(i64, i64) -> ptr
@@ -2127,7 +2128,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Float));
                     }
-                    "euler" => {
+                    "euler" | "e" => {
                         let rt = self.rt("ore_math_e")?;
                         let result = bld!(self.builder.build_call(rt, &[], "euler"))?;
                         let val = self.call_result_to_value(result)?;
@@ -3961,6 +3962,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => return Err(CodeGenError { line: None, msg: "count_by requires a function or lambda".into() }),
                 };
+                let lambda_ret_kind = self.last_lambda_return_kind.take();
                 let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
@@ -3968,7 +3970,12 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt_name = format!("ore_list_{}", method);
+                // Use _int variant for count_by when lambda returns non-string
+                let rt_name = if method == "count_by" && lambda_ret_kind.as_ref() != Some(&ValKind::Str) {
+                    "ore_list_count_by_int".to_string()
+                } else {
+                    format!("ore_list_{}", method)
+                };
                 let rt = self.rt(&rt_name)?;
                 let result = bld!(self.builder.build_call(
                     rt,
