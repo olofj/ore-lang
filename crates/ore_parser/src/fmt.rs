@@ -309,6 +309,28 @@ impl Formatter {
                 self.out.push('\n');
                 self.format_block(then_block, level + 1);
                 if let Some(eb) = else_block {
+                    // Check if else block is a single `else if` (IfElse expr statement)
+                    if eb.stmts.len() == 1 {
+                        if let Stmt::Expr(Expr::IfElse { .. }) = &eb.stmts[0].stmt {
+                            self.indent(level);
+                            self.out.push_str("else ");
+                            self.format_expr(&Expr::IfElse {
+                                cond: match &eb.stmts[0].stmt {
+                                    Stmt::Expr(Expr::IfElse { cond, .. }) => cond.clone(),
+                                    _ => unreachable!(),
+                                },
+                                then_block: match &eb.stmts[0].stmt {
+                                    Stmt::Expr(Expr::IfElse { then_block, .. }) => then_block.clone(),
+                                    _ => unreachable!(),
+                                },
+                                else_block: match &eb.stmts[0].stmt {
+                                    Stmt::Expr(Expr::IfElse { else_block, .. }) => else_block.clone(),
+                                    _ => unreachable!(),
+                                },
+                            }, level);
+                            return;
+                        }
+                    }
                     self.indent(level);
                     self.out.push_str("else\n");
                     self.format_block(eb, level + 1);
