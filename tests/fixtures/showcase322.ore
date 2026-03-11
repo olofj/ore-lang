@@ -1,0 +1,74 @@
+-- Showcase 322: Luhn algorithm (credit card validation)
+
+fn sum_digits n:Int -> Int
+  mut s := 0
+  mut x := n
+  while x > 0
+    s = s + x % 10
+    x = x / 10
+  s
+
+fn luhn_check digits:List -> Bool
+  n := digits | count()
+  mut total := 0
+  for i in range(0, n)
+    pos := n - 1 - i
+    d := digits[pos]
+    if i % 2 == 1
+      doubled := d * 2
+      if doubled > 9
+        total = total + sum_digits(doubled)
+      else
+        total = total + doubled
+    else
+      total = total + d
+  total % 10 == 0
+
+fn main
+  -- Valid card number
+  valid := [4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  print "Card: {valid | join("")}"
+  if luhn_check(valid)
+    print "  Valid (Luhn check passed)"
+  else
+    print "  Invalid"
+
+  -- Check: 4111111111111111
+  -- From right: 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4
+  -- Double every 2nd: 1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,8 = 30 => valid
+
+  -- Invalid number (changed last digit)
+  invalid := [4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
+  print "Card: {invalid | join("")}"
+  if luhn_check(invalid)
+    print "  Valid"
+  else
+    print "  Invalid (Luhn check failed)"
+
+  -- Another valid: 5500000000000004
+  valid2 := [5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4]
+  print "Card: {valid2 | join("")}"
+  if luhn_check(valid2)
+    print "  Valid (Luhn check passed)"
+  else
+    print "  Invalid"
+
+  -- Generate check digit
+  print ""
+  print "Check digit generation:"
+  partial := [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5]
+  for d in range(0, 10)
+    mut candidate := []
+    for x in partial
+      candidate.push(x)
+    candidate.push(d)
+    if luhn_check(candidate)
+      print "  {partial | join("")}{d} is valid"
+
+  -- Doubling table
+  print ""
+  print "Luhn doubling table:"
+  for d in range(0, 10)
+    doubled := d * 2
+    result := if doubled > 9 then sum_digits(doubled) else doubled
+    print "  {d} -> {result}"

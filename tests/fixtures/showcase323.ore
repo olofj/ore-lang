@@ -1,0 +1,63 @@
+-- Showcase 323: Coin change problem (dynamic programming)
+
+fn min_coins coins:List amount:Int -> Int
+  -- dp[i] = minimum coins needed for amount i
+  -- Use flat list, size = amount + 1
+  -- Initialize with large value (amount + 1 means "impossible")
+  big := amount + 1
+  mut dp := []
+  for i in range(0, amount + 1)
+    dp.push(big)
+  dp[0] = 0
+
+  for i in range(1, amount + 1)
+    nc := coins | count()
+    for j in range(0, nc)
+      c := coins[j]
+      if c <= i
+        prev := dp[i - c]
+        if prev + 1 < dp[i]
+          dp[i] = prev + 1
+  dp[amount]
+
+fn count_ways coins:List amount:Int -> Int
+  -- Count number of ways to make change
+  mut dp := []
+  for i in range(0, amount + 1)
+    dp.push(0)
+  dp[0] = 1
+
+  nc := coins | count()
+  for j in range(0, nc)
+    c := coins[j]
+    for i in range(c, amount + 1)
+      dp[i] = dp[i] + dp[i - c]
+  dp[amount]
+
+fn main
+  coins := [1, 5, 10, 25]
+  print "Coins: {coins | join(", ")}"
+
+  -- Minimum coins for various amounts
+  print ""
+  print "Minimum coins needed:"
+  amounts := [1, 6, 11, 15, 30, 41, 99]
+  for a in amounts
+    mc := min_coins(coins, a)
+    print "  {a} cents: {mc} coins"
+
+  -- Number of ways to make change
+  print ""
+  print "Ways to make change:"
+  for a in [5, 10, 25, 50]
+    ways := count_ways(coins, a)
+    print "  {a} cents: {ways} ways"
+
+  -- With different coin sets
+  print ""
+  coins2 := [1, 3, 4]
+  print "Coins: {coins2 | join(", ")}"
+  for a in [6, 7, 10, 12]
+    mc := min_coins(coins2, a)
+    ways := count_ways(coins2, a)
+    print "  {a}: min {mc} coins, {ways} ways"

@@ -1,0 +1,106 @@
+-- Showcase 330: Rational number arithmetic
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  if x < 0
+    x = 0 - x
+  if y < 0
+    y = 0 - y
+  while y != 0
+    tmp := y
+    y = x % y
+    x = tmp
+  x
+
+fn rat_num r:List -> Int
+  r[0]
+
+fn rat_den r:List -> Int
+  r[1]
+
+fn make_rat num:Int den:Int -> List
+  -- Represent rational as [numerator, denominator], always simplified
+  mut n := num
+  mut d := den
+  if d < 0
+    n = 0 - n
+    d = 0 - d
+  g := gcd(n, d)
+  mut ag := g
+  if ag < 0
+    ag = 0 - ag
+  if ag == 0
+    ag = 1
+  nn := n / ag
+  dd := d / ag
+  mut result := []
+  result.push(nn)
+  result.push(dd)
+  result
+
+fn rat_str r:List -> Str
+  n := rat_num(r)
+  d := rat_den(r)
+  if d == 1
+    return "{n}"
+  "{n}/{d}"
+
+fn rat_add a:List b:List -> List
+  num := rat_num(a) * rat_den(b) + rat_num(b) * rat_den(a)
+  den := rat_den(a) * rat_den(b)
+  make_rat(num, den)
+
+fn rat_sub a:List b:List -> List
+  num := rat_num(a) * rat_den(b) - rat_num(b) * rat_den(a)
+  den := rat_den(a) * rat_den(b)
+  make_rat(num, den)
+
+fn rat_mul a:List b:List -> List
+  num := rat_num(a) * rat_num(b)
+  den := rat_den(a) * rat_den(b)
+  make_rat(num, den)
+
+fn rat_div a:List b:List -> List
+  num := rat_num(a) * rat_den(b)
+  den := rat_den(a) * rat_num(b)
+  make_rat(num, den)
+
+fn main
+  -- Basic operations
+  a := make_rat(1, 2)
+  b := make_rat(1, 3)
+  print "Rational arithmetic:"
+  print "  {rat_str(a)} + {rat_str(b)} = {rat_str(rat_add(a, b))}"
+  print "  {rat_str(a)} - {rat_str(b)} = {rat_str(rat_sub(a, b))}"
+  print "  {rat_str(a)} * {rat_str(b)} = {rat_str(rat_mul(a, b))}"
+  print "  {rat_str(a)} / {rat_str(b)} = {rat_str(rat_div(a, b))}"
+
+  -- Auto-simplification
+  print ""
+  print "Simplification:"
+  print "  6/8 = {rat_str(make_rat(6, 8))}"
+  print "  12/15 = {rat_str(make_rat(12, 15))}"
+  print "  -4/6 = {rat_str(make_rat(-4, 6))}"
+  print "  4/-6 = {rat_str(make_rat(4, -6))}"
+
+  -- Sum of 1/n for n=1..6 (harmonic number H6)
+  print ""
+  mut harmonic := make_rat(0, 1)
+  for n in range(1, 7)
+    harmonic = rat_add(harmonic, make_rat(1, n))
+  print "H(6) = 1 + 1/2 + ... + 1/6 = {rat_str(harmonic)}"
+
+  -- Egyptian fraction: 1/2 + 1/3 + 1/6 = 1
+  print ""
+  s1 := rat_add(make_rat(1, 2), make_rat(1, 3))
+  sum := rat_add(s1, make_rat(1, 6))
+  print "1/2 + 1/3 + 1/6 = {rat_str(sum)}"
+
+  -- Chain of operations: ((2/3 + 3/4) * 5/7) - 1/2
+  print ""
+  print "Chain: ((2/3 + 3/4) * 5/7) - 1/2"
+  step1 := rat_add(make_rat(2, 3), make_rat(3, 4))
+  step2 := rat_mul(step1, make_rat(5, 7))
+  step3 := rat_sub(step2, make_rat(1, 2))
+  print "  = {rat_str(step3)}"

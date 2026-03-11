@@ -1,0 +1,86 @@
+-- Showcase 327: Water pouring puzzle
+
+fn pour_solve cap_a:Int cap_b:Int target:Int -> List
+  -- Solve water jug problem: two jugs of capacity cap_a and cap_b
+  -- Find target amount in either jug
+  -- Strategy 1: Fill A, pour into B, empty B when full, repeat
+  mut steps := []
+  mut a := 0
+  mut b := 0
+  mut count := 0
+  while a != target and b != target and count < 50
+    if a == 0
+      a = cap_a
+      steps.push("Fill A({cap_a})")
+    else if b == cap_b
+      b = 0
+      steps.push("Empty B")
+    else
+      transfer := if a < cap_b - b then a else cap_b - b
+      a = a - transfer
+      b = b + transfer
+      steps.push("Pour A->B")
+    count = count + 1
+  steps
+
+fn main
+  -- Classic puzzle: 3-gallon and 5-gallon jugs, get 4 gallons
+  print "Puzzle: 3-gal and 5-gal jugs, target 4 gallons"
+  print "Strategy: Fill A(5), pour into B(3)"
+  mut a := 0
+  mut b := 0
+  mut step_num := 0
+
+  print "  Start: A={a}, B={b}"
+
+  -- Manual step-by-step for clarity
+  -- Fill A
+  a = 5
+  step_num = step_num + 1
+  print "  Step {step_num}: Fill A     -> A={a}, B={b}"
+
+  -- Pour A to B
+  a = 2
+  b = 3
+  step_num = step_num + 1
+  print "  Step {step_num}: A->B      -> A={a}, B={b}"
+
+  -- Empty B
+  b = 0
+  step_num = step_num + 1
+  print "  Step {step_num}: Empty B   -> A={a}, B={b}"
+
+  -- Pour A to B
+  b = 2
+  a = 0
+  step_num = step_num + 1
+  print "  Step {step_num}: A->B      -> A={a}, B={b}"
+
+  -- Fill A
+  a = 5
+  step_num = step_num + 1
+  print "  Step {step_num}: Fill A     -> A={a}, B={b}"
+
+  -- Pour A to B (B has 2, cap 3, so pour 1)
+  a = 4
+  b = 3
+  step_num = step_num + 1
+  print "  Step {step_num}: A->B      -> A={a}, B={b}"
+
+  print "  Result: A has {a} gallons!"
+
+  -- Automated solve for different targets
+  print ""
+  print "Automated solutions (jugs: 3 and 5):"
+  for t in [1, 2, 3, 4, 5]
+    steps := pour_solve(5, 3, t)
+    sc := steps | count()
+    print "  Target {t}: {sc} steps"
+
+  -- Different jug sizes
+  print ""
+  print "Solutions (jugs: 7 and 4):"
+  for t in [1, 2, 3, 5, 6]
+    steps := pour_solve(7, 4, t)
+    sc := steps | count()
+    print "  Target {t}: {sc} steps"

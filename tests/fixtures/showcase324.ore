@@ -1,0 +1,99 @@
+-- Showcase 324: DNA sequence analysis
+
+fn complement base:Str -> Str
+  if base == "A"
+    return "T"
+  if base == "T"
+    return "A"
+  if base == "C"
+    return "G"
+  if base == "G"
+    return "C"
+  "?"
+
+fn reverse_complement dna:Str -> Str
+  n := dna.len()
+  mut result := ""
+  mut i := n - 1
+  while i >= 0
+    ch := dna.substr(i, 1)
+    result = "{result}{complement(ch)}"
+    i = i - 1
+  result
+
+fn gc_content dna:Str -> Int
+  -- Returns GC percentage as integer (0-100)
+  n := dna.len()
+  mut gc := 0
+  for i in range(0, n)
+    ch := dna.substr(i, 1)
+    if ch == "G" or ch == "C"
+      gc = gc + 1
+  gc * 100 / n
+
+fn transcribe dna:Str -> Str
+  -- DNA to RNA: T -> U
+  n := dna.len()
+  mut rna := ""
+  for i in range(0, n)
+    ch := dna.substr(i, 1)
+    if ch == "T"
+      rna = "{rna}U"
+    else
+      rna = "{rna}{ch}"
+  rna
+
+fn count_base dna:Str target:Str -> Int
+  n := dna.len()
+  mut c := 0
+  for i in range(0, n)
+    if dna.substr(i, 1) == target
+      c = c + 1
+  c
+
+fn find_motif dna:Str motif:Str -> List
+  -- Find all positions where motif occurs
+  mut positions := []
+  dna_len := dna.len()
+  motif_len := motif.len()
+  for i in range(0, dna_len - motif_len + 1)
+    if dna.substr(i, motif_len) == motif
+      positions.push(i)
+  positions
+
+fn main
+  dna := "ATGCGATCGATCGTAGCATCG"
+  print "DNA: {dna}"
+  print "Length: {dna.len()}"
+
+  -- Base counts
+  print ""
+  print "Base counts:"
+  print "  A: {count_base(dna, "A")}"
+  print "  T: {count_base(dna, "T")}"
+  print "  G: {count_base(dna, "G")}"
+  print "  C: {count_base(dna, "C")}"
+
+  -- GC content
+  gc := gc_content(dna)
+  print ""
+  print "GC content: {gc}%"
+
+  -- Complement
+  rc := reverse_complement(dna)
+  print ""
+  print "Reverse complement: {rc}"
+
+  -- Transcription
+  rna := transcribe(dna)
+  print "RNA: {rna}"
+
+  -- Motif finding
+  print ""
+  motif := "ATC"
+  positions := find_motif(dna, motif)
+  print "Motif '{motif}' found at positions: {positions | join(", ")}"
+
+  motif2 := "GAT"
+  pos2 := find_motif(dna, motif2)
+  print "Motif '{motif2}' found at positions: {pos2 | join(", ")}"

@@ -1,0 +1,91 @@
+-- Showcase 325: Bracket matching (balanced parentheses)
+
+fn is_open ch:Str -> Bool
+  ch == "(" or ch == "["
+
+fn is_close ch:Str -> Bool
+  ch == ")" or ch == "]"
+
+fn get_match open:Str -> Str
+  if open == "("
+    return ")"
+  "]"
+
+fn check_brackets expr:Str -> Str
+  mut stack := []
+  n := expr.len()
+  for i in range(0, n)
+    ch := expr.substr(i, 1)
+    if is_open(ch)
+      stack.push(ch)
+    else if is_close(ch)
+      sc := stack | count()
+      if sc == 0
+        return "Unmatched at {i}"
+      top_idx := sc - 1
+      top := stack[top_idx]
+      expected := get_match(top)
+      if ch == expected
+        stack.pop()
+      else
+        return "Mismatch at {i}"
+  sc := stack | count()
+  if sc > 0
+    return "Unclosed: {sc} remaining"
+  "Balanced"
+
+fn max_depth expr:Str -> Int
+  mut depth := 0
+  mut max_d := 0
+  n := expr.len()
+  for i in range(0, n)
+    ch := expr.substr(i, 1)
+    if is_open(ch)
+      depth = depth + 1
+      if depth > max_d
+        max_d = depth
+    else if is_close(ch)
+      depth = depth - 1
+  max_d
+
+fn count_pairs expr:Str -> Int
+  mut c := 0
+  n := expr.len()
+  for i in range(0, n)
+    ch := expr.substr(i, 1)
+    if is_open(ch)
+      c = c + 1
+  c
+
+fn main
+  -- Test various bracket expressions
+  print "Bracket matching:"
+  tests := ["(())", "([()])", "(()", "(])", "([)]", "((()))", "()", ""]
+  for e in tests
+    result := check_brackets(e)
+    label := if e == "" then "<empty>" else e
+    print "  {label}: {result}"
+
+  -- Nesting depth
+  print ""
+  print "Nesting depth:"
+  depth_tests := ["()", "(())", "((()))", "(()())", "([()])", "a+b"]
+  for e in depth_tests
+    d := max_depth(e)
+    print "  {e}: depth {d}"
+
+  -- Pair counting
+  print ""
+  print "Bracket pair counts:"
+  count_tests := ["(a+b)*(c+d)", "((a))", "a+b", "([])([])"]
+  for e in count_tests
+    c := count_pairs(e)
+    print "  {e}: {c} pairs"
+
+  -- Real-world expression validation
+  print ""
+  print "Expression validation:"
+  exprs := ["(1+2)*(3+4)", "((a+b)", "[x*(y+z)]", "a[0](b[1])"]
+  for e in exprs
+    result := check_brackets(e)
+    print "  {e}: {result}"

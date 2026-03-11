@@ -4457,6 +4457,96 @@ fn showcase321_short_circuit() {
 }
 
 #[test]
+fn showcase322_luhn() {
+    let out = run_ore("showcase322.ore");
+    assert!(out.contains("Card: 4111111111111111"));
+    assert!(out.contains("Valid (Luhn check passed)"));
+    assert!(out.contains("Invalid (Luhn check failed)"));
+    assert!(out.contains("1234567890123452 is valid"));
+    assert!(out.contains("5 -> 1"));
+}
+
+#[test]
+fn showcase323_coin_change() {
+    let out = run_ore("showcase323.ore");
+    assert!(out.contains("Coins: 1, 5, 10, 25"));
+    assert!(out.contains("30 cents: 2 coins"));
+    assert!(out.contains("25 cents: 13 ways"));
+    assert!(out.contains("50 cents: 49 ways"));
+    assert!(out.contains("6: min 2 coins, 4 ways"));
+}
+
+#[test]
+fn showcase324_dna() {
+    let out = run_ore("showcase324.ore");
+    assert!(out.contains("DNA: ATGCGATCGATCGTAGCATCG"));
+    assert!(out.contains("A: 5"));
+    assert!(out.contains("GC content: 52%"));
+    assert!(out.contains("Reverse complement: CGATGCTACGATCGATCGCAT"));
+    assert!(out.contains("RNA: AUGCGAUCGAUCGUAGCAUCG"));
+    assert!(out.contains("Motif 'ATC' found at positions: 5, 9, 17"));
+}
+
+#[test]
+fn showcase325_bracket_matching() {
+    let out = run_ore("showcase325.ore");
+    assert!(out.contains("(()): Balanced"));
+    assert!(out.contains("((): Unclosed: 1 remaining"));
+    assert!(out.contains("(]): Mismatch at 1"));
+    assert!(out.contains("((())): depth 3"));
+    assert!(out.contains("(a+b)*(c+d): 2 pairs"));
+}
+
+#[test]
+fn showcase326_number_classification() {
+    let out = run_ore("showcase326.ore");
+    assert!(out.contains("6: divisor sum = 6, perfect"));
+    assert!(out.contains("12: divisor sum = 16, abundant"));
+    assert!(out.contains("Perfect numbers up to 500: 6, 28, 496"));
+    assert!(out.contains("(220, 284)"));
+    assert!(out.contains("Abundant numbers up to 100: 22"));
+}
+
+#[test]
+fn showcase327_water_pouring() {
+    let out = run_ore("showcase327.ore");
+    assert!(out.contains("Result: A has 4 gallons!"));
+    assert!(out.contains("Target 5: 1 steps"));
+    assert!(out.contains("Target 4: 6 steps"));
+    assert!(out.contains("Solutions (jugs: 7 and 4):"));
+}
+
+#[test]
+fn showcase328_kadane() {
+    let out = run_ore("showcase328.ore");
+    assert!(out.contains("Max subarray sum: 6"));
+    assert!(out.contains("Subarray [3..6]: 4, -1, 2, 1"));
+    assert!(out.contains("Max subarray sum: 15"));
+    assert!(out.contains("Max subarray sum: -1"));
+}
+
+#[test]
+fn showcase329_josephus() {
+    let out = run_ore("showcase329.ore");
+    assert!(out.contains("Josephus Problem"));
+    assert!(out.contains("n=7: position 6 (person 7)"));
+    assert!(out.contains("Order: 3 -> 6 -> 2 -> 7 -> 5 -> 1 -> 4"));
+    assert!(out.contains("Survivor: person 4"));
+    assert!(out.contains("Formula confirms: person 4"));
+}
+
+#[test]
+fn showcase330_rational() {
+    let out = run_ore("showcase330.ore");
+    assert!(out.contains("1/2 + 1/3 = 5/6"));
+    assert!(out.contains("1/2 * 1/3 = 1/6"));
+    assert!(out.contains("6/8 = 3/4"));
+    assert!(out.contains("-4/6 = -2/3"));
+    assert!(out.contains("H(6) = 1 + 1/2 + ... + 1/6 = 49/20"));
+    assert!(out.contains("1/2 + 1/3 + 1/6 = 1"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

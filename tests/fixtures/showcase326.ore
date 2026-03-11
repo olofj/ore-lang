@@ -1,0 +1,72 @@
+-- Showcase 326: Number classification (perfect, abundant, deficient)
+
+fn sum_divisors n:Int -> Int
+  mut s := 1
+  mut d := 2
+  while d * d <= n
+    if n % d == 0
+      s = s + d
+      other := n / d
+      if other != d
+        s = s + other
+    d = d + 1
+  s
+
+fn classify n:Int -> Str
+  if n <= 1
+    return "none"
+  s := sum_divisors(n)
+  if s == n
+    return "perfect"
+  if s > n
+    return "abundant"
+  "deficient"
+
+fn is_amicable a:Int -> Bool
+  if a <= 1
+    return false
+  b := sum_divisors(a)
+  if b <= 1 or b == a
+    return false
+  sum_divisors(b) == a
+
+fn main
+  -- Classify numbers
+  print "Number classification:"
+  for n in [1, 6, 8, 10, 12, 18, 20, 24, 28, 30]
+    cls := classify(n)
+    sd := sum_divisors(n)
+    print "  {n}: divisor sum = {sd}, {cls}"
+
+  -- Find perfect numbers up to 500
+  print ""
+  mut perfects := []
+  for n in range(2, 501)
+    if classify(n) == "perfect"
+      perfects.push(n)
+  print "Perfect numbers up to 500: {perfects | join(", ")}"
+
+  -- Find amicable pairs up to 1000
+  print ""
+  print "Amicable pairs up to 1000:"
+  mut found := []
+  for a in range(2, 1001)
+    if is_amicable(a)
+      b := sum_divisors(a)
+      if a < b
+        print "  ({a}, {b})"
+
+  -- Count abundant numbers up to 100
+  mut abundant_count := 0
+  for n in range(2, 101)
+    if classify(n) == "abundant"
+      abundant_count = abundant_count + 1
+  print ""
+  print "Abundant numbers up to 100: {abundant_count}"
+
+  -- Count deficient numbers up to 100
+  mut deficient_count := 0
+  for n in range(2, 101)
+    if classify(n) == "deficient"
+      deficient_count = deficient_count + 1
+  print "Deficient numbers up to 100: {deficient_count}"
