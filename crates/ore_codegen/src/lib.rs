@@ -2419,6 +2419,66 @@ impl<'ctx> CodeGen<'ctx> {
                 ))?;
                 Ok((is_none.into(), ValKind::Bool))
             }
+            "map" => {
+                // opt.map(fn) -> applies fn to inner value if Some, returns Option
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "map takes 1 argument (function)".into() });
+                }
+                let is_some = bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
+                ))?;
+                let some_bb = self.context.append_basic_block(func, "optmap_some");
+                let none_bb = self.context.append_basic_block(func, "optmap_none");
+                let merge_bb = self.context.append_basic_block(func, "optmap_merge");
+                bld!(self.builder.build_conditional_branch(is_some, some_bb, none_bb))?;
+
+                // Some branch: unwrap, apply function, wrap result
+                self.builder.position_at_end(some_bb);
+                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+
+                // Compile the lambda/function and call it with inner value
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        self.compile_lambda(params, body, func)?
+                    }
+                    Expr::Ident(name) => {
+                        self.module.get_function(name).ok_or_else(|| CodeGenError {
+                            line: None, msg: format!("unknown function '{}'", name),
+                        })?
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "map requires a function or lambda".into() }),
+                };
+
+                let map_result = bld!(self.builder.build_call(lambda_fn, &[inner.into()], "mapped"))?;
+                let mapped_val = self.call_result_to_value(map_result)?;
+
+                // Wrap result in Some
+                let opt_ty = self.option_type();
+                let res_alloca = bld!(self.builder.build_alloca(opt_ty, "optres"))?;
+                let res_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, res_alloca, 0, "res_tag"))?;
+                bld!(self.builder.build_store(res_tag_ptr, self.context.i8_type().const_int(1, false)))?;
+                let res_kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, res_alloca, 1, "res_kind"))?;
+                bld!(self.builder.build_store(res_kind_ptr, self.context.i8_type().const_int(0, false)))?;
+                let res_val_ptr = bld!(self.builder.build_struct_gep(opt_ty, res_alloca, 2, "res_val"))?;
+                let mapped_i64 = self.value_to_i64(mapped_val)?;
+                bld!(self.builder.build_store(res_val_ptr, mapped_i64))?;
+                let some_result = bld!(self.builder.build_load(opt_ty, res_alloca, "some_res"))?;
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+                let some_end = self.builder.get_insert_block().unwrap();
+
+                // None branch
+                self.builder.position_at_end(none_bb);
+                let none_alloca = bld!(self.builder.build_alloca(opt_ty, "none_res"))?;
+                let none_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, none_alloca, 0, "none_tag"))?;
+                bld!(self.builder.build_store(none_tag_ptr, self.context.i8_type().const_int(0, false)))?;
+                let none_result = bld!(self.builder.build_load(opt_ty, none_alloca, "none_res"))?;
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+                self.builder.position_at_end(merge_bb);
+                let phi = bld!(self.builder.build_phi(opt_ty, "optmap_result"))?;
+                phi.add_incoming(&[(&some_result, some_end), (&none_result, none_bb)]);
+                Ok((phi.as_basic_value(), ValKind::Option))
+            }
             _ => Err(CodeGenError { line: None, msg: format!("unknown method '{}' on Option", method) }),
         }
     }

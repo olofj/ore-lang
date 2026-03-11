@@ -1,0 +1,29 @@
+fn maybe x:Int -> Int?
+  if x > 0
+    Some(x)
+  else
+    None
+
+fn double x:Int -> Int
+  x * 2
+
+fn main
+  a := maybe(5)
+  b := maybe(-3)
+
+  -- map with named function
+  c := a.map(double)
+  match c
+    Some v -> print v
+    None -> print "none"
+
+  d := b.map(double)
+  match d
+    Some v -> print v
+    None -> print "none"
+
+  -- map with lambda
+  e := a.map(x => x + 100)
+  match e
+    Some v -> print v
+    None -> print "none"

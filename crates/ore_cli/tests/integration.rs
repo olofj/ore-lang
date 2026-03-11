@@ -462,6 +462,13 @@ fn control_optional_chain() {
 }
 
 #[test]
+fn control_option_map() {
+    let out = run_ore("control/option_map.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["10", "none", "105"]);
+}
+
+#[test]
 fn stdlib_slicing() {
     let out = run_ore("stdlib/slicing.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
