@@ -1,0 +1,43 @@
+-- Showcase 205: Map-based graph algorithms
+
+fn main
+  -- Adjacency list representation using maps
+  mut graph := {}
+  graph.set("A", "B,C")
+  graph.set("B", "A,D,E")
+  graph.set("C", "A,F")
+  graph.set("D", "B")
+  graph.set("E", "B,F")
+  graph.set("F", "C,E")
+
+  print "Graph adjacency list:"
+  for node in graph.keys()
+    print "  {node} -> {graph[node]}"
+
+  -- Count edges (each edge counted twice in undirected graph)
+  mut total_edges := 0
+  for node in graph.keys()
+    neighbors := graph[node].split(",")
+    total_edges = total_edges + (neighbors | count())
+  print ""
+  print "Total edges: {total_edges / 2}"
+
+  -- Degree of each node
+  print ""
+  print "Node degrees:"
+  for node in graph.keys()
+    degree := graph[node].split(",") | count()
+    print "  {node}: degree {degree}"
+
+  -- Find nodes with max degree
+  print ""
+  mut max_degree := 0
+  for node in graph.keys()
+    degree := graph[node].split(",") | count()
+    if degree > max_degree
+      max_degree = degree
+  print "Max degree: {max_degree}"
+  for node in graph.keys()
+    degree := graph[node].split(",") | count()
+    if degree == max_degree
+      print "  Node {node} has max degree"

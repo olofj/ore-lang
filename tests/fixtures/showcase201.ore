@@ -1,0 +1,40 @@
+-- Showcase 201: Advanced pipeline chains
+
+fn main
+  -- Chain of transformations
+  result := range(1, 101)
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | filter(n => n > 100)
+    | take(10)
+    | join(", ")
+  print "First 10 even squares > 100:"
+  print result
+
+  -- Pipeline with fold to build result
+  factorial_5 := range(1, 6) | fold(1, (acc, n) => acc * n)
+  print ""
+  print "5! = {factorial_5}"
+
+  factorial_10 := range(1, 11) | fold(1, (acc, n) => acc * n)
+  print "10! = {factorial_10}"
+
+  -- Scan to show running product
+  running_factorial := range(1, 8) | scan(1, (acc, n) => acc * n)
+  print "Running factorial: {running_factorial | join(", ")}"
+
+  -- Pipeline with string processing
+  print ""
+  words := "hello world foo bar baz qux"
+  long_words := words.split(" ")
+    | filter(w => w.len() > 3)
+    | map(w => w.to_upper())
+    | join(" | ")
+  print "Long words uppercased: {long_words}"
+
+  -- Count with filter
+  print ""
+  evens := range(1, 101) | filter(n => n % 2 == 0) | count()
+  multiples_of_7 := range(1, 101) | filter(n => n % 7 == 0) | count()
+  print "Evens in 1-100: {evens}"
+  print "Multiples of 7 in 1-100: {multiples_of_7}"

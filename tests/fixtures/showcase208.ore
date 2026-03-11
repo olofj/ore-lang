@@ -1,0 +1,47 @@
+-- Showcase 208: Bit patterns and binary representation
+
+fn to_binary n:Int -> Str
+  if n == 0
+    return "0"
+  mut result := ""
+  mut val := n
+  while val > 0
+    if val % 2 == 1
+      result = "1{result}"
+    else
+      result = "0{result}"
+    val = val / 2
+  result
+
+fn count_ones n:Int -> Int
+  mut count := 0
+  mut val := n
+  while val > 0
+    if val % 2 == 1
+      count = count + 1
+    val = val / 2
+  count
+
+fn main
+  -- Binary representations
+  print "Binary representations:"
+  nums := [0, 1, 7, 10, 42, 255, 1024]
+  for n in nums
+    print "  {n} = {to_binary(n)} ({count_ones(n)} ones)"
+
+  -- Powers of 2
+  print ""
+  print "Powers of 2 in binary:"
+  mut pow := 1
+  for i in range(0, 9)
+    print "  2^{i} = {pow} = {to_binary(pow)}"
+    pow = pow * 2
+
+  -- XOR properties
+  print ""
+  print "XOR truth table:"
+  for a in range(0, 2)
+    for b in range(0, 2)
+      -- XOR via arithmetic: a + b - 2*a*b
+      xor := a + b - 2 * a * b
+      print "  {a} XOR {b} = {xor}"

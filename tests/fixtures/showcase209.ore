@@ -1,0 +1,55 @@
+-- Showcase 209: Statistical analysis
+
+fn main
+  data := [23, 45, 12, 67, 34, 89, 56, 78, 21, 43]
+  
+  -- Mean
+  total := data | sum()
+  n := data | count()
+  mean := total / n
+  print "Data: {data | join(", ")}"
+  print "Count: {n}"
+  print "Sum: {total}"
+  print "Mean: {mean}"
+
+  -- Min and Max
+  mut mn := data[0]
+  mut mx := data[0]
+  for v in data
+    if v < mn
+      mn = v
+    if v > mx
+      mx = v
+  print "Min: {mn}"
+  print "Max: {mx}"
+  print "Range: {mx - mn}"
+
+  -- Variance (integer approximation)
+  mut sum_sq_diff := 0
+  for v in data
+    diff := v - mean
+    sum_sq_diff = sum_sq_diff + diff * diff
+  variance := sum_sq_diff / n
+  print "Variance: {variance}"
+
+  -- Sorted data (insertion sort)
+  print ""
+  mut sorted := []
+  for v in data
+    sorted.push(v)
+  for i in range(1, sorted | count())
+    key := sorted[i]
+    mut j := i - 1
+    while j >= 0 and sorted[j] > key
+      sorted[j + 1] = sorted[j]
+      j = j - 1
+    sorted[j + 1] = key
+  print "Sorted: {sorted | join(", ")}"
+
+  -- Median
+  mid := n / 2
+  if n % 2 == 0
+    median := (sorted[mid - 1] + sorted[mid]) / 2
+    print "Median: {median}"
+  else
+    print "Median: {sorted[mid]}"

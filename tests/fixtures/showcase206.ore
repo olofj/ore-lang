@@ -1,0 +1,36 @@
+-- Showcase 206: Recursive tree structures with enums
+
+type Tree
+  Leaf(val: Int)
+  Node(val: Int, left_val: Int, right_val: Int)
+
+fn tree_sum t:Tree -> Int
+  match t
+    Leaf v -> v
+    Node v l r -> v + l + r
+
+fn tree_str t:Tree -> Str
+  match t
+    Leaf v -> "Leaf({v})"
+    Node v l r -> "Node({v}, {l}, {r})"
+
+fn main
+  -- Build some trees
+  trees := [
+    Leaf(val: 1),
+    Leaf(val: 2),
+    Node(val: 3, left_val: 1, right_val: 2)
+  ]
+  
+  for t in trees
+    print "{tree_str(t)} -> sum = {tree_sum(t)}"
+
+  -- More complex node
+  big := Node(val: 10, left_val: 20, right_val: 30)
+  print "Big tree sum: {tree_sum(big)}"
+  
+  -- Sum all trees
+  mut total := 0
+  for t in trees
+    total = total + tree_sum(t)
+  print "Total of all trees: {total}"

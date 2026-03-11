@@ -1,0 +1,32 @@
+-- Showcase 202: Enum with data - expression tree
+
+type Expr
+  Num(val: Int)
+  Add(left: Int, right: Int)
+  Mul(left: Int, right: Int)
+
+fn eval e:Expr -> Int
+  match e
+    Num v -> v
+    Add l r -> l + r
+    Mul l r -> l * r
+
+fn expr_str e:Expr -> Str
+  match e
+    Num v -> "{v}"
+    Add l r -> "({l} + {r})"
+    Mul l r -> "({l} * {r})"
+
+fn main
+  exprs := [Num(val: 42), Add(left: 3, right: 4), Mul(left: 5, right: 6)]
+  for e in exprs
+    print "{expr_str(e)} = {eval(e)}"
+  
+  -- Build expressions from data
+  print ""
+  a := Num(val: 10)
+  print "a = {eval(a)}"
+  b := Add(left: eval(a), right: 5)
+  print "a + 5 = {eval(b)}"
+  c := Mul(left: eval(b), right: 3)
+  print "(a + 5) * 3 = {eval(c)}"

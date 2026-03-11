@@ -1,0 +1,50 @@
+-- Showcase 203: Comprehensive string methods
+
+fn main
+  s := "  Hello, World!  "
+  
+  -- Trimming
+  print "trim: '{s.trim()}'"
+  print "trim_start: '{s.trim_start()}'"
+  print "trim_end: '{s.trim_end()}'"
+  
+  -- Case
+  print ""
+  print "to_upper: '{s.trim().to_upper()}'"
+  print "to_lower: '{s.trim().to_lower()}'"
+  
+  -- Search
+  print ""
+  word := "Hello, World!"
+  print "contains 'World': {word.contains("World")}"
+  print "contains 'xyz': {word.contains("xyz")}"
+  print "starts_with 'Hello': {word.starts_with("Hello")}"
+  print "ends_with '!': {word.ends_with("!")}"
+  
+  -- Manipulation
+  print ""
+  print "replace: {word.replace("World", "Ore")}"
+  print "repeat: {"ha".repeat(3)}"
+  print "reverse: {"abcdef".reverse()}"
+  
+  -- Info
+  print ""
+  print "len: {word.len()}"
+  print "is_empty '': {"".is_empty()}"
+  print "is_empty 'x': {"x".is_empty()}"
+  
+  -- Split and join
+  print ""
+  parts := "a,b,c,d".split(",")
+  print "split: {parts | join(" | ")}"
+  print "count: {parts | count()}"
+  
+  -- Substr and capitalize
+  print ""
+  print "substr(0,5): {word.substr(0, 5)}"
+  print "capitalize: {"hello world".capitalize()}"
+  
+  -- Pad
+  print ""
+  print "pad_left: '{"42".pad_left(6, "0")}'"
+  print "pad_right: '{"hi".pad_right(6, ".")}'"

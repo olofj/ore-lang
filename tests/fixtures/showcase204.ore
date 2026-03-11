@@ -1,0 +1,44 @@
+-- Showcase 204: Nested loops and patterns
+
+fn main
+  -- Multiplication table
+  print "Multiplication table (1-5):"
+  for i in range(1, 6)
+    mut row := ""
+    for j in range(1, 6)
+      val := i * j
+      mut s := "{val}"
+      if val < 10
+        s = " {val}"
+      if row == ""
+        row = s
+      else
+        row = "{row} {s}"
+    print "  {row}"
+
+  -- Diamond pattern
+  print ""
+  print "Diamond:"
+  size := 5
+  for i in range(1, size + 1)
+    spaces := " ".repeat(size - i)
+    stars := "*".repeat(2 * i - 1)
+    print "{spaces}{stars}"
+  for i in range(1, size)
+    spaces := " ".repeat(i)
+    stars := "*".repeat(2 * (size - i) - 1)
+    print "{spaces}{stars}"
+
+  -- Number spiral (simple version - just concentric squares)
+  print ""
+  print "Number triangle:"
+  mut num := 1
+  for row in range(1, 6)
+    mut line := ""
+    for col in range(0, row)
+      if line == ""
+        line = "{num}"
+      else
+        line = "{line} {num}"
+      num = num + 1
+    print "  {line}"

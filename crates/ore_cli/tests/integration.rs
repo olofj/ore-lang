@@ -3462,6 +3462,98 @@ fn showcase200_comprehensive() {
 }
 
 #[test]
+fn showcase201_advanced_pipelines() {
+    let out = run_ore("showcase201.ore");
+    assert!(out.contains("144, 196, 256"));
+    assert!(out.contains("5! = 120"));
+    assert!(out.contains("10! = 3628800"));
+    assert!(out.contains("Long words uppercased: HELLO | WORLD"));
+    assert!(out.contains("Multiples of 7 in 1-100: 14"));
+}
+
+#[test]
+fn showcase202_expression_tree() {
+    let out = run_ore("showcase202.ore");
+    assert!(out.contains("42 = 42"));
+    assert!(out.contains("(3 + 4) = 7"));
+    assert!(out.contains("(5 * 6) = 30"));
+    assert!(out.contains("(a + 5) * 3 = 45"));
+}
+
+#[test]
+fn showcase203_string_methods() {
+    let out = run_ore("showcase203.ore");
+    assert!(out.contains("trim: 'Hello, World!'"));
+    assert!(out.contains("to_upper: 'HELLO, WORLD!'"));
+    assert!(out.contains("replace: Hello, Ore!"));
+    assert!(out.contains("repeat: hahaha"));
+    assert!(out.contains("reverse: fedcba"));
+    assert!(out.contains("pad_left: '000042'"));
+}
+
+#[test]
+fn showcase204_nested_loops() {
+    let out = run_ore("showcase204.ore");
+    assert!(out.contains("Multiplication table"));
+    assert!(out.contains(" 5 10 15 20 25"));
+    assert!(out.contains("*********"));
+    assert!(out.contains("11 12 13 14 15"));
+}
+
+#[test]
+fn showcase205_graph() {
+    let out = run_ore("showcase205.ore");
+    assert!(out.contains("Total edges: 6"));
+    assert!(out.contains("Max degree: 3"));
+    assert!(out.contains("Node B has max degree"));
+}
+
+#[test]
+fn showcase206_tree_enum() {
+    let out = run_ore("showcase206.ore");
+    assert!(out.contains("Leaf(1) -> sum = 1"));
+    assert!(out.contains("Node(3, 1, 2) -> sum = 6"));
+    assert!(out.contains("Big tree sum: 60"));
+    assert!(out.contains("Total of all trees: 9"));
+}
+
+#[test]
+fn showcase207_population() {
+    let out = run_ore("showcase207.ore");
+    assert!(out.contains("Year 0: 100"));
+    assert!(out.contains("Year 10: 256"));
+    assert!(out.contains("Predator-Prey simulation:"));
+}
+
+#[test]
+fn showcase208_binary() {
+    let out = run_ore("showcase208.ore");
+    assert!(out.contains("42 = 101010 (3 ones)"));
+    assert!(out.contains("255 = 11111111 (8 ones)"));
+    assert!(out.contains("0 XOR 0 = 0"));
+    assert!(out.contains("1 XOR 1 = 0"));
+}
+
+#[test]
+fn showcase209_statistics() {
+    let out = run_ore("showcase209.ore");
+    assert!(out.contains("Sum: 468"));
+    assert!(out.contains("Mean: 46"));
+    assert!(out.contains("Min: 12"));
+    assert!(out.contains("Max: 89"));
+    assert!(out.contains("Sorted: 12, 21, 23, 34, 43, 45, 56, 67, 78, 89"));
+}
+
+#[test]
+fn showcase210_pattern_matching() {
+    let out = run_ore("showcase210.ore");
+    assert!(out.contains("circle with radius 5: area=78"));
+    assert!(out.contains("rectangle 10x10: area=100"));
+    assert!(out.contains("Large shapes: 2"));
+    assert!(out.contains("Total area: 233"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

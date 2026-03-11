@@ -1,0 +1,32 @@
+-- Showcase 207: Simulation - population growth
+
+fn main
+  -- Simple population model
+  mut population := 100
+  growth_rate := 10  -- 10% as integer math
+
+  print "Population growth simulation:"
+  print "  Year 0: {population}"
+  for year in range(1, 11)
+    growth := population * growth_rate / 100
+    population = population + growth
+    print "  Year {year}: {population}"
+
+  -- Predator-prey (simplified Lotka-Volterra with integers)
+  print ""
+  print "Predator-Prey simulation:"
+  mut prey := 1000
+  mut predators := 100
+  
+  for step in range(0, 10)
+    print "  Step {step}: prey={prey} predators={predators}"
+    -- Prey grows 20%, reduced by predation
+    new_prey := prey + prey * 20 / 100 - predators * 5
+    -- Predators grow based on prey, die naturally
+    new_predators := predators + predators * prey / 5000 - predators * 10 / 100
+    prey = new_prey
+    predators = new_predators
+    if prey < 0
+      prey = 0
+    if predators < 0
+      predators = 0
