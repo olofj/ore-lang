@@ -1035,7 +1035,24 @@ impl<'ctx> CodeGen<'ctx> {
             let kind = self.type_expr_to_kind(&param.ty);
             let alloca = bld!(self.builder.build_alloca(ty, &param.name))?;
             bld!(self.builder.build_store(alloca, val))?;
-            self.variables.insert(param.name.clone(), (alloca, ty, kind, false));
+            self.variables.insert(param.name.clone(), (alloca, ty, kind.clone(), false));
+            // Track element kinds for List[T] and Map value kinds from type annotations
+            if kind == ValKind::List {
+                if let TypeExpr::Generic(_, args) = &param.ty {
+                    if let Some(elem_ty) = args.first() {
+                        let elem_kind = self.type_expr_to_kind(elem_ty);
+                        self.list_element_kinds.insert(param.name.clone(), elem_kind);
+                    }
+                }
+            }
+            if kind == ValKind::Map {
+                if let TypeExpr::Generic(_, args) = &param.ty {
+                    if args.len() >= 2 {
+                        let val_kind = self.type_expr_to_kind(&args[1]);
+                        self.map_value_kinds.insert(param.name.clone(), val_kind);
+                    }
+                }
+            }
         }
 
         let last_val = self.compile_block_stmts(&fndef.body, func)?;
