@@ -343,6 +343,7 @@ fn map_runtime_functions(
     map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
     map_fn!("ore_list_find", ore_runtime::ore_list_find);
     map_fn!("ore_list_join", ore_runtime::ore_list_join);
+    map_fn!("ore_list_join_str", ore_runtime::ore_list_join_str);
     map_fn!("ore_list_any", ore_runtime::ore_list_any);
     map_fn!("ore_list_all", ore_runtime::ore_list_all);
     map_fn!("ore_list_zip", ore_runtime::ore_list_zip);

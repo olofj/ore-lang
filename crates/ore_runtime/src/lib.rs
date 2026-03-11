@@ -821,6 +821,24 @@ pub extern "C" fn ore_list_join(list: *mut OreList, sep: *mut OreStr) -> *mut Or
     }
 }
 
+/// Join list elements where elements are OreStr pointers.
+#[no_mangle]
+pub extern "C" fn ore_list_join_str(list: *mut OreList, sep: *mut OreStr) -> *mut OreStr {
+    unsafe {
+        let src = &*list;
+        let sep_str = (*sep).as_str();
+        let mut parts: Vec<&str> = Vec::new();
+        for i in 0..src.len as usize {
+            let s = *src.data.add(i) as *mut OreStr;
+            if !s.is_null() {
+                parts.push((*s).as_str());
+            }
+        }
+        let joined = parts.join(sep_str);
+        ore_str_new(joined.as_ptr(), joined.len() as u32)
+    }
+}
+
 /// Take first n elements from a list.
 #[no_mangle]
 pub extern "C" fn ore_list_take(list: *mut OreList, n: i64) -> *mut OreList {

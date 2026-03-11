@@ -604,6 +604,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_zip", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_enumerate(ptr) -> ptr
         self.module.add_function("ore_list_enumerate", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_join_str(ptr, sep) -> ptr
+        self.module.add_function("ore_list_join_str", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_flat_map(ptr, fn_ptr, env_ptr) -> ptr
         self.module.add_function("ore_list_flat_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_range(i64, i64) -> ptr
@@ -995,7 +997,14 @@ impl<'ctx> CodeGen<'ctx> {
                     line: None, msg: format!("undefined variable '{}'", name),
                 })?;
                 let val = bld!(self.builder.build_load(*ty, *ptr, name))?;
-                Ok((val, kind.clone()))
+                let kind = kind.clone();
+                // Restore list element kind tracking for method dispatch
+                if kind == ValKind::List {
+                    if let Some(elem_kind) = self.list_element_kinds.get(name) {
+                        self.last_list_elem_kind = Some(elem_kind.clone());
+                    }
+                }
+                Ok((val, kind))
             }
             Expr::BinOp { op, left, right } => {
                 if *op == BinOp::Pipe {
@@ -1902,7 +1911,14 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "join takes 1 argument (separator)".into() });
                 }
                 let sep = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_list_join").unwrap();
+                // Use join_str for string lists, join for int lists
+                let elem_kind = self.last_list_elem_kind.clone();
+                let fn_name = if matches!(elem_kind, Some(ValKind::Str)) {
+                    "ore_list_join_str"
+                } else {
+                    "ore_list_join"
+                };
+                let rt = self.module.get_function(fn_name).unwrap();
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), sep.into()], "join"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
