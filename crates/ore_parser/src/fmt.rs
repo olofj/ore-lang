@@ -201,6 +201,13 @@ impl Formatter {
                 self.out.push('\n');
                 self.format_block(body, level + 1);
             }
+            Stmt::ForEachKV { key_var, val_var, iterable, body } => {
+                self.indent(level);
+                self.out.push_str(&format!("for {}, {} in ", key_var, val_var));
+                self.format_expr(iterable, level);
+                self.out.push('\n');
+                self.format_block(body, level + 1);
+            }
             Stmt::Loop { body } => {
                 self.indent(level);
                 self.out.push_str("loop\n");

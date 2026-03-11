@@ -576,6 +576,16 @@ fn maps_iteration() {
 }
 
 #[test]
+fn maps_for_kv() {
+    let out = run_ore("maps/for_kv.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    // Key order may vary, but we should have name=Alice, city=Paris, and total 60
+    assert!(lines.contains(&"name=Alice"));
+    assert!(lines.contains(&"city=Paris"));
+    assert_eq!(lines.last().unwrap(), &"60");
+}
+
+#[test]
 fn concurrency_channels() {
     let out = run_ore("concurrency/channels.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

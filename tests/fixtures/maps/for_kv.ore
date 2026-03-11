@@ -1,0 +1,11 @@
+fn main
+  -- String values
+  m := {"name": "Alice", "city": "Paris"}
+  for k, v in m
+    print "{k}={v}"
+  -- Int values with accumulation
+  scores := {"a": 10, "b": 20, "c": 30}
+  mut total := 0
+  for k, v in scores
+    total = total + v
+  print total

@@ -306,6 +306,15 @@ impl TypeChecker {
                 *env = *child.parent.unwrap();
                 Type::Unit
             }
+            Stmt::ForEachKV { key_var, val_var, iterable, body } => {
+                let _iter_ty = self.infer_expr(iterable, env);
+                let mut child = Env::child(std::mem::replace(env, Env::new()));
+                child.insert(key_var.clone(), Type::Str, false);
+                child.insert(val_var.clone(), Type::Any, false);
+                self.check_block(body, &mut child, ret_ty);
+                *env = *child.parent.unwrap();
+                Type::Unit
+            }
             Stmt::Loop { body } => {
                 let mut child = Env::child(std::mem::replace(env, Env::new()));
                 self.check_block(body, &mut child, ret_ty);

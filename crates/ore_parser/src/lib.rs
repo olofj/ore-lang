@@ -482,20 +482,34 @@ impl Parser {
                     Token::Ident(n) => { self.advance(); n }
                     _ => return Err(self.error("expected variable name after for".into())),
                 };
-                self.expect(&Token::In)?;
-                let start = self.parse_expr(3)?; // Parse at higher precedence to stop at ..
-                if self.peek() == &Token::DotDot {
-                    // Range loop: for x in start..end
-                    self.advance();
-                    let end = self.parse_expr(0)?;
+                // Check for key-value destructuring: for k, v in map
+                if self.peek() == &Token::Comma {
+                    self.advance(); // consume ','
+                    let val_var = match self.peek().clone() {
+                        Token::Ident(n) => { self.advance(); n }
+                        _ => return Err(self.error("expected value variable name after ','".into())),
+                    };
+                    self.expect(&Token::In)?;
+                    let iterable = self.parse_expr(0)?;
                     self.skip_newlines();
                     let body = self.parse_block()?;
-                    Ok(Stmt::ForIn { var, start, end, body })
+                    Ok(Stmt::ForEachKV { key_var: var, val_var, iterable, body })
                 } else {
-                    // Collection iteration: for x in list
-                    self.skip_newlines();
-                    let body = self.parse_block()?;
-                    Ok(Stmt::ForEach { var, iterable: start, body })
+                    self.expect(&Token::In)?;
+                    let start = self.parse_expr(3)?; // Parse at higher precedence to stop at ..
+                    if self.peek() == &Token::DotDot {
+                        // Range loop: for x in start..end
+                        self.advance();
+                        let end = self.parse_expr(0)?;
+                        self.skip_newlines();
+                        let body = self.parse_block()?;
+                        Ok(Stmt::ForIn { var, start, end, body })
+                    } else {
+                        // Collection iteration: for x in list
+                        self.skip_newlines();
+                        let body = self.parse_block()?;
+                        Ok(Stmt::ForEach { var, iterable: start, body })
+                    }
                 }
             }
             Token::While => {

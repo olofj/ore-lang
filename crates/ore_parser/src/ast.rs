@@ -148,6 +148,12 @@ pub enum Stmt {
         iterable: Expr,
         body: Block,
     },
+    ForEachKV {
+        key_var: String,
+        val_var: String,
+        iterable: Expr,
+        body: Block,
+    },
     Loop {
         body: Block,
     },
