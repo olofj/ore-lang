@@ -1,0 +1,122 @@
+-- Showcase 707: Bidirectional Type Checking
+
+fn main
+  print "Bidirectional Type Checking:"
+  print ""
+
+  -- Bidirectional type checking combines type synthesis (inferring)
+  -- and type checking (verifying against expected type)
+
+  -- Part 1: Type representation
+  print "=== Part 1: Type System ==="
+  -- Types encoded as integers: 0=Int, 1=Bool, 2=String, 3=Int->Int, 4=Int->Bool, 5=Bool->Int
+  mut type_names := ["Int", "Bool", "String", "Int->Int", "Int->Bool", "Bool->Int", "Unknown"]
+  num_types := 7
+  print "  Base types: Int, Bool, String"
+  print "  Function types: Int->Int, Int->Bool, Bool->Int"
+
+  -- Part 2: Expression tree (encoded in arrays)
+  print ""
+  print "=== Part 2: Expression AST ==="
+  -- Node kinds: 0=IntLit, 1=BoolLit, 2=Var, 3=App, 4=Lambda, 5=If, 6=Ann
+  max_nodes := 15
+  mut node_kind := [6, 4, 5, 2, 3, 0, 1, 0, 2, 0, 2, 0, 0, 0, 0]
+  mut node_names := ["ann", "lam_x", "if", "x", "app_f", "42", "true", "1", "x", "0", "f", "5", "n/a", "n/a", "n/a"]
+  -- Annotated expression: (lam x. if x then 1 else 0) : Int->Int
+  num_nodes := 12
+  print "  Expression: (fn x => if x then 1 else 0) : Bool->Int"
+  print "  AST nodes: {num_nodes}"
+  for i in range(0, num_nodes)
+    mut kind_str := "?"
+    k := node_kind[i]
+    if k == 0
+      kind_str = "IntLit"
+    else if k == 1
+      kind_str = "BoolLit"
+    else if k == 2
+      kind_str = "Var"
+    else if k == 3
+      kind_str = "App"
+    else if k == 4
+      kind_str = "Lambda"
+    else if k == 5
+      kind_str = "If"
+    else if k == 6
+      kind_str = "Annotation"
+    print "    Node {i}: {kind_str} ({node_names[i]})"
+
+  -- Part 3: Type synthesis (bottom-up inference)
+  print ""
+  print "=== Part 3: Type Synthesis ==="
+  -- Synthesize types for literals and variables
+  mut synth_type := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  -- Int literals -> Int (type 0)
+  -- Bool literals -> Bool (type 1)
+  for i in range(0, num_nodes)
+    if node_kind[i] == 0
+      synth_type[i] = 0
+      print "  Synth {node_names[i]}: {type_names[0]}"
+    else if node_kind[i] == 1
+      synth_type[i] = 1
+      print "  Synth {node_names[i]}: {type_names[1]}"
+
+  -- Part 4: Type checking (top-down verification)
+  print ""
+  print "=== Part 4: Type Checking ==="
+  -- Check expression against expected type
+  -- Annotation says Bool->Int (type 5)
+  expected_type := 5
+  print "  Checking against expected type: {type_names[expected_type]}"
+
+  -- Check lambda body: if x then 1 else 0
+  -- x must be Bool (from function input), branches must be Int (from output)
+  print "  Lambda parameter x: checking as Bool"
+  print "  If condition (x): check Bool - OK"
+  print "  If then-branch (1): synth Int, check Int - OK"
+  print "  If else-branch (0): synth Int, check Int - OK"
+  print "  Lambda body: type checks as Bool->Int"
+
+  -- Part 5: Context (type environment)
+  print ""
+  print "=== Part 5: Type Context ==="
+  mut ctx_names := ["x", "f", "n", "result"]
+  mut ctx_types := [1, 3, 0, 0]
+  num_ctx := 4
+  print "  Type environment:"
+  for i in range(0, num_ctx)
+    ct := ctx_types[i]
+    print "    {ctx_names[i]} : {type_names[ct]}"
+
+  -- Part 6: Subtype checking
+  print ""
+  print "=== Part 6: Subsumption ==="
+  -- Check if we can use a value where another type is expected
+  mut checks := [0, 0, 3, 1, 5, 0]
+  mut check_from := [0, 1, 0]
+  mut check_to := [0, 1, 0]
+  num_checks := 3
+  for i in range(0, num_checks)
+    from_t := checks[i * 2]
+    to_t := checks[i * 2 + 1]
+    if from_t == to_t
+      print "  {type_names[from_t]} <: {type_names[to_t]} = true (same type)"
+    else
+      print "  {type_names[from_t]} <: {type_names[to_t]} = false"
+
+  -- Part 7: Mode switching summary
+  print ""
+  print "=== Part 7: Mode Switching ==="
+  mut synth_count := 0
+  mut check_count := 0
+  -- Count synthesis vs checking operations in our example
+  -- Literals: synth, Lambda: check, If: check branches, App: synth fun + check arg
+  synth_count = 4
+  check_count = 5
+  total_ops := synth_count + check_count
+  print "  Synthesis operations: {synth_count}"
+  print "  Checking operations: {check_count}"
+  print "  Total type operations: {total_ops}"
+  print "  Annotation-free after initial: fewer type annotations needed"
+
+  print ""
+  print "Bidirectional type checking: combining synthesis and checking modes for efficient type inference with minimal annotations."

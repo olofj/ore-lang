@@ -1,0 +1,137 @@
+-- Showcase 704: Log-Structured File System
+
+fn main
+  print "Log-Structured File System:"
+  print ""
+
+  -- LFS writes all data sequentially to a log, converting random
+  -- writes into sequential writes for better performance
+
+  -- Part 1: Segment structure
+  print "=== Part 1: Log Segments ==="
+  segment_size := 8
+  num_segments := 4
+  total_blocks := segment_size * num_segments
+  -- Track block usage: 0=free, 1=live, 2=dead
+  mut block_status := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- File inode map: file_id -> block_number
+  mut inode_map := [-1, -1, -1, -1, -1, -1, -1, -1]
+  max_files := 8
+  mut write_head := 0
+  print "  Segment size: {segment_size} blocks"
+  print "  Total segments: {num_segments}"
+  print "  Total blocks: {total_blocks}"
+
+  -- Part 2: Sequential writes
+  print ""
+  print "=== Part 2: Sequential Writes ==="
+  -- Write files sequentially to the log
+  mut file_names := ["config", "data1", "log", "index", "data2"]
+  num_writes := 5
+  for i in range(0, num_writes)
+    block := write_head
+    block_status[block] = 1
+    inode_map[i] = block
+    write_head = write_head + 1
+    seg := block / segment_size
+    print "  Write {file_names[i]} -> block {block} (segment {seg})"
+
+  -- Part 3: Overwrite (creates dead blocks)
+  print ""
+  print "=== Part 3: Overwrites ==="
+  -- Overwrite file 1 (data1) - old block becomes dead
+  mut overwrite_file := 1
+  mut old_block := inode_map[overwrite_file]
+  block_status[old_block] = 2
+  mut new_block := write_head
+  block_status[new_block] = 1
+  inode_map[overwrite_file] = new_block
+  write_head = write_head + 1
+  print "  Overwrite {file_names[overwrite_file]}: block {old_block} -> {new_block}"
+  print "  Block {old_block} marked as dead"
+
+  -- Overwrite file 0 (config)
+  overwrite_file = 0
+  old_block = inode_map[overwrite_file]
+  block_status[old_block] = 2
+  new_block = write_head
+  block_status[new_block] = 1
+  inode_map[overwrite_file] = new_block
+  write_head = write_head + 1
+  print "  Overwrite {file_names[overwrite_file]}: block {old_block} -> {new_block}"
+
+  -- Part 4: Segment utilization
+  print ""
+  print "=== Part 4: Segment Utilization ==="
+  for seg in range(0, num_segments)
+    mut live := 0
+    mut dead := 0
+    mut free := 0
+    start := seg * segment_size
+    for b in range(start, start + segment_size)
+      if block_status[b] == 1
+        live = live + 1
+      else if block_status[b] == 2
+        dead = dead + 1
+      else
+        free = free + 1
+    util := (live * 100) / segment_size
+    print "  Segment {seg}: live={live} dead={dead} free={free} util={util}%"
+
+  -- Part 5: Garbage collection (segment cleaning)
+  print ""
+  print "=== Part 5: Garbage Collection ==="
+  -- Find segment with most dead blocks
+  mut worst_seg := 0
+  mut worst_dead := 0
+  for seg in range(0, num_segments)
+    mut dead := 0
+    start := seg * segment_size
+    for b in range(start, start + segment_size)
+      if block_status[b] == 2
+        dead = dead + 1
+    if dead > worst_dead
+      worst_dead = dead
+      worst_seg = seg
+  print "  Cleaning segment {worst_seg} ({worst_dead} dead blocks)"
+
+  -- Move live blocks from worst segment to write head
+  mut moved := 0
+  start := worst_seg * segment_size
+  for b in range(start, start + segment_size)
+    if block_status[b] == 1
+      -- Move to write head
+      block_status[write_head] = 1
+      block_status[b] = 0
+      -- Update inode map
+      for f in range(0, max_files)
+        if inode_map[f] == b
+          inode_map[f] = write_head
+      write_head = write_head + 1
+      moved = moved + 1
+    else if block_status[b] == 2
+      block_status[b] = 0
+  print "  Moved {moved} live blocks"
+  print "  Freed {segment_size - moved} blocks"
+
+  -- Part 6: Checkpoint
+  print ""
+  print "=== Part 6: Checkpoint ==="
+  -- A checkpoint saves the inode map so recovery can find all data
+  print "  Inode map snapshot:"
+  for f in range(0, num_writes)
+    if inode_map[f] >= 0
+      print "    {file_names[f]} -> block {inode_map[f]}"
+  print "  Write head position: {write_head}"
+  mut total_live := 0
+  mut total_free := 0
+  for b in range(0, total_blocks)
+    if block_status[b] == 1
+      total_live = total_live + 1
+    else if block_status[b] == 0
+      total_free = total_free + 1
+  print "  Live blocks: {total_live}"
+  print "  Free blocks: {total_free}"
+
+  print ""
+  print "Log-structured FS: converting random writes to sequential appends with segment cleaning for high write throughput."

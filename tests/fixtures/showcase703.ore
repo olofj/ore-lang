@@ -1,0 +1,109 @@
+-- Showcase 703: Simple Register Renaming
+
+fn main
+  print "Simple Register Renaming:"
+  print ""
+
+  -- Register renaming eliminates false dependencies (WAR, WAW)
+  -- by mapping architectural registers to a larger physical register file
+
+  -- Part 1: Physical register file
+  print "=== Part 1: Physical Register File ==="
+  num_arch := 8
+  num_phys := 16
+  -- Register Alias Table (RAT): maps arch -> phys
+  mut rat := [0, 1, 2, 3, 4, 5, 6, 7]
+  -- Physical register values
+  mut phys_vals := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Free list of physical registers (1=free)
+  mut free_list := [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+  mut next_free := 8
+  print "  Architectural registers: {num_arch}"
+  print "  Physical registers: {num_phys}"
+  print "  Initial mapping: arch[i] -> phys[i]"
+
+  -- Part 2: Instruction stream with dependencies
+  print ""
+  print "=== Part 2: Instruction Stream ==="
+  -- Instructions: R1 = R2 + R3, R4 = R1 * 2, R1 = R5 + R6 (WAW on R1!)
+  -- Without renaming: R1=R2+R3 must complete before R1=R5+R6
+  num_instrs := 5
+  mut instr_names := ["ADD R1,R2,R3", "MUL R4,R1,2", "ADD R1,R5,R6", "SUB R2,R1,R4", "ADD R3,R2,1"]
+  -- dest registers (arch)
+  mut instr_dest := [1, 4, 1, 2, 3]
+  -- We track how many false deps exist without renaming
+  mut false_deps := 0
+  -- Check WAW: same dest in different instructions
+  for i in range(0, num_instrs)
+    for j in range(i + 1, num_instrs)
+      if instr_dest[i] == instr_dest[j]
+        false_deps = false_deps + 1
+  print "  Instructions:"
+  for i in range(0, num_instrs)
+    print "    I{i}: {instr_names[i]}"
+  print "  False dependencies (WAW) without renaming: {false_deps}"
+
+  -- Part 3: Rename instructions
+  print ""
+  print "=== Part 3: Register Renaming ==="
+  mut rename_dest := [0, 0, 0, 0, 0]
+  for i in range(0, num_instrs)
+    arch_dest := instr_dest[i]
+    -- Allocate new physical register
+    new_phys := next_free
+    next_free = next_free + 1
+    free_list[new_phys] = 0
+    old_phys := rat[arch_dest]
+    rat[arch_dest] = new_phys
+    rename_dest[i] = new_phys
+    print "  I{i}: R{arch_dest} -> P{new_phys} (was P{old_phys})"
+
+  -- Part 4: Check that false deps are eliminated
+  print ""
+  print "=== Part 4: Dependency Analysis ==="
+  mut renamed_false_deps := 0
+  for i in range(0, num_instrs)
+    for j in range(i + 1, num_instrs)
+      if rename_dest[i] == rename_dest[j]
+        renamed_false_deps = renamed_false_deps + 1
+  print "  False deps before renaming: {false_deps}"
+  print "  False deps after renaming: {renamed_false_deps}"
+  print "  All destinations use unique physical registers"
+
+  -- Part 5: Free list status
+  print ""
+  print "=== Part 5: Free List Status ==="
+  mut free_count := 0
+  for i in range(0, num_phys)
+    if free_list[i] == 1
+      free_count = free_count + 1
+  used := num_phys - free_count
+  print "  Physical registers used: {used}"
+  print "  Physical registers free: {free_count}"
+  print "  Utilization: {(used * 100) / num_phys}%"
+
+  -- Part 6: Current RAT state
+  print ""
+  print "=== Part 6: Final RAT State ==="
+  for i in range(0, num_arch)
+    print "  Arch R{i} -> Phys P{rat[i]}"
+
+  -- Part 7: Reorder buffer simulation
+  print ""
+  print "=== Part 7: Reorder Buffer ==="
+  -- Track in-flight instructions for in-order commit
+  mut rob_instr := [0, 1, 2, 3, 4]
+  mut rob_done := [1, 1, 1, 0, 0]
+  num_rob := 5
+  mut committed := 0
+  -- Commit in order
+  mut commit_ptr := 0
+  while commit_ptr < num_rob and rob_done[commit_ptr] == 1
+    print "  Committing I{rob_instr[commit_ptr]} (P{rename_dest[commit_ptr]})"
+    committed = committed + 1
+    commit_ptr = commit_ptr + 1
+  print "  Committed: {committed}, In-flight: {num_rob - committed}"
+  print "  Stalled at I{commit_ptr} (not yet complete)"
+
+  print ""
+  print "Register renaming: eliminating false dependencies by mapping architectural to physical registers for out-of-order execution."

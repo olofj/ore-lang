@@ -1,0 +1,119 @@
+-- Showcase 701: Simple AOP (Aspect-Oriented Programming)
+
+fn main
+  print "Simple AOP (Aspect-Oriented Programming):"
+  print ""
+
+  -- AOP separates cross-cutting concerns (logging, timing, auth)
+  -- from core business logic using aspects, pointcuts, and advice
+
+  -- Part 1: Simulate an advice registry
+  print "=== Part 1: Advice Registry ==="
+  max_advice := 10
+  mut advice_names := ["log_before", "log_after", "time_before", "time_after", "auth_before", "cache_before", "cache_after", "validate_before", "retry_after", "audit_after"]
+  mut advice_types := [0, 1, 0, 1, 0, 0, 1, 0, 1, 1]
+  -- 0=before, 1=after
+  num_advice := 10
+  mut before_count := 0
+  mut after_count := 0
+  for i in range(0, num_advice)
+    if advice_types[i] == 0
+      before_count = before_count + 1
+    else
+      after_count = after_count + 1
+  print "  Total advice: {num_advice}"
+  print "  Before advice: {before_count}"
+  print "  After advice: {after_count}"
+
+  -- Part 2: Pointcut matching
+  print ""
+  print "=== Part 2: Pointcut Matching ==="
+  -- Methods in our system
+  mut methods := ["getUser", "saveUser", "deleteUser", "getOrder", "processPayment"]
+  num_methods := 5
+  -- Pointcut: match all methods starting with "get" or "save"
+  -- We simulate by checking prefixes encoded as flags
+  mut matches_get := [1, 0, 0, 1, 0]
+  mut matches_save := [0, 1, 0, 0, 0]
+  mut matches_any := [0, 0, 0, 0, 0]
+  for i in range(0, num_methods)
+    if matches_get[i] == 1 or matches_save[i] == 1
+      matches_any[i] = 1
+      print "  Pointcut matches: {methods[i]}"
+
+  mut matched := 0
+  for i in range(0, num_methods)
+    matched = matched + matches_any[i]
+  print "  Total matched: {matched} of {num_methods}"
+
+  -- Part 3: Weaving - applying advice to methods
+  print ""
+  print "=== Part 3: Aspect Weaving ==="
+  -- Simulate weaving: for each matched method, apply before/after advice
+  mut woven_count := 0
+  for i in range(0, num_methods)
+    if matches_any[i] == 1
+      print "  Weaving {methods[i]}:"
+      -- Apply all before advice
+      for j in range(0, num_advice)
+        if advice_types[j] == 0
+          woven_count = woven_count + 1
+      print "    -> {before_count} before advice applied"
+      -- Apply all after advice
+      for j in range(0, num_advice)
+        if advice_types[j] == 1
+          woven_count = woven_count + 1
+      print "    -> {after_count} after advice applied"
+  print "  Total weavings: {woven_count}"
+
+  -- Part 4: Execution simulation with aspects
+  print ""
+  print "=== Part 4: Execution with Aspects ==="
+  -- Simulate calling getUser with all aspects
+  print "  Calling getUser():"
+  print "    [auth_before] Checking permissions..."
+  print "    [log_before] Entering getUser"
+  print "    [time_before] Timer started"
+  print "    >> getUser executes: fetching user #42"
+  print "    [time_after] Elapsed: 12ms"
+  print "    [log_after] Exiting getUser"
+  print "    [audit_after] Logged access to user data"
+
+  -- Part 5: Aspect priority ordering
+  print ""
+  print "=== Part 5: Aspect Priority ==="
+  mut priorities := [3, 3, 2, 2, 1, 4, 4, 1, 5, 5]
+  -- Sort by priority using insertion sort
+  mut sorted_idx := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  for i in range(1, num_advice)
+    si := sorted_idx[i]
+    key_p := priorities[si]
+    key_idx := si
+    mut j := i - 1
+    while j >= 0
+      sj := sorted_idx[j]
+      if priorities[sj] <= key_p
+        break
+      sorted_idx[j + 1] = sorted_idx[j]
+      j = j - 1
+    sorted_idx[j + 1] = key_idx
+  print "  Advice execution order by priority:"
+  for i in range(0, num_advice)
+    idx := sorted_idx[i]
+    print "    Priority {priorities[idx]}: {advice_names[idx]}"
+
+  -- Part 6: Cross-cutting concern metrics
+  print ""
+  print "=== Part 6: Concern Metrics ==="
+  mut concern_names := ["Logging", "Timing", "Security", "Caching", "Validation"]
+  mut concern_counts := [2, 2, 1, 2, 1]
+  num_concerns := 5
+  mut total_aspects := 0
+  for i in range(0, num_concerns)
+    total_aspects = total_aspects + concern_counts[i]
+    print "  {concern_names[i]}: {concern_counts[i]} aspects"
+  print "  Total cross-cutting concerns: {num_concerns}"
+  print "  Total aspects: {total_aspects}"
+
+  print ""
+  print "AOP: separating cross-cutting concerns from business logic through aspects, pointcuts, and advice weaving."

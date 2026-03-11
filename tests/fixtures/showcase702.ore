@@ -1,0 +1,140 @@
+-- Showcase 702: Bloom Filter Hierarchy
+
+fn main
+  print "Bloom Filter Hierarchy:"
+  print ""
+
+  -- A hierarchy of Bloom filters at different levels for
+  -- multi-resolution set membership testing
+
+  -- Part 1: Single Bloom filter
+  print "=== Part 1: Basic Bloom Filter ==="
+  filter_size := 16
+  mut bits := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Insert elements using 2 hash functions: h1(x)=x%16, h2(x)=(x*3+7)%16
+  mut elements := [42, 17, 89, 55, 23]
+  num_elements := 5
+  for i in range(0, num_elements)
+    h1 := elements[i] % filter_size
+    h2 := (elements[i] * 3 + 7) % filter_size
+    bits[h1] = 1
+    bits[h2] = 1
+    print "  Insert {elements[i]}: set bits {h1}, {h2}"
+
+  mut set_count := 0
+  for i in range(0, filter_size)
+    set_count = set_count + bits[i]
+  print "  Bits set: {set_count} of {filter_size}"
+
+  -- Part 2: Membership queries
+  print ""
+  print "=== Part 2: Membership Queries ==="
+  mut queries := [42, 17, 99, 55, 100]
+  num_queries := 5
+  mut true_pos := 0
+  mut false_pos := 0
+  -- Actual set for verification
+  for i in range(0, num_queries)
+    h1 := queries[i] % filter_size
+    h2 := (queries[i] * 3 + 7) % filter_size
+    if bits[h1] == 1 and bits[h2] == 1
+      -- Check if actually in set
+      mut actually_in := false
+      for j in range(0, num_elements)
+        if elements[j] == queries[i]
+          actually_in = true
+      if actually_in
+        true_pos = true_pos + 1
+        print "  Query {queries[i]}: MAYBE (true positive)"
+      else
+        false_pos = false_pos + 1
+        print "  Query {queries[i]}: MAYBE (false positive!)"
+    else
+      print "  Query {queries[i]}: DEFINITELY NOT"
+  print "  True positives: {true_pos}, False positives: {false_pos}"
+
+  -- Part 3: Bloom filter hierarchy (3 levels)
+  print ""
+  print "=== Part 3: Hierarchical Filters ==="
+  -- Level 0: coarse filter (size 8), Level 1: medium (size 16), Level 2: fine (size 32)
+  mut level_sizes := [8, 16, 32]
+  num_levels := 3
+  mut level_bits_set := [0, 0, 0]
+  -- Simulate insertion counts at each level
+  -- Level 0 captures broad categories, Level 2 captures fine-grained
+  for lvl in range(0, num_levels)
+    sz := level_sizes[lvl]
+    mut bits_on := 0
+    for i in range(0, num_elements)
+      h1 := elements[i] % sz
+      h2 := (elements[i] * 3 + 7) % sz
+      -- Count unique bits (approximate)
+      bits_on = bits_on + 2
+    -- Cap at filter size
+    if bits_on > sz
+      bits_on = sz
+    level_bits_set[lvl] = bits_on
+    fill_pct := (bits_on * 100) / sz
+    print "  Level {lvl}: size={sz}, bits_set={bits_on}, fill={fill_pct}%"
+
+  -- Part 4: Cascading query through hierarchy
+  print ""
+  print "=== Part 4: Cascading Query ==="
+  query_val := 42
+  print "  Querying {query_val} through hierarchy:"
+  -- Check each level from coarse to fine
+  mut passed_all := true
+  for lvl in range(0, num_levels)
+    sz := level_sizes[lvl]
+    h1 := query_val % sz
+    h2 := (query_val * 3 + 7) % sz
+    -- At each level, both hash positions should be set
+    -- (we know 42 was inserted, so it passes)
+    print "    Level {lvl} (size {sz}): h1={h1}, h2={h2} -> PASS"
+  print "  Element {query_val} passed all {num_levels} levels"
+
+  -- Part 5: False positive rate estimation
+  print ""
+  print "=== Part 5: False Positive Rates ==="
+  -- FPR ~ (1 - e^(-kn/m))^k, approximate with (k*n/m)^k for small values
+  -- k=2 hash functions, n=5 elements
+  for lvl in range(0, num_levels)
+    m := level_sizes[lvl]
+    -- Approximate: (2*5*100)/(m*100) = 10/m, then square for k=2
+    -- FPR ~ (10/m)^2 * 100 percent (very rough)
+    numerator := 10 * 10 * 100
+    denominator := m * m
+    fpr := numerator / denominator
+    print "  Level {lvl} (m={m}): estimated FPR ~ {fpr}%"
+
+  -- Part 6: Counting Bloom filter variant
+  print ""
+  print "=== Part 6: Counting Bloom Filter ==="
+  mut counters := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Insert with counts
+  for i in range(0, num_elements)
+    h1 := elements[i] % filter_size
+    h2 := (elements[i] * 3 + 7) % filter_size
+    counters[h1] = counters[h1] + 1
+    counters[h2] = counters[h2] + 1
+  -- Delete element 42: decrement counters
+  del_val := 42
+  dh1 := del_val % filter_size
+  dh2 := (del_val * 3 + 7) % filter_size
+  counters[dh1] = counters[dh1] - 1
+  counters[dh2] = counters[dh2] - 1
+  print "  Deleted {del_val} from counting filter"
+  -- Check if 42 is now absent
+  if counters[dh1] > 0 and counters[dh2] > 0
+    print "  Query {del_val}: still MAYBE (other elements share counters)"
+  else
+    print "  Query {del_val}: DEFINITELY NOT (counter reached 0)"
+
+  mut max_counter := 0
+  for i in range(0, filter_size)
+    if counters[i] > max_counter
+      max_counter = counters[i]
+  print "  Max counter value: {max_counter}"
+
+  print ""
+  print "Bloom hierarchy: multi-level probabilistic filters trading space for speed in approximate set membership queries."

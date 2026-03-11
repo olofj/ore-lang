@@ -9122,6 +9122,137 @@ fn showcase700_grand_celebration() {
 }
 
 #[test]
+fn showcase701_simple_aop() {
+    let out = run_ore("showcase701.ore");
+    assert!(out.contains("Simple AOP (Aspect-Oriented Programming):"));
+    assert!(out.contains("Before advice: 5"));
+    assert!(out.contains("After advice: 5"));
+    assert!(out.contains("Total matched: 3 of 5"));
+    assert!(out.contains("Total weavings: 30"));
+    assert!(out.contains(">> getUser executes: fetching user #42"));
+    assert!(out.contains("Priority 1: auth_before"));
+    assert!(out.contains("Total cross-cutting concerns: 5"));
+    assert!(out.contains("AOP: separating cross-cutting concerns from business logic through aspects, pointcuts, and advice weaving."));
+}
+
+#[test]
+fn showcase702_bloom_hierarchy() {
+    let out = run_ore("showcase702.ore");
+    assert!(out.contains("Bloom Filter Hierarchy:"));
+    assert!(out.contains("Bits set: 7 of 16"));
+    assert!(out.contains("True positives: 3, False positives: 0"));
+    assert!(out.contains("Level 1: size=16, bits_set=10, fill=62%"));
+    assert!(out.contains("Element 42 passed all 3 levels"));
+    assert!(out.contains("Deleted 42 from counting filter"));
+    assert!(out.contains("Max counter value: 2"));
+    assert!(out.contains("Bloom hierarchy: multi-level probabilistic filters trading space for speed in approximate set membership queries."));
+}
+
+#[test]
+fn showcase703_register_renaming() {
+    let out = run_ore("showcase703.ore");
+    assert!(out.contains("Simple Register Renaming:"));
+    assert!(out.contains("Architectural registers: 8"));
+    assert!(out.contains("Physical registers: 16"));
+    assert!(out.contains("False dependencies (WAW) without renaming: 1"));
+    assert!(out.contains("I0: R1 -> P8 (was P1)"));
+    assert!(out.contains("False deps after renaming: 0"));
+    assert!(out.contains("Utilization: 81%"));
+    assert!(out.contains("Committed: 3, In-flight: 2"));
+    assert!(out.contains("Register renaming: eliminating false dependencies by mapping architectural to physical registers for out-of-order execution."));
+}
+
+#[test]
+fn showcase704_log_structured_fs() {
+    let out = run_ore("showcase704.ore");
+    assert!(out.contains("Log-Structured File System:"));
+    assert!(out.contains("Segment size: 8 blocks"));
+    assert!(out.contains("Write config -> block 0 (segment 0)"));
+    assert!(out.contains("Overwrite data1: block 1 -> 5"));
+    assert!(out.contains("Block 1 marked as dead"));
+    assert!(out.contains("Cleaning segment 0 (2 dead blocks)"));
+    assert!(out.contains("Write head position: 13"));
+    assert!(out.contains("Log-structured FS: converting random writes to sequential appends with segment cleaning for high write throughput."));
+}
+
+#[test]
+fn showcase705_viterbi_algorithm() {
+    let out = run_ore("showcase705.ore");
+    assert!(out.contains("Viterbi Algorithm:"));
+    assert!(out.contains("States: Sunny, Rainy"));
+    assert!(out.contains("Observed: Walk, Shop, Clean, Walk, Clean"));
+    assert!(out.contains("Most likely path: Sunny -> Rainy -> Rainy -> Sunny -> Rainy"));
+    assert!(out.contains("Sunny days: 2"));
+    assert!(out.contains("Rainy days: 3"));
+    assert!(out.contains("Weather changes: 3"));
+    assert!(out.contains("Viterbi algorithm: dynamic programming to find the most likely hidden state sequence in an HMM."));
+}
+
+#[test]
+fn showcase706_property_testing() {
+    let out = run_ore("showcase706.ore");
+    assert!(out.contains("Simple Property Testing:"));
+    assert!(out.contains("Result: PASS"));
+    assert!(out.contains("Property: sort(sort(xs)) == sort(xs)"));
+    assert!(out.contains("Property: reverse(reverse(xs)) == xs"));
+    assert!(out.contains("Sorted[0] = 168, min = 168"));
+    assert!(out.contains("First failure at n=101"));
+    assert!(out.contains("Properties passed: 4"));
+    assert!(out.contains("Property testing: generating random inputs to verify universal invariants hold across the input space."));
+}
+
+#[test]
+fn showcase707_bidirectional_typecheck() {
+    let out = run_ore("showcase707.ore");
+    assert!(out.contains("Bidirectional Type Checking:"));
+    assert!(out.contains("Base types: Int, Bool, String"));
+    assert!(out.contains("Expression: (fn x => if x then 1 else 0) : Bool->Int"));
+    assert!(out.contains("Synth 42: Int"));
+    assert!(out.contains("Lambda body: type checks as Bool->Int"));
+    assert!(out.contains("Synthesis operations: 4"));
+    assert!(out.contains("Checking operations: 5"));
+    assert!(out.contains("Bidirectional type checking: combining synthesis and checking modes for efficient type inference with minimal annotations."));
+}
+
+#[test]
+fn showcase708_vm_migration() {
+    let out = run_ore("showcase708.ore");
+    assert!(out.contains("Simple VM Migration:"));
+    assert!(out.contains("host-alpha: CPU 12/16, Mem 48/64GB (free: 4c, 16GB)"));
+    assert!(out.contains("Migrating: db-primary"));
+    assert!(out.contains("Selected target: host-gamma (score=252)"));
+    assert!(out.contains("Total rounds: 6"));
+    assert!(out.contains("Estimated downtime: 30ms"));
+    assert!(out.contains("Migration completed successfully"));
+    assert!(out.contains("VM migration: live transfer of running virtual machines between hosts using iterative pre-copy to minimize downtime."));
+}
+
+#[test]
+fn showcase709_bwt_mtf() {
+    let out = run_ore("showcase709.ore");
+    assert!(out.contains("Burrows-Wheeler Move-to-Front:"));
+    assert!(out.contains("Input: banana$"));
+    assert!(out.contains("BWT output: annb$aa"));
+    assert!(out.contains("MTF output: [1, 3, 0, 3, 3, 3, 0]"));
+    assert!(out.contains("Round-trip verified: true"));
+    assert!(out.contains("Alphabet size: 4"));
+    assert!(out.contains("BWT+MTF: transforming data to exploit local correlations for improved compression ratios."));
+}
+
+#[test]
+fn showcase710_interpreter_continuations() {
+    let out = run_ore("showcase710.ore");
+    assert!(out.contains("Simple Interpreter with Continuations:"));
+    assert!(out.contains("3 + 4 = 7"));
+    assert!(out.contains("5 * 6 = 30"));
+    assert!(out.contains("Continuation captured at IP=10, SP=1"));
+    assert!(out.contains("ABORT with value 50"));
+    assert!(out.contains("Multi-shot continuation: invoked 3 times"));
+    assert!(out.contains("Captured continuation: [1, 2, 3]"));
+    assert!(out.contains("Continuations: reifying the rest of the computation as a first-class value for powerful control flow abstractions."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

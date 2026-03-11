@@ -1,0 +1,127 @@
+-- Showcase 708: Simple VM Migration
+
+fn main
+  print "Simple VM Migration:"
+  print ""
+
+  -- VM live migration moves a running virtual machine from one
+  -- physical host to another with minimal downtime
+
+  -- Part 1: Host setup
+  print "=== Part 1: Host Configuration ==="
+  num_hosts := 4
+  mut host_names := ["host-alpha", "host-beta", "host-gamma", "host-delta"]
+  mut host_cpu := [16, 32, 24, 16]
+  mut host_mem := [64, 128, 96, 64]
+  mut host_used_cpu := [12, 8, 6, 14]
+  mut host_used_mem := [48, 32, 24, 56]
+  for i in range(0, num_hosts)
+    cpu_free := host_cpu[i] - host_used_cpu[i]
+    mem_free := host_mem[i] - host_used_mem[i]
+    print "  {host_names[i]}: CPU {host_used_cpu[i]}/{host_cpu[i]}, Mem {host_used_mem[i]}/{host_mem[i]}GB (free: {cpu_free}c, {mem_free}GB)"
+
+  -- Part 2: VM inventory
+  print ""
+  print "=== Part 2: VM Inventory ==="
+  num_vms := 6
+  mut vm_names := ["web-1", "web-2", "db-primary", "cache-1", "worker-1", "worker-2"]
+  mut vm_cpu := [2, 2, 4, 2, 4, 2]
+  mut vm_mem := [8, 8, 16, 4, 12, 8]
+  mut vm_host := [0, 0, 1, 1, 2, 3]
+  -- Memory dirty rate (pages/sec, scaled)
+  mut vm_dirty_rate := [100, 80, 500, 50, 300, 120]
+  for i in range(0, num_vms)
+    hi := vm_host[i]
+    print "  {vm_names[i]}: CPU={vm_cpu[i]}, Mem={vm_mem[i]}GB, Host={host_names[hi]}"
+
+  -- Part 3: Migration target selection
+  print ""
+  print "=== Part 3: Target Selection ==="
+  -- Migrate db-primary (VM 2) from host-beta to balance load
+  migrate_vm := 2
+  source_host := vm_host[migrate_vm]
+  print "  Migrating: {vm_names[migrate_vm]}"
+  print "  Source: {host_names[source_host]}"
+  print "  Required: CPU={vm_cpu[migrate_vm]}, Mem={vm_mem[migrate_vm]}GB"
+
+  -- Find best target host (most free resources, not source)
+  mut best_host := -1
+  mut best_score := -1
+  for h in range(0, num_hosts)
+    if h != source_host
+      cpu_free := host_cpu[h] - host_used_cpu[h]
+      mem_free := host_mem[h] - host_used_mem[h]
+      if cpu_free >= vm_cpu[migrate_vm] and mem_free >= vm_mem[migrate_vm]
+        score := cpu_free * 10 + mem_free
+        if score > best_score
+          best_score = score
+          best_host = h
+  if best_host >= 0
+    print "  Selected target: {host_names[best_host]} (score={best_score})"
+  else
+    print "  No suitable target found!"
+
+  -- Part 4: Pre-copy migration phases
+  print ""
+  print "=== Part 4: Pre-Copy Migration ==="
+  total_mem_pages := vm_mem[migrate_vm] * 256
+  dirty_rate := vm_dirty_rate[migrate_vm]
+  print "  Total memory: {total_mem_pages} pages"
+  print "  Dirty page rate: {dirty_rate} pages/iteration"
+
+  -- Iterative pre-copy rounds
+  mut remaining := total_mem_pages
+  mut round := 0
+  mut total_transferred := 0
+  mut threshold := 100
+  while remaining > threshold and round < 6
+    transferred := remaining
+    total_transferred = total_transferred + transferred
+    -- After transfer, some pages dirtied during transfer
+    remaining = dirty_rate * (round + 1)
+    if remaining > total_mem_pages
+      remaining = total_mem_pages
+    round = round + 1
+    print "  Round {round}: transferred {transferred} pages, {remaining} dirty"
+
+  print "  Total rounds: {round}"
+  print "  Total pages transferred: {total_transferred}"
+
+  -- Part 5: Stop-and-copy final phase
+  print ""
+  print "=== Part 5: Stop-and-Copy ==="
+  final_pages := remaining
+  -- Assume 1000 pages/ms transfer rate
+  mut downtime_ms := final_pages / 100
+  if downtime_ms < 1
+    downtime_ms = 1
+  print "  Final dirty pages: {final_pages}"
+  print "  VM paused for transfer"
+  print "  Estimated downtime: {downtime_ms}ms"
+  print "  VM resumed on {host_names[best_host]}"
+
+  -- Part 6: Post-migration state
+  print ""
+  print "=== Part 6: Post-Migration State ==="
+  -- Update resource allocation
+  host_used_cpu[source_host] = host_used_cpu[source_host] - vm_cpu[migrate_vm]
+  host_used_mem[source_host] = host_used_mem[source_host] - vm_mem[migrate_vm]
+  host_used_cpu[best_host] = host_used_cpu[best_host] + vm_cpu[migrate_vm]
+  host_used_mem[best_host] = host_used_mem[best_host] + vm_mem[migrate_vm]
+  vm_host[migrate_vm] = best_host
+
+  for i in range(0, num_hosts)
+    util_cpu := (host_used_cpu[i] * 100) / host_cpu[i]
+    util_mem := (host_used_mem[i] * 100) / host_mem[i]
+    print "  {host_names[i]}: CPU {util_cpu}%, Mem {util_mem}%"
+
+  -- Part 7: Migration log
+  print ""
+  print "=== Part 7: Migration Summary ==="
+  print "  VM: {vm_names[migrate_vm]}"
+  print "  From: {host_names[source_host]} -> To: {host_names[best_host]}"
+  print "  Rounds: {round}, Downtime: {downtime_ms}ms"
+  print "  Migration completed successfully"
+
+  print ""
+  print "VM migration: live transfer of running virtual machines between hosts using iterative pre-copy to minimize downtime."

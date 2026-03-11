@@ -1,0 +1,177 @@
+-- Showcase 710: Simple Interpreter with Continuations
+
+fn main
+  print "Simple Interpreter with Continuations:"
+  print ""
+
+  -- Continuations capture "the rest of the computation" and allow
+  -- non-local control flow (like exceptions, coroutines, backtracking)
+
+  -- Part 1: Expression language
+  print "=== Part 1: Expression Language ==="
+  -- Opcodes: 0=PUSH, 1=ADD, 2=MUL, 3=CALL_CC, 4=ABORT, 5=RESUME, 6=PRINT
+  max_instrs := 30
+  mut opcodes := [0, 0, 1, 6, 0, 0, 2, 6, 0, 3, 0, 0, 1, 4, 0, 0, 1, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut operands := [3, 4, 0, 0, 5, 6, 0, 0, 10, 0, 20, 30, 0, 0, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  num_instrs := 19
+  mut op_names := ["PUSH", "ADD", "MUL", "CALL_CC", "ABORT", "RESUME", "PRINT"]
+  print "  Program:"
+  for i in range(0, num_instrs)
+    op := opcodes[i]
+    if op == 0
+      print "    {i}: {op_names[op]} {operands[i]}"
+    else
+      print "    {i}: {op_names[op]}"
+
+  -- Part 2: Stack-based evaluation
+  print ""
+  print "=== Part 2: Basic Evaluation ==="
+  max_stack := 20
+  mut stack := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut sp := 0
+  -- Execute first segment: PUSH 3, PUSH 4, ADD, PRINT -> 7
+  -- PUSH 3
+  stack[sp] = 3
+  sp = sp + 1
+  -- PUSH 4
+  stack[sp] = 4
+  sp = sp + 1
+  -- ADD
+  b := stack[sp - 1]
+  sp = sp - 1
+  a := stack[sp - 1]
+  stack[sp - 1] = a + b
+  print "  3 + 4 = {stack[sp - 1]}"
+  -- PRINT
+  print "  Output: {stack[sp - 1]}"
+  sp = sp - 1
+
+  -- Part 3: Continuation capture
+  print ""
+  print "=== Part 3: Continuation Capture ==="
+  -- CALL_CC saves the current continuation (stack + instruction pointer)
+  -- Simulate: save state at a certain point
+  mut saved_stack := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut saved_sp := 0
+  mut saved_ip := 0
+  mut has_continuation := false
+
+  -- Execute: PUSH 5, PUSH 6, MUL, PRINT -> 30
+  sp = 0
+  stack[sp] = 5
+  sp = sp + 1
+  stack[sp] = 6
+  sp = sp + 1
+  b2 := stack[sp - 1]
+  sp = sp - 1
+  a2 := stack[sp - 1]
+  stack[sp - 1] = a2 * b2
+  print "  5 * 6 = {stack[sp - 1]}"
+  print "  Output: {stack[sp - 1]}"
+
+  -- Now capture continuation
+  -- Save current state
+  for i in range(0, sp)
+    saved_stack[i] = stack[i]
+  saved_sp = sp
+  saved_ip = 10
+  has_continuation = true
+  print "  Continuation captured at IP=10, SP={saved_sp}"
+
+  -- Part 4: Abort (non-local exit)
+  print ""
+  print "=== Part 4: Abort (Non-local Exit) ==="
+  -- PUSH 10, CALL_CC, PUSH 20, PUSH 30, ADD -> 50... but ABORT discards
+  sp = 0
+  stack[sp] = 10
+  sp = sp + 1
+  -- CALL_CC saves state here
+  print "  Computing 20 + 30..."
+  stack[sp] = 20
+  sp = sp + 1
+  stack[sp] = 30
+  sp = sp + 1
+  b3 := stack[sp - 1]
+  sp = sp - 1
+  a3 := stack[sp - 1]
+  stack[sp - 1] = a3 + b3
+  print "  Result: {stack[sp - 1]}"
+  -- ABORT: discard current computation, return value to continuation
+  abort_val := stack[sp - 1]
+  print "  ABORT with value {abort_val}"
+  -- Restore continuation
+  sp = saved_sp
+  for i in range(0, saved_sp)
+    stack[i] = saved_stack[i]
+  stack[sp] = abort_val
+  sp = sp + 1
+  print "  Resumed at saved continuation"
+  print "  Stack top after abort: {stack[sp - 1]}"
+
+  -- Part 5: Continuation as value
+  print ""
+  print "=== Part 5: Continuation as Value ==="
+  -- Continuations are first-class: they can be stored and invoked multiple times
+  -- Simulate invoking saved continuation twice with different values
+  mut results := [0, 0, 0]
+  num_invocations := 3
+  mut invoke_vals := [100, 200, 300]
+  for i in range(0, num_invocations)
+    -- Restore continuation state
+    mut temp_sp := saved_sp
+    temp_val := invoke_vals[i]
+    results[i] = temp_val
+    print "  Invoke continuation with {temp_val}: resumed at IP={saved_ip}"
+  print "  Multi-shot continuation: invoked {num_invocations} times"
+
+  -- Part 6: Delimited continuations
+  print ""
+  print "=== Part 6: Delimited Continuations ==="
+  -- Delimited continuations capture a slice of the stack (not the whole thing)
+  -- Prompt/Reset marks a boundary, Shift captures up to it
+  mut prompt_sp := 0
+  sp = 0
+  -- Reset (set prompt)
+  prompt_sp = sp
+  print "  Reset: prompt set at SP={prompt_sp}"
+  -- Push some values
+  stack[sp] = 1
+  sp = sp + 1
+  stack[sp] = 2
+  sp = sp + 1
+  stack[sp] = 3
+  sp = sp + 1
+  -- Shift: capture stack from prompt to here
+  captured_len := sp - prompt_sp
+  mut captured := [0, 0, 0, 0, 0]
+  for i in range(0, captured_len)
+    captured[i] = stack[prompt_sp + i]
+  print "  Shift: captured {captured_len} values from stack"
+  -- Reset stack to prompt
+  sp = prompt_sp
+  -- The captured continuation can be applied
+  mut cap_str := ""
+  for i in range(0, captured_len)
+    if i > 0
+      cap_str = cap_str + ", "
+    cap_str = cap_str + str(captured[i])
+  print "  Captured continuation: [{cap_str}]"
+
+  -- Apply captured continuation
+  for i in range(0, captured_len)
+    stack[sp] = captured[i]
+    sp = sp + 1
+  print "  Applied: stack restored with {sp} values"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Continuation types demonstrated:"
+  print "    - Undelimited (call/cc): capture entire future"
+  print "    - Abort: non-local exit to saved continuation"
+  print "    - Multi-shot: invoke same continuation multiple times"
+  print "    - Delimited (shift/reset): capture partial continuation"
+  print "  Use cases: exceptions, generators, backtracking, coroutines"
+
+  print ""
+  print "Continuations: reifying the rest of the computation as a first-class value for powerful control flow abstractions."

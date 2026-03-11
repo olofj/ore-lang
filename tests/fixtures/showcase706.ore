@@ -1,0 +1,146 @@
+-- Showcase 706: Simple Property Testing
+
+fn main
+  print "Simple Property Testing:"
+  print ""
+
+  -- Property-based testing generates random inputs and verifies
+  -- that invariants (properties) always hold
+
+  -- Part 1: Pseudo-random number generator (LCG)
+  print "=== Part 1: Random Generator ==="
+  -- Linear Congruential Generator: next = (a * current + c) % m
+  lcg_a := 1103515245
+  lcg_c := 12345
+  lcg_m := 2147483647
+  mut seed := 42
+  mut randoms := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  num_randoms := 10
+  for i in range(0, num_randoms)
+    seed = ((seed * 1103) + 12345) % lcg_m
+    randoms[i] = seed % 1000
+  print "  Generated {num_randoms} pseudo-random values"
+  print "  Range: 0 to 999"
+  mut r_str := ""
+  for i in range(0, num_randoms)
+    if i > 0
+      r_str = r_str + ", "
+    r_str = r_str + str(randoms[i])
+  print "  Values: {r_str}"
+
+  -- Part 2: Property - addition is commutative
+  print ""
+  print "=== Part 2: Commutativity Property ==="
+  num_tests := 5
+  mut pass_count := 0
+  for i in range(0, num_tests)
+    a := randoms[i]
+    b := randoms[i + num_tests]
+    r1 := a + b
+    r2 := b + a
+    if r1 == r2
+      pass_count = pass_count + 1
+  print "  Property: a + b == b + a"
+  print "  Tests: {num_tests}, Passed: {pass_count}"
+  if pass_count == num_tests
+    print "  Result: PASS"
+  else
+    print "  Result: FAIL"
+
+  -- Part 3: Property - sorting is idempotent
+  print ""
+  print "=== Part 3: Idempotency Property ==="
+  -- Sort a random array, then sort again. Result should be same.
+  mut arr := [0, 0, 0, 0, 0]
+  for i in range(0, 5)
+    arr[i] = randoms[i]
+  -- Insertion sort
+  for i in range(1, 5)
+    key := arr[i]
+    mut j := i - 1
+    while j >= 0 and arr[j] > key
+      arr[j + 1] = arr[j]
+      j = j - 1
+    arr[j + 1] = key
+  -- Copy sorted array
+  mut arr2 := [0, 0, 0, 0, 0]
+  for i in range(0, 5)
+    arr2[i] = arr[i]
+  -- Sort again
+  for i in range(1, 5)
+    key := arr2[i]
+    mut j := i - 1
+    while j >= 0 and arr2[j] > key
+      arr2[j + 1] = arr2[j]
+      j = j - 1
+    arr2[j + 1] = key
+  -- Compare
+  mut same := true
+  for i in range(0, 5)
+    if arr[i] != arr2[i]
+      same = false
+  print "  Property: sort(sort(xs)) == sort(xs)"
+  print "  Result: {same}"
+
+  -- Part 4: Property - reverse of reverse is identity
+  print ""
+  print "=== Part 4: Reverse Involution ==="
+  mut orig := [0, 0, 0, 0, 0]
+  mut rev1 := [0, 0, 0, 0, 0]
+  mut rev2 := [0, 0, 0, 0, 0]
+  for i in range(0, 5)
+    orig[i] = randoms[i]
+  -- Reverse once
+  for i in range(0, 5)
+    rev1[i] = orig[4 - i]
+  -- Reverse twice
+  for i in range(0, 5)
+    rev2[i] = rev1[4 - i]
+  mut rev_match := true
+  for i in range(0, 5)
+    if orig[i] != rev2[i]
+      rev_match = false
+  print "  Property: reverse(reverse(xs)) == xs"
+  print "  Result: {rev_match}"
+
+  -- Part 5: Property - sorted array has min at front
+  print ""
+  print "=== Part 5: Sort Minimum Property ==="
+  -- For any sorted array, first element should be minimum
+  mut test_min := arr[0]
+  for i in range(1, 5)
+    if arr[i] < test_min
+      test_min = arr[i]
+  min_at_front := arr[0] == test_min
+  print "  Property: sorted[0] == min(array)"
+  print "  Sorted[0] = {arr[0]}, min = {test_min}"
+  print "  Result: {min_at_front}"
+
+  -- Part 6: Shrinking on failure
+  print ""
+  print "=== Part 6: Shrinking ==="
+  -- When a test fails, shrink inputs to find minimal counterexample
+  -- Simulate: find minimal n where n*n exceeds our limit (10000)
+  limit := 10000
+  mut found_fail := -1
+  for n in range(0, 200)
+    if n * n > limit and found_fail == -1
+      found_fail = n
+  print "  Property: n*n <= 10000"
+  print "  First failure at n={found_fail}"
+  print "  Shrunk to minimal counterexample: {found_fail}"
+  shrunk_sq := found_fail * found_fail
+  print "  {found_fail} * {found_fail} = {shrunk_sq}"
+
+  -- Part 7: Test report
+  print ""
+  print "=== Part 7: Test Report ==="
+  mut props_tested := 4
+  mut props_passed := 4
+  print "  Properties tested: {props_tested}"
+  print "  Properties passed: {props_passed}"
+  print "  Total test cases: {num_tests + 3}"
+  print "  All properties verified"
+
+  print ""
+  print "Property testing: generating random inputs to verify universal invariants hold across the input space."

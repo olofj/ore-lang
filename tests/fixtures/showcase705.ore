@@ -1,0 +1,140 @@
+-- Showcase 705: Viterbi Algorithm
+
+fn main
+  print "Viterbi Algorithm:"
+  print ""
+
+  -- The Viterbi algorithm finds the most likely sequence of hidden states
+  -- in a Hidden Markov Model (HMM)
+
+  -- Part 1: HMM setup - Weather model
+  print "=== Part 1: HMM Setup ==="
+  -- States: 0=Sunny, 1=Rainy
+  num_states := 2
+  mut state_names := ["Sunny", "Rainy"]
+  -- Observations: 0=Walk, 1=Shop, 2=Clean
+  num_obs_types := 3
+  mut obs_names := ["Walk", "Shop", "Clean"]
+
+  -- Transition probabilities (scaled by 100)
+  -- trans[i*2+j] = P(state j | state i) * 100
+  mut trans := [70, 30, 40, 60]
+  -- Emission probabilities (scaled by 100)
+  -- emit[i*3+j] = P(obs j | state i) * 100
+  mut emit := [60, 30, 10, 10, 40, 50]
+  -- Initial probabilities (scaled by 100)
+  mut init_prob := [60, 40]
+
+  print "  States: Sunny, Rainy"
+  print "  Observations: Walk, Shop, Clean"
+  print "  P(Sunny->Sunny)=0.7, P(Sunny->Rainy)=0.3"
+  print "  P(Rainy->Sunny)=0.4, P(Rainy->Rainy)=0.6"
+
+  -- Part 2: Observation sequence
+  print ""
+  print "=== Part 2: Observation Sequence ==="
+  mut observations := [0, 1, 2, 0, 2]
+  num_obs := 5
+  mut obs_str := ""
+  for i in range(0, num_obs)
+    if i > 0
+      obs_str = obs_str + ", "
+    oi := observations[i]
+    obs_str = obs_str + obs_names[oi]
+  print "  Observed: {obs_str}"
+
+  -- Part 3: Viterbi forward pass
+  print ""
+  print "=== Part 3: Viterbi Forward Pass ==="
+  -- viterbi[t*2+s] = max probability of being in state s at time t
+  -- We use log-scaled integer arithmetic (multiply probabilities)
+  max_t := 5
+  mut viterbi := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut backptr := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Initialize: t=0
+  obs0 := observations[0]
+  for s in range(0, num_states)
+    viterbi[s] = init_prob[s] * emit[s * num_obs_types + obs0]
+  print "  t=0 ({obs_names[obs0]}): Sunny={viterbi[0]}, Rainy={viterbi[1]}"
+
+  -- Forward pass
+  for t in range(1, num_obs)
+    obs_t := observations[t]
+    for s in range(0, num_states)
+      mut best_val := 0
+      mut best_prev := 0
+      for prev in range(0, num_states)
+        val := viterbi[(t - 1) * num_states + prev] * trans[prev * num_states + s]
+        if val > best_val
+          best_val = val
+          best_prev = prev
+      viterbi[t * num_states + s] = (best_val * emit[s * num_obs_types + obs_t]) / 100
+      backptr[t * num_states + s] = best_prev
+    print "  t={t} ({obs_names[obs_t]}): Sunny={viterbi[t * num_states]}, Rainy={viterbi[t * num_states + 1]}"
+
+  -- Part 4: Backtrack to find best path
+  print ""
+  print "=== Part 4: Best State Sequence ==="
+  -- Find best final state
+  mut best_final := 0
+  mut best_final_val := viterbi[(num_obs - 1) * num_states]
+  for s in range(1, num_states)
+    v := viterbi[(num_obs - 1) * num_states + s]
+    if v > best_final_val
+      best_final_val = v
+      best_final = s
+
+  -- Backtrack
+  mut path := [0, 0, 0, 0, 0]
+  path[num_obs - 1] = best_final
+  mut t := num_obs - 2
+  while t >= 0
+    path[t] = backptr[(t + 1) * num_states + path[t + 1]]
+    t = t - 1
+
+  mut path_str := ""
+  for i in range(0, num_obs)
+    if i > 0
+      path_str = path_str + " -> "
+    pi := path[i]
+    path_str = path_str + state_names[pi]
+  print "  Most likely path: {path_str}"
+
+  -- Part 5: Path statistics
+  print ""
+  print "=== Part 5: Path Statistics ==="
+  mut sunny_count := 0
+  mut rainy_count := 0
+  for i in range(0, num_obs)
+    if path[i] == 0
+      sunny_count = sunny_count + 1
+    else
+      rainy_count = rainy_count + 1
+  print "  Sunny days: {sunny_count}"
+  print "  Rainy days: {rainy_count}"
+  mut transitions := 0
+  for i in range(1, num_obs)
+    if path[i] != path[i - 1]
+      transitions = transitions + 1
+  print "  Weather changes: {transitions}"
+
+  -- Part 6: Compare with greedy approach
+  print ""
+  print "=== Part 6: Greedy vs Viterbi ==="
+  -- Greedy: pick highest probability state at each time step independently
+  mut greedy_path := [0, 0, 0, 0, 0]
+  for t in range(0, num_obs)
+    if viterbi[t * num_states] >= viterbi[t * num_states + 1]
+      greedy_path[t] = 0
+    else
+      greedy_path[t] = 1
+  mut same := 0
+  for t in range(0, num_obs)
+    if greedy_path[t] == path[t]
+      same = same + 1
+  print "  Greedy agrees with Viterbi: {same} of {num_obs} steps"
+  print "  Viterbi considers transition probabilities globally"
+
+  print ""
+  print "Viterbi algorithm: dynamic programming to find the most likely hidden state sequence in an HMM."
