@@ -1,0 +1,92 @@
+-- Showcase 342: Skip counting and number patterns
+
+fn skip_count start:Int step:Int count:Int -> List
+  mut result := []
+  mut val := start
+  for i in range(0, count)
+    result.push(val)
+    val = val + step
+  result
+
+fn triangular n:Int -> Int
+  n * (n + 1) / 2
+
+fn pentagonal n:Int -> Int
+  n * (3 * n - 1) / 2
+
+fn hexagonal n:Int -> Int
+  n * (2 * n - 1)
+
+fn fibonacci_seq n:Int -> List
+  mut result := []
+  mut a := 0
+  mut b := 1
+  for i in range(0, n)
+    result.push(a)
+    c := a + b
+    a = b
+    b = c
+  result
+
+fn collatz n:Int -> List
+  mut result := [n]
+  mut val := n
+  while val != 1
+    if val % 2 == 0
+      val = val / 2
+    else
+      val = val * 3 + 1
+    result.push(val)
+  result
+
+fn main
+  print "Number Patterns:"
+  print ""
+
+  -- Skip counting
+  print "Skip counting by 3 from 0:"
+  s3 := skip_count(0, 3, 10)
+  print "  {s3 | join(", ")}"
+
+  print "Skip counting by 7 from 7:"
+  s7 := skip_count(7, 7, 8)
+  print "  {s7 | join(", ")}"
+
+  -- Triangular numbers
+  print ""
+  print "Triangular numbers:"
+  mut tri := []
+  for i in range(1, 11)
+    tri.push(triangular(i))
+  print "  {tri | join(", ")}"
+
+  -- Pentagonal numbers
+  print ""
+  print "Pentagonal numbers:"
+  mut pent := []
+  for i in range(1, 11)
+    pent.push(pentagonal(i))
+  print "  {pent | join(", ")}"
+
+  -- Hexagonal numbers
+  print ""
+  print "Hexagonal numbers:"
+  mut hex := []
+  for i in range(1, 11)
+    hex.push(hexagonal(i))
+  print "  {hex | join(", ")}"
+
+  -- Fibonacci
+  print ""
+  print "Fibonacci (first 15):"
+  fib := fibonacci_seq(15)
+  print "  {fib | join(", ")}"
+
+  -- Collatz sequences
+  print ""
+  print "Collatz sequences:"
+  starts := [6, 11, 27]
+  for s in starts
+    seq := collatz(s)
+    c := seq | count()
+    print "  {s}: {seq | join(" -> ")} ({c} steps)"

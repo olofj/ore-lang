@@ -1,0 +1,76 @@
+-- Showcase 341: Circular buffer (ring buffer)
+
+fn make_buffer capacity:Int -> List
+  -- [capacity, head, tail, size, elem0, elem1, ...]
+  mut buf := [capacity, 0, 0, 0]
+  for i in range(0, capacity)
+    buf.push(0)
+  buf
+
+fn buf_push buf:List value:Int -> List
+  capacity := buf[0]
+  tail := buf[2]
+  size := buf[3]
+  buf[4 + tail] = value
+  buf[2] = (tail + 1) % capacity
+  if size < capacity
+    buf[3] = size + 1
+  else
+    buf[1] = (buf[1] + 1) % capacity
+  buf
+
+fn buf_size buf:List -> Int
+  buf[3]
+
+fn buf_get buf:List index:Int -> Int
+  head := buf[1]
+  capacity := buf[0]
+  actual := (head + index) % capacity
+  buf[4 + actual]
+
+fn buf_to_list buf:List -> List
+  mut result := []
+  s := buf_size(buf)
+  for i in range(0, s)
+    result.push(buf_get(buf, i))
+  result
+
+fn main
+  print "Circular Buffer (Ring Buffer):"
+  print ""
+
+  -- Create buffer with capacity 5
+  mut buf := make_buffer(5)
+  print "Created buffer with capacity 5"
+  print "Size: {buf_size(buf)}"
+
+  -- Push some values
+  for i in range(1, 6)
+    buf = buf_push(buf, i * 10)
+    items := buf_to_list(buf)
+    print "Push {i * 10}: {items | join(", ")} (size={buf_size(buf)})"
+
+  -- Overflow: push more values than capacity
+  print ""
+  print "Overflow behavior:"
+  for i in range(6, 9)
+    buf = buf_push(buf, i * 10)
+    items := buf_to_list(buf)
+    print "Push {i * 10}: {items | join(", ")} (size={buf_size(buf)})"
+
+  -- Read elements
+  print ""
+  print "Reading elements:"
+  s := buf_size(buf)
+  for i in range(0, s)
+    print "  buf[{i}] = {buf_get(buf, i)}"
+
+  -- Small buffer demonstration
+  print ""
+  print "Small buffer (capacity 3):"
+  mut small := make_buffer(3)
+  values := [1, 2, 3, 4, 5, 6, 7]
+  for v in values
+    small = buf_push(small, v)
+    items := buf_to_list(small)
+    print "  Push {v}: {items | join(", ")}"

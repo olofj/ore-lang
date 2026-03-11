@@ -1,0 +1,165 @@
+-- Showcase 348: Simplified Base64 encoding and decoding
+
+fn base64_char idx:Int -> Str
+  chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  chars.char_at(idx)
+
+fn char_to_byte ch:Str -> Int
+  -- Simple ASCII mapping for printable chars
+  if ch == " "
+    return 32
+  if ch == "!"
+    return 33
+  if ch == "."
+    return 46
+  if ch == ","
+    return 44
+  if ch == "?"
+    return 63
+  if ch == ":"
+    return 58
+  if ch == ";"
+    return 59
+  -- Uppercase A-Z (65-90)
+  upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  for i in range(0, 26)
+    if upper.char_at(i) == ch
+      return 65 + i
+  -- Lowercase a-z (97-122)
+  lower := "abcdefghijklmnopqrstuvwxyz"
+  for i in range(0, 26)
+    if lower.char_at(i) == ch
+      return 97 + i
+  -- Digits 0-9 (48-57)
+  digits := "0123456789"
+  for i in range(0, 10)
+    if digits.char_at(i) == ch
+      return 48 + i
+  0
+
+fn base64_encode input:Str -> Str
+  mut result := ""
+  chars := input.chars()
+  n := chars | count()
+  mut i := 0
+  while i + 2 < n
+    b0 := char_to_byte(chars[i])
+    b1 := char_to_byte(chars[i + 1])
+    b2 := char_to_byte(chars[i + 2])
+    idx0 := b0 / 4
+    idx1 := (b0 % 4) * 16 + b1 / 16
+    idx2 := (b1 % 16) * 4 + b2 / 64
+    idx3 := b2 % 64
+    result = result + base64_char(idx0) + base64_char(idx1) + base64_char(idx2) + base64_char(idx3)
+    i = i + 3
+  remaining := n - i
+  if remaining == 2
+    b0 := char_to_byte(chars[i])
+    b1 := char_to_byte(chars[i + 1])
+    idx0 := b0 / 4
+    idx1 := (b0 % 4) * 16 + b1 / 16
+    idx2 := (b1 % 16) * 4
+    result = result + base64_char(idx0) + base64_char(idx1) + base64_char(idx2) + "="
+  else if remaining == 1
+    b0 := char_to_byte(chars[i])
+    idx0 := b0 / 4
+    idx1 := (b0 % 4) * 16
+    result = result + base64_char(idx0) + base64_char(idx1) + "=="
+  result
+
+fn base64_index ch:Str -> Int
+  table := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  for i in range(0, 64)
+    if table.char_at(i) == ch
+      return i
+  -1
+
+fn byte_to_char b:Int -> Str
+  if b == 32
+    return " "
+  if b == 33
+    return "!"
+  if b == 46
+    return "."
+  if b == 44
+    return ","
+  if b == 63
+    return "?"
+  if b == 58
+    return ":"
+  if b == 59
+    return ";"
+  upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  if b >= 65 and b <= 90
+    return upper.char_at(b - 65)
+  lower := "abcdefghijklmnopqrstuvwxyz"
+  if b >= 97 and b <= 122
+    return lower.char_at(b - 97)
+  digits := "0123456789"
+  if b >= 48 and b <= 57
+    return digits.char_at(b - 48)
+  "?"
+
+fn base64_decode encoded:Str -> Str
+  mut result := ""
+  chars := encoded.chars()
+  n := chars | count()
+  mut i := 0
+  while i + 3 < n
+    c0 := chars[i]
+    c1 := chars[i + 1]
+    c2 := chars[i + 2]
+    c3 := chars[i + 3]
+    if c2 == "=" and c3 == "="
+      v0 := base64_index(c0)
+      v1 := base64_index(c1)
+      b0 := v0 * 4 + v1 / 16
+      result = result + byte_to_char(b0)
+    else if c3 == "="
+      v0 := base64_index(c0)
+      v1 := base64_index(c1)
+      v2 := base64_index(c2)
+      b0 := v0 * 4 + v1 / 16
+      b1 := (v1 % 16) * 16 + v2 / 4
+      result = result + byte_to_char(b0) + byte_to_char(b1)
+    else
+      v0 := base64_index(c0)
+      v1 := base64_index(c1)
+      v2 := base64_index(c2)
+      v3 := base64_index(c3)
+      b0 := v0 * 4 + v1 / 16
+      b1 := (v1 % 16) * 16 + v2 / 4
+      b2 := (v2 % 4) * 64 + v3
+      result = result + byte_to_char(b0) + byte_to_char(b1) + byte_to_char(b2)
+    i = i + 4
+  result
+
+fn main
+  print "Base64 Encoding and Decoding:"
+  print ""
+
+  -- Encode examples
+  tests := ["Hello", "Hi", "A", "Hello, World!", "ore lang"]
+  print "Encoding:"
+  for t in tests
+    enc := base64_encode(t)
+    print "  '{t}' -> '{enc}'"
+
+  -- Decode back
+  print ""
+  print "Round-trip verification:"
+  for t in tests
+    enc := base64_encode(t)
+    dec := base64_decode(enc)
+    ok := if t == dec then "OK" else "FAIL"
+    print "  '{t}' -> '{enc}' -> '{dec}' [{ok}]"
+
+  -- Known base64 values
+  print ""
+  print "Known encodings:"
+  man_enc := base64_encode("Man")
+  ma_enc := base64_encode("Ma")
+  m_enc := base64_encode("M")
+  print "  'Man' -> '{man_enc}' (expected: TWFu)"
+  print "  'Ma' -> '{ma_enc}' (expected: TWE=)"
+  print "  'M' -> '{m_enc}' (expected: TQ==)"

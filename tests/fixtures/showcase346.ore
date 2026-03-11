@@ -1,0 +1,87 @@
+-- Showcase 346: Happy numbers
+
+fn sum_of_squared_digits n:Int -> Int
+  mut val := n
+  mut total := 0
+  while val > 0
+    d := val % 10
+    total = total + d * d
+    val = val / 10
+  total
+
+fn is_happy n:Int -> Bool
+  -- A number is happy if repeated sum of squared digits reaches 1
+  -- Unhappy numbers enter a cycle containing 4
+  mut val := n
+  mut steps := 0
+  while val != 1 and steps < 100
+    val = sum_of_squared_digits(val)
+    if val == 4
+      return false
+    steps = steps + 1
+  val == 1
+
+fn happy_chain n:Int -> List
+  -- Return the chain of values until reaching 1 or 4
+  mut result := [n]
+  mut val := n
+  while val != 1 and val != 4
+    val = sum_of_squared_digits(val)
+    result.push(val)
+  result
+
+fn main
+  print "Happy Numbers:"
+  print ""
+
+  -- Find first 20 happy numbers
+  print "First 20 happy numbers:"
+  mut happy := []
+  mut n := 1
+  while happy | count() < 20
+    if is_happy(n)
+      happy.push(n)
+    n = n + 1
+  print "  {happy | join(", ")}"
+
+  -- Show chains for some numbers
+  print ""
+  print "Happy number chains:"
+  show := [7, 13, 19, 23, 44]
+  for s in show
+    chain := happy_chain(s)
+    mut parts := []
+    for v in chain
+      parts.push(str(v))
+    h := is_happy(s)
+    label := if h then "happy" else "unhappy"
+    print "  {s}: {parts | join(" -> ")} ({label})"
+
+  -- Unhappy number chains (enter cycle with 4)
+  print ""
+  print "Unhappy number chains:"
+  unhappy_show := [2, 3, 4, 5]
+  for s in unhappy_show
+    chain := happy_chain(s)
+    mut parts := []
+    for v in chain
+      parts.push(str(v))
+    print "  {s}: {parts | join(" -> ")}"
+
+  -- Count happy numbers in ranges
+  print ""
+  print "Happy number counts:"
+  ranges := [10, 50, 100, 200, 500]
+  for r in ranges
+    mut count := 0
+    for i in range(1, r + 1)
+      if is_happy(i)
+        count = count + 1
+    print "  1-{r}: {count} happy numbers"
+
+  -- Happy number property: sum of digits squared
+  print ""
+  print "Digit square sums:"
+  for n in [100, 130, 1000]
+    s := sum_of_squared_digits(n)
+    print "  {n} -> {s}"

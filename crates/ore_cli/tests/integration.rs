@@ -4652,6 +4652,118 @@ fn showcase340_string_search() {
 }
 
 #[test]
+fn showcase341_circular_buffer() {
+    let out = run_ore("showcase341.ore");
+    assert!(out.contains("Circular Buffer (Ring Buffer):"));
+    assert!(out.contains("Push 10: 10 (size=1)"));
+    assert!(out.contains("Push 50: 10, 20, 30, 40, 50 (size=5)"));
+    assert!(out.contains("Push 80: 40, 50, 60, 70, 80 (size=5)"));
+    assert!(out.contains("buf[0] = 40"));
+    assert!(out.contains("Push 7: 5, 6, 7"));
+}
+
+#[test]
+fn showcase342_number_patterns() {
+    let out = run_ore("showcase342.ore");
+    assert!(out.contains("0, 3, 6, 9, 12, 15, 18, 21, 24, 27"));
+    assert!(out.contains("1, 3, 6, 10, 15, 21, 28, 36, 45, 55"));
+    assert!(out.contains("1, 5, 12, 22, 35, 51, 70, 92, 117, 145"));
+    assert!(out.contains("0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377"));
+    assert!(out.contains("6: 6 -> 3 -> 10 -> 5 -> 16 -> 8 -> 4 -> 2 -> 1 (9 steps)"));
+    assert!(out.contains("27:"));
+    assert!(out.contains("(112 steps)"));
+}
+
+#[test]
+fn showcase343_balanced_ternary() {
+    let out = run_ore("showcase343.ore");
+    assert!(out.contains("Balanced Ternary Representation:"));
+    assert!(out.contains("0 -> 0 -> 0"));
+    assert!(out.contains("5 -> 1TT -> 5"));
+    assert!(out.contains("42 -> 1TTT0 -> 42"));
+    assert!(out.contains("100 -> 11T01 -> 100"));
+    assert!(out.contains("-1 -> T -> -1"));
+    assert!(out.contains("-42 -> T1110 -> -42"));
+    assert!(out.contains("All 50 values round-trip correctly!"));
+}
+
+#[test]
+fn showcase344_zeckendorf() {
+    let out = run_ore("showcase344.ore");
+    assert!(out.contains("Zeckendorf's Representation:"));
+    assert!(out.contains("4 = 3 + 1"));
+    assert!(out.contains("10 = 8 + 2"));
+    assert!(out.contains("20 = 13 + 5 + 2"));
+    assert!(out.contains("100 = 89 + 8 + 3 (3 terms)"));
+    assert!(out.contains("All numbers 1-100 verified!"));
+}
+
+#[test]
+fn showcase345_kaprekar() {
+    let out = run_ore("showcase345.ore");
+    assert!(out.contains("Kaprekar Routine (6174):"));
+    assert!(out.contains("3524 -> 5432 - 2345 = 3087"));
+    assert!(out.contains("1234 -> 3087 -> 8352 -> 6174 (3 steps)"));
+    assert!(out.contains("1111: all digits same (trivial zero)"));
+    assert!(out.contains("6174 -> 7641 - 1467 = 6174"));
+}
+
+#[test]
+fn showcase346_happy_numbers() {
+    let out = run_ore("showcase346.ore");
+    assert!(out.contains("First 20 happy numbers:"));
+    assert!(out.contains("1, 7, 10, 13, 19, 23, 28, 31, 32, 44"));
+    assert!(out.contains("7: 7 -> 49 -> 97 -> 130 -> 10 -> 1 (happy)"));
+    assert!(out.contains("2: 2 -> 4"));
+    assert!(out.contains("1-100: 20 happy numbers"));
+}
+
+#[test]
+fn showcase347_abundant_deficient() {
+    let out = run_ore("showcase347.ore");
+    assert!(out.contains("6: divisor sum = 6, perfect"));
+    assert!(out.contains("12: divisor sum = 16, abundant"));
+    assert!(out.contains("Perfect numbers up to 10000:"));
+    assert!(out.contains("6, 28, 496, 8128"));
+    assert!(out.contains("Deficient: 751"));
+    assert!(out.contains("Abundant: 246"));
+    assert!(out.contains("Perfect: 3"));
+}
+
+#[test]
+fn showcase348_base64() {
+    let out = run_ore("showcase348.ore");
+    assert!(out.contains("Base64 Encoding and Decoding:"));
+    assert!(out.contains("'Hello' -> 'SGVsbG8='"));
+    assert!(out.contains("'Hello, World!' -> 'SGVsbG8sIFdvcmxkIQ=='"));
+    assert!(out.contains("'Man' -> 'TWFu' (expected: TWFu)"));
+    assert!(out.contains("'Ma' -> 'TWE=' (expected: TWE=)"));
+    assert!(out.contains("'M' -> 'TQ==' (expected: TQ==)"));
+    assert!(out.contains("[OK]"));
+}
+
+#[test]
+fn showcase349_sieve_sundaram() {
+    let out = run_ore("showcase349.ore");
+    assert!(out.contains("Sieve of Sundaram:"));
+    assert!(out.contains("Primes up to 100 (25 primes):"));
+    assert!(out.contains("2, 3, 5, 7, 11, 13, 17, 19, 23, 29"));
+    assert!(out.contains("Counts match!"));
+    assert!(out.contains("Up to 1000: 168 primes"));
+    assert!(out.contains("(3, 5), (5, 7), (11, 13)"));
+}
+
+#[test]
+fn showcase350_number_spiral() {
+    let out = run_ore("showcase350.ore");
+    assert!(out.contains("Number Spiral (Ulam Spiral):"));
+    assert!(out.contains("Layer 0: 0 primes out of 1 numbers"));
+    assert!(out.contains("Layer 1: 4 primes out of 8 numbers"));
+    assert!(out.contains("65, 37, 17, 5, 1, 9, 25, 49, 81"));
+    assert!(out.contains("Primes on both diagonals: 9 out of 17"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

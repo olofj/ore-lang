@@ -1,0 +1,130 @@
+-- Showcase 350: Number spiral (simplified Ulam spiral)
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  if n == 2
+    return true
+  if n % 2 == 0
+    return false
+  mut i := 3
+  while i * i <= n
+    if n % i == 0
+      return false
+    i = i + 2
+  true
+
+fn spiral_value x:Int y:Int -> Int
+  -- Compute value at position (x, y) in Ulam spiral centered at origin
+  -- Layer = max(|x|, |y|)
+  ax := x
+  ay := y
+  mut absx := ax
+  if absx < 0
+    absx = 0 - absx
+  mut absy := ay
+  if absy < 0
+    absy = 0 - absy
+  mut layer := absx
+  if absy > layer
+    layer = absy
+  if layer == 0
+    return 1
+  -- Bottom-right corner of layer k has value (2k+1)^2
+  side := 2 * layer + 1
+  corner := side * side
+  -- Walk back from corner to find position
+  if ax == layer and ay > 0 - layer
+    -- Right side going up: corner - (layer - ay)
+    return corner - (layer - ay)
+  if ay == 0 - layer and ax > 0 - layer
+    -- Bottom side going left: right-bottom is corner - 2*layer + something
+    return corner - 2 * layer - (layer - ax)
+  if ax == 0 - layer
+    -- Left side going up
+    return corner - 4 * layer - (layer + ay)
+  -- Top side going right
+  return corner - 6 * layer - (layer + ax)
+
+fn pad_num n:Int width:Int -> Str
+  s := str(n)
+  mut result := s
+  while result.len() < width
+    result = " " + result
+  result
+
+fn main
+  print "Number Spiral (Ulam Spiral):"
+  print ""
+
+  -- Generate a 9x9 spiral (values 1 to 81)
+  size := 4
+  print "9x9 number spiral:"
+  for row in range(0 - size, size + 1)
+    mut line := ""
+    for col in range(0 - size, size + 1)
+      val := spiral_value(col, row)
+      line = line + pad_num(val, 4)
+    print line
+
+  -- Mark primes in the spiral
+  print ""
+  print "Prime positions (marked with *):"
+  for row in range(0 - size, size + 1)
+    mut line := ""
+    for col in range(0 - size, size + 1)
+      val := spiral_value(col, row)
+      if is_prime(val)
+        line = line + "  * "
+      else
+        line = line + "  . "
+    print line
+
+  -- Count primes in spiral regions
+  print ""
+  print "Prime density by spiral layer:"
+  for layer in range(0, 5)
+    mut total := 0
+    mut prime_count := 0
+    for y in range(0 - layer, layer + 1)
+      for x in range(0 - layer, layer + 1)
+        mut absx := x
+        if absx < 0
+          absx = 0 - absx
+        mut absy := y
+        if absy < 0
+          absy = 0 - absy
+        mut cur_layer := absx
+        if absy > cur_layer
+          cur_layer = absy
+        if cur_layer == layer
+          val := spiral_value(x, y)
+          total = total + 1
+          if is_prime(val)
+            prime_count = prime_count + 1
+    if total > 0
+      print "  Layer {layer}: {prime_count} primes out of {total} numbers"
+
+  -- Diagonal values
+  print ""
+  print "Main diagonal values (top-left to bottom-right):"
+  mut diag := []
+  for i in range(0 - 4, 5)
+    val := spiral_value(i, i)
+    diag.push(val)
+  print "  {diag | join(", ")}"
+
+  -- Count primes on diagonals
+  mut diag_primes := 0
+  mut diag_total := 0
+  for i in range(0 - 4, 5)
+    v1 := spiral_value(i, i)
+    v2 := spiral_value(i, 0 - i)
+    if is_prime(v1)
+      diag_primes = diag_primes + 1
+    if is_prime(v2) and i != 0
+      diag_primes = diag_primes + 1
+    diag_total = diag_total + 1
+    if i != 0
+      diag_total = diag_total + 1
+  print "  Primes on both diagonals: {diag_primes} out of {diag_total}"

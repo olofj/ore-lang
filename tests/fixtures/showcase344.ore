@@ -1,0 +1,103 @@
+-- Showcase 344: Zeckendorf's representation (Fibonacci representation of numbers)
+
+fn fibonacci_up_to limit:Int -> List
+  -- Generate Fibonacci numbers up to limit (descending)
+  mut fibs := []
+  mut a := 1
+  mut b := 2
+  while a <= limit
+    fibs.push(a)
+    c := a + b
+    a = b
+    b = c
+  fibs | reverse()
+
+fn zeckendorf n:Int -> List
+  -- Find Zeckendorf representation: sum of non-consecutive Fibonacci numbers
+  if n == 0
+    return [0]
+  fibs := fibonacci_up_to(n)
+  mut remaining := n
+  mut result := []
+  for f in fibs
+    if f <= remaining
+      result.push(f)
+      remaining = remaining - f
+  result
+
+fn zeckendorf_str n:Int -> Str
+  parts := zeckendorf(n)
+  parts | join(" + ")
+
+fn verify_zeckendorf n:Int -> Bool
+  parts := zeckendorf(n)
+  total := parts | sum()
+  if total != n
+    return false
+  -- Check no consecutive Fibonacci numbers
+  fibs := fibonacci_up_to(n + 1)
+  pc := parts | count()
+  for i in range(0, pc - 1)
+    a := parts[i]
+    b := parts[i + 1]
+    -- In Fibonacci, consecutive means b comes right after a
+    -- Actually check: a + b should not be Fibonacci
+    -- Simpler: check a and b are not adjacent Fibonacci numbers
+    if a + b == a + b
+      -- Check both are in fibs and adjacent
+      mut a_idx := -1
+      mut b_idx := -1
+      fc := fibs | count()
+      for j in range(0, fc)
+        if fibs[j] == a
+          a_idx = j
+        if fibs[j] == b
+          b_idx = j
+      mut diff := a_idx - b_idx
+      if diff < 0
+        diff = 0 - diff
+      if diff == 1
+        return false
+  true
+
+fn main
+  print "Zeckendorf's Representation:"
+  print "(Every positive integer as sum of non-consecutive Fibonacci numbers)"
+  print ""
+
+  -- Show Fibonacci numbers used
+  fibs := fibonacci_up_to(100)
+  mut fib_strs := []
+  for f in fibs
+    fib_strs.push(str(f))
+  print "Fibonacci numbers up to 100: {fib_strs | reverse() | join(", ")}"
+  print ""
+
+  -- Show representations for 1-20
+  print "Zeckendorf representations (1-20):"
+  for n in range(1, 21)
+    repr := zeckendorf_str(n)
+    print "  {n} = {repr}"
+
+  -- Larger numbers
+  print ""
+  print "Larger numbers:"
+  large := [50, 64, 100, 128, 200, 255]
+  for n in large
+    repr := zeckendorf_str(n)
+    parts := zeckendorf(n)
+    pc := parts | count()
+    print "  {n} = {repr} ({pc} terms)"
+
+  -- Verification
+  print ""
+  print "Verification (sum matches):"
+  mut all_ok := true
+  for n in range(1, 101)
+    parts := zeckendorf(n)
+    total := parts | sum()
+    if total != n
+      all_ok = false
+      print "  FAIL: {n}"
+  if all_ok
+    print "  All numbers 1-100 verified!"

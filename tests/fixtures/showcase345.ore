@@ -1,0 +1,111 @@
+-- Showcase 345: Kaprekar routine (6174)
+
+fn sort_digits_asc n:Int -> Int
+  -- Extract digits, sort ascending, reconstruct
+  mut digits := []
+  mut val := n
+  for i in range(0, 4)
+    digits.push(val % 10)
+    val = val / 10
+  digits = digits | sort()
+  mut result := 0
+  for d in digits
+    result = result * 10 + d
+  result
+
+fn sort_digits_desc n:Int -> Int
+  -- Extract digits, sort descending, reconstruct
+  mut digits := []
+  mut val := n
+  for i in range(0, 4)
+    digits.push(val % 10)
+    val = val / 10
+  digits = digits | sort() | reverse()
+  mut result := 0
+  for d in digits
+    result = result * 10 + d
+  result
+
+fn pad4 n:Int -> Str
+  if n < 10
+    return "000" + str(n)
+  if n < 100
+    return "00" + str(n)
+  if n < 1000
+    return "0" + str(n)
+  str(n)
+
+fn all_same_digit n:Int -> Bool
+  -- Check if all 4 digits are the same
+  d := n % 10
+  n2 := n / 10
+  d2 := n2 % 10
+  n3 := n2 / 10
+  d3 := n3 % 10
+  n4 := n3 / 10
+  d4 := n4 % 10
+  d == d2 and d2 == d3 and d3 == d4
+
+fn kaprekar_step n:Int -> Int
+  desc := sort_digits_desc(n)
+  asc := sort_digits_asc(n)
+  desc - asc
+
+fn kaprekar_routine n:Int -> List
+  -- Returns the sequence of steps to reach 6174
+  mut result := [n]
+  mut val := n
+  mut steps := 0
+  while val != 6174 and steps < 10
+    val = kaprekar_step(val)
+    result.push(val)
+    steps = steps + 1
+  result
+
+fn main
+  print "Kaprekar Routine (6174):"
+  print ""
+
+  -- Demonstrate single step
+  print "Example step:"
+  n := 3524
+  desc := sort_digits_desc(n)
+  asc := sort_digits_asc(n)
+  diff := desc - asc
+  print "  {pad4(n)} -> {pad4(desc)} - {pad4(asc)} = {pad4(diff)}"
+  print ""
+
+  -- Full routines for several numbers
+  print "Full Kaprekar routines:"
+  starts := [1234, 3524, 1111, 9998, 4321, 8765, 2005]
+  for s in starts
+    if all_same_digit(s)
+      print "  {pad4(s)}: all digits same (trivial zero)"
+    else
+      seq := kaprekar_routine(s)
+      sc := seq | count()
+      mut parts := []
+      for v in seq
+        parts.push(pad4(v))
+      print "  {parts | join(" -> ")} ({sc - 1} steps)"
+
+  -- Count steps for all valid 4-digit numbers
+  print ""
+  print "Step distribution (non-repdigit 4-digit numbers):"
+  mut step_counts := [0, 0, 0, 0, 0, 0, 0, 0]
+  for n in range(1000, 10000)
+    if not all_same_digit(n)
+      seq := kaprekar_routine(n)
+      steps := seq | count() - 1
+      if steps < 8
+        step_counts[steps] = step_counts[steps] + 1
+  for i in range(1, 8)
+    c := step_counts[i]
+    if c > 0
+      print "  {i} steps: {c} numbers"
+
+  -- Fixed point verification
+  print ""
+  print "Fixed point verification:"
+  result := kaprekar_step(6174)
+  print "  6174 -> {sort_digits_desc(6174)} - {sort_digits_asc(6174)} = {result}"

@@ -1,0 +1,93 @@
+-- Showcase 349: Sieve of Sundaram
+
+fn sieve_sundaram limit:Int -> List
+  -- Find all primes up to limit using Sundaram's sieve
+  -- Sieve finds primes up to 2*n+2
+  n := (limit - 2) / 2
+  -- Create sieve array (false = not marked)
+  mut marked := []
+  for i in range(0, n + 1)
+    marked.push(0)
+  -- Mark numbers of form i + j + 2*i*j where 1 <= i <= j
+  mut i := 1
+  while i <= n
+    mut j := i
+    while i + j + 2 * i * j <= n
+      idx := i + j + 2 * i * j
+      marked[idx] = 1
+      j = j + 1
+    i = i + 1
+  -- Collect primes: 2, and 2*i+1 for unmarked i
+  mut primes := [2]
+  for i in range(1, n + 1)
+    if marked[i] == 0
+      p := 2 * i + 1
+      if p <= limit
+        primes.push(p)
+  primes
+
+fn is_prime_check n:Int -> Bool
+  if n < 2
+    return false
+  if n == 2
+    return true
+  if n % 2 == 0
+    return false
+  mut i := 3
+  while i * i <= n
+    if n % i == 0
+      return false
+    i = i + 2
+  true
+
+fn main
+  print "Sieve of Sundaram:"
+  print ""
+
+  -- Primes up to 100
+  primes100 := sieve_sundaram(100)
+  pc := primes100 | count()
+  print "Primes up to 100 ({pc} primes):"
+  print "  {primes100 | join(", ")}"
+
+  -- Primes up to 50
+  print ""
+  primes50 := sieve_sundaram(50)
+  p50c := primes50 | count()
+  print "Primes up to 50 ({p50c} primes):"
+  print "  {primes50 | join(", ")}"
+
+  -- Verify against trial division
+  print ""
+  print "Verification against trial division:"
+  primes200 := sieve_sundaram(200)
+  mut trial_primes := []
+  for n in range(2, 201)
+    if is_prime_check(n)
+      trial_primes.push(n)
+  sc := primes200 | count()
+  tc := trial_primes | count()
+  print "  Sundaram found {sc} primes up to 200"
+  print "  Trial division found {tc} primes up to 200"
+  if sc == tc
+    print "  Counts match!"
+
+  -- Prime counts at various limits
+  print ""
+  print "Prime counts:"
+  limits := [10, 50, 100, 200, 500, 1000]
+  for lim in limits
+    primes := sieve_sundaram(lim)
+    c := primes | count()
+    print "  Up to {lim}: {c} primes"
+
+  -- Twin primes from sieve
+  print ""
+  print "Twin primes up to 100:"
+  mut twins := []
+  for i in range(0, pc - 1)
+    a := primes100[i]
+    b := primes100[i + 1]
+    if b - a == 2
+      twins.push("(" + str(a) + ", " + str(b) + ")")
+  print "  {twins | join(", ")}"
