@@ -4446,6 +4446,17 @@ fn showcase320_testing() {
 }
 
 #[test]
+fn showcase321_short_circuit() {
+    let out = run_ore("showcase321.ore");
+    assert!(out.contains("false and side_effect:"));
+    assert!(out.contains("  result: false"));
+    assert!(!out.contains("should not run"));
+    assert!(out.contains("  called: should run"));
+    assert!(out.contains("  result: true"));
+    assert!(out.contains("Safe access: first element is 1"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

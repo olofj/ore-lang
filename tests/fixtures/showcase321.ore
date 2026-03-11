@@ -1,0 +1,35 @@
+-- Showcase 321: Short-circuit evaluation
+
+fn side_effect name:Str -> Bool
+  print "  called: {name}"
+  true
+
+fn main
+  -- AND short-circuits on false
+  print "false and side_effect:"
+  result1 := false and side_effect("should not run")
+  print "  result: {result1}"
+
+  -- AND evaluates both when first is true
+  print ""
+  print "true and side_effect:"
+  result2 := true and side_effect("should run")
+  print "  result: {result2}"
+
+  -- OR short-circuits on true
+  print ""
+  print "true or side_effect:"
+  result3 := true or side_effect("should not run")
+  print "  result: {result3}"
+
+  -- OR evaluates both when first is false
+  print ""
+  print "false or side_effect:"
+  result4 := false or side_effect("should run")
+  print "  result: {result4}"
+
+  -- Practical: null-safe check pattern
+  print ""
+  list := [1, 2, 3]
+  if list | count() > 0 and list[0] == 1
+    print "Safe access: first element is 1"

@@ -1317,7 +1317,20 @@ impl<'ctx> CodeGen<'ctx> {
                 self.last_map_val_kind = None;
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
                 let ty = val.get_type();
-                let alloca = bld!(self.builder.build_alloca(ty, name))?;
+                // Always create allocas in the entry block to avoid LLVM
+                // backend issues with dynamic stack allocations in non-entry blocks
+                let alloca = {
+                    let entry = func.get_first_basic_block().unwrap();
+                    let current = self.builder.get_insert_block().unwrap();
+                    if let Some(first_instr) = entry.get_first_instruction() {
+                        self.builder.position_before(&first_instr);
+                    } else {
+                        self.builder.position_at_end(entry);
+                    }
+                    let a = bld!(self.builder.build_alloca(ty, name))?;
+                    self.builder.position_at_end(current);
+                    a
+                };
                 bld!(self.builder.build_store(alloca, val))?;
                 self.variables.insert(name.clone(), (alloca, ty, kind.clone(), *mutable));
                 // Track element kind for typed lists
@@ -1614,6 +1627,10 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::BinOp { op, left, right } => {
                 if *op == BinOp::Pipe {
                     return self.compile_pipeline_with_kind(left, right, func);
+                }
+                // Short-circuit evaluation for and/or
+                if *op == BinOp::And || *op == BinOp::Or {
+                    return self.compile_short_circuit(*op, left, right, func);
                 }
                 let (lhs, lk) = self.compile_expr_with_kind(left, func)?;
                 let lhs_elem_kind = self.last_list_elem_kind.clone();
@@ -6400,7 +6417,16 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Bool => {
                 let bool_to_str = self.rt("ore_bool_to_str")?;
                 let int_val = val.into_int_value();
-                let ext = bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?;
+                let ext = {
+                    let bw = int_val.get_type().get_bit_width();
+                    if bw < 8 {
+                        bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?
+                    } else if bw > 8 {
+                        bld!(self.builder.build_int_truncate(int_val, self.context.i8_type(), "trunc"))?
+                    } else {
+                        int_val
+                    }
+                };
                 let result = bld!(self.builder.build_call(bool_to_str, &[ext.into()], "btos"))?;
                 Ok(self.call_result_to_value(result)?.into_pointer_value())
             }
@@ -6716,7 +6742,16 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Bool => {
                 let pf = self.rt("ore_print_bool")?;
                 let int_val = val.into_int_value();
-                let ext = bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?;
+                let ext = {
+                    let bw = int_val.get_type().get_bit_width();
+                    if bw < 8 {
+                        bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?
+                    } else if bw > 8 {
+                        bld!(self.builder.build_int_truncate(int_val, self.context.i8_type(), "trunc"))?
+                    } else {
+                        int_val
+                    }
+                };
                 bld!(self.builder.build_call(pf, &[ext.into()], ""))?;
             }
             ValKind::Float => {
@@ -6974,6 +7009,92 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(self.context.i64_type().const_int(0, false).into())
             }
         }
+    }
+
+    fn compile_short_circuit(
+        &mut self,
+        op: BinOp,
+        left: &Expr,
+        right: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        // Use alloca-based approach instead of phi nodes to avoid LLVM backend
+        // issues when function calls appear in conditional branches.
+        // Place alloca in entry block for proper stack allocation.
+        let result_alloca = {
+            let entry = func.get_first_basic_block().unwrap();
+            let current = self.builder.get_insert_block().unwrap();
+            if let Some(first_instr) = entry.get_first_instruction() {
+                self.builder.position_before(&first_instr);
+            } else {
+                self.builder.position_at_end(entry);
+            }
+            let a = bld!(self.builder.build_alloca(self.context.i64_type(), "sc_tmp"))
+                .map_err(|e| CodeGenError { line: None, msg: format!("sc alloca: {e}") })?;
+            self.builder.position_at_end(current);
+            a
+        };
+
+        let (lhs, _lk) = self.compile_expr_with_kind(left, func)?;
+        let lhs_bool = if lhs.is_int_value() {
+            let lv = lhs.into_int_value();
+            if lv.get_type().get_bit_width() != 1 {
+                bld!(self.builder.build_int_truncate(lv, self.context.bool_type(), "tobool"))
+                    .map_err(|e| CodeGenError { line: None, msg: format!("short-circuit trunc: {e}") })?
+            } else {
+                lv
+            }
+        } else {
+            return Err(CodeGenError { line: None, msg: "short-circuit: expected boolean operand".to_string() });
+        };
+
+        let rhs_block = self.context.append_basic_block(func, "sc_rhs");
+        let merge_block = self.context.append_basic_block(func, "sc_merge");
+
+        // For AND: if lhs is false, short-circuit to false; else eval RHS
+        // For OR:  if lhs is true, short-circuit to true; else eval RHS
+        let short_val = if op == BinOp::And { 0u64 } else { 1u64 };
+        bld!(self.builder.build_store(
+            result_alloca,
+            self.context.i64_type().const_int(short_val, false)
+        )).map_err(|e| CodeGenError { line: None, msg: format!("sc store1: {e}") })?;
+
+        if op == BinOp::And {
+            bld!(self.builder.build_conditional_branch(lhs_bool, rhs_block, merge_block))
+                .map_err(|e| CodeGenError { line: None, msg: format!("sc branch: {e}") })?;
+        } else {
+            bld!(self.builder.build_conditional_branch(lhs_bool, merge_block, rhs_block))
+                .map_err(|e| CodeGenError { line: None, msg: format!("sc branch: {e}") })?;
+        }
+
+        // Compile RHS
+        self.builder.position_at_end(rhs_block);
+        let (rhs, _rk) = self.compile_expr_with_kind(right, func)?;
+        let rhs_i64 = if rhs.is_int_value() {
+            let rv = rhs.into_int_value();
+            if rv.get_type().get_bit_width() == 1 {
+                bld!(self.builder.build_int_z_extend(rv, self.context.i64_type(), "rhs_ext"))
+                    .map_err(|e| CodeGenError { line: None, msg: format!("sc rhs ext: {e}") })?
+            } else if rv.get_type().get_bit_width() != 64 {
+                bld!(self.builder.build_int_z_extend(rv, self.context.i64_type(), "rhs_ext"))
+                    .map_err(|e| CodeGenError { line: None, msg: format!("sc rhs ext: {e}") })?
+            } else {
+                rv
+            }
+        } else {
+            return Err(CodeGenError { line: None, msg: "short-circuit: expected boolean operand for RHS".to_string() });
+        };
+        bld!(self.builder.build_store(result_alloca, rhs_i64))
+            .map_err(|e| CodeGenError { line: None, msg: format!("sc store2: {e}") })?;
+        bld!(self.builder.build_unconditional_branch(merge_block))
+            .map_err(|e| CodeGenError { line: None, msg: format!("sc merge: {e}") })?;
+
+        // Load result from alloca
+        self.builder.position_at_end(merge_block);
+        let result = bld!(self.builder.build_load(self.context.i64_type(), result_alloca, "sc_result"))
+            .map_err(|e| CodeGenError { line: None, msg: format!("sc load: {e}") })?;
+
+        Ok((result, ValKind::Bool))
     }
 
     fn compile_pipeline_with_kind(
