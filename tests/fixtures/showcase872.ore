@@ -1,0 +1,111 @@
+-- Showcase 872: Goldbach's Conjecture Verification
+
+-- Goldbach's conjecture: every even integer > 2 is the sum of two primes.
+-- We verify this for even numbers up to 200 and find all decompositions.
+-- Strong Goldbach: every even n > 2 = p + q where p,q are prime.
+-- Weak Goldbach: every odd n > 5 = p + q + r (proved in 2013).
+
+fn sieve limit:Int -> List
+  mut is_prime := [false, false]
+  for i in range(2, limit + 1)
+    is_prime.push(true)
+  mut i := 2
+  while i * i <= limit
+    if is_prime[i]
+      mut j := i * i
+      while j <= limit
+        is_prime[j] = false
+        j = j + i
+    i = i + 1
+  mut primes := []
+  for k in range(2, limit + 1)
+    if is_prime[k]
+      primes.push(k)
+  primes
+
+fn is_prime_check n:Int primes:List -> Bool
+  if n < 2
+    false
+  else
+    mut result := false
+    for i in range(0, primes.len())
+      if primes[i] == n
+        result = true
+    result
+
+fn goldbach_decompose n:Int primes:List -> Str
+  -- Find smallest prime p such that n-p is also prime
+  mut found_p := 0
+  mut found_q := 0
+  for i in range(0, primes.len())
+    p := primes[i]
+    if p >= n
+      break
+    q := n - p
+    if is_prime_check(q, primes)
+      found_p = p
+      found_q = q
+      break
+  if found_p == 0
+    "none"
+  else
+    "{found_p} + {found_q}"
+
+fn count_goldbach_ways n:Int primes:List -> Int
+  -- Count distinct ways n = p + q (p <= q)
+  mut count := 0
+  for i in range(0, primes.len())
+    p := primes[i]
+    if p > n / 2
+      break
+    q := n - p
+    if is_prime_check(q, primes)
+      count = count + 1
+  count
+
+fn main
+  print "Goldbach's Conjecture Verification"
+  print ""
+
+  primes := sieve(200)
+
+  print "Verifying: every even n in (2, 50] = sum of two primes"
+  mut all_hold := true
+  mut i := 4
+  while i <= 50
+    decomp := goldbach_decompose(i, primes)
+    if decomp == "none"
+      all_hold = false
+    i = i + 2
+  print "  Conjecture holds for all even n in (2, 50]: {all_hold}"
+
+  print ""
+  print "Goldbach decompositions for selected even numbers:"
+  evens := [4, 10, 20, 28, 48, 100, 128, 200]
+  for i in range(0, evens.len())
+    n := evens[i]
+    decomp := goldbach_decompose(n, primes)
+    ways := count_goldbach_ways(n, primes)
+    print "  {n} = {decomp}  ({ways} ways)"
+
+  print ""
+  print "Numbers with fewest Goldbach representations (4..100):"
+  mut fewest_n := 4
+  mut fewest_ways := 999
+  mut j := 4
+  while j <= 100
+    ways := count_goldbach_ways(j, primes)
+    if ways < fewest_ways
+      fewest_ways = ways
+      fewest_n = j
+    j = j + 2
+  print "  {fewest_n} has {fewest_ways} representation(s)"
+
+  print ""
+  print "Goldbach comet (ways to represent 4..200 by 4s):"
+  mut k := 4
+  while k <= 40
+    ways := count_goldbach_ways(k, primes)
+    bar := "*".repeat(ways)
+    print "  {str(k).pad_left(3)}: {bar}"
+    k = k + 2

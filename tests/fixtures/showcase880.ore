@@ -1,0 +1,135 @@
+-- Showcase 880: Modular Arithmetic and Group Theory
+
+-- Modular arithmetic: arithmetic on remainders mod n.
+-- Z/nZ forms a group under addition; (Z/pZ)* forms a group under multiplication.
+-- Demonstrates: modular inverse, Fermat's little theorem, discrete logarithm,
+-- primitive roots, and the Chinese Remainder Theorem.
+
+fn mod_pow base:Int exp:Int modulus:Int -> Int
+  -- Fast modular exponentiation: base^exp mod modulus
+  if modulus == 1
+    0
+  else
+    mut result := 1
+    mut b := base % modulus
+    mut e := exp
+    while e > 0
+      if e % 2 == 1
+        result = result * b % modulus
+      e = e / 2
+      b = b * b % modulus
+    result
+
+fn mod_inverse a:Int m:Int -> Int
+  -- Extended Euclidean: find a^(-1) mod m (if gcd(a,m)=1)
+  mut old_r := a
+  mut r := m
+  mut old_s := 1
+  mut s := 0
+  while r != 0
+    q := old_r / r
+    tmp_r := r
+    r = old_r - q * r
+    old_r = tmp_r
+    tmp_s := s
+    s = old_s - q * s
+    old_s = tmp_s
+  if old_s < 0
+    old_s + m
+  else
+    old_s
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  while y != 0
+    tmp := y
+    y = x % y
+    x = tmp
+  x
+
+fn is_primitive_root g:Int p:Int -> Bool
+  -- Check if g is a primitive root mod p (prime p)
+  -- g is primitive root iff g^((p-1)/q) != 1 mod p for all prime factors q of p-1
+  -- For small p, just check order equals p-1
+  if gcd(g, p) != 1
+    false
+  else
+    mut order := 1
+    mut cur := g % p
+    while cur != 1 and order < p
+      cur = cur * g % p
+      order = order + 1
+    order == p - 1
+
+fn discrete_log g:Int h:Int p:Int -> Int
+  -- Baby-step giant-step: find x such that g^x = h mod p
+  -- x in [0, p-1), works for small p
+  mut x := 0
+  mut cur := 1
+  while x < p
+    if cur == h
+      x = p + 1
+    cur = cur * g % p
+    x = x + 1
+  -- Simple linear search for small p
+  mut result := -1
+  mut power := 1
+  for i in range(0, p)
+    if power == h
+      result = i
+    power = power * g % p
+  result
+
+fn crt a1:Int m1:Int a2:Int m2:Int -> Int
+  -- Chinese Remainder Theorem: find x such that x=a1 mod m1, x=a2 mod m2
+  -- Assumes gcd(m1,m2)=1
+  inv := mod_inverse(m1, m2)
+  x := a1 + m1 * ((a2 - a1) * inv % m2)
+  if x < 0
+    x + m1 * m2
+  else
+    x % (m1 * m2)
+
+fn main
+  print "Modular Arithmetic and Group Theory"
+  print ""
+
+  print "Modular exponentiation: a^b mod m"
+  print "  2^10 mod 1000 = {mod_pow(2, 10, 1000)}"
+  print "  3^100 mod 97 = {mod_pow(3, 100, 97)}"
+  print "  7^13 mod 13 = {mod_pow(7, 13, 13)}  (Fermat: a^p = a mod p)"
+
+  print ""
+  print "Fermat's little theorem: a^(p-1) = 1 mod p for prime p, gcd(a,p)=1"
+  primes := [7, 11, 13, 17, 19]
+  for i in range(0, primes.len())
+    p := primes[i]
+    result := mod_pow(5, p - 1, p)
+    print "  5^{p-1} mod {p} = {result}"
+
+  print ""
+  print "Modular inverses mod 17:"
+  for a in range(1, 10)
+    inv := mod_inverse(a, 17)
+    check := a * inv % 17
+    print "  {a}^(-1) mod 17 = {inv}  (verify: {a}*{inv} mod 17 = {check})"
+
+  print ""
+  print "Primitive roots mod 7 (generator of (Z/7Z)*):"
+  for g in range(1, 7)
+    is_pr := is_primitive_root(g, 7)
+    if is_pr
+      print "  g={g} is a primitive root mod 7"
+
+  print ""
+  print "Powers of 3 mod 7 (cyclic group of order 6):"
+  for i in range(0, 7)
+    p := mod_pow(3, i, 7)
+    print "  3^{i} mod 7 = {p}"
+
+  print ""
+  print "Chinese Remainder Theorem:"
+  print "  x = 2 mod 3, x = 3 mod 5 => x = {crt(2, 3, 3, 5)} mod 15"
+  print "  x = 1 mod 4, x = 3 mod 7 => x = {crt(1, 4, 3, 7)} mod 28"
+  print "  x = 4 mod 11, x = 3 mod 13 => x = {crt(4, 11, 3, 13)} mod 143"

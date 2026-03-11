@@ -1,0 +1,80 @@
+-- Showcase 874: Collatz Conjecture Exploration
+
+-- The Collatz conjecture: starting from any positive integer,
+-- repeatedly apply: if n is even, n = n/2; if n is odd, n = 3n+1.
+-- The conjecture states this always reaches 1.
+-- We explore sequence lengths, records, and structure.
+
+fn collatz_length n:Int -> Int
+  mut x := n
+  mut steps := 0
+  while x != 1
+    if x % 2 == 0
+      x = x / 2
+    else
+      x = x * 3 + 1
+    steps = steps + 1
+  steps
+
+fn collatz_max n:Int -> Int
+  -- Maximum value reached in Collatz sequence starting at n
+  mut x := n
+  mut peak := n
+  while x != 1
+    if x % 2 == 0
+      x = x / 2
+    else
+      x = x * 3 + 1
+    if x > peak
+      peak = x
+  peak
+
+fn collatz_sequence n:Int -> List
+  mut x := n
+  mut seq := [n]
+  while x != 1
+    if x % 2 == 0
+      x = x / 2
+    else
+      x = x * 3 + 1
+    seq.push(x)
+  seq
+
+fn main
+  print "Collatz Conjecture Exploration"
+  print ""
+
+  print "Collatz sequences for small numbers:"
+  starts := [6, 11, 27, 97]
+  for i in range(0, starts.len())
+    n := starts[i]
+    seq := collatz_sequence(n)
+    seq_str := seq | map(x => str(x)) | join(" -> ")
+    print "  n={n} (length={seq.len()}): {seq_str}"
+
+  print ""
+  print "Sequence lengths for n=1..30:"
+  for n in range(1, 31)
+    len := collatz_length(n)
+    bar := ".".repeat(len)
+    print "  n={str(n).pad_left(2)}: length={str(len).pad_left(3)}  {bar}"
+
+  print ""
+  print "Records for stopping time (n=1..200):"
+  mut record_len := 0
+  for n in range(1, 201)
+    l := collatz_length(n)
+    if l > record_len
+      record_len = l
+      print "  n={n}: new record stopping time = {l}"
+
+  print ""
+  print "Peak values reached in Collatz sequences (n=1..20):"
+  for n in range(1, 21)
+    peak := collatz_max(n)
+    ratio := peak / n
+    print "  n={str(n).pad_left(2)}: peak={str(peak).pad_left(6)}, peak/n ~ {ratio}"
+
+  print ""
+  n27 := collatz_sequence(27)
+  print "Famous n=27: sequence length={n27.len()}, peak={n27.max()}"

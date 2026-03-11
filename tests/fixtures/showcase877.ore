@@ -1,0 +1,103 @@
+-- Showcase 877: Catalan Numbers and Applications
+
+-- Catalan numbers: C(n) = C(2n,n) / (n+1) = 1, 1, 2, 5, 14, 42, 132, ...
+-- They count many combinatorial structures:
+-- - Number of ways to triangulate a polygon with n+2 sides
+-- - Number of valid parenthesizations of n pairs
+-- - Number of full binary trees with n+1 leaves
+-- - Number of mountain ranges with n upstrokes and n downstrokes
+
+fn catalan n:Int -> Int
+  -- C(n) = C(n-1) * 2*(2n-1) / (n+1)
+  if n == 0
+    1
+  else
+    mut result := 1
+    for i in range(0, n)
+      result = result * 2 * (2 * i + 1) / (i + 2)
+    result
+
+fn gen_parentheses n:Int -> List
+  -- Generate all valid strings of n pairs of parentheses
+  -- Uses a recursive approach via explicit stack simulation
+  mut results := []
+  -- We'll encode as strings built iteratively
+  -- State: (current_string, open_count, close_count)
+  mut stack := [""]
+  mut opens := [0]
+  mut closes := [0]
+  while stack.len() > 0
+    cur := stack.last()
+    o := opens.last()
+    c := closes.last()
+    stack = stack.take(stack.len() - 1)
+    opens = opens.take(opens.len() - 1)
+    closes = closes.take(closes.len() - 1)
+    if o == n and c == n
+      results.push(cur)
+    else
+      if o < n
+        stack.push(cur + "(")
+        opens.push(o + 1)
+        closes.push(c)
+      if c < o
+        stack.push(cur + ")")
+        opens.push(o)
+        closes.push(c + 1)
+  results
+
+fn triangulation_count n:Int -> Int
+  -- Number of triangulations of (n+2)-gon = C(n)
+  catalan(n)
+
+fn ballot_count n:Int -> Int
+  -- Number of ballot sequences of length 2n (mountain ranges)
+  catalan(n)
+
+fn main
+  print "Catalan Numbers and Applications"
+  print ""
+
+  print "Catalan number sequence C(0)..C(12):"
+  cats := []
+  for i in range(0, 13)
+    cats.push(catalan(i))
+  cat_str := cats | map(c => str(c)) | join(", ")
+  print "  {cat_str}"
+
+  print ""
+  print "Catalan number formula verification:"
+  for n in range(0, 8)
+    c := catalan(n)
+    print "  C({n}) = {c}"
+
+  print ""
+  print "Valid parenthesizations:"
+  for n in range(1, 5)
+    parens := gen_parentheses(n)
+    count := parens.len()
+    print "  n={n}: {count} ways (C({n})={catalan(n)})"
+    if n <= 3
+      paren_str := parens | join("  ")
+      print "    {paren_str}"
+
+  print ""
+  print "Applications table:"
+  print "  n | Triangulations | Mountain ranges | Binary trees"
+  print "  --+----------------+-----------------+-------------"
+  for n in range(1, 9)
+    tri := triangulation_count(n)
+    mount := ballot_count(n)
+    btrees := catalan(n)
+    print "  {str(n).pad_left(1)} | {str(tri).pad_left(14)} | {str(mount).pad_left(15)} | {str(btrees).pad_left(11)}"
+
+  print ""
+  print "Ratio C(n+1)/C(n) approaches 4 as n grows:"
+  for n in range(1, 9)
+    cn := catalan(n)
+    cn1 := catalan(n + 1)
+    -- approximate ratio * 100 / 100 in integers
+    ratio_x100 := cn1 * 100 / cn
+    whole := ratio_x100 / 100
+    frac := ratio_x100 % 100
+    print "  C({n+1})/C({n}) = {cn1}/{cn} ~ {whole}.{str(frac).pad_left(2)}"

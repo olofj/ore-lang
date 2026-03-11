@@ -1,0 +1,92 @@
+-- Showcase 873: Perfect Numbers and Mersenne Primes
+
+-- A perfect number equals the sum of its proper divisors: 6 = 1+2+3.
+-- Mersenne primes have the form 2^p - 1 where p is prime.
+-- Euclid-Euler theorem: even perfect numbers correspond to Mersenne primes.
+-- M_p = 2^p - 1 prime => 2^(p-1) * (2^p - 1) is perfect.
+
+fn power_of_two exp:Int -> Int
+  mut result := 1
+  for i in range(0, exp)
+    result = result * 2
+  result
+
+fn sum_of_divisors n:Int -> Int
+  mut s := 1
+  mut i := 2
+  while i * i <= n
+    if n % i == 0
+      s = s + i
+      if i != n / i
+        s = s + n / i
+    i = i + 1
+  s
+
+fn is_perfect n:Int -> Bool
+  if n < 6
+    false
+  else
+    sum_of_divisors(n) == n
+
+fn is_mersenne_prime p:Int -> Bool
+  -- Check if 2^p - 1 is prime (small values only)
+  mersenne := power_of_two(p) - 1
+  if mersenne < 2
+    false
+  else
+    mut prime := true
+    mut i := 2
+    while i * i <= mersenne
+      if mersenne % i == 0
+        prime = false
+      i = i + 1
+    prime
+
+fn euclid_euler p:Int -> Int
+  -- Generate even perfect number from Mersenne prime exponent p
+  power_of_two(p - 1) * (power_of_two(p) - 1)
+
+fn abundant_or_deficient n:Int -> Str
+  s := sum_of_divisors(n)
+  if s == n then "perfect"
+  else if s > n then "abundant"
+  else "deficient"
+
+fn main
+  print "Perfect Numbers and Mersenne Primes"
+  print ""
+
+  print "Perfect numbers up to 10000:"
+  mut count := 0
+  for n in range(2, 10001)
+    if is_perfect(n)
+      s := sum_of_divisors(n)
+      print "  {n} (sum of divisors = {s})"
+      count = count + 1
+  print "  Found {count} perfect numbers"
+
+  print ""
+  print "Mersenne primes M_p = 2^p - 1 for small primes p:"
+  primes_to_check := [2, 3, 5, 7, 11, 13, 17, 19]
+  for i in range(0, primes_to_check.len())
+    p := primes_to_check[i]
+    m := power_of_two(p) - 1
+    is_mp := is_mersenne_prime(p)
+    status := if is_mp then "PRIME" else "composite"
+    print "  M_{p} = 2^{p} - 1 = {m}  [{status}]"
+
+  print ""
+  print "Euclid-Euler theorem: even perfect numbers from Mersenne primes:"
+  mersenne_exps := [2, 3, 5, 7]
+  for i in range(0, mersenne_exps.len())
+    p := mersenne_exps[i]
+    perf := euclid_euler(p)
+    check := is_perfect(perf)
+    print "  p={p}: M_{p}={power_of_two(p)-1}, perfect={perf}, verify={check}"
+
+  print ""
+  print "Abundant and deficient numbers (1..20):"
+  for n in range(1, 21)
+    kind := abundant_or_deficient(n)
+    if kind == "perfect" or kind == "abundant"
+      print "  {n}: {kind} (sigma={sum_of_divisors(n)})"

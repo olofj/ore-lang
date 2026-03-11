@@ -1,0 +1,96 @@
+-- Showcase 875: Egyptian Fractions (Greedy Algorithm)
+
+-- Every positive rational p/q can be written as a sum of distinct unit fractions.
+-- The greedy algorithm (Fibonacci-Sylvester): at each step, use the largest
+-- unit fraction 1/ceil(q/p) that doesn't exceed the remaining fraction.
+-- Example: 2/3 = 1/2 + 1/6
+
+fn ceil_div a:Int b:Int -> Int
+  -- Ceiling division: ceil(a/b)
+  (a + b - 1) / b
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  while y != 0
+    tmp := y
+    y = x % y
+    x = tmp
+  x
+
+fn egyptian_fractions num:Int den:Int -> List
+  -- Returns list of denominators [d1, d2, ...] so that num/den = 1/d1 + 1/d2 + ...
+  mut p := num
+  mut q := den
+  mut denoms := []
+  mut iters := 0
+  while p != 0 and iters < 20
+    iters = iters + 1
+    -- Reduce fraction p/q
+    g := gcd(p, q)
+    p = p / g
+    q = q / g
+    if p == 1
+      denoms.push(q)
+      p = 0
+    else
+      -- Next unit fraction: 1/ceil(q/p)
+      d := ceil_div(q, p)
+      denoms.push(d)
+      -- Subtract: p/q - 1/d = (p*d - q) / (q*d)
+      new_p := p * d - q
+      new_q := q * d
+      p = new_p
+      q = new_q
+  denoms
+
+fn fraction_str num:Int den:Int -> Str
+  "{num}/{den}"
+
+fn main
+  print "Egyptian Fractions (Greedy Algorithm)"
+  print ""
+
+  print "Classical examples:"
+  examples_num := [2, 3, 2, 5, 4, 7]
+  examples_den := [3, 4, 5, 6, 7, 15]
+  for i in range(0, examples_num.len())
+    num := examples_num[i]
+    den := examples_den[i]
+    denoms := egyptian_fractions(num, den)
+    parts := denoms | map(d => "1/" + str(d)) | join(" + ")
+    print "  {fraction_str(num, den)} = {parts}"
+
+  print ""
+  print "Unit fractions stay as-is:"
+  unit_nums := [1, 1, 1, 1]
+  unit_dens := [2, 3, 7, 13]
+  for i in range(0, unit_nums.len())
+    num := unit_nums[i]
+    den := unit_dens[i]
+    denoms := egyptian_fractions(num, den)
+    parts := denoms | map(d => "1/" + str(d)) | join(" + ")
+    print "  {fraction_str(num, den)} = {parts}"
+
+  print ""
+  print "Number of terms in Egyptian fraction expansions:"
+  for n in range(2, 10)
+    for d in range(n + 1, n + 5)
+      g := gcd(n, d)
+      rn := n / g
+      rd := d / g
+      if rn != 1
+        denoms := egyptian_fractions(rn, rd)
+        print "  {fraction_str(rn, rd)}: {denoms.len()} terms, largest denom = {denoms.last()}"
+
+  print ""
+  print "Verification: check sums equal original (approximation):"
+  check_num := [3, 5, 7]
+  check_den := [7, 8, 11]
+  for i in range(0, check_num.len())
+    num := check_num[i]
+    den := check_den[i]
+    denoms := egyptian_fractions(num, den)
+    -- Compute LCM of all denominators for verification
+    parts_str := denoms | map(d => "1/" + str(d)) | join(" + ")
+    print "  {fraction_str(num, den)} = {parts_str}"

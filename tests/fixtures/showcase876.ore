@@ -1,0 +1,110 @@
+-- Showcase 876: Continued Fraction Expansion
+
+-- Every real number has a continued fraction representation:
+-- x = a0 + 1/(a1 + 1/(a2 + 1/(a3 + ...)))
+-- For rationals: finite expansion. For quadratic irrationals: periodic.
+-- Famous examples: sqrt(2) = [1;2,2,2,...], phi = [1;1,1,1,...], pi ~ [3;7,15,1,292,...]
+
+fn continued_fraction_rational num:Int den:Int -> List
+  -- Expand rational num/den into continued fraction coefficients
+  mut p := num
+  mut q := den
+  mut coeffs := []
+  mut iters := 0
+  while q != 0 and iters < 20
+    iters = iters + 1
+    a := p / q
+    coeffs.push(a)
+    r := p % q
+    p = q
+    q = r
+  coeffs
+
+fn cf_to_str coeffs:List -> Str
+  if coeffs.len() == 0
+    "[]"
+  else
+    first := str(coeffs[0])
+    if coeffs.len() == 1
+      "[{first}]"
+    else
+      rest := coeffs.skip(1) | map(x => str(x)) | join(", ")
+      "[{first}; {rest}]"
+
+fn cf_convergents coeffs:List -> List
+  -- Compute convergents (rational approximations) from CF coefficients
+  -- Returns list of [numerator, denominator] pairs as encoded strings
+  n := coeffs.len()
+  mut h_prev := 1
+  mut h_curr := coeffs[0]
+  mut k_prev := 0
+  mut k_curr := 1
+  mut convs := ["{h_curr}/{k_curr}"]
+  for i in range(1, n)
+    a := coeffs[i]
+    h_next := a * h_curr + h_prev
+    k_next := a * k_curr + k_prev
+    convs.push("{h_next}/{k_next}")
+    h_prev = h_curr
+    h_curr = h_next
+    k_prev = k_curr
+    k_curr = k_next
+  convs
+
+fn sqrt2_cf_approx steps:Int -> List
+  -- sqrt(2) = [1; 2, 2, 2, ...]
+  mut coeffs := [1]
+  for i in range(0, steps)
+    coeffs.push(2)
+  coeffs
+
+fn phi_cf_approx steps:Int -> List
+  -- golden ratio = [1; 1, 1, 1, ...]
+  mut coeffs := [1]
+  for i in range(0, steps)
+    coeffs.push(1)
+  coeffs
+
+fn main
+  print "Continued Fraction Expansion"
+  print ""
+
+  print "Rational continued fractions:"
+  nums := [3, 22, 355, 17, 100]
+  dens := [1, 7, 113, 12, 37]
+  for i in range(0, nums.len())
+    num := nums[i]
+    den := dens[i]
+    coeffs := continued_fraction_rational(num, den)
+    cf := cf_to_str(coeffs)
+    print "  {num}/{den} = {cf}"
+
+  print ""
+  print "Convergents of 22/7 (approx pi):"
+  coeffs_pi := continued_fraction_rational(22, 7)
+  convs := cf_convergents(coeffs_pi)
+  for i in range(0, convs.len())
+    print "  h_{i}/k_{i} = {convs[i]}"
+
+  print ""
+  print "sqrt(2) = [1; 2, 2, 2, ...] convergents:"
+  cf_s2 := sqrt2_cf_approx(7)
+  print "  CF: {cf_to_str(cf_s2)}"
+  convs_s2 := cf_convergents(cf_s2)
+  for i in range(0, convs_s2.len())
+    print "  Convergent {i}: {convs_s2[i]}"
+
+  print ""
+  print "Golden ratio phi = [1; 1, 1, 1, ...] convergents (Fibonacci!):"
+  cf_phi := phi_cf_approx(8)
+  print "  CF: {cf_to_str(cf_phi)}"
+  convs_phi := cf_convergents(cf_phi)
+  for i in range(0, convs_phi.len())
+    print "  Convergent {i}: {convs_phi[i]}"
+
+  print ""
+  print "pi approx via [3; 7, 15, 1, 292]:"
+  pi_cf := [3, 7, 15, 1, 292]
+  convs_pi2 := cf_convergents(pi_cf)
+  for i in range(0, convs_pi2.len())
+    print "  Convergent {i}: {convs_pi2[i]}"

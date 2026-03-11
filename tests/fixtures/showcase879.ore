@@ -1,0 +1,137 @@
+-- Showcase 879: Fibonacci Variants (Tribonacci, Lucas, Padovan)
+
+-- Beyond Fibonacci: sequences with different recurrences.
+-- Tribonacci: T(n) = T(n-1) + T(n-2) + T(n-3), starts 0, 0, 1
+-- Lucas: L(n) = L(n-1) + L(n-2), starts 2, 1
+-- Padovan: P(n) = P(n-3) + P(n-2), starts 1, 1, 1
+-- Pell: P(n) = 2*P(n-1) + P(n-2), starts 0, 1
+
+fn fibonacci n:Int -> Int
+  if n <= 0
+    0
+  else if n == 1
+    1
+  else
+    mut a := 0
+    mut b := 1
+    for i in range(2, n + 1)
+      tmp := a + b
+      a = b
+      b = tmp
+    b
+
+fn tribonacci n:Int -> Int
+  if n <= 1
+    0
+  else if n == 2
+    1
+  else
+    mut a := 0
+    mut b := 0
+    mut c := 1
+    for i in range(3, n + 1)
+      tmp := a + b + c
+      a = b
+      b = c
+      c = tmp
+    c
+
+fn lucas n:Int -> Int
+  if n == 0
+    2
+  else if n == 1
+    1
+  else
+    mut a := 2
+    mut b := 1
+    for i in range(2, n + 1)
+      tmp := a + b
+      a = b
+      b = tmp
+    b
+
+fn padovan n:Int -> Int
+  if n <= 2
+    1
+  else
+    mut a := 1
+    mut b := 1
+    mut c := 1
+    for i in range(3, n + 1)
+      tmp := a + b
+      a = b
+      b = c
+      c = tmp
+    c
+
+fn pell n:Int -> Int
+  if n == 0
+    0
+  else if n == 1
+    1
+  else
+    mut a := 0
+    mut b := 1
+    for i in range(2, n + 1)
+      tmp := 2 * b + a
+      a = b
+      b = tmp
+    b
+
+fn main
+  print "Fibonacci Variants"
+  print ""
+
+  print "Fibonacci (classic): F(n) = F(n-1) + F(n-2)"
+  fibs := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  fib_vals := fibs | map(n => fibonacci(n))
+  fib_str := fib_vals | map(x => str(x)) | join(", ")
+  print "  {fib_str}"
+
+  print ""
+  print "Tribonacci: T(n) = T(n-1) + T(n-2) + T(n-3)"
+  trib_vals := fibs | map(n => tribonacci(n))
+  trib_str := trib_vals | map(x => str(x)) | join(", ")
+  print "  {trib_str}"
+
+  print ""
+  print "Lucas: L(n) = L(n-1) + L(n-2), starts 2,1"
+  lucas_vals := fibs | map(n => lucas(n))
+  lucas_str := lucas_vals | map(x => str(x)) | join(", ")
+  print "  {lucas_str}"
+
+  print ""
+  print "Padovan: P(n) = P(n-3) + P(n-2), starts 1,1,1"
+  pad_vals := fibs | map(n => padovan(n))
+  pad_str := pad_vals | map(x => str(x)) | join(", ")
+  print "  {pad_str}"
+
+  print ""
+  print "Pell: P(n) = 2*P(n-1) + P(n-2)"
+  pell_vals := fibs | map(n => pell(n))
+  pell_str := pell_vals | map(x => str(x)) | join(", ")
+  print "  {pell_str}"
+
+  print ""
+  print "Golden ratios (consecutive term ratios at n=15):"
+  f15 := fibonacci(15)
+  f14 := fibonacci(14)
+  print "  Fibonacci F(15)/F(14) = {f15}/{f14} ~ {f15 * 1000 / f14} (x1000)"
+  t15 := tribonacci(15)
+  t14 := tribonacci(14)
+  print "  Tribonacci T(15)/T(14) = {t15}/{t14} ~ {t15 * 1000 / t14} (x1000)"
+  l15 := lucas(15)
+  l14 := lucas(14)
+  print "  Lucas L(15)/L(14) = {l15}/{l14} ~ {l15 * 1000 / l14} (x1000)"
+  pell15 := pell(15)
+  pell14 := pell(14)
+  print "  Pell P(15)/P(14) = {pell15}/{pell14} ~ {pell15 * 1000 / pell14} (x1000)"
+
+  print ""
+  print "Fibonacci identity F(n)^2 - F(n+1)*F(n-1) = (-1)^(n+1) (Cassini):"
+  for n in range(1, 7)
+    fn1 := fibonacci(n)
+    fn_p := fibonacci(n + 1)
+    fn_m := fibonacci(n - 1)
+    cassini := fn1 * fn1 - fn_p * fn_m
+    print "  n={n}: F({n})^2 - F({n+1})*F({n-1}) = {fn1*fn1} - {fn_p*fn_m} = {cassini}"
