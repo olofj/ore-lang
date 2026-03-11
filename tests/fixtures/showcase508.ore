@@ -1,0 +1,151 @@
+-- Showcase 508: Signal Processing
+
+fn abs_val x:Int -> Int
+  if x < 0
+    return 0 - x
+  return x
+
+fn main
+  print "Signal Processing:"
+  print ""
+
+  -- Part 1: Moving average filter
+  print "=== Part 1: Moving Average ==="
+  mut signal := [10, 12, 15, 11, 13, 20, 18, 22, 19, 25, 23, 28, 30, 27, 31]
+  window := 3
+  print "  Raw signal: {signal | join(", ")}"
+
+  mut smoothed := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  sig_len := signal | len
+  for i in range(0, sig_len)
+    mut sum := 0
+    mut count := 0
+    for j in range(0, window)
+      idx := i - window / 2 + j
+      if idx >= 0 and idx < sig_len
+        sum = sum + signal[idx]
+        count = count + 1
+    smoothed[i] = sum / count
+
+  print "  Smoothed (w=3): {smoothed | join(", ")}"
+
+  -- Part 2: Convolution
+  print ""
+  print "=== Part 2: Convolution ==="
+  mut input := [1, 3, 5, 7, 9, 7, 5, 3, 1]
+  mut kernel := [1, 2, 1]
+  input_len := input | len
+  kern_len := kernel | len
+  out_len := input_len - kern_len + 1
+
+  mut conv_result := [0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, out_len)
+    mut val := 0
+    for k in range(0, kern_len)
+      val = val + input[i + k] * kernel[k]
+    conv_result[i] = val
+
+  print "  Input: {input | join(", ")}"
+  print "  Kernel: {kernel | join(", ")}"
+  print "  Convolution: {conv_result | join(", ")}"
+
+  -- Part 3: Cross-correlation
+  print ""
+  print "=== Part 3: Cross-Correlation ==="
+  -- Find where pattern occurs in signal
+  mut haystack := [0, 0, 1, 3, 5, 3, 1, 0, 0, 1, 3, 5, 3, 1, 0, 0]
+  mut pattern := [1, 3, 5, 3, 1]
+  hay_len := haystack | len
+  pat_len := pattern | len
+  corr_len := hay_len - pat_len + 1
+
+  mut correlation := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut max_corr := 0
+  mut max_pos := 0
+  for i in range(0, corr_len)
+    mut val := 0
+    for k in range(0, pat_len)
+      val = val + haystack[i + k] * pattern[k]
+    correlation[i] = val
+    if val > max_corr
+      max_corr = val
+      max_pos = i
+
+  print "  Signal: {haystack | join(", ")}"
+  print "  Pattern: {pattern | join(", ")}"
+  print "  Correlation: {correlation | join(", ")}"
+  print "  Peak at position {max_pos} (value={max_corr})"
+
+  -- Part 4: Edge detection (1D)
+  print ""
+  print "=== Part 4: Edge Detection ==="
+  -- Derivative kernel [-1, 0, 1]
+  mut data := [5, 5, 5, 5, 15, 15, 15, 15, 5, 5, 5, 5]
+  data_len := data | len
+  mut edges := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(1, data_len - 1)
+    edges[i] = data[i + 1] - data[i - 1]
+
+  print "  Signal: {data | join(", ")}"
+  mut edge_str := ""
+  for i in range(0, data_len)
+    if i > 0
+      edge_str = edge_str + ", "
+    edge_str = edge_str + str(edges[i])
+  print "  Edges: {edge_str}"
+
+  -- Find edges (where absolute derivative is large)
+  mut edge_positions := ""
+  mut edge_count := 0
+  for i in range(0, data_len)
+    if abs_val(edges[i]) > 5
+      if edge_count > 0
+        edge_positions = edge_positions + ", "
+      edge_positions = edge_positions + str(i)
+      edge_count = edge_count + 1
+  print "  Edge positions: [{edge_positions}]"
+
+  -- Part 5: Signal statistics
+  print ""
+  print "=== Part 5: Signal Statistics ==="
+  mut stats_signal := [10, 15, 12, 18, 14, 22, 16, 20, 13, 17]
+  stats_len := stats_signal | len
+  stats_sum := stats_signal | sum
+  stats_mean := stats_sum / stats_len
+  stats_min := stats_signal | min
+  stats_max := stats_signal | max
+  amplitude := stats_max - stats_min
+
+  -- Variance (integer)
+  mut var_sum := 0
+  for v in stats_signal
+    diff := v - stats_mean
+    var_sum = var_sum + diff * diff
+  variance := var_sum / stats_len
+
+  print "  Signal: {stats_signal | join(", ")}"
+  print "  Mean: {stats_mean}"
+  print "  Min: {stats_min}, Max: {stats_max}"
+  print "  Amplitude: {amplitude}"
+  print "  Variance: {variance}"
+
+  -- Part 6: Downsampling
+  print ""
+  print "=== Part 6: Downsampling ==="
+  mut full_signal := [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
+  print "  Original: {full_signal | join(", ")}"
+
+  -- Downsample by 2 (take every other)
+  mut down2 := [0, 0, 0, 0, 0, 0]
+  for i in range(0, 6)
+    down2[i] = full_signal[i * 2]
+  print "  Downsample x2: {down2 | join(", ")}"
+
+  -- Downsample by 3
+  mut down3 := [0, 0, 0, 0]
+  for i in range(0, 4)
+    down3[i] = full_signal[i * 3]
+  print "  Downsample x3: {down3 | join(", ")}"
+
+  print ""
+  print "Signal processing: moving average, convolution, correlation, edges, stats, downsampling."

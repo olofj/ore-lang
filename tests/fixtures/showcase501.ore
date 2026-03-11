@@ -1,0 +1,130 @@
+-- Showcase 501: Blockchain Simulation
+
+fn hash_block index:Int prev_hash:Int data:Int nonce:Int -> Int
+  -- Simple hash: combine all fields with addition and bit mixing
+  mut h := 17 + index * 3 + nonce * 7 + data * 13
+  h = h + prev_hash * 11
+  -- Mix bits with modular arithmetic
+  h = (h * 2654435761) % 1000000
+  if h < 0
+    h = 0 - h
+  return h
+
+fn main
+  print "Blockchain Simulation:"
+  print ""
+
+  -- Part 1: Build a blockchain
+  print "=== Part 1: Building Blockchain ==="
+  num_blocks := 6
+  mut block_index := [0, 0, 0, 0, 0, 0]
+  mut block_data := [0, 42, 100, 75, 200, 33]
+  mut block_prev := [0, 0, 0, 0, 0, 0]
+  mut block_nonce := [0, 0, 0, 0, 0, 0]
+  mut block_hash := [0, 0, 0, 0, 0, 0]
+
+  -- Genesis block
+  block_index[0] = 0
+  block_hash[0] = hash_block(0, 0, 0, 0)
+  print "  Block 0 (genesis): hash={block_hash[0]}"
+
+  -- Mine remaining blocks (find nonce where hash < 100000)
+  for i in range(1, num_blocks)
+    block_index[i] = i
+    block_prev[i] = block_hash[i - 1]
+    mut nonce := 0
+    mut found := false
+    while not found and nonce < 1000
+      h := hash_block(i, block_prev[i], block_data[i], nonce)
+      if h < 100000
+        block_nonce[i] = nonce
+        block_hash[i] = h
+        found = true
+      nonce = nonce + 1
+    print "  Block {i}: data={block_data[i]}, nonce={block_nonce[i]}, hash={block_hash[i]}"
+
+  -- Part 2: Validate the chain
+  print ""
+  print "=== Part 2: Chain Validation ==="
+  mut valid := true
+  for i in range(1, num_blocks)
+    expected_prev := block_hash[i - 1]
+    if block_prev[i] != expected_prev
+      print "  Block {i}: INVALID prev hash"
+      valid = false
+    else
+      recalc := hash_block(block_index[i], block_prev[i], block_data[i], block_nonce[i])
+      if recalc != block_hash[i]
+        print "  Block {i}: INVALID hash"
+        valid = false
+      else
+        print "  Block {i}: valid (prev={block_prev[i]}, hash={block_hash[i]})"
+  if valid
+    print "  Chain integrity: VALID"
+  else
+    print "  Chain integrity: BROKEN"
+
+  -- Part 3: Tamper detection
+  print ""
+  print "=== Part 3: Tamper Detection ==="
+  -- Save original values
+  orig_data := block_data[2]
+  orig_hash := block_hash[2]
+  -- Tamper with block 2
+  block_data[2] = 999
+  tampered_hash := hash_block(2, block_prev[2], 999, block_nonce[2])
+  print "  Tampering block 2: data {orig_data} -> 999"
+  print "  Original hash: {orig_hash}"
+  print "  Tampered hash: {tampered_hash}"
+  if tampered_hash != orig_hash
+    print "  TAMPER DETECTED: hash mismatch!"
+  -- Restore
+  block_data[2] = orig_data
+
+  -- Part 4: Transaction ledger
+  print ""
+  print "=== Part 4: Transaction Ledger ==="
+  mut tx_from := ["Alice", "Bob", "Carol", "Alice", "Dave", "Bob"]
+  mut tx_to := ["Bob", "Carol", "Dave", "Carol", "Alice", "Dave"]
+  mut tx_amt := [50, 30, 20, 45, 15, 60]
+
+  mut balances := {"Alice": 1000, "Bob": 1000, "Carol": 1000, "Dave": 1000}
+  for i in range(0, 6)
+    sender := tx_from[i]
+    receiver := tx_to[i]
+    amount := tx_amt[i]
+    sender_bal := balances | get(sender)
+    receiver_bal := balances | get(receiver)
+    if sender_bal >= amount
+      balances | set(sender, sender_bal - amount)
+      balances | set(receiver, receiver_bal + amount)
+      print "  TX{i}: {sender} -> {receiver}: {amount} (OK)"
+    else
+      print "  TX{i}: {sender} -> {receiver}: {amount} (INSUFFICIENT)"
+
+  print "  Final: Alice={balances | get("Alice")}, Bob={balances | get("Bob")}, Carol={balances | get("Carol")}, Dave={balances | get("Dave")}"
+
+  -- Part 5: Mining difficulty
+  print ""
+  print "=== Part 5: Mining Difficulty ==="
+  mut difficulties := [100000, 50000, 10000]
+  mut diff_labels := ["easy", "medium", "hard"]
+  for d in range(0, 3)
+    threshold := difficulties[d]
+    mut attempts := 0
+    mut n := 0
+    mut mined := false
+    while not mined and n < 5000
+      h := hash_block(99, 12345, 42, n)
+      attempts = attempts + 1
+      if h < threshold
+        mined = true
+      else
+        n = n + 1
+    if mined
+      print "  Difficulty {diff_labels[d]} (<{threshold}): mined in {attempts} attempts"
+    else
+      print "  Difficulty {diff_labels[d]} (<{threshold}): failed after {attempts} attempts"
+
+  print ""
+  print "Blockchain: hashing, mining, validation, tamper detection, transactions."

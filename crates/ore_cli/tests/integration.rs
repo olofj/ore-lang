@@ -6618,6 +6618,121 @@ fn showcase500_grand_finale() {
 }
 
 #[test]
+fn showcase501_blockchain() {
+    let out = run_ore("showcase501.ore");
+    assert!(out.contains("Blockchain Simulation:"));
+    assert!(out.contains("Block 0 (genesis): hash="));
+    assert!(out.contains("Chain integrity: VALID"));
+    assert!(out.contains("TAMPER DETECTED: hash mismatch!"));
+    assert!(out.contains("Final: Alice=920, Bob=960, Carol=1055, Dave=1065"));
+    assert!(out.contains("Blockchain: hashing, mining, validation, tamper detection, transactions."));
+}
+
+#[test]
+fn showcase502_neural_network() {
+    let out = run_ore("showcase502.ore");
+    assert!(out.contains("Neural Network Forward Pass:"));
+    assert!(out.contains("ReLU output: 22"));
+    assert!(out.contains("Hidden (after ReLU): [2, 18, 0]"));
+    assert!(out.contains("Output: [-16, 23]"));
+    assert!(out.contains("MSE (x100): 600"));
+    assert!(out.contains("Predicted class: cat (logit=12)"));
+    assert!(out.contains("Neural network: neurons, layers, batch processing, loss, classification."));
+}
+
+#[test]
+fn showcase503_audio_synthesis() {
+    let out = run_ore("showcase503.ore");
+    assert!(out.contains("Audio Synthesis Concepts:"));
+    assert!(out.contains("Square wave: ####____####____####____####____"));
+    assert!(out.contains("Mixed signal: 2211431022114310"));
+    assert!(out.contains("A4: 440 Hz, period=100 samples"));
+    assert!(out.contains("Audio synthesis: square, triangle, sawtooth, mixing, ADSR, note frequencies."));
+}
+
+#[test]
+fn showcase504_constraint_solver() {
+    let out = run_ore("showcase504.ore");
+    assert!(out.contains("Constraint Solver:"));
+    assert!(out.contains("Validation: PASS (all rows sum to 10)"));
+    assert!(out.contains("Solution found:"));
+    assert!(out.contains("Coloring: VALID"));
+    assert!(out.contains("6-Queens: solution found"));
+    assert!(out.contains("Constraint solver: sudoku, n-queens, graph coloring, backtracking."));
+}
+
+#[test]
+fn showcase505_map_reduce() {
+    let out = run_ore("showcase505.ore");
+    assert!(out.contains("Map-Reduce Framework:"));
+    assert!(out.contains("the: 6"));
+    assert!(out.contains("'cat' -> [doc0, doc2, doc3] (3 docs)"));
+    assert!(out.contains("eng: count=3, sum=245, avg=81, min=75, max=90"));
+    assert!(out.contains("Grand total: 2909"));
+    assert!(out.contains("Top 5: 44, 41, 39, 35, 33"));
+    assert!(out.contains("Map-Reduce: word count, inverted index, group-by, pipeline, filtering."));
+}
+
+#[test]
+fn showcase506_garbage_collector() {
+    let out = run_ore("showcase506.ore");
+    assert!(out.contains("Garbage Collector Simulation:"));
+    assert!(out.contains("Alive: 3 objects, 37 bytes"));
+    assert!(out.contains("Freed: 5 objects, 88 bytes"));
+    assert!(out.contains("Sweep: freed 2 objects (30 bytes)"));
+    assert!(out.contains("Fragments: 5"));
+    assert!(out.contains("GC simulation: ref counting, mark-sweep, memory stats, fragmentation."));
+}
+
+#[test]
+fn showcase507_chess_engine() {
+    let out = run_ore("showcase507.ore");
+    assert!(out.contains("Chess Engine Simulation:"));
+    assert!(out.contains("White material: 490"));
+    assert!(out.contains("Balance: 0 (0 = equal)"));
+    assert!(out.contains("Total pawn moves: 16"));
+    assert!(out.contains("Best move: e2e4 (score=3)"));
+    assert!(out.contains("Phase: OPENING"));
+    assert!(out.contains("Chess engine: board, material, position, moves, search, game phase."));
+}
+
+#[test]
+fn showcase508_signal_processing() {
+    let out = run_ore("showcase508.ore");
+    assert!(out.contains("Signal Processing:"));
+    assert!(out.contains("Convolution: 12, 20, 28, 32, 28, 20, 12"));
+    assert!(out.contains("Peak at position 2 (value=45)"));
+    assert!(out.contains("Edge positions: [3, 4, 7, 8]"));
+    assert!(out.contains("Amplitude: 12"));
+    assert!(out.contains("Downsample x2: 2, 6, 10, 14, 18, 22"));
+    assert!(out.contains("Signal processing: moving average, convolution, correlation, edges, stats, downsampling."));
+}
+
+#[test]
+fn showcase509_operating_system() {
+    let out = run_ore("showcase509.ore");
+    assert!(out.contains("Operating System Concepts:"));
+    assert!(out.contains("PID 1: init [running] prio=0 mem=128KB"));
+    assert!(out.contains("Total time: 18"));
+    assert!(out.contains("VA 0 -> page=0, offset=0 -> PA 12"));
+    assert!(out.contains("VA 10 -> page=2, offset=2 -> PAGE FAULT"));
+    assert!(out.contains("Allocate 100KB: block 3 at 256"));
+    assert!(out.contains("Total seek: 299 cylinders"));
+    assert!(out.contains("OS concepts: processes, scheduling, paging, memory allocation, disk scheduling."));
+}
+
+#[test]
+fn showcase510_compiler_backend() {
+    let out = run_ore("showcase510.ore");
+    assert!(out.contains("Compiler Backend Simulation:"));
+    assert!(out.contains("t1 = 8, t2 = 6, t3 = 48, t4 = 55"));
+    assert!(out.contains("MOV result, t4"));
+    assert!(out.contains("Registers used: 4 of 4"));
+    assert!(out.contains("Total: 10 -> 5 instructions (50% reduction)"));
+    assert!(out.contains("Compiler backend: TAC, instruction selection, liveness, register allocation, assembly."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,129 @@
+-- Showcase 503: Audio Synthesis Concepts
+
+fn abs_val x:Int -> Int
+  if x < 0
+    return 0 - x
+  return x
+
+fn main
+  print "Audio Synthesis Concepts:"
+  print ""
+
+  -- Part 1: Square wave generation
+  print "=== Part 1: Square Wave ==="
+  period := 8
+  mut wave := ""
+  for t in range(0, 32)
+    phase := t % period
+    if phase < period / 2
+      wave = wave + "#"
+    else
+      wave = wave + "_"
+  print "  Square wave: {wave}"
+
+  -- Part 2: Triangle wave
+  print ""
+  print "=== Part 2: Triangle Wave ==="
+  -- Triangle wave with amplitude 4, period 8
+  tri_period := 8
+  mut tri_wave := ""
+  mut tri_values := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for t in range(0, 32)
+    phase := t % tri_period
+    half := tri_period / 2
+    if phase <= half
+      tri_values[t] = phase
+    else
+      tri_values[t] = tri_period - phase
+  -- Visualize as text
+  for level in range(0, 5)
+    row_level := 4 - level
+    mut row := "  "
+    for t in range(0, 32)
+      if tri_values[t] == row_level
+        row = row + "*"
+      else
+        row = row + " "
+    print "{row} | {row_level}"
+
+  -- Part 3: Sawtooth wave
+  print ""
+  print "=== Part 3: Sawtooth Wave ==="
+  saw_period := 6
+  for t in range(0, 24)
+    val := t % saw_period
+    mut bar := "  "
+    for i in range(0, val + 1)
+      bar = bar + "="
+    print "{bar} ({val})"
+
+  -- Part 4: Mixing two waves
+  print ""
+  print "=== Part 4: Wave Mixing ==="
+  -- Mix square (period 4) and triangle (period 8)
+  mut mix_result := ""
+  for t in range(0, 16)
+    -- Square: 0 or 4
+    sq_phase := t % 4
+    mut sq_val := 0
+    if sq_phase < 2
+      sq_val = 4
+    -- Triangle: 0..4..0
+    tri_p := t % 8
+    mut tri_val := 0
+    if tri_p <= 4
+      tri_val = tri_p
+    else
+      tri_val = 8 - tri_p
+    -- Average
+    mixed := (sq_val + tri_val) / 2
+    mix_result = mix_result + str(mixed)
+  print "  Mixed signal: {mix_result}"
+
+  -- Part 5: ADSR Envelope
+  print ""
+  print "=== Part 5: ADSR Envelope ==="
+  -- Attack=3, Decay=2, Sustain level=6, Sustain=4, Release=3
+  attack := 3
+  decay := 2
+  sustain_len := 4
+  release := 3
+  sustain_level := 6
+  peak := 10
+  total_len := attack + decay + sustain_len + release
+
+  mut envelope := ""
+  for t in range(0, total_len)
+    mut level := 0
+    if t < attack
+      -- Attack: ramp up
+      level = t * peak / attack
+    else if t < attack + decay
+      -- Decay: ramp down to sustain
+      elapsed := t - attack
+      level = peak - elapsed * (peak - sustain_level) / decay
+    else if t < attack + decay + sustain_len
+      -- Sustain
+      level = sustain_level
+    else
+      -- Release: ramp down
+      elapsed := t - attack - decay - sustain_len
+      level = sustain_level - elapsed * sustain_level / release
+    mut bar := ""
+    for i in range(0, level)
+      bar = bar + "#"
+    print "  t={t}: {bar} ({level})"
+
+  -- Part 6: Frequency table (musical notes)
+  print ""
+  print "=== Part 6: Note Frequencies ==="
+  mut note_names := ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"]
+  -- Frequencies in Hz (integer approx)
+  mut note_freqs := [262, 294, 330, 349, 392, 440, 494, 523]
+  -- Periods in samples at 44100 Hz
+  for i in range(0, 8)
+    period_samples := 44100 / note_freqs[i]
+    print "  {note_names[i]}: {note_freqs[i]} Hz, period={period_samples} samples"
+
+  print ""
+  print "Audio synthesis: square, triangle, sawtooth, mixing, ADSR, note frequencies."

@@ -1,0 +1,171 @@
+-- Showcase 507: Chess Engine (Position Evaluation, Simple Search)
+
+fn abs_val x:Int -> Int
+  if x < 0
+    return 0 - x
+  return x
+
+fn main
+  print "Chess Engine Simulation:"
+  print ""
+
+  -- Part 1: Board representation
+  print "=== Part 1: Board Setup ==="
+  -- Pieces: K=100, Q=90, R=50, B=30, N=30, P=10
+  -- Negative = black, positive = white, 0 = empty
+  -- Simplified 8x8 board (row-major, row 0 = rank 8)
+  mut board := [-50, -30, -30, -90, -100, -30, -30, -50, -10, -10, -10, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 50, 30, 30, 90, 100, 30, 30, 50]
+
+  -- Display board
+  mut piece_chars := ""
+  for r in range(0, 8)
+    mut row_str := "  "
+    for c in range(0, 8)
+      val := board[r * 8 + c]
+      if val == 0
+        row_str = row_str + ". "
+      else if val == 100
+        row_str = row_str + "K "
+      else if val == 90
+        row_str = row_str + "Q "
+      else if val == 50
+        row_str = row_str + "R "
+      else if val == 30
+        -- Check position for B vs N
+        if c == 1 or c == 6
+          row_str = row_str + "N "
+        else
+          row_str = row_str + "B "
+      else if val == 10
+        row_str = row_str + "P "
+      else if val == -100
+        row_str = row_str + "k "
+      else if val == -90
+        row_str = row_str + "q "
+      else if val == -50
+        row_str = row_str + "r "
+      else if val == -30
+        if c == 1 or c == 6
+          row_str = row_str + "n "
+        else
+          row_str = row_str + "b "
+      else if val == -10
+        row_str = row_str + "p "
+      else
+        row_str = row_str + "? "
+    rank := 8 - r
+    print "{row_str} {rank}"
+  print "  a b c d e f g h"
+
+  -- Part 2: Material evaluation
+  print ""
+  print "=== Part 2: Material Evaluation ==="
+  mut white_material := 0
+  mut black_material := 0
+  for i in range(0, 64)
+    if board[i] > 0
+      white_material = white_material + board[i]
+    else if board[i] < 0
+      black_material = black_material + abs_val(board[i])
+  print "  White material: {white_material}"
+  print "  Black material: {black_material}"
+  balance := white_material - black_material
+  print "  Balance: {balance} (0 = equal)"
+
+  -- Part 3: Positional evaluation
+  print ""
+  print "=== Part 3: Positional Bonuses ==="
+  -- Center control bonus: pieces on d4,d5,e4,e5 get +5
+  -- Pawn structure: doubled pawns penalty -3
+  mut pos_bonus := 0
+  center_squares := [27, 28, 35, 36]
+  for sq in center_squares
+    if board[sq] != 0
+      if board[sq] > 0
+        pos_bonus = pos_bonus + 5
+      else
+        pos_bonus = pos_bonus - 5
+
+  -- Pawn file analysis
+  mut white_pawn_files := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut black_pawn_files := [0, 0, 0, 0, 0, 0, 0, 0]
+  for r in range(0, 8)
+    for c in range(0, 8)
+      if board[r * 8 + c] == 10
+        white_pawn_files[c] = white_pawn_files[c] + 1
+      else if board[r * 8 + c] == -10
+        black_pawn_files[c] = black_pawn_files[c] + 1
+
+  mut doubled_penalty := 0
+  for c in range(0, 8)
+    if white_pawn_files[c] > 1
+      doubled_penalty = doubled_penalty - 3
+    if black_pawn_files[c] > 1
+      doubled_penalty = doubled_penalty + 3
+
+  print "  Center control bonus: {pos_bonus}"
+  print "  Doubled pawn penalty: {doubled_penalty}"
+  total_eval := balance + pos_bonus + doubled_penalty
+  print "  Total evaluation: {total_eval}"
+
+  -- Part 4: Move generation (simplified - just pawn moves)
+  print ""
+  print "=== Part 4: White Pawn Moves ==="
+  mut move_count := 0
+  for r in range(0, 8)
+    for c in range(0, 8)
+      if board[r * 8 + c] == 10
+        -- Single push (pawns move up = lower row index)
+        if r > 0 and board[(r - 1) * 8 + c] == 0
+          from_rank := 8 - r
+          to_rank := 9 - r
+          file_ch := "abcdefgh"
+          from_f := file_ch.char_at(c)
+          print "  {from_f}{from_rank} -> {from_f}{to_rank}"
+          move_count = move_count + 1
+        -- Double push from starting position
+        if r == 6 and board[5 * 8 + c] == 0 and board[4 * 8 + c] == 0
+          file_ch := "abcdefgh"
+          from_f := file_ch.char_at(c)
+          print "  {from_f}2 -> {from_f}4 (double)"
+          move_count = move_count + 1
+  print "  Total pawn moves: {move_count}"
+
+  -- Part 5: Simple minimax evaluation
+  print ""
+  print "=== Part 5: Search Simulation ==="
+  -- Simulate evaluating 3 moves, each with 3 responses
+  mut move_names := ["e2e4", "d2d4", "g1f3"]
+  -- Scores after white move (before black response)
+  mut white_evals := [5, 3, 2]
+  -- Black's best responses reduce the score
+  mut black_responses := [2, 1, 1]
+
+  mut best_score := -999
+  mut best_move := ""
+  for i in range(0, 3)
+    net_score := white_evals[i] - black_responses[i]
+    print "  {move_names[i]}: eval={white_evals[i]}, response=-{black_responses[i]}, net={net_score}"
+    if net_score > best_score
+      best_score = net_score
+      best_move = move_names[i]
+
+  print "  Best move: {best_move} (score={best_score})"
+
+  -- Part 6: Game phase detection
+  print ""
+  print "=== Part 6: Game Phase ==="
+  mut total_pieces := 0
+  for i in range(0, 64)
+    if board[i] != 0
+      total_pieces = total_pieces + 1
+  print "  Total pieces: {total_pieces}"
+  if total_pieces > 24
+    print "  Phase: OPENING"
+  else if total_pieces > 14
+    print "  Phase: MIDDLEGAME"
+  else
+    print "  Phase: ENDGAME"
+
+  print ""
+  print "Chess engine: board, material, position, moves, search, game phase."

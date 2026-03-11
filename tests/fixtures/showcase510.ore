@@ -1,0 +1,130 @@
+-- Showcase 510: Compiler Backend (Instruction Selection, Register Allocation)
+
+fn main
+  print "Compiler Backend Simulation:"
+  print ""
+
+  -- Part 1: Three-address code (TAC) generation
+  print "=== Part 1: Three-Address Code ==="
+  -- Simulate compiling: result = (a + b) * (c - d) + e
+  print "  Source: result = (a + b) * (c - d) + e"
+  print "  TAC:"
+  print "    t1 = a + b"
+  print "    t2 = c - d"
+  print "    t3 = t1 * t2"
+  print "    t4 = t3 + e"
+  print "    result = t4"
+
+  -- Execute with concrete values: a=5, b=3, c=10, d=4, e=7
+  a := 5
+  b := 3
+  c := 10
+  d := 4
+  e := 7
+  t1 := a + b
+  t2 := c - d
+  t3 := t1 * t2
+  t4 := t3 + e
+  print "  With a={a}, b={b}, c={c}, d={d}, e={e}:"
+  print "    t1 = {t1}, t2 = {t2}, t3 = {t3}, t4 = {t4}"
+
+  -- Part 2: Instruction selection
+  print ""
+  print "=== Part 2: Instruction Selection ==="
+  -- Map TAC to target instructions
+  mut tac_ops := ["ADD", "SUB", "MUL", "ADD", "MOV"]
+  mut tac_dst := ["t1", "t2", "t3", "t4", "result"]
+  mut tac_src1 := ["a", "c", "t1", "t3", "t4"]
+  mut tac_src2 := ["b", "d", "t2", "e", ""]
+  num_instrs := 5
+
+  print "  Target instructions:"
+  for i in range(0, num_instrs)
+    if tac_src2[i] == ""
+      print "    {tac_ops[i]} {tac_dst[i]}, {tac_src1[i]}"
+    else
+      print "    {tac_ops[i]} {tac_dst[i]}, {tac_src1[i]}, {tac_src2[i]}"
+
+  -- Part 3: Liveness analysis
+  print ""
+  print "=== Part 3: Liveness Analysis ==="
+  -- For each instruction, track which temporaries are live after it
+  mut live_after := ["t1, a, c, d, e", "t1, t2, e", "t3, e", "t4", "result"]
+  for i in range(0, num_instrs)
+    print "  After '{tac_ops[i]} {tac_dst[i]}': live = ({live_after[i]})"
+
+  -- Part 4: Register allocation (graph coloring)
+  print ""
+  print "=== Part 4: Register Allocation ==="
+  -- Interference graph: variables that are live simultaneously can't share registers
+  -- Variables: a, b, c, d, e, t1, t2, t3, t4, result
+  -- Simplified: allocate 4 registers (R0-R3)
+  mut var_names := ["a", "b", "c", "d", "e", "t1", "t2", "t3", "t4", "result"]
+  mut var_reg := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  num_vars := 10
+
+  -- Interference edges (simplified): variables live at the same time
+  mut intf_a := [0, 0, 0, 0, 2, 2, 2, 5, 5, 6]
+  mut intf_b := [2, 3, 4, 5, 3, 4, 5, 6, 4, 4]
+  num_intf := 10
+
+  -- Greedy coloring
+  for v in range(0, num_vars)
+    mut used := [false, false, false, false]
+    for ei in range(0, num_intf)
+      if intf_a[ei] == v and var_reg[intf_b[ei]] >= 0
+        used[var_reg[intf_b[ei]]] = true
+      if intf_b[ei] == v and var_reg[intf_a[ei]] >= 0
+        used[var_reg[intf_a[ei]]] = true
+    -- Assign first available register
+    for r in range(0, 4)
+      if not used[r] and var_reg[v] < 0
+        var_reg[v] = r
+
+  mut regs_used := [false, false, false, false]
+  for v in range(0, num_vars)
+    reg_name := "R" + str(var_reg[v])
+    print "  {var_names[v]} -> {reg_name}"
+    if var_reg[v] >= 0
+      regs_used[var_reg[v]] = true
+
+  mut reg_count := 0
+  for r in range(0, 4)
+    if regs_used[r]
+      reg_count = reg_count + 1
+  print "  Registers used: {reg_count} of 4"
+
+  -- Part 5: Final assembly generation
+  print ""
+  print "=== Part 5: Assembly Output ==="
+  print "  ; result = (a + b) * (c - d) + e"
+  for i in range(0, num_instrs)
+    -- Look up register for dst and srcs
+    mut dst_r := "?"
+    mut s1_r := "?"
+    mut s2_r := "?"
+    for v in range(0, num_vars)
+      if var_names[v] == tac_dst[i]
+        dst_r = "R" + str(var_reg[v])
+      if var_names[v] == tac_src1[i]
+        s1_r = "R" + str(var_reg[v])
+      if var_names[v] == tac_src2[i]
+        s2_r = "R" + str(var_reg[v])
+    if tac_src2[i] == ""
+      print "  {tac_ops[i]} {dst_r}, {s1_r}"
+    else
+      print "  {tac_ops[i]} {dst_r}, {s1_r}, {s2_r}"
+
+  -- Part 6: Optimization passes
+  print ""
+  print "=== Part 6: Optimization Stats ==="
+  mut opt_names := ["Dead code elimination", "Constant folding", "Copy propagation", "Common subexpr"]
+  mut opt_before := [10, 10, 8, 8]
+  mut opt_after := [8, 8, 6, 5]
+  for i in range(0, 4)
+    saved := opt_before[i] - opt_after[i]
+    print "  {opt_names[i]}: {opt_before[i]} -> {opt_after[i]} instrs (saved {saved})"
+  print "  Total: 10 -> 5 instructions (50% reduction)"
+
+  print ""
+  print "Compiler backend: TAC, instruction selection, liveness, register allocation, assembly."

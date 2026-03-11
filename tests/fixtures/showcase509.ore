@@ -1,0 +1,156 @@
+-- Showcase 509: Simple Operating System Concepts
+
+fn abs_val x:Int -> Int
+  if x < 0
+    return 0 - x
+  return x
+
+fn main
+  print "Operating System Concepts:"
+  print ""
+
+  -- Part 1: Process table
+  print "=== Part 1: Process Table ==="
+  mut pid := [1, 2, 3, 4, 5, 6]
+  mut proc_name := ["init", "shell", "editor", "compiler", "browser", "daemon"]
+  mut proc_state := ["running", "ready", "ready", "blocked", "ready", "sleeping"]
+  mut proc_prio := [0, 5, 3, 7, 4, 1]
+  mut proc_mem := [128, 256, 512, 1024, 2048, 64]
+  num_procs := 6
+
+  for i in range(0, num_procs)
+    print "  PID {pid[i]}: {proc_name[i]} [{proc_state[i]}] prio={proc_prio[i]} mem={proc_mem[i]}KB"
+
+  -- Part 2: Round-robin scheduling
+  print ""
+  print "=== Part 2: Round-Robin Scheduling ==="
+  time_quantum := 3
+  -- Burst times for ready processes
+  mut burst := [0, 4, 6, 0, 8, 0]
+  mut remaining := [0, 4, 6, 0, 8, 0]
+  mut completion := [0, 0, 0, 0, 0, 0]
+  mut current_time := 0
+
+  -- Only schedule ready and running processes
+  mut all_done := false
+  mut schedule_log := ""
+  mut round := 0
+  while not all_done and round < 20
+    all_done = true
+    for i in range(0, num_procs)
+      if remaining[i] > 0
+        all_done = false
+        mut run_time := time_quantum
+        if remaining[i] < time_quantum
+          run_time = remaining[i]
+        if schedule_log | len > 0
+          schedule_log = schedule_log + " -> "
+        schedule_log = schedule_log + proc_name[i] + "(" + str(run_time) + ")"
+        remaining[i] = remaining[i] - run_time
+        current_time = current_time + run_time
+        if remaining[i] == 0
+          completion[i] = current_time
+    round = round + 1
+
+  print "  Quantum: {time_quantum}"
+  print "  Schedule: {schedule_log}"
+  print "  Total time: {current_time}"
+  for i in range(0, num_procs)
+    if burst[i] > 0
+      print "  {proc_name[i]}: completed at t={completion[i]}"
+
+  -- Part 3: Page table simulation
+  print ""
+  print "=== Part 3: Page Table ==="
+  page_size := 4
+  num_pages := 8
+  mut page_frame := [3, 7, -1, 1, -1, 5, 2, -1]
+  mut page_valid := [true, true, false, true, false, true, true, false]
+
+  print "  Page size: {page_size}KB"
+  for i in range(0, num_pages)
+    if page_valid[i]
+      print "  Page {i} -> Frame {page_frame[i]} (valid)"
+    else
+      print "  Page {i} -> [not in memory] (page fault)"
+
+  -- Translate virtual addresses
+  mut vaddrs := [0, 5, 10, 14, 25, 31]
+  print ""
+  print "  Address Translation:"
+  for va in vaddrs
+    page_num := va / page_size
+    offset := va % page_size
+    if page_num < num_pages and page_valid[page_num]
+      phys := page_frame[page_num] * page_size + offset
+      print "    VA {va} -> page={page_num}, offset={offset} -> PA {phys}"
+    else
+      print "    VA {va} -> page={page_num}, offset={offset} -> PAGE FAULT"
+
+  -- Part 4: Memory allocation (first-fit)
+  print ""
+  print "=== Part 4: Memory Allocation (First-Fit) ==="
+  -- Memory blocks: (start, size, used)
+  mut blk_start := [0, 64, 128, 256, 384]
+  mut blk_size := [64, 64, 128, 128, 128]
+  mut blk_used := [true, false, true, false, false]
+  num_blocks := 5
+
+  print "  Memory map:"
+  for i in range(0, num_blocks)
+    if blk_used[i]
+      print "    [{blk_start[i]}-{blk_start[i] + blk_size[i] - 1}] USED ({blk_size[i]}KB)"
+    else
+      print "    [{blk_start[i]}-{blk_start[i] + blk_size[i] - 1}] FREE ({blk_size[i]}KB)"
+
+  -- Allocate 100KB
+  alloc_size := 100
+  mut allocated := false
+  for i in range(0, num_blocks)
+    if not blk_used[i] and blk_size[i] >= alloc_size and not allocated
+      print "  Allocate {alloc_size}KB: block {i} at {blk_start[i]}"
+      blk_used[i] = true
+      allocated = true
+  if not allocated
+    print "  Allocate {alloc_size}KB: FAILED"
+
+  -- Part 5: Disk scheduling (SCAN)
+  print ""
+  print "=== Part 5: Disk Scheduling (SCAN) ==="
+  mut requests := [98, 183, 37, 122, 14, 124, 65, 67]
+  head_pos := 53
+  print "  Head position: {head_pos}"
+  print "  Requests: {requests | join(", ")}"
+
+  -- Sort requests
+  sorted_req := requests | sort
+  print "  Sorted: {sorted_req | join(", ")}"
+
+  -- SCAN: go right first, then left
+  mut total_seek := 0
+  mut current := head_pos
+  mut order_str := str(current)
+
+  -- First serve requests >= head_pos
+  for r in sorted_req
+    if r >= head_pos
+      total_seek = total_seek + abs_val(r - current)
+      current = r
+      order_str = order_str + " -> " + str(r)
+
+  -- Then serve requests < head_pos in reverse
+  mut i := sorted_req | len
+  i = i - 1
+  while i >= 0
+    r := sorted_req[i]
+    if r < head_pos
+      total_seek = total_seek + abs_val(r - current)
+      current = r
+      order_str = order_str + " -> " + str(r)
+    i = i - 1
+
+  print "  SCAN order: {order_str}"
+  print "  Total seek: {total_seek} cylinders"
+
+  print ""
+  print "OS concepts: processes, scheduling, paging, memory allocation, disk scheduling."

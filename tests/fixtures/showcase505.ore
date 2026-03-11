@@ -1,0 +1,153 @@
+-- Showcase 505: Map-Reduce Framework
+
+fn main
+  print "Map-Reduce Framework:"
+  print ""
+
+  -- Part 1: Word count
+  print "=== Part 1: Word Count ==="
+  mut documents := ["the cat sat on the mat", "the dog sat on the log", "the cat and the dog", "a cat is not a dog"]
+
+  -- Map phase: emit (word, 1) pairs
+  mut all_words := [""]
+  mut word_counts := [0]
+  mut num_unique := 0
+
+  for d in range(0, 4)
+    words := documents[d].split(" ")
+    for w in words
+      -- Find if word already exists
+      mut found := false
+      for i in range(0, num_unique)
+        if all_words[i] == w
+          word_counts[i] = word_counts[i] + 1
+          found = true
+      if not found
+        if num_unique == 0
+          all_words[0] = w
+          word_counts[0] = 1
+        else
+          all_words | push(w)
+          word_counts | push(1)
+        num_unique = num_unique + 1
+
+  print "  Documents: {documents | len}"
+  print "  Unique words: {num_unique}"
+
+  -- Sort by count (bubble sort)
+  for i in range(0, num_unique)
+    for j in range(0, num_unique - 1 - i)
+      if word_counts[j] < word_counts[j + 1]
+        mut tc := word_counts[j]
+        word_counts[j] = word_counts[j + 1]
+        word_counts[j + 1] = tc
+        mut tw := all_words[j]
+        all_words[j] = all_words[j + 1]
+        all_words[j + 1] = tw
+
+  print "  Top words:"
+  mut limit := 6
+  if num_unique < limit
+    limit = num_unique
+  for i in range(0, limit)
+    print "    {all_words[i]}: {word_counts[i]}"
+
+  -- Part 2: Inverted index
+  print ""
+  print "=== Part 2: Inverted Index ==="
+  mut index_words := ["cat", "dog", "sat", "mat", "log"]
+  for w in range(0, 5)
+    word := index_words[w]
+    mut doc_list := ""
+    mut found_count := 0
+    for d in range(0, 4)
+      doc_words := documents[d].split(" ")
+      mut in_doc := false
+      for dw in doc_words
+        if dw == word
+          in_doc = true
+      if in_doc
+        if found_count > 0
+          doc_list = doc_list + ", "
+        doc_list = doc_list + "doc" + str(d)
+        found_count = found_count + 1
+    print "  '{word}' -> [{doc_list}] ({found_count} docs)"
+
+  -- Part 3: Numeric aggregation (sum, avg, min, max per group)
+  print ""
+  print "=== Part 3: Group-By Aggregation ==="
+  mut departments := ["eng", "sales", "eng", "sales", "eng", "ops", "ops", "sales"]
+  mut salaries := [80, 60, 90, 55, 75, 70, 65, 50]
+  mut dept_names := ["eng", "sales", "ops"]
+  num_depts := 3
+
+  for d in range(0, num_depts)
+    dept := dept_names[d]
+    mut total := 0
+    mut count := 0
+    mut mn := 999999
+    mut mx := 0
+    for i in range(0, 8)
+      if departments[i] == dept
+        total = total + salaries[i]
+        count = count + 1
+        if salaries[i] < mn
+          mn = salaries[i]
+        if salaries[i] > mx
+          mx = salaries[i]
+    avg := total / count
+    print "  {dept}: count={count}, sum={total}, avg={avg}, min={mn}, max={mx}"
+
+  -- Part 4: MapReduce pipeline simulation
+  print ""
+  print "=== Part 4: Pipeline Simulation ==="
+  -- Input data
+  mut data := [12, 7, 25, 3, 18, 9, 31, 14, 22, 6]
+  print "  Input: {data | join(", ")}"
+
+  -- Map: square each value
+  mut mapped := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 10)
+    mapped[i] = data[i] * data[i]
+  print "  Map (square): {mapped | join(", ")}"
+
+  -- Shuffle: partition into 3 reducers (by mod 3)
+  mut r0_sum := 0
+  mut r0_count := 0
+  mut r1_sum := 0
+  mut r1_count := 0
+  mut r2_sum := 0
+  mut r2_count := 0
+  for i in range(0, 10)
+    bucket := i % 3
+    if bucket == 0
+      r0_sum = r0_sum + mapped[i]
+      r0_count = r0_count + 1
+    else if bucket == 1
+      r1_sum = r1_sum + mapped[i]
+      r1_count = r1_count + 1
+    else
+      r2_sum = r2_sum + mapped[i]
+      r2_count = r2_count + 1
+
+  print "  Reducer 0: sum={r0_sum} (from {r0_count} items)"
+  print "  Reducer 1: sum={r1_sum} (from {r1_count} items)"
+  print "  Reducer 2: sum={r2_sum} (from {r2_count} items)"
+
+  grand_total := r0_sum + r1_sum + r2_sum
+  print "  Grand total: {grand_total}"
+
+  -- Part 5: Filtering and counting
+  print ""
+  print "=== Part 5: Filter-Count ==="
+  mut values := [15, 22, 8, 33, 41, 6, 19, 27, 44, 11, 35, 2, 28, 17, 39]
+  above_20 := values | filter(x => x > 20) | len
+  below_20 := values | filter(x => x <= 20) | len
+  print "  Total items: {values | len}"
+  print "  Above 20: {above_20}"
+  print "  Below/equal 20: {below_20}"
+  top5 := values | sort | reverse | take(5)
+  print "  Top 5: {top5 | join(", ")}"
+
+  print ""
+  print "Map-Reduce: word count, inverted index, group-by, pipeline, filtering."

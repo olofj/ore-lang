@@ -1,0 +1,170 @@
+-- Showcase 504: Constraint Solver (Sudoku-style with Arc Consistency)
+
+fn main
+  print "Constraint Solver:"
+  print ""
+
+  -- Part 1: Simple 4x4 Sudoku
+  print "=== Part 1: 4x4 Sudoku ==="
+  -- Grid: 0 means empty
+  -- [1, 0, 3, 4]
+  -- [0, 4, 1, 2]
+  -- [4, 1, 2, 0]
+  -- [2, 3, 0, 1]
+  mut grid := [1, 0, 3, 4, 0, 4, 1, 2, 4, 1, 2, 0, 2, 3, 0, 1]
+
+  -- Print initial grid
+  print "  Initial:"
+  for r in range(0, 4)
+    print "    [{grid[r * 4]}, {grid[r * 4 + 1]}, {grid[r * 4 + 2]}, {grid[r * 4 + 3]}]"
+
+  -- Solve with constraint propagation
+  mut changed := true
+  mut iterations := 0
+  while changed and iterations < 20
+    changed = false
+    iterations = iterations + 1
+    for r in range(0, 4)
+      for c in range(0, 4)
+        if grid[r * 4 + c] == 0
+          -- Try each value 1-4
+          mut possible := 0
+          mut last_val := 0
+          for v in range(1, 5)
+            mut ok := true
+            -- Check row
+            for cc in range(0, 4)
+              if grid[r * 4 + cc] == v
+                ok = false
+            -- Check column
+            for rr in range(0, 4)
+              if grid[rr * 4 + c] == v
+                ok = false
+            -- Check 2x2 box
+            br := (r / 2) * 2
+            bc := (c / 2) * 2
+            for dr in range(0, 2)
+              for dc in range(0, 2)
+                if grid[(br + dr) * 4 + bc + dc] == v
+                  ok = false
+            if ok
+              possible = possible + 1
+              last_val = v
+          if possible == 1
+            grid[r * 4 + c] = last_val
+            changed = true
+
+  print "  Solved in {iterations} iterations:"
+  for r in range(0, 4)
+    print "    [{grid[r * 4]}, {grid[r * 4 + 1]}, {grid[r * 4 + 2]}, {grid[r * 4 + 3]}]"
+
+  -- Verify solution
+  mut valid := true
+  for r in range(0, 4)
+    mut row_sum := 0
+    for c in range(0, 4)
+      row_sum = row_sum + grid[r * 4 + c]
+    if row_sum != 10
+      valid = false
+  if valid
+    print "  Validation: PASS (all rows sum to 10)"
+  else
+    print "  Validation: FAIL"
+
+  -- Part 2: N-Queens (N=6)
+  print ""
+  print "=== Part 2: N-Queens (N=6) ==="
+  n := 6
+  -- queens[i] = column of queen in row i
+  mut queens := [-1, -1, -1, -1, -1, -1]
+  mut solved := false
+
+  -- Backtracking solver using iterative approach
+  mut row := 0
+  queens[0] = -1
+  while row >= 0 and row < n and not solved
+    -- Try next column for current row
+    queens[row] = queens[row] + 1
+    if queens[row] >= n
+      -- Backtrack
+      queens[row] = -1
+      row = row - 1
+    else
+      -- Check if valid
+      mut conflict := false
+      for prev in range(0, row)
+        if queens[prev] == queens[row]
+          conflict = true
+        diff := row - prev
+        if queens[prev] - queens[row] == diff or queens[row] - queens[prev] == diff
+          conflict = true
+      if not conflict
+        if row == n - 1
+          solved = true
+        else
+          row = row + 1
+          queens[row] = -1
+
+  if solved
+    print "  Solution found:"
+    for r in range(0, n)
+      mut line := "    "
+      for c in range(0, n)
+        if queens[r] == c
+          line = line + "Q "
+        else
+          line = line + ". "
+      print line
+  else
+    print "  No solution found"
+
+  -- Part 3: Graph coloring (4 regions, 3 colors)
+  print ""
+  print "=== Part 3: Graph Coloring ==="
+  -- Adjacency: regions 0-3, edges as pairs
+  -- 0-1, 0-2, 1-2, 1-3, 2-3
+  mut adj_a := [0, 0, 1, 1, 2]
+  mut adj_b := [1, 2, 2, 3, 3]
+  num_edges := 5
+  num_nodes := 4
+  color_names := ["Red", "Green", "Blue"]
+
+  -- Greedy coloring
+  mut colors := [-1, -1, -1, -1]
+  for node in range(0, num_nodes)
+    mut used := [false, false, false]
+    for ei in range(0, num_edges)
+      if adj_a[ei] == node and colors[adj_b[ei]] >= 0
+        used[colors[adj_b[ei]]] = true
+      if adj_b[ei] == node and colors[adj_a[ei]] >= 0
+        used[colors[adj_a[ei]]] = true
+    -- Pick first available color
+    for ci in range(0, 3)
+      if not used[ci] and colors[node] < 0
+        colors[node] = ci
+
+  for i in range(0, num_nodes)
+    ci := colors[i]
+    cname := color_names[ci]
+    print "  Region {i}: {cname}"
+
+  -- Verify
+  mut color_valid := true
+  for e in range(0, num_edges)
+    if colors[adj_a[e]] == colors[adj_b[e]]
+      color_valid = false
+  if color_valid
+    print "  Coloring: VALID"
+  else
+    print "  Coloring: INVALID"
+
+  -- Part 4: Constraint satisfaction stats
+  print ""
+  print "=== Part 4: Summary ==="
+  print "  4x4 Sudoku: solved in {iterations} iterations"
+  if solved
+    print "  6-Queens: solution found"
+  print "  Graph coloring: 4 regions, 3 colors"
+
+  print ""
+  print "Constraint solver: sudoku, n-queens, graph coloring, backtracking."

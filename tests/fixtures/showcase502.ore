@@ -1,0 +1,129 @@
+-- Showcase 502: Simple Neural Network (Multi-Layer Perceptron Forward Pass)
+
+fn relu x:Int -> Int
+  if x > 0
+    return x
+  return 0
+
+fn abs_val x:Int -> Int
+  if x < 0
+    return 0 - x
+  return x
+
+fn main
+  print "Neural Network Forward Pass:"
+  print ""
+
+  -- Part 1: Single neuron
+  print "=== Part 1: Single Neuron ==="
+  -- weights=[2, -1, 3], bias=1, input=[4, 5, 6]
+  mut weights := [2, -1, 3]
+  mut inputs := [4, 5, 6]
+  bias := 1
+  mut activation := bias
+  for i in range(0, 3)
+    activation = activation + weights[i] * inputs[i]
+  output := relu(activation)
+  print "  Inputs: {inputs | join(", ")}"
+  print "  Weights: {weights | join(", ")}"
+  print "  Bias: {bias}"
+  print "  Linear: {activation}"
+  print "  ReLU output: {output}"
+
+  -- Part 2: 2-layer network (2 inputs -> 3 hidden -> 2 output)
+  print ""
+  print "=== Part 2: Two-Layer Network ==="
+  -- Layer 1 weights (3 neurons x 2 inputs = 6 values, row-major)
+  mut w1 := [2, -1, 1, 3, -2, 1]
+  mut b1 := [1, 0, -1]
+  -- Layer 2 weights (2 neurons x 3 inputs = 6 values)
+  mut w2 := [1, -1, 2, 2, 1, -1]
+  mut b2 := [0, 1]
+
+  -- Input
+  mut x := [3, 5]
+  print "  Input: [{x[0]}, {x[1]}]"
+
+  -- Hidden layer
+  mut hidden := [0, 0, 0]
+  for i in range(0, 3)
+    mut sum := b1[i]
+    for j in range(0, 2)
+      sum = sum + w1[i * 2 + j] * x[j]
+    hidden[i] = relu(sum)
+  print "  Hidden (after ReLU): [{hidden[0]}, {hidden[1]}, {hidden[2]}]"
+
+  -- Output layer
+  mut out := [0, 0]
+  for i in range(0, 2)
+    mut sum := b2[i]
+    for j in range(0, 3)
+      sum = sum + w2[i * 3 + j] * hidden[j]
+    out[i] = sum
+  print "  Output: [{out[0]}, {out[1]}]"
+
+  -- Part 3: Batch processing
+  print ""
+  print "=== Part 3: Batch Processing ==="
+  -- Process multiple inputs through single layer (2->2)
+  mut batch_x := [1, 2, 3, 4, 5, 6, 7, 8]
+  mut bw := [1, -1, 2, 1]
+  mut bb := [0, 1]
+  batch_size := 4
+
+  for b in range(0, batch_size)
+    i0 := batch_x[b * 2]
+    i1 := batch_x[b * 2 + 1]
+    o0 := relu(bw[0] * i0 + bw[1] * i1 + bb[0])
+    o1 := relu(bw[2] * i0 + bw[3] * i1 + bb[1])
+    print "  Sample {b}: [{i0}, {i1}] -> [{o0}, {o1}]"
+
+  -- Part 4: Loss computation
+  print ""
+  print "=== Part 4: Loss Computation ==="
+  mut predictions := [10, 20, 30, 25, 15]
+  mut targets := [12, 18, 33, 22, 17]
+
+  -- Mean Squared Error (scaled by 100 for integer math)
+  mut mse := 0
+  for i in range(0, 5)
+    diff := predictions[i] - targets[i]
+    mse = mse + diff * diff
+  mse_avg := mse * 100 / 5
+  print "  Predictions: {predictions | join(", ")}"
+  print "  Targets: {targets | join(", ")}"
+  print "  MSE (x100): {mse_avg}"
+
+  -- Mean Absolute Error
+  mut mae := 0
+  for i in range(0, 5)
+    mae = mae + abs_val(predictions[i] - targets[i])
+  print "  MAE total: {mae}"
+  print "  MAE avg (x10): {mae * 10 / 5}"
+
+  -- Part 5: Softmax approximation (integer)
+  print ""
+  print "=== Part 5: Classification ==="
+  -- Logits for 4 classes
+  mut logits := [12, 5, 8, 3]
+  print "  Logits: {logits | join(", ")}"
+
+  -- Find max (argmax = predicted class)
+  mut max_val := logits[0]
+  mut max_idx := 0
+  for i in range(1, 4)
+    if logits[i] > max_val
+      max_val = logits[i]
+      max_idx = i
+
+  class_names := ["cat", "dog", "bird", "fish"]
+  print "  Predicted class: {class_names[max_idx]} (logit={max_val})"
+
+  -- Confidence as percentage of total
+  total := logits | sum
+  for i in range(0, 4)
+    pct := logits[i] * 100 / total
+    print "  {class_names[i]}: {pct}%"
+
+  print ""
+  print "Neural network: neurons, layers, batch processing, loss, classification."
