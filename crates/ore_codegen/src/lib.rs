@@ -657,6 +657,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_sort_by", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_index_of", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_unique", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_flatten", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_reverse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_reverse_new", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
@@ -2289,6 +2290,12 @@ impl<'ctx> CodeGen<'ctx> {
             "unique" => {
                 let rt = self.module.get_function("ore_list_unique").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "luniq"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            "flatten" => {
+                let rt = self.module.get_function("ore_list_flatten").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lflat"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
             }

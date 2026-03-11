@@ -1,0 +1,55 @@
+-- Ore language showcase: demonstrating pipeline-first design
+
+type Task { name: Str, priority: Int, done: Bool }
+
+fn main
+  -- Guard patterns and or-patterns in match
+  for i in 1..6
+    label := match i
+      1 | 2 -> "low"
+      3 -> "mid"
+      _ if i > 3 -> "high"
+      _ -> "unknown"
+    print "{i}: {label}"
+
+  -- Pipeline data processing
+  data := range(1, 21)
+    | filter(x => x % 3 == 0)
+    | map(x => x * x)
+  print data
+
+  -- List utilities
+  nums := [5, 3, 8, 1, 9, 2, 7, 5, 3]
+  print "min={nums.min()} max={nums.max()}"
+  uniq := nums.unique()
+  print uniq
+  print "count>5: {nums.count(x => x > 5)}"
+  print "first={nums.first()} last={nums.last()}"
+
+  -- Sort with custom comparator
+  mut sorted := [4, 2, 7, 1, 5]
+  sorted.sort((a, b) => a - b)
+  print sorted
+
+  -- Option handling with map and chaining
+  val := Some(10)
+  doubled := val.map(x => x * 2)
+  print doubled.unwrap_or(0)
+  print val.is_some()
+  print None.unwrap_or(-1)
+
+  -- String methods
+  s := "Hello, World!"
+  print s.reverse()
+  print s.slice(0, 5)
+  print "  spaces  ".trim()
+
+  -- String split on whitespace
+  words := "the quick brown fox".split()
+  print words
+
+  -- Assert + typeof
+  assert(2 + 2 == 4)
+  assert("hello".len() == 5)
+  print typeof(42)
+  print typeof([1, 2, 3])

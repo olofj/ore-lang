@@ -523,3 +523,22 @@ fn pipelines_comprehensive() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["10", "100", "10", "hello world ore", "55", "11, 12, 13"]);
 }
+
+#[test]
+fn showcase2() {
+    let out = run_ore("showcase2.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "1: low", "2: low", "3: mid", "4: high", "5: high",
+        "[9, 36, 81, 144, 225, 324]",
+        "min=1 max=9",
+        "[5, 3, 8, 1, 9, 2, 7]",
+        "count>5: 3",
+        "first=5 last=3",
+        "[1, 2, 4, 5, 7]",
+        "20", "true", "-1",
+        "!dlroW ,olleH", "Hello", "spaces",
+        "[the, quick, brown, fox]",
+        "Int", "List",
+    ]);
+}

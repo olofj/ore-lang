@@ -486,6 +486,24 @@ pub extern "C" fn ore_list_count(
 }
 
 #[no_mangle]
+pub extern "C" fn ore_list_flatten(list: *mut OreList) -> *mut OreList {
+    let result = ore_list_new();
+    if list.is_null() { return result; }
+    let l = unsafe { &*list };
+    for i in 0..l.len {
+        let inner = unsafe { *l.data.offset(i as isize) } as *mut OreList;
+        if !inner.is_null() {
+            let inner_l = unsafe { &*inner };
+            for j in 0..inner_l.len {
+                let val = unsafe { *inner_l.data.offset(j as isize) };
+                ore_list_push(result, val);
+            }
+        }
+    }
+    result
+}
+
+#[no_mangle]
 pub extern "C" fn ore_list_index_of(list: *mut OreList, value: i64) -> i64 {
     if list.is_null() { return -1; }
     let l = unsafe { &*list };
