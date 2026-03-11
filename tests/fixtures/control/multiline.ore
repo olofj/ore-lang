@@ -1,0 +1,13 @@
+fn main
+  xs := [
+    10,
+    20,
+    30,
+  ]
+  print xs.join(", ")
+
+  doubled := xs | map (n => n * 2)
+  print doubled.join(", ")
+
+  big := xs | filter (n => n > 15)
+  print big.join(", ")

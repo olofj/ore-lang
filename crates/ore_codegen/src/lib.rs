@@ -2609,32 +2609,57 @@ impl<'ctx> CodeGen<'ctx> {
         func_expr: &Expr,
         current_fn: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let arg_val = self.compile_expr(arg, current_fn)?;
-
+        // Desugar pipeline: if the target is a function name/call that isn't a known
+        // function, convert to a method call on the piped argument instead.
+        // e.g. `list | each(lambda)` becomes `list.each(lambda)`
+        // e.g. `list | map(lambda)` becomes `list.map(lambda)`
         match func_expr {
             Expr::Ident(name) => {
-                let (called_fn, ret_kind) = self.resolve_function(name)?;
-                let result = bld!(self.builder.build_call(called_fn, &[arg_val.into()], "pipe"))?;
-                let val = self.call_result_to_value(result)?;
-                Ok((val, ret_kind))
+                if self.functions.contains_key(name) || self.module.get_function(name).is_some() {
+                    let arg_val = self.compile_expr(arg, current_fn)?;
+                    let (called_fn, ret_kind) = self.resolve_function(name)?;
+                    let result = bld!(self.builder.build_call(called_fn, &[arg_val.into()], "pipe"))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ret_kind))
+                } else {
+                    // Treat as method call: arg.name()
+                    let method_call = Expr::MethodCall {
+                        object: Box::new(arg.clone()),
+                        method: name.clone(),
+                        args: vec![],
+                    };
+                    self.compile_expr_with_kind(&method_call, current_fn)
+                }
             }
             Expr::Call { func, args } => {
                 let name = match func.as_ref() {
                     Expr::Ident(n) => n.clone(),
                     _ => return Err(CodeGenError { msg: "pipeline target must be a function".into() }),
                 };
-                let (called_fn, ret_kind) = self.resolve_function(&name)?;
+                if self.functions.contains_key(&name) || self.module.get_function(&name).is_some() {
+                    let arg_val = self.compile_expr(arg, current_fn)?;
+                    let (called_fn, ret_kind) = self.resolve_function(&name)?;
 
-                let mut compiled_args = vec![arg_val.into()];
-                for a in args {
-                    compiled_args.push(self.compile_expr(a, current_fn)?.into());
+                    let mut compiled_args = vec![arg_val.into()];
+                    for a in args {
+                        compiled_args.push(self.compile_expr(a, current_fn)?.into());
+                    }
+
+                    let result = bld!(self.builder.build_call(called_fn, &compiled_args, "pipe"))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ret_kind))
+                } else {
+                    // Treat as method call: arg.name(args...)
+                    let method_call = Expr::MethodCall {
+                        object: Box::new(arg.clone()),
+                        method: name.clone(),
+                        args: args.clone(),
+                    };
+                    self.compile_expr_with_kind(&method_call, current_fn)
                 }
-
-                let result = bld!(self.builder.build_call(called_fn, &compiled_args, "pipe"))?;
-                let val = self.call_result_to_value(result)?;
-                Ok((val, ret_kind))
             }
             Expr::Lambda { params, body } => {
+                let arg_val = self.compile_expr(arg, current_fn)?;
                 let lambda_fn = self.compile_lambda(params, body, current_fn)?;
                 let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
 

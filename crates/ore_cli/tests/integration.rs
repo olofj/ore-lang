@@ -282,3 +282,10 @@ fn control_literal_match() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["three", "Hey Bob!", "yes", "many"]);
 }
+
+#[test]
+fn control_multiline() {
+    let out = run_ore("control/multiline.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["10, 20, 30", "20, 40, 60", "20, 30"]);
+}

@@ -71,6 +71,16 @@ impl Parser {
         }
     }
 
+    /// Skip newlines, indents, and dedents (for inside brackets/braces)
+    fn skip_whitespace_tokens(&mut self) {
+        loop {
+            match self.peek() {
+                Token::Newline | Token::Indent | Token::Dedent => { self.advance(); }
+                _ => break,
+            }
+        }
+    }
+
     // ── Program ──
 
     fn parse_program(&mut self) -> Result<Program, ParseError> {
@@ -686,22 +696,28 @@ impl Parser {
         match self.peek().clone() {
             Token::LBracket => {
                 self.advance(); // consume '['
+                self.skip_whitespace_tokens();
                 let mut elements = Vec::new();
                 if self.peek() != &Token::RBracket {
                     elements.push(self.parse_expr(0)?);
+                    self.skip_whitespace_tokens();
                     while self.peek() == &Token::Comma {
                         self.advance();
+                        self.skip_whitespace_tokens();
                         if self.peek() == &Token::RBracket {
                             break; // trailing comma
                         }
                         elements.push(self.parse_expr(0)?);
+                        self.skip_whitespace_tokens();
                     }
                 }
+                self.skip_whitespace_tokens();
                 self.expect(&Token::RBracket)?;
                 Ok(Expr::ListLit(elements))
             }
             Token::LBrace => {
                 self.advance(); // consume '{'
+                self.skip_whitespace_tokens();
                 let mut entries = Vec::new();
                 if self.peek() != &Token::RBrace {
                     // Parse key at bp=3 so ':' (bp=2) is not consumed as colon-match
@@ -709,8 +725,10 @@ impl Parser {
                     self.expect(&Token::Colon)?;
                     let value = self.parse_expr(0)?;
                     entries.push((key, value));
+                    self.skip_whitespace_tokens();
                     while self.peek() == &Token::Comma {
                         self.advance();
+                        self.skip_whitespace_tokens();
                         if self.peek() == &Token::RBrace {
                             break; // trailing comma
                         }
@@ -718,8 +736,10 @@ impl Parser {
                         self.expect(&Token::Colon)?;
                         let value = self.parse_expr(0)?;
                         entries.push((key, value));
+                        self.skip_whitespace_tokens();
                     }
                 }
+                self.skip_whitespace_tokens();
                 self.expect(&Token::RBrace)?;
                 Ok(Expr::MapLit(entries))
             }
