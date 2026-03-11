@@ -394,3 +394,9 @@ fn stdlib_chars() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["[h, e, l, l, o]", "h", "e", "l", "l", "o", "6", "-1"]);
 }
+
+#[test]
+fn concurrency_each_pipe() {
+    let out = run_ore("concurrency/each_pipe.ore");
+    assert_eq!(out.trim(), "[2, 4, 6, 8, 10]");
+}

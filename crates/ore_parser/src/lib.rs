@@ -684,7 +684,33 @@ impl Parser {
                 Token::GtEq => BinOp::GtEq,
                 Token::And => BinOp::And,
                 Token::Or => BinOp::Or,
-                Token::Pipe => BinOp::Pipe,
+                Token::Pipe => {
+                    // Check for `| each|` syntax: parallel pipeline
+                    if let Some(next) = self.tokens.get(self.pos + 1) {
+                        if matches!(&next.token, Token::Ident(n) if n == "each") {
+                            if let Some(after) = self.tokens.get(self.pos + 2) {
+                                if matches!(&after.token, Token::Pipe) {
+                                    // `| each| f` desugars to `.par_map(f)`
+                                    let (l_bp, _r_bp) = (1u8, 2u8); // same as Pipe
+                                    if l_bp < min_bp {
+                                        break;
+                                    }
+                                    self.advance(); // consume first `|`
+                                    self.advance(); // consume `each`
+                                    self.advance(); // consume second `|`
+                                    let rhs = self.parse_expr(2)?;
+                                    lhs = Expr::MethodCall {
+                                        object: Box::new(lhs),
+                                        method: "par_map".to_string(),
+                                        args: vec![rhs],
+                                    };
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                    BinOp::Pipe
+                }
                 Token::Colon => {
                     // Check next token after colon
                     let next = self.tokens.get(self.pos + 1).map(|s| &s.token);
