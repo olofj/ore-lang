@@ -2330,6 +2330,38 @@ fn showcase90_stack_data_structure() {
 }
 
 #[test]
+fn showcase91_default_params() {
+    let out = run_ore("showcase91.ore");
+    assert!(out.contains("Hello, World!"));
+    assert!(out.contains("Hi, World!"));
+    assert!(out.contains("ababab"));
+    assert!(out.contains("xyxyxyxyxy"));
+    assert!(out.contains("clamp 50: 50"));
+    assert!(out.contains("clamp -10: 0"));
+    assert!(out.contains("clamp 150: 100"));
+    assert!(out.contains("clamp 150 (10..80): 80"));
+}
+
+#[test]
+fn showcase92_file_io() {
+    let out = run_ore("showcase92.ore");
+    assert!(out.contains("read back: Hello from Ore!"));
+    assert!(out.contains("exists: true"));
+    assert!(out.contains("missing: false"));
+    assert!(out.contains("line count: 4"));
+    assert!(out.contains("last line: Line 4"));
+}
+
+#[test]
+fn showcase93_json() {
+    let out = run_ore("showcase93.ore");
+    assert!(out.contains("host: localhost"));
+    assert!(out.contains("port: 8080"));
+    // JSON output should have string values properly quoted
+    assert!(out.contains("\"host\":\"localhost\""));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

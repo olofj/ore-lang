@@ -1,0 +1,16 @@
+-- Showcase 93: JSON operations
+
+fn main
+  -- Build a map and serialize to JSON
+  config := {"host": "localhost", "port": "8080", "debug": "true"}
+  json_str := json_stringify(config)
+  print "json: {json_str}"
+
+  -- Direct map access still works
+  print "host: {config["host"]}"
+  print "port: {config["port"]}"
+
+  -- Another map
+  user := {"name": "Alice", "role": "admin"}
+  user_json := json_stringify(user)
+  print "user: {user_json}"

@@ -1,0 +1,30 @@
+-- Showcase 91: Default parameters and variadic-like patterns
+
+fn greet name:Str greeting:Str = "Hello" -> Str
+  "{greeting}, {name}!"
+
+fn repeat_str s:Str n:Int = 3 -> Str
+  mut result := ""
+  for i in range(0, n)
+    result = result + s
+  result
+
+fn clamp_range val:Int lo:Int = 0 hi:Int = 100 -> Int
+  val.clamp(lo, hi)
+
+fn main
+  -- Default parameters
+  print greet("World")
+  print greet("World", "Hi")
+  print greet("World", "Hey")
+
+  -- Default with explicit
+  print repeat_str("ab")
+  print repeat_str("xy", 5)
+
+  -- Multiple defaults
+  print "clamp 50: {clamp_range(50)}"
+  print "clamp -10: {clamp_range(-10)}"
+  print "clamp 150: {clamp_range(150)}"
+  print "clamp 50 (10..80): {clamp_range(50, 10, 80)}"
+  print "clamp 150 (10..80): {clamp_range(150, 10, 80)}"

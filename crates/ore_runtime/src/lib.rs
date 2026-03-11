@@ -2216,6 +2216,17 @@ fn ore_map_set_with_kind(map: *mut OreMap, key: &str, value: i64, kind: i8) {
     }
 }
 
+/// Set a key-value pair with a kind tag (exported for codegen).
+#[no_mangle]
+pub extern "C" fn ore_map_set_typed(map: *mut OreMap, key: *mut OreStr, value: i64, kind: i8) {
+    unsafe {
+        let map = &mut *map;
+        let key_str = (*key).as_str().to_string();
+        map.kinds.insert(key_str.clone(), kind);
+        map.inner.insert(key_str, value);
+    }
+}
+
 /// Get a value by key. Returns the value, or 0 if not found.
 #[no_mangle]
 pub extern "C" fn ore_map_get(map: *mut OreMap, key: *mut OreStr) -> i64 {
@@ -2343,15 +2354,20 @@ pub extern "C" fn ore_map_print_str(map: *mut OreMap) {
 pub extern "C" fn ore_map_merge(a: *mut OreMap, b: *mut OreMap) -> *mut OreMap {
     let result = ore_map_new();
     unsafe {
+        let result_map = &mut *result;
         // Copy all entries from a
         for (k, v) in &(*a).inner {
-            let key_str = ore_str_new(k.as_ptr(), k.len() as u32);
-            ore_map_set(result, key_str, *v);
+            result_map.inner.insert(k.clone(), *v);
+        }
+        for (k, v) in &(*a).kinds {
+            result_map.kinds.insert(k.clone(), *v);
         }
         // Copy all entries from b (overwriting duplicates)
         for (k, v) in &(*b).inner {
-            let key_str = ore_str_new(k.as_ptr(), k.len() as u32);
-            ore_map_set(result, key_str, *v);
+            result_map.inner.insert(k.clone(), *v);
+        }
+        for (k, v) in &(*b).kinds {
+            result_map.kinds.insert(k.clone(), *v);
         }
     }
     result
@@ -2414,11 +2430,14 @@ pub extern "C" fn ore_map_filter(
     let result = ore_map_new();
     unsafe {
         let map = &*map;
+        let result_map = &mut *result;
         for (key, &val) in &map.inner {
             let key_str = ore_str_new(key.as_ptr(), key.len() as u32);
             if call_closure2(func, env_ptr, key_str as i64, val) != 0 {
-                let key_str2 = ore_str_new(key.as_ptr(), key.len() as u32);
-                ore_map_set(result, key_str2, val);
+                result_map.inner.insert(key.clone(), val);
+                if let Some(&kind) = map.kinds.get(key) {
+                    result_map.kinds.insert(key.clone(), kind);
+                }
             }
         }
     }

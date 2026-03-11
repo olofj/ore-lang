@@ -608,6 +608,7 @@ fn map_runtime_functions(
     // Maps
     map_fn!("ore_map_new", ore_runtime::ore_map_new);
     map_fn!("ore_map_set", ore_runtime::ore_map_set);
+    map_fn!("ore_map_set_typed", ore_runtime::ore_map_set_typed);
     map_fn!("ore_map_get", ore_runtime::ore_map_get);
     map_fn!("ore_map_contains", ore_runtime::ore_map_contains);
     map_fn!("ore_map_len", ore_runtime::ore_map_len);

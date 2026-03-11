@@ -1,0 +1,24 @@
+-- Showcase 92: File I/O operations
+
+fn main
+  -- Write a file
+  path := "/tmp/ore_test_file.txt"
+  file_write(path, "Hello from Ore!\nLine 2\nLine 3\n")
+
+  -- Read it back
+  content := file_read(path)
+  print "read back: {content.trim()}"
+
+  -- Check existence
+  print "exists: {file_exists(path)}"
+  print "missing: {file_exists("/tmp/ore_nonexistent_file.txt")}"
+
+  -- Append to file
+  file_append(path, "Line 4\n")
+  content2 := file_read(path)
+  lines := content2.trim().split("\n")
+  print "line count: {lines.len()}"
+  print "last line: {lines[lines.len() - 1]}"
+
+  -- Clean up
+  file_write(path, "")

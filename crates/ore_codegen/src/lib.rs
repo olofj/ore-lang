@@ -810,6 +810,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Map operations
         self.module.add_function("ore_map_new", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_map_set", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_map_set_typed", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), i64_type.into(), i8_type.into()], false), ext);
         self.module.add_function("ore_map_get", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_map_contains", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_map_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -5590,7 +5591,7 @@ impl<'ctx> CodeGen<'ctx> {
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         let map_new = self.rt("ore_map_new")?;
-        let map_set = self.rt("ore_map_set")?;
+        let map_set_typed = self.rt("ore_map_set_typed")?;
 
         let map_result = bld!(self.builder.build_call(map_new, &[], "map"))?;
         let map_ptr = self.call_result_to_value(map_result)?.into_pointer_value();
@@ -5608,6 +5609,9 @@ impl<'ctx> CodeGen<'ctx> {
             if first_val_kind.is_none() {
                 first_val_kind = Some(val_kind.clone());
             }
+            // Compute kind tag for runtime type tracking
+            let kind_tag = self.valkind_to_tag(&val_kind);
+            let kind_const = self.context.i8_type().const_int(kind_tag as u64, false);
             // Convert value to i64 for storage
             let i64_val = match val_kind {
                 ValKind::Int => val.into_int_value(),
@@ -5628,8 +5632,8 @@ impl<'ctx> CodeGen<'ctx> {
                 _ => val.into_int_value(),
             };
             bld!(self.builder.build_call(
-                map_set,
-                &[map_ptr.into(), key_val.into(), i64_val.into()],
+                map_set_typed,
+                &[map_ptr.into(), key_val.into(), i64_val.into(), kind_const.into()],
                 ""
             ))?;
         }
