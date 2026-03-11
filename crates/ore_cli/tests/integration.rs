@@ -967,3 +967,18 @@ fn lists_count_by() {
         "count_by ok",
     ]);
 }
+
+#[test]
+fn showcase8() {
+    let out = run_ore("showcase8.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "3", "2",                  // word counts
+        "5",                       // long words
+        "alpha", "beta", "gamma",  // destructuring
+        "true", "false",           // comparison chains
+        "220",                     // pipeline sum of squares
+        "hello world",             // string pipeline
+        "showcase8 ok",
+    ]);
+}

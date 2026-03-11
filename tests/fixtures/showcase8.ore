@@ -1,0 +1,41 @@
+-- Showcase 8: Word frequency counter (from RADICAL.md design)
+-- Demonstrates: words, count_by, pipelines, comprehensions, destructuring
+
+fn main
+  text := "the quick brown fox jumps over the lazy dog the fox"
+
+  -- Pipeline style word counting
+  counts := text.words().count_by(w => w)
+  print counts["the"]
+  print counts["fox"]
+
+  -- List comprehension to filter long words
+  long_words := [w for w in text.words() if w.len() > 3]
+  print long_words.len()
+
+  -- Destructuring from a list
+  first_three := ["alpha", "beta", "gamma"]
+  [a, b, c] := first_three
+  print a
+  print b
+  print c
+
+  -- Comparison chain
+  x := 42
+  print 0 < x < 100
+  print 10 < x < 20
+
+  -- Pipeline with filter and map
+  result := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | sum()
+  print result
+
+  -- String pipeline
+  greeting := "  Hello World  "
+    | trim()
+    | to_lower()
+  print greeting
+
+  print "showcase8 ok"
