@@ -1,0 +1,47 @@
+-- Showcase 184: Mini testing framework
+
+fn check name:Str passed:Bool
+  if passed
+    print "  PASS: {name}"
+  else
+    print "  FAIL: {name}"
+
+fn main
+  print "=== Math Tests ==="
+  check("2 + 2 = 4", 2 + 2 == 4)
+  check("3 * 7 = 21", 3 * 7 == 21)
+  check("10 / 3 = 3", 10 / 3 == 3)
+  check("10 % 3 = 1", 10 % 3 == 1)
+  check("-5 + 5 = 0", -5 + 5 == 0)
+
+  print ""
+  print "=== String Tests ==="
+  check("len('hello') = 5", "hello".len() == 5)
+  check("upper('abc')", "abc".to_upper() == "ABC")
+  check("contains", "hello world".contains("world"))
+  check("starts_with", "hello".starts_with("hel"))
+  check("replace", "aaa".replace("a", "b") == "bbb")
+
+  print ""
+  print "=== List Tests ==="
+  nums := [3, 1, 4, 1, 5, 9, 2, 6]
+  check("sum", (nums | sum()) == 31)
+  check("count", (nums | count()) == 8)
+  check("min", (nums | min()) == 1)
+  check("max", (nums | max()) == 9)
+  check("contains 4", nums.contains(4))
+  check("not contains 7", not nums.contains(7))
+  first_val := nums | first()
+  last_val := nums | last()
+  check("first", first_val == 3)
+  check("last", last_val == 6)
+
+  print ""
+  print "=== Pipeline Tests ==="
+  evens := range(1, 11) | filter(n => n % 2 == 0)
+  check("even count", (evens | count()) == 5)
+  check("even sum", (evens | sum()) == 30)
+  sq_sum := range(1, 6) | map(n => n * n) | sum()
+  check("sum of squares", sq_sum == 55)
+  fact5 := range(1, 6) | fold(1, (a, n) => a * n)
+  check("5!", fact5 == 120)

@@ -1,0 +1,49 @@
+-- Showcase 183: Priority queue using sorted list
+
+fn pq_insert queue:List[Int] val:Int -> List[Int]
+  -- Insert into sorted position
+  mut inserted := false
+  mut result := []
+  for item in queue
+    if not inserted and val < item
+      result.push(val)
+      inserted = true
+    result.push(item)
+  if not inserted
+    result.push(val)
+  result
+
+fn main
+  -- Build priority queue
+  mut pq := []
+  for val in [42, 15, 67, 3, 28, 91, 8]
+    pq = pq_insert(pq, val)
+    print "insert {val}: {pq | join(", ")}"
+
+  -- Process in priority order
+  print ""
+  print "priority order:"
+  for val in pq
+    print "  {val}"
+
+  -- Merge sorted lists
+  print ""
+  a := [1, 4, 7, 10]
+  b := [2, 5, 8, 11]
+  mut merged := []
+  mut ai := 0
+  mut bi := 0
+  while ai < (a | count()) and bi < (b | count())
+    if a[ai] <= b[bi]
+      merged.push(a[ai])
+      ai = ai + 1
+    else
+      merged.push(b[bi])
+      bi = bi + 1
+  while ai < (a | count())
+    merged.push(a[ai])
+    ai = ai + 1
+  while bi < (b | count())
+    merged.push(b[bi])
+    bi = bi + 1
+  print "merged: {merged | join(", ")}"

@@ -3279,6 +3279,47 @@ fn showcase180_type_system() {
 }
 
 #[test]
+fn showcase181_enum_list_integration() {
+    let out = run_ore("showcase181.ore");
+    assert!(out.contains("leaf(1): sum = 1"));
+    assert!(out.contains("branch(5,6): sum = 11"));
+    assert!(out.contains("[ERROR] priority=3"));
+    assert!(out.contains("info: 2"));
+}
+
+#[test]
+fn showcase182_string_operations() {
+    let out = run_ore("showcase182.ore");
+    assert!(out.contains("racecar: palindrome? yes"));
+    assert!(out.contains("hello: palindrome? no"));
+    assert!(out.contains("programming: 3 vowels"));
+    assert!(out.contains("replace: Hello, Ore!"));
+}
+
+#[test]
+fn showcase183_priority_queue() {
+    let out = run_ore("showcase183.ore");
+    assert!(out.contains("insert 8: 3, 8, 15, 28, 42, 67, 91"));
+    assert!(out.contains("merged: 1, 2, 4, 5, 7, 8, 10, 11"));
+}
+
+#[test]
+fn showcase184_testing_framework() {
+    let out = run_ore("showcase184.ore");
+    assert!(!out.contains("FAIL"));
+    assert!(out.contains("PASS: 5!"));
+    assert!(out.contains("PASS: sum of squares"));
+}
+
+#[test]
+fn showcase185_maze_solver() {
+    let out = run_ore("showcase185.ore");
+    assert!(out.contains("Solution found!"));
+    assert!(out.contains("Path length: 13"));
+    assert!(out.contains("**#####"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

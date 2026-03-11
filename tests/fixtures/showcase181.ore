@@ -1,0 +1,66 @@
+-- Showcase 181: Comprehensive enum + list integration test
+
+type Tree
+  Leaf(val: Int)
+  Branch(left: Int, right: Int)
+
+fn tree_sum t:Tree -> Int
+  match t
+    Leaf v -> v
+    Branch l r -> l + r
+
+fn tree_str t:Tree -> Str
+  match t
+    Leaf v -> "leaf({v})"
+    Branch l r -> "branch({l},{r})"
+
+type LogLevel
+  Debug
+  Info
+  Warning
+  Error
+
+fn level_str l:LogLevel -> Str
+  match l
+    Debug -> "DEBUG"
+    Info -> "INFO"
+    Warning -> "WARN"
+    Error -> "ERROR"
+
+fn level_priority l:LogLevel -> Int
+  match l
+    Debug -> 0
+    Info -> 1
+    Warning -> 2
+    Error -> 3
+
+fn main
+  -- Enum list with data variants
+  trees := [Leaf(val: 1), Branch(left: 2, right: 3), Leaf(val: 4), Branch(left: 5, right: 6)]
+  for t in trees
+    print "{tree_str(t)}: sum = {tree_sum(t)}"
+
+  -- Simple enum list
+  print ""
+  levels := [Debug, Info, Warning, Error, Info, Debug]
+  for l in levels
+    print "[{level_str(l)}] priority={level_priority(l)}"
+
+  -- Dynamic enum list building
+  print ""
+  mut log := []
+  log.push(Info)
+  log.push(Warning)
+  log.push(Error)
+  log.push(Info)
+  log.push(Debug)
+
+  mut counts := [0, 0, 0, 0]
+  for l in log
+    p := level_priority(l)
+    counts.set(p, counts[p] + 1)
+
+  print "debug: {counts[0]}"
+  print "info: {counts[1]}"
+  print "warning: {counts[2]}"
+  print "error: {counts[3]}"

@@ -1,0 +1,93 @@
+-- Showcase 185: Maze solver using BFS
+
+fn main
+  -- 7x7 maze: 0=wall, 1=path
+  maze := [
+    1, 1, 0, 0, 0, 0, 0,
+    0, 1, 1, 1, 0, 1, 0,
+    0, 0, 0, 1, 0, 1, 0,
+    0, 1, 1, 1, 1, 1, 0,
+    0, 1, 0, 0, 0, 1, 0,
+    0, 1, 1, 1, 0, 1, 1,
+    0, 0, 0, 1, 0, 0, 1
+  ]
+  rows := 7
+  cols := 7
+
+  -- Display maze
+  print "Maze:"
+  for r in range(0, rows)
+    mut line := ""
+    for c in range(0, cols)
+      if maze[r * cols + c] == 1
+        line = line + "."
+      else
+        line = line + "#"
+    print line
+
+  -- BFS from (0,0) to (6,6)
+  start := 0
+  goal := rows * cols - 1
+
+  mut visited := []
+  mut parent := []
+  for i in range(0, rows * cols)
+    visited.push(0)
+    parent.push(-1)
+
+  mut queue := [start]
+  visited.set(start, 1)
+  mut found := false
+
+  while (queue | count()) > 0 and not found
+    pos := queue[0]
+    queue.remove_at(0)
+    if pos == goal
+      found = true
+      break
+
+    r := pos / cols
+    c := pos % cols
+
+    -- Check 4 neighbors
+    for dir in [[-1, 0], [1, 0], [0, -1], [0, 1]]
+      nr := r + dir[0]
+      nc := c + dir[1]
+      if nr >= 0 and nr < rows and nc >= 0 and nc < cols
+        npos := nr * cols + nc
+        if maze[npos] == 1 and visited[npos] == 0
+          visited.set(npos, 1)
+          parent.set(npos, pos)
+          queue.push(npos)
+
+  print ""
+  if found
+    -- Reconstruct path
+    mut path := []
+    mut pos := goal
+    while pos != -1
+      path.push(pos)
+      pos = parent[pos]
+
+    -- Display solution
+    print "Solution found! Path length: {path | count()}"
+    mut solution := []
+    for i in range(0, rows * cols)
+      solution.push(0)
+    for p in path
+      solution.set(p, 1)
+
+    print ""
+    for r in range(0, rows)
+      mut line := ""
+      for c in range(0, cols)
+        idx := r * cols + c
+        if solution[idx] == 1
+          line = line + "*"
+        else if maze[idx] == 1
+          line = line + "."
+        else
+          line = line + "#"
+      print line
+  else
+    print "No solution found!"
