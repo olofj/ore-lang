@@ -1,0 +1,157 @@
+-- Showcase 398: Minimax algorithm (Tic-Tac-Toe AI)
+
+-- Board: flat list of 9 cells
+-- 0 = empty, 1 = X (maximizer), 2 = O (minimizer)
+
+fn print_board board:List
+  for r in range(0, 3)
+    mut row := "    "
+    for c in range(0, 3)
+      v := board[r * 3 + c]
+      if v == 0
+        row = row + "."
+      else if v == 1
+        row = row + "X"
+      else
+        row = row + "O"
+      if c < 2
+        row = row + " "
+    print row
+
+fn check_winner board:List -> Int
+  -- Returns 1 if X wins, 2 if O wins, 0 if no winner
+  -- Check rows
+  for r in range(0, 3)
+    a := board[r * 3]
+    b := board[r * 3 + 1]
+    c := board[r * 3 + 2]
+    if a != 0 and a == b and b == c
+      return a
+  -- Check columns
+  for c in range(0, 3)
+    a := board[c]
+    b := board[3 + c]
+    cc := board[6 + c]
+    if a != 0 and a == b and b == cc
+      return a
+  -- Check diagonals
+  if board[0] != 0 and board[0] == board[4] and board[4] == board[8]
+    return board[0]
+  if board[2] != 0 and board[2] == board[4] and board[4] == board[6]
+    return board[2]
+  0
+
+fn is_full board:List -> Bool
+  for i in range(0, 9)
+    if board[i] == 0
+      return false
+  true
+
+fn minimax board:List is_max:Bool -> Int
+  winner := check_winner(board)
+  if winner == 1
+    return 10
+  if winner == 2
+    return -10
+  if is_full(board)
+    return 0
+
+  if is_max
+    mut best := -100
+    for i in range(0, 9)
+      if board[i] == 0
+        board[i] = 1
+        score := minimax(board, false)
+        if score > best
+          best = score
+        board[i] = 0
+    return best
+  else
+    mut best := 100
+    for i in range(0, 9)
+      if board[i] == 0
+        board[i] = 2
+        score := minimax(board, true)
+        if score < best
+          best = score
+        board[i] = 0
+    return best
+
+fn find_best_move board:List player:Int -> Int
+  is_max := player == 1
+  mut best_score := if is_max then -100 else 100
+  mut best_move := -1
+  for i in range(0, 9)
+    if board[i] == 0
+      board[i] = player
+      score := minimax(board, not is_max)
+      board[i] = 0
+      if is_max
+        if score > best_score
+          best_score = score
+          best_move = i
+      else
+        if score < best_score
+          best_score = score
+          best_move = i
+  best_move
+
+fn pos_str i:Int -> Str
+  r := i / 3
+  c := i % 3
+  "(" + str(r) + "," + str(c) + ")"
+
+fn main
+  print "Minimax Tic-Tac-Toe AI:"
+  print ""
+
+  -- Game 1: AI vs AI (X starts)
+  print "Game 1: AI (X) vs AI (O)"
+  mut board := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut turn := 1
+  mut moves := 0
+
+  loop
+    if check_winner(board) != 0 or is_full(board)
+      break
+    move := find_best_move(board, turn)
+    player_name := if turn == 1 then "X" else "O"
+    print "  {player_name} plays at {pos_str(move)}"
+    board[move] = turn
+    turn = if turn == 1 then 2 else 1
+    moves = moves + 1
+
+  print "  Final board:"
+  print_board(board)
+  winner := check_winner(board)
+  if winner == 1
+    print "  Result: X wins!"
+  else if winner == 2
+    print "  Result: O wins!"
+  else
+    print "  Result: Draw!"
+  print ""
+
+  -- Game 2: Evaluate positions
+  print "Game 2: Position evaluation"
+  mut b2 := [1, 2, 1, 0, 2, 0, 0, 0, 0]
+  print "  Board state:"
+  print_board(b2)
+  best_x := find_best_move(b2, 1)
+  print "  Best move for X: {pos_str(best_x)}"
+  best_o := find_best_move(b2, 2)
+  print "  Best move for O: {pos_str(best_o)}"
+  print ""
+
+  -- Game 3: X about to win
+  print "Game 3: Near-win position"
+  mut b3 := [1, 1, 0, 2, 2, 0, 0, 0, 0]
+  print "  Board state:"
+  print_board(b3)
+  x_move := find_best_move(b3, 1)
+  print "  X's best move: {pos_str(x_move)} (should complete row)"
+  o_block := find_best_move(b3, 2)
+  print "  O's best move: {pos_str(o_block)} (should block X)"
+  print ""
+
+  print "Minimax guarantees optimal play - perfect play leads to a draw."

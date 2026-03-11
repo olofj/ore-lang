@@ -1,0 +1,205 @@
+-- Showcase 397: Simple database query engine
+
+-- Tables stored as parallel lists (columnar storage)
+-- Each column is a separate list
+
+fn make_db -> List
+  -- Returns [names, depts, salaries, ages] as a flat structure
+  -- We'll use global-like access pattern
+  -- names: 0-6, depts: 7-13, salaries: 14-20, ages: 21-27
+  -- Total 28 entries, 7 rows
+  mut db := []
+  -- Names encoded as indices: Alice=0, Bob=1, Charlie=2, Diana=3, Eve=4, Frank=5, Grace=6
+  -- Depts encoded: Engineering=0, Marketing=1, Sales=2
+  -- Row: Alice, Engineering, 95000, 30
+  db.push(0)
+  db.push(1)
+  db.push(2)
+  db.push(3)
+  db.push(4)
+  db.push(5)
+  db.push(6)
+  -- Depts
+  db.push(0)
+  db.push(1)
+  db.push(0)
+  db.push(1)
+  db.push(0)
+  db.push(2)
+  db.push(2)
+  -- Salaries
+  db.push(95000)
+  db.push(72000)
+  db.push(110000)
+  db.push(68000)
+  db.push(105000)
+  db.push(80000)
+  db.push(85000)
+  -- Ages
+  db.push(30)
+  db.push(25)
+  db.push(35)
+  db.push(28)
+  db.push(32)
+  db.push(40)
+  db.push(29)
+  db
+
+fn name_str id:Int -> Str
+  if id == 0 then "Alice"
+  else if id == 1 then "Bob"
+  else if id == 2 then "Charlie"
+  else if id == 3 then "Diana"
+  else if id == 4 then "Eve"
+  else if id == 5 then "Frank"
+  else if id == 6 then "Grace"
+  else "Unknown"
+
+fn dept_str id:Int -> Str
+  if id == 0 then "Engineering"
+  else if id == 1 then "Marketing"
+  else if id == 2 then "Sales"
+  else "Unknown"
+
+fn db_name db:List row:Int -> Int
+  db[row]
+
+fn db_dept db:List row:Int -> Int
+  db[7 + row]
+
+fn db_salary db:List row:Int -> Int
+  db[14 + row]
+
+fn db_age db:List row:Int -> Int
+  db[21 + row]
+
+fn print_row db:List row:Int
+  n := name_str(db_name(db, row))
+  d := dept_str(db_dept(db, row))
+  s := db_salary(db, row)
+  a := db_age(db, row)
+  print "    {n} | {d} | {s} | {a}"
+
+fn print_header
+  print "    Name    | Dept        | Salary | Age"
+  print "    --------|-------------|--------|----"
+
+fn print_result label:Str db:List rows:List
+  print "  {label}:"
+  print_header()
+  n := rows | count()
+  for i in range(0, n)
+    print_row(db, rows[i])
+  print "    ({n} rows)"
+
+fn where_dept db:List dept:Int -> List
+  mut result := []
+  for i in range(0, 7)
+    if db_dept(db, i) == dept
+      result.push(i)
+  result
+
+fn where_salary_gt db:List rows:List min_sal:Int -> List
+  mut result := []
+  n := rows | count()
+  for i in range(0, n)
+    r := rows[i]
+    if db_salary(db, r) > min_sal
+      result.push(r)
+  result
+
+fn where_age_between db:List min_age:Int max_age:Int -> List
+  mut result := []
+  for i in range(0, 7)
+    a := db_age(db, i)
+    if a >= min_age and a <= max_age
+      result.push(i)
+  result
+
+fn order_by_salary db:List rows:List ascending:Bool -> List
+  -- Copy and bubble sort
+  n := rows | count()
+  mut sorted := []
+  for i in range(0, n)
+    sorted.push(rows[i])
+  for i in range(0, n)
+    for j in range(0, n - 1 - i)
+      s1 := db_salary(db, sorted[j])
+      s2 := db_salary(db, sorted[j + 1])
+      should_swap := if ascending then s1 > s2 else s1 < s2
+      if should_swap
+        tmp := sorted[j]
+        sorted[j] = sorted[j + 1]
+        sorted[j + 1] = tmp
+  sorted
+
+fn limit_rows rows:List n:Int -> List
+  mut result := []
+  total := rows | count()
+  max := if n < total then n else total
+  for i in range(0, max)
+    result.push(rows[i])
+  result
+
+fn all_rows -> List
+  mut r := []
+  for i in range(0, 7)
+    r.push(i)
+  r
+
+fn main
+  print "Simple Database Query Engine:"
+  print ""
+
+  db := make_db()
+
+  -- All employees
+  print_result("SELECT * FROM employees", db, all_rows())
+  print ""
+
+  -- WHERE dept = Engineering
+  eng := where_dept(db, 0)
+  print_result("WHERE dept = Engineering", db, eng)
+  print ""
+
+  -- WHERE salary > 80000
+  all := all_rows()
+  high_sal := where_salary_gt(db, all, 80000)
+  print_result("WHERE salary > 80000", db, high_sal)
+  print ""
+
+  -- WHERE age BETWEEN 28 AND 35
+  age_range := where_age_between(db, 28, 35)
+  print_result("WHERE age BETWEEN 28 AND 35", db, age_range)
+  print ""
+
+  -- ORDER BY salary ASC LIMIT 3
+  sorted_asc := order_by_salary(db, all, true)
+  top3 := limit_rows(sorted_asc, 3)
+  print_result("ORDER BY salary ASC LIMIT 3", db, top3)
+  print ""
+
+  -- Engineering ORDER BY salary DESC
+  eng_sorted := order_by_salary(db, eng, false)
+  print_result("Engineering ORDER BY salary DESC", db, eng_sorted)
+  print ""
+
+  -- GROUP BY dept (aggregate)
+  print "  GROUP BY dept (AVG salary):"
+  for d in range(0, 3)
+    dept_rows := where_dept(db, d)
+    mut total := 0
+    cnt := dept_rows | count()
+    for i in range(0, cnt)
+      total = total + db_salary(db, dept_rows[i])
+    avg := total / cnt
+    print "    {dept_str(d)}: count={cnt}, avg_salary={avg}"
+
+  print ""
+
+  -- Chained: Engineering AND salary > 100000
+  chain := where_salary_gt(db, eng, 100000)
+  print_result("Engineering AND salary > 100000", db, chain)
+  print ""
+
+  print "Query engine demonstrates filter, sort, group, and limit operations."

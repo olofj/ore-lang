@@ -1,0 +1,290 @@
+-- Showcase 400: Grand showcase - comprehensive Ore language demo
+
+-- This showcase demonstrates many Ore language features in one file
+
+-- ============ Records and impl blocks ============
+type Point { x: Int, y: Int }
+
+impl Point
+  fn distance_to self:Point other:Point -> Int
+    dx := self.x - other.x
+    dy := self.y - other.y
+    -- Manhattan distance
+    adx := if dx < 0 then 0 - dx else dx
+    ady := if dy < 0 then 0 - dy else dy
+    adx + ady
+
+  fn to_str self:Point -> Str
+    "({self.x}, {self.y})"
+
+-- ============ Enums and pattern matching ============
+type Shape
+  Circle(r: Int)
+  Rectangle(w: Int, h: Int)
+  Triangle(b: Int, h: Int)
+
+fn shape_area shape:Shape -> Int
+  match shape
+    Circle r -> r * r * 3
+    Rectangle w h -> w * h
+    Triangle b h -> b * h / 2
+
+fn shape_name shape:Shape -> Str
+  match shape
+    Circle _ -> "Circle"
+    Rectangle _ _ -> "Rectangle"
+    Triangle _ _ -> "Triangle"
+
+-- ============ Recursive algorithms ============
+fn fibonacci n:Int -> Int
+  if n <= 1
+    return n
+  fibonacci(n - 1) + fibonacci(n - 2)
+
+fn gcd a:Int b:Int -> Int
+  if b == 0
+    return a
+  gcd(b, a % b)
+
+-- ============ String processing ============
+fn caesar_encrypt text:Str shift:Int -> Str
+  alphabet := "abcdefghijklmnopqrstuvwxyz"
+  cs := text | chars()
+  n := cs | count()
+  mut result := ""
+  for i in range(0, n)
+    c := cs[i]
+    idx := alphabet | index_of(c)
+    if idx >= 0
+      new_idx := (idx + shift) % 26
+      result = result + (alphabet | char_at(new_idx))
+    else
+      result = result + c
+  result
+
+fn caesar_decrypt text:Str shift:Int -> Str
+  caesar_encrypt(text, 26 - shift)
+
+-- ============ List algorithms ============
+fn quicksort lst:List -> List
+  n := lst | count()
+  if n <= 1
+    return lst
+  pivot := lst[0]
+  mut less := []
+  mut equal := []
+  mut greater := []
+  for i in range(0, n)
+    v := lst[i]
+    if v < pivot
+      less.push(v)
+    else if v == pivot
+      equal.push(v)
+    else
+      greater.push(v)
+  sorted_less := quicksort(less)
+  sorted_greater := quicksort(greater)
+  mut result := []
+  for i in range(0, sorted_less | count())
+    result.push(sorted_less[i])
+  for i in range(0, equal | count())
+    result.push(equal[i])
+  for i in range(0, sorted_greater | count())
+    result.push(sorted_greater[i])
+  result
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+-- ============ Map operations ============
+fn word_count text:Str -> Map
+  words := text | split(" ")
+  mut counts := {}
+  n := words | count()
+  for i in range(0, n)
+    w := words[i]
+    if counts | contains(w)
+      old := counts | get(w)
+      counts | set(w, old + 1)
+    else
+      counts | set(w, 1)
+  counts
+
+-- ============ Pipeline operations ============
+fn demonstrate_pipelines
+  print "  Pipeline operations:"
+  nums := range(1, 11)
+  total := nums | sum()
+  print "    sum(1..10) = {total}"
+
+  evens := nums | filter(x => x % 2 == 0)
+  print "    evens: {list_to_str(evens)}"
+
+  doubled := evens | map(x => x * 2)
+  print "    doubled evens: {list_to_str(doubled)}"
+
+  first3 := nums | take(3)
+  print "    first 3: {list_to_str(first3)}"
+
+  top3 := nums | sort() | reverse() | take(3)
+  print "    top 3: {list_to_str(top3)}"
+
+-- ============ Main ============
+fn main
+  print "Grand Showcase - Ore Language Features:"
+  print "========================================"
+  print ""
+
+  -- Records
+  print "1. Records and Methods:"
+  p1 := Point(x: 3, y: 4)
+  p2 := Point(x: 7, y: 1)
+  print "  p1 = {p1.to_str()}"
+  print "  p2 = {p2.to_str()}"
+  print "  Manhattan distance: {p1.distance_to(p2)}"
+  print ""
+
+  -- Enums and pattern matching
+  print "2. Enums and Pattern Matching:"
+  ci := Circle(r: 5)
+  re := Rectangle(w: 4, h: 6)
+  tr := Triangle(b: 8, h: 3)
+  print "  {shape_name(ci)}: area = {shape_area(ci)}"
+  print "  {shape_name(re)}: area = {shape_area(re)}"
+  print "  {shape_name(tr)}: area = {shape_area(tr)}"
+  print ""
+
+  -- Lambdas and higher-order list methods
+  print "3. Lambdas and Higher-Order Functions:"
+  nums := [1, 2, 3, 4, 5]
+  doubled := nums | map(x => x * 2)
+  print "  map(x => x * 2): {list_to_str(doubled)}"
+  filtered := nums | filter(x => x > 2)
+  print "  filter(x => x > 2): {list_to_str(filtered)}"
+  total := nums | reduce(0, (acc, x) => acc + x)
+  print "  reduce(+): {total}"
+  -- Closure captures
+  factor := 10
+  scaled := nums | map(x => x * factor)
+  print "  closure capture (factor=10): {list_to_str(scaled)}"
+  print ""
+
+  -- Recursion
+  print "4. Recursive Algorithms:"
+  print "  Fibonacci sequence:"
+  mut fib_str := "    "
+  for i in range(0, 10)
+    if i > 0
+      fib_str = fib_str + ", "
+    fib_str = fib_str + str(fibonacci(i))
+  print fib_str
+  print "  GCD(48, 18) = {gcd(48, 18)}"
+  print "  GCD(100, 75) = {gcd(100, 75)}"
+  print ""
+
+  -- String processing
+  print "5. String Processing:"
+  msg := "hello world"
+  encrypted := caesar_encrypt(msg, 3)
+  decrypted := caesar_decrypt(encrypted, 3)
+  print "  Original:  {msg}"
+  print "  Encrypted: {encrypted}"
+  print "  Decrypted: {decrypted}"
+  print "  Round-trip: {if msg == decrypted then "OK" else "FAIL"}"
+  print ""
+
+  -- Sorting
+  print "6. Quicksort:"
+  unsorted := [38, 27, 43, 3, 9, 82, 10]
+  sorted := quicksort(unsorted)
+  print "  Input:  {list_to_str(unsorted)}"
+  print "  Sorted: {list_to_str(sorted)}"
+  print ""
+
+  -- Maps
+  print "7. Word Counting:"
+  sentence := "the cat sat on the mat the cat"
+  counts := word_count(sentence)
+  print "  Text: \"{sentence}\""
+  wds := ["the", "cat", "sat", "on", "mat"]
+  for i in range(0, wds | count())
+    w := wds[i]
+    wc := counts | get(w)
+    print "    \"{w}\": {wc}"
+  print ""
+
+  -- Pipelines
+  print "8. Pipelines:"
+  demonstrate_pipelines()
+  print ""
+
+  -- Control flow
+  print "9. Control Flow:"
+  mut fizzbuzz := ""
+  for i in range(1, 16)
+    if i % 15 == 0
+      fizzbuzz = fizzbuzz + "FizzBuzz "
+    else if i % 3 == 0
+      fizzbuzz = fizzbuzz + "Fizz "
+    else if i % 5 == 0
+      fizzbuzz = fizzbuzz + "Buzz "
+    else
+      fizzbuzz = fizzbuzz + str(i) + " "
+  print "  FizzBuzz: {fizzbuzz | trim()}"
+  print ""
+
+  -- List comprehensions
+  print "10. List Comprehensions:"
+  squares := [x * x for x in range(1, 8)]
+  print "  Squares: {list_to_str(squares)}"
+  even_squares := [x * x for x in range(1, 11) if x % 2 == 0]
+  print "  Even squares: {list_to_str(even_squares)}"
+  print ""
+
+  -- Math
+  print "11. Math:"
+  print "  Powers of 2:"
+  mut pow_str := "    "
+  mut p := 1
+  for i in range(0, 11)
+    if i > 0
+      pow_str = pow_str + ", "
+    pow_str = pow_str + str(p)
+    p = p * 2
+  print pow_str
+  print "  Factorial(10) via reduce:"
+  fact := range(1, 11) | reduce(1, (acc, x) => acc * x)
+  print "    10! = {fact}"
+  print ""
+
+  -- While and loop
+  print "12. Iteration:"
+  mut sum := 0
+  mut n := 1
+  while n <= 100
+    sum = sum + n
+    n = n + 1
+  print "  Sum 1..100 (while): {sum}"
+
+  mut collatz := 27
+  mut steps := 0
+  loop
+    if collatz == 1
+      break
+    if collatz % 2 == 0
+      collatz = collatz / 2
+    else
+      collatz = collatz * 3 + 1
+    steps = steps + 1
+  print "  Collatz(27): {steps} steps to reach 1"
+  print ""
+
+  -- Summary
+  print "Ore: a modern, expressive language with powerful features."
+  print "This is showcase 400 - celebrating the milestone!"

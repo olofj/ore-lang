@@ -1,0 +1,126 @@
+-- Showcase 399: Fast exponentiation (binary exponentiation)
+
+-- Binary exponentiation: compute base^exp in O(log n) multiplications
+fn fast_pow base:Int exp:Int -> Int
+  if exp == 0
+    return 1
+  mut result := 1
+  mut b := base
+  mut e := exp
+  loop
+    if e <= 0
+      break
+    if e % 2 == 1
+      result = result * b
+    b = b * b
+    e = e / 2
+  result
+
+-- Modular exponentiation: compute (base^exp) % mod
+fn mod_pow base:Int exp:Int m:Int -> Int
+  if exp == 0
+    return 1
+  mut result := 1
+  mut b := base % m
+  mut e := exp
+  loop
+    if e <= 0
+      break
+    if e % 2 == 1
+      result = (result * b) % m
+    b = (b * b) % m
+    e = e / 2
+  result
+
+-- Naive exponentiation for comparison
+fn naive_pow base:Int exp:Int -> Int
+  mut result := 1
+  for i in range(0, exp)
+    result = result * base
+  result
+
+-- Count multiplications in binary exponentiation
+fn count_mults exp:Int -> Int
+  mut count := 0
+  mut e := exp
+  loop
+    if e <= 0
+      break
+    if e % 2 == 1
+      count = count + 1
+    count = count + 1
+    e = e / 2
+  -- Subtract the last squaring that doesn't contribute
+  count - 1
+
+fn main
+  print "Fast Exponentiation (Binary Method):"
+  print ""
+
+  -- Basic tests
+  print "Basic power computations:"
+  bases := [2, 3, 5, 7, 2]
+  exps := [10, 5, 4, 3, 20]
+  for i in range(0, 5)
+    b := bases[i]
+    e := exps[i]
+    result := fast_pow(b, e)
+    naive := naive_pow(b, e)
+    mults := count_mults(e)
+    ok := if result == naive then "OK" else "MISMATCH"
+    print "  {b}^{e} = {result} (mults: {mults} vs naive: {e}) [{ok}]"
+
+  print ""
+
+  -- Show the algorithm step by step
+  print "Step-by-step: 2^13"
+  print "  13 in binary: 1101"
+  print "  Steps:"
+  mut result := 1
+  mut b := 2
+  mut e := 13
+  mut step := 0
+  loop
+    if e <= 0
+      break
+    bit := e % 2
+    if bit == 1
+      result = result * b
+      print "    bit={bit}: result = result * {b} = {result}"
+    else
+      print "    bit={bit}: result unchanged = {result}"
+    b = b * b
+    e = e / 2
+    step = step + 1
+  print "  Final: 2^13 = {result}"
+  print ""
+
+  -- Modular exponentiation
+  print "Modular exponentiation (base^exp mod m):"
+  print "  2^10 mod 1000 = {mod_pow(2, 10, 1000)}"
+  print "  3^7 mod 100 = {mod_pow(3, 7, 100)}"
+  print "  7^256 mod 13 = {mod_pow(7, 256, 13)}"
+  print "  2^16 mod 100 = {mod_pow(2, 16, 100)}"
+  print "  5^3 mod 13 = {mod_pow(5, 3, 13)}"
+  print ""
+
+  -- Fermat's little theorem check: a^(p-1) = 1 mod p for prime p
+  print "Fermat's little theorem (a^(p-1) mod p = 1 for prime p):"
+  primes := [7, 11, 13, 17, 19]
+  for i in range(0, 5)
+    p := primes[i]
+    a := 3
+    result := mod_pow(a, p - 1, p)
+    print "  {a}^{p - 1} mod {p} = {result}"
+  print ""
+
+  -- Efficiency comparison
+  print "Efficiency (multiplications needed):"
+  test_exps := [8, 15, 16, 31, 32, 63, 64, 100]
+  for i in range(0, 8)
+    e := test_exps[i]
+    mults := count_mults(e)
+    print "  n={e}: binary={mults} mults, naive={e} mults"
+
+  print ""
+  print "Binary exponentiation: O(log n) vs naive O(n) multiplications."

@@ -1,0 +1,179 @@
+-- Showcase 396: Checksum calculation (Fletcher-like and Adler-like)
+
+-- Fletcher-16-like checksum: two running sums
+fn fletcher16 data:List -> Int
+  mut sum1 := 0
+  mut sum2 := 0
+  n := data | count()
+  for i in range(0, n)
+    sum1 = (sum1 + data[i]) % 255
+    sum2 = (sum2 + sum1) % 255
+  sum2 * 256 + sum1
+
+-- Simple additive checksum
+fn checksum_add data:List -> Int
+  mut sum := 0
+  n := data | count()
+  for i in range(0, n)
+    sum = (sum + data[i]) % 65536
+  sum
+
+-- Position-weighted checksum (detects reordering)
+fn checksum_weighted data:List -> Int
+  mut sum := 0
+  n := data | count()
+  for i in range(0, n)
+    sum = (sum + data[i] * (i + 1)) % 65536
+  sum
+
+-- Luhn-like digit checksum
+fn luhn_check digits:List -> Bool
+  n := digits | count()
+  mut sum := 0
+  mut alt := false
+  mut i := n - 1
+  loop
+    if i < 0
+      break
+    mut d := digits[i]
+    if alt
+      d = d * 2
+      if d > 9
+        d = d - 9
+    sum = sum + d
+    alt = not alt
+    i = i - 1
+  sum % 10 == 0
+
+fn str_to_bytes s:Str -> List
+  mut bytes := []
+  cs := s | chars()
+  n := cs | count()
+  for i in range(0, n)
+    c := cs[i]
+    if c == "a" then bytes.push(97)
+    else if c == "b" then bytes.push(98)
+    else if c == "c" then bytes.push(99)
+    else if c == "d" then bytes.push(100)
+    else if c == "e" then bytes.push(101)
+    else if c == "f" then bytes.push(102)
+    else if c == "g" then bytes.push(103)
+    else if c == "h" then bytes.push(104)
+    else if c == "i" then bytes.push(105)
+    else if c == "j" then bytes.push(106)
+    else if c == "k" then bytes.push(107)
+    else if c == "l" then bytes.push(108)
+    else if c == "m" then bytes.push(109)
+    else if c == "n" then bytes.push(110)
+    else if c == "o" then bytes.push(111)
+    else if c == "p" then bytes.push(112)
+    else if c == "r" then bytes.push(114)
+    else if c == "s" then bytes.push(115)
+    else if c == "t" then bytes.push(116)
+    else if c == "u" then bytes.push(117)
+    else if c == "w" then bytes.push(119)
+    else if c == "x" then bytes.push(120)
+    else if c == "y" then bytes.push(121)
+    else if c == " " then bytes.push(32)
+    else bytes.push(63)
+  bytes
+
+fn bytes_str data:List -> Str
+  mut s := "["
+  n := data | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(data[i])
+  s + "]"
+
+fn main
+  print "Checksum Calculations:"
+  print ""
+
+  -- Fletcher-16 tests
+  print "Fletcher-16 Checksum:"
+  d1 := str_to_bytes("hello")
+  f1 := fletcher16(d1)
+  print "  fletcher16(\"hello\") = {f1}"
+
+  d2 := str_to_bytes("world")
+  f2 := fletcher16(d2)
+  print "  fletcher16(\"world\") = {f2}"
+
+  d3 := str_to_bytes("hello")
+  f3 := fletcher16(d3)
+  print "  fletcher16(\"hello\") again = {f3} (consistent: {if f1 == f3 then "YES" else "NO"})"
+
+  print "  Different inputs: {if f1 != f2 then "different checksums" else "collision"}"
+  print ""
+
+  -- Additive vs weighted
+  print "Additive vs Weighted Checksums:"
+  da := str_to_bytes("ab")
+  db := str_to_bytes("ba")
+  add_a := checksum_add(da)
+  add_b := checksum_add(db)
+  wt_a := checksum_weighted(da)
+  wt_b := checksum_weighted(db)
+  print "  Additive(\"ab\") = {add_a}, Additive(\"ba\") = {add_b}"
+  print "  Additive detects swap: {if add_a != add_b then "YES" else "NO (expected)"}"
+  print "  Weighted(\"ab\") = {wt_a}, Weighted(\"ba\") = {wt_b}"
+  print "  Weighted detects swap: {if wt_a != wt_b then "YES" else "NO"}"
+  print ""
+
+  -- Error detection
+  print "Error Detection:"
+  msg := str_to_bytes("test message")
+  orig_f := fletcher16(msg)
+  print "  Original fletcher16: {orig_f}"
+
+  -- Corrupt one byte
+  mut corrupted := []
+  for i in range(0, msg | count())
+    corrupted.push(msg[i])
+  corrupted[3] = corrupted[3] + 1
+  corr_f := fletcher16(corrupted)
+  print "  Corrupted fletcher16: {corr_f}"
+  print "  Error detected: {if orig_f != corr_f then "YES" else "NO"}"
+  print ""
+
+  -- Luhn check
+  print "Luhn Algorithm (credit card validation):"
+  valid_card := [4, 5, 3, 9, 1, 4, 8, 8, 0, 3, 4, 3, 6, 4, 6, 7]
+  -- Compute check: sum must be divisible by 10
+  -- Let's use known valid/invalid examples
+  test1 := [0]
+  test2 := [0, 0]
+  test3 := [1, 8]
+  test4 := [1, 9]
+
+  -- Single digit 0 is valid (0 mod 10 = 0)
+  v1 := luhn_check(test1)
+  print "  Luhn([0]): {if v1 then "valid" else "invalid"}"
+  v2 := luhn_check(test2)
+  print "  Luhn([0, 0]): {if v2 then "valid" else "invalid"}"
+  v3 := luhn_check(test3)
+  print "  Luhn([1, 8]): {if v3 then "valid" else "invalid"}"
+  v4 := luhn_check(test4)
+  print "  Luhn([1, 9]): {if v4 then "valid" else "invalid"}"
+
+  -- Test with longer sequence
+  seq := [7, 9, 9, 2, 7, 3, 9, 8, 7, 1]
+  v5 := luhn_check(seq)
+  print "  Luhn({bytes_str(seq)}): {if v5 then "valid" else "invalid"}"
+  print ""
+
+  -- Byte sequences
+  print "Byte sequence checksums:"
+  b1 := [0, 0, 0, 0]
+  print "  {bytes_str(b1)}: fletcher={fletcher16(b1)}, add={checksum_add(b1)}, wt={checksum_weighted(b1)}"
+
+  b2 := [255, 255, 255, 255]
+  print "  {bytes_str(b2)}: fletcher={fletcher16(b2)}, add={checksum_add(b2)}, wt={checksum_weighted(b2)}"
+
+  b3 := [1, 2, 3, 4, 5]
+  print "  {bytes_str(b3)}: fletcher={fletcher16(b3)}, add={checksum_add(b3)}, wt={checksum_weighted(b3)}"
+  print ""
+
+  print "Checksums: essential for data integrity in networking and storage."

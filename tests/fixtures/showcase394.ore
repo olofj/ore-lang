@@ -1,0 +1,115 @@
+-- Showcase 394: Sudoku solver (constraint propagation on 4x4 mini-puzzles)
+
+-- 4x4 Sudoku: values 1-4, 2x2 boxes
+-- Board stored as flat list of 16 cells (0 = empty)
+
+fn board_get board:List r:Int c:Int -> Int
+  board[r * 4 + c]
+
+fn board_set board:List r:Int c:Int v:Int
+  board[r * 4 + c] = v
+
+fn print_board board:List
+  for r in range(0, 4)
+    mut row := "    "
+    for c in range(0, 4)
+      v := board_get(board, r, c)
+      if v == 0
+        row = row + ". "
+      else
+        row = row + str(v) + " "
+      if c == 1
+        row = row + "| "
+    if r == 1
+      print "    ------+------"
+    print row
+
+fn is_valid board:List r:Int c:Int v:Int -> Bool
+  -- Check row
+  for i in range(0, 4)
+    if board_get(board, r, i) == v
+      return false
+  -- Check column
+  for i in range(0, 4)
+    if board_get(board, i, c) == v
+      return false
+  -- Check 2x2 box
+  br := (r / 2) * 2
+  bc := (c / 2) * 2
+  for dr in range(0, 2)
+    for dc in range(0, 2)
+      if board_get(board, br + dr, bc + dc) == v
+        return false
+  true
+
+fn find_empty board:List -> Int
+  -- Returns index of first empty cell, or -1
+  for i in range(0, 16)
+    if board[i] == 0
+      return i
+  -1
+
+fn solve board:List -> Bool
+  idx := find_empty(board)
+  if idx == -1
+    return true
+  r := idx / 4
+  c := idx % 4
+  for v in range(1, 5)
+    if is_valid(board, r, c, v)
+      board_set(board, r, c, v)
+      if solve(board)
+        return true
+      board_set(board, r, c, 0)
+  false
+
+fn count_solutions board:List -> Int
+  idx := find_empty(board)
+  if idx == -1
+    return 1
+  r := idx / 4
+  c := idx % 4
+  mut total := 0
+  for v in range(1, 5)
+    if is_valid(board, r, c, v)
+      board_set(board, r, c, v)
+      total = total + count_solutions(board)
+      board_set(board, r, c, 0)
+  total
+
+fn main
+  print "Sudoku Solver (4x4 Mini-Puzzles):"
+  print ""
+
+  -- Puzzle 1
+  print "Puzzle 1:"
+  mut b1 := [1, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 2]
+  print "  Input:"
+  print_board(b1)
+  ok1 := solve(b1)
+  label1 := if ok1 then "Solved" else "No solution"
+  print "  {label1}:"
+  print_board(b1)
+  print ""
+
+  -- Puzzle 2
+  print "Puzzle 2:"
+  mut b2 := [0, 2, 0, 0, 0, 0, 3, 0, 0, 4, 0, 0, 0, 0, 1, 0]
+  print "  Input:"
+  print_board(b2)
+  ok2 := solve(b2)
+  label2 := if ok2 then "Solved" else "No solution"
+  print "  {label2}:"
+  print_board(b2)
+  print ""
+
+  -- Puzzle 3: count solutions for almost empty board
+  print "Puzzle 3 (counting solutions):"
+  mut b3 := [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  print "  Board with only '1' in top-left:"
+  print_board(b3)
+  nsol := count_solutions(b3)
+  print "  Number of valid completions: {nsol}"
+  print ""
+
+  print "Sudoku solving uses backtracking with constraint checking."

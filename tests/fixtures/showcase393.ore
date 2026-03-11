@@ -1,0 +1,205 @@
+-- Showcase 393: Simple type checker for a tiny expression language
+
+-- Expression language:
+--   Literals: int(n), bool(b)
+--   Binary: add(l, r), eq(l, r), and(l, r)
+--   Conditional: if_then_else(cond, then, else)
+--
+-- Types: "Int", "Bool", "Error"
+--
+-- Expressions stored as flat encoded list:
+--   [tag, ...args]
+--   tag 0 = int literal, args: [value]
+--   tag 1 = bool literal, args: [0 or 1]
+--   tag 2 = add, args: [left_idx, right_idx]
+--   tag 3 = eq, args: [left_idx, right_idx]
+--   tag 4 = and, args: [left_idx, right_idx]
+--   tag 5 = if_then_else, args: [cond_idx, then_idx, else_idx]
+
+-- Expression pool: flat list of [tag, arg1, arg2, ...]
+-- Each expr takes exactly 4 slots: [tag, a1, a2, a3]
+
+fn expr_tag pool:List idx:Int -> Int
+  pool[idx * 4]
+
+fn expr_a1 pool:List idx:Int -> Int
+  pool[idx * 4 + 1]
+
+fn expr_a2 pool:List idx:Int -> Int
+  pool[idx * 4 + 2]
+
+fn expr_a3 pool:List idx:Int -> Int
+  pool[idx * 4 + 3]
+
+fn type_check pool:List idx:Int -> Str
+  tag := expr_tag(pool, idx)
+  if tag == 0
+    return "Int"
+  if tag == 1
+    return "Bool"
+  if tag == 2
+    -- add: both must be Int
+    lt := type_check(pool, expr_a1(pool, idx))
+    rt := type_check(pool, expr_a2(pool, idx))
+    if lt == "Int" and rt == "Int"
+      return "Int"
+    return "Error: add expects Int+Int, got " + lt + "+" + rt
+  if tag == 3
+    -- eq: both must be same type
+    lt := type_check(pool, expr_a1(pool, idx))
+    rt := type_check(pool, expr_a2(pool, idx))
+    lt_err := lt | starts_with("Error")
+    if lt == rt and not lt_err
+      return "Bool"
+    if lt | starts_with("Error")
+      return lt
+    if rt | starts_with("Error")
+      return rt
+    return "Error: eq expects same types, got " + lt + " and " + rt
+  if tag == 4
+    -- and: both must be Bool
+    lt := type_check(pool, expr_a1(pool, idx))
+    rt := type_check(pool, expr_a2(pool, idx))
+    if lt == "Bool" and rt == "Bool"
+      return "Bool"
+    return "Error: and expects Bool+Bool, got " + lt + "+" + rt
+  if tag == 5
+    -- if_then_else: cond must be Bool, branches must match
+    ct := type_check(pool, expr_a1(pool, idx))
+    tt := type_check(pool, expr_a2(pool, idx))
+    et := type_check(pool, expr_a3(pool, idx))
+    if ct != "Bool"
+      return "Error: if condition must be Bool, got " + ct
+    if tt != et
+      return "Error: if branches must match, got " + tt + " and " + et
+    if tt | starts_with("Error")
+      return tt
+    return tt
+  "Error: unknown expression tag"
+
+fn expr_str pool:List idx:Int -> Str
+  tag := expr_tag(pool, idx)
+  if tag == 0
+    return str(expr_a1(pool, idx))
+  if tag == 1
+    v := expr_a1(pool, idx)
+    return if v == 1 then "true" else "false"
+  if tag == 2
+    return "(" + expr_str(pool, expr_a1(pool, idx)) + " + " + expr_str(pool, expr_a2(pool, idx)) + ")"
+  if tag == 3
+    return "(" + expr_str(pool, expr_a1(pool, idx)) + " == " + expr_str(pool, expr_a2(pool, idx)) + ")"
+  if tag == 4
+    return "(" + expr_str(pool, expr_a1(pool, idx)) + " and " + expr_str(pool, expr_a2(pool, idx)) + ")"
+  if tag == 5
+    return "(if " + expr_str(pool, expr_a1(pool, idx)) + " then " + expr_str(pool, expr_a2(pool, idx)) + " else " + expr_str(pool, expr_a3(pool, idx)) + ")"
+  "?"
+
+fn check_and_print pool:List idx:Int
+  e := expr_str(pool, idx)
+  t := type_check(pool, idx)
+  ok := if t | starts_with("Error") then "FAIL" else "OK"
+  print "  {e}"
+  print "    Type: {t} [{ok}]"
+
+fn main
+  print "Type Checker for Tiny Expression Language:"
+  print ""
+
+  -- Build expression pool
+  -- Each expression: [tag, a1, a2, a3]
+  mut pool := []
+
+  -- Expr 0: int(42)
+  pool.push(0)
+  pool.push(42)
+  pool.push(0)
+  pool.push(0)
+
+  -- Expr 1: int(10)
+  pool.push(0)
+  pool.push(10)
+  pool.push(0)
+  pool.push(0)
+
+  -- Expr 2: add(0, 1) => 42 + 10
+  pool.push(2)
+  pool.push(0)
+  pool.push(1)
+  pool.push(0)
+
+  -- Expr 3: bool(true)
+  pool.push(1)
+  pool.push(1)
+  pool.push(0)
+  pool.push(0)
+
+  -- Expr 4: bool(false)
+  pool.push(1)
+  pool.push(0)
+  pool.push(0)
+  pool.push(0)
+
+  -- Expr 5: and(3, 4) => true and false
+  pool.push(4)
+  pool.push(3)
+  pool.push(4)
+  pool.push(0)
+
+  -- Expr 6: eq(0, 1) => 42 == 10
+  pool.push(3)
+  pool.push(0)
+  pool.push(1)
+  pool.push(0)
+
+  -- Expr 7: if_then_else(6, 0, 1) => if (42==10) then 42 else 10
+  pool.push(5)
+  pool.push(6)
+  pool.push(0)
+  pool.push(1)
+
+  -- Expr 8: add(0, 3) => 42 + true (TYPE ERROR)
+  pool.push(2)
+  pool.push(0)
+  pool.push(3)
+  pool.push(0)
+
+  -- Expr 9: if_then_else(0, 1, 2) => if 42 then ... (TYPE ERROR: cond not Bool)
+  pool.push(5)
+  pool.push(0)
+  pool.push(1)
+  pool.push(2)
+
+  -- Expr 10: if_then_else(3, 0, 3) => if true then 42 else true (TYPE ERROR: branch mismatch)
+  pool.push(5)
+  pool.push(3)
+  pool.push(0)
+  pool.push(3)
+
+  -- Expr 11: eq(0, 3) => 42 == true (TYPE ERROR: type mismatch)
+  pool.push(3)
+  pool.push(0)
+  pool.push(3)
+  pool.push(0)
+
+  -- Expr 12: and(3, 6) => true and (42==10) -- OK: Bool and Bool
+  pool.push(4)
+  pool.push(3)
+  pool.push(6)
+  pool.push(0)
+
+  print "Well-typed expressions:"
+  check_and_print(pool, 2)
+  check_and_print(pool, 5)
+  check_and_print(pool, 6)
+  check_and_print(pool, 7)
+  check_and_print(pool, 12)
+  print ""
+
+  print "Ill-typed expressions:"
+  check_and_print(pool, 8)
+  check_and_print(pool, 9)
+  check_and_print(pool, 10)
+  check_and_print(pool, 11)
+  print ""
+
+  print "Type checking ensures expressions are well-formed before evaluation."

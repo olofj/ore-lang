@@ -5225,6 +5225,156 @@ fn showcase390_union_find() {
 }
 
 #[test]
+fn showcase391_astar_pathfinding() {
+    let out = run_ore("showcase391.ore");
+    assert!(out.contains("A* Pathfinding on 8x8 Grid:"));
+    assert!(out.contains("Path length: 15 steps"));
+    assert!(out.contains("(0,0)"));
+    assert!(out.contains("(7,7)"));
+    assert!(out.contains("Path length: 9 steps"));
+    assert!(out.contains("A* finds shortest path using heuristic-guided search."));
+}
+
+#[test]
+fn showcase392_polynomial_division() {
+    let out = run_ore("showcase392.ore");
+    assert!(out.contains("Polynomial Long Division:"));
+    assert!(out.contains("Quotient:  x^2 + x + 3"));
+    assert!(out.contains("Remainder: 5"));
+    assert!(out.contains("Quotient:  2x^2 - x + 1"));
+    assert!(out.contains("Remainder: 3"));
+    assert!(out.contains("Quotient:  x^3 + x^2 + x + 1"));
+    assert!(out.contains("Remainder: 0"));
+    assert!(out.contains("Verify Q*D+R: x^4 - 1"));
+    assert!(out.contains("Quotient:  3x^2 + x - 4"));
+    assert!(out.contains("Remainder: 6"));
+}
+
+#[test]
+fn showcase393_type_checker() {
+    let out = run_ore("showcase393.ore");
+    assert!(out.contains("Type Checker for Tiny Expression Language:"));
+    assert!(out.contains("(42 + 10)"));
+    assert!(out.contains("Type: Int [OK]"));
+    assert!(out.contains("Type: Bool [OK]"));
+    assert!(out.contains("Error: add expects Int+Int, got Int+Bool [FAIL]"));
+    assert!(out.contains("Error: if condition must be Bool, got Int [FAIL]"));
+    assert!(out.contains("Error: if branches must match, got Int and Bool [FAIL]"));
+    assert!(out.contains("Error: eq expects same types, got Int and Bool [FAIL]"));
+    assert!(out.contains("Type checking ensures expressions are well-formed before evaluation."));
+}
+
+#[test]
+fn showcase394_sudoku_solver() {
+    let out = run_ore("showcase394.ore");
+    assert!(out.contains("Sudoku Solver (4x4 Mini-Puzzles):"));
+    assert!(out.contains("Solved:"));
+    assert!(out.contains("1 2 | 3 4"));
+    assert!(out.contains("4 3 | 2 1"));
+    assert!(out.contains("Number of valid completions: 72"));
+    assert!(out.contains("Sudoku solving uses backtracking with constraint checking."));
+}
+
+#[test]
+fn showcase395_red_black_tree() {
+    let out = run_ore("showcase395.ore");
+    assert!(out.contains("Red-Black Tree Properties:"));
+    assert!(out.contains("Property 1 - Root is black: YES"));
+    assert!(out.contains("Property 2 - No red-red parent-child: YES"));
+    assert!(out.contains("Property 3 - Black height: 3"));
+    assert!(out.contains("In-order traversal: [1, 5, 8, 10, 15, 20, 25, 30]"));
+    assert!(out.contains("Is sorted: YES"));
+    assert!(out.contains("Total nodes: 8"));
+    assert!(out.contains("Red-black trees guarantee O(log n) operations via color invariants."));
+}
+
+#[test]
+fn showcase396_checksums() {
+    let out = run_ore("showcase396.ore");
+    assert!(out.contains("Checksum Calculations:"));
+    assert!(out.contains("fletcher16(\"hello\") = 11542"));
+    assert!(out.contains("consistent: YES"));
+    assert!(out.contains("Different inputs: different checksums"));
+    assert!(out.contains("Additive detects swap: NO (expected)"));
+    assert!(out.contains("Weighted detects swap: YES"));
+    assert!(out.contains("Error detected: YES"));
+    assert!(out.contains("Luhn([0]): valid"));
+    assert!(out.contains("Luhn([1, 8]): valid"));
+    assert!(out.contains("Luhn([1, 9]): invalid"));
+    assert!(out.contains("Checksums: essential for data integrity in networking and storage."));
+}
+
+#[test]
+fn showcase397_query_engine() {
+    let out = run_ore("showcase397.ore");
+    assert!(out.contains("Simple Database Query Engine:"));
+    assert!(out.contains("(7 rows)"));
+    assert!(out.contains("Alice | Engineering | 95000 | 30"));
+    assert!(out.contains("WHERE dept = Engineering:"));
+    assert!(out.contains("(3 rows)"));
+    assert!(out.contains("WHERE salary > 80000:"));
+    assert!(out.contains("(4 rows)"));
+    assert!(out.contains("ORDER BY salary ASC LIMIT 3:"));
+    assert!(out.contains("Diana | Marketing | 68000 | 28"));
+    assert!(out.contains("Engineering: count=3, avg_salary=103333"));
+    assert!(out.contains("Engineering AND salary > 100000:"));
+    assert!(out.contains("(2 rows)"));
+    assert!(out.contains("Query engine demonstrates filter, sort, group, and limit operations."));
+}
+
+#[test]
+fn showcase398_minimax() {
+    let out = run_ore("showcase398.ore");
+    assert!(out.contains("Minimax Tic-Tac-Toe AI:"));
+    assert!(out.contains("Game 1: AI (X) vs AI (O)"));
+    assert!(out.contains("Result: Draw!"));
+    assert!(out.contains("Game 2: Position evaluation"));
+    assert!(out.contains("Best move for X:"));
+    assert!(out.contains("Best move for O:"));
+    assert!(out.contains("X's best move: (0,2) (should complete row)"));
+    assert!(out.contains("O's best move: (0,2) (should block X)"));
+    assert!(out.contains("Minimax guarantees optimal play - perfect play leads to a draw."));
+}
+
+#[test]
+fn showcase399_fast_exponentiation() {
+    let out = run_ore("showcase399.ore");
+    assert!(out.contains("Fast Exponentiation (Binary Method):"));
+    assert!(out.contains("2^10 = 1024"));
+    assert!(out.contains("2^20 = 1048576"));
+    assert!(out.contains("[OK]"));
+    assert!(out.contains("Final: 2^13 = 8192"));
+    assert!(out.contains("2^10 mod 1000 = 24"));
+    assert!(out.contains("3^6 mod 7 = 1"));
+    assert!(out.contains("3^18 mod 19 = 1"));
+    assert!(out.contains("Binary exponentiation: O(log n) vs naive O(n) multiplications."));
+}
+
+#[test]
+fn showcase400_grand_showcase() {
+    let out = run_ore("showcase400.ore");
+    assert!(out.contains("Grand Showcase - Ore Language Features:"));
+    assert!(out.contains("Manhattan distance: 7"));
+    assert!(out.contains("Circle: area = 75"));
+    assert!(out.contains("Rectangle: area = 24"));
+    assert!(out.contains("map(x => x * 2): [2, 4, 6, 8, 10]"));
+    assert!(out.contains("reduce(+): 15"));
+    assert!(out.contains("0, 1, 1, 2, 3, 5, 8, 13, 21, 34"));
+    assert!(out.contains("GCD(48, 18) = 6"));
+    assert!(out.contains("Encrypted: khoor zruog"));
+    assert!(out.contains("Round-trip: OK"));
+    assert!(out.contains("Sorted: [3, 9, 10, 27, 38, 43, 82]"));
+    assert!(out.contains("\"the\": 3"));
+    assert!(out.contains("sum(1..10) = 55"));
+    assert!(out.contains("FizzBuzz: 1 2 Fizz 4 Buzz"));
+    assert!(out.contains("Squares: [1, 4, 9, 16, 25, 36, 49]"));
+    assert!(out.contains("10! = 3628800"));
+    assert!(out.contains("Sum 1..100 (while): 5050"));
+    assert!(out.contains("Collatz(27): 111 steps to reach 1"));
+    assert!(out.contains("This is showcase 400 - celebrating the milestone!"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

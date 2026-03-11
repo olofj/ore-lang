@@ -1,0 +1,172 @@
+-- Showcase 392: Polynomial long division
+
+-- Polynomials represented as coefficient lists: [a0, a1, a2, ...] = a0 + a1*x + a2*x^2 + ...
+
+fn poly_str coeffs:List -> Str
+  n := coeffs | count()
+  if n == 0
+    return "0"
+  mut s := ""
+  mut first := true
+  mut i := n - 1
+  loop
+    if i < 0
+      break
+    c := coeffs[i]
+    if c != 0
+      if not first and c > 0
+        s = s + " + "
+      else if not first and c < 0
+        s = s + " - "
+      ac := if c < 0 then 0 - c else c
+      if first and c < 0
+        s = s + "-"
+      if i == 0
+        s = s + str(ac)
+      else if i == 1
+        if ac == 1
+          s = s + "x"
+        else
+          s = s + str(ac) + "x"
+      else
+        if ac == 1
+          s = s + "x^" + str(i)
+        else
+          s = s + str(ac) + "x^" + str(i)
+      first = false
+    i = i - 1
+  if first
+    return "0"
+  s
+
+fn poly_degree coeffs:List -> Int
+  n := coeffs | count()
+  mut d := n - 1
+  loop
+    if d < 0
+      break
+    if coeffs[d] != 0
+      return d
+    d = d - 1
+  0
+
+fn poly_div dividend:List divisor:List -> List
+  -- Returns flat list: [quotient_coeffs..., -1, remainder_coeffs...]
+  -- -1 is used as separator
+  dd := poly_degree(dividend)
+  dv := poly_degree(divisor)
+
+  if dd < dv
+    mut result := [0, -1]
+    for i in range(0, dividend | count())
+      result.push(dividend[i])
+    return result
+
+  -- Copy dividend to remainder
+  mut rem := []
+  for i in range(0, dividend | count())
+    rem.push(dividend[i])
+
+  -- Quotient
+  q_len := dd - dv + 1
+  mut quot := []
+  for i in range(0, q_len)
+    quot.push(0)
+
+  mut step := dd
+  loop
+    if step < dv
+      break
+    -- Leading coeff ratio (integer division)
+    coeff := rem[step] / divisor[dv]
+    qi := step - dv
+    quot[qi] = coeff
+
+    -- Subtract divisor * coeff * x^qi from remainder
+    for j in range(0, dv + 1)
+      rem[qi + j] = rem[qi + j] - coeff * divisor[j]
+
+    step = step - 1
+
+  -- Build result: quot, -999999, rem
+  mut result := []
+  for i in range(0, q_len)
+    result.push(quot[i])
+  result.push(-999999)
+  for i in range(0, rem | count())
+    result.push(rem[i])
+  result
+
+fn split_result res:List -> List
+  -- Returns index of separator
+  n := res | count()
+  for i in range(0, n)
+    if res[i] == -999999
+      return [i]
+  [n]
+
+fn extract_quot res:List sep:Int -> List
+  mut q := []
+  for i in range(0, sep)
+    q.push(res[i])
+  q
+
+fn extract_rem res:List sep:Int -> List
+  n := res | count()
+  mut r := []
+  for i in range(sep + 1, n)
+    r.push(res[i])
+  r
+
+fn do_division name:Str dividend:List divisor:List
+  print "  {name}:"
+  print "    Dividend: {poly_str(dividend)}"
+  print "    Divisor:  {poly_str(divisor)}"
+  res := poly_div(dividend, divisor)
+  sep_info := split_result(res)
+  sep := sep_info[0]
+  q := extract_quot(res, sep)
+  r := extract_rem(res, sep)
+  print "    Quotient:  {poly_str(q)}"
+  print "    Remainder: {poly_str(r)}"
+
+  -- Verify: dividend = quotient * divisor + remainder
+  -- Multiply quotient by divisor
+  qlen := q | count()
+  dlen := divisor | count()
+  plen := qlen + dlen - 1
+  mut product := []
+  for i in range(0, plen)
+    product.push(0)
+  for i in range(0, qlen)
+    for j in range(0, dlen)
+      product[i + j] = product[i + j] + q[i] * divisor[j]
+
+  -- Add remainder
+  rlen := r | count()
+  for i in range(0, rlen)
+    if i < plen
+      product[i] = product[i] + r[i]
+    else
+      product.push(r[i])
+
+  print "    Verify Q*D+R: {poly_str(product)}"
+  print ""
+
+fn main
+  print "Polynomial Long Division:"
+  print ""
+
+  -- (x^3 - 2x^2 - 4) / (x - 3) = x^2 + x + 3 remainder 5
+  do_division("x^3 - 2x^2 - 4 divided by x - 3", [-4, 0, -2, 1], [-3, 1])
+
+  -- (2x^3 + 3x^2 - x + 5) / (x + 2)
+  do_division("2x^3 + 3x^2 - x + 5 divided by x + 2", [5, -1, 3, 2], [2, 1])
+
+  -- (x^4 - 1) / (x - 1) = x^3 + x^2 + x + 1, remainder 0
+  do_division("x^4 - 1 divided by x - 1", [-1, 0, 0, 0, 1], [-1, 1])
+
+  -- (6x^3 + 5x^2 - 7x + 2) / (2x + 1)
+  do_division("6x^3 + 5x^2 - 7x + 2 divided by 2x + 1", [2, -7, 5, 6], [1, 2])
+
+  print "Polynomial division: fundamental operation in algebra and computer science."

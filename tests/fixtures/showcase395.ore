@@ -1,0 +1,273 @@
+-- Showcase 395: Red-black tree properties demonstration
+
+-- Red-black tree stored as parallel arrays:
+--   key[], color[] (0=black, 1=red), left[], right[], parent[]
+-- -1 = NIL (considered black)
+
+fn rb_create -> List
+  -- Returns [size, ...keys, ...colors, ...lefts, ...rights, ...parents]
+  -- Max 31 nodes, each section is 31 elements
+  -- Layout: [0]=size, [1..31]=keys, [32..62]=colors, [63..93]=lefts, [94..124]=rights, [125..155]=parents
+  mut tree := [0]
+  for i in range(0, 155)
+    tree.push(-1)
+  tree
+
+fn rb_size t:List -> Int
+  t[0]
+
+fn rb_key t:List i:Int -> Int
+  t[1 + i]
+
+fn rb_color t:List i:Int -> Int
+  if i == -1
+    return 0
+  t[32 + i]
+
+fn rb_left t:List i:Int -> Int
+  t[63 + i]
+
+fn rb_right t:List i:Int -> Int
+  t[94 + i]
+
+fn rb_parent t:List i:Int -> Int
+  t[125 + i]
+
+fn rb_set_color t:List i:Int c:Int
+  t[32 + i] = c
+
+fn rb_set_left t:List i:Int v:Int
+  t[63 + i] = v
+
+fn rb_set_right t:List i:Int v:Int
+  t[94 + i] = v
+
+fn rb_set_parent t:List i:Int v:Int
+  t[125 + i] = v
+
+fn rb_rotate_left t:List x:Int
+  y := rb_right(t, x)
+  rb_set_right(t, x, rb_left(t, y))
+  if rb_left(t, y) != -1
+    rb_set_parent(t, rb_left(t, y), x)
+  rb_set_parent(t, y, rb_parent(t, x))
+  px := rb_parent(t, x)
+  if px == -1
+    -- y becomes root (index 0 stays as root tracker)
+    dummy := 0
+  else if x == rb_left(t, px)
+    rb_set_left(t, px, y)
+  else
+    rb_set_right(t, px, y)
+  rb_set_left(t, y, x)
+  rb_set_parent(t, x, y)
+
+fn rb_rotate_right t:List y:Int
+  x := rb_left(t, y)
+  rb_set_left(t, y, rb_right(t, x))
+  if rb_right(t, x) != -1
+    rb_set_parent(t, rb_right(t, x), y)
+  rb_set_parent(t, x, rb_parent(t, y))
+  py := rb_parent(t, y)
+  if py == -1
+    dummy := 0
+  else if y == rb_left(t, py)
+    rb_set_left(t, py, x)
+  else
+    rb_set_right(t, py, x)
+  rb_set_right(t, x, y)
+  rb_set_parent(t, y, x)
+
+fn rb_find_root t:List -> Int
+  n := rb_size(t)
+  if n == 0
+    return -1
+  -- Find node with parent == -1
+  for i in range(0, n)
+    if rb_parent(t, i) == -1
+      return i
+  0
+
+fn rb_insert_fixup t:List z:Int
+  mut node := z
+  loop
+    p := rb_parent(t, node)
+    if p == -1 or rb_color(t, p) == 0
+      break
+    gp := rb_parent(t, p)
+    if gp == -1
+      break
+    if p == rb_left(t, gp)
+      uncle := rb_right(t, gp)
+      if rb_color(t, uncle) == 1
+        rb_set_color(t, p, 0)
+        rb_set_color(t, uncle, 0)
+        rb_set_color(t, gp, 1)
+        node = gp
+      else
+        if node == rb_right(t, p)
+          node = p
+          rb_rotate_left(t, node)
+        p2 := rb_parent(t, node)
+        rb_set_color(t, p2, 0)
+        gp2 := rb_parent(t, p2)
+        rb_set_color(t, gp2, 1)
+        rb_rotate_right(t, gp2)
+    else
+      uncle := rb_left(t, gp)
+      if rb_color(t, uncle) == 1
+        rb_set_color(t, p, 0)
+        rb_set_color(t, uncle, 0)
+        rb_set_color(t, gp, 1)
+        node = gp
+      else
+        if node == rb_left(t, p)
+          node = p
+          rb_rotate_right(t, node)
+        p2 := rb_parent(t, node)
+        rb_set_color(t, p2, 0)
+        gp2 := rb_parent(t, p2)
+        rb_set_color(t, gp2, 1)
+        rb_rotate_left(t, gp2)
+
+  root := rb_find_root(t)
+  rb_set_color(t, root, 0)
+
+fn rb_insert t:List key:Int
+  n := rb_size(t)
+  t[0] = n + 1
+  t[1 + n] = key
+  rb_set_color(t, n, 1)
+  rb_set_left(t, n, -1)
+  rb_set_right(t, n, -1)
+
+  if n == 0
+    rb_set_parent(t, 0, -1)
+    rb_set_color(t, 0, 0)
+    return
+
+  -- BST insert
+  mut curr := rb_find_root(t)
+  mut par := -1
+  loop
+    if curr == -1
+      break
+    par = curr
+    if key < rb_key(t, curr)
+      curr = rb_left(t, curr)
+    else
+      curr = rb_right(t, curr)
+
+  rb_set_parent(t, n, par)
+  if key < rb_key(t, par)
+    rb_set_left(t, par, n)
+  else
+    rb_set_right(t, par, n)
+
+  rb_insert_fixup(t, n)
+
+fn rb_black_height t:List node:Int -> Int
+  if node == -1
+    return 1
+  lh := rb_black_height(t, rb_left(t, node))
+  rh := rb_black_height(t, rb_right(t, node))
+  add := if rb_color(t, node) == 0 then 1 else 0
+  if lh > rh then lh + add else rh + add
+
+fn rb_check_no_red_red t:List node:Int -> Bool
+  if node == -1
+    return true
+  if rb_color(t, node) == 1
+    l := rb_left(t, node)
+    r := rb_right(t, node)
+    if rb_color(t, l) == 1 or rb_color(t, r) == 1
+      return false
+  lv := rb_check_no_red_red(t, rb_left(t, node))
+  rv := rb_check_no_red_red(t, rb_right(t, node))
+  lv and rv
+
+fn rb_inorder t:List node:Int result:List
+  if node == -1
+    return
+  rb_inorder(t, rb_left(t, node), result)
+  result.push(rb_key(t, node))
+  rb_inorder(t, rb_right(t, node), result)
+
+fn color_name c:Int -> Str
+  if c == 0 then "B" else "R"
+
+fn rb_print_tree t:List node:Int depth:Int
+  if node == -1
+    return
+  rb_print_tree(t, rb_right(t, node), depth + 1)
+  mut indent := "    "
+  for i in range(0, depth)
+    indent = indent + "  "
+  cn := color_name(rb_color(t, node))
+  print "{indent}{rb_key(t, node)}({cn})"
+  rb_print_tree(t, rb_left(t, node), depth + 1)
+
+fn main
+  print "Red-Black Tree Properties:"
+  print ""
+
+  mut tree := rb_create()
+
+  values := [10, 20, 30, 15, 25, 5, 1, 8]
+  print "Inserting values: 10, 20, 30, 15, 25, 5, 1, 8"
+  for i in range(0, values | count())
+    rb_insert(tree, values[i])
+
+  print ""
+  print "Tree structure (right subtree on top):"
+  root := rb_find_root(tree)
+  rb_print_tree(tree, root, 0)
+
+  print ""
+
+  -- Check properties
+  root_color := rb_color(tree, root)
+  print "Property 1 - Root is black: {if root_color == 0 then "YES" else "NO"}"
+
+  no_rr := rb_check_no_red_red(tree, root)
+  print "Property 2 - No red-red parent-child: {if no_rr then "YES" else "NO"}"
+
+  bh := rb_black_height(tree, root)
+  print "Property 3 - Black height: {bh}"
+
+  print ""
+
+  -- In-order traversal
+  mut sorted := []
+  rb_inorder(tree, root, sorted)
+  mut sorted_str := ""
+  for i in range(0, sorted | count())
+    if i > 0
+      sorted_str = sorted_str + ", "
+    sorted_str = sorted_str + str(sorted[i])
+  print "In-order traversal: [{sorted_str}]"
+
+  -- Check sorted
+  mut is_sorted := true
+  for i in range(1, sorted | count())
+    if sorted[i] < sorted[i - 1]
+      is_sorted = false
+  print "Is sorted: {if is_sorted then "YES" else "NO"}"
+
+  print ""
+  print "Node details:"
+  n := rb_size(tree)
+  mut red_count := 0
+  mut black_count := 0
+  for i in range(0, n)
+    c := rb_color(tree, i)
+    if c == 1
+      red_count = red_count + 1
+    else
+      black_count = black_count + 1
+  print "  Total nodes: {n}"
+  print "  Red nodes: {red_count}"
+  print "  Black nodes: {black_count}"
+
+  print ""
+  print "Red-black trees guarantee O(log n) operations via color invariants."
