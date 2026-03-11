@@ -2687,6 +2687,11 @@ impl<'ctx> CodeGen<'ctx> {
             return self.compile_option_method(obj_val, method, args, func);
         }
 
+        // Handle Result methods
+        if obj_kind == ValKind::Result {
+            return self.compile_result_method(obj_val, method, args, func);
+        }
+
         // Handle Channel methods
         if obj_kind == ValKind::Channel {
             return self.compile_channel_method(obj_val, method, args, func);
@@ -4519,6 +4524,68 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((phi.as_basic_value(), ValKind::Option))
             }
             _ => Err(Self::unknown_method_error("Option", method, &["unwrap_or", "map", "is_some", "is_none"])),
+        }
+    }
+
+    fn compile_result_method(
+        &mut self,
+        result_val: BasicValueEnum<'ctx>,
+        method: &str,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let result_ty = self.result_type();
+        let alloca = bld!(self.builder.build_alloca(result_ty, "res_m"))?;
+        bld!(self.builder.build_store(alloca, result_val))?;
+
+        let tag_ptr = bld!(self.builder.build_struct_gep(result_ty, alloca, 0, "tag_ptr"))?;
+        let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+        let val_ptr = bld!(self.builder.build_struct_gep(result_ty, alloca, 2, "val_ptr"))?;
+
+        match method {
+            "unwrap_or" => {
+                if args.is_empty() {
+                    return Err(CodeGenError { line: None, msg: "unwrap_or requires a default argument".into() });
+                }
+                let (default_val, default_kind) = self.compile_expr_with_kind(&args[0], func)?;
+                // tag 0 = Ok
+                let is_ok = bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
+                ))?;
+                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+
+                let ok_bb = self.context.append_basic_block(func, "result_ok");
+                let err_bb = self.context.append_basic_block(func, "result_err");
+                let merge_bb = self.context.append_basic_block(func, "result_merge");
+
+                bld!(self.builder.build_conditional_branch(is_ok, ok_bb, err_bb))?;
+
+                self.builder.position_at_end(ok_bb);
+                let ok_result = self.coerce_from_i64(inner, &default_kind)?;
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+                self.builder.position_at_end(err_bb);
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+                self.builder.position_at_end(merge_bb);
+                let phi = bld!(self.builder.build_phi(ok_result.get_type(), "result_val"))?;
+                phi.add_incoming(&[(&ok_result, ok_bb), (&default_val, err_bb)]);
+
+                Ok((phi.as_basic_value(), default_kind))
+            }
+            "is_ok" => {
+                let is_ok = bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
+                ))?;
+                Ok((is_ok.into(), ValKind::Bool))
+            }
+            "is_err" => {
+                let is_err = bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_err"
+                ))?;
+                Ok((is_err.into(), ValKind::Bool))
+            }
+            _ => Err(Self::unknown_method_error("Result", method, &["unwrap_or", "is_ok", "is_err"])),
         }
     }
 
