@@ -995,6 +995,17 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn strings_methods2() {
+    let out = run_ore("strings/str_methods2.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "2", "3", "0",       // count
+        "file", "file.ore",  // strip_suffix
+        "example.com",       // strip_prefix
+    ]);
+}
+
+#[test]
 fn lists_partition() {
     let out = run_ore("lists/partition.ore");
     let lines: Vec<&str> = out.lines().collect();

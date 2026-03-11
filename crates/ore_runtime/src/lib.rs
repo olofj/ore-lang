@@ -444,6 +444,42 @@ pub extern "C" fn ore_str_slice(s: *mut OreStr, start: i64, end: i64) -> *mut Or
     ore_str_new(slice.as_ptr(), slice.len() as u32)
 }
 
+/// Count occurrences of a substring.
+#[no_mangle]
+pub extern "C" fn ore_str_count(s: *mut OreStr, needle: *mut OreStr) -> i64 {
+    if s.is_null() || needle.is_null() { return 0; }
+    let haystack = unsafe { (*s).as_str() };
+    let needle_str = unsafe { (*needle).as_str() };
+    if needle_str.is_empty() { return 0; }
+    haystack.matches(needle_str).count() as i64
+}
+
+/// Strip a prefix from a string. Returns original if prefix not found.
+#[no_mangle]
+pub extern "C" fn ore_str_strip_prefix(s: *mut OreStr, prefix: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if prefix.is_null() { return s; }
+    let str_val = unsafe { (*s).as_str() };
+    let prefix_str = unsafe { (*prefix).as_str() };
+    match str_val.strip_prefix(prefix_str) {
+        Some(rest) => ore_str_new(rest.as_ptr(), rest.len() as u32),
+        None => ore_str_new(str_val.as_ptr(), str_val.len() as u32),
+    }
+}
+
+/// Strip a suffix from a string. Returns original if suffix not found.
+#[no_mangle]
+pub extern "C" fn ore_str_strip_suffix(s: *mut OreStr, suffix: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if suffix.is_null() { return s; }
+    let str_val = unsafe { (*s).as_str() };
+    let suffix_str = unsafe { (*suffix).as_str() };
+    match str_val.strip_suffix(suffix_str) {
+        Some(rest) => ore_str_new(rest.as_ptr(), rest.len() as u32),
+        None => ore_str_new(str_val.as_ptr(), str_val.len() as u32),
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_slice(list: *mut OreList, start: i64, end: i64) -> *mut OreList {
     let result = ore_list_new();

@@ -1,0 +1,9 @@
+fn main
+  s := "hello world hello"
+  print s.count("hello")
+  print s.count("o")
+  print s.count("xyz")
+
+  print "file.ore".strip_suffix(".ore")
+  print "file.ore".strip_suffix(".txt")
+  print "https://example.com".strip_prefix("https://")
