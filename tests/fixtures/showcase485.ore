@@ -1,0 +1,164 @@
+-- Showcase 485: Bloom filter with multiple hash functions
+
+fn hash1 s:Str size:Int -> Int
+  mut h := 0
+  chars := s.chars()
+  clen := chars | len
+  for i in range(0, clen)
+    h = (h * 31 + i * 7 + clen) % size
+  return h
+
+fn hash2 s:Str size:Int -> Int
+  mut h := 5381
+  chars := s.chars()
+  clen := chars | len
+  for i in range(0, clen)
+    h = (h * 33 + i * 13 + clen * 3) % size
+  return h
+
+fn hash3 s:Str size:Int -> Int
+  mut h := 0
+  chars := s.chars()
+  clen := chars | len
+  for i in range(0, clen)
+    h = (h * 17 + i * 23 + clen * 5 + 7) % size
+  return h
+
+fn main
+  print "Bloom Filter Simulation:"
+  print ""
+
+  -- Part 1: Initialize bloom filter
+  print "=== Part 1: Initialize Filter ==="
+  filter_size := 64
+  num_hashes := 3
+  print "  Filter size: {filter_size} bits"
+  print "  Hash functions: {num_hashes}"
+
+  mut bits := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Part 2: Insert elements
+  print ""
+  print "=== Part 2: Insert Elements ==="
+  mut words := []
+  words.push("apple")
+  words.push("banana")
+  words.push("cherry")
+  words.push("date")
+  words.push("elderberry")
+  words.push("fig")
+  words.push("grape")
+  words.push("honeydew")
+
+  for i in range(0, words | len)
+    h1 := hash1(words[i], filter_size)
+    h2 := hash2(words[i], filter_size)
+    h3 := hash3(words[i], filter_size)
+    bits[h1] = 1
+    bits[h2] = 1
+    bits[h3] = 1
+    print "    Insert '{words[i]}': bits {h1}, {h2}, {h3}"
+
+  mut set_bits := 0
+  for i in range(0, filter_size)
+    if bits[i] == 1
+      set_bits = set_bits + 1
+  print "  Bits set: {set_bits}/{filter_size}"
+
+  -- Part 3: Query elements
+  print ""
+  print "=== Part 3: Query Elements ==="
+  mut test_words := []
+  test_words.push("apple")
+  test_words.push("banana")
+  test_words.push("cherry")
+  test_words.push("mango")
+  test_words.push("kiwi")
+  test_words.push("grape")
+  test_words.push("peach")
+  test_words.push("date")
+
+  mut true_pos := 0
+  mut true_neg := 0
+  mut false_pos := 0
+
+  for i in range(0, test_words | len)
+    h1 := hash1(test_words[i], filter_size)
+    h2 := hash2(test_words[i], filter_size)
+    h3 := hash3(test_words[i], filter_size)
+    present := bits[h1] == 1 and bits[h2] == 1 and bits[h3] == 1
+
+    -- Check if actually inserted
+    mut actually_in := false
+    for j in range(0, words | len)
+      if words[j] == test_words[i]
+        actually_in = true
+
+    if present and actually_in
+      print "    '{test_words[i]}': PROBABLY IN (true positive)"
+      true_pos = true_pos + 1
+    else if present and not actually_in
+      print "    '{test_words[i]}': PROBABLY IN (false positive!)"
+      false_pos = false_pos + 1
+    else if not present and not actually_in
+      print "    '{test_words[i]}': NOT IN (true negative)"
+      true_neg = true_neg + 1
+    else
+      print "    '{test_words[i]}': NOT IN (false negative - ERROR!)"
+
+  -- Part 4: Statistics
+  print ""
+  print "=== Part 4: Filter Statistics ==="
+  print "  True positives: {true_pos}"
+  print "  True negatives: {true_neg}"
+  print "  False positives: {false_pos}"
+  fill_pct := set_bits * 100 / filter_size
+  print "  Fill ratio: {fill_pct}%"
+
+  -- Part 5: Filter visualization
+  print ""
+  print "=== Part 5: Filter Visualization ==="
+  mut row1 := ""
+  mut row2 := ""
+  for i in range(0, 32)
+    if bits[i] == 1
+      row1 = row1 + "1"
+    else
+      row1 = row1 + "0"
+  for i in range(32, 64)
+    if bits[i] == 1
+      row2 = row2 + "1"
+    else
+      row2 = row2 + "0"
+  print "  Bits [0-31]:  {row1}"
+  print "  Bits [32-63]: {row2}"
+
+  -- Part 6: Counting bloom filter variant
+  print ""
+  print "=== Part 6: Counting Bloom Filter ==="
+  mut counters := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  cnt_size := 16
+
+  mut cnt_items := ["cat", "dog", "bird"]
+  for i in range(0, 3)
+    h1 := hash1(cnt_items[i], cnt_size)
+    h2 := hash2(cnt_items[i], cnt_size)
+    counters[h1] = counters[h1] + 1
+    counters[h2] = counters[h2] + 1
+    print "    Insert '{cnt_items[i]}': counters[{h1}]++, counters[{h2}]++"
+
+  dh1 := hash1("dog", cnt_size)
+  dh2 := hash2("dog", cnt_size)
+  counters[dh1] = counters[dh1] - 1
+  counters[dh2] = counters[dh2] - 1
+  print "    Remove 'dog': counters[{dh1}]--, counters[{dh2}]--"
+
+  ch1 := hash1("cat", cnt_size)
+  ch2 := hash2("cat", cnt_size)
+  if counters[ch1] > 0 and counters[ch2] > 0
+    print "    'cat' still present: yes"
+  else
+    print "    'cat' still present: no"
+
+  print ""
+  print "Bloom filter: insert, query, false positives, counting variant."

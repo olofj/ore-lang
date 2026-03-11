@@ -1,0 +1,167 @@
+-- Showcase 487: Conway's Game of Life with pattern library
+
+fn get_cell grid:List row:Int col:Int sz:Int -> Int
+  if row < 0 or row >= sz or col < 0 or col >= sz
+    return 0
+  return grid[row * sz + col]
+
+fn count_neighbors grid:List row:Int col:Int sz:Int -> Int
+  mut count := 0
+  for dr in range(-1, 2)
+    for dc in range(-1, 2)
+      if dr != 0 or dc != 0
+        count = count + get_cell(grid, row + dr, col + dc, sz)
+  return count
+
+fn count_alive grid:List sz:Int -> Int
+  mut count := 0
+  for i in range(0, sz * sz)
+    if grid[i] == 1
+      count = count + 1
+  return count
+
+fn main
+  print "Conway's Game of Life:"
+  print ""
+
+  size := 10
+
+  -- Part 1: Blinker (period 2 oscillator)
+  print "=== Part 1: Blinker ==="
+  mut grid := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Blinker: row 4, cols 3-5
+  grid[4 * 10 + 3] = 1
+  grid[4 * 10 + 4] = 1
+  grid[4 * 10 + 5] = 1
+
+  alive := count_alive(grid, size)
+  print "  Gen 0 ({alive} alive):"
+
+  -- Display grid
+  for r in range(0, size)
+    mut row_str := "    "
+    for c in range(0, size)
+      if grid[r * size + c] == 1
+        row_str = row_str + "#"
+      else
+        row_str = row_str + "."
+    print row_str
+
+  -- Step
+  mut new_grid := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for r in range(0, size)
+    for c in range(0, size)
+      n := count_neighbors(grid, r, c, size)
+      cell := grid[r * size + c]
+      if cell == 1 and (n == 2 or n == 3)
+        new_grid[r * size + c] = 1
+      else if cell == 0 and n == 3
+        new_grid[r * size + c] = 1
+
+  alive1 := count_alive(new_grid, size)
+  print "  Gen 1 ({alive1} alive):"
+  for r in range(0, size)
+    mut row_str := "    "
+    for c in range(0, size)
+      if new_grid[r * size + c] == 1
+        row_str = row_str + "#"
+      else
+        row_str = row_str + "."
+    print row_str
+
+  -- Part 2: Block (still life)
+  print ""
+  print "=== Part 2: Block (Still Life) ==="
+  mut block := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  block[4 * 10 + 4] = 1
+  block[4 * 10 + 5] = 1
+  block[5 * 10 + 4] = 1
+  block[5 * 10 + 5] = 1
+
+  mut block2 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for r in range(0, size)
+    for c in range(0, size)
+      n := count_neighbors(block, r, c, size)
+      cell := block[r * size + c]
+      if cell == 1 and (n == 2 or n == 3)
+        block2[r * size + c] = 1
+      else if cell == 0 and n == 3
+        block2[r * size + c] = 1
+
+  mut same := true
+  for i in range(0, 100)
+    if block[i] != block2[i]
+      same = false
+  if same
+    print "  Block is stable (still life)"
+  else
+    print "  Block changed"
+  print "  Alive: {count_alive(block, size)}"
+
+  -- Part 3: Glider
+  print ""
+  print "=== Part 3: Glider ==="
+  mut glider := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  glider[0 * 10 + 1] = 1
+  glider[1 * 10 + 2] = 1
+  glider[2 * 10 + 0] = 1
+  glider[2 * 10 + 1] = 1
+  glider[2 * 10 + 2] = 1
+
+  -- Run 4 generations
+  for gen in range(0, 4)
+    mut next := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for r in range(0, size)
+      for c in range(0, size)
+        n := count_neighbors(glider, r, c, size)
+        cell := glider[r * size + c]
+        if cell == 1 and (n == 2 or n == 3)
+          next[r * size + c] = 1
+        else if cell == 0 and n == 3
+          next[r * size + c] = 1
+    for i in range(0, 100)
+      glider[i] = next[i]
+
+  print "  After 4 generations:"
+  ga := count_alive(glider, size)
+  print "  Alive: {ga} (glider preserves 5 cells)"
+
+  -- Part 4: Pattern catalog
+  print ""
+  print "=== Part 4: Pattern Catalog ==="
+  print "  Still lifes: Block(4), Beehive(6), Loaf(7), Boat(5)"
+  print "  Oscillators: Blinker(3,p2), Toad(6,p2), Beacon(8,p2)"
+  print "  Spaceships: Glider(5,c/4), LWSS(9,c/2)"
+
+  -- Part 5: Population dynamics with R-pentomino
+  print ""
+  print "=== Part 5: Population Over Time ==="
+  mut pop_grid := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- R-pentomino
+  pop_grid[3 * 10 + 5] = 1
+  pop_grid[3 * 10 + 6] = 1
+  pop_grid[4 * 10 + 4] = 1
+  pop_grid[4 * 10 + 5] = 1
+  pop_grid[5 * 10 + 5] = 1
+
+  for gen in range(0, 10)
+    pop := count_alive(pop_grid, size)
+    mut bar := ""
+    for b in range(0, pop)
+      bar = bar + "#"
+    print "    Gen {gen}: {pop} {bar}"
+    mut ng := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for r in range(0, size)
+      for c in range(0, size)
+        n := count_neighbors(pop_grid, r, c, size)
+        cell := pop_grid[r * size + c]
+        if cell == 1 and (n == 2 or n == 3)
+          ng[r * size + c] = 1
+        else if cell == 0 and n == 3
+          ng[r * size + c] = 1
+    for i in range(0, 100)
+      pop_grid[i] = ng[i]
+
+  print ""
+  print "Game of Life: blinker, block, glider, patterns, population."

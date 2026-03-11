@@ -1,0 +1,163 @@
+-- Showcase 486: Simple logic gate simulator
+
+fn main
+  print "Logic Gate Simulator:"
+  print ""
+
+  -- Part 1: Basic gates
+  print "=== Part 1: Basic Gates ==="
+  -- Truth tables: inputs as pairs, compute outputs
+  inputs := [0, 0, 0, 1, 1, 0, 1, 1]
+
+  print "  AND gate:"
+  for i in range(0, 4)
+    a := inputs[i * 2]
+    b := inputs[i * 2 + 1]
+    mut result := 0
+    if a == 1 and b == 1
+      result = 1
+    print "    {a} AND {b} = {result}"
+
+  print "  OR gate:"
+  for i in range(0, 4)
+    a := inputs[i * 2]
+    b := inputs[i * 2 + 1]
+    mut result := 0
+    if a == 1 or b == 1
+      result = 1
+    print "    {a} OR {b} = {result}"
+
+  print "  XOR gate:"
+  for i in range(0, 4)
+    a := inputs[i * 2]
+    b := inputs[i * 2 + 1]
+    mut result := 0
+    if (a == 1 and b == 0) or (a == 0 and b == 1)
+      result = 1
+    print "    {a} XOR {b} = {result}"
+
+  print "  NOT gate:"
+  for i in range(0, 2)
+    mut result := 1
+    if i == 1
+      result = 0
+    print "    NOT {i} = {result}"
+
+  -- Part 2: Half adder
+  print ""
+  print "=== Part 2: Half Adder ==="
+  print "  A B | Sum Carry"
+  for i in range(0, 4)
+    a := inputs[i * 2]
+    b := inputs[i * 2 + 1]
+    -- Sum = XOR, Carry = AND
+    mut sum := 0
+    if (a == 1 and b == 0) or (a == 0 and b == 1)
+      sum = 1
+    mut carry := 0
+    if a == 1 and b == 1
+      carry = 1
+    print "  {a} {b} |  {sum}    {carry}"
+
+  -- Part 3: Full adder
+  print ""
+  print "=== Part 3: Full Adder ==="
+  print "  A B Cin | Sum Cout"
+  for cin in range(0, 2)
+    for i in range(0, 4)
+      a := inputs[i * 2]
+      b := inputs[i * 2 + 1]
+      -- Sum = a XOR b XOR cin
+      mut ab_xor := 0
+      if (a == 1 and b == 0) or (a == 0 and b == 1)
+        ab_xor = 1
+      mut sum := 0
+      if (ab_xor == 1 and cin == 0) or (ab_xor == 0 and cin == 1)
+        sum = 1
+      -- Cout = (a AND b) OR (cin AND (a XOR b))
+      mut ab_and := 0
+      if a == 1 and b == 1
+        ab_and = 1
+      mut cin_xor := 0
+      if cin == 1 and ab_xor == 1
+        cin_xor = 1
+      mut cout := 0
+      if ab_and == 1 or cin_xor == 1
+        cout = 1
+      print "  {a} {b}  {cin}  |  {sum}    {cout}"
+
+  -- Part 4: 4-bit ripple carry adder
+  print ""
+  print "=== Part 4: 4-Bit Adder ==="
+  -- Add 5 (0101) + 3 (0011)
+  a_bits := [1, 0, 1, 0]
+  b_bits := [1, 1, 0, 0]
+  mut s_bits := [0, 0, 0, 0]
+  mut carry := 0
+
+  print "  A = 0101 (5)"
+  print "  B = 0011 (3)"
+
+  for i in range(0, 4)
+    a := a_bits[i]
+    b := b_bits[i]
+    -- Full adder
+    mut ab_xor := 0
+    if (a == 1 and b == 0) or (a == 0 and b == 1)
+      ab_xor = 1
+    mut sum := 0
+    if (ab_xor == 1 and carry == 0) or (ab_xor == 0 and carry == 1)
+      sum = 1
+    mut ab_and := 0
+    if a == 1 and b == 1
+      ab_and = 1
+    mut c_xor := 0
+    if carry == 1 and ab_xor == 1
+      c_xor = 1
+    mut new_carry := 0
+    if ab_and == 1 or c_xor == 1
+      new_carry = 1
+    s_bits[i] = sum
+    print "    Bit {i}: {a}+{b}+{carry} = {sum} carry={new_carry}"
+    carry = new_carry
+
+  result_val := s_bits[3] * 8 + s_bits[2] * 4 + s_bits[1] * 2 + s_bits[0]
+  print "  S = {s_bits[3]}{s_bits[2]}{s_bits[1]}{s_bits[0]} ({result_val}) carry={carry}"
+
+  -- Part 5: Multiplexer and demultiplexer
+  print ""
+  print "=== Part 5: 2-to-1 Multiplexer ==="
+  print "  Sel D0 D1 | Out"
+  for sel in range(0, 2)
+    for d0 in range(0, 2)
+      for d1 in range(0, 2)
+        mut out := d0
+        if sel == 1
+          out = d1
+        print "   {sel}   {d0}  {d1}  |  {out}"
+
+  -- Part 6: SR latch simulation
+  print ""
+  print "=== Part 6: SR Latch ==="
+  mut q := 0
+  mut q_bar := 1
+  print "  Initial: Q={q} Q'={q_bar}"
+
+  -- Sequence of (S, R) inputs
+  mut sr_inputs := [1, 0, 0, 0, 0, 1, 0, 0, 1, 0]
+  mut sr_labels := ["Set", "Hold", "Reset", "Hold", "Set"]
+
+  for i in range(0, 5)
+    s := sr_inputs[i * 2]
+    r := sr_inputs[i * 2 + 1]
+    if s == 1 and r == 0
+      q = 1
+      q_bar = 0
+    else if s == 0 and r == 1
+      q = 0
+      q_bar = 1
+    -- s==0, r==0: hold (no change)
+    print "    S={s} R={r} ({sr_labels[i]}): Q={q} Q'={q_bar}"
+
+  print ""
+  print "Logic gates: AND/OR/XOR/NOT, adders, multiplexer, SR latch."

@@ -1,0 +1,143 @@
+-- Showcase 489: Simple regex to NFA conversion
+
+fn main
+  print "Regex to NFA Conversion:"
+  print ""
+
+  -- Part 1: Parse simple regex patterns
+  print "=== Part 1: Regex Patterns ==="
+  mut patterns := []
+  patterns.push("ab")
+  patterns.push("a|b")
+  patterns.push("ab*")
+  patterns.push("(a|b)c")
+  patterns.push("a*b*")
+
+  for i in range(0, patterns | len)
+    chars := patterns[i].chars()
+    mut desc := ""
+    for c in range(0, chars | len)
+      ch := chars[c]
+      if ch == "*"
+        desc = desc + "[star]"
+      else if ch == "|"
+        desc = desc + "[alt]"
+      else if ch == "("
+        desc = desc + "[grp-start]"
+      else if ch == ")"
+        desc = desc + "[grp-end]"
+      else
+        desc = desc + "[lit:" + ch + "]"
+    print "    Pattern '{patterns[i]}': {desc}"
+
+  -- Part 2: NFA state machine for "ab"
+  print ""
+  print "=== Part 2: NFA for 'ab' ==="
+  -- Transitions: from_state, symbol, to_state
+  mut ab_from := [0, 1]
+  mut ab_sym := ["a", "b"]
+  mut ab_to := [1, 2]
+  print "  States: 0 (start), 1, 2 (accept)"
+  print "  Transitions:"
+  for i in range(0, 2)
+    print "    {ab_from[i]} --{ab_sym[i]}--> {ab_to[i]}"
+
+  -- Simulate: test "ab"
+  mut current_states := [0]
+  test_chars := "ab".chars()
+  for i in range(0, test_chars | len)
+    ch := test_chars[i]
+    mut next_states := []
+    for s in range(0, current_states | len)
+      state := current_states[s]
+      for t in range(0, 2)
+        if ab_from[t] == state and ab_sym[t] == ch
+          next_states.push(ab_to[t])
+    current_states = next_states
+    print "  After '{ch}': states={current_states | len}"
+
+  mut accepted := false
+  for s in range(0, current_states | len)
+    if current_states[s] == 2
+      accepted = true
+  if accepted
+    print "  'ab' accepted: yes"
+  else
+    print "  'ab' accepted: no"
+
+  -- Part 3: NFA for "a|b" with epsilon transitions
+  print ""
+  print "=== Part 3: NFA for 'a|b' ==="
+  -- States: 0(start) -eps->1, 0-eps->3, 1-a->2, 3-b->4, 2-eps->5, 4-eps->5(accept)
+  mut alt_from := [0, 0, 1, 3, 2, 4]
+  mut alt_sym := ["e", "e", "a", "b", "e", "e"]
+  mut alt_to := [1, 3, 2, 4, 5, 5]
+  print "  States: 0 (start), 1-4, 5 (accept)"
+  print "  Transitions:"
+  for i in range(0, 6)
+    mut label := alt_sym[i]
+    if label == "e"
+      label = "eps"
+    print "    {alt_from[i]} --{label}--> {alt_to[i]}"
+
+  -- Epsilon closure of state 0
+  -- Start with [0], add eps-reachable: 0->1, 0->3
+  mut states := [0, 1, 3]
+  print "  Start states (eps-closure): {states | len} states"
+
+  -- Move on 'a': from states [0,1,3], find transitions with 'a'
+  -- State 1 -a-> 2
+  mut next := [2]
+  -- Eps-closure of [2]: 2 -eps-> 5
+  mut after_a := [2, 5]
+  mut acc := false
+  for s in range(0, after_a | len)
+    if after_a[s] == 5
+      acc = true
+  print "  'a' accepted: {acc}"
+
+  -- Part 4: NFA for "a*" (Kleene star)
+  print ""
+  print "=== Part 4: NFA for 'a*' ==="
+  -- States: 0 (start+accept) -a-> 1, 1 -eps-> 0
+  print "  States: 0 (start+accept), 1"
+  print "  Transitions: 0 --a--> 1, 1 --eps--> 0"
+  print "  '' accepted: true (start is accept)"
+
+  -- Test "aaa": 0-a->1-eps->0-a->1-eps->0-a->1-eps->0
+  mut star_state := 0
+  mut star_ok := true
+  for rep in range(0, 3)
+    -- Move on 'a' from state 0
+    if star_state == 0
+      star_state = 1
+    else
+      star_ok = false
+    -- Eps closure: 1 -> 0
+    if star_state == 1
+      star_state = 0
+  -- After processing, should be in state 0 (accept)
+  star_acc := star_state == 0 and star_ok
+  print "  'aaa' accepted: {star_acc}"
+
+  -- Part 5: NFA state counts for constructs
+  print ""
+  print "=== Part 5: NFA Complexity ==="
+  mut constructs := ["literal", "concat(2)", "alt(2)", "star", "a(b|c)*d"]
+  mut state_counts := [2, 4, 6, 4, 12]
+  mut trans_counts := [1, 2, 6, 5, 11]
+
+  for i in range(0, 5)
+    print "    {constructs[i]}: {state_counts[i]} states, {trans_counts[i]} transitions"
+
+  -- Part 6: DFA conversion sketch
+  print ""
+  print "=== Part 6: NFA to DFA (a|b) ==="
+  print "  DFA State 0 = NFA eps-closure(0) = states 0,1,3"
+  print "  DFA State 0 --a--> DFA State 1 (NFA: 2,5) [accept]"
+  print "  DFA State 0 --b--> DFA State 2 (NFA: 4,5) [accept]"
+  print "  DFA has 3 states vs NFA's 6 states"
+  print "  Minimized DFA: 2 states (start, accept)"
+
+  print ""
+  print "Regex NFA: parsing, simulation, eps-closure, star, DFA conversion."

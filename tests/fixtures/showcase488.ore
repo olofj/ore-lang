@@ -1,0 +1,149 @@
+-- Showcase 488: Inventory management system
+
+fn main
+  print "Inventory Management System:"
+  print ""
+
+  -- Part 1: Product catalog
+  print "=== Part 1: Product Catalog ==="
+  -- Products as "id:name:price:qty:reorder_level"
+  mut products := []
+  products.push("101:Widget:500:50:20")
+  products.push("102:Gadget:1200:30:15")
+  products.push("103:Sprocket:350:100:40")
+  products.push("104:Gizmo:2500:10:5")
+  products.push("105:Doohickey:800:25:10")
+  products.push("106:Thingamajig:150:200:80")
+  products.push("107:Whatchamacallit:3000:5:3")
+  products.push("108:Doodad:450:75:30")
+
+  print "  Products ({products | len} items):"
+  print "  ID   Name             Price  Qty"
+  for i in range(0, products | len)
+    parts := products[i].split(":")
+    print "  {parts[0]}  {parts[1]}          {parts[2]}   {parts[3]}"
+
+  -- Part 2: Process orders
+  print ""
+  print "=== Part 2: Process Orders ==="
+  -- Orders as "product_id:quantity"
+  mut orders := []
+  orders.push("101:15")
+  orders.push("103:30")
+  orders.push("104:8")
+  orders.push("102:20")
+  orders.push("106:50")
+  orders.push("101:40")
+  orders.push("108:25")
+  orders.push("107:10")
+
+  mut total_revenue := 0
+  mut fulfilled := 0
+  mut partial := 0
+  mut failed := 0
+
+  for o in range(0, orders | len)
+    oparts := orders[o].split(":")
+    oid := oparts[0]
+    oqty := oparts[1].parse_int()
+
+    -- Find product
+    for p in range(0, products | len)
+      pparts := products[p].split(":")
+      if pparts[0] == oid
+        price := pparts[2].parse_int()
+        stock := pparts[3].parse_int()
+        if stock >= oqty
+          new_stock := stock - oqty
+          products[p] = pparts[0] + ":" + pparts[1] + ":" + pparts[2] + ":" + str(new_stock) + ":" + pparts[4]
+          rev := price * oqty
+          total_revenue = total_revenue + rev
+          fulfilled = fulfilled + 1
+          print "    Order {pparts[1]} x{oqty}: FILLED (rev={rev})"
+        else if stock > 0
+          rev := price * stock
+          total_revenue = total_revenue + rev
+          products[p] = pparts[0] + ":" + pparts[1] + ":" + pparts[2] + ":0:" + pparts[4]
+          partial = partial + 1
+          print "    Order {pparts[1]} x{oqty}: PARTIAL ({stock} shipped, rev={rev})"
+        else
+          failed = failed + 1
+          print "    Order {pparts[1]} x{oqty}: FAILED (out of stock)"
+
+  print ""
+  print "  Orders: {fulfilled} filled, {partial} partial, {failed} failed"
+  print "  Total revenue: {total_revenue}"
+
+  -- Part 3: Reorder alerts
+  print ""
+  print "=== Part 3: Reorder Alerts ==="
+  mut alerts := 0
+  for i in range(0, products | len)
+    parts := products[i].split(":")
+    qty := parts[3].parse_int()
+    reorder := parts[4].parse_int()
+    if qty <= reorder
+      alerts = alerts + 1
+      print "    ALERT: {parts[1]} - stock={qty}, reorder level={reorder}"
+  print "  Total alerts: {alerts}"
+
+  -- Part 4: Inventory valuation
+  print ""
+  print "=== Part 4: Inventory Valuation ==="
+  mut total_value := 0
+  mut total_items := 0
+  for i in range(0, products | len)
+    parts := products[i].split(":")
+    price := parts[2].parse_int()
+    qty := parts[3].parse_int()
+    value := price * qty
+    total_value = total_value + value
+    total_items = total_items + qty
+    if qty > 0
+      print "    {parts[1]}: {qty} units @ {price} = {value}"
+  print "  Total items: {total_items}"
+  print "  Total value: {total_value}"
+
+  -- Part 5: ABC analysis
+  print ""
+  print "=== Part 5: ABC Analysis ==="
+  -- Sort products by value (price * qty), classify A/B/C
+  mut p_names := []
+  mut p_values := []
+  for i in range(0, products | len)
+    parts := products[i].split(":")
+    p_names.push(parts[1])
+    val := parts[2].parse_int() * parts[3].parse_int()
+    p_values.push(val)
+
+  -- Simple sort by value descending (selection sort)
+  mut sorted_idx := [0, 1, 2, 3, 4, 5, 6, 7]
+  for i in range(0, 8)
+    mut max_j := i
+    for j in range(i + 1, 8)
+      if p_values[sorted_idx[j]] > p_values[sorted_idx[max_j]]
+        max_j = j
+    if max_j != i
+      tmp := sorted_idx[i]
+      sorted_idx[i] = sorted_idx[max_j]
+      sorted_idx[max_j] = tmp
+
+  for i in range(0, 8)
+    idx := sorted_idx[i]
+    mut cat := "C"
+    if i < 2
+      cat = "A"
+    else if i < 5
+      cat = "B"
+    print "    [{cat}] {p_names[idx]}: value={p_values[idx]}"
+
+  -- Part 6: Stock movement log
+  print ""
+  print "=== Part 6: Stock Summary ==="
+  print "  Revenue generated: {total_revenue}"
+  print "  Remaining stock value: {total_value}"
+  print "  Items needing reorder: {alerts}"
+  print "  Order fulfillment: {fulfilled} of {fulfilled + partial + failed}"
+
+  print ""
+  print "Inventory: catalog, orders, alerts, valuation, ABC analysis."

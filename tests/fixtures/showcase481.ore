@@ -1,0 +1,153 @@
+-- Showcase 481: Game of Nim variations
+
+fn nim_xor a:Int b:Int -> Int
+  mut result := 0
+  mut aa := a
+  mut bb := b
+  mut bit := 1
+  while bit <= 16
+    a_bit := (aa % 2)
+    b_bit := (bb % 2)
+    if a_bit != b_bit
+      result = result + bit
+    aa = aa / 2
+    bb = bb / 2
+    bit = bit * 2
+  return result
+
+fn main
+  print "Game of Nim Variations:"
+  print ""
+
+  -- Part 1: Classic single-pile Nim
+  print "=== Part 1: Single-Pile Nim ==="
+  mut pile := 21
+  mut player := 1
+  print "  Starting pile: {pile} stones"
+  while pile > 0
+    mut take := (pile - 1) % 4
+    if take == 0
+      take = 1
+    if take > pile
+      take = pile
+    pile = pile - take
+    print "    Player {player} takes {take}, pile={pile}"
+    if pile == 0
+      print "    Player {player} wins!"
+    if player == 1
+      player = 2
+    else
+      player = 1
+
+  -- Part 2: Multi-pile Nim
+  print ""
+  print "=== Part 2: Multi-Pile Nim ==="
+  mut piles := [3, 5, 7]
+  print "  Initial piles: [{piles[0]}, {piles[1]}, {piles[2]}]"
+
+  mut nim_sum := nim_xor(piles[0], piles[1])
+  nim_sum = nim_xor(nim_sum, piles[2])
+  print "  Nim-sum: {nim_sum}"
+  if nim_sum != 0
+    print "  Position: first player can win"
+  else
+    print "  Position: second player can win"
+
+  -- Simulate game
+  mut turn := 1
+  mut moves := 0
+  while piles[0] + piles[1] + piles[2] > 0 and moves < 20
+    moves = moves + 1
+    mut chosen_pile := -1
+    mut chosen_take := 1
+    for p in range(0, 3)
+      if piles[p] > 0 and chosen_pile == -1
+        for t in range(1, piles[p] + 1)
+          if chosen_pile == -1
+            mut test_piles := [piles[0], piles[1], piles[2]]
+            test_piles[p] = test_piles[p] - t
+            mut test_ns := nim_xor(test_piles[0], test_piles[1])
+            test_ns = nim_xor(test_ns, test_piles[2])
+            if test_ns == 0
+              chosen_pile = p
+              chosen_take = t
+    if chosen_pile == -1
+      for p in range(0, 3)
+        if piles[p] > 0 and chosen_pile == -1
+          chosen_pile = p
+          chosen_take = 1
+    piles[chosen_pile] = piles[chosen_pile] - chosen_take
+    total := piles[0] + piles[1] + piles[2]
+    print "    P{turn} takes {chosen_take} from pile {chosen_pile}: [{piles[0]}, {piles[1]}, {piles[2]}] total={total}"
+    if total == 0
+      print "    Player {turn} wins!"
+    if turn == 1
+      turn = 2
+    else
+      turn = 1
+
+  -- Part 3: Wythoff's game
+  print ""
+  print "=== Part 3: Wythoff's Game ==="
+  print "  Two piles: remove from one or equal from both"
+  print "  Cold positions (P-positions):"
+  for k in range(0, 8)
+    a_k := k * 1618 / 1000
+    b_k := a_k + k
+    print "    k={k}: ({a_k}, {b_k})"
+
+  -- Part 4: Sprague-Grundy values
+  print ""
+  print "=== Part 4: Sprague-Grundy Values ==="
+  print "  Subtraction game S=1,2,3"
+  mut grundy := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for n in range(1, 16)
+    mut seen := [false, false, false, false]
+    for s in range(1, 4)
+      if n - s >= 0
+        g := grundy[n - s]
+        if g < 4
+          seen[g] = true
+    mut mex := 0
+    while mex < 4 and seen[mex]
+      mex = mex + 1
+    grundy[n] = mex
+
+  mut gstr := ""
+  for n in range(0, 16)
+    if n > 0
+      gstr = gstr + ", "
+    gstr = gstr + str(grundy[n])
+  print "  G(0..15) = [{gstr}]"
+  print "  Period: 4 (pattern repeats)"
+
+  -- Part 5: Fibonacci Nim
+  print ""
+  print "=== Part 5: Fibonacci Nim ==="
+  print "  Take 1 to 2x previous move's amount"
+  mut fib_pile := 20
+  mut max_take := 1
+  mut fib_turn := 1
+  print "  Starting pile: {fib_pile}"
+  mut fib_moves := 0
+  while fib_pile > 0 and fib_moves < 15
+    fib_moves = fib_moves + 1
+    mut take := max_take
+    if take > fib_pile
+      take = fib_pile
+    if take > 1 and fib_pile - take == 0 and fib_pile > 1
+      take = 1
+    fib_pile = fib_pile - take
+    print "    P{fib_turn} takes {take} (max was {max_take}), pile={fib_pile}"
+    max_take = take * 2
+    if max_take < 1
+      max_take = 1
+    if fib_pile == 0
+      print "    Player {fib_turn} wins!"
+    if fib_turn == 1
+      fib_turn = 2
+    else
+      fib_turn = 1
+
+  print ""
+  print "Nim: single-pile, multi-pile, Wythoff, Sprague-Grundy, Fibonacci."

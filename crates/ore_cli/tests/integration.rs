@@ -6413,6 +6413,101 @@ fn showcase480_battleship() {
 }
 
 #[test]
+fn showcase481_nim_variations() {
+    let out = run_ore("showcase481.ore");
+    assert!(out.contains("Player 1 wins!"));
+    assert!(out.contains("Wythoff's Game"));
+    assert!(out.contains("Sprague-Grundy Values"));
+    assert!(out.contains("Fibonacci Nim"));
+}
+
+#[test]
+fn showcase482_dns_resolver() {
+    let out = run_ore("showcase482.ore");
+    assert!(out.contains("RESOLVED -> 93.184.216.34"));
+    assert!(out.contains("NXDOMAIN"));
+    assert!(out.contains("CACHE HIT"));
+    assert!(out.contains("Hit rate: 40%"));
+    assert!(out.contains("CNAME Chain Resolution"));
+}
+
+#[test]
+fn showcase483_memory_allocator() {
+    let out = run_ore("showcase483.ore");
+    assert!(out.contains("Alloc A (128B): placed at offset 0"));
+    assert!(out.contains("Alloc E (128B): FAILED"));
+    assert!(out.contains("Coalescing adjacent blocks"));
+    assert!(out.contains("Fragmentation: 46%"));
+}
+
+#[test]
+fn showcase484_scheduling() {
+    let out = run_ore("showcase484.ore");
+    assert!(out.contains("FCFS"));
+    assert!(out.contains("SJF (Non-Preemptive)"));
+    assert!(out.contains("Round Robin (quantum=3)"));
+    assert!(out.contains("Priority Scheduling"));
+    assert!(out.contains("Gantt Chart"));
+}
+
+#[test]
+fn showcase485_bloom_filter() {
+    let out = run_ore("showcase485.ore");
+    assert!(out.contains("Bloom Filter Simulation"));
+    assert!(out.contains("PROBABLY IN (true positive)"));
+    assert!(out.contains("false positive!"));
+    assert!(out.contains("Counting Bloom Filter"));
+}
+
+#[test]
+fn showcase486_logic_gates() {
+    let out = run_ore("showcase486.ore");
+    assert!(out.contains("Half Adder"));
+    assert!(out.contains("Full Adder"));
+    assert!(out.contains("4-Bit Adder"));
+    assert!(out.contains("S = 1000 (8)"));
+    assert!(out.contains("SR Latch"));
+}
+
+#[test]
+fn showcase487_game_of_life() {
+    let out = run_ore("showcase487.ore");
+    assert!(out.contains("Blinker"));
+    assert!(out.contains("Block (Still Life)"));
+    assert!(out.contains("Glider"));
+    assert!(out.contains("Pattern Catalog"));
+    assert!(out.contains("Population Over Time"));
+}
+
+#[test]
+fn showcase488_inventory() {
+    let out = run_ore("showcase488.ore");
+    assert!(out.contains("Product Catalog"));
+    assert!(out.contains("Total revenue: 113250"));
+    assert!(out.contains("ALERT: Widget"));
+    assert!(out.contains("Total value: 106500"));
+    assert!(out.contains("ABC Analysis"));
+}
+
+#[test]
+fn showcase489_regex_nfa() {
+    let out = run_ore("showcase489.ore");
+    assert!(out.contains("Regex to NFA"));
+    assert!(out.contains("'ab' accepted: yes"));
+    assert!(out.contains("'a' accepted: true"));
+    assert!(out.contains("NFA to DFA"));
+}
+
+#[test]
+fn showcase490_arithmetic_coding() {
+    let out = run_ore("showcase490.ore");
+    assert!(out.contains("Arithmetic Coding Concepts"));
+    assert!(out.contains("Decoded: 'abra'"));
+    assert!(out.contains("Savings: ~30%"));
+    assert!(out.contains("Adaptive vs Static"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

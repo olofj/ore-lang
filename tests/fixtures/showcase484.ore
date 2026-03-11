@@ -1,0 +1,165 @@
+-- Showcase 484: Scheduling algorithms (FCFS, SJF, round robin)
+
+fn main
+  print "Scheduling Algorithms:"
+  print ""
+
+  -- Processes: "name:arrival:burst"
+  mut procs := []
+  procs.push("P1:0:8")
+  procs.push("P2:1:4")
+  procs.push("P3:2:9")
+  procs.push("P4:3:5")
+  procs.push("P5:4:2")
+
+  print "  Processes:"
+  for i in range(0, procs | len)
+    parts := procs[i].split(":")
+    print "    {parts[0]}: arrival={parts[1]}, burst={parts[2]}"
+
+  -- Part 1: FCFS (First Come First Served)
+  print ""
+  print "=== Part 1: FCFS ==="
+  mut time := 0
+  mut total_wait := 0
+  mut total_turnaround := 0
+  for i in range(0, procs | len)
+    parts := procs[i].split(":")
+    name := parts[0]
+    arrival := parts[1].parse_int()
+    burst := parts[2].parse_int()
+    if time < arrival
+      time = arrival
+    wait := time - arrival
+    finish := time + burst
+    turnaround := finish - arrival
+    total_wait = total_wait + wait
+    total_turnaround = total_turnaround + turnaround
+    print "    {name}: start={time}, finish={finish}, wait={wait}, turnaround={turnaround}"
+    time = finish
+
+  avg_wait := total_wait / 5
+  avg_ta := total_turnaround / 5
+  print "  Avg wait: {avg_wait}"
+  print "  Avg turnaround: {avg_ta}"
+
+  -- Part 2: SJF (Shortest Job First, non-preemptive)
+  print ""
+  print "=== Part 2: SJF (Non-Preemptive) ==="
+  -- Sort by burst time, considering arrival
+  mut sjf_names := ["P1", "P2", "P3", "P4", "P5"]
+  mut sjf_arrival := [0, 1, 2, 3, 4]
+  mut sjf_burst := [8, 4, 9, 5, 2]
+  mut sjf_done := [false, false, false, false, false]
+  mut sjf_time := 0
+  mut sjf_wait := 0
+  mut sjf_ta := 0
+
+  for step in range(0, 5)
+    -- Find shortest job that has arrived
+    mut best := -1
+    mut best_burst := 99999
+    for i in range(0, 5)
+      if not sjf_done[i] and sjf_arrival[i] <= sjf_time
+        if sjf_burst[i] < best_burst
+          best = i
+          best_burst = sjf_burst[i]
+    -- If nothing arrived yet, advance time
+    if best == -1
+      for i in range(0, 5)
+        if not sjf_done[i] and (best == -1 or sjf_arrival[i] < sjf_arrival[best])
+          best = i
+      sjf_time = sjf_arrival[best]
+
+    sjf_done[best] = true
+    wait := sjf_time - sjf_arrival[best]
+    finish := sjf_time + sjf_burst[best]
+    turnaround := finish - sjf_arrival[best]
+    sjf_wait = sjf_wait + wait
+    sjf_ta = sjf_ta + turnaround
+    print "    {sjf_names[best]}: start={sjf_time}, finish={finish}, wait={wait}, turnaround={turnaround}"
+    sjf_time = finish
+
+  print "  Avg wait: {sjf_wait / 5}"
+  print "  Avg turnaround: {sjf_ta / 5}"
+
+  -- Part 3: Round Robin
+  print ""
+  print "=== Part 3: Round Robin (quantum=3) ==="
+  quantum := 3
+  mut rr_remaining := [8, 4, 9, 5, 2]
+  mut rr_names := ["P1", "P2", "P3", "P4", "P5"]
+  mut rr_arrival := [0, 1, 2, 3, 4]
+  mut rr_finish := [0, 0, 0, 0, 0]
+  mut rr_time := 0
+  mut rr_steps := 0
+
+  -- Simple round-robin: cycle through ready processes
+  mut all_done := false
+  while not all_done and rr_steps < 30
+    all_done = true
+    for i in range(0, 5)
+      if rr_remaining[i] > 0 and rr_arrival[i] <= rr_time
+        all_done = false
+        mut run := quantum
+        if rr_remaining[i] < run
+          run = rr_remaining[i]
+        rr_remaining[i] = rr_remaining[i] - run
+        rr_time = rr_time + run
+        rr_steps = rr_steps + 1
+        if rr_remaining[i] == 0
+          rr_finish[i] = rr_time
+          print "    t={rr_time}: {rr_names[i]} ran {run}, DONE"
+        else
+          print "    t={rr_time}: {rr_names[i]} ran {run}, remaining={rr_remaining[i]}"
+
+  -- Calculate RR stats
+  print ""
+  mut rr_total_ta := 0
+  for i in range(0, 5)
+    ta := rr_finish[i] - rr_arrival[i]
+    rr_total_ta = rr_total_ta + ta
+    print "    {rr_names[i]}: turnaround={ta}"
+  print "  Avg turnaround: {rr_total_ta / 5}"
+
+  -- Part 4: Priority scheduling
+  print ""
+  print "=== Part 4: Priority Scheduling ==="
+  mut pri_names := ["P1", "P2", "P3", "P4", "P5"]
+  mut pri_burst := [8, 4, 9, 5, 2]
+  mut pri_prio := [3, 1, 4, 2, 5]
+  mut pri_done := [false, false, false, false, false]
+  mut pri_time := 0
+
+  print "  (Lower number = higher priority)"
+  for step in range(0, 5)
+    mut best := -1
+    mut best_prio := 99
+    for i in range(0, 5)
+      if not pri_done[i] and pri_prio[i] < best_prio
+        best = i
+        best_prio = pri_prio[i]
+    pri_done[best] = true
+    finish := pri_time + pri_burst[best]
+    print "    {pri_names[best]} (prio={pri_prio[best]}): start={pri_time}, finish={finish}"
+    pri_time = finish
+
+  -- Part 5: Gantt chart
+  print ""
+  print "=== Part 5: FCFS Gantt Chart ==="
+  mut gantt := ""
+  mut gt := 0
+  for i in range(0, procs | len)
+    parts := procs[i].split(":")
+    burst := parts[2].parse_int()
+    mut bar := ""
+    for b in range(0, burst)
+      bar = bar + "="
+    gantt = gantt + "|" + parts[0] + bar
+    gt = gt + burst
+  gantt = gantt + "|"
+  print "  {gantt}"
+  print "  Total time: {gt}"
+
+  print ""
+  print "Scheduling: FCFS, SJF, Round-Robin, Priority, Gantt chart."

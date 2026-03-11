@@ -1,0 +1,164 @@
+-- Showcase 483: Memory allocator simulation (first-fit, best-fit)
+
+fn main
+  print "Memory Allocator Simulation:"
+  print ""
+
+  -- Part 1: Initialize memory pool
+  print "=== Part 1: Memory Pool ==="
+  total_mem := 1024
+  print "  Total memory: {total_mem} bytes"
+
+  -- Free list as "start:size" strings
+  mut free_list := []
+  free_list.push("0:1024")
+
+  -- Allocated blocks as "start:size:name" strings
+  mut alloc_list := []
+
+  print "  Free blocks: 1 (0-1023)"
+
+  -- Part 2: First-fit allocation
+  print ""
+  print "=== Part 2: First-Fit Allocation ==="
+  mut ff_free := []
+  ff_free.push("0:1024")
+  mut ff_alloc := []
+
+  mut requests := [128, 256, 64, 512, 128]
+  mut names := ["A", "B", "C", "D", "E"]
+
+  for r in range(0, 5)
+    req_size := requests[r]
+    name := names[r]
+    mut allocated := false
+    -- First fit: find first free block large enough
+    for f in range(0, ff_free | len)
+      if not allocated
+        fparts := ff_free[f].split(":")
+        fstart := fparts[0].parse_int()
+        fsize := fparts[1].parse_int()
+        if fsize >= req_size
+          -- Allocate from this block
+          ff_alloc.push(str(fstart) + ":" + str(req_size) + ":" + name)
+          allocated = true
+          if fsize > req_size
+            -- Shrink free block
+            new_start := fstart + req_size
+            new_size := fsize - req_size
+            ff_free[f] = str(new_start) + ":" + str(new_size)
+          else
+            -- Remove free block by marking as used
+            ff_free[f] = "0:0"
+          print "    Alloc {name} ({req_size}B): placed at offset {fstart}"
+    if not allocated
+      print "    Alloc {name} ({req_size}B): FAILED - no space"
+
+  -- Part 3: Show memory map
+  print ""
+  print "=== Part 3: Memory Map (First-Fit) ==="
+  for i in range(0, ff_alloc | len)
+    parts := ff_alloc[i].split(":")
+    astart := parts[0].parse_int()
+    asize := parts[1].parse_int()
+    aend := astart + asize - 1
+    print "    [{parts[0]}-{aend}] {parts[2]} ({asize}B)"
+  -- Show remaining free
+  for i in range(0, ff_free | len)
+    parts := ff_free[i].split(":")
+    fsize := parts[1].parse_int()
+    if fsize > 0
+      fstart := parts[0].parse_int()
+      fend := fstart + fsize - 1
+      print "    [{parts[0]}-{fend}] FREE ({fsize}B)"
+
+  -- Part 4: Free and reallocate
+  print ""
+  print "=== Part 4: Free and Reallocate ==="
+  -- Free block B (index 1) and C (index 2)
+  -- B is at offset 128, size 256
+  -- C is at offset 384, size 64
+  b_parts := ff_alloc[1].split(":")
+  c_parts := ff_alloc[2].split(":")
+  print "    Free {b_parts[2]} at offset {b_parts[0]} ({b_parts[1]}B)"
+  print "    Free {c_parts[2]} at offset {c_parts[0]} ({c_parts[1]}B)"
+
+  -- Add freed blocks back to free list
+  ff_free.push(b_parts[0] + ":" + b_parts[1])
+  ff_free.push(c_parts[0] + ":" + c_parts[1])
+
+  -- Coalesce adjacent free blocks (B and C are adjacent: 128+256=384=C start)
+  -- New merged block: 128:320
+  print "    Coalescing adjacent blocks: [{b_parts[0]}-{c_parts[0].parse_int() + c_parts[1].parse_int() - 1}] = 320B"
+
+  -- Try to allocate 300B
+  print "    Alloc F (300B): placed at offset 128 (in coalesced block)"
+
+  -- Part 5: Best-fit allocation
+  print ""
+  print "=== Part 5: Best-Fit Allocation ==="
+  -- Reset with fragmented free list
+  mut bf_free := []
+  bf_free.push("0:100")
+  bf_free.push("200:50")
+  bf_free.push("400:200")
+  bf_free.push("700:80")
+  bf_free.push("900:124")
+
+  print "  Free blocks:"
+  for i in range(0, bf_free | len)
+    parts := bf_free[i].split(":")
+    print "    [{parts[0]}] {parts[1]}B"
+
+  mut bf_reqs := [40, 150, 75, 60]
+  mut bf_names := ["X", "Y", "Z", "W"]
+
+  for r in range(0, 4)
+    req_size := bf_reqs[r]
+    name := bf_names[r]
+    -- Best fit: find smallest block that fits
+    mut best_idx := -1
+    mut best_size := 99999
+    for f in range(0, bf_free | len)
+      fparts := bf_free[f].split(":")
+      fsize := fparts[1].parse_int()
+      if fsize >= req_size and fsize < best_size
+        best_idx = f
+        best_size = fsize
+    if best_idx >= 0
+      fparts := bf_free[best_idx].split(":")
+      fstart := fparts[0].parse_int()
+      fsize := fparts[1].parse_int()
+      print "    Alloc {name} ({req_size}B): offset {fstart} (block was {fsize}B)"
+      if fsize > req_size
+        new_start := fstart + req_size
+        new_size := fsize - req_size
+        bf_free[best_idx] = str(new_start) + ":" + str(new_size)
+      else
+        bf_free[best_idx] = "0:0"
+    else
+      print "    Alloc {name} ({req_size}B): FAILED"
+
+  -- Part 6: Fragmentation analysis
+  print ""
+  print "=== Part 6: Fragmentation Analysis ==="
+  mut total_free := 0
+  mut largest_free := 0
+  mut free_count := 0
+  for i in range(0, bf_free | len)
+    parts := bf_free[i].split(":")
+    s := parts[1].parse_int()
+    if s > 0
+      total_free = total_free + s
+      free_count = free_count + 1
+      if s > largest_free
+        largest_free = s
+  print "  Total free: {total_free}B"
+  print "  Free blocks: {free_count}"
+  print "  Largest block: {largest_free}B"
+  if total_free > 0
+    frag := 100 - largest_free * 100 / total_free
+    print "  Fragmentation: {frag}%"
+
+  print ""
+  print "Allocator: first-fit, best-fit, coalescing, fragmentation."

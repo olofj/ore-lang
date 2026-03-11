@@ -1,0 +1,129 @@
+-- Showcase 482: Simple DNS resolver simulation
+
+fn main
+  print "DNS Resolver Simulation:"
+  print ""
+
+  -- Part 1: DNS record database
+  print "=== Part 1: DNS Records ==="
+  mut records := []
+  records.push("example.com:A:93.184.216.34:3600")
+  records.push("example.com:AAAA:2606:2800:3600")
+  records.push("example.com:MX:mail.example.com:7200")
+  records.push("example.com:NS:ns1.example.com:86400")
+  records.push("blog.example.com:A:93.184.216.50:1800")
+  records.push("blog.example.com:CNAME:example.com:3600")
+  records.push("api.example.com:A:93.184.216.100:300")
+  records.push("mail.example.com:A:93.184.216.200:3600")
+  records.push("ns1.example.com:A:93.184.216.1:86400")
+  records.push("cdn.example.com:A:104.16.123.1:60")
+
+  print "  Loaded {records | len} DNS records:"
+  for i in range(0, records | len)
+    parts := records[i].split(":")
+    print "    {parts[0]} {parts[1]} {parts[2]} TTL={parts[3]}"
+
+  -- Part 2: DNS lookup simulation
+  print ""
+  print "=== Part 2: DNS Lookups ==="
+  -- Queries as "name:type"
+  mut queries := []
+  queries.push("example.com:A")
+  queries.push("blog.example.com:A")
+  queries.push("api.example.com:A")
+  queries.push("example.com:MX")
+  queries.push("unknown.com:A")
+  queries.push("cdn.example.com:A")
+  queries.push("mail.example.com:A")
+
+  mut resolved := 0
+  mut nxdomain := 0
+
+  for q in range(0, queries | len)
+    qparts := queries[q].split(":")
+    qname := qparts[0]
+    qtype := qparts[1]
+
+    mut found := false
+    for r in range(0, records | len)
+      rparts := records[r].split(":")
+      if rparts[0] == qname and rparts[1] == qtype and not found
+        found = true
+        resolved = resolved + 1
+        print "    Query {qname} {qtype}: RESOLVED -> {rparts[2]}"
+    if not found
+      nxdomain = nxdomain + 1
+      print "    Query {qname} {qtype}: NXDOMAIN"
+
+  -- Part 3: Cache simulation
+  print ""
+  print "=== Part 3: Cache Simulation ==="
+  -- Simulate repeated queries with cache hit/miss
+  mut cache_hits := 0
+  mut cache_misses := 0
+  -- Track which queries we've seen before using index tracking
+  mut seen_queries := [false, false, false, false, false, false, false, false, false, false]
+  mut repeat_queries := [0, 1, 0, 2, 0, 3, 1, 5, 0, 6]
+
+  for i in range(0, 10)
+    qi := repeat_queries[i]
+    qparts := queries[qi].split(":")
+    qname := qparts[0]
+    qtype := qparts[1]
+    if seen_queries[qi]
+      cache_hits = cache_hits + 1
+      print "    Query {qname} {qtype}: CACHE HIT"
+    else
+      seen_queries[qi] = true
+      cache_misses = cache_misses + 1
+      print "    Query {qname} {qtype}: CACHE MISS"
+
+  total_q := cache_hits + cache_misses
+  hit_pct := cache_hits * 100 / total_q
+  print "  Cache hits: {cache_hits}"
+  print "  Cache misses: {cache_misses}"
+  print "  Hit rate: {hit_pct}%"
+
+  -- Part 4: CNAME resolution chain
+  print ""
+  print "=== Part 4: CNAME Chain Resolution ==="
+  -- blog.example.com -> CNAME example.com -> A 93.184.216.34
+  print "  Resolving: blog.example.com"
+  print "    Step 1: blog.example.com -> CNAME example.com"
+  print "    Step 2: example.com -> A 93.184.216.34"
+  print "    Chain length: 2"
+
+  -- Part 5: TTL expiry simulation
+  print ""
+  print "=== Part 5: TTL Expiry Simulation ==="
+  mut ttl_names := ["cdn", "api", "blog", "example", "ns1"]
+  mut ttl_vals := [60, 300, 1800, 3600, 86400]
+  mut intervals := [60, 300, 1800, 3600, 86400]
+
+  for step in range(0, 5)
+    elapsed := intervals[step]
+    print "  At t={elapsed}s:"
+    mut expired := 0
+    for i in range(0, 5)
+      if ttl_vals[i] <= elapsed
+        expired = expired + 1
+    print "    Expired entries: {expired}"
+
+  -- Part 6: Domain hierarchy
+  print ""
+  print "=== Part 6: Record Type Distribution ==="
+  -- Count by type
+  mut a_count := 0
+  mut other_count := 0
+  for i in range(0, records | len)
+    parts := records[i].split(":")
+    if parts[1] == "A"
+      a_count = a_count + 1
+    else
+      other_count = other_count + 1
+  print "  A records: {a_count}"
+  print "  Other records: {other_count}"
+  print "  Total: {records | len}"
+
+  print ""
+  print "DNS: records, lookups, caching, CNAME chains, TTL, distribution."
