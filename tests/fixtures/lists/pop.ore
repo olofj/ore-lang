@@ -1,0 +1,9 @@
+-- Test list.pop() method
+fn main
+  mut stack := [10, 20, 30]
+  top := stack.pop()
+  print top
+  print stack.len()
+  next := stack.pop()
+  print next
+  print stack.len()

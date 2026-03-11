@@ -1,0 +1,66 @@
+-- Showcase 19: Algorithms and data processing
+-- Demonstrates: list.set, list.get_or, fold, algorithms
+
+fn dot_product a:List b:List -> Int
+  mut sum := 0
+  for i in 0..a.len()
+    sum += a.get(i) * b.get(i)
+  sum
+
+fn magnitude v:List -> Float
+  mut sum_sq := 0
+  for i in 0..v.len()
+    x := v.get(i)
+    sum_sq += x * x
+  sqrt(sum_sq.to_float())
+
+fn main
+  -- Vector operations
+  v1 := [3, 4]
+  v2 := [1, 2]
+  print "Dot product: {dot_product(v1, v2)}"
+  print "Magnitude: {magnitude(v1)}"
+
+  -- List mutation with set
+  mut arr := [0, 0, 0, 0, 0]
+  for i in 0..5
+    arr.set(i, (i + 1) * (i + 1))
+  print "Squares: {arr.join(", ")}"
+
+  -- Safe access with get_or
+  print "Safe access: {arr.get_or(10, -1)}"
+
+  -- Selection sort using set
+  mut data := [64, 25, 12, 22, 11]
+  for i in 0..data.len()
+    mut min_idx := i
+    for j in i + 1..data.len()
+      if data.get(j) < data.get(min_idx)
+        min_idx = j
+    if min_idx != i
+      tmp := data.get(i)
+      data.set(i, data.get(min_idx))
+      data.set(min_idx, tmp)
+  print "Sorted: {data.join(", ")}"
+
+  -- Statistics
+  scores := [85, 92, 78, 95, 88, 76, 90, 83, 91, 87]
+  mean := scores.sum() / scores.len()
+  print "Mean: {mean}"
+  print "Min: {scores.min()}"
+  print "Max: {scores.max()}"
+
+  -- Standard deviation (integer approx)
+  mut var_sum := 0
+  for i in 0..scores.len()
+    diff := scores.get(i) - mean
+    var_sum += diff * diff
+  variance := var_sum / scores.len()
+  print "Variance: {variance}"
+
+  -- Histogram using fold
+  buckets := scores | map(s => s / 10)
+  freq := buckets.frequencies()
+  print "70s: {freq.get_or("7", 0)}"
+  print "80s: {freq.get_or("8", 0)}"
+  print "90s: {freq.get_or("9", 0)}"

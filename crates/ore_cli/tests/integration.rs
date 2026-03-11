@@ -1586,3 +1586,9 @@ fn showcase33() {
     assert!(out.contains("2^10 = 1024"));
     assert!(out.contains("Coprime pairs 1-5:"));
 }
+
+#[test]
+fn lists_pop() {
+    let out = run_ore("lists/pop.ore");
+    assert_eq!(out.trim(), "30\n2\n20\n1");
+}

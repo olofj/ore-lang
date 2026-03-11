@@ -885,6 +885,17 @@ pub extern "C" fn ore_list_push(list: *mut OreList, value: i64) {
     }
 }
 
+/// Remove and return the last element of a list.
+#[no_mangle]
+pub extern "C" fn ore_list_pop(list: *mut OreList) -> i64 {
+    unsafe {
+        let list = &mut *list;
+        if list.len == 0 { return 0; }
+        list.len -= 1;
+        *list.data.add(list.len as usize)
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_get(list: *mut OreList, index: i64) -> i64 {
     unsafe {

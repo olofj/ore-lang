@@ -900,6 +900,7 @@ impl TypeChecker {
                 "len" | "sum" | "product" => Type::Int,
                 "average" => Type::Float,
                 "push" | "set" => Type::Unit,
+                "pop" => *elem.clone(),
                 "get" | "get_or" => *elem.clone(),
                 "contains" | "is_empty" => Type::Bool,
                 "map" | "filter" => obj_ty.clone(),

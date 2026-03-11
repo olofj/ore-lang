@@ -658,6 +658,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_new", ptr_type.fn_type(&[], false), ext);
         // ore_list_push(ptr, i64)
         self.module.add_function("ore_list_push", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_list_pop", i64_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_get(ptr, i64) -> i64
         self.module.add_function("ore_list_get", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_set", void_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
@@ -2787,6 +2788,26 @@ impl<'ctx> CodeGen<'ctx> {
                 let list_push = self.module.get_function("ore_list_push").unwrap();
                 bld!(self.builder.build_call(list_push, &[list_val.into(), arg.into()], ""))?;
                 Ok((list_val, ValKind::List))
+            }
+            "pop" => {
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                let list_pop = self.module.get_function("ore_list_pop").unwrap();
+                let result = bld!(self.builder.build_call(list_pop, &[list_val.into()], "pop"))?;
+                let raw_val = self.call_result_to_value(result)?;
+                match &elem_kind {
+                    ValKind::Str => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            raw_val.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
+                        ))?;
+                        Ok((ptr.into(), ValKind::Str))
+                    }
+                    ValKind::Float => {
+                        let f = bld!(self.builder.build_bit_cast(raw_val, self.context.f64_type(), "i2f"))?;
+                        Ok((f, ValKind::Float))
+                    }
+                    _ => Ok((raw_val, elem_kind))
+                }
             }
             "get" => {
                 if args.len() != 1 {
