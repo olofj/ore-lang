@@ -1,0 +1,14 @@
+-- Test maps with typed value tracking
+fn main
+  -- String-valued map
+  names := {"first": "Alice", "last": "Smith"}
+  print names.get("first")
+  print names.get("last")
+
+  -- Int-valued map
+  scores := {"math": 95, "science": 88, "english": 72}
+  print scores.get("math")
+
+  -- Keys and values
+  print names.keys()
+  print scores.len()

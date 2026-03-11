@@ -545,6 +545,19 @@ fn showcase2() {
 
 #[test]
 #[test]
+#[test]
+fn maps_typed_values() {
+    let out = run_ore("maps/typed_values.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines[0], "Alice");
+    assert_eq!(lines[1], "Smith");
+    assert_eq!(lines[2], "95");
+    // keys() returns string keys (order may vary)
+    assert!(lines[3].contains("first") && lines[3].contains("last"));
+    assert_eq!(lines[4], "3");
+}
+
+#[test]
 fn concurrency_channels() {
     let out = run_ore("concurrency/channels.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

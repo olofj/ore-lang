@@ -245,6 +245,10 @@ pub struct CodeGen<'ctx> {
     list_element_kinds: HashMap<String, ValKind>,
     /// Temporary: element kind from the last compiled list literal
     last_list_elem_kind: Option<ValKind>,
+    /// Maps variable name -> value ValKind for typed maps
+    map_value_kinds: HashMap<String, ValKind>,
+    /// Temporary: value kind from the last compiled map literal
+    last_map_val_kind: Option<ValKind>,
     /// Current source line (for error reporting)
     current_line: usize,
     /// Generic function definitions (not yet monomorphized)
@@ -296,6 +300,8 @@ impl<'ctx> CodeGen<'ctx> {
             dynamic_kind_tags: HashMap::new(),
             list_element_kinds: HashMap::new(),
             last_list_elem_kind: None,
+            map_value_kinds: HashMap::new(),
+            last_map_val_kind: None,
             current_line: 0,
             generic_fns: HashMap::new(),
         }
@@ -869,6 +875,7 @@ impl<'ctx> CodeGen<'ctx> {
         match stmt {
             Stmt::Let { name, mutable, value } => {
                 self.last_list_elem_kind = None;
+                self.last_map_val_kind = None;
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
                 let ty = val.get_type();
                 let alloca = bld!(self.builder.build_alloca(ty, name))?;
@@ -878,6 +885,12 @@ impl<'ctx> CodeGen<'ctx> {
                 if kind == ValKind::List {
                     if let Some(ek) = self.last_list_elem_kind.take() {
                         self.list_element_kinds.insert(name.clone(), ek);
+                    }
+                }
+                // Track value kind for typed maps
+                if kind == ValKind::Map {
+                    if let Some(vk) = self.last_map_val_kind.take() {
+                        self.map_value_kinds.insert(name.clone(), vk);
                     }
                 }
                 Ok(None)
@@ -1056,6 +1069,12 @@ impl<'ctx> CodeGen<'ctx> {
                         self.last_list_elem_kind = Some(elem_kind.clone());
                     }
                 }
+                // Restore map value kind tracking for method dispatch
+                if kind == ValKind::Map {
+                    if let Some(val_kind) = self.map_value_kinds.get(name) {
+                        self.last_map_val_kind = Some(val_kind.clone());
+                    }
+                }
                 Ok((val, kind))
             }
             Expr::BinOp { op, left, right } => {
@@ -1138,6 +1157,23 @@ impl<'ctx> CodeGen<'ctx> {
                                 }
                             }
                         }
+                    }
+                }
+                // Check for typed list printing via last_list_elem_kind (for method calls etc.)
+                if kind == ValKind::List {
+                    if let Some(elem_kind) = self.last_list_elem_kind.take() {
+                        if elem_kind != ValKind::Int {
+                            self.compile_typed_list_print(val.into_pointer_value(), &elem_kind)?;
+                            return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                        }
+                    }
+                }
+                // Check for string-valued map printing
+                if kind == ValKind::Map {
+                    if let Some(ValKind::Str) = self.last_map_val_kind.take() {
+                        let pf = self.module.get_function("ore_map_print_str").unwrap();
+                        bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
                     }
                 }
                 self.compile_print(val, kind)?;
@@ -2743,8 +2779,27 @@ impl<'ctx> CodeGen<'ctx> {
                 let key = self.compile_expr(&args[0], func)?;
                 let rt = self.module.get_function("ore_map_get").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mget"))?;
-                let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                let i64_val = self.call_result_to_value(result)?;
+
+                // Determine value kind from map tracking
+                // Check if the map object is a variable with a tracked value kind
+                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                match &val_kind {
+                    ValKind::Str => {
+                        // Convert i64 back to pointer
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
+                        ))?;
+                        Ok((ptr.into(), ValKind::Str))
+                    }
+                    ValKind::List => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
+                        ))?;
+                        Ok((ptr.into(), ValKind::List))
+                    }
+                    _ => Ok((i64_val, val_kind))
+                }
             }
             "contains" => {
                 if args.len() != 1 {
@@ -2789,8 +2844,9 @@ impl<'ctx> CodeGen<'ctx> {
                 let rt = self.module.get_function("ore_map_values").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mvalues"))?;
                 let val = self.call_result_to_value(result)?;
-                // Map values are stored as i64
-                self.last_list_elem_kind = Some(ValKind::Int);
+                // Track the value kind from the map
+                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                self.last_list_elem_kind = Some(val_kind);
                 Ok((val, ValKind::List))
             }
             _ => Err(CodeGenError { line: None, msg: format!("unknown map method '{}'", method) }),
@@ -3508,9 +3564,13 @@ impl<'ctx> CodeGen<'ctx> {
         let map_result = bld!(self.builder.build_call(map_new, &[], "map"))?;
         let map_ptr = self.call_result_to_value(map_result)?.into_pointer_value();
 
+        let mut first_val_kind = None;
         for (key, value) in entries {
             let key_val = self.compile_expr(key, func)?;
             let (val, val_kind) = self.compile_expr_with_kind(value, func)?;
+            if first_val_kind.is_none() {
+                first_val_kind = Some(val_kind.clone());
+            }
             // Convert value to i64 for storage
             let i64_val = match val_kind {
                 ValKind::Int => val.into_int_value(),
@@ -3537,6 +3597,7 @@ impl<'ctx> CodeGen<'ctx> {
             ))?;
         }
 
+        self.last_map_val_kind = first_val_kind;
         Ok((map_ptr.into(), ValKind::Map))
     }
 
