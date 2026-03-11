@@ -571,6 +571,8 @@ fn map_runtime_functions(
     map_fn!("ore_file_write", ore_runtime::ore_file_write);
     map_fn!("ore_file_exists", ore_runtime::ore_file_exists);
     map_fn!("ore_file_append", ore_runtime::ore_file_append);
+    // Process
+    map_fn!("ore_args", ore_runtime::ore_args);
     // JSON
     map_fn!("ore_json_parse", ore_runtime::ore_json_parse);
     map_fn!("ore_json_stringify", ore_runtime::ore_json_stringify);

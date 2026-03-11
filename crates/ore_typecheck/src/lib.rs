@@ -528,6 +528,7 @@ impl TypeChecker {
                             "file_read_lines" => return Type::List(Box::new(Type::Str)),
                             "file_write" | "file_append" => return Type::Bool,
                             "file_exists" => return Type::Bool,
+                            "args" => return Type::List(Box::new(Type::Str)),
                             "range" => return Type::List(Box::new(Type::Int)),
                             "time_now" | "time_ms" | "rand_int" => return Type::Int,
                             "exit" => return Type::Unit,

@@ -1,0 +1,4 @@
+-- Test args() builtin
+fn main
+  a := args()
+  print "arg count: {a.len()}"

@@ -2632,6 +2632,17 @@ pub extern "C" fn ore_exit(code: i64) {
     std::process::exit(code as i32);
 }
 
+/// Return command-line arguments as a list of strings.
+#[no_mangle]
+pub extern "C" fn ore_args() -> *mut OreList {
+    let list = ore_list_new();
+    for arg in std::env::args() {
+        let s = ore_str_new(arg.as_ptr(), arg.len() as u32);
+        ore_list_push(list, s as i64);
+    }
+    list
+}
+
 /// Execute a shell command and return its stdout as a string.
 #[no_mangle]
 pub extern "C" fn ore_exec(cmd: *mut OreStr) -> *mut OreStr {
