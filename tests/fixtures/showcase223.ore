@@ -1,0 +1,49 @@
+-- Showcase 223: Complex enum patterns
+
+type Token
+  Number(val: Int)
+  Plus
+  Minus
+  Star
+
+fn token_str t:Token -> Str
+  match t
+    Number v -> "{v}"
+    Plus -> "+"
+    Minus -> "-"
+    Star -> "*"
+
+fn token_is_op t:Token -> Bool
+  match t
+    Number _ -> false
+    _ -> true
+
+fn main
+  -- Tokenize a simple expression
+  tokens := [Number(val: 3), Plus, Number(val: 4), Star, Number(val: 2), Minus, Number(val: 1)]
+  
+  mut expr := ""
+  for t in tokens
+    if expr == ""
+      expr = token_str(t)
+    else
+      expr = "{expr} {token_str(t)}"
+  print "Expression: {expr}"
+
+  -- Count operators vs numbers
+  mut ops := 0
+  mut nums := 0
+  for t in tokens
+    if token_is_op(t)
+      ops = ops + 1
+    else
+      nums = nums + 1
+  print "Operators: {ops}, Numbers: {nums}"
+
+  -- Extract just the numbers
+  print ""
+  print "Numbers in expression:"
+  for t in tokens
+    match t
+      Number v -> print "  {v}"
+      _ -> 0

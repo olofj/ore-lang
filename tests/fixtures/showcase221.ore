@@ -1,0 +1,38 @@
+-- Showcase 221: Mutable state patterns
+
+fn main
+  -- Stack using list
+  mut stack := []
+  stack.push(10)
+  stack.push(20)
+  stack.push(30)
+  print "Stack: {stack | join(", ")}"
+  
+  top := stack.pop()
+  print "Popped: {top}"
+  print "Stack after pop: {stack | join(", ")}"
+
+  -- Queue using two operations
+  mut queue := []
+  queue.push(1)
+  queue.push(2)
+  queue.push(3)
+  print ""
+  print "Queue: {queue | join(", ")}"
+  
+  -- Dequeue from front (shift by rebuilding)
+  front := queue[0]
+  mut new_queue := []
+  for i in range(1, queue | count())
+    new_queue.push(queue[i])
+  queue = new_queue
+  print "Dequeued: {front}"
+  print "Queue after dequeue: {queue | join(", ")}"
+
+  -- Accumulator pattern
+  print ""
+  mut acc := 0
+  for i in range(1, 11)
+    acc = acc + i * i
+    print "  After {i}: acc = {acc}"
+  print "Sum of squares 1-10: {acc}"

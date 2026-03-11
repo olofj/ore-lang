@@ -1,0 +1,56 @@
+-- Showcase 224: Multi-pass data processing
+
+fn main
+  -- Multi-pass analysis of data
+  data := [45, 23, 67, 12, 89, 34, 56, 78, 91, 15]
+  
+  -- Pass 1: Basic stats
+  n := data | count()
+  total := data | sum()
+  mn := data | min()
+  mx := data | max()
+  mean := total / n
+  print "=== Data Analysis ==="
+  print "Count: {n}"
+  print "Sum: {total}"
+  print "Mean: {mean}"
+  print "Min: {mn}"
+  print "Max: {mx}"
+
+  -- Pass 2: Count above/below mean
+  above := data | filter(x => x > mean) | count()
+  below := data | filter(x => x <= mean) | count()
+  print ""
+  print "Above mean ({mean}): {above}"
+  print "Below/equal mean: {below}"
+
+  -- Pass 3: Quartile approximation
+  sorted := data | map(x => x)
+  -- Manual sort (bubble)
+  mut arr := []
+  for v in data
+    arr.push(v)
+  for i in range(0, n)
+    for j in range(0, n - i - 1)
+      if arr[j] > arr[j+1]
+        tmp := arr[j]
+        arr[j] = arr[j+1]
+        arr[j+1] = tmp
+  
+  print ""
+  print "Sorted: {arr | join(", ")}"
+  q1 := arr[n / 4]
+  q3 := arr[3 * n / 4]
+  print "Q1 (approx): {q1}"
+  print "Q3 (approx): {q3}"
+  print "IQR: {q3 - q1}"
+
+  -- Pass 4: Histogram (buckets of 20)
+  print ""
+  print "Histogram (buckets of 20):"
+  for bucket in range(0, 5)
+    lo := bucket * 20
+    hi := lo + 19
+    cnt := data | filter(x => x >= lo and x <= hi) | count()
+    bar := "#".repeat(cnt)
+    print "  {"{lo}".pad_left(2, " ")}-{"{hi}".pad_left(2, " ")}: {bar} ({cnt})"

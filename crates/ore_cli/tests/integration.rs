@@ -3646,6 +3646,51 @@ fn showcase220_frequency() {
 }
 
 #[test]
+fn showcase221_mutable_state() {
+    let out = run_ore("showcase221.ore");
+    assert!(out.contains("Stack: 10, 20, 30"));
+    assert!(out.contains("Popped: 30"));
+    assert!(out.contains("Dequeued: 1"));
+    assert!(out.contains("Sum of squares 1-10: 385"));
+}
+
+#[test]
+fn showcase222_float_math() {
+    let out = run_ore("showcase222.ore");
+    assert!(out.contains("pi + e = 5.85987"));
+    assert!(out.contains("Area = 78.53975"));
+    assert!(out.contains("3^2 + 4^2 = 5.0"));
+    assert!(out.contains("x1 = 3.0"));
+    assert!(out.contains("x2 = 2.0"));
+}
+
+#[test]
+fn showcase223_complex_enums() {
+    let out = run_ore("showcase223.ore");
+    assert!(out.contains("Expression: 3 + 4 * 2 - 1"));
+    assert!(out.contains("Operators: 3, Numbers: 4"));
+}
+
+#[test]
+fn showcase224_data_analysis() {
+    let out = run_ore("showcase224.ore");
+    assert!(out.contains("Sum: 510"));
+    assert!(out.contains("Mean: 51"));
+    assert!(out.contains("Sorted: 12, 15, 23, 34, 45, 56, 67, 78, 89, 91"));
+    assert!(out.contains("IQR: 55"));
+}
+
+#[test]
+fn showcase225_validation() {
+    let out = run_ore("showcase225.ore");
+    assert!(out.contains("user@example.com: VALID"));
+    assert!(out.contains("bad-email: INVALID"));
+    assert!(out.contains("'hello': alpha"));
+    assert!(out.contains("'123': numeric"));
+    assert!(out.contains("'': empty"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
