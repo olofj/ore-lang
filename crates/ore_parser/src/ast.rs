@@ -82,6 +82,8 @@ pub enum TypeExpr {
     Named(String),
     /// Generic type application: List[Int], Map[Str, Int]
     Generic(String, Vec<TypeExpr>),
+    /// Function type: (Int, Int -> Bool) means fn(Int, Int) -> Bool
+    Fn { params: Vec<TypeExpr>, ret: Box<TypeExpr> },
 }
 
 #[derive(Debug, Clone, PartialEq)]

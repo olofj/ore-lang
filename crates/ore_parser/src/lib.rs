@@ -400,6 +400,23 @@ impl Parser {
                     Ok(TypeExpr::Named(name))
                 }
             }
+            Token::LParen => {
+                // Function type: (Type, Type -> RetType) or (Type -> RetType)
+                self.advance(); // consume '('
+                let mut types = Vec::new();
+                if self.peek() != &Token::RParen {
+                    types.push(self.parse_type_expr()?);
+                    while self.peek() == &Token::Comma {
+                        self.advance();
+                        types.push(self.parse_type_expr()?);
+                    }
+                }
+                // Expect '->' then return type
+                self.expect(&Token::Arrow)?;
+                let ret = self.parse_type_expr()?;
+                self.expect(&Token::RParen)?;
+                Ok(TypeExpr::Fn { params: types, ret: Box::new(ret) })
+            }
             _ => Err(self.error("expected type name".into())),
         }
     }

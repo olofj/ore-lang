@@ -114,6 +114,10 @@ impl TypeChecker {
                     }
                 }
             },
+            TypeExpr::Fn { .. } => {
+                // Function types aren't tracked in the type checker yet
+                Type::Any
+            }
             TypeExpr::Generic(name, args) => {
                 let resolved: Vec<Type> = args.iter().map(|a| self.resolve_type_expr(a)).collect();
                 match name.as_str() {

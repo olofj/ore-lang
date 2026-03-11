@@ -650,6 +650,10 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                 }
             },
+            TypeExpr::Fn { .. } => {
+                // Function types are treated as opaque pointers in codegen
+                ValKind::Int
+            }
             TypeExpr::Generic(name, _args) => {
                 // For now, treat generic types by their base name
                 match name.as_str() {
@@ -1212,16 +1216,60 @@ impl<'ctx> CodeGen<'ctx> {
                     return self.compile_expr_with_kind(&construct, func);
                 }
 
-                let (called_fn, ret_kind) = self.resolve_function(&name)?;
+                // Try resolving as a named function first
+                match self.resolve_function(&name) {
+                    Ok((called_fn, ret_kind)) => {
+                        let mut compiled_args = Vec::new();
+                        for arg in args {
+                            compiled_args.push(self.compile_expr(arg, func)?.into());
+                        }
+                        let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
+                        let val = self.call_result_to_value(result)?;
+                        Ok((val, ret_kind))
+                    }
+                    Err(_) => {
+                        // Check if it's a variable holding a function pointer (closure)
+                        if let Some((ptr, _ty, _kind, _mutable)) = self.variables.get(&name).cloned() {
+                            let fn_ptr_val = bld!(self.builder.build_load(self.ptr_type(), ptr, "fn_ptr"))?;
+                            let fn_ptr = fn_ptr_val.into_pointer_value();
 
-                let mut compiled_args = Vec::new();
-                for arg in args {
-                    compiled_args.push(self.compile_expr(arg, func)?.into());
+                            // Check for closure (env_ptr stored alongside)
+                            let env_var_name = format!("{}_env", name);
+                            let has_env = self.variables.contains_key(&env_var_name);
+
+                            let mut compiled_args = Vec::new();
+                            for arg in args {
+                                compiled_args.push(self.compile_expr(arg, func)?.into());
+                            }
+
+                            if has_env {
+                                let (env_ptr, _, _, _) = self.variables[&env_var_name].clone();
+                                let env_val = bld!(self.builder.build_load(self.ptr_type(), env_ptr, "env"))?;
+                                // Build closure call: fn(env, args...)
+                                let mut all_args = vec![env_val.into()];
+                                all_args.extend(compiled_args);
+
+                                let mut param_types: Vec<inkwell::types::BasicMetadataTypeEnum> = vec![self.ptr_type().into()];
+                                for _ in &all_args[1..] {
+                                    param_types.push(self.context.i64_type().into());
+                                }
+                                let fn_type = self.context.i64_type().fn_type(&param_types, false);
+                                let result = bld!(self.builder.build_indirect_call(fn_type, fn_ptr, &all_args, "closurecall"))?;
+                                let val = self.call_result_to_value(result)?;
+                                Ok((val, ValKind::Int))
+                            } else {
+                                // Direct function pointer call: fn(args...)
+                                let param_types: Vec<inkwell::types::BasicMetadataTypeEnum> = compiled_args.iter().map(|_| self.context.i64_type().into()).collect();
+                                let fn_type = self.context.i64_type().fn_type(&param_types, false);
+                                let result = bld!(self.builder.build_indirect_call(fn_type, fn_ptr, &compiled_args, "fncall"))?;
+                                let val = self.call_result_to_value(result)?;
+                                Ok((val, ValKind::Int))
+                            }
+                        } else {
+                            Err(CodeGenError { msg: format!("undefined function '{}'", name) })
+                        }
+                    }
                 }
-
-                let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
-                let val = self.call_result_to_value(result)?;
-                Ok((val, ret_kind))
             }
             Expr::IfElse { cond, then_block, else_block } => {
                 let val = self.compile_if_else(cond, then_block, else_block.as_ref(), func)?;

@@ -445,6 +445,10 @@ fn format_type_expr(ty: &TypeExpr) -> String {
             let args_str: Vec<String> = args.iter().map(format_type_expr).collect();
             format!("{}[{}]", name, args_str.join(", "))
         }
+        TypeExpr::Fn { params, ret } => {
+            let params_str: Vec<String> = params.iter().map(format_type_expr).collect();
+            format!("({} -> {})", params_str.join(", "), format_type_expr(ret))
+        }
     }
 }
 

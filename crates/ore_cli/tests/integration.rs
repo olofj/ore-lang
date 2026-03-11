@@ -356,6 +356,13 @@ fn lists_typed_display() {
 }
 
 #[test]
+fn higher_order_fn_params() {
+    let out = run_ore("higher_order/fn_params.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["10", "10", "12", "12"]);
+}
+
+#[test]
 fn enum_display() {
     let out = run_ore("records/enum_display.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
