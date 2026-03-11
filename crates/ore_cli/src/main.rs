@@ -91,6 +91,17 @@ fn print_error_with_context(error: &str, file: &Path) {
 }
 
 fn main() {
+    // If the first arg looks like a .ore file, treat as `ore run <file>`
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() >= 2 && args[1].ends_with(".ore") && !args[1].starts_with('-') {
+        let file = PathBuf::from(&args[1]);
+        if let Err(e) = run_file(&file) {
+            print_error_with_context(&e, &file);
+            std::process::exit(1);
+        }
+        return;
+    }
+
     let cli = Cli::parse();
 
     match cli.command {
