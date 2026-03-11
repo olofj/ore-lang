@@ -1,0 +1,75 @@
+-- Showcase 68: Advanced pattern matching and control flow
+
+fn classify_temp t:Int -> Str
+  match t
+    -100..0 -> "freezing"
+    0..15 -> "cold"
+    15..25 -> "comfortable"
+    25..35 -> "warm"
+    35..100 -> "hot"
+    _ -> "extreme"
+
+fn http_status code:Int -> Str
+  match code
+    200 -> "OK"
+    201 -> "Created"
+    301 | 302 -> "Redirect"
+    400 -> "Bad Request"
+    401 | 403 -> "Unauthorized"
+    404 -> "Not Found"
+    500 | 502 | 503 -> "Server Error"
+    _ -> "Unknown ({code})"
+
+fn fizzbuzz n:Int -> Str
+  match n % 15
+    0 -> "FizzBuzz"
+    3 | 6 | 9 | 12 -> "Fizz"
+    5 | 10 -> "Buzz"
+    _ -> str(n)
+
+fn main
+  -- Temperature classification
+  temps := [-10, 5, 20, 30, 40]
+  for t in temps
+    print "{t}: {classify_temp(t)}"
+
+  -- HTTP status codes
+  codes := [200, 301, 404, 500, 418]
+  for code in codes
+    print "{code}: {http_status(code)}"
+
+  -- Comparison chains
+  for x in range(0, 15)
+    if 3 <= x < 7
+      print "{x} is in [3, 7)"
+
+  -- Enumerate with index
+  languages := ["Ore", "Rust", "Python", "Go"]
+  for i, lang in languages
+    print "  {i + 1}. {lang}"
+
+  -- FizzBuzz with match
+  fb := range(1, 16).map(n => fizzbuzz(n))
+  print fb.join(", ")
+
+  -- Match as expression
+  value := 42
+  desc := match value
+    0 -> "zero"
+    1..10 -> "small"
+    10..100 -> "medium"
+    _ -> "large"
+  print "{value} is {desc}"
+
+  -- Classify with if/else
+  nums := [12, -5, 0, 7, -3, 15]
+  for n in nums
+    label := if n > 10
+      "big positive"
+    else if n > 0
+      "small positive"
+    else if n == 0
+      "zero"
+    else
+      "negative"
+    print "{n}: {label}"

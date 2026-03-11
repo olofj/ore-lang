@@ -1,0 +1,75 @@
+-- Showcase 69: Comprehensive string methods and text manipulation
+
+fn main
+  -- Basic string methods
+  s := "Hello, World!"
+  print "length: {s.len()}"
+  print "upper: {s.to_upper()}"
+  print "lower: {s.to_lower()}"
+  print "reverse: {s.reverse()}"
+  print "capitalize: {"hello".capitalize()}"
+
+  -- Search operations
+  print "contains 'World': {s.contains("World")}"
+  print "starts_with 'Hello': {s.starts_with("Hello")}"
+  print "ends_with '!': {s.ends_with("!")}"
+  print "index_of 'World': {s.index_of("World")}"
+  print "count 'l': {s.count("l")}"
+
+  -- Trimming
+  padded := "   hello   "
+  print "trim: '{padded.trim()}'"
+  print "trim_start: '{padded.trim_start()}'"
+  print "trim_end: '{padded.trim_end()}'"
+
+  -- Replace
+  print "replace: {s.replace("World", "Ore")}"
+
+  -- Split and join
+  csv := "apple,banana,cherry,date"
+  parts := csv.split(",")
+  print "split: {parts.join(" | ")}"
+
+  -- Slice
+  print "slice(0,5): {s.slice(0, 5)}"
+  print "slice(7,12): {s.slice(7, 12)}"
+
+  -- Pad
+  num := "42"
+  print "pad_left: '{num.pad_left(6, "0")}'"
+  print "pad_right: '{num.pad_right(6, ".")}'"
+
+  -- Repeat
+  print "repeat: {"ha".repeat(3)}"
+
+  -- Strip prefix/suffix
+  filename := "document.txt"
+  print "strip_suffix: {filename.strip_suffix(".txt")}"
+  print "strip_prefix: {"pre_name".strip_prefix("pre_")}"
+
+  -- Chars and char operations
+  word := "hello"
+  chars := word.chars()
+  print "chars: {chars.join("-")}"
+  print "char_at(0): {word.char_at(0)}"
+  print "char_at(4): {word.char_at(4)}"
+
+  -- ord and chr
+  print "ord('A'): {ord("A")}"
+  print "chr(65): {chr(65)}"
+  print "chr(97): {chr(97)}"
+
+  -- Parse
+  print "parse_int: {"123".parse_int()}"
+  print "parse_float: {"3.14".parse_float()}"
+
+  -- is_empty
+  print "empty: {"".is_empty()}"
+  print "not empty: {"hi".is_empty()}"
+
+  -- Lines
+  multiline := "line1\nline2\nline3"
+  lines := multiline.lines()
+  print "lines count: {lines.len()}"
+  for i, line in lines
+    print "  line {i}: {line}"

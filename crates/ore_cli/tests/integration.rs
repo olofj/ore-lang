@@ -1982,6 +1982,43 @@ fn showcase67() {
 }
 
 #[test]
+fn showcase68() {
+    let out = run_ore("showcase68.ore");
+    assert!(out.contains("-10: freezing"));
+    assert!(out.contains("20: comfortable"));
+    assert!(out.contains("40: hot"));
+    assert!(out.contains("200: OK"));
+    assert!(out.contains("404: Not Found"));
+    assert!(out.contains("418: Unknown (418)"));
+    assert!(out.contains("3 is in [3, 7)"));
+    assert!(out.contains("1. Ore"));
+    assert!(out.contains("42 is medium"));
+    assert!(out.contains("12: big positive"));
+    assert!(out.contains("0: zero"));
+}
+
+#[test]
+fn showcase69() {
+    let out = run_ore("showcase69.ore");
+    assert!(out.contains("length: 13"));
+    assert!(out.contains("upper: HELLO, WORLD!"));
+    assert!(out.contains("reverse: !dlroW ,olleH"));
+    assert!(out.contains("capitalize: Hello"));
+    assert!(out.contains("count 'l': 3"));
+    assert!(out.contains("trim: 'hello'"));
+    assert!(out.contains("replace: Hello, Ore!"));
+    assert!(out.contains("split: apple | banana | cherry | date"));
+    assert!(out.contains("pad_left: '000042'"));
+    assert!(out.contains("repeat: hahaha"));
+    assert!(out.contains("strip_suffix: document"));
+    assert!(out.contains("ord('A'): 65"));
+    assert!(out.contains("chr(65): A"));
+    assert!(out.contains("parse_int: 123"));
+    assert!(out.contains("empty: true"));
+    assert!(out.contains("lines count: 3"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
