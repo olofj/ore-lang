@@ -1,0 +1,198 @@
+-- Showcase 379: Simple regex engine (literal + . + * matching)
+
+-- Pattern operations: literal chars, '.' matches any, '*' repeats previous 0+ times
+-- We use string indexing via char_at
+
+fn char_eq s:Str idx:Int ch:Str -> Bool
+  s | char_at(idx) == ch
+
+fn match_here pat:Str pidx:Int plen:Int text:Str tidx:Int tlen:Int -> Bool
+  if pidx >= plen
+    return tidx >= tlen
+
+  -- Check for star: current char followed by '*'
+  if pidx + 1 < plen
+    if char_eq(pat, pidx + 1, "*")
+      pchar := pat | char_at(pidx)
+      return match_star(pchar, pat, pidx + 2, plen, text, tidx, tlen)
+
+  if tidx >= tlen
+    return false
+
+  pchar := pat | char_at(pidx)
+  tchar := text | char_at(tidx)
+  if pchar == "." or pchar == tchar
+    return match_here(pat, pidx + 1, plen, text, tidx + 1, tlen)
+
+  false
+
+fn match_star ch:Str pat:Str pidx:Int plen:Int text:Str tidx:Int tlen:Int -> Bool
+  mut ti := tidx
+  loop
+    if match_here(pat, pidx, plen, text, ti, tlen)
+      return true
+    if ti >= tlen
+      return false
+    tchar := text | char_at(ti)
+    if ch != "." and ch != tchar
+      return false
+    ti = ti + 1
+  false
+
+fn regex_match pat:Str text:Str -> Bool
+  plen := pat | len()
+  tlen := text | len()
+  match_here(pat, 0, plen, text, 0, tlen)
+
+fn match_prefix pat:Str pidx:Int plen:Int text:Str tidx:Int tlen:Int -> Bool
+  -- Like match_here but doesn't require consuming all text
+  if pidx >= plen
+    return true
+
+  if pidx + 1 < plen
+    if char_eq(pat, pidx + 1, "*")
+      pchar := pat | char_at(pidx)
+      return match_star_prefix(pchar, pat, pidx + 2, plen, text, tidx, tlen)
+
+  if tidx >= tlen
+    return false
+
+  pchar := pat | char_at(pidx)
+  tchar := text | char_at(tidx)
+  if pchar == "." or pchar == tchar
+    return match_prefix(pat, pidx + 1, plen, text, tidx + 1, tlen)
+
+  false
+
+fn match_star_prefix ch:Str pat:Str pidx:Int plen:Int text:Str tidx:Int tlen:Int -> Bool
+  mut ti := tidx
+  loop
+    if match_prefix(pat, pidx, plen, text, ti, tlen)
+      return true
+    if ti >= tlen
+      return false
+    tchar := text | char_at(ti)
+    if ch != "." and ch != tchar
+      return false
+    ti = ti + 1
+  false
+
+fn regex_search pat:Str text:Str -> Int
+  plen := pat | len()
+  tlen := text | len()
+  for i in range(0, tlen + 1)
+    if match_prefix(pat, 0, plen, text, i, tlen)
+      return i
+  -1
+
+fn regex_find_all pat:Str text:Str -> List
+  plen := pat | len()
+  tlen := text | len()
+  mut positions := []
+  for i in range(0, tlen + 1)
+    if match_prefix(pat, 0, plen, text, i, tlen)
+      positions.push(i)
+  positions
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn bool_str b:Bool -> Str
+  if b
+    "true"
+  else
+    "false"
+
+fn main
+  print "Simple Regex Engine (literal + . + * matching):"
+  print ""
+
+  -- Basic literal matching
+  print "Literal matching:"
+  print "  'hello' =~ 'hello': {bool_str(regex_match("hello", "hello"))}"
+  print "  'hello' =~ 'world': {bool_str(regex_match("hello", "world"))}"
+  print "  'abc' =~ 'abc': {bool_str(regex_match("abc", "abc"))}"
+
+  print ""
+
+  -- Dot matching
+  print "Dot (.) matching:"
+  print "  'h.llo' =~ 'hello': {bool_str(regex_match("h.llo", "hello"))}"
+  print "  'h.llo' =~ 'hallo': {bool_str(regex_match("h.llo", "hallo"))}"
+  r1 := regex_match("...", "abc")
+  r2 := regex_match("...", "ab")
+  print "  '...' =~ 'abc': {bool_str(r1)}"
+  print "  '...' =~ 'ab': {bool_str(r2)}"
+
+  print ""
+
+  -- Star matching
+  print "Star (*) matching:"
+  print "  'ab*c' =~ 'ac': {bool_str(regex_match("ab*c", "ac"))}"
+  print "  'ab*c' =~ 'abc': {bool_str(regex_match("ab*c", "abc"))}"
+  print "  'ab*c' =~ 'abbc': {bool_str(regex_match("ab*c", "abbc"))}"
+  print "  'ab*c' =~ 'abbbc': {bool_str(regex_match("ab*c", "abbbc"))}"
+
+  print ""
+
+  -- Combined patterns
+  print "Combined patterns:"
+  print "  'a.b' =~ 'axb': {bool_str(regex_match("a.b", "axb"))}"
+  print "  'a.*b' =~ 'axxxb': {bool_str(regex_match("a.*b", "axxxb"))}"
+  print "  'a.*b' =~ 'ab': {bool_str(regex_match("a.*b", "ab"))}"
+
+  print ""
+
+  -- Search (find pattern within text)
+  print "Pattern search:"
+  pos1 := regex_search("lo", "hello world")
+  print "  'lo' in 'hello world': position {pos1}"
+
+  pos2 := regex_search("wor", "hello world")
+  print "  'wor' in 'hello world': position {pos2}"
+
+  pos3 := regex_search("xyz", "hello world")
+  print "  'xyz' in 'hello world': not found ({pos3})"
+
+  print ""
+
+  -- Find all matches
+  print "Find all occurrences:"
+  all1 := regex_find_all("a", "banana")
+  print "  'a' in 'banana': positions {list_to_str(all1)}"
+
+  all2 := regex_find_all("an", "banana")
+  print "  'an' in 'banana': positions {list_to_str(all2)}"
+
+  print ""
+
+  -- Edge cases
+  print "Edge cases:"
+  print "  empty pattern =~ empty text: {bool_str(regex_match("", ""))}"
+  print "  'a*' =~ empty text: {bool_str(regex_match("a*", ""))}"
+  print "  'a*' =~ 'aaa': {bool_str(regex_match("a*", "aaa"))}"
+
+  print ""
+
+  -- Practical examples
+  print "Practical pattern matching:"
+  words := ["cat", "car", "cab", "cup", "cap", "cot", "cut"]
+  n := words | count()
+  print "  Words matching 'c.t':"
+  for i in range(0, n)
+    if regex_match("c.t", words[i])
+      print "    {words[i]}"
+
+  print "  Words matching 'ca.':"
+  for i in range(0, n)
+    if regex_match("ca.", words[i])
+      print "    {words[i]}"
+
+  print ""
+  print "This engine supports: literals, . (any char), * (zero or more)."

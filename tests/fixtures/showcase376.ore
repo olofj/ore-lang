@@ -1,0 +1,204 @@
+-- Showcase 376: Maze solving (DFS with backtracking)
+
+-- Maze encoded as flat list: 0=path, 1=wall, 2=start, 3=end, 4=solution path
+-- Directions: right, down, left, up
+
+fn get_cell maze:List w:Int x:Int y:Int -> Int
+  maze[y * w + x]
+
+fn set_cell maze:List w:Int x:Int y:Int val:Int -> List
+  maze[y * w + x] = val
+  maze
+
+fn copy_maze maze:List -> List
+  mut result := []
+  n := maze | count()
+  for i in range(0, n)
+    result.push(maze[i])
+  result
+
+fn print_maze maze:List w:Int h:Int
+  for y in range(0, h)
+    mut line := "  "
+    for x in range(0, w)
+      cell := get_cell(maze, w, x, y)
+      if cell == 1
+        line = line + "#"
+      else if cell == 2
+        line = line + "S"
+      else if cell == 3
+        line = line + "E"
+      else if cell == 4
+        line = line + "o"
+      else
+        line = line + " "
+    print line
+
+fn solve_maze maze:List w:Int h:Int sx:Int sy:Int ex:Int ey:Int -> List
+  -- DFS solver using an explicit stack
+  -- Stack stores [x, y] pairs as x*1000+y encoding
+  -- visited is a flat list same size as maze
+  mut visited := []
+  total := w * h
+  for i in range(0, total)
+    visited.push(0)
+
+  -- parent tracking: store encoded parent position for each cell
+  mut parent := []
+  for i in range(0, total)
+    parent.push(-1)
+
+  mut stack := []
+  stack.push(sx * 1000 + sy)
+  visited[sy * w + sx] = 1
+
+  -- Direction deltas: right, down, left, up
+  dx := [1, 0, -1, 0]
+  dy := [0, 1, 0, -1]
+
+  mut found := false
+
+  loop
+    slen := stack | count()
+    if slen == 0
+      break
+    encoded := stack[slen - 1]
+    stack.pop()
+    cx := encoded / 1000
+    cy := encoded % 1000
+
+    if cx == ex and cy == ey
+      found = true
+      break
+
+    for d in range(0, 4)
+      nx := cx + dx[d]
+      ny := cy + dy[d]
+      if nx >= 0 and nx < w and ny >= 0 and ny < h
+        idx := ny * w + nx
+        cell := maze[idx]
+        if visited[idx] == 0 and cell != 1
+          visited[idx] = 1
+          parent[idx] = cy * w + cx
+          stack.push(nx * 1000 + ny)
+
+  -- Reconstruct path
+  mut path := []
+  if found
+    mut cx := ex
+    mut cy := ey
+    loop
+      path.push(cx * 1000 + cy)
+      if cx == sx and cy == sy
+        break
+      p := parent[cy * w + cx]
+      if p == -1
+        break
+      cx = p % w
+      cy = p / w
+  path
+
+fn main
+  print "Maze Solving (DFS with Backtracking):"
+  print ""
+
+  -- Define maze 1 (11x7)
+  w1 := 11
+  h1 := 7
+  -- Build maze row by row
+  mut maze1 := []
+  -- Row 0: ###########
+  r0 := [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  -- Row 1: #S  # #   #
+  r1 := [1, 2, 0, 0, 1, 0, 1, 0, 0, 0, 1]
+  -- Row 2: ### # # # #
+  r2 := [1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+  -- Row 3: #   #   # #
+  r3 := [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1]
+  -- Row 4: # ### ### #
+  r4 := [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1]
+  -- Row 5: #       #E#
+  r5 := [1, 0, 0, 0, 0, 0, 0, 0, 1, 3, 1]
+  -- Row 6: ###########
+  r6 := [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+  for v in r0
+    maze1.push(v)
+  for v in r1
+    maze1.push(v)
+  for v in r2
+    maze1.push(v)
+  for v in r3
+    maze1.push(v)
+  for v in r4
+    maze1.push(v)
+  for v in r5
+    maze1.push(v)
+  for v in r6
+    maze1.push(v)
+
+  print "Maze 1 (11x7):"
+  print_maze(maze1, w1, h1)
+
+  path1 := solve_maze(maze1, w1, h1, 1, 1, 9, 5)
+  plen1 := path1 | count()
+
+  if plen1 > 0
+    print "Solution found! Path length: {plen1}"
+    -- Mark solution on a copy
+    mut solved1 := copy_maze(maze1)
+    for i in range(0, plen1)
+      px := path1[i] / 1000
+      py := path1[i] % 1000
+      cell := get_cell(solved1, w1, px, py)
+      if cell == 0
+        solved1 = set_cell(solved1, w1, px, py, 4)
+    print "Solved maze:"
+    print_maze(solved1, w1, h1)
+  else
+    print "No solution found!"
+
+  print ""
+
+  -- Maze 2 (9x5) - simpler
+  w2 := 9
+  h2 := 5
+  mut maze2 := []
+  m2r0 := [1, 1, 1, 1, 1, 1, 1, 1, 1]
+  m2r1 := [1, 2, 0, 1, 0, 0, 0, 3, 1]
+  m2r2 := [1, 0, 0, 1, 0, 1, 0, 0, 1]
+  m2r3 := [1, 0, 0, 0, 0, 1, 0, 0, 1]
+  m2r4 := [1, 1, 1, 1, 1, 1, 1, 1, 1]
+  for v in m2r0
+    maze2.push(v)
+  for v in m2r1
+    maze2.push(v)
+  for v in m2r2
+    maze2.push(v)
+  for v in m2r3
+    maze2.push(v)
+  for v in m2r4
+    maze2.push(v)
+
+  print "Maze 2 (9x5):"
+  print_maze(maze2, w2, h2)
+
+  path2 := solve_maze(maze2, w2, h2, 1, 1, 7, 1)
+  plen2 := path2 | count()
+
+  if plen2 > 0
+    print "Solution found! Path length: {plen2}"
+    mut solved2 := copy_maze(maze2)
+    for i in range(0, plen2)
+      px := path2[i] / 1000
+      py := path2[i] % 1000
+      cell := get_cell(solved2, w2, px, py)
+      if cell == 0
+        solved2 = set_cell(solved2, w2, px, py, 4)
+    print "Solved maze:"
+    print_maze(solved2, w2, h2)
+  else
+    print "No solution found!"
+
+  print ""
+  print "DFS explores as deep as possible before backtracking."

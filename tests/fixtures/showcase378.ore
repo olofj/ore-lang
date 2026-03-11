@@ -1,0 +1,180 @@
+-- Showcase 378: Banker's algorithm (deadlock avoidance)
+
+-- Resources represented as flat lists
+-- For n processes and m resources:
+--   allocation: n*m flat list
+--   max_need: n*m flat list
+--   available: m-element list
+
+fn get_val matrix:List cols:Int row:Int col:Int -> Int
+  matrix[row * cols + col]
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn compute_need alloc:List max_need:List n:Int m:Int -> List
+  -- need[i][j] = max_need[i][j] - alloc[i][j]
+  mut need := []
+  total := n * m
+  for i in range(0, total)
+    need.push(max_need[i] - alloc[i])
+  need
+
+fn is_safe alloc:List max_need:List available:List n:Int m:Int -> List
+  -- Returns safe sequence as list of process indices, or empty list if unsafe
+  need := compute_need(alloc, max_need, n, m)
+
+  mut work := []
+  for j in range(0, m)
+    work.push(available[j])
+
+  mut finished := []
+  for i in range(0, n)
+    finished.push(0)
+
+  mut safe_seq := []
+
+  for round in range(0, n)
+    mut found := -1
+    for i in range(0, n)
+      if finished[i] == 0
+        -- Check if need[i] <= work
+        mut can_run := true
+        for j in range(0, m)
+          if get_val(need, m, i, j) > work[j]
+            can_run = false
+            break
+        if can_run
+          found = i
+          break
+    if found == -1
+      return []
+    -- Process 'found' can run: release its resources
+    finished[found] = 1
+    safe_seq.push(found)
+    for j in range(0, m)
+      work[j] = work[j] + get_val(alloc, m, found, j)
+  safe_seq
+
+fn try_request alloc:List max_need:List available:List n:Int m:Int proc:Int request:List -> Bool
+  -- Check if granting request would leave system in safe state
+  mut new_alloc := []
+  mut new_avail := []
+  total := n * m
+  for i in range(0, total)
+    new_alloc.push(alloc[i])
+  for j in range(0, m)
+    new_avail.push(available[j])
+
+  -- Check if request <= available
+  for j in range(0, m)
+    if request[j] > new_avail[j]
+      return false
+
+  -- Tentatively grant
+  for j in range(0, m)
+    new_alloc[proc * m + j] = new_alloc[proc * m + j] + request[j]
+    new_avail[j] = new_avail[j] - request[j]
+
+  -- Check safety
+  seq := is_safe(new_alloc, max_need, new_avail, n, m)
+  seq_len := seq | count()
+  seq_len > 0
+
+fn main
+  print "Banker's Algorithm (Deadlock Avoidance):"
+  print ""
+
+  -- System with 5 processes and 3 resource types
+  n := 5
+  m := 3
+  print "System: {n} processes, {m} resource types (A, B, C)"
+  print ""
+
+  -- Allocation matrix (what each process currently holds)
+  alloc := [0, 1, 0, 2, 0, 0, 3, 0, 2, 2, 1, 1, 0, 0, 2]
+
+  -- Maximum need matrix
+  max_need := [7, 5, 3, 3, 2, 2, 9, 0, 2, 2, 2, 2, 4, 3, 3]
+
+  -- Available resources
+  available := [3, 3, 2]
+
+  -- Print allocation
+  print "Allocation matrix:"
+  print "  Process  A  B  C"
+  for i in range(0, n)
+    a := get_val(alloc, m, i, 0)
+    b := get_val(alloc, m, i, 1)
+    c := get_val(alloc, m, i, 2)
+    print "  P{i}       {a}  {b}  {c}"
+
+  print ""
+  print "Maximum need matrix:"
+  print "  Process  A  B  C"
+  for i in range(0, n)
+    a := get_val(max_need, m, i, 0)
+    b := get_val(max_need, m, i, 1)
+    c := get_val(max_need, m, i, 2)
+    print "  P{i}       {a}  {b}  {c}"
+
+  -- Compute and print need
+  need := compute_need(alloc, max_need, n, m)
+  print ""
+  print "Need matrix (Max - Allocation):"
+  print "  Process  A  B  C"
+  for i in range(0, n)
+    a := get_val(need, m, i, 0)
+    b := get_val(need, m, i, 1)
+    c := get_val(need, m, i, 2)
+    print "  P{i}       {a}  {b}  {c}"
+
+  print ""
+  print "Available resources: {list_to_str(available)}"
+
+  -- Check safety
+  safe_seq := is_safe(alloc, max_need, available, n, m)
+  seq_len := safe_seq | count()
+
+  print ""
+  if seq_len > 0
+    print "System is in a SAFE state!"
+    mut seq_str := ""
+    for i in range(0, seq_len)
+      if i > 0
+        seq_str = seq_str + " -> "
+      seq_str = seq_str + "P" + str(safe_seq[i])
+    print "Safe sequence: {seq_str}"
+  else
+    print "System is in an UNSAFE state!"
+
+  -- Test resource requests
+  print ""
+  print "Resource request testing:"
+
+  -- Request 1: P1 requests [1, 0, 2]
+  req1 := [1, 0, 2]
+  safe1 := try_request(alloc, max_need, available, n, m, 1, req1)
+  label1 := if safe1 then "GRANTED (safe)" else "DENIED (unsafe)"
+  print "  P1 requests {list_to_str(req1)}: {label1}"
+
+  -- Request 2: P4 requests [3, 3, 0]
+  req2 := [3, 3, 0]
+  safe2 := try_request(alloc, max_need, available, n, m, 4, req2)
+  label2 := if safe2 then "GRANTED (safe)" else "DENIED (unsafe)"
+  print "  P4 requests {list_to_str(req2)}: {label2}"
+
+  -- Request 3: P0 requests [0, 2, 0]
+  req3 := [0, 2, 0]
+  safe3 := try_request(alloc, max_need, available, n, m, 0, req3)
+  label3 := if safe3 then "GRANTED (safe)" else "DENIED (unsafe)"
+  print "  P0 requests {list_to_str(req3)}: {label3}"
+
+  print ""
+  print "The Banker's algorithm prevents deadlock by ensuring a safe sequence always exists."

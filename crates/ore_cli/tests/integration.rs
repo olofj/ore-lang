@@ -4986,6 +4986,131 @@ fn showcase370_persistent_stack() {
 }
 
 #[test]
+fn showcase371_permutation_cycles() {
+    let out = run_ore("showcase371.ore");
+    assert!(out.contains("Permutation Cycles and Parity:"));
+    assert!(out.contains("Cycle lengths: [3, 1, 1]"));
+    assert!(out.contains("Parity: even"));
+    assert!(out.contains("Order: 3"));
+    assert!(out.contains("Parity: odd"));
+    assert!(out.contains("Order: 2"));
+    assert!(out.contains("a * b = [0, 1, 2]"));
+    assert!(out.contains("p^5 = [0, 1, 2, 3, 4]"));
+    assert!(out.contains("every permutation decomposes into disjoint cycles"));
+}
+
+#[test]
+fn showcase372_nim_game() {
+    let out = run_ore("showcase372.ore");
+    assert!(out.contains("Nim Game - Strategy and Winning Moves:"));
+    assert!(out.contains("3 XOR 5 = 6"));
+    assert!(out.contains("1 XOR 2 XOR 3 = 0"));
+    assert!(out.contains("Heaps [1, 2, 3]: nim-sum=0, LOSING (P2 wins)"));
+    assert!(out.contains("Heaps [3, 4, 5]: nim-sum=2, WINNING (P1 wins)"));
+    assert!(out.contains("Player 1 wins!"));
+    assert!(out.contains("Player 2 wins!"));
+    assert!(out.contains("Sprague-Grundy theorem"));
+}
+
+#[test]
+fn showcase373_turtle_graphics() {
+    let out = run_ore("showcase373.ore");
+    assert!(out.contains("Turtle Graphics (Text Output):"));
+    assert!(out.contains("Drawing a 6x6 square:"));
+    assert!(out.contains("******.."));
+    assert!(out.contains("Drawing an L-shape:"));
+    assert!(out.contains("Drawing stairs:"));
+    assert!(out.contains("Drawing a cross:"));
+    assert!(out.contains("***********"));
+}
+
+#[test]
+fn showcase374_finite_field() {
+    let out = run_ore("showcase374.ore");
+    assert!(out.contains("Finite Field Arithmetic (GF(p)):"));
+    assert!(out.contains("Working in GF(7):"));
+    assert!(out.contains("2^(-1) = 4  (verify: 2 * 4 = 1)"));
+    assert!(out.contains("3 is a generator"));
+    assert!(out.contains("5 is a generator"));
+    assert!(out.contains("3^0 = 1"));
+    assert!(out.contains("log_3(2) = 2"));
+    assert!(out.contains("foundation of modern cryptography"));
+}
+
+#[test]
+fn showcase375_rle_bitmap() {
+    let out = run_ore("showcase375.ore");
+    assert!(out.contains("Run-Length Encoding on Bitmap Images:"));
+    assert!(out.contains("Row 0: W2 B4 W4"));
+    assert!(out.contains("Row 3: B1 W6 B1 W2"));
+    assert!(out.contains("Original pixels: 80"));
+    assert!(out.contains("Stripe encoded: B10 (2 values)"));
+    assert!(out.contains("RLE works best on data with long runs"));
+}
+
+#[test]
+fn showcase376_maze_solving() {
+    let out = run_ore("showcase376.ore");
+    assert!(out.contains("Maze Solving (DFS with Backtracking):"));
+    assert!(out.contains("Maze 1 (11x7):"));
+    assert!(out.contains("Solution found! Path length: 25"));
+    assert!(out.contains("Maze 2 (9x5):"));
+    assert!(out.contains("Solution found! Path length: 11"));
+    assert!(out.contains("DFS explores as deep as possible"));
+}
+
+#[test]
+fn showcase377_interval_scheduling() {
+    let out = run_ore("showcase377.ore");
+    assert!(out.contains("Interval Scheduling (Greedy Algorithm):"));
+    assert!(out.contains("Optimal selection (3 meetings):"));
+    assert!(out.contains("Maximum concurrent meetings: 3"));
+    assert!(out.contains("Optimal selection (3 jobs):"));
+    assert!(out.contains("Total work time: 9"));
+    assert!(out.contains("Greedy by earliest end time"));
+}
+
+#[test]
+fn showcase378_bankers_algorithm() {
+    let out = run_ore("showcase378.ore");
+    assert!(out.contains("Banker's Algorithm (Deadlock Avoidance):"));
+    assert!(out.contains("System: 5 processes, 3 resource types"));
+    assert!(out.contains("System is in a SAFE state!"));
+    assert!(out.contains("Safe sequence: P1 -> P3 -> P0 -> P2 -> P4"));
+    assert!(out.contains("P1 requests [1, 0, 2]: GRANTED (safe)"));
+    assert!(out.contains("P4 requests [3, 3, 0]: DENIED (unsafe)"));
+    assert!(out.contains("P0 requests [0, 2, 0]: GRANTED (safe)"));
+}
+
+#[test]
+fn showcase379_regex_engine() {
+    let out = run_ore("showcase379.ore");
+    assert!(out.contains("Simple Regex Engine"));
+    assert!(out.contains("'hello' =~ 'hello': true"));
+    assert!(out.contains("'hello' =~ 'world': false"));
+    assert!(out.contains("'h.llo' =~ 'hello': true"));
+    assert!(out.contains("'ab*c' =~ 'abbbc': true"));
+    assert!(out.contains("'lo' in 'hello world': position 3"));
+    assert!(out.contains("'a' in 'banana': positions [1, 3, 5]"));
+    assert!(out.contains("Words matching 'c.t':"));
+    assert!(out.contains("cat"));
+}
+
+#[test]
+fn showcase380_number_theory() {
+    let out = run_ore("showcase380.ore");
+    assert!(out.contains("Number Theory Toolkit:"));
+    assert!(out.contains("12 = [2, 2, 3]"));
+    assert!(out.contains("360 = [2, 2, 2, 3, 3, 5]"));
+    assert!(out.contains("phi(7) = 6 (prime)"));
+    assert!(out.contains("n=10: sum=10 [OK]"));
+    assert!(out.contains("6 is perfect (divisor sum = 12)"));
+    assert!(out.contains("28 is perfect (divisor sum = 56)"));
+    assert!(out.contains("496 is perfect (divisor sum = 992)"));
+    assert!(out.contains("gcd(12, 18) = 6, lcm(12, 18) = 36"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

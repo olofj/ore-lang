@@ -1,0 +1,138 @@
+-- Showcase 377: Interval scheduling (greedy algorithm)
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn sort_by_end starts:List ends:List -> List
+  -- Returns sorted indices by end time (selection sort)
+  n := starts | count()
+  mut indices := []
+  for i in range(0, n)
+    indices.push(i)
+  for i in range(0, n - 1)
+    mut min_idx := i
+    for j in range(i + 1, n)
+      if ends[indices[j]] < ends[indices[min_idx]]
+        min_idx = j
+    if min_idx != i
+      tmp := indices[i]
+      indices[i] = indices[min_idx]
+      indices[min_idx] = tmp
+  indices
+
+fn greedy_schedule starts:List ends:List names:List -> List
+  -- Returns list of selected interval indices
+  n := starts | count()
+  sorted := sort_by_end(starts, ends)
+  mut selected := []
+  mut last_end := -1
+  for i in range(0, n)
+    idx := sorted[i]
+    if starts[idx] >= last_end
+      selected.push(idx)
+      last_end = ends[idx]
+  selected
+
+fn intervals_overlap s1:Int e1:Int s2:Int e2:Int -> Bool
+  s1 < e2 and s2 < e1
+
+fn count_overlaps starts:List ends:List idx:Int -> Int
+  n := starts | count()
+  mut cnt := 0
+  for i in range(0, n)
+    if i != idx
+      if intervals_overlap(starts[idx], ends[idx], starts[i], ends[i])
+        cnt = cnt + 1
+  cnt
+
+fn max_concurrent starts:List ends:List -> Int
+  -- Find maximum number of overlapping intervals at any point
+  n := starts | count()
+  mut max_c := 0
+  for i in range(0, n)
+    -- Check how many intervals are active at start time of interval i
+    mut active := 0
+    t := starts[i]
+    for j in range(0, n)
+      if starts[j] <= t and ends[j] > t
+        active = active + 1
+    if active > max_c
+      max_c = active
+  max_c
+
+fn main
+  print "Interval Scheduling (Greedy Algorithm):"
+  print ""
+
+  -- Example 1: Meeting room scheduling
+  print "Meeting Room Scheduling:"
+  names := ["Team A", "Team B", "Team C", "Team D", "Team E", "Team F"]
+  starts := [1, 3, 0, 5, 8, 5]
+  ends := [4, 5, 6, 7, 9, 9]
+
+  n := names | count()
+  print "Available meetings:"
+  for i in range(0, n)
+    overlaps := count_overlaps(starts, ends, i)
+    print "  {names[i]}: [{starts[i]}, {ends[i]})  overlaps with {overlaps} others"
+
+  print ""
+  selected := greedy_schedule(starts, ends, names)
+  sel_count := selected | count()
+  print "Optimal selection ({sel_count} meetings):"
+  for i in range(0, sel_count)
+    idx := selected[i]
+    print "  {names[idx]}: [{starts[idx]}, {ends[idx]})"
+
+  print ""
+  max_c := max_concurrent(starts, ends)
+  print "Maximum concurrent meetings: {max_c}"
+  print "Minimum rooms needed: {max_c}"
+
+  print ""
+
+  -- Example 2: Job scheduling
+  print "Job Scheduling:"
+  jnames := ["J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8"]
+  jstarts := [0, 1, 2, 3, 4, 5, 6, 1]
+  jends := [3, 4, 5, 6, 7, 8, 9, 8]
+
+  jn := jnames | count()
+  print "Available jobs:"
+  for i in range(0, jn)
+    duration := jends[i] - jstarts[i]
+    print "  {jnames[i]}: [{jstarts[i]}, {jends[i]}) duration={duration}"
+
+  jsel := greedy_schedule(jstarts, jends, jnames)
+  jsel_count := jsel | count()
+  print ""
+  print "Optimal selection ({jsel_count} jobs):"
+  mut total_duration := 0
+  for i in range(0, jsel_count)
+    idx := jsel[i]
+    dur := jends[idx] - jstarts[idx]
+    total_duration = total_duration + dur
+    print "  {jnames[idx]}: [{jstarts[idx]}, {jends[idx]}) duration={dur}"
+  print "Total work time: {total_duration}"
+
+  print ""
+
+  -- Example 3: Timeline visualization
+  print "Timeline visualization (time 0-9):"
+  for i in range(0, jn)
+    mut line := "  {jnames[i]} "
+    for t in range(0, 10)
+      if t >= jstarts[i] and t < jends[i]
+        line = line + "="
+      else
+        line = line + "."
+    print line
+
+  print ""
+  print "Greedy by earliest end time gives maximum non-overlapping intervals."

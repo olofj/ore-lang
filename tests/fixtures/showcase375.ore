@@ -1,0 +1,176 @@
+-- Showcase 375: Run-length encoding on images (simple bitmap)
+
+fn rle_encode data:List -> List
+  -- Returns list of [value, count, value, count, ...]
+  n := data | count()
+  if n == 0
+    return []
+  mut result := []
+  mut current := data[0]
+  mut run_len := 1
+  for i in range(1, n)
+    if data[i] == current
+      run_len = run_len + 1
+    else
+      result.push(current)
+      result.push(run_len)
+      current = data[i]
+      run_len = 1
+  result.push(current)
+  result.push(run_len)
+  result
+
+fn rle_decode encoded:List -> List
+  mut result := []
+  n := encoded | count()
+  mut i := 0
+  loop
+    if i >= n
+      break
+    val := encoded[i]
+    cnt := encoded[i + 1]
+    for j in range(0, cnt)
+      result.push(val)
+    i = i + 2
+  result
+
+fn make_bitmap_row pattern:Str -> List
+  -- 0 = white, 1 = black
+  mut row := []
+  n := pattern | len()
+  chars := pattern | chars()
+  char_count := chars | count()
+  for i in range(0, char_count)
+    ch := chars[i]
+    if ch == "#"
+      row.push(1)
+    else
+      row.push(0)
+  row
+
+fn row_to_str row:List -> Str
+  mut s := ""
+  n := row | count()
+  for i in range(0, n)
+    if row[i] == 1
+      s = s + "#"
+    else
+      s = s + "."
+  s
+
+fn encoded_to_str enc:List -> Str
+  mut s := ""
+  n := enc | count()
+  mut i := 0
+  loop
+    if i >= n
+      break
+    if i > 0
+      s = s + " "
+    val := enc[i]
+    cnt := enc[i + 1]
+    label := if val == 1 then "B" else "W"
+    s = s + label + str(cnt)
+    i = i + 2
+  s
+
+fn main
+  print "Run-Length Encoding on Bitmap Images:"
+  print ""
+
+  -- Create a simple image (smiley face 10x10)
+  print "Original image (10x10 smiley):"
+  mut rows := []
+  r0 := make_bitmap_row("..####....")
+  r1 := make_bitmap_row(".#....#...")
+  r2 := make_bitmap_row("#.#..#.#..")
+  r3 := make_bitmap_row("#......#..")
+  r4 := make_bitmap_row("#.#..#.#..")
+  r5 := make_bitmap_row("#..##..#..")
+  r6 := make_bitmap_row(".#....#...")
+  r7 := make_bitmap_row("..####....")
+  rows.push(0)
+  rows.push(0)
+  rows.push(0)
+  rows.push(0)
+  rows.push(0)
+  rows.push(0)
+  rows.push(0)
+  rows.push(0)
+
+  -- Print original
+  print "  {row_to_str(r0)}"
+  print "  {row_to_str(r1)}"
+  print "  {row_to_str(r2)}"
+  print "  {row_to_str(r3)}"
+  print "  {row_to_str(r4)}"
+  print "  {row_to_str(r5)}"
+  print "  {row_to_str(r6)}"
+  print "  {row_to_str(r7)}"
+
+  print ""
+
+  -- Encode each row
+  print "RLE encoded rows:"
+  e0 := rle_encode(r0)
+  e1 := rle_encode(r1)
+  e2 := rle_encode(r2)
+  e3 := rle_encode(r3)
+  e4 := rle_encode(r4)
+  e5 := rle_encode(r5)
+  e6 := rle_encode(r6)
+  e7 := rle_encode(r7)
+  print "  Row 0: {encoded_to_str(e0)}"
+  print "  Row 1: {encoded_to_str(e1)}"
+  print "  Row 2: {encoded_to_str(e2)}"
+  print "  Row 3: {encoded_to_str(e3)}"
+  print "  Row 4: {encoded_to_str(e4)}"
+  print "  Row 5: {encoded_to_str(e5)}"
+  print "  Row 6: {encoded_to_str(e6)}"
+  print "  Row 7: {encoded_to_str(e7)}"
+
+  print ""
+
+  -- Compression ratio
+  original_size := 80
+  enc_size := (e0 | count()) + (e1 | count()) + (e2 | count()) + (e3 | count()) + (e4 | count()) + (e5 | count()) + (e6 | count()) + (e7 | count())
+  print "Original pixels: {original_size}"
+  print "Encoded values: {enc_size}"
+
+  print ""
+
+  -- Decode and verify
+  print "Decoded rows (should match original):"
+  d0 := rle_decode(e0)
+  d1 := rle_decode(e1)
+  d2 := rle_decode(e2)
+  d3 := rle_decode(e3)
+  print "  {row_to_str(d0)}"
+  print "  {row_to_str(d1)}"
+  print "  {row_to_str(d2)}"
+  print "  {row_to_str(d3)}"
+
+  print ""
+
+  -- Simple bar pattern (high compression)
+  print "High-compression pattern (stripes):"
+  stripe := make_bitmap_row("##########")
+  blank := make_bitmap_row("..........")
+  print "  {row_to_str(stripe)}"
+  print "  {row_to_str(blank)}"
+  se := rle_encode(stripe)
+  be := rle_encode(blank)
+  print "  Stripe encoded: {encoded_to_str(se)} ({se | count()} values)"
+  print "  Blank encoded:  {encoded_to_str(be)} ({be | count()} values)"
+
+  print ""
+
+  -- Alternating (worst case)
+  print "Low-compression pattern (alternating):"
+  alt := make_bitmap_row("#.#.#.#.#.")
+  print "  {row_to_str(alt)}"
+  ae := rle_encode(alt)
+  print "  Encoded: {encoded_to_str(ae)} ({ae | count()} values)"
+
+  print ""
+  print "RLE works best on data with long runs of identical values."

@@ -1,0 +1,155 @@
+-- Showcase 371: Permutation cycles and parity
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn find_cycles perm:List -> List
+  -- Returns list of cycle lengths
+  n := perm | count()
+  mut visited := []
+  for i in range(0, n)
+    visited.push(0)
+  mut cycle_lengths := []
+  for i in range(0, n)
+    if visited[i] == 0
+      mut cycle_len := 0
+      mut j := i
+      loop
+        if visited[j] == 1
+          break
+        visited[j] = 1
+        j = perm[j]
+        cycle_len = cycle_len + 1
+      cycle_lengths.push(cycle_len)
+  cycle_lengths
+
+fn parity perm:List -> Int
+  -- Returns 0 for even, 1 for odd
+  cycles := find_cycles(perm)
+  n := cycles | count()
+  mut transpositions := 0
+  for i in range(0, n)
+    transpositions = transpositions + cycles[i] - 1
+  transpositions % 2
+
+fn compose a:List b:List -> List
+  -- Compose permutations: first apply b, then a
+  n := a | count()
+  mut result := []
+  for i in range(0, n)
+    result.push(a[b[i]])
+  result
+
+fn identity n:Int -> List
+  mut id := []
+  for i in range(0, n)
+    id.push(i)
+  id
+
+fn apply_n_times perm:List n:Int -> List
+  sz := perm | count()
+  mut result := identity(sz)
+  for i in range(0, n)
+    result = compose(perm, result)
+  result
+
+fn perm_order perm:List -> Int
+  -- Find the order (smallest k such that perm^k = identity)
+  n := perm | count()
+  id := identity(n)
+  mut current := []
+  for i in range(0, n)
+    current.push(perm[i])
+  mut k := 1
+  loop
+    mut is_id := true
+    for i in range(0, n)
+      if current[i] != id[i]
+        is_id = false
+        break
+    if is_id
+      return k
+    current = compose(perm, current)
+    k = k + 1
+    if k > 1000
+      return -1
+  k
+
+fn main
+  print "Permutation Cycles and Parity:"
+  print ""
+
+  -- Example 1: simple 3-cycle
+  p1 := [1, 2, 0, 3, 4]
+  print "Permutation: {list_to_str(p1)}"
+  c1 := find_cycles(p1)
+  print "Cycle lengths: {list_to_str(c1)}"
+  par1 := parity(p1)
+  label1 := if par1 == 0 then "even" else "odd"
+  print "Parity: {label1}"
+  print "Order: {perm_order(p1)}"
+
+  print ""
+
+  -- Example 2: transposition
+  p2 := [1, 0, 2, 3]
+  print "Permutation: {list_to_str(p2)}"
+  c2 := find_cycles(p2)
+  print "Cycle lengths: {list_to_str(c2)}"
+  par2 := parity(p2)
+  label2 := if par2 == 0 then "even" else "odd"
+  print "Parity: {label2}"
+  print "Order: {perm_order(p2)}"
+
+  print ""
+
+  -- Example 3: 5-cycle
+  p3 := [1, 2, 3, 4, 0]
+  print "Permutation: {list_to_str(p3)}"
+  c3 := find_cycles(p3)
+  print "Cycle lengths: {list_to_str(c3)}"
+  par3 := parity(p3)
+  label3 := if par3 == 0 then "even" else "odd"
+  print "Parity: {label3}"
+  print "Order: {perm_order(p3)}"
+
+  print ""
+
+  -- Example 4: product of disjoint cycles (2,3)
+  p4 := [1, 0, 4, 2, 3]
+  print "Permutation: {list_to_str(p4)}"
+  c4 := find_cycles(p4)
+  print "Cycle lengths: {list_to_str(c4)}"
+  par4 := parity(p4)
+  label4 := if par4 == 0 then "even" else "odd"
+  print "Parity: {label4}"
+  print "Order: {perm_order(p4)}"
+
+  print ""
+
+  -- Composition
+  print "Composition of permutations:"
+  a := [1, 2, 0]
+  b := [2, 0, 1]
+  ab := compose(a, b)
+  print "  a = {list_to_str(a)}"
+  print "  b = {list_to_str(b)}"
+  print "  a * b = {list_to_str(ab)}"
+
+  print ""
+
+  -- Power of a permutation
+  print "Powers of (0 1 2 3 4) -> [1, 2, 3, 4, 0]:"
+  cyc5 := [1, 2, 3, 4, 0]
+  for k in range(1, 6)
+    pk := apply_n_times(cyc5, k)
+    print "  p^{k} = {list_to_str(pk)}"
+
+  print ""
+  print "Permutation theory: every permutation decomposes into disjoint cycles."

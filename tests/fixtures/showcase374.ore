@@ -1,0 +1,132 @@
+-- Showcase 374: Finite field arithmetic (modular arithmetic with GF operations)
+
+fn mod_add a:Int b:Int p:Int -> Int
+  (a + b) % p
+
+fn mod_sub a:Int b:Int p:Int -> Int
+  ((a - b) % p + p) % p
+
+fn mod_mul a:Int b:Int p:Int -> Int
+  (a * b) % p
+
+fn mod_pow base:Int exp:Int p:Int -> Int
+  -- Fast modular exponentiation
+  mut result := 1
+  mut b := base % p
+  mut e := exp
+  loop
+    if e <= 0
+      break
+    if e % 2 == 1
+      result = result * b % p
+    e = e / 2
+    b = b * b % p
+  result
+
+fn mod_inv a:Int p:Int -> Int
+  -- Inverse via Fermat's little theorem: a^(p-2) mod p
+  mod_pow(a, p - 2, p)
+
+fn mod_div a:Int b:Int p:Int -> Int
+  mod_mul(a, mod_inv(b, p), p)
+
+fn is_generator g:Int p:Int -> Bool
+  -- Check if g generates the multiplicative group of GF(p)
+  -- Order must be p-1
+  mut val := g
+  for i in range(1, p - 1)
+    if val == 1
+      return false
+    val = val * g % p
+  val == 1
+
+fn discrete_log g:Int h:Int p:Int -> Int
+  -- Baby-step giant-step would be better, but brute force for small p
+  mut val := 1
+  for i in range(0, p)
+    if val == h
+      return i
+    val = val * g % p
+  -1
+
+fn main
+  print "Finite Field Arithmetic (GF(p)):"
+  print ""
+
+  p := 7
+  print "Working in GF({p}):"
+  print ""
+
+  -- Addition table
+  print "Addition table (mod {p}):"
+  mut header := "  +"
+  for j in range(0, p)
+    header = header + "  " + str(j)
+  print header
+  for i in range(0, p)
+    mut row := "  {i}"
+    for j in range(0, p)
+      row = row + "  " + str(mod_add(i, j, p))
+    print row
+
+  print ""
+
+  -- Multiplication table
+  print "Multiplication table (mod {p}):"
+  mut mheader := "  *"
+  for j in range(0, p)
+    mheader = mheader + "  " + str(j)
+  print mheader
+  for i in range(0, p)
+    mut row := "  {i}"
+    for j in range(0, p)
+      row = row + "  " + str(mod_mul(i, j, p))
+    print row
+
+  print ""
+
+  -- Inverses
+  print "Multiplicative inverses in GF({p}):"
+  for i in range(1, p)
+    inv := mod_inv(i, p)
+    check := mod_mul(i, inv, p)
+    print "  {i}^(-1) = {inv}  (verify: {i} * {inv} = {check})"
+
+  print ""
+
+  -- Powers of generator
+  print "Generators of GF({p}):"
+  mut gens := []
+  for g in range(2, p)
+    if is_generator(g, p)
+      gens.push(g)
+      print "  {g} is a generator"
+
+  print ""
+
+  -- Power table of a generator
+  g := 3
+  print "Powers of {g} in GF({p}):"
+  mut val := 1
+  for i in range(0, p - 1)
+    print "  {g}^{i} = {val}"
+    val = val * g % p
+
+  print ""
+
+  -- Discrete logarithm
+  print "Discrete logarithms (base 3) in GF({p}):"
+  for h in range(1, p)
+    dl := discrete_log(3, h, p)
+    print "  log_3({h}) = {dl}"
+
+  print ""
+
+  -- Polynomial evaluation in GF(p)
+  print "Polynomial f(x) = x^3 + 2x + 1 in GF({p}):"
+  for x in range(0, p)
+    val := mod_add(mod_add(mod_pow(x, 3, p), mod_mul(2, x, p), p), 1, p)
+    print "  f({x}) = {val}"
+
+  print ""
+  print "Finite fields are the foundation of modern cryptography and coding theory."

@@ -1,0 +1,146 @@
+-- Showcase 373: Turtle graphics (drawing with commands, text output)
+
+-- Canvas is a flat list of size width*height, 0=blank, 1=drawn
+-- Turtle state: x, y, direction (0=right, 1=down, 2=left, 3=up)
+
+fn make_canvas w:Int h:Int -> List
+  mut canvas := []
+  total := w * h
+  for i in range(0, total)
+    canvas.push(0)
+  canvas
+
+fn set_pixel canvas:List w:Int x:Int y:Int -> List
+  if x >= 0 and x < w and y >= 0
+    idx := y * w + x
+    total := canvas | count()
+    if idx < total
+      canvas[idx] = 1
+  canvas
+
+fn render canvas:List w:Int h:Int -> Str
+  mut result := ""
+  for y in range(0, h)
+    mut line := ""
+    for x in range(0, w)
+      idx := y * w + x
+      if canvas[idx] == 1
+        line = line + "*"
+      else
+        line = line + "."
+    if y > 0
+      result = result + "\n"
+    result = result + line
+  result
+
+fn draw_line canvas:List w:Int x1:Int y1:Int x2:Int y2:Int -> List
+  -- Simple horizontal or vertical line drawing
+  mut c := canvas
+  if y1 == y2
+    -- Horizontal line
+    start := if x1 < x2 then x1 else x2
+    stop := if x1 > x2 then x1 else x2
+    for x in range(start, stop + 1)
+      c = set_pixel(c, w, x, y1)
+  else if x1 == x2
+    -- Vertical line
+    start := if y1 < y2 then y1 else y2
+    stop := if y1 > y2 then y1 else y2
+    for y in range(start, stop + 1)
+      c = set_pixel(c, w, x1, y)
+  c
+
+fn execute_turtle commands:List w:Int h:Int -> List
+  -- Commands: [cmd_type, value, ...]
+  -- cmd_type: 0=forward, 1=turn_right, 2=turn_left, 3=pen_up, 4=pen_down
+  mut canvas := make_canvas(w, h)
+  mut x := 0
+  mut y := 0
+  mut dir := 0
+  mut pen := 1
+  n := commands | count()
+  mut i := 0
+  loop
+    if i >= n
+      break
+    cmd := commands[i]
+    val := commands[i + 1]
+    if cmd == 0
+      -- Forward
+      mut nx := x
+      mut ny := y
+      if dir == 0
+        nx = x + val
+      else if dir == 1
+        ny = y + val
+      else if dir == 2
+        nx = x - val
+      else
+        ny = y - val
+      if pen == 1
+        canvas = draw_line(canvas, w, x, y, nx, ny)
+      x = nx
+      y = ny
+    else if cmd == 1
+      -- Turn right
+      dir = (dir + val) % 4
+    else if cmd == 2
+      -- Turn left
+      dir = (dir + 4 - val) % 4
+    else if cmd == 3
+      pen = 0
+    else if cmd == 4
+      pen = 1
+    i = i + 2
+  canvas
+
+fn main
+  print "Turtle Graphics (Text Output):"
+  print ""
+
+  -- Draw a square
+  print "Drawing a 6x6 square:"
+  -- forward 5, right 1, forward 5, right 1, forward 5, right 1, forward 5
+  sq_cmds := [0, 5, 1, 1, 0, 5, 1, 1, 0, 5, 1, 1, 0, 5]
+  sq := execute_turtle(sq_cmds, 8, 8)
+  print render(sq, 8, 8)
+
+  print ""
+
+  -- Draw an L-shape
+  print "Drawing an L-shape:"
+  l_cmds := [0, 6, 1, 1, 0, 3, 1, 1, 0, 3, 2, 1, 0, 3, 1, 1, 0, 3]
+  l_canvas := execute_turtle(l_cmds, 10, 10)
+  print render(l_canvas, 10, 10)
+
+  print ""
+
+  -- Draw stairs
+  print "Drawing stairs:"
+  mut stair_cmds := []
+  for i in range(0, 5)
+    -- forward 2, turn right, forward 2, turn left
+    stair_cmds.push(0)
+    stair_cmds.push(2)
+    stair_cmds.push(1)
+    stair_cmds.push(1)
+    stair_cmds.push(0)
+    stair_cmds.push(2)
+    stair_cmds.push(2)
+    stair_cmds.push(1)
+  stair_canvas := execute_turtle(stair_cmds, 15, 15)
+  print render(stair_canvas, 15, 15)
+
+  print ""
+
+  -- Draw a cross/plus shape
+  print "Drawing a cross:"
+  mut cross_canvas := make_canvas(11, 11)
+  -- Horizontal bar
+  cross_canvas = draw_line(cross_canvas, 11, 0, 5, 10, 5)
+  -- Vertical bar
+  cross_canvas = draw_line(cross_canvas, 11, 5, 0, 5, 10)
+  print render(cross_canvas, 11, 11)
+
+  print ""
+  print "Turtle commands: forward, turn_right, turn_left, pen_up, pen_down"

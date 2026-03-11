@@ -1,0 +1,225 @@
+-- Showcase 380: Number theory toolkit (Euler's totient, Mobius function, etc.)
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  loop
+    if y == 0
+      return x
+    tmp := y
+    y = x % y
+    x = tmp
+  x
+
+fn lcm a:Int b:Int -> Int
+  g := gcd(a, b)
+  a * b / g
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  if n < 4
+    return true
+  if n % 2 == 0 or n % 3 == 0
+    return false
+  mut i := 5
+  loop
+    if i * i > n
+      break
+    if n % i == 0 or n % (i + 2) == 0
+      return false
+    i = i + 6
+  true
+
+fn euler_totient n:Int -> Int
+  -- Count integers 1..n that are coprime to n
+  if n == 1
+    return 1
+  mut result := n
+  mut m := n
+  mut p := 2
+  loop
+    if p * p > m
+      break
+    if m % p == 0
+      loop
+        if m % p != 0
+          break
+        m = m / p
+      result = result - result / p
+    p = p + 1
+  if m > 1
+    result = result - result / m
+  result
+
+fn mobius n:Int -> Int
+  -- Mobius function: 0 if n has squared prime factor, (-1)^k where k = number of prime factors
+  if n == 1
+    return 1
+  mut m := n
+  mut prime_factors := 0
+  mut p := 2
+  loop
+    if p * p > m
+      break
+    if m % p == 0
+      prime_factors = prime_factors + 1
+      m = m / p
+      if m % p == 0
+        return 0
+    p = p + 1
+  if m > 1
+    prime_factors = prime_factors + 1
+  if prime_factors % 2 == 0
+    1
+  else
+    -1
+
+fn factorize n:Int -> List
+  -- Returns list of prime factors (with multiplicity)
+  mut factors := []
+  mut m := n
+  mut p := 2
+  loop
+    if p * p > m
+      break
+    loop
+      if m % p != 0
+        break
+      factors.push(p)
+      m = m / p
+    p = p + 1
+  if m > 1
+    factors.push(m)
+  factors
+
+fn count_divisors n:Int -> Int
+  mut cnt := 0
+  mut i := 1
+  loop
+    if i * i > n
+      break
+    if n % i == 0
+      cnt = cnt + 1
+      if i * i != n
+        cnt = cnt + 1
+    i = i + 1
+  cnt
+
+fn sum_divisors n:Int -> Int
+  mut total := 0
+  mut i := 1
+  loop
+    if i * i > n
+      break
+    if n % i == 0
+      total = total + i
+      if i * i != n
+        total = total + n / i
+    i = i + 1
+  total
+
+fn is_perfect n:Int -> Bool
+  sum_divisors(n) == 2 * n
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn main
+  print "Number Theory Toolkit:"
+  print ""
+
+  -- Prime factorization
+  print "Prime factorization:"
+  nums := [12, 30, 60, 97, 100, 360]
+  for n in nums
+    factors := factorize(n)
+    print "  {n} = {list_to_str(factors)}"
+
+  print ""
+
+  -- Euler's totient function
+  print "Euler's totient function phi(n):"
+  for n in range(1, 21)
+    phi := euler_totient(n)
+    prime_label := if is_prime(n) then " (prime)" else ""
+    print "  phi({n}) = {phi}{prime_label}"
+
+  print ""
+
+  -- Verify totient property: sum of phi(d) for d|n equals n
+  print "Totient sum property (sum of phi(d) for d|n = n):"
+  for n in range(1, 11)
+    mut total := 0
+    for d in range(1, n + 1)
+      if n % d == 0
+        total = total + euler_totient(d)
+    check := if total == n then "OK" else "FAIL"
+    print "  n={n}: sum={total} [{check}]"
+
+  print ""
+
+  -- Mobius function
+  print "Mobius function mu(n):"
+  mut mu_str := "  "
+  for n in range(1, 21)
+    m := mobius(n)
+    label := if m == 1 then "+" else if m == -1 then "-" else "0"
+    mu_str = mu_str + label
+    if n < 20
+      mu_str = mu_str + " "
+  print mu_str
+  mut num_str := "  "
+  for n in range(1, 21)
+    if n < 10
+      num_str = num_str + str(n) + " "
+    else
+      num_str = num_str + str(n)
+      if n < 20
+        num_str = num_str + " "
+  print num_str
+
+  print ""
+
+  -- Divisor functions
+  print "Divisor functions:"
+  print "  n   d(n)  sigma(n)  perfect?"
+  for n in range(1, 31)
+    d := count_divisors(n)
+    sigma := sum_divisors(n)
+    perf := if is_perfect(n) then "YES" else ""
+    if perf == "YES" or d >= 6
+      print "  {n}   {d}     {sigma}       {perf}"
+
+  print ""
+
+  -- GCD and LCM
+  print "GCD and LCM:"
+  pairs := [12, 18, 35, 14, 100, 75, 17, 13]
+  mut i := 0
+  loop
+    if i >= 8
+      break
+    a := pairs[i]
+    b := pairs[i + 1]
+    print "  gcd({a}, {b}) = {gcd(a, b)}, lcm({a}, {b}) = {lcm(a, b)}"
+    i = i + 2
+
+  print ""
+
+  -- Perfect numbers
+  print "Perfect numbers up to 500:"
+  mut found := []
+  for n in range(2, 501)
+    if is_perfect(n)
+      found.push(n)
+      print "  {n} is perfect (divisor sum = {sum_divisors(n)})"
+
+  print ""
+  print "Number theory: the queen of mathematics (Gauss)."

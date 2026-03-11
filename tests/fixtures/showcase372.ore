@@ -1,0 +1,149 @@
+-- Showcase 372: Nim game (strategy and winning moves)
+
+fn xor a:Int b:Int -> Int
+  -- Compute XOR using bit-by-bit comparison
+  mut result := 0
+  mut va := a
+  mut vb := b
+  mut bit := 1
+  for i in range(0, 20)
+    a_bit := va % 2
+    b_bit := vb % 2
+    if a_bit != b_bit
+      result = result + bit
+    va = va / 2
+    vb = vb / 2
+    bit = bit * 2
+  result
+
+fn nim_sum heaps:List -> Int
+  n := heaps | count()
+  mut result := 0
+  for i in range(0, n)
+    result = xor(result, heaps[i])
+  result
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + ", "
+    s = s + str(lst[i])
+  s + "]"
+
+fn is_losing heaps:List -> Bool
+  nim_sum(heaps) == 0
+
+fn find_winning_move heaps:List -> List
+  -- Returns [heap_index, new_value] or [-1, -1] if no winning move
+  n := heaps | count()
+  ns := nim_sum(heaps)
+  if ns == 0
+    return [-1, -1]
+  for i in range(0, n)
+    target := xor(heaps[i], ns)
+    if target < heaps[i]
+      return [i, target]
+  [-1, -1]
+
+fn copy_list lst:List -> List
+  mut result := []
+  n := lst | count()
+  for i in range(0, n)
+    result.push(lst[i])
+  result
+
+fn play_game heaps:List
+  mut current := copy_list(heaps)
+  mut player := 1
+  mut moves := 0
+  print "  Starting heaps: {list_to_str(current)}"
+  loop
+    -- Check if game is over (all heaps empty)
+    total := current | sum()
+    if total == 0
+      loser := player
+      winner := if player == 1 then 2 else 1
+      print "  Player {loser} has no moves. Player {winner} wins!"
+      print "  Game took {moves} moves."
+      return
+    move := find_winning_move(current)
+    if move[0] >= 0
+      heap_idx := move[0]
+      new_val := move[1]
+      removed := current[heap_idx] - new_val
+      current[heap_idx] = new_val
+      print "  Player {player}: take {removed} from heap {heap_idx} -> {list_to_str(current)}"
+    else
+      -- Losing position: take 1 from first non-empty heap
+      n := current | count()
+      for i in range(0, n)
+        if current[i] > 0
+          current[i] = current[i] - 1
+          print "  Player {player}: take 1 from heap {i} -> {list_to_str(current)}"
+          break
+    player = if player == 1 then 2 else 1
+    moves = moves + 1
+    if moves > 50
+      print "  (Game truncated)"
+      return
+
+fn main
+  print "Nim Game - Strategy and Winning Moves:"
+  print ""
+
+  -- Explain nim-sum
+  print "Nim-sum (XOR) examples:"
+  print "  3 XOR 5 = {xor(3, 5)}"
+  print "  7 XOR 7 = {xor(7, 7)}"
+  print "  1 XOR 2 XOR 3 = {xor(xor(1, 2), 3)}"
+
+  print ""
+
+  -- Analyze positions
+  print "Position analysis:"
+  pos1 := [3, 4, 5]
+  ns1 := nim_sum(pos1)
+  lab1 := if is_losing(pos1) then "LOSING (P2 wins)" else "WINNING (P1 wins)"
+  print "  Heaps {list_to_str(pos1)}: nim-sum={ns1}, {lab1}"
+
+  pos2 := [1, 2, 3]
+  ns2 := nim_sum(pos2)
+  lab2 := if is_losing(pos2) then "LOSING (P2 wins)" else "WINNING (P1 wins)"
+  print "  Heaps {list_to_str(pos2)}: nim-sum={ns2}, {lab2}"
+
+  pos3 := [5, 5]
+  ns3 := nim_sum(pos3)
+  lab3 := if is_losing(pos3) then "LOSING (P2 wins)" else "WINNING (P1 wins)"
+  print "  Heaps {list_to_str(pos3)}: nim-sum={ns3}, {lab3}"
+
+  pos4 := [4, 7, 2]
+  ns4 := nim_sum(pos4)
+  lab4 := if is_losing(pos4) then "LOSING (P2 wins)" else "WINNING (P1 wins)"
+  print "  Heaps {list_to_str(pos4)}: nim-sum={ns4}, {lab4}"
+
+  print ""
+
+  -- Winning moves
+  print "Finding winning moves:"
+  wm1 := find_winning_move(pos1)
+  if wm1[0] >= 0
+    print "  {list_to_str(pos1)}: reduce heap {wm1[0]} to {wm1[1]}"
+
+  wm4 := find_winning_move(pos4)
+  if wm4[0] >= 0
+    print "  {list_to_str(pos4)}: reduce heap {wm4[0]} to {wm4[1]}"
+
+  print ""
+
+  -- Play a game with optimal strategy
+  print "Game 1: Heaps [3, 4, 5]"
+  play_game([3, 4, 5])
+
+  print ""
+  print "Game 2: Heaps [1, 2, 3] (P2 should win)"
+  play_game([1, 2, 3])
+
+  print ""
+  print "Sprague-Grundy theorem: Nim-sum = 0 is a losing position for the player to move."
