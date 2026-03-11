@@ -2807,6 +2807,42 @@ fn showcase133_result_map_unwrap() {
 }
 
 #[test]
+fn showcase134_error_handling() {
+    let out = run_ore("showcase134.ore");
+    assert!(out.contains("95 -> A"));
+    assert!(out.contains("55 -> F"));
+    assert!(out.contains("-5 -> -1"));
+    assert!(out.contains("88 doubled: 176"));
+    assert!(out.contains("75 + 10, * 2: 170"));
+    assert!(out.contains("Some(42) map +1: 43"));
+    assert!(out.contains("None is_none: true"));
+}
+
+#[test]
+fn showcase135_pattern_matching() {
+    let out = run_ore("showcase135.ore");
+    assert!(out.contains("red"));
+    assert!(out.contains("rgb(128, 64, 255)"));
+    assert!(out.contains("42 = 42"));
+    assert!(out.contains("3 + 4 = 7"));
+    assert!(out.contains("5 * 6 = 30"));
+    assert!(out.contains("3: fizz"));
+    assert!(out.contains("0 is zero"));
+    assert!(out.contains("25 is large"));
+}
+
+#[test]
+fn showcase136_functional_patterns() {
+    let out = run_ore("showcase136.ore");
+    assert!(out.contains("apply_twice (*2) 3: 12"));
+    assert!(out.contains("even squares: 4 + 16 + 36 + 64 + 100"));
+    assert!(out.contains("sum of even squares: 220"));
+    assert!(out.contains("10!: 3628800"));
+    assert!(out.contains("product: 210"));
+    assert!(out.contains("longest word: quick"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

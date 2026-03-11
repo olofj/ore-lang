@@ -1,0 +1,61 @@
+-- Showcase 134: Error handling patterns
+
+fn parse_score input:Str -> Result[Int]
+  n := input.to_int()
+  if n < 0 then Err("score cannot be negative")
+  else if n > 100 then Err("score cannot exceed 100")
+  else Ok(n)
+
+fn grade score:Int -> Str
+  if score >= 90 then "A"
+  else if score >= 80 then "B"
+  else if score >= 70 then "C"
+  else if score >= 60 then "D"
+  else "F"
+
+fn main
+  -- Parse and grade valid scores
+  inputs := ["95", "82", "71", "55", "100"]
+  for input in inputs
+    result := parse_score(input)
+    if result.is_ok()
+      score := result.unwrap()
+      print "{input} -> {grade(score)}"
+
+  -- Handle errors gracefully
+  print ""
+  bad_inputs := ["-5", "150"]
+  for input in bad_inputs
+    result := parse_score(input)
+    print "{input} -> {result | else -1}"
+
+  -- Result.map for transformation
+  print ""
+  r := parse_score("88")
+  doubled := r.map(n => n * 2)
+  print "88 doubled: {doubled | else 0}"
+
+  -- Chain multiple operations
+  val := parse_score("75")
+  transformed := val.map(n => n + 10).map(n => n * 2)
+  print "75 + 10, * 2: {transformed | else 0}"
+
+  -- Option handling
+  print ""
+  opt := Some(42)
+  print "Some(42) map +1: {opt.map(n => n + 1) | else 0}"
+  print "Some(42) is_some: {opt.is_some()}"
+
+  none_opt := None
+  print "None map +1: {none_opt.map(n => n + 1) | else 0}"
+  print "None is_none: {none_opt.is_none()}"
+
+  -- Nested Result checks
+  print ""
+  scores := ["90", "abc", "75", "-10"]
+  for s in scores
+    r2 := parse_score(s)
+    if r2.is_ok()
+      print "{s}: grade {grade(r2.unwrap())}"
+    else
+      print "{s}: invalid"

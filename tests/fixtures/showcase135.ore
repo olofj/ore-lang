@@ -1,0 +1,68 @@
+-- Showcase 135: Advanced pattern matching
+
+type Color
+  Red
+  Green
+  Blue
+  Custom(r: Int, g: Int, b: Int)
+
+fn color_name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+    Custom r g b -> "rgb({r}, {g}, {b})"
+
+type Expr
+  Num(val: Int)
+  Add(left: Int, right: Int)
+  Mul(left: Int, right: Int)
+
+fn eval e:Expr -> Int
+  match e
+    Num v -> v
+    Add l r -> l + r
+    Mul l r -> l * r
+
+fn describe e:Expr -> Str
+  match e
+    Num v -> "{v}"
+    Add l r -> "{l} + {r}"
+    Mul l r -> "{l} * {r}"
+
+fn main
+  -- Simple enum matching
+  colors := [Red, Green, Blue]
+  for c in colors
+    print color_name(c)
+
+  -- Enum with data (direct, not in list)
+  print ""
+  custom := Custom(r: 128, g: 64, b: 255)
+  print color_name(custom)
+
+  -- Expression evaluation (direct)
+  print ""
+  e1 := Num(val: 42)
+  print "{describe(e1)} = {eval(e1)}"
+
+  e2 := Add(left: 3, right: 4)
+  print "{describe(e2)} = {eval(e2)}"
+
+  e3 := Mul(left: 5, right: 6)
+  print "{describe(e3)} = {eval(e3)}"
+
+  -- Match on integers
+  print ""
+  for n in range(1, 11)
+    label := match n % 3
+      0 -> "fizz"
+      1 -> "one"
+      _ -> "two"
+    print "{n}: {label}"
+
+  -- Classification with if/then/else
+  print ""
+  for x in [0, 5, 10, 15, 20, 25]
+    cat := if x == 0 then "zero" else if x < 10 then "small" else if x < 20 then "medium" else "large"
+    print "{x} is {cat}"

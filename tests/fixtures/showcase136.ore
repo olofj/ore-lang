@@ -1,0 +1,53 @@
+-- Showcase 136: Functional programming patterns
+
+fn compose f:(Int -> Int) g:(Int -> Int) x:Int -> Int
+  f(g(x))
+
+fn apply_twice f:(Int -> Int) x:Int -> Int
+  f(f(x))
+
+fn main
+  -- Higher-order functions
+  print "apply_twice (*2) 3: {apply_twice(n => n * 2, 3)}"
+  print "apply_twice (+1) 10: {apply_twice(n => n + 1, 10)}"
+  print "compose (*2) (+1) 5: {compose(n => n * 2, n => n + 1, 5)}"
+
+  -- Pipeline composition
+  print ""
+  result := range(1, 11)
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | join(" + ")
+  print "even squares: {result}"
+
+  total := range(1, 11)
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | sum()
+  print "sum of even squares: {total}"
+
+  -- Fold patterns
+  print ""
+  factorial := range(1, 11) | fold(1, (acc, n) => acc * n)
+  print "10!: {factorial}"
+
+  -- Scan (running accumulation)
+  running := range(1, 6) | scan(0, (acc, n) => acc + n) | join(", ")
+  print "running sum: {running}"
+
+  -- Reduce
+  product := [2, 3, 5, 7] | reduce((a, b) => a * b)
+  print "product: {product}"
+
+  -- Complex pipeline
+  print ""
+  words := "the quick brown fox jumps over the lazy dog"
+  longest := words.split(" ")
+    | sort_by(w => 0 - w.len())
+    | first()
+  print "longest word: {longest}"
+
+  word_lengths := words.split(" ")
+    | map(w => "{w}({w.len()})")
+    | join(", ")
+  print "word lengths: {word_lengths}"
