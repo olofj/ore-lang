@@ -1,0 +1,217 @@
+-- Showcase 647: Simple LALR Parser Concepts
+
+fn main
+  print "LALR Parser Concepts:"
+  print ""
+
+  -- Simulate LALR(1) parsing with a shift-reduce parser
+  -- Grammar: S -> E, E -> E + T | T, T -> n
+  -- Tokens: n=1, +=2, $=0 (end)
+
+  -- Part 1: Grammar
+  print "=== Part 1: Grammar ==="
+  print "  S -> E"
+  print "  E -> E + T"
+  print "  E -> T"
+  print "  T -> n"
+
+  -- Part 2: Action and Goto tables
+  print ""
+  print "=== Part 2: Parse Tables ==="
+  -- States: 0-5
+  -- Action table: action[state * 3 + token]
+  -- token indices: 0=n, 1=+, 2=$
+  -- Actions: 0=error, positive=shift(state), negative=reduce(rule), 99=accept
+  -- Rules (0-indexed): 0=E->E+T (len 3), 1=E->T (len 1), 2=T->n (len 1)
+
+  -- State 0: n->s3, +->err, $->err
+  -- State 1: n->err, +->s4, $->acc
+  -- State 2: n->err, +->r1, $->r1  (E->T)
+  -- State 3: n->err, +->r2, $->r2  (T->n)
+  -- State 4: n->s5, +->err, $->err
+  -- State 5: n->err, +->r0, $->r0  (E->E+T)
+
+  mut action := [3, 0, 0, 0, 4, 99, 0, -2, -2, 0, -3, -3, 5, 0, 0, 0, -1, -1]
+
+  -- Goto table: goto[state * 2 + nonterminal]
+  -- Nonterminals: 0=E, 1=T
+  mut goto_table := [1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- State 0: E->1, T->2
+  -- State 4: E->x, T->5
+  goto_table[8] = 0
+  goto_table[9] = 5
+
+  -- Rule info: lhs nonterminal and rhs length
+  -- Rule 0: E->E+T (lhs=E=0, len=3)
+  -- Rule 1: E->T (lhs=E=0, len=1)
+  -- Rule 2: T->n (lhs=T=1, len=1)
+  mut rule_lhs_nt := [0, 0, 1]
+  mut rule_rhs_len := [3, 1, 1]
+
+  print "  States: 6"
+  print "  Action entries: 18"
+  print "  Goto entries: 12"
+
+  -- Part 3: Parse "n + n + n"
+  print ""
+  print "=== Part 3: Parse 'n + n + n' ==="
+  -- Input tokens: n=1, +=2, n=1, +=2, n=1, $=0
+  -- Map to action indices: n->0, +->1, $->2
+  mut input := [0, 1, 0, 1, 0, 2]
+  mut input_len := 6
+
+  mut parse_stack := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut sp := 0
+  parse_stack[0] = 0
+  sp = 1
+
+  mut ip := 0
+  mut accepted := false
+  mut parse_error := false
+  mut step := 0
+
+  mut tok_names := ["n", "+", "$"]
+
+  while not accepted and not parse_error and step < 20
+    step = step + 1
+    state := parse_stack[sp - 1]
+    tok := input[ip]
+    act := action[state * 3 + tok]
+
+    if act == 99
+      accepted = true
+      print "  Step {step}: state={state} token={tok_names[tok]} -> ACCEPT"
+    else if act > 0
+      -- Shift
+      print "  Step {step}: state={state} token={tok_names[tok]} -> shift {act}"
+      parse_stack[sp] = act
+      sp = sp + 1
+      ip = ip + 1
+    else if act < 0
+      -- Reduce
+      rule := (0 - act) - 1
+      rhs_len := rule_rhs_len[rule]
+      lhs := rule_lhs_nt[rule]
+
+      mut rule_str := "E -> E + T"
+      if rule == 0
+        rule_str = "E -> E + T"
+      else if rule == 1
+        rule_str = "E -> T"
+      else if rule == 2
+        rule_str = "T -> n"
+
+      sp = sp - rhs_len
+      top_state := parse_stack[sp - 1]
+      goto_state := goto_table[top_state * 2 + lhs]
+      parse_stack[sp] = goto_state
+      sp = sp + 1
+      print "  Step {step}: state={state} token={tok_names[tok]} -> reduce by {rule_str}, goto {goto_state}"
+    else
+      parse_error = true
+      print "  Step {step}: state={state} token={tok_names[tok]} -> ERROR"
+
+  if accepted
+    print "  Result: ACCEPTED in {step} steps"
+  else
+    print "  Result: REJECTED"
+
+  -- Part 4: Parse "n + n"
+  print ""
+  print "=== Part 4: Parse 'n + n' ==="
+  input = [0, 1, 0, 2]
+  input_len = 4
+
+  parse_stack = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  sp = 1
+  parse_stack[0] = 0
+  ip = 0
+  accepted = false
+  parse_error = false
+  step = 0
+
+  while not accepted and not parse_error and step < 20
+    step = step + 1
+    state := parse_stack[sp - 1]
+    tok := input[ip]
+    act := action[state * 3 + tok]
+
+    if act == 99
+      accepted = true
+      print "  Step {step}: ACCEPT"
+    else if act > 0
+      print "  Step {step}: shift {act}"
+      parse_stack[sp] = act
+      sp = sp + 1
+      ip = ip + 1
+    else if act < 0
+      rule := (0 - act) - 1
+      rhs_len := rule_rhs_len[rule]
+      lhs := rule_lhs_nt[rule]
+      sp = sp - rhs_len
+      top_state := parse_stack[sp - 1]
+      goto_state := goto_table[top_state * 2 + lhs]
+      parse_stack[sp] = goto_state
+      sp = sp + 1
+      print "  Step {step}: reduce rule {rule}, goto {goto_state}"
+    else
+      parse_error = true
+      print "  Step {step}: ERROR"
+
+  if accepted
+    print "  Result: ACCEPTED in {step} steps"
+
+  -- Part 5: Invalid input "n + +"
+  print ""
+  print "=== Part 5: Parse 'n + +' (invalid) ==="
+  input = [0, 1, 1, 2]
+  input_len = 4
+
+  parse_stack = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  sp = 1
+  parse_stack[0] = 0
+  ip = 0
+  accepted = false
+  parse_error = false
+  step = 0
+
+  while not accepted and not parse_error and step < 20
+    step = step + 1
+    state := parse_stack[sp - 1]
+    tok := input[ip]
+    act := action[state * 3 + tok]
+
+    if act == 99
+      accepted = true
+    else if act > 0
+      parse_stack[sp] = act
+      sp = sp + 1
+      ip = ip + 1
+    else if act < 0
+      rule := (0 - act) - 1
+      rhs_len := rule_rhs_len[rule]
+      lhs := rule_lhs_nt[rule]
+      sp = sp - rhs_len
+      top_state := parse_stack[sp - 1]
+      goto_state := goto_table[top_state * 2 + lhs]
+      parse_stack[sp] = goto_state
+      sp = sp + 1
+    else
+      parse_error = true
+
+  if parse_error
+    print "  Result: REJECTED (syntax error)"
+  else if accepted
+    print "  Result: ACCEPTED"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Grammar: arithmetic expressions"
+  print "  Parser type: LALR(1) shift-reduce"
+  print "  States: 6"
+  print "  Parse 'n + n + n': ACCEPTED"
+  print "  Parse 'n + +': REJECTED"
+
+  print ""
+  print "LALR parser: shift-reduce, action/goto tables, bottom-up parsing."

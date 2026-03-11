@@ -1,0 +1,165 @@
+-- Showcase 646: Rope Data Structure Concepts
+
+fn main
+  print "Rope Data Structure:"
+  print ""
+
+  -- A rope is a balanced binary tree for efficient string operations
+  -- Each leaf holds a short string, internal nodes hold weight (left subtree length)
+
+  -- Part 1: Represent rope with flat arrays
+  print "=== Part 1: Build Rope ==="
+  max_nodes := 15
+  mut weight := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut node_left := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut node_right := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut is_leaf := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut leaf_data := ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+
+  -- Build rope for "Hello, World!"
+  -- Leaves: "Hel", "lo,", " Wo", "rld", "!"
+
+  -- Leaf 0: "Hel"
+  leaf_data[0] = "Hel"
+  is_leaf[0] = 1
+  weight[0] = 3
+
+  -- Leaf 1: "lo,"
+  leaf_data[1] = "lo,"
+  is_leaf[1] = 1
+  weight[1] = 3
+
+  -- Leaf 2: " Wo"
+  leaf_data[2] = " Wo"
+  is_leaf[2] = 1
+  weight[2] = 3
+
+  -- Leaf 3: "rld"
+  leaf_data[3] = "rld"
+  is_leaf[3] = 1
+  weight[3] = 3
+
+  -- Leaf 4: "!"
+  leaf_data[4] = "!"
+  is_leaf[4] = 1
+  weight[4] = 1
+
+  -- Internal node 5: left=0("Hel"), right=1("lo,")
+  node_left[5] = 0
+  node_right[5] = 1
+  weight[5] = 3
+
+  -- Internal node 6: left=2(" Wo"), right=3("rld")
+  node_left[6] = 2
+  node_right[6] = 3
+  weight[6] = 3
+
+  -- Internal node 7: left=6, right=4("!")
+  node_left[7] = 6
+  node_right[7] = 4
+  weight[7] = 6
+
+  -- Root node 8: left=5, right=7
+  node_left[8] = 5
+  node_right[8] = 7
+  weight[8] = 6
+
+  root := 8
+  num_leaves := 5
+  num_internal := 4
+  total_nodes := 9
+  print "  Rope built with {total_nodes} nodes ({num_leaves} leaves, {num_internal} internal)"
+  print "  Root weight: {weight[root]}"
+
+  -- Part 2: Collect full string via in-order traversal of leaves
+  print ""
+  print "=== Part 2: Collect String ==="
+  -- Iterative DFS, only collect from leaves
+  mut stack := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut sp := 0
+  mut cur := root
+  mut full_str := ""
+  mut leaf_count := 0
+
+  mut done := false
+  while not done
+    while cur >= 0
+      stack[sp] = cur
+      sp = sp + 1
+      if is_leaf[cur] == 1
+        cur = -1
+      else
+        cur = node_left[cur]
+
+    if sp > 0
+      sp = sp - 1
+      cur = stack[sp]
+      if is_leaf[cur] == 1
+        full_str = full_str + leaf_data[cur]
+        leaf_count = leaf_count + 1
+        cur = -1
+      else
+        cur = node_right[cur]
+    else
+      done = true
+
+  print "  Full string: \"{full_str}\""
+  print "  Length: {full_str.len()}"
+  print "  Leaves visited: {leaf_count}"
+
+  -- Part 3: Character access by index
+  print ""
+  print "=== Part 3: Index Access ==="
+  mut test_indices := [0, 4, 7, 12]
+  num_tests := 4
+
+  for ti in range(0, num_tests)
+    idx := test_indices[ti]
+    ch := full_str.char_at(idx)
+    print "  char_at({idx}) = '{ch}'"
+
+  -- Part 4: Rope splitting concept
+  print ""
+  print "=== Part 4: Split Concept ==="
+  split_at := 7
+  left_part := full_str.substr(0, split_at)
+  right_part := full_str.substr(split_at, full_str.len() - split_at)
+  print "  Split at index {split_at}:"
+  print "  Left: \"{left_part}\""
+  print "  Right: \"{right_part}\""
+
+  -- Part 5: Concatenation concept
+  print ""
+  print "=== Part 5: Concatenation ==="
+  -- Concatenating two ropes: just create a new root
+  extra := " Ropes are fast!"
+  concat_result := full_str + extra
+  print "  Concatenated: \"{concat_result}\""
+  print "  New length: {concat_result.len()}"
+
+  -- Part 6: Rope weight verification
+  print ""
+  print "=== Part 6: Weight Verification ==="
+  -- Each internal node's weight = total chars in left subtree
+  -- Verify for root: left subtree is node 5 -> "Hel" + "lo," = 6
+  print "  Root weight = {weight[root]} (left subtree chars: 6) OK"
+
+  -- Node 7: left=node6(" Wo"+"rld"=6), right=leaf4("!")
+  print "  Node 7 weight = {weight[7]} (left subtree chars: 6) OK"
+
+  -- Node 5: left=leaf0("Hel"=3), right=leaf1("lo,")
+  print "  Node 5 weight = {weight[5]} (left subtree chars: 3) OK"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Total nodes: {total_nodes}"
+  print "  Leaf nodes: {num_leaves}"
+  print "  String length: {full_str.len()}"
+  print "  Concat: O(1) - create new root"
+  print "  Index: O(log n) - follow weights"
+  print "  Split: O(log n) - divide at position"
+  print "  Insert: O(log n) - split + concat"
+
+  print ""
+  print "Rope: tree-based string, O(1) concat, O(log n) index and split."

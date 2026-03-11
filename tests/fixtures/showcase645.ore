@@ -1,0 +1,186 @@
+-- Showcase 645: Buddy System Allocator
+
+fn main
+  print "Buddy System Allocator:"
+  print ""
+
+  -- Buddy allocator: power-of-2 block sizes, split/merge blocks
+  -- Total memory: 64 units, minimum block: 4 units
+  -- Levels: 0=64, 1=32, 2=16, 3=8, 4=4
+
+  -- Part 1: Setup
+  print "=== Part 1: Setup ==="
+  total_mem := 64
+  min_block := 4
+  num_levels := 5
+  print "  Total memory: {total_mem} units"
+  print "  Min block: {min_block} units"
+  print "  Levels: {num_levels}"
+
+  -- Free list: for each level, track block starts
+  -- We'll use flat arrays: block_start, block_level, block_free
+  max_blocks := 32
+  mut blk_start := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut blk_level := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut blk_free := [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  mut blk_alloc_id := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_blocks := 1
+
+  -- Initially one free block at level 0 (size 64)
+  blk_start[0] = 0
+  blk_level[0] = 0
+  blk_free[0] = 1
+  print "  Initial: 1 free block of size 64"
+
+  -- Level sizes
+  mut level_sizes := [64, 32, 16, 8, 4]
+  for i in range(0, num_levels)
+    print "  Level {i}: block size {level_sizes[i]}"
+
+  -- Part 2: Allocation
+  print ""
+  print "=== Part 2: Allocations ==="
+
+  -- Helper: find level for requested size
+  -- Allocate sizes: 8, 16, 4, 8
+  mut alloc_sizes := [8, 16, 4, 8]
+  mut alloc_results := [-1, -1, -1, -1]
+  num_allocs := 4
+  mut next_alloc_id := 1
+
+  for ai in range(0, num_allocs)
+    req_size := alloc_sizes[ai]
+
+    -- Find best level: highest level where size >= req_size
+    mut target_level := -1
+    for lv in range(0, num_levels)
+      if level_sizes[lv] >= req_size
+        target_level = lv
+
+    -- Find a free block at target_level
+    mut found := -1
+    for bi in range(0, num_blocks)
+      if blk_free[bi] == 1 and blk_level[bi] == target_level and found == -1
+        found = bi
+
+    -- If not found, split larger blocks
+    if found == -1
+      -- Find smallest free block larger than needed
+      mut split_from := -1
+      for bi in range(0, num_blocks)
+        if blk_free[bi] == 1 and blk_level[bi] < target_level
+          if split_from == -1
+            split_from = bi
+          else if blk_level[bi] > blk_level[split_from]
+            split_from = bi
+
+      -- Split until we reach target level
+      if split_from >= 0
+        while blk_level[split_from] < target_level
+          cur_lv := blk_level[split_from]
+          new_lv := cur_lv + 1
+          half_size := level_sizes[new_lv]
+
+          -- Current block becomes left half
+          blk_level[split_from] = new_lv
+
+          -- Create right half (buddy)
+          blk_start[num_blocks] = blk_start[split_from] + half_size
+          blk_level[num_blocks] = new_lv
+          blk_free[num_blocks] = 1
+          num_blocks = num_blocks + 1
+
+          print "  Split: level {cur_lv} block at {blk_start[split_from]} -> two level {new_lv} blocks"
+
+        found = split_from
+
+    if found >= 0
+      blk_free[found] = 0
+      blk_alloc_id[found] = next_alloc_id
+      alloc_results[ai] = found
+      print "  Alloc {next_alloc_id}: size {req_size} -> block at offset {blk_start[found]} (level {blk_level[found]}, actual {level_sizes[blk_level[found]]})"
+      next_alloc_id = next_alloc_id + 1
+    else
+      print "  Alloc FAILED for size {req_size}"
+
+  -- Part 3: Memory map
+  print ""
+  print "=== Part 3: Memory Map ==="
+  for bi in range(0, num_blocks)
+    mut status := "FREE"
+    if blk_free[bi] == 0
+      status = "USED (alloc {blk_alloc_id[bi]})"
+    print "  [{blk_start[bi]}..{blk_start[bi] + level_sizes[blk_level[bi]] - 1}] level={blk_level[bi]} size={level_sizes[blk_level[bi]]} {status}"
+
+  -- Part 4: Free and merge
+  print ""
+  print "=== Part 4: Free and Merge ==="
+
+  -- Free alloc 1 (size 8)
+  free_id := 1
+  for bi in range(0, num_blocks)
+    if blk_alloc_id[bi] == free_id and blk_free[bi] == 0
+      blk_free[bi] = 1
+      blk_alloc_id[bi] = 0
+      print "  Freed alloc {free_id} at offset {blk_start[bi]}"
+
+      -- Try to merge with buddy
+      cur_lv := blk_level[bi]
+      cur_start := blk_start[bi]
+      block_size := level_sizes[cur_lv]
+      -- Buddy address: XOR with block_size
+      -- If cur_start % (2*block_size) == 0, buddy is cur_start + block_size
+      -- Otherwise, buddy is cur_start - block_size
+      mut buddy_start := cur_start + block_size
+      if cur_start % (2 * block_size) != 0
+        buddy_start = cur_start - block_size
+
+      -- Find buddy block
+      mut buddy_idx := -1
+      for bj in range(0, num_blocks)
+        if blk_start[bj] == buddy_start and blk_level[bj] == cur_lv and blk_free[bj] == 1
+          buddy_idx = bj
+
+      if buddy_idx >= 0
+        -- Merge: keep lower address, remove buddy
+        mut keep := bi
+        mut remove := buddy_idx
+        if blk_start[buddy_idx] < blk_start[bi]
+          keep = buddy_idx
+          remove = bi
+        blk_level[keep] = cur_lv - 1
+        blk_free[remove] = -1
+        print "  Merged blocks at {blk_start[keep]} and {buddy_start} -> level {cur_lv - 1}"
+      else
+        print "  No buddy merge possible"
+
+  -- Part 5: Final state
+  print ""
+  print "=== Part 5: Final State ==="
+  mut free_count := 0
+  mut used_count := 0
+  mut free_mem := 0
+  mut used_mem := 0
+
+  for bi in range(0, num_blocks)
+    if blk_free[bi] == 1
+      free_count = free_count + 1
+      free_mem = free_mem + level_sizes[blk_level[bi]]
+    else if blk_free[bi] == 0
+      used_count = used_count + 1
+      used_mem = used_mem + level_sizes[blk_level[bi]]
+
+  print "  Free blocks: {free_count} ({free_mem} units)"
+  print "  Used blocks: {used_count} ({used_mem} units)"
+  print "  Total tracked: {free_mem + used_mem} of {total_mem}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Allocations performed: {num_allocs}"
+  print "  Frees performed: 1"
+  print "  Block splits: visible above"
+  print "  Internal fragmentation possible"
+
+  print ""
+  print "Buddy allocator: power-of-2 blocks, split on alloc, merge on free, O(log n)."

@@ -1,0 +1,161 @@
+-- Showcase 648: Bloom Clock (Vector Clock Variant)
+
+fn main
+  print "Bloom Clock:"
+  print ""
+
+  -- Bloom clock: space-efficient alternative to vector clocks
+  -- Uses a counting Bloom filter to track causal relationships
+
+  -- Part 1: Setup
+  print "=== Part 1: Setup ==="
+  num_processes := 4
+  filter_size := 8
+  num_hashes := 2
+  print "  Processes: {num_processes}"
+  print "  Filter size: {filter_size}"
+  print "  Hash functions: {num_hashes}"
+
+  -- Each process has a bloom clock (counter array)
+  -- Flat array: process p's clock at index p * filter_size
+  mut clocks := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut proc_names := ["P0", "P1", "P2", "P3"]
+
+  -- Hash functions for process ID -> filter indices
+  -- h1(pid) = pid % filter_size
+  -- h2(pid) = (pid * 3 + 1) % filter_size
+  mut hash1 := [0, 1, 2, 3]
+  mut hash2 := [1, 4, 7, 2]
+
+  for p in range(0, num_processes)
+    print "  {proc_names[p]}: h1={hash1[p]}, h2={hash2[p]}"
+
+  -- Part 2: Local events
+  print ""
+  print "=== Part 2: Local Events ==="
+
+  -- Event on P0
+  mut p := 0
+  clocks[p * filter_size + hash1[p]] = clocks[p * filter_size + hash1[p]] + 1
+  clocks[p * filter_size + hash2[p]] = clocks[p * filter_size + hash2[p]] + 1
+  print "  Event on {proc_names[p]}: increment positions {hash1[p]},{hash2[p]}"
+
+  -- Event on P1
+  p = 1
+  clocks[p * filter_size + hash1[p]] = clocks[p * filter_size + hash1[p]] + 1
+  clocks[p * filter_size + hash2[p]] = clocks[p * filter_size + hash2[p]] + 1
+  print "  Event on {proc_names[p]}: increment positions {hash1[p]},{hash2[p]}"
+
+  -- Another event on P0
+  p = 0
+  clocks[p * filter_size + hash1[p]] = clocks[p * filter_size + hash1[p]] + 1
+  clocks[p * filter_size + hash2[p]] = clocks[p * filter_size + hash2[p]] + 1
+  print "  Event on {proc_names[p]}: increment positions {hash1[p]},{hash2[p]}"
+
+  -- Event on P2
+  p = 2
+  clocks[p * filter_size + hash1[p]] = clocks[p * filter_size + hash1[p]] + 1
+  clocks[p * filter_size + hash2[p]] = clocks[p * filter_size + hash2[p]] + 1
+  print "  Event on {proc_names[p]}: increment positions {hash1[p]},{hash2[p]}"
+
+  -- Part 3: Display clocks
+  print ""
+  print "=== Part 3: Clock State ==="
+  for p in range(0, num_processes)
+    mut clock_str := ""
+    for i in range(0, filter_size)
+      if i > 0
+        clock_str = clock_str + ", "
+      clock_str = clock_str + str(clocks[p * filter_size + i])
+    print "  {proc_names[p]}: [{clock_str}]"
+
+  -- Part 4: Message passing (merge clocks)
+  print ""
+  print "=== Part 4: Message Send P0 -> P3 ==="
+  mut sender := 0
+  mut receiver := 3
+
+  -- Merge: receiver clock = max(receiver, sender) for each position
+  for i in range(0, filter_size)
+    si := sender * filter_size + i
+    ri := receiver * filter_size + i
+    if clocks[si] > clocks[ri]
+      clocks[ri] = clocks[si]
+
+  -- Then increment receiver's own event
+  clocks[receiver * filter_size + hash1[receiver]] = clocks[receiver * filter_size + hash1[receiver]] + 1
+  clocks[receiver * filter_size + hash2[receiver]] = clocks[receiver * filter_size + hash2[receiver]] + 1
+  print "  Merged P0 clock into P3, then local event on P3"
+
+  -- Display updated clocks
+  for p in range(0, num_processes)
+    mut clock_str := ""
+    for i in range(0, filter_size)
+      if i > 0
+        clock_str = clock_str + ", "
+      clock_str = clock_str + str(clocks[p * filter_size + i])
+    print "  {proc_names[p]}: [{clock_str}]"
+
+  -- Part 5: Causality check
+  print ""
+  print "=== Part 5: Causality Checks ==="
+  -- a happens-before b if a's clock <= b's clock (all positions)
+  -- Check: does P0 happen-before P3?
+  mut p0_before_p3 := true
+  for i in range(0, filter_size)
+    if clocks[0 * filter_size + i] > clocks[3 * filter_size + i]
+      p0_before_p3 = false
+  print "  P0 -> P3 (causal): {p0_before_p3}"
+
+  -- Check: does P3 happen-before P0?
+  mut p3_before_p0 := true
+  for i in range(0, filter_size)
+    if clocks[3 * filter_size + i] > clocks[0 * filter_size + i]
+      p3_before_p0 = false
+  print "  P3 -> P0 (causal): {p3_before_p0}"
+
+  -- Check: P1 and P2 (concurrent?)
+  mut p1_before_p2 := true
+  mut p2_before_p1 := true
+  for i in range(0, filter_size)
+    if clocks[1 * filter_size + i] > clocks[2 * filter_size + i]
+      p1_before_p2 = false
+    if clocks[2 * filter_size + i] > clocks[1 * filter_size + i]
+      p2_before_p1 = false
+  if not p1_before_p2 and not p2_before_p1
+    print "  P1 || P2 (concurrent): true"
+  else
+    print "  P1 || P2 (concurrent): false"
+
+  -- Part 6: Second message P2 -> P1
+  print ""
+  print "=== Part 6: Message P2 -> P1 ==="
+  sender = 2
+  receiver = 1
+  for i in range(0, filter_size)
+    si := sender * filter_size + i
+    ri := receiver * filter_size + i
+    if clocks[si] > clocks[ri]
+      clocks[ri] = clocks[si]
+  clocks[receiver * filter_size + hash1[receiver]] = clocks[receiver * filter_size + hash1[receiver]] + 1
+  clocks[receiver * filter_size + hash2[receiver]] = clocks[receiver * filter_size + hash2[receiver]] + 1
+
+  -- Re-check P2 before P1
+  mut p2_now_before_p1 := true
+  for i in range(0, filter_size)
+    if clocks[2 * filter_size + i] > clocks[1 * filter_size + i]
+      p2_now_before_p1 = false
+  print "  After P2->P1 message:"
+  print "  P2 -> P1 (causal): {p2_now_before_p1}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Bloom clock size: {filter_size} counters per process"
+  print "  Hash functions: {num_hashes}"
+  print "  Processes: {num_processes}"
+  print "  Space: O(m) per process vs O(n) for vector clocks"
+  print "  False positives possible, no false negatives"
+
+  print ""
+  print "Bloom clock: compact causality tracking, merge via max, concurrent detection."

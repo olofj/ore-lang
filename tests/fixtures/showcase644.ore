@@ -1,0 +1,156 @@
+-- Showcase 644: Lattice-Based Analysis
+
+fn main
+  print "Lattice-Based Analysis:"
+  print ""
+
+  -- Abstract interpretation over a sign lattice
+  -- Lattice: Bottom < Neg < Top, Bottom < Zero < Top, Bottom < Pos < Top
+  -- Signs: 0=Bottom, 1=Neg, 2=Zero, 3=Pos, 4=Top
+
+  -- Part 1: Sign lattice
+  print "=== Part 1: Sign Lattice ==="
+  mut sign_names := ["Bot", "Neg", "Zero", "Pos", "Top"]
+  for i in range(0, 5)
+    print "  {i}: {sign_names[i]}"
+
+  -- Part 2: Join (least upper bound) table
+  print ""
+  print "=== Part 2: Join Table ==="
+  -- join[a][b] = lub(a, b), flattened as join[a*5 + b]
+  mut join_table := [0, 1, 2, 3, 4, 1, 1, 4, 4, 4, 2, 4, 2, 4, 4, 3, 4, 4, 3, 4, 4, 4, 4, 4, 4]
+
+  for a in range(0, 5)
+    mut row := ""
+    for b in range(0, 5)
+      if b > 0
+        row = row + ", "
+      j := join_table[a * 5 + b]
+      row = row + sign_names[j]
+    print "  join({sign_names[a]}, *) = [{row}]"
+
+  -- Part 3: Abstract addition
+  print ""
+  print "=== Part 3: Abstract Addition ==="
+  -- add[a][b]: result sign of a + b
+  mut add_table := [0, 0, 0, 0, 0, 0, 1, 1, 4, 4, 0, 1, 2, 3, 4, 0, 4, 3, 3, 4, 0, 4, 4, 4, 4]
+
+  mut test_pairs_a := [3, 1, 3, 2, 1]
+  mut test_pairs_b := [3, 1, 1, 3, 2]
+  num_tests := 5
+
+  for t in range(0, num_tests)
+    a := test_pairs_a[t]
+    b := test_pairs_b[t]
+    result := add_table[a * 5 + b]
+    print "  {sign_names[a]} + {sign_names[b]} = {sign_names[result]}"
+
+  -- Part 4: Abstract multiplication
+  print ""
+  print "=== Part 4: Abstract Multiplication ==="
+  mut mul_table := [0, 0, 0, 0, 0, 0, 3, 2, 1, 4, 0, 2, 2, 2, 2, 0, 1, 2, 3, 4, 0, 4, 2, 4, 4]
+
+  for t in range(0, num_tests)
+    a := test_pairs_a[t]
+    b := test_pairs_b[t]
+    result := mul_table[a * 5 + b]
+    print "  {sign_names[a]} * {sign_names[b]} = {sign_names[result]}"
+
+  -- Part 5: Dataflow analysis on a simple program
+  print ""
+  print "=== Part 5: Dataflow Analysis ==="
+  -- Program:
+  -- x = 5        (Pos)
+  -- y = -3       (Neg)
+  -- z = x + y    (Top = Pos+Neg)
+  -- w = x * y    (Neg = Pos*Neg)
+  -- v = y * y    (Pos = Neg*Neg)
+  -- u = x + x    (Pos = Pos+Pos)
+
+  num_vars := 6
+  mut var_names := ["x", "y", "z", "w", "v", "u"]
+  mut var_signs := [0, 0, 0, 0, 0, 0]
+
+  -- x = 5 -> Pos
+  var_signs[0] = 3
+  mut si := var_signs[0]
+  print "  x = 5 -> {sign_names[si]}"
+
+  -- y = -3 -> Neg
+  var_signs[1] = 1
+  si = var_signs[1]
+  print "  y = -3 -> {sign_names[si]}"
+
+  -- z = x + y -> add(Pos, Neg) = Top
+  mut idx := var_signs[0] * 5 + var_signs[1]
+  z_sign := add_table[idx]
+  var_signs[2] = z_sign
+  si = var_signs[2]
+  print "  z = x + y -> {sign_names[si]}"
+
+  -- w = x * y -> mul(Pos, Neg) = Neg
+  idx = var_signs[0] * 5 + var_signs[1]
+  w_sign := mul_table[idx]
+  var_signs[3] = w_sign
+  si = var_signs[3]
+  print "  w = x * y -> {sign_names[si]}"
+
+  -- v = y * y -> mul(Neg, Neg) = Pos
+  idx = var_signs[1] * 5 + var_signs[1]
+  v_sign := mul_table[idx]
+  var_signs[4] = v_sign
+  si = var_signs[4]
+  print "  v = y * y -> {sign_names[si]}"
+
+  -- u = x + x -> add(Pos, Pos) = Pos
+  idx = var_signs[0] * 5 + var_signs[0]
+  u_sign := add_table[idx]
+  var_signs[5] = u_sign
+  si = var_signs[5]
+  print "  u = x + x -> {sign_names[si]}"
+
+  -- Part 6: Fixed-point iteration
+  print ""
+  print "=== Part 6: Fixed-Point Iteration ==="
+  -- Simulate: a = 1, loop { a = a + 1 } until stable
+  -- a starts at Pos, a + Pos = Pos (fixed point reached immediately)
+  mut a_sign := 3
+  mut iteration := 0
+  mut changed := true
+
+  while changed and iteration < 10
+    iteration = iteration + 1
+    mut ai := a_sign * 5 + 3
+    new_sign := add_table[ai]
+    ai = a_sign * 5 + new_sign
+    new_sign_joined := join_table[ai]
+    if new_sign_joined == a_sign
+      changed = false
+      print "  Iteration {iteration}: a = {sign_names[a_sign]} (fixed point)"
+    else
+      a_sign = new_sign_joined
+      print "  Iteration {iteration}: a = {sign_names[a_sign]}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Lattice elements: 5"
+  print "  Variables analyzed: {num_vars}"
+  print "  Fixed-point iterations: {iteration}"
+  si = var_signs[0]
+  x_name := sign_names[si]
+  si = var_signs[1]
+  y_name := sign_names[si]
+  si = var_signs[2]
+  z_name := sign_names[si]
+  si = var_signs[3]
+  w_name := sign_names[si]
+  si = var_signs[4]
+  v_name := sign_names[si]
+  si = var_signs[5]
+  u_name := sign_names[si]
+  print "  x: {x_name}, y: {y_name}, z: {z_name}"
+  print "  w: {w_name}, v: {v_name}, u: {u_name}"
+
+  print ""
+  print "Lattice analysis: sign domain, abstract ops, join, fixed-point iteration."

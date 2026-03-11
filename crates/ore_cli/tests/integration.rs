@@ -8355,6 +8355,119 @@ fn showcase640_fenwick_tree() {
 }
 
 #[test]
+fn showcase641_treap() {
+    let out = run_ore("showcase641.ore");
+    assert!(out.contains("Treap (Tree + Heap):"));
+    assert!(out.contains("Treap built with 8 nodes"));
+    assert!(out.contains("BST property: VALID"));
+    assert!(out.contains("Heap property: VALID"));
+    assert!(out.contains("Order verified: SORTED"));
+    assert!(out.contains("Search 40: FOUND at depth 2"));
+    assert!(out.contains("Search 55: NOT FOUND"));
+    assert!(out.contains("Treap: BST by key, max-heap by priority, expected O(log n) operations."));
+}
+
+#[test]
+fn showcase642_register_machine() {
+    let out = run_ore("showcase642.ore");
+    assert!(out.contains("Register Machine Interpreter:"));
+    assert!(out.contains("factorial(6) = 720"));
+    assert!(out.contains("Output R1 = 720"));
+    assert!(out.contains("sum(1..10) = 55"));
+    assert!(out.contains("Register machine: load, arithmetic, compare, branch, halt, direct execution."));
+}
+
+#[test]
+fn showcase643_earley_parser() {
+    let out = run_ore("showcase643.ore");
+    assert!(out.contains("Earley Parser:"));
+    assert!(out.contains("E -> E + T"));
+    assert!(out.contains("Input: n + n * n"));
+    assert!(out.contains("Parse: ACCEPTED"));
+    assert!(out.contains("Total Earley items: 29"));
+    assert!(out.contains("Earley parser: prediction, scanning, completion, general CFG parsing."));
+}
+
+#[test]
+fn showcase644_lattice_analysis() {
+    let out = run_ore("showcase644.ore");
+    assert!(out.contains("Lattice-Based Analysis:"));
+    assert!(out.contains("Pos + Neg = Top"));
+    assert!(out.contains("Neg * Neg = Pos"));
+    assert!(out.contains("z = x + y -> Top"));
+    assert!(out.contains("w = x * y -> Neg"));
+    assert!(out.contains("v = y * y -> Pos"));
+    assert!(out.contains("Iteration 1: a = Pos (fixed point)"));
+    assert!(out.contains("Lattice analysis: sign domain, abstract ops, join, fixed-point iteration."));
+}
+
+#[test]
+fn showcase645_buddy_allocator() {
+    let out = run_ore("showcase645.ore");
+    assert!(out.contains("Buddy System Allocator:"));
+    assert!(out.contains("Alloc 1: size 8 -> block at offset 0 (level 3, actual 8)"));
+    assert!(out.contains("Alloc 2: size 16 -> block at offset 16 (level 2, actual 16)"));
+    assert!(out.contains("Alloc 3: size 4 -> block at offset 8 (level 4, actual 4)"));
+    assert!(out.contains("Total tracked: 64 of 64"));
+    assert!(out.contains("Buddy allocator: power-of-2 blocks, split on alloc, merge on free, O(log n)."));
+}
+
+#[test]
+fn showcase646_rope() {
+    let out = run_ore("showcase646.ore");
+    assert!(out.contains("Rope Data Structure:"));
+    assert!(out.contains("Full string: \"Hello, World!\""));
+    assert!(out.contains("Length: 13"));
+    assert!(out.contains("Leaves visited: 5"));
+    assert!(out.contains("char_at(0) = 'H'"));
+    assert!(out.contains("char_at(12) = '!'"));
+    assert!(out.contains("Rope: tree-based string, O(1) concat, O(log n) index and split."));
+}
+
+#[test]
+fn showcase647_lalr_parser() {
+    let out = run_ore("showcase647.ore");
+    assert!(out.contains("LALR Parser Concepts:"));
+    assert!(out.contains("Result: ACCEPTED in 10 steps"));
+    assert!(out.contains("Result: ACCEPTED in 7 steps"));
+    assert!(out.contains("Result: REJECTED (syntax error)"));
+    assert!(out.contains("LALR parser: shift-reduce, action/goto tables, bottom-up parsing."));
+}
+
+#[test]
+fn showcase648_bloom_clock() {
+    let out = run_ore("showcase648.ore");
+    assert!(out.contains("Bloom Clock:"));
+    assert!(out.contains("P0 -> P3 (causal): true"));
+    assert!(out.contains("P3 -> P0 (causal): false"));
+    assert!(out.contains("P1 || P2 (concurrent): true"));
+    assert!(out.contains("P2 -> P1 (causal): true"));
+    assert!(out.contains("Bloom clock: compact causality tracking, merge via max, concurrent detection."));
+}
+
+#[test]
+fn showcase649_cuckoo_hashing() {
+    let out = run_ore("showcase649.ore");
+    assert!(out.contains("Cuckoo Hashing:"));
+    assert!(out.contains("Placed 10 in table1[3]"));
+    assert!(out.contains("Lookup 17: FOUND in table1[3]"));
+    assert!(out.contains("Lookup 4: FOUND in table1[4]"));
+    assert!(out.contains("Deleted 22 from table2[4]"));
+    assert!(out.contains("Cuckoo hashing: two tables, constant lookup, eviction chains, cycle detection."));
+}
+
+#[test]
+fn showcase650_segment_tree() {
+    let out = run_ore("showcase650.ore");
+    assert!(out.contains("Segment Tree with Lazy Propagation:"));
+    assert!(out.contains("Root (total sum): 36"));
+    assert!(out.contains("sum(0..5) = 36 (verify: 36)"));
+    assert!(out.contains("sum(2..4) = 21 (verify: 21)"));
+    assert!(out.contains("Updated total: 44"));
+    assert!(out.contains("Segment tree: range sum queries, lazy propagation, O(log n) operations."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,177 @@
+-- Showcase 643: Earley Parser
+
+fn main
+  print "Earley Parser:"
+  print ""
+
+  -- Earley parsing: general context-free grammar parser
+  -- Grammar: E -> E + T | T, T -> T * F | F, F -> ( E ) | n
+  -- We'll parse: n + n * n
+
+  -- Part 1: Grammar rules
+  print "=== Part 1: Grammar ==="
+  -- Rules encoded as: lhs, rhs_len, rhs symbols (flat)
+  -- Symbols: 0=E, 1=T, 2=F, 3='+', 4='*', 5='(', 6=')', 7='n'
+  -- Non-terminals: 0,1,2  Terminals: 3,4,5,6,7
+  mut sym_names := ["E", "T", "F", "+", "*", "(", ")", "n"]
+
+  -- Rule 0: E -> E + T  (lhs=0, rhs=[0, 3, 1])
+  -- Rule 1: E -> T      (lhs=0, rhs=[1])
+  -- Rule 2: T -> T * F  (lhs=1, rhs=[1, 4, 2])
+  -- Rule 3: T -> F      (lhs=1, rhs=[2])
+  -- Rule 4: F -> ( E )  (lhs=2, rhs=[5, 0, 6])
+  -- Rule 5: F -> n      (lhs=2, rhs=[7])
+
+  mut rule_lhs := [0, 0, 1, 1, 2, 2]
+  mut rule_len := [3, 1, 3, 1, 3, 1]
+  -- Flat rhs: rule 0 starts at 0, rule 1 at 3, rule 2 at 4, etc.
+  mut rule_rhs := [0, 3, 1, 1, 1, 4, 2, 2, 5, 0, 6, 7]
+  mut rule_rhs_start := [0, 3, 4, 7, 8, 11]
+  num_rules := 6
+
+  for r in range(0, num_rules)
+    lhs_idx := rule_lhs[r]
+    lhs_name := sym_names[lhs_idx]
+    mut rhs_str := ""
+    start := rule_rhs_start[r]
+    for j in range(0, rule_len[r])
+      if j > 0
+        rhs_str = rhs_str + " "
+      sym_idx := rule_rhs[start + j]
+      rhs_str = rhs_str + sym_names[sym_idx]
+    print "  {lhs_name} -> {rhs_str}"
+
+  -- Part 2: Input tokens
+  print ""
+  print "=== Part 2: Input ==="
+  -- Input: n + n * n
+  mut tokens := [7, 3, 7, 4, 7]
+  num_tokens := 5
+  mut input_str := ""
+  for i in range(0, num_tokens)
+    if i > 0
+      input_str = input_str + " "
+    ti := tokens[i]
+    input_str = input_str + sym_names[ti]
+  print "  Input: {input_str}"
+
+  -- Part 3: Earley sets
+  print ""
+  print "=== Part 3: Earley Algorithm ==="
+
+  -- Each Earley item: (rule_idx, dot_pos, origin)
+  -- We store items in a flat array per set
+  -- S(0)..S(n) where n = num_tokens
+  max_items := 200
+  mut item_rule := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut item_dot := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut item_origin := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut item_set := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut total_items := 0
+
+  -- Set 0: Predict from start symbol E
+  -- Add all E rules with dot=0, origin=0
+  for r in range(0, num_rules)
+    if rule_lhs[r] == 0
+      item_rule[total_items] = r
+      item_dot[total_items] = 0
+      item_origin[total_items] = 0
+      item_set[total_items] = 0
+      total_items = total_items + 1
+
+  -- Process each set
+  for s in range(0, num_tokens + 1)
+    -- Process items in current set (may grow during processing)
+    mut idx := 0
+    while idx < total_items
+      if item_set[idx] == s
+        r := item_rule[idx]
+        d := item_dot[idx]
+        o := item_origin[idx]
+
+        if d >= rule_len[r]
+          -- Completion: find items in set[origin] expecting this lhs
+          completed_sym := rule_lhs[r]
+          for k in range(0, total_items)
+            if item_set[k] == o
+              kr := item_rule[k]
+              kd := item_dot[k]
+              if kd < rule_len[kr]
+                rhs_start := rule_rhs_start[kr]
+                if rule_rhs[rhs_start + kd] == completed_sym
+                  -- Add completed item to set s
+                  mut dup := false
+                  for ch in range(0, total_items)
+                    if item_set[ch] == s and item_rule[ch] == kr and item_dot[ch] == kd + 1 and item_origin[ch] == item_origin[k]
+                      dup = true
+                  if not dup
+                    item_rule[total_items] = kr
+                    item_dot[total_items] = kd + 1
+                    item_origin[total_items] = item_origin[k]
+                    item_set[total_items] = s
+                    total_items = total_items + 1
+        else
+          rhs_start := rule_rhs_start[r]
+          next_sym := rule_rhs[rhs_start + d]
+          if next_sym < 3
+            -- Prediction: non-terminal, add all rules for next_sym
+            for pr in range(0, num_rules)
+              if rule_lhs[pr] == next_sym
+                mut dup := false
+                for ch in range(0, total_items)
+                  if item_set[ch] == s and item_rule[ch] == pr and item_dot[ch] == 0 and item_origin[ch] == s
+                    dup = true
+                if not dup
+                  item_rule[total_items] = pr
+                  item_dot[total_items] = 0
+                  item_origin[total_items] = s
+                  item_set[total_items] = s
+                  total_items = total_items + 1
+          else
+            -- Scanning: terminal, check against input
+            if s < num_tokens
+              if tokens[s] == next_sym
+                item_rule[total_items] = r
+                item_dot[total_items] = d + 1
+                item_origin[total_items] = o
+                item_set[total_items] = s + 1
+                total_items = total_items + 1
+      idx = idx + 1
+
+  -- Part 4: Display Earley sets
+  print ""
+  print "=== Part 4: Earley Sets ==="
+  for s in range(0, num_tokens + 1)
+    mut count := 0
+    for i in range(0, total_items)
+      if item_set[i] == s
+        count = count + 1
+    print "  S({s}): {count} items"
+
+  print "  Total items: {total_items}"
+
+  -- Part 5: Check if parse succeeded
+  print ""
+  print "=== Part 5: Parse Result ==="
+  mut accepted := false
+  for i in range(0, total_items)
+    if item_set[i] == num_tokens
+      r := item_rule[i]
+      if rule_lhs[r] == 0 and item_dot[i] == rule_len[r] and item_origin[i] == 0
+        accepted = true
+
+  if accepted
+    print "  Parse: ACCEPTED"
+  else
+    print "  Parse: REJECTED"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Grammar rules: {num_rules}"
+  print "  Input length: {num_tokens}"
+  print "  Total Earley items: {total_items}"
+  print "  Result: n + n * n is valid"
+
+  print ""
+  print "Earley parser: prediction, scanning, completion, general CFG parsing."

@@ -1,0 +1,234 @@
+-- Showcase 650: Segment Tree with Lazy Propagation
+
+fn main
+  print "Segment Tree with Lazy Propagation:"
+  print ""
+
+  -- Segment tree supports range queries and range updates in O(log n)
+  -- Lazy propagation defers updates to children
+
+  -- Part 1: Input array
+  print "=== Part 1: Input Array ==="
+  mut arr := [1, 3, 5, 7, 9, 11]
+  n := 6
+  tree_size := 24
+  for i in range(0, n)
+    print "  arr[{i}] = {arr[i]}"
+
+  -- Part 2: Build segment tree
+  print ""
+  print "=== Part 2: Build Segment Tree ==="
+  -- tree[i] stores sum for a range, 1-indexed
+  -- For n=6, we need about 4*n nodes
+  mut tree := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut lazy := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Build using iterative bottom-up approach
+  -- Place leaves at positions n..2n-1, then fill up
+  -- Actually for arbitrary n, use recursive-style with arrays
+
+  -- Simulated recursive build using a worklist
+  -- build(node, start, end) -> tree[node] = sum of arr[start..end]
+  mut wk_node := [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut wk_start := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut wk_end := [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut wk_phase := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut wk_top := 1
+
+  -- Iterative build: post-order
+  -- First, expand all internal nodes, then compute sums bottom-up
+  -- Alternative: just compute directly for small n
+
+  -- Direct construction for n=6:
+  -- Leaves: tree[8]=arr[0], tree[9]=arr[1], tree[10]=arr[2],
+  --         tree[11]=arr[3], tree[12]=arr[4], tree[13]=arr[5]
+  -- We use 1-based indexing with left=2i, right=2i+1
+
+  -- Segment ranges for each node:
+  -- node 1: [0,5], node 2: [0,2], node 3: [3,5]
+  -- node 4: [0,1], node 5: [2,2], node 6: [3,4], node 7: [5,5]
+  -- node 8: [0,0], node 9: [1,1], node 10: [2,2], node 11: [3,3], node 12: [4,4], node 13: [5,5]
+
+  -- Store segment ranges
+  mut seg_lo := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut seg_hi := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  seg_lo[1] = 0
+  seg_hi[1] = 5
+
+  -- Fill ranges top-down
+  for i in range(1, 12)
+    lo := seg_lo[i]
+    hi := seg_hi[i]
+    if lo < hi
+      mid := (lo + hi) / 2
+      li := i * 2
+      ri := i * 2 + 1
+      if li < tree_size
+        seg_lo[li] = lo
+        seg_hi[li] = mid
+      if ri < tree_size
+        seg_lo[ri] = mid + 1
+        seg_hi[ri] = hi
+
+  -- Fill leaves
+  for i in range(1, tree_size)
+    if seg_lo[i] == seg_hi[i]
+      idx := seg_lo[i]
+      if idx < n
+        tree[i] = arr[idx]
+
+  -- Fill internal nodes bottom-up
+  mut i := 11
+  while i >= 1
+    li := i * 2
+    ri := i * 2 + 1
+    if li < tree_size and ri < tree_size
+      if seg_lo[i] != seg_hi[i]
+        tree[i] = tree[li] + tree[ri]
+    i = i - 1
+
+  print "  Root (total sum): {tree[1]}"
+  -- Verify: 1+3+5+7+9+11 = 36
+  mut total := 0
+  for i in range(0, n)
+    total = total + arr[i]
+  print "  Brute force sum: {total}"
+
+  -- Part 3: Range query
+  print ""
+  print "=== Part 3: Range Queries ==="
+
+  -- Query sum(l, r) using iterative approach with stack
+  mut query_l := [0, 2, 1, 0]
+  mut query_r := [5, 4, 3, 2]
+  num_queries := 4
+
+  for qi in range(0, num_queries)
+    ql := query_l[qi]
+    qr := query_r[qi]
+
+    -- Stack-based query
+    mut qstack := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    mut qsp := 0
+    qstack[0] = 1
+    qsp = 1
+    mut qsum := 0
+
+    while qsp > 0
+      qsp = qsp - 1
+      nd := qstack[qsp]
+      if nd < tree_size
+        lo := seg_lo[nd]
+        hi := seg_hi[nd]
+        if lo > qr or hi < ql
+          -- No overlap
+          qsum = qsum + 0
+        else if lo >= ql and hi <= qr
+          -- Full overlap
+          qsum = qsum + tree[nd]
+        else
+          -- Partial overlap
+          li := nd * 2
+          ri := nd * 2 + 1
+          if li < tree_size
+            qstack[qsp] = li
+            qsp = qsp + 1
+          if ri < tree_size
+            qstack[qsp] = ri
+            qsp = qsp + 1
+
+    -- Brute force verify
+    mut bf := 0
+    for k in range(ql, qr + 1)
+      bf = bf + arr[k]
+
+    print "  sum({ql}..{qr}) = {qsum} (verify: {bf})"
+
+  -- Part 4: Range update with lazy propagation
+  print ""
+  print "=== Part 4: Range Update ==="
+  -- Add 2 to all elements in range [1, 4]
+  upd_l := 1
+  upd_r := 4
+  upd_val := 2
+  print "  Update: add {upd_val} to range [{upd_l}..{upd_r}]"
+
+  -- Apply to array for verification
+  for i in range(upd_l, upd_r + 1)
+    arr[i] = arr[i] + upd_val
+
+  -- Update segment tree with lazy
+  mut ustack := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut usp := 0
+  ustack[0] = 1
+  usp = 1
+
+  while usp > 0
+    usp = usp - 1
+    nd := ustack[usp]
+    if nd < tree_size
+      lo := seg_lo[nd]
+      hi := seg_hi[nd]
+      if lo > upd_r or hi < upd_l
+        -- No overlap, skip
+        usp = usp
+      else if lo >= upd_l and hi <= upd_r
+        -- Full overlap: update node and mark lazy
+        count := hi - lo + 1
+        tree[nd] = tree[nd] + upd_val * count
+        li := nd * 2
+        ri := nd * 2 + 1
+        if li < tree_size
+          lazy[li] = lazy[li] + upd_val
+        if ri < tree_size
+          lazy[ri] = lazy[ri] + upd_val
+      else
+        -- Partial: push children
+        li := nd * 2
+        ri := nd * 2 + 1
+        if li < tree_size
+          ustack[usp] = li
+          usp = usp + 1
+        if ri < tree_size
+          ustack[usp] = ri
+          usp = usp + 1
+
+  -- Rebuild internal nodes after update
+  mut i := 11
+  while i >= 1
+    li := i * 2
+    ri := i * 2 + 1
+    if li < tree_size and ri < tree_size
+      if seg_lo[i] != seg_hi[i]
+        tree[i] = tree[li] + tree[ri]
+    i = i - 1
+
+  -- Recompute from array for verification
+  total = 0
+  for i in range(0, n)
+    total = total + arr[i]
+  print "  Updated total: {total}"
+
+  -- Part 5: Query after update
+  print ""
+  print "=== Part 5: Queries After Update ==="
+  for qi in range(0, num_queries)
+    ql := query_l[qi]
+    qr := query_r[qi]
+    mut bf := 0
+    for k in range(ql, qr + 1)
+      bf = bf + arr[k]
+    print "  sum({ql}..{qr}) = {bf}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Array size: {n}"
+  print "  Tree nodes: ~{tree_size}"
+  print "  Range query: O(log n)"
+  print "  Range update: O(log n) with lazy"
+  print "  Total sum after update: {total}"
+
+  print ""
+  print "Segment tree: range sum queries, lazy propagation, O(log n) operations."

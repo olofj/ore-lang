@@ -1,0 +1,147 @@
+-- Showcase 649: Cuckoo Hashing
+
+fn main
+  print "Cuckoo Hashing:"
+  print ""
+
+  -- Cuckoo hashing: two hash tables, O(1) worst-case lookup
+  -- Each key has two possible positions (one in each table)
+
+  -- Part 1: Setup
+  print "=== Part 1: Setup ==="
+  table_size := 7
+  mut table1 := [-1, -1, -1, -1, -1, -1, -1]
+  mut table2 := [-1, -1, -1, -1, -1, -1, -1]
+  print "  Table size: {table_size}"
+  print "  Hash 1: key % {table_size}"
+  print "  Hash 2: (key * 3 + 1) % {table_size}"
+
+  -- Part 2: Insert keys
+  print ""
+  print "=== Part 2: Insertions ==="
+  mut insert_keys := [10, 22, 31, 4, 15, 28, 17, 59]
+  num_inserts := 8
+  mut total_evictions := 0
+
+  for ki in range(0, num_inserts)
+    key := insert_keys[ki]
+    h1 := key % table_size
+    h2 := (key * 3 + 1) % table_size
+    print "  Insert {key}: h1={h1}, h2={h2}"
+
+    mut cur_key := key
+    mut placed := false
+    mut evictions := 0
+    max_evict := 10
+
+    while not placed and evictions < max_evict
+      -- Try table1
+      pos1 := cur_key % table_size
+      if table1[pos1] == -1
+        table1[pos1] = cur_key
+        placed = true
+        if evictions > 0
+          print "    Placed {cur_key} in table1[{pos1}] after {evictions} evictions"
+        else
+          print "    Placed {cur_key} in table1[{pos1}]"
+      else
+        -- Evict from table1
+        evicted := table1[pos1]
+        table1[pos1] = cur_key
+        cur_key = evicted
+        evictions = evictions + 1
+        total_evictions = total_evictions + 1
+        print "    Evict {evicted} from table1[{pos1}], place {table1[pos1]}"
+
+        -- Try table2 for evicted key
+        pos2 := (cur_key * 3 + 1) % table_size
+        if table2[pos2] == -1
+          table2[pos2] = cur_key
+          placed = true
+          print "    Placed {cur_key} in table2[{pos2}]"
+        else
+          -- Evict from table2
+          evicted2 := table2[pos2]
+          table2[pos2] = cur_key
+          cur_key = evicted2
+          evictions = evictions + 1
+          total_evictions = total_evictions + 1
+          print "    Evict {evicted2} from table2[{pos2}], place {table2[pos2]}"
+
+    if not placed
+      print "    CYCLE detected, need rehash for {cur_key}"
+
+  -- Part 3: Display tables
+  print ""
+  print "=== Part 3: Hash Tables ==="
+  print "  Table 1:"
+  for i in range(0, table_size)
+    if table1[i] >= 0
+      print "    [{i}] = {table1[i]}"
+    else
+      print "    [{i}] = empty"
+
+  print "  Table 2:"
+  for i in range(0, table_size)
+    if table2[i] >= 0
+      print "    [{i}] = {table2[i]}"
+    else
+      print "    [{i}] = empty"
+
+  -- Part 4: Lookup
+  print ""
+  print "=== Part 4: Lookups ==="
+  mut lookup_keys := [10, 31, 99, 17, 4, 50]
+  num_lookups := 6
+
+  for li in range(0, num_lookups)
+    key := lookup_keys[li]
+    pos1 := key % table_size
+    pos2 := (key * 3 + 1) % table_size
+
+    if table1[pos1] == key
+      print "  Lookup {key}: FOUND in table1[{pos1}]"
+    else if table2[pos2] == key
+      print "  Lookup {key}: FOUND in table2[{pos2}]"
+    else
+      print "  Lookup {key}: NOT FOUND"
+
+  -- Part 5: Delete
+  print ""
+  print "=== Part 5: Deletion ==="
+  del_key := 22
+  del_h1 := del_key % table_size
+  del_h2 := (del_key * 3 + 1) % table_size
+
+  if table1[del_h1] == del_key
+    table1[del_h1] = -1
+    print "  Deleted {del_key} from table1[{del_h1}]"
+  else if table2[del_h2] == del_key
+    table2[del_h2] = -1
+    print "  Deleted {del_key} from table2[{del_h2}]"
+
+  -- Verify deletion
+  if table1[del_h1] != del_key and table2[del_h2] != del_key
+    print "  Verify: {del_key} no longer present"
+
+  -- Part 6: Statistics
+  print ""
+  print "=== Part 6: Statistics ==="
+  mut count1 := 0
+  mut count2 := 0
+  for i in range(0, table_size)
+    if table1[i] >= 0
+      count1 = count1 + 1
+    if table2[i] >= 0
+      count2 = count2 + 1
+
+  total := count1 + count2
+  print "  Table 1 occupancy: {count1}/{table_size}"
+  print "  Table 2 occupancy: {count2}/{table_size}"
+  print "  Total keys: {total}"
+  print "  Total evictions: {total_evictions}"
+  print "  Lookup: O(1) worst case (2 probes)"
+  print "  Insert: O(1) amortized"
+
+  print ""
+  print "Cuckoo hashing: two tables, constant lookup, eviction chains, cycle detection."
