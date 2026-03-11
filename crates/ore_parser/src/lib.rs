@@ -545,6 +545,24 @@ impl Parser {
                         let value = self.parse_expr(0)?;
                         Ok(Stmt::Assign { name, value })
                     }
+                    Token::PlusEq | Token::MinusEq | Token::StarEq | Token::SlashEq | Token::PercentEq => {
+                        let op = match self.peek() {
+                            Token::PlusEq => BinOp::Add,
+                            Token::MinusEq => BinOp::Sub,
+                            Token::StarEq => BinOp::Mul,
+                            Token::SlashEq => BinOp::Div,
+                            Token::PercentEq => BinOp::Mod,
+                            _ => unreachable!(),
+                        };
+                        self.advance();
+                        let rhs = self.parse_expr(0)?;
+                        let value = Expr::BinOp {
+                            left: Box::new(Expr::Ident(name.clone())),
+                            op,
+                            right: Box::new(rhs),
+                        };
+                        Ok(Stmt::Assign { name, value })
+                    }
                     _ => {
                         // Backtrack and parse as expression, then check for assignment
                         self.pos = saved;

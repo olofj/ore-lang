@@ -58,6 +58,11 @@ pub enum Token {
     Dot,         // .
     DotDot,      // ..
     QuestionMark, // ?
+    PlusEq,      // +=
+    MinusEq,     // -=
+    StarEq,      // *=
+    SlashEq,     // /=
+    PercentEq,   // %=
     And,
     Or,
     Not,
@@ -357,10 +362,42 @@ impl<'a> Lexer<'a> {
             b'0'..=b'9' => self.lex_number()?,
             b'"' => self.lex_string()?,
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.lex_ident_or_keyword(),
-            b'+' => { self.advance(); self.emit(Token::Plus, start); }
-            b'*' => { self.advance(); self.emit(Token::Star, start); }
-            b'/' => { self.advance(); self.emit(Token::Slash, start); }
-            b'%' => { self.advance(); self.emit(Token::Percent, start); }
+            b'+' => {
+                self.advance();
+                if self.peek() == Some(b'=') {
+                    self.advance();
+                    self.emit(Token::PlusEq, start);
+                } else {
+                    self.emit(Token::Plus, start);
+                }
+            }
+            b'*' => {
+                self.advance();
+                if self.peek() == Some(b'=') {
+                    self.advance();
+                    self.emit(Token::StarEq, start);
+                } else {
+                    self.emit(Token::Star, start);
+                }
+            }
+            b'/' => {
+                self.advance();
+                if self.peek() == Some(b'=') {
+                    self.advance();
+                    self.emit(Token::SlashEq, start);
+                } else {
+                    self.emit(Token::Slash, start);
+                }
+            }
+            b'%' => {
+                self.advance();
+                if self.peek() == Some(b'=') {
+                    self.advance();
+                    self.emit(Token::PercentEq, start);
+                } else {
+                    self.emit(Token::Percent, start);
+                }
+            }
             b'(' => { self.advance(); self.emit(Token::LParen, start); }
             b')' => { self.advance(); self.emit(Token::RParen, start); }
             b'{' => { self.advance(); self.emit(Token::LBrace, start); }
@@ -375,6 +412,9 @@ impl<'a> Lexer<'a> {
                 if self.peek() == Some(b'>') {
                     self.advance();
                     self.emit(Token::Arrow, start);
+                } else if self.peek() == Some(b'=') {
+                    self.advance();
+                    self.emit(Token::MinusEq, start);
                 } else {
                     self.emit(Token::Minus, start);
                 }

@@ -380,3 +380,10 @@ fn stdlib_split_iter() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["hello", "world", "ore", "[hello, world, ore]"]);
 }
+
+#[test]
+fn mutation_compound() {
+    let out = run_ore("mutation/compound.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["15", "12", "48", "8", "2"]);
+}
