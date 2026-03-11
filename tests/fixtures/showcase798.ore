@@ -1,0 +1,127 @@
+-- Showcase 798: File System Inode Simulation
+
+fn block_to_str blocks:List -> Str
+  blocks.map(x => str(x)).join(",")
+
+fn main
+  print "File System Inode Simulation:"
+  print ""
+
+  block_size := 512   -- bytes per block
+  n_inodes := 8
+  n_data_blocks := 32
+
+  print "Block size: {block_size} bytes"
+  print "Inodes: {n_inodes}, Data blocks: {n_data_blocks}"
+  print ""
+
+  -- Inode structure (simplified):
+  --   inode_id, type(1=file,2=dir), size(bytes), nlinks, direct_blocks(4), indirect_block
+  -- We store these as parallel arrays
+
+  inode_id    := [0, 1, 2, 3, 4, 5, 6, 7]
+  inode_type  := [2, 1, 1, 2, 1, 1, 1, 1]  -- root dir, files, dir, files
+  inode_size  := [0, 1024, 512, 0, 2048, 256, 3072, 768]
+  inode_nlink := [2, 1, 2, 2, 1, 1, 1, 1]  -- dirs get 2 for . and ..
+
+  -- Direct blocks (up to 4 per inode), 0 = unused
+  inode_d0 := [1,  5,  9, 13, 17, 21, 25, 29]
+  inode_d1 := [2,  6,  0, 14, 18,  0, 26, 30]
+  inode_d2 := [3,  0,  0,  0, 19,  0, 27,  0]
+  inode_d3 := [4,  0,  0,  0, 20,  0, 28,  0]
+  inode_indirect := [0, 0, 0, 0, 0, 0, 31, 0]  -- inode 6 has indirect block
+
+  -- Directory entries (inode -> list of (name, child_inode))
+  -- Root dir (inode 0): entries for inode 1(file.txt), inode 2(notes.txt), inode 3(subdir)
+  -- Subdir (inode 3): entries for inode 4(big.dat), inode 5(small.txt)
+
+  print "=== Inode Table ==="
+  print "  Inode | Type | Size  | Links | Direct Blocks    | Indirect"
+  for i in range(0, n_inodes)
+    t := inode_type[i]
+    mut type_str := "DIR "
+    if t == 1
+      type_str = "FILE"
+    sz := inode_size[i]
+    nl := inode_nlink[i]
+    d0 := inode_d0[i]
+    d1 := inode_d1[i]
+    d2 := inode_d2[i]
+    d3 := inode_d3[i]
+    ind := inode_indirect[i]
+    mut direct_str := str(d0)
+    if d1 > 0
+      direct_str = direct_str + " " + str(d1)
+    if d2 > 0
+      direct_str = direct_str + " " + str(d2)
+    if d3 > 0
+      direct_str = direct_str + " " + str(d3)
+    mut ind_str := "-"
+    if ind > 0
+      ind_str = str(ind)
+    print "  {i}     | {type_str} | {sz}   | {nl}     | [{direct_str}]          | {ind_str}"
+  print ""
+
+  -- Directory tree
+  print "=== Directory Tree ==="
+  print "  / (inode 0)"
+  print "  |-- file.txt   (inode 1, 1024 bytes)"
+  print "  |-- notes.txt  (inode 2, 512 bytes, hardlink: inode 2)"
+  print "  |-- subdir/    (inode 3)"
+  print "  |   |-- big.dat   (inode 4, 2048 bytes)"
+  print "  |   |-- small.txt (inode 5, 256 bytes)"
+  print "  |-- large.log  (inode 6, 3072 bytes, has indirect block)"
+  print "  |-- link2notes (inode 2, hardlink to notes.txt)"
+  print "  |-- extra.bin  (inode 7, 768 bytes)"
+  print ""
+
+  -- Block calculation
+  print "=== Block Usage Analysis ==="
+  for i in range(0, n_inodes)
+    sz := inode_size[i]
+    t := inode_type[i]
+    if t == 1 and sz > 0
+      blocks_needed := (sz + block_size - 1) / block_size
+      direct_cap := 4 * block_size
+      mut indirect_blocks := 0
+      if sz > direct_cap
+        overflow := sz - direct_cap
+        indirect_blocks = (overflow + block_size - 1) / block_size
+      print "  Inode {i}: {sz} bytes -> {blocks_needed} data block(s), indirect_blocks={indirect_blocks}"
+  print ""
+
+  -- Allocation simulation
+  print "=== File Operations ==="
+  print "  CREATE /tmp.txt (inode 8, empty)"
+  print "    Allocate inode 8, type=FILE, size=0, nlinks=1"
+  print "    Add dir entry: '/' -> ('tmp.txt', 8)"
+  print ""
+
+  print "  WRITE /tmp.txt 600 bytes"
+  print "    Need ceil(600/{block_size}) = 2 blocks"
+  print "    Allocate blocks from free list: e.g. blocks 10, 11"
+  print "    Update inode 8: size=600, d0=10, d1=11"
+  print ""
+
+  print "  LINK /notes.txt /notes2.txt (hard link)"
+  print "    Create dir entry: '/' -> ('notes2.txt', 2)"
+  print "    Increment inode 2 nlinks: {inode_nlink[2]} -> {inode_nlink[2] + 1}"
+  print "    Both filenames point to same inode 2"
+  print ""
+
+  print "  DELETE /file.txt"
+  print "    Remove dir entry from /"
+  print "    Decrement inode 1 nlinks: {inode_nlink[1]} -> {inode_nlink[1] - 1}"
+  print "    nlinks=0: free blocks 5,6 and inode 1"
+  print ""
+
+  -- Superblock info
+  print "=== Superblock ==="
+  used_inodes := n_inodes
+  used_blocks := 31  -- rough count from above
+  free_inodes := 256 - used_inodes
+  free_blocks := n_data_blocks - used_blocks
+  print "  Total inodes: 256, used: {used_inodes}, free: {free_inodes}"
+  print "  Total data blocks: {n_data_blocks}, used: {used_blocks}, free: {free_blocks}"
+  print ""
+  print "File system inode: metadata structure linking filenames to data blocks."

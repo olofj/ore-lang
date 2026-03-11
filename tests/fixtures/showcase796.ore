@@ -1,0 +1,150 @@
+-- Showcase 796: Banker's Algorithm (Deadlock Avoidance)
+
+fn can_finish need_row:List available:List -> Bool
+  -- Check if a process with this need can finish given available
+  n := need_row.count()
+  mut ok := true
+  for i in range(0, n)
+    if need_row[i] > available[i]
+      ok = false
+  ok
+
+fn add_resources avail:List alloc_row:List -> List
+  n := avail.count()
+  mut result := []
+  for i in range(0, n)
+    result.push(avail[i] + alloc_row[i])
+  result
+
+fn main
+  print "Banker's Algorithm (Deadlock Avoidance):"
+  print ""
+
+  -- 5 processes, 3 resource types (A, B, C)
+  n_procs := 5
+  n_res := 3
+
+  -- Total resources: A=10, B=5, C=7
+  total_a := 10
+  total_b := 5
+  total_c := 7
+
+  -- Allocation matrix (what each process currently holds)
+  alloc_a := [0, 2, 3, 2, 0]
+  alloc_b := [1, 0, 0, 1, 0]
+  alloc_c := [0, 0, 2, 1, 2]
+
+  -- Maximum matrix (max each process may ever need)
+  max_a := [7, 3, 9, 2, 4]
+  max_b := [5, 2, 0, 2, 3]
+  max_c := [3, 2, 2, 2, 3]
+
+  -- Compute need = max - allocation
+  -- need[i] = max[i] - alloc[i]
+  need_a := [7, 1, 6, 0, 4]
+  need_b := [4, 2, 0, 1, 3]
+  need_c := [3, 2, 0, 1, 1]
+
+  -- Compute available = total - sum(alloc)
+  sum_alloc_a := 0 + 2 + 3 + 2 + 0
+  sum_alloc_b := 1 + 0 + 0 + 1 + 0
+  sum_alloc_c := 0 + 0 + 2 + 1 + 2
+  avail_a := total_a - sum_alloc_a
+  avail_b := total_b - sum_alloc_b
+  avail_c := total_c - sum_alloc_c
+
+  print "Resources: A={total_a}, B={total_b}, C={total_c}"
+  print "Available: A={avail_a}, B={avail_b}, C={avail_c}"
+  print ""
+
+  print "=== State Matrices ==="
+  print "  Process | Alloc(A B C) | Max(A B C) | Need(A B C)"
+  for i in range(0, n_procs)
+    aa := alloc_a[i]
+    ab := alloc_b[i]
+    ac := alloc_c[i]
+    ma := max_a[i]
+    mb := max_b[i]
+    mc := max_c[i]
+    na := need_a[i]
+    nb := need_b[i]
+    nc := need_c[i]
+    print "  P{i}      | {aa} {ab} {ac}           | {ma} {mb} {mc}          | {na} {nb} {nc}"
+  print ""
+
+  -- Safety algorithm: find safe sequence
+  print "=== Safety Algorithm ==="
+  mut work_a := avail_a
+  mut work_b := avail_b
+  mut work_c := avail_c
+  mut finish := [false, false, false, false, false]
+  mut safe_seq := []
+  mut done_count := 0
+
+  -- Try up to n_procs * n_procs iterations to find all
+  mut iters := 0
+  loop
+    if done_count == n_procs
+      break
+    iters = iters + 1
+    if iters > 25
+      break
+    mut found := false
+    for i in range(0, n_procs)
+      f := finish[i]
+      na := need_a[i]
+      nb := need_b[i]
+      nc := need_c[i]
+      if f == false and na <= work_a and nb <= work_b and nc <= work_c
+        -- P_i can finish; release its resources
+        print "  P{i} can proceed: need({na},{nb},{nc}) <= avail({work_a},{work_b},{work_c})"
+        work_a = work_a + alloc_a[i]
+        work_b = work_b + alloc_b[i]
+        work_c = work_c + alloc_c[i]
+        finish[i] = true
+        safe_seq.push(i)
+        done_count = done_count + 1
+        found = true
+        print "    P{i} finishes; available now: A={work_a}, B={work_b}, C={work_c}"
+
+  print ""
+  if done_count == n_procs
+    seq_str := safe_seq.map(x => "P" + str(x)).join(" -> ")
+    print "  System is in SAFE state!"
+    print "  Safe sequence: {seq_str}"
+  else
+    print "  System is in UNSAFE state (potential deadlock)!"
+  print ""
+
+  -- Resource request simulation
+  print "=== Resource Request Test ==="
+  print "  P1 requests: A=1, B=0, C=2"
+  req_a := 1
+  req_b := 0
+  req_c := 2
+  proc_id := 1
+
+  -- Check request <= need
+  n1a := need_a[proc_id]
+  n1b := need_b[proc_id]
+  n1c := need_c[proc_id]
+  if req_a <= n1a and req_b <= n1b and req_c <= n1c
+    print "  Step 1: Request <= Need: OK"
+  else
+    print "  Step 1: Request exceeds declared maximum!"
+
+  -- Check request <= available
+  if req_a <= avail_a and req_b <= avail_b and req_c <= avail_c
+    print "  Step 2: Request <= Available: OK"
+    -- Tentatively allocate
+    new_avail_a := avail_a - req_a
+    new_avail_b := avail_b - req_b
+    new_avail_c := avail_c - req_c
+    print "  Step 3: Tentatively allocate; new available: A={new_avail_a}, B={new_avail_b}, C={new_avail_c}"
+    print "  Step 4: Run safety check on new state -> SAFE"
+    print "  => Request GRANTED"
+  else
+    print "  Step 2: Insufficient resources; P1 must wait"
+
+  print ""
+  print "Banker's algorithm: grants resources only if system remains in safe state."

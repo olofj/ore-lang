@@ -1,0 +1,132 @@
+-- Showcase 800: CPU Pipeline Hazard Detection
+
+fn main
+  print "CPU Pipeline Hazard Detection:"
+  print ""
+
+  -- 5-stage pipeline: IF(Fetch) ID(Decode) EX(Execute) MEM(Memory) WB(Writeback)
+  -- Instruction format: opcode, dest_reg, src1_reg, src2_reg
+  -- opcode: 0=ADD, 1=SUB, 2=MUL, 3=LOAD, 4=STORE, 5=BEQ (branch)
+
+  -- Instructions (opcode, dest, src1, src2)
+  inst_op   := [0, 1, 0, 3, 2, 5, 0, 1]   -- ADD SUB ADD LOAD MUL BEQ ADD SUB
+  inst_dest := [1, 2, 3, 4, 5, 0, 6, 7]   -- R1..R7 (0 = none)
+  inst_src1 := [2, 1, 2, 5, 4, 1, 3, 6]
+  inst_src2 := [3, 3, 4, 0, 5, 2, 5, 7]
+  n_inst := 8
+
+  op_names := ["ADD", "SUB", "MUL", "LOAD", "STORE", "BEQ", "NOP", "NOP"]
+
+  print "=== Instruction Stream ==="
+  for i in range(0, n_inst)
+    op := inst_op[i]
+    d := inst_dest[i]
+    s1 := inst_src1[i]
+    s2 := inst_src2[i]
+    oname := op_names[op]
+    if op == 3
+      print "  I{i}: {oname} R{d}, mem[R{s1}]"
+    else if op == 5
+      print "  I{i}: {oname} R{s1}, R{s2}, +4"
+    else
+      print "  I{i}: {oname} R{d}, R{s1}, R{s2}"
+  print ""
+
+  -- Detect RAW (Read After Write) data hazards
+  print "=== RAW Hazard Detection ==="
+  mut raw_hazards := 0
+  mut stalls := 0
+
+  for i in range(1, n_inst)
+    d_prev := inst_dest[i - 1]
+    s1_curr := inst_src1[i]
+    s2_curr := inst_src2[i]
+    op_prev := inst_op[i - 1]
+
+    if d_prev > 0 and op_prev != 4 and op_prev != 5
+      -- Previous instruction writes to d_prev
+      hazard_type := ""
+      if s1_curr == d_prev or s2_curr == d_prev
+        raw_hazards = raw_hazards + 1
+        stalls = stalls + 1
+        -- LOAD-USE hazard requires extra stall
+        if op_prev == 3
+          stalls = stalls + 1
+          print "  I{i - 1} writes R{d_prev}, I{i} reads R{d_prev} -> RAW hazard (LOAD-USE: +2 stalls)"
+        else
+          print "  I{i - 1} writes R{d_prev}, I{i} reads R{d_prev} -> RAW hazard (+1 stall)"
+
+  if raw_hazards == 0
+    print "  No RAW hazards detected"
+  print ""
+
+  -- Check for WAW (Write After Write) hazards
+  print "=== WAW Hazard Detection ==="
+  mut waw_hazards := 0
+  for i in range(2, n_inst)
+    for j in range(0, i)
+      d_i := inst_dest[i]
+      d_j := inst_dest[j]
+      op_i := inst_op[i]
+      op_j := inst_op[j]
+      if d_i > 0 and d_j > 0 and d_i == d_j and op_i != 4 and op_j != 4
+        dist := i - j
+        if dist <= 4
+          waw_hazards = waw_hazards + 1
+          print "  I{j} and I{i} both write R{d_i} (distance={dist}) -> WAW hazard"
+
+  if waw_hazards == 0
+    print "  No WAW hazards detected"
+  print ""
+
+  -- Control hazards from branches
+  print "=== Control Hazard Detection ==="
+  mut branch_stalls := 0
+  mut branches := 0
+  for i in range(0, n_inst)
+    op := inst_op[i]
+    if op == 5
+      branches = branches + 1
+      branch_stalls = branch_stalls + 3  -- 3 stall cycles (fetch 3 wrong instrs)
+      print "  I{i}: BEQ -> branch taken/not known until EX stage"
+      print "    Penalty: 3 stall cycles (pipeline flush)"
+
+  if branches == 0
+    print "  No branches detected"
+  print ""
+
+  -- Pipeline execution timeline with stalls
+  print "=== Pipeline Execution Timeline ==="
+  print "  Cycle:   1  2  3  4  5  6  7  8  9 10 11 12 13 14 15"
+  -- Simplified: show first 5 instructions with 1 stall between I0 and I1
+  print "  I0(ADD): IF ID EX ME WB"
+  print "  I1(SUB): -- IF ** ID EX ME WB      (** = stall, RAW on R1)"
+  print "  I2(ADD): -- -- IF ** ID EX ME WB"
+  print "  I3(LOAD):-- -- -- IF ** ID EX ME WB"
+  print "  I4(MUL): -- -- -- -- IF ** ** ID EX ME WB  (LOAD-USE, 2 stalls)"
+  print ""
+
+  -- Forwarding analysis
+  print "=== Forwarding (Bypassing) ==="
+  print "  Without forwarding: stall until WB stage writes register file"
+  print "  With EX->EX forwarding: remove 1-cycle RAW stall for ALU->ALU"
+  print "  With MEM->EX forwarding: remove 1-cycle RAW stall for MEM->ALU"
+  print "  LOAD-USE: still needs 1 stall even with forwarding"
+  print ""
+
+  -- Summary
+  total_stalls := stalls + branch_stalls
+  print "=== Summary ==="
+  print "  Instructions: {n_inst}"
+  print "  RAW hazards detected: {raw_hazards} ({stalls} stall cycles)"
+  print "  WAW hazards detected: {waw_hazards}"
+  print "  Branch hazards: {branches} ({branch_stalls} stall cycles)"
+  print "  Total stall cycles: {total_stalls}"
+  base_cycles := n_inst + 4   -- 4 extra for pipeline fill
+  total_cycles := base_cycles + total_stalls
+  print "  Base cycles (no stalls): {base_cycles}"
+  print "  Total cycles with stalls: {total_cycles}"
+  cpi_num := total_cycles
+  print "  CPI = {cpi_num}/{n_inst} = {cpi_num / n_inst} (approx)"
+  print ""
+  print "CPU pipeline: hazards from data/control dependencies reduce throughput."

@@ -1,0 +1,138 @@
+-- Showcase 794: Disk Scheduling (SCAN, C-SCAN, SSTF)
+
+fn abs_diff a:Int b:Int -> Int
+  d := a - b
+  if d < 0
+    d * -1
+  else
+    d
+
+fn find_sstf_next requests:List served:List head:Int -> Int
+  -- Find index of unserved request closest to head
+  n := requests.count()
+  mut best_idx := -1
+  mut best_dist := 99999
+  for i in range(0, n)
+    already_done := served[i]
+    if already_done == 0
+      dist := abs_diff(requests[i], head)
+      if dist < best_dist
+        best_dist = dist
+        best_idx = i
+  best_idx
+
+fn main
+  print "Disk Scheduling (SSTF, SCAN, C-SCAN):"
+  print ""
+
+  -- Disk has cylinders 0..199
+  disk_size := 200
+  initial_head := 50
+  -- Incoming request queue (cylinder numbers)
+  requests := [82, 170, 43, 140, 24, 16, 190]
+  n := 7
+  direction := 1   -- 1 = moving toward higher cylinders
+
+  print "Disk cylinders: 0-{disk_size - 1}"
+  print "Initial head position: {initial_head}"
+  print "Request queue: 82 170 43 140 24 16 190"
+  print ""
+
+  -- ===== SSTF (Shortest Seek Time First) =====
+  print "=== SSTF (Shortest Seek Time First) ==="
+  mut sstf_served := [0, 0, 0, 0, 0, 0, 0]
+  mut sstf_head := initial_head
+  mut sstf_total := 0
+
+  for step in range(0, n)
+    idx := find_sstf_next(requests, sstf_served, sstf_head)
+    if idx == -1
+      break
+    target := requests[idx]
+    dist := abs_diff(sstf_head, target)
+    sstf_total = sstf_total + dist
+    print "  Head {sstf_head} -> {target} (seek={dist})"
+    sstf_head = target
+    sstf_served[idx] = 1
+
+  print "  Total head movement: {sstf_total} cylinders"
+  print ""
+
+  -- ===== SCAN (Elevator) =====
+  print "=== SCAN (Elevator Algorithm) ==="
+  -- Sort requests
+  mut sorted := [16, 24, 43, 82, 140, 170, 190]   -- pre-sorted
+  mut scan_head := initial_head
+  mut scan_dir := direction   -- 1=up, 0=down
+  mut scan_total := 0
+
+  -- Go up from head to max, then reverse
+  print "  Direction: UP (toward cylinder {disk_size - 1})"
+  -- Process in ascending order those >= head first
+  print "  Phase 1 (ascending):"
+  for i in range(0, n)
+    cyl := sorted[i]
+    if cyl >= scan_head
+      dist := abs_diff(scan_head, cyl)
+      scan_total = scan_total + dist
+      print "    Head {scan_head} -> {cyl} (seek={dist})"
+      scan_head = cyl
+  -- Go to end
+  dist_end := abs_diff(scan_head, disk_size - 1)
+  scan_total = scan_total + dist_end
+  print "    Head {scan_head} -> {disk_size - 1} (end, seek={dist_end})"
+  scan_head = disk_size - 1
+  -- Now reverse, process descending
+  print "  Phase 2 (descending):"
+  mut desc_idx := n - 1
+  loop
+    if desc_idx < 0
+      break
+    cyl := sorted[desc_idx]
+    if cyl < initial_head
+      dist := abs_diff(scan_head, cyl)
+      scan_total = scan_total + dist
+      print "    Head {scan_head} -> {cyl} (seek={dist})"
+      scan_head = cyl
+    desc_idx = desc_idx - 1
+  print "  Total head movement: {scan_total} cylinders"
+  print ""
+
+  -- ===== C-SCAN (Circular SCAN) =====
+  print "=== C-SCAN (Circular SCAN) ==="
+  mut cscan_head := initial_head
+  mut cscan_total := 0
+
+  print "  Direction: UP, then jump to 0"
+  print "  Phase 1 (ascending from {cscan_head}):"
+  for i in range(0, n)
+    cyl := sorted[i]
+    if cyl >= cscan_head
+      dist := abs_diff(cscan_head, cyl)
+      cscan_total = cscan_total + dist
+      print "    Head {cscan_head} -> {cyl} (seek={dist})"
+      cscan_head = cyl
+  -- Go to end then jump to 0
+  to_end := abs_diff(cscan_head, disk_size - 1)
+  cscan_total = cscan_total + to_end
+  print "    Head {cscan_head} -> {disk_size - 1} (end, seek={to_end})"
+  cscan_head = 0
+  cscan_total = cscan_total + disk_size - 1  -- jump cost
+  print "    Jump to cylinder 0 (cost={disk_size - 1})"
+  print "  Phase 2 (ascending from 0):"
+  for i in range(0, n)
+    cyl := sorted[i]
+    if cyl < initial_head
+      dist := abs_diff(cscan_head, cyl)
+      cscan_total = cscan_total + dist
+      print "    Head {cscan_head} -> {cyl} (seek={dist})"
+      cscan_head = cyl
+  print "  Total head movement: {cscan_total} cylinders"
+  print ""
+
+  print "=== Summary ==="
+  print "  SSTF:   {sstf_total} cylinders (greedy, low avg seek)"
+  print "  SCAN:   {scan_total} cylinders (fair, elevator-like)"
+  print "  C-SCAN: {cscan_total} cylinders (uniform wait time)"
+  print ""
+  print "Disk scheduling: minimizes head movement to reduce seek latency."

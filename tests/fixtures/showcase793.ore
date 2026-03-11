@@ -1,0 +1,162 @@
+-- Showcase 793: Memory Allocator (First Fit, Best Fit)
+
+fn find_first_fit blocks:List sizes:List request:Int -> Int
+  -- Returns index of first block that fits, -1 if none
+  n := blocks.count()
+  mut result := -1
+  for i in range(0, n)
+    avail := blocks[i]
+    sz := sizes[i]
+    if avail == 1 and sz >= request and result == -1
+      result = i
+  result
+
+fn find_best_fit blocks:List sizes:List request:Int -> Int
+  -- Returns index of smallest block that fits
+  n := blocks.count()
+  mut best := -1
+  mut best_size := 99999
+  for i in range(0, n)
+    avail := blocks[i]
+    sz := sizes[i]
+    if avail == 1 and sz >= request
+      if sz < best_size
+        best_size = sz
+        best = i
+  best
+
+fn find_worst_fit blocks:List sizes:List request:Int -> Int
+  -- Returns index of largest block (most leftover)
+  n := blocks.count()
+  mut best := -1
+  mut biggest := -1
+  for i in range(0, n)
+    avail := blocks[i]
+    sz := sizes[i]
+    if avail == 1 and sz >= request
+      if sz > biggest
+        biggest = sz
+        best = i
+  best
+
+fn total_free blocks:List sizes:List -> Int
+  n := blocks.count()
+  mut total := 0
+  for i in range(0, n)
+    if blocks[i] == 1
+      total = total + sizes[i]
+  total
+
+fn count_free blocks:List -> Int
+  n := blocks.count()
+  mut cnt := 0
+  for i in range(0, n)
+    if blocks[i] == 1
+      cnt = cnt + 1
+  cnt
+
+fn main
+  print "Memory Allocator (First Fit, Best Fit, Worst Fit):"
+  print ""
+
+  -- Memory blocks: 1=free, 0=allocated; sizes in KB
+  -- Initial: 6 blocks [200, 400, 100, 300, 50, 500] all free
+  init_sizes := [200, 400, 100, 300, 50, 500]
+  nblocks := 6
+
+  -- Allocation requests in KB
+  requests := [120, 350, 60, 280, 45, 150]
+  nreqs := 6
+
+  print "Initial memory blocks (all free):"
+  print "  Block 0: 200KB  Block 1: 400KB  Block 2: 100KB"
+  print "  Block 3: 300KB  Block 4: 50KB   Block 5: 500KB"
+  print ""
+  print "Allocation requests: 120KB, 350KB, 60KB, 280KB, 45KB, 150KB"
+  print ""
+
+  -- ===== First Fit =====
+  print "=== First Fit ==="
+  -- 1=free 0=allocated
+  mut ff_avail := [1, 1, 1, 1, 1, 1]
+  mut ff_sizes := [200, 400, 100, 300, 50, 500]
+
+  for r in range(0, nreqs)
+    req := requests[r]
+    idx := find_first_fit(ff_avail, ff_sizes, req)
+    if idx == -1
+      print "  Request {req}KB: FAILED (no block)"
+    else
+      blk_sz := ff_sizes[idx]
+      leftover := blk_sz - req
+      ff_avail[idx] = 0
+      ff_sizes[idx] = req
+      -- If leftover, we just note it (simplified: block stays single)
+      print "  Request {req}KB -> Block {idx} ({blk_sz}KB), leftover={leftover}KB"
+
+  free_mem := total_free(ff_avail, ff_sizes)
+  free_cnt := count_free(ff_avail)
+  print "  Free memory: {free_mem}KB across {free_cnt} blocks"
+  print ""
+
+  -- ===== Best Fit =====
+  print "=== Best Fit ==="
+  mut bf_avail := [1, 1, 1, 1, 1, 1]
+  mut bf_sizes := [200, 400, 100, 300, 50, 500]
+
+  for r in range(0, nreqs)
+    req := requests[r]
+    idx := find_best_fit(bf_avail, bf_sizes, req)
+    if idx == -1
+      print "  Request {req}KB: FAILED (no block)"
+    else
+      blk_sz := bf_sizes[idx]
+      leftover := blk_sz - req
+      bf_avail[idx] = 0
+      bf_sizes[idx] = req
+      print "  Request {req}KB -> Block {idx} ({blk_sz}KB), leftover={leftover}KB"
+
+  free_mem2 := total_free(bf_avail, bf_sizes)
+  free_cnt2 := count_free(bf_avail)
+  print "  Free memory: {free_mem2}KB across {free_cnt2} blocks"
+  print ""
+
+  -- ===== Worst Fit =====
+  print "=== Worst Fit ==="
+  mut wf_avail := [1, 1, 1, 1, 1, 1]
+  mut wf_sizes := [200, 400, 100, 300, 50, 500]
+
+  for r in range(0, nreqs)
+    req := requests[r]
+    idx := find_worst_fit(wf_avail, wf_sizes, req)
+    if idx == -1
+      print "  Request {req}KB: FAILED (no block)"
+    else
+      blk_sz := wf_sizes[idx]
+      leftover := blk_sz - req
+      wf_avail[idx] = 0
+      wf_sizes[idx] = req
+      print "  Request {req}KB -> Block {idx} ({blk_sz}KB), leftover={leftover}KB"
+
+  free_mem3 := total_free(wf_avail, wf_sizes)
+  free_cnt3 := count_free(wf_avail)
+  print "  Free memory: {free_mem3}KB across {free_cnt3} blocks"
+  print ""
+
+  -- Fragmentation analysis
+  print "=== Fragmentation Analysis ==="
+  print "  First Fit: simple, fast, may cause fragmentation near start"
+  print "  Best Fit:  minimizes wasted space per allocation"
+  print "  Worst Fit: leaves larger remainders for future large requests"
+  print ""
+
+  -- External fragmentation demo
+  print "=== External Fragmentation ==="
+  total_initial := 200 + 400 + 100 + 300 + 50 + 500
+  allocated := 120 + 350 + 60 + 280 + 45 + 150
+  wasted := total_initial - allocated
+  print "  Total memory: {total_initial}KB"
+  print "  Allocated: {allocated}KB"
+  print "  Wasted (fragmentation): {wasted}KB"
+  print ""
+  print "Memory allocator: manages free/used blocks with fit strategies."

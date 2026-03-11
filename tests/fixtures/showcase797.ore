@@ -1,0 +1,122 @@
+-- Showcase 797: Virtual Memory Page Table Simulation
+
+fn translate_address virtual:Int page_size:Int page_table_valid:List page_table_frame:List -> Str
+  page_num := virtual / page_size
+  offset := virtual - page_num * page_size
+  n := page_table_valid.count()
+  if page_num >= n
+    "SEGFAULT (out of range)"
+  else
+    valid := page_table_valid[page_num]
+    if valid == 0
+      pn_str := str(page_num)
+      "PAGE FAULT (page {pn_str} not in memory)"
+    else
+      frame := page_table_frame[page_num]
+      phys := frame * page_size + offset
+      phys_str := str(phys)
+      "Physical={phys_str}"
+
+fn main
+  print "Virtual Memory Page Table Simulation:"
+  print ""
+
+  page_size := 256   -- bytes per page
+  n_pages := 8       -- virtual address space: 8 pages
+  n_frames := 4      -- physical frames available
+
+  print "Page size: {page_size} bytes"
+  print "Virtual pages: {n_pages}"
+  print "Physical frames: {n_frames}"
+  print "Virtual address space: {n_pages * page_size} bytes"
+  print "Physical memory: {n_frames * page_size} bytes"
+  print ""
+
+  -- Page table: valid bit (1=in memory, 0=not loaded), frame number
+  -- Pages 0,1,2,4 are loaded; pages 3,5,6,7 are not
+  mut pt_valid := [1, 1, 1, 0, 1, 0, 0, 0]
+  mut pt_frame := [2, 0, 3, 0, 1, 0, 0, 0]
+
+  print "=== Page Table ==="
+  print "  Page | Valid | Frame | Physical Range"
+  for i in range(0, n_pages)
+    v := pt_valid[i]
+    f := pt_frame[i]
+    if v == 1
+      phys_start := f * page_size
+      phys_end := phys_start + page_size - 1
+      print "  {i}    | {v}     | {f}     | {phys_start}-{phys_end}"
+    else
+      print "  {i}    | {v}     | -     | (swapped out)"
+  print ""
+
+  -- TLB (Translation Lookaside Buffer) - cache of recent translations
+  print "=== TLB ==="
+  -- Simulate 4-entry TLB: stores (page, frame) pairs
+  tlb_pages  := [4, 1, 0, 2]
+  tlb_frames := [1, 0, 2, 3]
+  n_tlb := 4
+  print "  TLB entries: page->frame"
+  for i in range(0, n_tlb)
+    print "    Page {tlb_pages[i]} -> Frame {tlb_frames[i]}"
+  print ""
+
+  -- Address translation with TLB
+  print "=== Address Translation ==="
+  virtual_addrs := [0, 256, 512, 768, 1024, 300, 640, 1280]
+  n_addr := 8
+  mut tlb_hits := 0
+  mut tlb_misses := 0
+  mut page_faults := 0
+
+  for i in range(0, n_addr)
+    vaddr := virtual_addrs[i]
+    page_num := vaddr / page_size
+    offset := vaddr - page_num * page_size
+
+    -- Check TLB first
+    mut tlb_hit := false
+    mut frame := -1
+    for t in range(0, n_tlb)
+      if tlb_pages[t] == page_num
+        tlb_hit = true
+        frame = tlb_frames[t]
+
+    if tlb_hit
+      tlb_hits = tlb_hits + 1
+      phys := frame * page_size + offset
+      print "  VA={vaddr}: page={page_num} offset={offset} -> TLB HIT -> PA={phys}"
+    else
+      tlb_misses = tlb_misses + 1
+      -- Check page table
+      result := translate_address(vaddr, page_size, pt_valid, pt_frame)
+      if result.starts_with("Physical=")
+        stripped := result.strip_prefix("Physical=")
+        print "  VA={vaddr}: page={page_num} offset={offset} -> TLB miss -> {stripped}"
+      else
+        page_faults = page_faults + 1
+        print "  VA={vaddr}: page={page_num} offset={offset} -> TLB miss -> {result}"
+  print ""
+
+  print "=== TLB Statistics ==="
+  total_accesses := n_addr
+  hit_rate := tlb_hits * 100 / total_accesses
+  print "  TLB hits:    {tlb_hits}/{total_accesses} ({hit_rate}%)"
+  print "  TLB misses:  {tlb_misses}/{total_accesses}"
+  print "  Page faults: {page_faults}"
+  print ""
+
+  -- Two-level page table demo
+  print "=== Two-Level Page Table ==="
+  print "  32-bit address: [10 bits dir | 10 bits table | 12 bits offset]"
+  example_va := 4198416     -- 0x00401010
+  dir_idx := example_va / 4194304      -- / (1024 * 4096)
+  table_idx := (example_va / 4096) - dir_idx * 1024
+  off := example_va - (example_va / 4096) * 4096
+  print "  Example VA: 0x00401010 ({example_va})"
+  print "    Directory index: {dir_idx}"
+  print "    Table index:     {table_idx}"
+  print "    Offset:          {off}"
+  print ""
+
+  print "Virtual memory: abstracts physical RAM with page tables and TLB caching."

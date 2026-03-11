@@ -1,0 +1,108 @@
+-- Showcase 795: Producer-Consumer with Bounded Buffer
+
+fn buffer_str buf:List head:Int tail:Int size:Int -> Str
+  -- Show buffer contents from head to tail
+  mut parts := []
+  mut i := head
+  mut cnt := 0
+  loop
+    if cnt >= size
+      break
+    parts.push(str(buf[i]))
+    i = (i + 1) - (i + 1) / 10 * 10   -- modulo 10
+    cnt = cnt + 1
+  parts.join(" ")
+
+fn main
+  print "Producer-Consumer with Bounded Buffer:"
+  print ""
+
+  buffer_size := 5
+  print "Buffer capacity: {buffer_size} slots"
+  print ""
+
+  -- Simulate with arrays: circular buffer of size 10 (padded)
+  mut buf := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut head := 0    -- consumer reads from head
+  mut tail := 0    -- producer writes to tail
+  mut count := 0   -- current items in buffer
+
+  -- Events: P=produce value, C=consume
+  -- Encoded: positive = produce that value, 0 = consume
+  event_types := [1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1]
+  event_vals  := [10, 20, 30, 40, 50, 0, 0, 60, 70, 0, 80, 0, 0, 0, 0, 90, 100, 0, 0, 110]
+  n_events := 20
+
+  mut produced := 0
+  mut consumed := 0
+  mut blocked_prod := 0
+  mut blocked_cons := 0
+  mut prod_item := 1
+
+  print "Simulation (buffer_size={buffer_size}):"
+  print "  Step | Action     | Value | Count | Buffer"
+
+  for i in range(0, n_events)
+    is_produce := event_types[i]
+    val := event_vals[i]
+
+    if is_produce == 1
+      if count == buffer_size
+        blocked_prod = blocked_prod + 1
+        print "  {i + 1}    | PRODUCE    | {val}    | {count}     | BLOCKED (buffer full)"
+      else
+        buf[tail] = val
+        tail = tail + 1
+        if tail == buffer_size
+          tail = 0
+        count = count + 1
+        produced = produced + 1
+        mut items := []
+        mut j := head
+        for k in range(0, count)
+          items.push(str(buf[j]))
+          j = j + 1
+          if j == buffer_size
+            j = 0
+        bstr := items.join(" ")
+        print "  {i + 1}    | PRODUCE    | {val}    | {count}     | [{bstr}]"
+    else
+      if count == 0
+        blocked_cons = blocked_cons + 1
+        print "  {i + 1}    | CONSUME    | -     | {count}     | BLOCKED (buffer empty)"
+      else
+        consumed_val := buf[head]
+        buf[head] = 0
+        head = head + 1
+        if head == buffer_size
+          head = 0
+        count = count - 1
+        consumed = consumed + 1
+        mut items := []
+        mut j2 := head
+        for k in range(0, count)
+          items.push(str(buf[j2]))
+          j2 = j2 + 1
+          if j2 == buffer_size
+            j2 = 0
+        bstr2 := items.join(" ")
+        print "  {i + 1}    | CONSUME    | {consumed_val}    | {count}     | [{bstr2}]"
+
+  print ""
+  print "=== Statistics ==="
+  print "  Items produced:   {produced}"
+  print "  Items consumed:   {consumed}"
+  print "  Items remaining:  {count}"
+  print "  Producer blocked: {blocked_prod} times (buffer full)"
+  print "  Consumer blocked: {blocked_cons} times (buffer empty)"
+  print ""
+
+  print "=== Synchronization Primitives ==="
+  print "  Semaphore empty:  tracks free slots (init={buffer_size})"
+  print "  Semaphore full:   tracks used slots (init=0)"
+  print "  Mutex:            protects buffer access"
+  print ""
+  print "  Producer: wait(empty) -> lock -> write -> unlock -> signal(full)"
+  print "  Consumer: wait(full)  -> lock -> read  -> unlock -> signal(empty)"
+  print ""
+  print "Producer-consumer: bounded buffer synchronization with semaphores."

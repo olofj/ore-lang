@@ -1,0 +1,141 @@
+-- Showcase 791: Page Replacement Algorithms (FIFO, LRU, Optimal)
+
+fn list_contains_val lst:List val:Int -> Bool
+  n := lst.count()
+  mut found := false
+  for i in range(0, n)
+    if lst[i] == val
+      found = true
+  found
+
+fn frames_str frames:List -> Str
+  frames.map(x => str(x)).join(" ")
+
+fn fifo_replace frames:List page:Int -> List
+  n := frames.count()
+  mut result := []
+  for i in range(1, n)
+    result.push(frames[i])
+  result.push(page)
+  result
+
+fn lru_update frames:List page:Int capacity:Int -> List
+  n := frames.count()
+  mut result := []
+  for i in range(0, n)
+    if frames[i] != page
+      result.push(frames[i])
+  result.push(page)
+  if result.count() > capacity
+    mut trimmed := []
+    start := result.count() - capacity
+    for i in range(start, result.count())
+      trimmed.push(result[i])
+    trimmed
+  else
+    result
+
+fn optimal_victim frames:List future:List -> Int
+  n := frames.count()
+  mut victim_idx := 0
+  mut farthest := -1
+  for i in range(0, n)
+    pg := frames[i]
+    flen := future.count()
+    mut next_use := 9999
+    for j in range(0, flen)
+      if future[j] == pg and next_use == 9999
+        next_use = j
+    if next_use > farthest
+      farthest = next_use
+      victim_idx = i
+  victim_idx
+
+fn main
+  print "Page Replacement Algorithms (FIFO, LRU, Optimal):"
+  print ""
+
+  capacity := 3
+  pages := [7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2, 0, 1, 7, 0, 1]
+  n := pages.count()
+
+  print "Frame capacity: {capacity}"
+  print "Reference string: 7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1"
+  print ""
+
+  -- FIFO
+  print "=== FIFO Algorithm ==="
+  mut fifo_frames := []
+  mut fifo_faults := 0
+  for i in range(0, n)
+    pg := pages[i]
+    hit := list_contains_val(fifo_frames, pg)
+    fs := frames_str(fifo_frames)
+    if hit
+      print "  Page {pg}: HIT  [{fs}]"
+    else
+      fifo_faults = fifo_faults + 1
+      if fifo_frames.count() < capacity
+        fifo_frames.push(pg)
+      else
+        fifo_frames = fifo_replace(fifo_frames, pg)
+      fs2 := frames_str(fifo_frames)
+      print "  Page {pg}: MISS [{fs2}]"
+  print "  FIFO Page Faults: {fifo_faults}"
+  print ""
+
+  -- LRU
+  print "=== LRU Algorithm ==="
+  mut lru_frames := []
+  mut lru_faults := 0
+  for i in range(0, n)
+    pg := pages[i]
+    hit := list_contains_val(lru_frames, pg)
+    if hit
+      lru_frames = lru_update(lru_frames, pg, capacity)
+      fs := frames_str(lru_frames)
+      print "  Page {pg}: HIT  [{fs}]"
+    else
+      lru_faults = lru_faults + 1
+      lru_frames = lru_update(lru_frames, pg, capacity)
+      fs := frames_str(lru_frames)
+      print "  Page {pg}: MISS [{fs}]"
+  print "  LRU Page Faults: {lru_faults}"
+  print ""
+
+  -- Optimal
+  print "=== Optimal Algorithm ==="
+  mut opt_frames := []
+  mut opt_faults := 0
+  for i in range(0, n)
+    pg := pages[i]
+    hit := list_contains_val(opt_frames, pg)
+    if hit
+      fs := frames_str(opt_frames)
+      print "  Page {pg}: HIT  [{fs}]"
+    else
+      opt_faults = opt_faults + 1
+      if opt_frames.count() < capacity
+        opt_frames.push(pg)
+      else
+        mut future := []
+        for j in range(i + 1, n)
+          future.push(pages[j])
+        victim_idx := optimal_victim(opt_frames, future)
+        mut new_frames := []
+        for k in range(0, opt_frames.count())
+          if k != victim_idx
+            new_frames.push(opt_frames[k])
+        new_frames.push(pg)
+        opt_frames = new_frames
+      fs := frames_str(opt_frames)
+      print "  Page {pg}: MISS [{fs}]"
+  print "  Optimal Page Faults: {opt_faults}"
+  print ""
+
+  print "=== Summary ==="
+  print "  FIFO:    {fifo_faults} faults"
+  print "  LRU:     {lru_faults} faults"
+  print "  Optimal: {opt_faults} faults (theoretical minimum)"
+  print ""
+  print "Page replacement: evict frames when memory full; optimal is offline bound."

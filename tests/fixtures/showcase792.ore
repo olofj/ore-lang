@@ -1,0 +1,126 @@
+-- Showcase 792: Process Scheduler (Round Robin, Priority)
+
+fn main
+  print "Process Scheduler (Round Robin + Priority):"
+  print ""
+
+  -- Processes: id, burst_time, priority (lower = higher priority), arrival
+  proc_ids     := [1, 2, 3, 4, 5]
+  proc_bursts  := [10, 4, 7, 3, 8]
+  proc_prio    := [3, 1, 2, 1, 4]
+  proc_arrive  := [0, 1, 2, 3, 4]
+  n := 5
+
+  -- ====== Round Robin ======
+  print "=== Round Robin (quantum=3) ==="
+  quantum := 3
+
+  mut rr_remaining := [10, 4, 7, 3, 8]
+  mut rr_finish    := [0, 0, 0, 0, 0]
+  mut rr_time := 0
+  mut rr_done := 0
+  mut pass := 0
+
+  -- Simulate up to 100 time units
+  loop
+    if rr_done == n
+      break
+    pass = pass + 1
+    if pass > 100
+      break
+    for i in range(0, n)
+      rem := rr_remaining[i]
+      arr := proc_arrive[i]
+      fin := rr_finish[i]
+      pid := proc_ids[i]
+      if rem > 0 and arr <= rr_time and fin == 0
+        mut run := rem
+        if run > quantum
+          run = quantum
+        rr_time = rr_time + run
+        rr_remaining[i] = rem - run
+        if rr_remaining[i] == 0
+          rr_finish[i] = rr_time
+          rr_done = rr_done + 1
+          print "  P{pid} finishes at t={rr_time}"
+        else
+          print "  P{pid} runs {run} units (t={rr_time - run}..{rr_time}), rem={rr_remaining[i]}"
+
+  print ""
+  print "  PID | Burst | Finish | Turnaround | Waiting"
+  mut rr_total_tat := 0
+  mut rr_total_wait := 0
+  for i in range(0, n)
+    pid := proc_ids[i]
+    burst := proc_bursts[i]
+    arr := proc_arrive[i]
+    fin := rr_finish[i]
+    tat := fin - arr
+    wait := tat - burst
+    rr_total_tat = rr_total_tat + tat
+    rr_total_wait = rr_total_wait + wait
+    print "  P{pid}  | {burst}     | {fin}      | {tat}          | {wait}"
+  avg_tat := rr_total_tat / n
+  avg_wait := rr_total_wait / n
+  print "  Avg turnaround: {avg_tat}, Avg waiting: {avg_wait}"
+  print ""
+
+  -- ====== Priority Scheduling (non-preemptive) ======
+  print "=== Priority Scheduling (non-preemptive, lower = higher) ==="
+
+  mut prio_done     := [false, false, false, false, false]
+  mut prio_finish   := [0, 0, 0, 0, 0]
+  mut prio_time := 0
+  mut prio_count := 0
+
+  loop
+    if prio_count == n
+      break
+    -- Find highest priority ready process
+    mut best := -1
+    mut best_prio := 9999
+    for i in range(0, n)
+      done := prio_done[i]
+      arr := proc_arrive[i]
+      pr := proc_prio[i]
+      if done == false and arr <= prio_time
+        if pr < best_prio
+          best_prio = pr
+          best = i
+    if best == -1
+      -- No process ready, advance time
+      prio_time = prio_time + 1
+    else
+      pid := proc_ids[best]
+      burst := proc_bursts[best]
+      print "  t={prio_time}: Run P{pid} (priority={best_prio}) for {burst} units"
+      prio_time = prio_time + burst
+      prio_finish[best] = prio_time
+      prio_done[best] = true
+      prio_count = prio_count + 1
+
+  print ""
+  print "  PID | Priority | Burst | Finish | Turnaround | Waiting"
+  mut prio_total_tat := 0
+  mut prio_total_wait := 0
+  for i in range(0, n)
+    pid := proc_ids[i]
+    pr := proc_prio[i]
+    burst := proc_bursts[i]
+    arr := proc_arrive[i]
+    fin := prio_finish[i]
+    tat := fin - arr
+    wait := tat - burst
+    prio_total_tat = prio_total_tat + tat
+    prio_total_wait = prio_total_wait + wait
+    print "  P{pid}  | {pr}        | {burst}     | {fin}      | {tat}          | {wait}"
+  avg_tat2 := prio_total_tat / n
+  avg_wait2 := prio_total_wait / n
+  print "  Avg turnaround: {avg_tat2}, Avg waiting: {avg_wait2}"
+  print ""
+
+  print "=== Comparison ==="
+  print "  Round Robin:      fair, bounded wait, higher context switches"
+  print "  Priority:         important tasks first, risk of starvation"
+  print ""
+  print "Process scheduler: decides which process runs on the CPU and when."
