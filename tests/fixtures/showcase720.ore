@@ -1,0 +1,217 @@
+-- Showcase 720: Grand Data Structures Showcase
+
+fn main
+  print "Grand Data Structures Showcase:"
+  print ""
+
+  -- A tour of fundamental data structures implemented from scratch
+
+  -- Part 1: Stack (LIFO)
+  print "=== Part 1: Stack ==="
+  mut stack := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut sp := 0
+  -- Push 5, 10, 15, 20
+  mut push_vals := [5, 10, 15, 20]
+  for i in range(0, 4)
+    stack[sp] = push_vals[i]
+    sp = sp + 1
+    print "  Push {push_vals[i]}, size={sp}"
+  -- Pop 2
+  for i in range(0, 2)
+    sp = sp - 1
+    print "  Pop -> {stack[sp]}, size={sp}"
+
+  -- Part 2: Queue (FIFO) via circular buffer
+  print ""
+  print "=== Part 2: Circular Queue ==="
+  q_size := 8
+  mut queue := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut q_head := 0
+  mut q_tail := 0
+  mut q_count := 0
+  -- Enqueue 1,2,3,4,5
+  for i in range(1, 6)
+    queue[q_tail] = i
+    q_tail = (q_tail + 1) % q_size
+    q_count = q_count + 1
+    print "  Enqueue {i}, count={q_count}"
+  -- Dequeue 3
+  for i in range(0, 3)
+    val := queue[q_head]
+    q_head = (q_head + 1) % q_size
+    q_count = q_count - 1
+    print "  Dequeue -> {val}, count={q_count}"
+  -- Enqueue 2 more (wrapping)
+  for i in range(6, 8)
+    queue[q_tail] = i
+    q_tail = (q_tail + 1) % q_size
+    q_count = q_count + 1
+  print "  After wrap-around: count={q_count}, head={q_head}, tail={q_tail}"
+
+  -- Part 3: Min-Heap (priority queue)
+  print ""
+  print "=== Part 3: Min-Heap ==="
+  mut heap := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut heap_size := 0
+  -- Insert values
+  mut insert_vals := [15, 10, 20, 8, 25, 5]
+  for i in range(0, 6)
+    v := insert_vals[i]
+    -- Insert at end
+    heap[heap_size] = v
+    heap_size = heap_size + 1
+    -- Sift up
+    mut pos := heap_size - 1
+    while pos > 0
+      parent := (pos - 1) / 2
+      if heap[pos] < heap[parent]
+        tmp := heap[pos]
+        heap[pos] = heap[parent]
+        heap[parent] = tmp
+        pos = parent
+      else
+        pos = 0
+    print "  Insert {v}, min={heap[0]}"
+
+  -- Extract min twice
+  for i in range(0, 2)
+    min_val := heap[0]
+    heap_size = heap_size - 1
+    heap[0] = heap[heap_size]
+    -- Sift down
+    mut pos := 0
+    mut cont := true
+    while cont
+      left := 2 * pos + 1
+      right := 2 * pos + 2
+      mut smallest := pos
+      if left < heap_size and heap[left] < heap[smallest]
+        smallest = left
+      if right < heap_size and heap[right] < heap[smallest]
+        smallest = right
+      if smallest != pos
+        tmp := heap[pos]
+        heap[pos] = heap[smallest]
+        heap[smallest] = tmp
+        pos = smallest
+      else
+        cont = false
+    print "  Extract min -> {min_val}, new min={heap[0]}"
+
+  -- Part 4: Hash table (open addressing)
+  print ""
+  print "=== Part 4: Hash Table ==="
+  ht_size := 16
+  mut ht_keys := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut ht_vals := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Insert key-value pairs
+  mut keys := [42, 17, 99, 58, 26, 73]
+  mut vals := [100, 200, 300, 400, 500, 600]
+  for i in range(0, 6)
+    k := keys[i]
+    v := vals[i]
+    mut slot := k % ht_size
+    mut probes := 0
+    while ht_keys[slot] != -1
+      slot = (slot + 1) % ht_size
+      probes = probes + 1
+    ht_keys[slot] = k
+    ht_vals[slot] = v
+    print "  Insert({k}={v}) at slot {slot}, probes={probes}"
+
+  -- Lookup
+  mut lookup_keys := [99, 42, 55]
+  for i in range(0, 3)
+    k := lookup_keys[i]
+    mut slot := k % ht_size
+    mut found := false
+    mut probes := 0
+    while not found and ht_keys[slot] != -1 and probes < ht_size
+      if ht_keys[slot] == k
+        found = true
+      else
+        slot = (slot + 1) % ht_size
+        probes = probes + 1
+    if found
+      print "  Lookup({k}) -> {ht_vals[slot]}, probes={probes}"
+    else
+      print "  Lookup({k}) -> NOT FOUND, probes={probes}"
+
+  -- Part 5: Disjoint Set (Union-Find)
+  print ""
+  print "=== Part 5: Union-Find ==="
+  uf_size := 8
+  mut parent := [0, 1, 2, 3, 4, 5, 6, 7]
+  mut rank := [0, 0, 0, 0, 0, 0, 0, 0]
+  -- Union operations
+  mut union_a := [0, 2, 4, 1, 0]
+  mut union_b := [1, 3, 5, 3, 4]
+  for i in range(0, 5)
+    ua := union_a[i]
+    ub := union_b[i]
+    -- Find root of ua
+    mut ra := ua
+    while parent[ra] != ra
+      ra = parent[ra]
+    -- Find root of ub
+    mut rb := ub
+    while parent[rb] != rb
+      rb = parent[rb]
+    if ra != rb
+      -- Union by rank
+      if rank[ra] < rank[rb]
+        parent[ra] = rb
+      else if rank[ra] > rank[rb]
+        parent[rb] = ra
+      else
+        parent[rb] = ra
+        rank[ra] = rank[ra] + 1
+      print "  Union({ua},{ub}): merged sets"
+    else
+      print "  Union({ua},{ub}): already same set"
+
+  -- Count distinct sets
+  mut sets := 0
+  for i in range(0, uf_size)
+    if parent[i] == i
+      sets = sets + 1
+  print "  Distinct sets: {sets}"
+
+  -- Part 6: Trie (prefix tree)
+  print ""
+  print "=== Part 6: Trie (Simulated) ==="
+  -- Simulate a trie with words encoded as integer sequences
+  -- Words: cat=0, car=1, card=2, care=3, dog=4
+  num_words := 5
+  mut word_names := ["cat", "car", "card", "care", "dog"]
+  -- Shared prefix lengths
+  -- cat/car share "ca" (2)
+  -- car/card share "car" (3)
+  -- car/care share "car" (3)
+  print "  Inserted words: cat, car, card, care, dog"
+  -- Count nodes: unique prefixes
+  -- c, ca, cat, car, card, care, d, do, dog = 9 nodes + root = 10
+  trie_nodes := 10
+  print "  Trie nodes: {trie_nodes}"
+  -- Prefix search: "car" matches car, card, care
+  print "  Prefix search 'car': car, card, care (3 matches)"
+  -- Space savings
+  total_chars := 3 + 3 + 4 + 4 + 3
+  print "  Total chars in words: {total_chars}"
+  print "  Trie nodes (shared prefixes): {trie_nodes}"
+  saved := total_chars - trie_nodes
+  print "  Chars saved by sharing: {saved}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Stack: LIFO, O(1) push/pop"
+  print "  Queue: FIFO, O(1) enqueue/dequeue (circular)"
+  print "  Heap: priority queue, O(log n) insert/extract"
+  print "  Hash table: O(1) average lookup"
+  print "  Union-Find: near O(1) amortized union/find"
+  print "  Trie: O(k) prefix operations (k=key length)"
+  print "  Each structure optimized for specific access patterns"
+
+  print ""
+  print "Data structures: choosing the right structure for the right problem is the foundation of efficient algorithms."

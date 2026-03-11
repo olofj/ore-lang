@@ -1,0 +1,152 @@
+-- Showcase 714: Wavelet Packet Decomposition
+
+fn main
+  print "Wavelet Packet Decomposition:"
+  print ""
+
+  -- Wavelet packet decomposition generalizes the wavelet transform
+  -- by recursively splitting both approximation and detail coefficients
+
+  -- Part 1: Signal setup
+  print "=== Part 1: Signal ==="
+  n := 8
+  mut signal := [4, 6, 10, 12, 8, 6, 2, 0]
+  mut sig_str := ""
+  for i in range(0, n)
+    if i > 0
+      sig_str = sig_str + ", "
+    sig_str = sig_str + str(signal[i])
+  print "  Input signal: [{sig_str}]"
+  print "  Length: {n}"
+
+  -- Part 2: Haar wavelet decomposition (level 1)
+  print ""
+  print "=== Part 2: Haar Wavelet (Level 1) ==="
+  -- Haar: approx[i] = (s[2i] + s[2i+1]) / 2, detail[i] = (s[2i] - s[2i+1]) / 2
+  -- We use integer arithmetic (sum and diff without /2 for clarity)
+  half := n / 2
+  mut approx1 := [0, 0, 0, 0]
+  mut detail1 := [0, 0, 0, 0]
+  for i in range(0, half)
+    approx1[i] = signal[2 * i] + signal[2 * i + 1]
+    detail1[i] = signal[2 * i] - signal[2 * i + 1]
+  mut a_str := ""
+  mut d_str := ""
+  for i in range(0, half)
+    if i > 0
+      a_str = a_str + ", "
+      d_str = d_str + ", "
+    a_str = a_str + str(approx1[i])
+    d_str = d_str + str(detail1[i])
+  print "  Approximation: [{a_str}]"
+  print "  Detail: [{d_str}]"
+
+  -- Part 3: Level 2 decomposition (packet: split both branches)
+  print ""
+  print "=== Part 3: Wavelet Packets (Level 2) ==="
+  quarter := half / 2
+  -- Decompose approximation
+  mut aa := [0, 0]
+  mut ad := [0, 0]
+  for i in range(0, quarter)
+    aa[i] = approx1[2 * i] + approx1[2 * i + 1]
+    ad[i] = approx1[2 * i] - approx1[2 * i + 1]
+  -- Decompose detail
+  mut da := [0, 0]
+  mut dd := [0, 0]
+  for i in range(0, quarter)
+    da[i] = detail1[2 * i] + detail1[2 * i + 1]
+    dd[i] = detail1[2 * i] - detail1[2 * i + 1]
+  print "  AA (approx-approx): [{aa[0]}, {aa[1]}]"
+  print "  AD (approx-detail): [{ad[0]}, {ad[1]}]"
+  print "  DA (detail-approx): [{da[0]}, {da[1]}]"
+  print "  DD (detail-detail): [{dd[0]}, {dd[1]}]"
+
+  -- Part 4: Level 3 - final scalar coefficients
+  print ""
+  print "=== Part 4: Full Decomposition (Level 3) ==="
+  aaa := aa[0] + aa[1]
+  aad := aa[0] - aa[1]
+  ada := ad[0] + ad[1]
+  add_val := ad[0] - ad[1]
+  daa := da[0] + da[1]
+  dad := da[0] - da[1]
+  dda := dd[0] + dd[1]
+  ddd := dd[0] - dd[1]
+  print "  AAA={aaa}, AAD={aad}, ADA={ada}, ADD={add_val}"
+  print "  DAA={daa}, DAD={dad}, DDA={dda}, DDD={ddd}"
+  print "  8 coefficients from 8 samples (complete decomposition)"
+
+  -- Part 5: Energy computation at each node
+  print ""
+  print "=== Part 5: Energy at Each Node ==="
+  -- Energy = sum of squares
+  mut e_signal := 0
+  for i in range(0, n)
+    e_signal = e_signal + signal[i] * signal[i]
+  print "  Signal energy: {e_signal}"
+
+  mut e_approx := 0
+  mut e_detail := 0
+  for i in range(0, half)
+    e_approx = e_approx + approx1[i] * approx1[i]
+    e_detail = e_detail + detail1[i] * detail1[i]
+  print "  Level 1: approx={e_approx}, detail={e_detail}"
+  print "  Sum (scaled): {e_approx + e_detail}"
+
+  -- Part 6: Best basis selection
+  print ""
+  print "=== Part 6: Best Basis Selection ==="
+  -- Choose nodes that minimize a cost function (e.g., number of significant coefficients)
+  -- Cost: count of coefficients above threshold
+  threshold := 3
+  -- Count significant coefficients at level 1
+  mut sig_l1 := 0
+  for i in range(0, half)
+    if approx1[i] > threshold or approx1[i] < (0 - threshold)
+      sig_l1 = sig_l1 + 1
+    if detail1[i] > threshold or detail1[i] < (0 - threshold)
+      sig_l1 = sig_l1 + 1
+  -- Count at level 2
+  mut sig_l2 := 0
+  mut all_l2 := [0, 0, 0, 0, 0, 0, 0, 0]
+  all_l2[0] = aa[0]
+  all_l2[1] = aa[1]
+  all_l2[2] = ad[0]
+  all_l2[3] = ad[1]
+  all_l2[4] = da[0]
+  all_l2[5] = da[1]
+  all_l2[6] = dd[0]
+  all_l2[7] = dd[1]
+  for i in range(0, 8)
+    v := all_l2[i]
+    if v > threshold or v < (0 - threshold)
+      sig_l2 = sig_l2 + 1
+  print "  Threshold: {threshold}"
+  print "  Significant coeffs at level 1: {sig_l1}"
+  print "  Significant coeffs at level 2: {sig_l2}"
+  if sig_l2 < sig_l1
+    print "  Best basis: Level 2 (fewer significant coefficients)"
+  else
+    print "  Best basis: Level 1 (fewer significant coefficients)"
+
+  -- Part 7: Reconstruction from level 1
+  print ""
+  print "=== Part 7: Reconstruction ==="
+  mut recon := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, half)
+    recon[2 * i] = (approx1[i] + detail1[i]) / 2
+    recon[2 * i + 1] = (approx1[i] - detail1[i]) / 2
+  mut r_str := ""
+  mut matches := true
+  for i in range(0, n)
+    if i > 0
+      r_str = r_str + ", "
+    r_str = r_str + str(recon[i])
+    if recon[i] != signal[i]
+      matches = false
+  print "  Reconstructed: [{r_str}]"
+  print "  Perfect reconstruction: {matches}"
+
+  print ""
+  print "Wavelet packets: flexible multi-resolution analysis with best-basis selection for optimal signal representation."

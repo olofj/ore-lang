@@ -1,0 +1,171 @@
+-- Showcase 711: Simple Model Checking CTL
+
+fn main
+  print "Simple Model Checking CTL:"
+  print ""
+
+  -- CTL (Computation Tree Logic) model checking verifies temporal
+  -- properties on finite-state transition systems
+
+  -- Part 1: Define a state machine
+  print "=== Part 1: State Machine ==="
+  -- States: 0=Idle, 1=Request, 2=Wait, 3=Critical, 4=Release
+  num_states := 5
+  mut state_names := ["Idle", "Request", "Wait", "Critical", "Release"]
+  -- Transition table: trans[i*5+j] = 1 if state i can go to state j
+  mut trans := [0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0]
+  -- Idle->Request, Request->Wait, Wait->Critical, Critical->Release, Release->Idle
+  print "  States: Idle, Request, Wait, Critical, Release"
+  print "  Transitions: Idle->Request->Wait->Critical->Release->Idle"
+
+  -- Part 2: Atomic propositions
+  print ""
+  print "=== Part 2: Atomic Propositions ==="
+  -- prop[i*3+p] = 1 if state i satisfies proposition p
+  -- Props: 0=requesting, 1=in_critical, 2=idle
+  mut props := [0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]
+  mut prop_names := ["requesting", "in_critical", "idle"]
+  for s in range(0, num_states)
+    mut holding := ""
+    for p in range(0, 3)
+      if props[s * 3 + p] == 1
+        if holding != ""
+          holding = holding + ", "
+        holding = holding + prop_names[p]
+    if holding == ""
+      holding = "none"
+    print "  {state_names[s]}: {holding}"
+
+  -- Part 3: EX (Exists Next) check
+  print ""
+  print "=== Part 3: EX (Exists Next) ==="
+  -- EX(p) holds in state s if some successor of s satisfies p
+  -- Check EX(in_critical) for each state
+  for s in range(0, num_states)
+    mut found := false
+    for t in range(0, num_states)
+      if trans[s * num_states + t] == 1
+        if props[t * 3 + 1] == 1
+          found = true
+    if found
+      print "  EX(in_critical) holds in {state_names[s]}"
+    else
+      print "  EX(in_critical) does NOT hold in {state_names[s]}"
+
+  -- Part 4: EF (Exists Finally) using backward reachability
+  print ""
+  print "=== Part 4: EF (Exists Finally) ==="
+  -- EF(p) holds in s if p is reachable from s
+  -- Compute: start with states satisfying p, extend backward
+  -- Check EF(in_critical)
+  mut ef_set := [0, 0, 0, 0, 0]
+  -- Initialize with states satisfying in_critical
+  for s in range(0, num_states)
+    if props[s * 3 + 1] == 1
+      ef_set[s] = 1
+  -- Fixed-point iteration
+  mut changed := true
+  mut iterations := 0
+  while changed
+    changed = false
+    iterations = iterations + 1
+    for s in range(0, num_states)
+      if ef_set[s] == 0
+        for t in range(0, num_states)
+          if trans[s * num_states + t] == 1
+            if ef_set[t] == 1
+              ef_set[s] = 1
+              changed = true
+  print "  EF(in_critical) computed in {iterations} iterations:"
+  for s in range(0, num_states)
+    if ef_set[s] == 1
+      print "    {state_names[s]}: reachable"
+    else
+      print "    {state_names[s]}: NOT reachable"
+
+  -- Part 5: AG (Always Globally) check
+  print ""
+  print "=== Part 5: AG (Always Globally) ==="
+  -- AG(p) = NOT EF(NOT p)
+  -- Check AG(requesting OR in_critical OR idle) - always some meaningful state
+  mut neg_set := [0, 0, 0, 0, 0]
+  for s in range(0, num_states)
+    req := props[s * 3 + 0]
+    crit := props[s * 3 + 1]
+    idl := props[s * 3 + 2]
+    if req == 0 and crit == 0 and idl == 0
+      neg_set[s] = 1
+  -- EF of negation
+  mut ef_neg := [0, 0, 0, 0, 0]
+  for s in range(0, num_states)
+    ef_neg[s] = neg_set[s]
+  mut changed2 := true
+  while changed2
+    changed2 = false
+    for s in range(0, num_states)
+      if ef_neg[s] == 0
+        for t in range(0, num_states)
+          if trans[s * num_states + t] == 1
+            if ef_neg[t] == 1
+              ef_neg[s] = 1
+              changed2 = true
+  -- AG holds where EF(neg) does NOT hold
+  mut ag_holds := true
+  for s in range(0, num_states)
+    if ef_neg[s] == 1
+      ag_holds = false
+  if ag_holds
+    print "  AG(requesting OR in_critical OR idle) HOLDS"
+  else
+    print "  AG(requesting OR in_critical OR idle) FAILS"
+    print "  Some states lack all three propositions"
+
+  -- Part 6: EU (Exists Until) check
+  print ""
+  print "=== Part 6: EU (Exists Until) ==="
+  -- E[p U q]: there exists a path where p holds until q holds
+  -- Check E[requesting U in_critical] from Request state
+  -- Backward: start with q-states, extend through p-states
+  mut eu_set := [0, 0, 0, 0, 0]
+  for s in range(0, num_states)
+    if props[s * 3 + 1] == 1
+      eu_set[s] = 1
+  mut changed3 := true
+  while changed3
+    changed3 = false
+    for s in range(0, num_states)
+      if eu_set[s] == 0 and props[s * 3 + 0] == 1
+        for t in range(0, num_states)
+          if trans[s * num_states + t] == 1
+            if eu_set[t] == 1
+              eu_set[s] = 1
+              changed3 = true
+  print "  E[requesting U in_critical]:"
+  for s in range(0, num_states)
+    if eu_set[s] == 1
+      print "    Holds in {state_names[s]}"
+
+  -- Part 7: Fairness check
+  print ""
+  print "=== Part 7: Liveness Check ==="
+  -- Every request is eventually granted (in this simple cycle)
+  -- From Request, can we always reach Critical?
+  mut reach := [0, 0, 0, 0, 0]
+  reach[1] = 1
+  mut changed4 := true
+  while changed4
+    changed4 = false
+    for s in range(0, num_states)
+      if reach[s] == 1
+        for t in range(0, num_states)
+          if trans[s * num_states + t] == 1 and reach[t] == 0
+            reach[t] = 1
+            changed4 = true
+  if reach[3] == 1
+    print "  From Request, Critical IS reachable"
+    print "  Liveness: every request eventually reaches critical section"
+  else
+    print "  From Request, Critical is NOT reachable"
+
+  print ""
+  print "CTL model checking: verifying temporal properties of systems through fixed-point computation on state spaces."

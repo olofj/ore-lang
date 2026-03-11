@@ -1,0 +1,155 @@
+-- Showcase 719: Simple Capability System
+
+fn main
+  print "Simple Capability System:"
+  print ""
+
+  -- Capability-based security: access rights are unforgeable tokens
+  -- that grant specific operations on specific objects
+
+  -- Part 1: Define resources and capabilities
+  print "=== Part 1: Resources ==="
+  num_resources := 5
+  mut res_names := ["File:config", "File:data", "Net:api", "Proc:worker", "Mem:shared"]
+  mut res_types := [0, 0, 1, 2, 3]
+  for i in range(0, num_resources)
+    print "  Resource {i}: {res_names[i]}"
+
+  -- Part 2: Capability tokens
+  print ""
+  print "=== Part 2: Capability Tokens ==="
+  -- Each capability: (resource_id, permissions_mask, owner)
+  -- Permissions: 1=read, 2=write, 4=execute, 8=grant
+  max_caps := 20
+  mut cap_res := [0, 1, 0, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut cap_perms := [9, 3, 1, 5, 7, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut cap_owner := [0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_caps := 6
+  mut owner_names := ["Alice", "Bob", "Charlie"]
+
+  mut perm_names := ["---", "r--", "-w-", "rw-", "--x", "r-x", "-wx", "rwx"]
+  for i in range(0, num_caps)
+    res_id := cap_res[i]
+    p := cap_perms[i]
+    base_p := p % 8
+    mut grant_str := ""
+    if p >= 8
+      grant_str = "+grant"
+    oid := cap_owner[i]
+    print "  Cap {i}: {res_names[res_id]} [{perm_names[base_p]}{grant_str}] -> {owner_names[oid]}"
+
+  -- Part 3: Access check
+  print ""
+  print "=== Part 3: Access Checks ==="
+  -- Check if a principal can perform an operation on a resource
+  -- Check: Alice read File:config
+  mut check_owner := [0, 0, 1, 1, 2]
+  mut check_res := [0, 1, 2, 0, 0]
+  mut check_perm := [1, 2, 4, 1, 1]
+  mut check_op := ["read", "write", "execute", "read", "read"]
+  num_checks := 5
+
+  for c in range(0, num_checks)
+    want_owner := check_owner[c]
+    want_res := check_res[c]
+    want_perm := check_perm[c]
+    mut granted := false
+    mut by_cap := -1
+    for i in range(0, num_caps)
+      if cap_owner[i] == want_owner and cap_res[i] == want_res
+        -- Check if permission bit is set
+        mut has_perm := false
+        if want_perm == 1 and (cap_perms[i] % 2) == 1
+          has_perm = true
+        if want_perm == 2 and ((cap_perms[i] / 2) % 2) == 1
+          has_perm = true
+        if want_perm == 4 and ((cap_perms[i] / 4) % 2) == 1
+          has_perm = true
+        if has_perm
+          granted = true
+          by_cap = i
+    if granted
+      print "  {owner_names[want_owner]} {check_op[c]} {res_names[want_res]}: ALLOWED (cap {by_cap})"
+    else
+      print "  {owner_names[want_owner]} {check_op[c]} {res_names[want_res]}: DENIED"
+
+  -- Part 4: Capability delegation
+  print ""
+  print "=== Part 4: Capability Delegation ==="
+  -- Alice grants Bob read access to File:config (Alice has grant permission)
+  -- Find Alice's cap with grant on File:config
+  mut can_grant := false
+  mut grant_cap := -1
+  for i in range(0, num_caps)
+    if cap_owner[i] == 0 and cap_res[i] == 0 and cap_perms[i] >= 8
+      can_grant = true
+      grant_cap = i
+  if can_grant
+    print "  Alice delegates read on File:config to Bob"
+    -- Create new capability
+    cap_res[num_caps] = 0
+    cap_perms[num_caps] = 1
+    cap_owner[num_caps] = 1
+    num_caps = num_caps + 1
+    print "  Created cap {num_caps - 1}: File:config [r--] -> Bob"
+  else
+    print "  Alice cannot delegate (no grant permission)"
+
+  -- Part 5: Capability attenuation
+  print ""
+  print "=== Part 5: Capability Attenuation ==="
+  -- Delegated capabilities can be restricted (never amplified)
+  print "  Principle: delegated caps can only be equal or weaker"
+  -- Alice has rw+grant on File:config, can delegate read-only
+  print "  Alice (rw+grant) -> Bob (r--): attenuation OK"
+  print "  Cannot create cap with more permissions than source"
+  -- Show attenuation examples
+  mut orig_perm := 7
+  mut attenuated := [1, 3, 5]
+  for i in range(0, 3)
+    ap := attenuated[i]
+    base_ap := ap % 8
+    valid := (ap % 2) <= (orig_perm % 2)
+    if valid
+      if ((ap / 2) % 2) <= ((orig_perm / 2) % 2)
+        if ((ap / 4) % 2) <= ((orig_perm / 4) % 2)
+          print "  Attenuate rwx -> {perm_names[base_ap]}: valid"
+        else
+          print "  Attenuate rwx -> {perm_names[base_ap]}: INVALID"
+
+  -- Part 6: Capability revocation
+  print ""
+  print "=== Part 6: Capability Revocation ==="
+  -- Revoke Bob's write access to File:data (cap 1)
+  print "  Revoking cap 1: Bob write on File:data"
+  cap_perms[1] = cap_perms[1] - 2
+  bp := cap_perms[1] % 8
+  rev_res := cap_res[1]
+  rev_own := cap_owner[1]
+  print "  Cap 1 now: {res_names[rev_res]} [{perm_names[bp]}] -> {owner_names[rev_own]}"
+  -- Count active capabilities per owner
+  for o in range(0, 3)
+    mut count := 0
+    for i in range(0, num_caps)
+      if cap_owner[i] == o and cap_perms[i] > 0
+        count = count + 1
+    print "  {owner_names[o]}: {count} active capabilities"
+
+  -- Part 7: Principle of least privilege
+  print ""
+  print "=== Part 7: Security Summary ==="
+  print "  Capabilities provide:"
+  print "    - Unforgeable access tokens"
+  print "    - Fine-grained permissions"
+  print "    - Safe delegation with attenuation"
+  print "    - Easy revocation"
+  print "  Total capabilities: {num_caps}"
+  mut total_perms := 0
+  for i in range(0, num_caps)
+    p := cap_perms[i]
+    total_perms = total_perms + (p % 2) + ((p / 2) % 2) + ((p / 4) % 2)
+  print "  Total permission bits granted: {total_perms}"
+  print "  Principle of least privilege: grant minimum necessary access"
+
+  print ""
+  print "Capability system: unforgeable tokens granting fine-grained access rights with safe delegation and revocation."

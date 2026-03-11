@@ -1,0 +1,161 @@
+-- Showcase 717: Simple Symbolic Execution
+
+fn main
+  print "Simple Symbolic Execution:"
+  print ""
+
+  -- Symbolic execution explores program paths using symbolic values
+  -- instead of concrete ones to find bugs and generate test inputs
+
+  -- Part 1: Program under analysis
+  print "=== Part 1: Program Under Analysis ==="
+  print "  fn check(x, y):"
+  print "    z := x + y"
+  print "    if z > 10:"
+  print "      if x > 5:"
+  print "        ERROR"
+  print "      else:"
+  print "        return z"
+  print "    else:"
+  print "      return -z"
+
+  -- Part 2: Symbolic execution engine
+  print ""
+  print "=== Part 2: Symbolic Execution ==="
+  -- Represent constraints as encoded integers
+  -- Path: sequence of branch decisions (0=false, 1=true)
+  max_paths := 8
+  max_constraints := 4
+  -- Store path decisions
+  mut path_decisions := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut path_lengths := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut path_feasible := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut path_error := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_paths := 0
+
+  -- Explore all paths: branch 1 = (x+y > 10), branch 2 = (x > 5)
+  -- Path 0: b1=false -> return -(x+y), constraint: x+y <= 10
+  path_decisions[0 * max_constraints + 0] = 0
+  path_lengths[0] = 1
+  path_feasible[0] = 1
+  path_error[0] = 0
+  num_paths = num_paths + 1
+
+  -- Path 1: b1=true, b2=true -> ERROR, constraints: x+y > 10 AND x > 5
+  path_decisions[1 * max_constraints + 0] = 1
+  path_decisions[1 * max_constraints + 1] = 1
+  path_lengths[1] = 2
+  path_feasible[1] = 1
+  path_error[1] = 1
+  num_paths = num_paths + 1
+
+  -- Path 2: b1=true, b2=false -> return z, constraints: x+y > 10 AND x <= 5
+  path_decisions[2 * max_constraints + 0] = 1
+  path_decisions[2 * max_constraints + 1] = 0
+  path_lengths[2] = 2
+  path_feasible[2] = 1
+  path_error[2] = 0
+  num_paths = num_paths + 1
+
+  print "  Explored {num_paths} paths:"
+  for p in range(0, num_paths)
+    mut path_str := ""
+    for d in range(0, path_lengths[p])
+      if d > 0
+        path_str = path_str + ", "
+      if path_decisions[p * max_constraints + d] == 1
+        path_str = path_str + "T"
+      else
+        path_str = path_str + "F"
+    status := "ok"
+    if path_error[p] == 1
+      print "  Path {p}: [{path_str}] -> ERROR"
+    else
+      print "  Path {p}: [{path_str}] -> ok"
+
+  -- Part 3: Constraint solving
+  print ""
+  print "=== Part 3: Constraint Solving ==="
+  -- For each path, find concrete inputs
+  -- Path 0: x+y <= 10 -> x=3, y=4
+  print "  Path 0 (x+y <= 10):"
+  print "    Solution: x=3, y=4"
+  p0_x := 3
+  p0_y := 4
+  p0_z := p0_x + p0_y
+  print "    Verify: z={p0_z}, z>10? {p0_z > 10}"
+
+  -- Path 1: x+y > 10 AND x > 5 -> x=7, y=5
+  print "  Path 1 (x+y > 10 AND x > 5):"
+  print "    Solution: x=7, y=5"
+  p1_x := 7
+  p1_y := 5
+  p1_z := p1_x + p1_y
+  print "    Verify: z={p1_z}, z>10? {p1_z > 10}, x>5? {p1_x > 5}"
+  print "    FOUND BUG: reaches ERROR with x=7, y=5"
+
+  -- Path 2: x+y > 10 AND x <= 5 -> x=4, y=8
+  print "  Path 2 (x+y > 10 AND x <= 5):"
+  print "    Solution: x=4, y=8"
+  p2_x := 4
+  p2_y := 8
+  p2_z := p2_x + p2_y
+  print "    Verify: z={p2_z}, z>10? {p2_z > 10}, x>5? {p2_x > 5}"
+
+  -- Part 4: Path condition tree
+  print ""
+  print "=== Part 4: Path Condition Tree ==="
+  print "  Root: x+y > 10?"
+  print "    No  -> Path 0: return -(x+y)"
+  print "    Yes -> x > 5?"
+  print "      Yes -> Path 1: ERROR"
+  print "      No  -> Path 2: return x+y"
+
+  -- Part 5: Coverage analysis
+  print ""
+  print "=== Part 5: Coverage Analysis ==="
+  -- Statement coverage
+  total_stmts := 5
+  covered_stmts := 5
+  print "  Statement coverage: {covered_stmts}/{total_stmts} (100%)"
+  -- Branch coverage
+  total_branches := 4
+  covered_branches := 4
+  print "  Branch coverage: {covered_branches}/{total_branches} (100%)"
+  -- Path coverage
+  print "  Path coverage: {num_paths}/{num_paths} (100%)"
+  mut error_paths := 0
+  for p in range(0, num_paths)
+    if path_error[p] == 1
+      error_paths = error_paths + 1
+  print "  Error paths: {error_paths}"
+
+  -- Part 6: Test suite generation
+  print ""
+  print "=== Part 6: Generated Test Suite ==="
+  mut test_x := [3, 7, 4]
+  mut test_y := [4, 5, 8]
+  mut test_expect := [0, 1, 0]
+  for i in range(0, num_paths)
+    tx := test_x[i]
+    ty := test_y[i]
+    tz := tx + ty
+    if test_expect[i] == 1
+      print "  Test {i}: check({tx}, {ty}) -> ERROR (z={tz})"
+    else
+      if tz > 10
+        print "  Test {i}: check({tx}, {ty}) -> {tz}"
+      else
+        print "  Test {i}: check({tx}, {ty}) -> {0 - tz}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Total paths explored: {num_paths}"
+  print "  Feasible paths: {num_paths}"
+  print "  Bugs found: {error_paths}"
+  print "  Test inputs generated: {num_paths}"
+  print "  Symbolic execution achieves systematic path exploration"
+
+  print ""
+  print "Symbolic execution: systematically exploring all program paths with symbolic inputs to find bugs and generate tests."

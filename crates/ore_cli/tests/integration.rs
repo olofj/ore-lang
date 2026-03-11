@@ -9253,6 +9253,145 @@ fn showcase710_interpreter_continuations() {
 }
 
 #[test]
+fn showcase711_model_checking_ctl() {
+    let out = run_ore("showcase711.ore");
+    assert!(out.contains("Simple Model Checking CTL:"));
+    assert!(out.contains("EX(in_critical) holds in Wait"));
+    assert!(out.contains("EF(in_critical) computed in 4 iterations:"));
+    assert!(out.contains("Idle: reachable"));
+    assert!(out.contains("AG(requesting OR in_critical OR idle) FAILS"));
+    assert!(out.contains("E[requesting U in_critical]:"));
+    assert!(out.contains("Holds in Wait"));
+    assert!(out.contains("From Request, Critical IS reachable"));
+    assert!(out.contains("CTL model checking: verifying temporal properties of systems through fixed-point computation on state spaces."));
+}
+
+#[test]
+fn showcase712_memory_pool_allocator() {
+    let out = run_ore("showcase712.ore");
+    assert!(out.contains("Memory Pool Allocator:"));
+    assert!(out.contains("Allocated block 0"));
+    assert!(out.contains("Total allocated: 6, Free: 10"));
+    assert!(out.contains("Freed block 1"));
+    assert!(out.contains("Re-allocated block 4"));
+    assert!(out.contains("Utilization: 43%"));
+    assert!(out.contains("Block map: #######........."));
+    assert!(out.contains("Memory pool: O(1) allocation and deallocation with zero fragmentation overhead for fixed-size objects."));
+}
+
+#[test]
+fn showcase713_jit_trace_compilation() {
+    let out = run_ore("showcase713.ore");
+    assert!(out.contains("Simple JIT Trace Compilation:"));
+    assert!(out.contains("Interpreter result: acc = 10"));
+    assert!(out.contains("Trace compiled: 3 ops from PC=4"));
+    assert!(out.contains("Correct!"));
+    assert!(out.contains("ADD: 1"));
+    assert!(out.contains("CMP_LT: 1"));
+    assert!(out.contains("Original trace: 3 ops"));
+    assert!(out.contains("PC 4: 10 hits"));
+    assert!(out.contains("Tracing JIT: recording hot interpreter paths and compiling them into optimized native code for dramatic speedups."));
+}
+
+#[test]
+fn showcase714_wavelet_packet_decomposition() {
+    let out = run_ore("showcase714.ore");
+    assert!(out.contains("Wavelet Packet Decomposition:"));
+    assert!(out.contains("Input signal: [4, 6, 10, 12, 8, 6, 2, 0]"));
+    assert!(out.contains("Approximation: [10, 22, 14, 2]"));
+    assert!(out.contains("Detail: [-2, -2, 2, 2]"));
+    assert!(out.contains("AA (approx-approx): [32, 16]"));
+    assert!(out.contains("AAA=48, AAD=16, ADA=0, ADD=-24"));
+    assert!(out.contains("Perfect reconstruction: true"));
+    assert!(out.contains("Wavelet packets: flexible multi-resolution analysis with best-basis selection for optimal signal representation."));
+}
+
+#[test]
+fn showcase715_consensus_paxos() {
+    let out = run_ore("showcase715.ore");
+    assert!(out.contains("Simple Consensus Protocol (Paxos):"));
+    assert!(out.contains("Promises received: 5/5"));
+    assert!(out.contains("CONSENSUS REACHED: value = 42"));
+    assert!(out.contains("Proposer 2 MUST use previously accepted value: 42"));
+    assert!(out.contains("Key insight: competing proposer converges to SAME value!"));
+    assert!(out.contains("Alive acceptors: 3"));
+    assert!(out.contains("Still operational despite failures!"));
+    assert!(out.contains("Paxos: achieving distributed consensus through prepare-promise-accept phases, tolerating minority failures."));
+}
+
+#[test]
+fn showcase716_optimal_bst() {
+    let out = run_ore("showcase716.ore");
+    assert!(out.contains("Optimal BST:"));
+    assert!(out.contains("Optimal cost: 232"));
+    assert!(out.contains("Optimal root: key 30"));
+    assert!(out.contains("Root: 30"));
+    assert!(out.contains("Left of 30: 10"));
+    assert!(out.contains("Right of 30: 40"));
+    assert!(out.contains("Expected search cost: 232"));
+    assert!(out.contains("Savings: 26"));
+    assert!(out.contains("Optimal BST: minimizing expected search cost through dynamic programming over all possible tree structures."));
+}
+
+#[test]
+fn showcase717_symbolic_execution() {
+    let out = run_ore("showcase717.ore");
+    assert!(out.contains("Simple Symbolic Execution:"));
+    assert!(out.contains("Explored 3 paths:"));
+    assert!(out.contains("Path 1: [T, T] -> ERROR"));
+    assert!(out.contains("FOUND BUG: reaches ERROR with x=7, y=5"));
+    assert!(out.contains("Statement coverage: 5/5 (100%)"));
+    assert!(out.contains("Error paths: 1"));
+    assert!(out.contains("Test 1: check(7, 5) -> ERROR (z=12)"));
+    assert!(out.contains("Symbolic execution: systematically exploring all program paths with symbolic inputs to find bugs and generate tests."));
+}
+
+#[test]
+fn showcase718_rtree_concepts() {
+    let out = run_ore("showcase718.ore");
+    assert!(out.contains("R-tree Concepts:"));
+    assert!(out.contains("Leaf 0: (1,1)-(7,3) contains A,B"));
+    assert!(out.contains("Root: (1,1)-(17,8)"));
+    assert!(out.contains("Query rectangle: (4,0)-(13,4)"));
+    assert!(out.contains("Found: B"));
+    assert!(out.contains("Found: E"));
+    assert!(out.contains("Results: 2, Nodes visited: 5"));
+    assert!(out.contains("Dead space: 16"));
+    assert!(out.contains("R-tree: spatial indexing with minimum bounding rectangles for efficient multi-dimensional range and point queries."));
+}
+
+#[test]
+fn showcase719_capability_system() {
+    let out = run_ore("showcase719.ore");
+    assert!(out.contains("Simple Capability System:"));
+    assert!(out.contains("Cap 0: File:config [r--+grant] -> Alice"));
+    assert!(out.contains("Alice read File:config: ALLOWED (cap 0)"));
+    assert!(out.contains("Charlie read File:config: DENIED"));
+    assert!(out.contains("Alice delegates read on File:config to Bob"));
+    assert!(out.contains("Attenuate rwx -> r--: valid"));
+    assert!(out.contains("Revoking cap 1: Bob write on File:data"));
+    assert!(out.contains("Capability system: unforgeable tokens granting fine-grained access rights with safe delegation and revocation."));
+}
+
+#[test]
+fn showcase720_grand_data_structures() {
+    let out = run_ore("showcase720.ore");
+    assert!(out.contains("Grand Data Structures Showcase:"));
+    assert!(out.contains("Push 5, size=1"));
+    assert!(out.contains("Pop -> 20, size=3"));
+    assert!(out.contains("Dequeue -> 1, count=4"));
+    assert!(out.contains("Insert 5, min=5"));
+    assert!(out.contains("Extract min -> 5, new min=8"));
+    assert!(out.contains("Insert(42=100) at slot 10, probes=0"));
+    assert!(out.contains("Lookup(99) -> 300, probes=0"));
+    assert!(out.contains("Lookup(55) -> NOT FOUND"));
+    assert!(out.contains("Union(0,1): merged sets"));
+    assert!(out.contains("Distinct sets: 3"));
+    assert!(out.contains("Trie nodes: 10"));
+    assert!(out.contains("Data structures: choosing the right structure for the right problem is the foundation of efficient algorithms."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

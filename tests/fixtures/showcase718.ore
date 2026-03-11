@@ -1,0 +1,214 @@
+-- Showcase 718: R-tree Concepts
+
+fn main
+  print "R-tree Concepts:"
+  print ""
+
+  -- R-trees index multi-dimensional spatial data using
+  -- minimum bounding rectangles (MBRs) in a balanced tree
+
+  -- Part 1: Setup spatial objects
+  print "=== Part 1: Spatial Objects ==="
+  num_objects := 8
+  -- Each object: (x_min, y_min, x_max, y_max)
+  mut obj_x1 := [1, 5, 2, 8, 12, 15, 11, 14]
+  mut obj_y1 := [1, 1, 5, 5, 1, 1, 6, 6]
+  mut obj_x2 := [3, 7, 4, 10, 14, 17, 13, 16]
+  mut obj_y2 := [3, 3, 7, 7, 3, 3, 8, 8]
+  mut obj_names := ["A", "B", "C", "D", "E", "F", "G", "H"]
+  for i in range(0, num_objects)
+    print "  {obj_names[i]}: ({obj_x1[i]},{obj_y1[i]})-({obj_x2[i]},{obj_y2[i]})"
+
+  -- Part 2: Build R-tree (group into nodes)
+  print ""
+  print "=== Part 2: R-tree Construction ==="
+  -- Group objects into leaf nodes (max 2 entries per node)
+  -- Node 0: A, B (nearby, bottom-left)
+  -- Node 1: C, D (nearby, top-left)
+  -- Node 2: E, F (nearby, bottom-right)
+  -- Node 3: G, H (nearby, top-right)
+  num_leaves := 4
+  mut leaf_children := [0, 1, 2, 3, 4, 5, 6, 7]
+  -- Compute MBRs for leaf nodes
+  mut leaf_x1 := [0, 0, 0, 0]
+  mut leaf_y1 := [0, 0, 0, 0]
+  mut leaf_x2 := [0, 0, 0, 0]
+  mut leaf_y2 := [0, 0, 0, 0]
+  for i in range(0, num_leaves)
+    c1 := leaf_children[i * 2]
+    c2 := leaf_children[i * 2 + 1]
+    -- min of mins
+    if obj_x1[c1] < obj_x1[c2]
+      leaf_x1[i] = obj_x1[c1]
+    else
+      leaf_x1[i] = obj_x1[c2]
+    if obj_y1[c1] < obj_y1[c2]
+      leaf_y1[i] = obj_y1[c1]
+    else
+      leaf_y1[i] = obj_y1[c2]
+    -- max of maxes
+    if obj_x2[c1] > obj_x2[c2]
+      leaf_x2[i] = obj_x2[c1]
+    else
+      leaf_x2[i] = obj_x2[c2]
+    if obj_y2[c1] > obj_y2[c2]
+      leaf_y2[i] = obj_y2[c1]
+    else
+      leaf_y2[i] = obj_y2[c2]
+    print "  Leaf {i}: ({leaf_x1[i]},{leaf_y1[i]})-({leaf_x2[i]},{leaf_y2[i]}) contains {obj_names[c1]},{obj_names[c2]}"
+
+  -- Internal nodes
+  -- Root children: Node_left (leaves 0,1), Node_right (leaves 2,3)
+  -- Node_left MBR
+  mut nl_x1 := leaf_x1[0]
+  if leaf_x1[1] < nl_x1
+    nl_x1 = leaf_x1[1]
+  mut nl_y1 := leaf_y1[0]
+  if leaf_y1[1] < nl_y1
+    nl_y1 = leaf_y1[1]
+  mut nl_x2 := leaf_x2[0]
+  if leaf_x2[1] > nl_x2
+    nl_x2 = leaf_x2[1]
+  mut nl_y2 := leaf_y2[0]
+  if leaf_y2[1] > nl_y2
+    nl_y2 = leaf_y2[1]
+  print "  Internal Left: ({nl_x1},{nl_y1})-({nl_x2},{nl_y2})"
+
+  mut nr_x1 := leaf_x1[2]
+  if leaf_x1[3] < nr_x1
+    nr_x1 = leaf_x1[3]
+  mut nr_y1 := leaf_y1[2]
+  if leaf_y1[3] < nr_y1
+    nr_y1 = leaf_y1[3]
+  mut nr_x2 := leaf_x2[2]
+  if leaf_x2[3] > nr_x2
+    nr_x2 = leaf_x2[3]
+  mut nr_y2 := leaf_y2[2]
+  if leaf_y2[3] > nr_y2
+    nr_y2 = leaf_y2[3]
+  print "  Internal Right: ({nr_x1},{nr_y1})-({nr_x2},{nr_y2})"
+
+  -- Root MBR
+  mut root_x1 := nl_x1
+  if nr_x1 < root_x1
+    root_x1 = nr_x1
+  mut root_y1 := nl_y1
+  if nr_y1 < root_y1
+    root_y1 = nr_y1
+  mut root_x2 := nl_x2
+  if nr_x2 > root_x2
+    root_x2 = nr_x2
+  mut root_y2 := nl_y2
+  if nr_y2 > root_y2
+    root_y2 = nr_y2
+  print "  Root: ({root_x1},{root_y1})-({root_x2},{root_y2})"
+
+  -- Part 3: Range query
+  print ""
+  print "=== Part 3: Range Query ==="
+  qx1 := 4
+  qy1 := 0
+  qx2 := 13
+  qy2 := 4
+  print "  Query rectangle: ({qx1},{qy1})-({qx2},{qy2})"
+
+  -- Check root overlap
+  mut nodes_visited := 0
+  mut results_found := 0
+  nodes_visited = nodes_visited + 1
+
+  -- Check left internal node
+  mut left_overlaps := true
+  if nl_x1 > qx2 or nl_x2 < qx1 or nl_y1 > qy2 or nl_y2 < qy1
+    left_overlaps = false
+  if left_overlaps
+    nodes_visited = nodes_visited + 1
+    print "  Visiting left internal node"
+    -- Check leaf 0
+    if not (leaf_x1[0] > qx2 or leaf_x2[0] < qx1 or leaf_y1[0] > qy2 or leaf_y2[0] < qy1)
+      nodes_visited = nodes_visited + 1
+      print "    Visiting leaf 0"
+      for k in range(0, 2)
+        idx := leaf_children[k]
+        if not (obj_x1[idx] > qx2 or obj_x2[idx] < qx1 or obj_y1[idx] > qy2 or obj_y2[idx] < qy1)
+          print "      Found: {obj_names[idx]}"
+          results_found = results_found + 1
+    if not (leaf_x1[1] > qx2 or leaf_x2[1] < qx1 or leaf_y1[1] > qy2 or leaf_y2[1] < qy1)
+      nodes_visited = nodes_visited + 1
+      print "    Visiting leaf 1"
+      for k in range(2, 4)
+        idx := leaf_children[k]
+        if not (obj_x1[idx] > qx2 or obj_x2[idx] < qx1 or obj_y1[idx] > qy2 or obj_y2[idx] < qy1)
+          print "      Found: {obj_names[idx]}"
+          results_found = results_found + 1
+
+  -- Check right internal node
+  mut right_overlaps := true
+  if nr_x1 > qx2 or nr_x2 < qx1 or nr_y1 > qy2 or nr_y2 < qy1
+    right_overlaps = false
+  if right_overlaps
+    nodes_visited = nodes_visited + 1
+    print "  Visiting right internal node"
+    if not (leaf_x1[2] > qx2 or leaf_x2[2] < qx1 or leaf_y1[2] > qy2 or leaf_y2[2] < qy1)
+      nodes_visited = nodes_visited + 1
+      print "    Visiting leaf 2"
+      for k in range(4, 6)
+        idx := leaf_children[k]
+        if not (obj_x1[idx] > qx2 or obj_x2[idx] < qx1 or obj_y1[idx] > qy2 or obj_y2[idx] < qy1)
+          print "      Found: {obj_names[idx]}"
+          results_found = results_found + 1
+    if not (leaf_x1[3] > qx2 or leaf_x2[3] < qx1 or leaf_y1[3] > qy2 or leaf_y2[3] < qy1)
+      nodes_visited = nodes_visited + 1
+      print "    Visiting leaf 3"
+      for k in range(6, 8)
+        idx := leaf_children[k]
+        if not (obj_x1[idx] > qx2 or obj_x2[idx] < qx1 or obj_y1[idx] > qy2 or obj_y2[idx] < qy1)
+          print "      Found: {obj_names[idx]}"
+          results_found = results_found + 1
+  print "  Results: {results_found}, Nodes visited: {nodes_visited}"
+
+  -- Part 4: Point query
+  print ""
+  print "=== Part 4: Point Query ==="
+  px := 6
+  py := 2
+  print "  Query point: ({px},{py})"
+  mut point_results := 0
+  for i in range(0, num_objects)
+    if px >= obj_x1[i] and px <= obj_x2[i] and py >= obj_y1[i] and py <= obj_y2[i]
+      print "  Contains: {obj_names[i]}"
+      point_results = point_results + 1
+  print "  Objects containing point: {point_results}"
+
+  -- Part 5: MBR area and overlap
+  print ""
+  print "=== Part 5: MBR Quality Metrics ==="
+  -- Total area of leaf MBRs
+  mut total_area := 0
+  for i in range(0, num_leaves)
+    w := leaf_x2[i] - leaf_x1[i]
+    h := leaf_y2[i] - leaf_y1[i]
+    area := w * h
+    total_area = total_area + area
+    print "  Leaf {i} area: {area}"
+  print "  Total leaf MBR area: {total_area}"
+  -- Total object area
+  mut obj_area := 0
+  for i in range(0, num_objects)
+    w := obj_x2[i] - obj_x1[i]
+    h := obj_y2[i] - obj_y1[i]
+    obj_area = obj_area + w * h
+  print "  Total object area: {obj_area}"
+  print "  Dead space: {total_area - obj_area}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Objects indexed: {num_objects}"
+  print "  Tree height: 3 (root + internal + leaf)"
+  print "  Leaf nodes: {num_leaves}"
+  print "  Max entries per node: 2"
+  print "  Range query prunes non-overlapping subtrees"
+
+  print ""
+  print "R-tree: spatial indexing with minimum bounding rectangles for efficient multi-dimensional range and point queries."

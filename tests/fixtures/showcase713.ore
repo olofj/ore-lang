@@ -1,0 +1,156 @@
+-- Showcase 713: Simple JIT Trace Compilation
+
+fn main
+  print "Simple JIT Trace Compilation:"
+  print ""
+
+  -- Tracing JITs record hot paths through an interpreter and compile
+  -- them into optimized machine code
+
+  -- Part 1: Bytecode program
+  print "=== Part 1: Bytecode Program ==="
+  -- A loop that sums 1..10
+  -- Opcodes: 0=LOAD_CONST, 1=ADD, 2=CMP_LT, 3=JUMP_IF_TRUE, 4=HALT
+  prog_len := 8
+  mut opcodes := [0, 2, 3, 4, 1, 2, 3, 4, 0, 0]
+  mut operands := [0, 10, 4, 0, 1, 10, 4, 0, 0, 0]
+  mut op_names := ["LOAD_CONST", "ADD", "CMP_LT", "JUMP_IF_TRUE", "HALT"]
+  print "  Program: sum of 1 to 10"
+  print "  0: LOAD_CONST 0    (acc=0)"
+  print "  1: CMP_LT 10       (acc < 10?)"
+  print "  2: JUMP_IF_TRUE 4  (if true goto ADD)"
+  print "  3: HALT"
+  print "  4: ADD 1            (acc += 1)"
+  print "  5: CMP_LT 10       (loop test)"
+  print "  6: JUMP_IF_TRUE 4  (loop back)"
+  print "  7: HALT"
+
+  -- Part 2: Interpreter execution with hotness tracking
+  print ""
+  print "=== Part 2: Interpreter with Tracing ==="
+  mut acc := 0
+  mut pc := 0
+  mut steps := 0
+  mut hotness := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  hot_threshold := 3
+  -- Trace buffer
+  mut trace_ops := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut trace_len := 0
+  mut recording := false
+  mut trace_compiled := false
+  mut trace_start := -1
+
+  mut cmp_flag := 0
+  mut halted := false
+  while not halted and steps < 100
+    op := opcodes[pc]
+    hotness[pc] = hotness[pc] + 1
+
+    -- Start trace recording on hot backward jump targets
+    if not recording and not trace_compiled and hotness[pc] >= hot_threshold
+      recording = true
+      trace_start = pc
+      trace_len = 0
+
+    -- Record to trace
+    if recording and trace_len < 20
+      trace_ops[trace_len] = op
+      trace_len = trace_len + 1
+
+    arg := operands[pc]
+    if op == 0
+      acc = arg
+      pc = pc + 1
+    else if op == 1
+      acc = acc + arg
+      pc = pc + 1
+    else if op == 2
+      if acc < arg
+        cmp_flag = 1
+      else
+        cmp_flag = 0
+      pc = pc + 1
+    else if op == 3
+      if cmp_flag == 1
+        pc = arg
+        -- Check trace loop
+        if recording and pc == trace_start
+          recording = false
+          trace_compiled = true
+      else
+        pc = pc + 1
+    else if op == 4
+      halted = true
+
+    steps = steps + 1
+
+  print "  Interpreter result: acc = {acc}"
+  print "  Steps executed: {steps}"
+  if trace_compiled
+    print "  Trace compiled: {trace_len} ops from PC={trace_start}"
+  else
+    print "  No trace compiled (hot threshold not reached)"
+
+  -- Part 3: Manual computation for verification
+  print ""
+  print "=== Part 3: Verification ==="
+  -- The program increments by 1 until >= 10
+  print "  Expected: acc = 10 (increments by 1 each iteration)"
+  print "  Got: acc = {acc}"
+  if acc >= 10
+    print "  Correct!"
+
+  -- Part 4: Trace analysis
+  print ""
+  print "=== Part 4: Trace Analysis ==="
+  print "  Trace length: {trace_len} operations"
+  -- Count each op type in trace
+  mut counts := [0, 0, 0, 0, 0]
+  for i in range(0, trace_len)
+    t := trace_ops[i]
+    if t >= 0 and t < 5
+      counts[t] = counts[t] + 1
+  for i in range(0, 5)
+    if counts[i] > 0
+      print "  {op_names[i]}: {counts[i]}"
+
+  -- Part 5: Simulated optimizations
+  print ""
+  print "=== Part 5: Trace Optimizations ==="
+  print "  1. Type specialization: acc is always Int -> remove type checks"
+  print "  2. Constant folding: loop bound 10 is constant"
+  print "  3. Loop invariant: CMP_LT bound never changes"
+  print "  4. Guard: deoptimize if type changes"
+  -- Estimate optimized ops
+  opt_removed := counts[2]
+  opt_len := trace_len - opt_removed
+  print "  Original trace: {trace_len} ops"
+  print "  After optimization: {opt_len} ops"
+  print "  Removed {opt_removed} comparison ops (hoisted)"
+
+  -- Part 6: Hotness profile
+  print ""
+  print "=== Part 6: Hotness Profile ==="
+  mut max_hot := 0
+  for i in range(0, prog_len)
+    if hotness[i] > max_hot
+      max_hot = hotness[i]
+  for i in range(0, prog_len)
+    if hotness[i] > 0
+      bar_len := (hotness[i] * 20) / (max_hot + 1)
+      mut bar := ""
+      for j in range(0, bar_len)
+        bar = bar + "#"
+      print "  PC {i}: {hotness[i]} hits {bar}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Interpreter steps: {steps}"
+  print "  Hot threshold: {hot_threshold} executions"
+  print "  Trace recording: captures loop body"
+  print "  Key insight: most time is spent in hot loops"
+  print "  JIT phases: interpret -> profile -> record -> optimize -> compile"
+
+  print ""
+  print "Tracing JIT: recording hot interpreter paths and compiling them into optimized native code for dramatic speedups."

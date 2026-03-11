@@ -1,0 +1,161 @@
+-- Showcase 716: Optimal BST
+
+fn main
+  print "Optimal BST:"
+  print ""
+
+  -- Optimal Binary Search Tree minimizes expected search cost
+  -- given known access frequencies (Knuth's algorithm)
+
+  -- Part 1: Setup
+  print "=== Part 1: Keys and Frequencies ==="
+  n := 5
+  mut keys := [10, 20, 30, 40, 50]
+  mut freq := [34, 8, 50, 21, 16]
+  mut key_str := ""
+  mut freq_str := ""
+  for i in range(0, n)
+    if i > 0
+      key_str = key_str + ", "
+      freq_str = freq_str + ", "
+    key_str = key_str + str(keys[i])
+    freq_str = freq_str + str(freq[i])
+  print "  Keys:        [{key_str}]"
+  print "  Frequencies: [{freq_str}]"
+  mut total_freq := 0
+  for i in range(0, n)
+    total_freq = total_freq + freq[i]
+  print "  Total frequency: {total_freq}"
+
+  -- Part 2: DP computation
+  print ""
+  print "=== Part 2: Dynamic Programming ==="
+  -- cost[i*n+j] = minimum cost BST for keys[i..j]
+  -- root[i*n+j] = root index for optimal subtree
+  -- Using 1D arrays with n*n size
+  nn := n * n
+  mut cost := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut root := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut weight := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Base case: single keys
+  for i in range(0, n)
+    cost[i * n + i] = freq[i]
+    root[i * n + i] = i
+    weight[i * n + i] = freq[i]
+  print "  Base cases (single keys):"
+  for i in range(0, n)
+    print "    Key {keys[i]}: cost={cost[i * n + i]}"
+
+  -- Fill for increasing lengths
+  for length in range(2, n + 1)
+    for i in range(0, n - length + 1)
+      j := i + length - 1
+      -- Compute weight
+      mut w := 0
+      for k in range(i, j + 1)
+        w = w + freq[k]
+      weight[i * n + j] = w
+      -- Find best root
+      mut best_cost := 999999
+      mut best_root := i
+      for r in range(i, j + 1)
+        mut c := w
+        if r > i
+          c = c + cost[i * n + (r - 1)]
+        if r < j
+          c = c + cost[(r + 1) * n + j]
+        if c < best_cost
+          best_cost = c
+          best_root = r
+      cost[i * n + j] = best_cost
+      root[i * n + j] = best_root
+
+  print "  Optimal cost: {cost[0 * n + (n - 1)]}"
+  print "  Optimal root: key {keys[root[0 * n + (n - 1)]]}"
+
+  -- Part 3: Tree structure
+  print ""
+  print "=== Part 3: Optimal Tree Structure ==="
+  -- Print tree structure using root table
+  -- Root of [0..4]
+  r0 := root[0 * n + (n - 1)]
+  print "  Root: {keys[r0]}"
+  -- Left subtree [0..r0-1]
+  if r0 > 0
+    r1 := root[0 * n + (r0 - 1)]
+    print "  Left of {keys[r0]}: {keys[r1]}"
+    if r1 > 0
+      r2 := root[0 * n + (r1 - 1)]
+      print "    Left of {keys[r1]}: {keys[r2]}"
+    if r1 < r0 - 1
+      r2b := root[(r1 + 1) * n + (r0 - 1)]
+      print "    Right of {keys[r1]}: {keys[r2b]}"
+  -- Right subtree [r0+1..4]
+  if r0 < n - 1
+    r1r := root[(r0 + 1) * n + (n - 1)]
+    print "  Right of {keys[r0]}: {keys[r1r]}"
+    if r1r > r0 + 1
+      r2l := root[(r0 + 1) * n + (r1r - 1)]
+      print "    Left of {keys[r1r]}: {keys[r2l]}"
+    if r1r < n - 1
+      r2r := root[(r1r + 1) * n + (n - 1)]
+      print "    Right of {keys[r1r]}: {keys[r2r]}"
+
+  -- Part 4: Search cost analysis
+  print ""
+  print "=== Part 4: Search Cost Analysis ==="
+  -- Compute depth of each key in optimal tree
+  mut depth := [0, 0, 0, 0, 0]
+  -- BFS-like: process root table entries
+  -- root is at depth 0
+  depth[r0] = 0
+  -- Process left subtree root
+  if r0 > 0
+    rl := root[0 * n + (r0 - 1)]
+    depth[rl] = 1
+    -- sub-children at depth 2
+    for k in range(0, n)
+      if depth[k] == 0 and k != r0
+        depth[k] = 2
+  if r0 < n - 1
+    rr := root[(r0 + 1) * n + (n - 1)]
+    depth[rr] = 1
+    for k in range(0, n)
+      if depth[k] == 0 and k != r0
+        depth[k] = 2
+  -- Compute expected cost
+  mut expected := 0
+  for i in range(0, n)
+    expected = expected + freq[i] * (depth[i] + 1)
+  print "  Expected search cost: {expected}"
+  for i in range(0, n)
+    print "    Key {keys[i]}: depth={depth[i]}, freq={freq[i]}, cost={freq[i] * (depth[i] + 1)}"
+
+  -- Part 5: Compare with naive BST
+  print ""
+  print "=== Part 5: Comparison with Naive BST ==="
+  -- Naive: sorted insertion gives a balanced-ish BST
+  -- Simple: root=30 (middle), left=10,20, right=40,50
+  mut naive_depth := [2, 1, 0, 1, 2]
+  mut naive_cost := 0
+  for i in range(0, n)
+    naive_cost = naive_cost + freq[i] * (naive_depth[i] + 1)
+  print "  Naive balanced BST cost: {naive_cost}"
+  print "  Optimal BST cost: {expected}"
+  if expected < naive_cost
+    savings := naive_cost - expected
+    print "  Savings: {savings} ({(savings * 100) / naive_cost}% improvement)"
+  else
+    print "  Optimal matches naive (already optimal shape)"
+
+  -- Part 6: Subproblem costs
+  print ""
+  print "=== Part 6: Subproblem Costs ==="
+  for i in range(0, n)
+    for j in range(i, n)
+      if j - i < 3
+        print "  Cost[{keys[i]}..{keys[j]}] = {cost[i * n + j]}, root = {keys[root[i * n + j]]}"
+
+  print ""
+  print "Optimal BST: minimizing expected search cost through dynamic programming over all possible tree structures."

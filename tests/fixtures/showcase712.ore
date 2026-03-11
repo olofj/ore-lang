@@ -1,0 +1,120 @@
+-- Showcase 712: Memory Pool Allocator
+
+fn main
+  print "Memory Pool Allocator:"
+  print ""
+
+  -- A memory pool pre-allocates fixed-size blocks for fast alloc/free
+  -- without fragmentation
+
+  -- Part 1: Pool initialization
+  print "=== Part 1: Pool Setup ==="
+  pool_size := 16
+  -- Each block: 0=free, 1=allocated
+  mut blocks := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Free list: next[i] = index of next free block (-1 = end)
+  mut next_free := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, -1]
+  mut free_head := 0
+  mut alloc_count := 0
+  mut free_count := pool_size
+  print "  Pool size: {pool_size} blocks"
+  print "  Free list head: {free_head}"
+  print "  Available: {free_count}"
+
+  -- Part 2: Allocations
+  print ""
+  print "=== Part 2: Allocations ==="
+  -- Allocate 6 blocks
+  mut allocated_ids := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  num_allocs := 6
+  for i in range(0, num_allocs)
+    if free_head == -1
+      print "  Allocation {i}: FAILED (pool exhausted)"
+    else
+      block_id := free_head
+      free_head = next_free[block_id]
+      blocks[block_id] = 1
+      next_free[block_id] = -1
+      allocated_ids[i] = block_id
+      alloc_count = alloc_count + 1
+      free_count = free_count - 1
+      print "  Allocated block {block_id}"
+  print "  Total allocated: {alloc_count}, Free: {free_count}"
+
+  -- Part 3: Free some blocks
+  print ""
+  print "=== Part 3: Deallocation ==="
+  -- Free blocks 1, 3, 4 (the 2nd, 4th, 5th allocated)
+  mut to_free := [1, 3, 4]
+  for i in range(0, 3)
+    idx := to_free[i]
+    block_id := allocated_ids[idx]
+    blocks[block_id] = 0
+    next_free[block_id] = free_head
+    free_head = block_id
+    alloc_count = alloc_count - 1
+    free_count = free_count + 1
+    print "  Freed block {block_id}"
+  print "  After freeing: allocated={alloc_count}, free={free_count}"
+  print "  Free list head: {free_head}"
+
+  -- Part 4: Re-allocate (reuses freed blocks)
+  print ""
+  print "=== Part 4: Re-allocation ==="
+  for i in range(0, 4)
+    if free_head == -1
+      print "  Re-alloc {i}: FAILED"
+    else
+      block_id := free_head
+      free_head = next_free[block_id]
+      blocks[block_id] = 1
+      next_free[block_id] = -1
+      alloc_count = alloc_count + 1
+      free_count = free_count - 1
+      print "  Re-allocated block {block_id}"
+  print "  After re-alloc: allocated={alloc_count}, free={free_count}"
+
+  -- Part 5: Pool utilization
+  print ""
+  print "=== Part 5: Pool Utilization ==="
+  mut used := 0
+  for i in range(0, pool_size)
+    if blocks[i] == 1
+      used = used + 1
+  utilization := (used * 100) / pool_size
+  print "  Used blocks: {used} / {pool_size}"
+  print "  Utilization: {utilization}%"
+
+  -- Part 6: Fragmentation analysis
+  print ""
+  print "=== Part 6: Fragmentation Analysis ==="
+  mut fragments := 0
+  mut in_free_run := false
+  for i in range(0, pool_size)
+    if blocks[i] == 0 and not in_free_run
+      fragments = fragments + 1
+      in_free_run = true
+    else if blocks[i] == 1
+      in_free_run = false
+  print "  Free fragments: {fragments}"
+  -- Show block map
+  mut block_map := ""
+  for i in range(0, pool_size)
+    if blocks[i] == 1
+      block_map = block_map + "#"
+    else
+      block_map = block_map + "."
+  print "  Block map: {block_map}"
+  print "  (#=allocated, .=free)"
+
+  -- Part 7: Pool statistics
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Total allocations performed: 10"
+  print "  Total deallocations: 3"
+  print "  Current allocated: {alloc_count}"
+  print "  Peak usage: {num_allocs + 4} blocks"
+  print "  O(1) alloc and free via free-list"
+
+  print ""
+  print "Memory pool: O(1) allocation and deallocation with zero fragmentation overhead for fixed-size objects."

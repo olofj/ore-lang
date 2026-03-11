@@ -1,0 +1,160 @@
+-- Showcase 715: Simple Consensus Protocol (Paxos)
+
+fn main
+  print "Simple Consensus Protocol (Paxos):"
+  print ""
+
+  -- Paxos achieves consensus among distributed nodes even with failures
+  -- Roles: Proposer, Acceptor, Learner
+
+  -- Part 1: Setup
+  print "=== Part 1: Cluster Setup ==="
+  num_acceptors := 5
+  majority := 3
+  mut acceptor_promised := [0, 0, 0, 0, 0]
+  mut acceptor_accepted_n := [0, 0, 0, 0, 0]
+  mut acceptor_accepted_v := [0, 0, 0, 0, 0]
+  mut acceptor_alive := [1, 1, 1, 1, 1]
+  print "  Acceptors: {num_acceptors}"
+  print "  Majority required: {majority}"
+
+  -- Part 2: Phase 1a - Prepare
+  print ""
+  print "=== Part 2: Phase 1a - Prepare ==="
+  proposal_n := 1
+  proposed_value := 42
+  print "  Proposer sends Prepare(n={proposal_n})"
+
+  -- Phase 1b - Promise
+  print ""
+  print "=== Part 3: Phase 1b - Promise ==="
+  mut promises := 0
+  mut highest_accepted_n := 0
+  mut highest_accepted_v := 0
+  for i in range(0, num_acceptors)
+    if acceptor_alive[i] == 1
+      if proposal_n > acceptor_promised[i]
+        acceptor_promised[i] = proposal_n
+        promises = promises + 1
+        print "  Acceptor {i}: Promise(n={proposal_n})"
+        -- Return any previously accepted value
+        if acceptor_accepted_n[i] > highest_accepted_n
+          highest_accepted_n = acceptor_accepted_n[i]
+          highest_accepted_v = acceptor_accepted_v[i]
+      else
+        print "  Acceptor {i}: Reject (already promised {acceptor_promised[i]})"
+  print "  Promises received: {promises}/{num_acceptors}"
+
+  got_majority := promises >= majority
+  if got_majority
+    print "  Majority achieved!"
+  else
+    print "  Failed to get majority"
+
+  -- Part 3: Phase 2a - Accept
+  print ""
+  print "=== Part 4: Phase 2a - Accept ==="
+  -- Use highest previously accepted value, or our proposed value
+  mut value := proposed_value
+  if highest_accepted_n > 0
+    value = highest_accepted_v
+    print "  Using previously accepted value: {value}"
+  else
+    print "  Using proposed value: {value}"
+  print "  Proposer sends Accept(n={proposal_n}, v={value})"
+
+  -- Phase 2b - Accepted
+  print ""
+  print "=== Part 5: Phase 2b - Accepted ==="
+  mut accepts := 0
+  for i in range(0, num_acceptors)
+    if acceptor_alive[i] == 1
+      if proposal_n >= acceptor_promised[i]
+        acceptor_accepted_n[i] = proposal_n
+        acceptor_accepted_v[i] = value
+        accepts = accepts + 1
+        print "  Acceptor {i}: Accepted(n={proposal_n}, v={value})"
+      else
+        print "  Acceptor {i}: Reject"
+  print "  Accepts received: {accepts}/{num_acceptors}"
+
+  consensus := accepts >= majority
+  if consensus
+    print "  CONSENSUS REACHED: value = {value}"
+
+  -- Part 4: Simulate competing proposer
+  print ""
+  print "=== Part 6: Competing Proposer ==="
+  proposal_n2 := 2
+  proposed_value2 := 99
+  print "  Proposer 2 sends Prepare(n={proposal_n2})"
+
+  -- Phase 1b for proposer 2
+  mut promises2 := 0
+  mut highest2_n := 0
+  mut highest2_v := 0
+  for i in range(0, num_acceptors)
+    if acceptor_alive[i] == 1
+      if proposal_n2 > acceptor_promised[i]
+        acceptor_promised[i] = proposal_n2
+        promises2 = promises2 + 1
+        if acceptor_accepted_n[i] > highest2_n
+          highest2_n = acceptor_accepted_n[i]
+          highest2_v = acceptor_accepted_v[i]
+  print "  Promises for Proposer 2: {promises2}"
+
+  -- Proposer 2 must use the already-accepted value
+  mut value2 := proposed_value2
+  if highest2_n > 0
+    value2 = highest2_v
+    print "  Proposer 2 MUST use previously accepted value: {value2}"
+  else
+    print "  Proposer 2 uses its own value: {value2}"
+
+  -- Phase 2 for proposer 2
+  mut accepts2 := 0
+  for i in range(0, num_acceptors)
+    if acceptor_alive[i] == 1
+      if proposal_n2 >= acceptor_promised[i]
+        acceptor_accepted_n[i] = proposal_n2
+        acceptor_accepted_v[i] = value2
+        accepts2 = accepts2 + 1
+  print "  Accepts: {accepts2}"
+  if accepts2 >= majority
+    print "  Proposer 2 also achieves consensus on value: {value2}"
+    print "  Key insight: competing proposer converges to SAME value!"
+
+  -- Part 5: Failure tolerance
+  print ""
+  print "=== Part 7: Failure Tolerance ==="
+  -- Kill 2 acceptors
+  acceptor_alive[3] = 0
+  acceptor_alive[4] = 0
+  print "  Acceptors 3 and 4 have failed"
+  mut alive := 0
+  for i in range(0, num_acceptors)
+    if acceptor_alive[i] == 1
+      alive = alive + 1
+  print "  Alive acceptors: {alive}"
+  can_proceed := alive >= majority
+  if can_proceed
+    print "  System can still reach consensus ({alive} >= {majority})"
+  else
+    print "  System CANNOT reach consensus"
+
+  -- Try another round
+  proposal_n3 := 3
+  mut promises3 := 0
+  for i in range(0, num_acceptors)
+    if acceptor_alive[i] == 1
+      if proposal_n3 > acceptor_promised[i]
+        acceptor_promised[i] = proposal_n3
+        promises3 = promises3 + 1
+  print "  New proposal (n={proposal_n3}): {promises3} promises"
+  if promises3 >= majority
+    print "  Still operational despite failures!"
+  else
+    print "  Cannot proceed"
+
+  print ""
+  print "Paxos: achieving distributed consensus through prepare-promise-accept phases, tolerating minority failures."
