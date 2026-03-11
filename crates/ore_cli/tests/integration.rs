@@ -1328,3 +1328,19 @@ fn showcase16() {
     assert!(out.contains("Pi approx: 3.14"));
     assert!(out.contains("Pi actual: 3.14159"));
 }
+
+#[test]
+fn function_defaults() {
+    let out = run_ore("functions/defaults.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "Hi, Alice!",
+        "Hello, Bob!",
+        "15",
+        "25",
+        "0..10 step 1",
+        "5..10 step 1",
+        "5..20 step 1",
+        "1..100 step 5",
+    ]);
+}

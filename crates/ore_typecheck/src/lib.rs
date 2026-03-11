@@ -72,6 +72,8 @@ impl Env {
 
 pub struct TypeChecker {
     functions: HashMap<String, (Vec<Type>, Type)>,
+    /// Minimum number of required parameters (without defaults) per function
+    fn_required_params: HashMap<String, usize>,
     records: HashMap<String, RecordDef>,
     enums: HashMap<String, EnumDef>,
     variant_to_enum: HashMap<String, String>,
@@ -84,6 +86,7 @@ impl TypeChecker {
     pub fn new() -> Self {
         TypeChecker {
             functions: HashMap::new(),
+            fn_required_params: HashMap::new(),
             records: HashMap::new(),
             enums: HashMap::new(),
             variant_to_enum: HashMap::new(),
@@ -144,7 +147,11 @@ impl TypeChecker {
                 Item::FnDef(fndef) => {
                     let params: Vec<Type> = fndef.params.iter().map(|p| self.resolve_type_expr(&p.ty)).collect();
                     let ret = fndef.ret_type.as_ref().map(|t| self.resolve_type_expr(t)).unwrap_or(Type::Unit);
-                    self.functions.insert(fndef.name.clone(), (params, ret));
+                    let required = fndef.params.iter().filter(|p| p.default.is_none()).count();
+                    self.functions.insert(fndef.name.clone(), (params.clone(), ret));
+                    if required < params.len() {
+                        self.fn_required_params.insert(fndef.name.clone(), required);
+                    }
                 }
                 Item::TypeDef(td) => {
                     let fields: Vec<(String, Type)> = td.fields.iter()
@@ -535,12 +542,18 @@ impl TypeChecker {
 
                         // User-defined functions
                         if let Some((params, ret)) = self.functions.get(name).cloned() {
+                            let min_required = self.fn_required_params.get(name).copied().unwrap_or(params.len());
                             // Allow args.len() == params.len() - 1 for pipeline-style calls
                             // (the pipe operator prepends the first argument at codegen time)
-                            if args.len() != params.len() && args.len() + 1 != params.len() {
+                            // Also allow fewer args when defaults exist (min_required..=params.len())
+                            let valid = (args.len() >= min_required && args.len() <= params.len())
+                                || (args.len() + 1 >= min_required && args.len() + 1 <= params.len());
+                            if !valid {
                                 self.err(format!(
-                                    "function '{}' expects {} args, got {}",
-                                    name, params.len(), args.len()
+                                    "function '{}' expects {}{} args, got {}",
+                                    name,
+                                    if min_required < params.len() { format!("{}-", min_required) } else { String::new() },
+                                    params.len(), args.len()
                                 ));
                             } else {
                                 // Check argument types

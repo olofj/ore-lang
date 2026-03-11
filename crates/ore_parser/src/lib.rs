@@ -366,7 +366,13 @@ impl Parser {
         };
         self.expect(&Token::Colon)?;
         let ty = self.parse_type_expr()?;
-        Ok(Param { name, ty })
+        let default = if self.peek() == &Token::Eq {
+            self.advance();
+            Some(self.parse_expr(0)?)
+        } else {
+            None
+        };
+        Ok(Param { name, ty, default })
     }
 
     /// Parse optional type parameters: [T, U, V]

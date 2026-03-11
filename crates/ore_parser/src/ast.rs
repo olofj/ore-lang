@@ -85,6 +85,7 @@ pub struct FnDef {
 pub struct Param {
     pub name: String,
     pub ty: TypeExpr,
+    pub default: Option<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

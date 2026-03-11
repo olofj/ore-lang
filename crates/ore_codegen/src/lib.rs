@@ -276,6 +276,8 @@ pub struct CodeGen<'ctx> {
     current_line: usize,
     /// Generic function definitions (not yet monomorphized)
     generic_fns: HashMap<String, FnDef>,
+    /// Default parameter expressions per function (name -> vec of Option<Expr>)
+    fn_defaults: HashMap<String, Vec<Option<Expr>>>,
     /// Test function names in order, for `ore test`
     pub test_names: Vec<String>,
 }
@@ -330,6 +332,7 @@ impl<'ctx> CodeGen<'ctx> {
             last_map_val_kind: None,
             current_line: 0,
             generic_fns: HashMap::new(),
+            fn_defaults: HashMap::new(),
             test_names: Vec::new(),
         }
     }
@@ -417,6 +420,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let mut p = vec![Param {
                         name: "self".to_string(),
                         ty: TypeExpr::Named(type_name.clone()),
+                        default: None,
                     }];
                     p.extend(method.params.clone());
                     p
@@ -461,6 +465,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let mut p = vec![Param {
                         name: "self".to_string(),
                         ty: TypeExpr::Named(type_name.clone()),
+                        default: None,
                     }];
                     p.extend(method.params.clone());
                     p
@@ -963,6 +968,12 @@ impl<'ctx> CodeGen<'ctx> {
 
         let func = self.module.add_function(&fndef.name, fn_type, None);
         self.functions.insert(fndef.name.clone(), (func, ret_kind));
+
+        // Store default parameter expressions if any exist
+        let defaults: Vec<Option<Expr>> = fndef.params.iter().map(|p| p.default.clone()).collect();
+        if defaults.iter().any(|d| d.is_some()) {
+            self.fn_defaults.insert(fndef.name.clone(), defaults);
+        }
         Ok(())
     }
 
@@ -1988,6 +1999,15 @@ impl<'ctx> CodeGen<'ctx> {
                     let mut compiled_args = Vec::new();
                     for arg in args {
                         compiled_args.push(self.compile_expr(arg, func)?.into());
+                    }
+                    // Fill in default parameter values for missing args
+                    if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
+                        let num_args = compiled_args.len();
+                        for i in num_args..defaults.len() {
+                            if let Some(ref default_expr) = defaults[i] {
+                                compiled_args.push(self.compile_expr(default_expr, func)?.into());
+                            }
+                        }
                     }
                     let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
                     let val = self.call_result_to_value(result)?;
@@ -5972,6 +5992,7 @@ impl<'ctx> CodeGen<'ctx> {
             Param {
                 name: p.name.clone(),
                 ty: Self::substitute_type_expr(&p.ty, &subst),
+                default: p.default.clone(),
             }
         }).collect();
 
@@ -6085,6 +6106,15 @@ impl<'ctx> CodeGen<'ctx> {
                     let mut compiled_args = vec![arg_val.into()];
                     for a in args {
                         compiled_args.push(self.compile_expr(a, current_fn)?.into());
+                    }
+                    // Fill in default parameter values for missing args
+                    if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
+                        let num_args = compiled_args.len();
+                        for i in num_args..defaults.len() {
+                            if let Some(ref default_expr) = defaults[i] {
+                                compiled_args.push(self.compile_expr(default_expr, current_fn)?.into());
+                            }
+                        }
                     }
 
                     let result = bld!(self.builder.build_call(called_fn, &compiled_args, "pipe"))?;
