@@ -480,6 +480,7 @@ fn map_runtime_functions(
     map_fn!("ore_range_step", ore_runtime::ore_range_step);
     map_fn!("ore_list_take", ore_runtime::ore_list_take);
     map_fn!("ore_list_skip", ore_runtime::ore_list_skip);
+    map_fn!("ore_list_step", ore_runtime::ore_list_step);
     map_fn!("ore_list_sum", ore_runtime::ore_list_sum);
     map_fn!("ore_list_product", ore_runtime::ore_list_product);
     // Maps

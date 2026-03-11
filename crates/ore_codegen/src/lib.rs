@@ -709,6 +709,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_take", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_skip(ptr, i64) -> ptr
         self.module.add_function("ore_list_skip", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_list_step", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_sum(ptr) -> i64
         self.module.add_function("ore_list_sum", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_product", i64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3017,7 +3018,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
-            "take" | "skip" => {
+            "take" | "skip" | "step" => {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: format!("{} takes 1 argument (count)", method) });
                 }

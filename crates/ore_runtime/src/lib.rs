@@ -458,6 +458,22 @@ pub extern "C" fn ore_str_slice(s: *mut OreStr, start: i64, end: i64) -> *mut Or
     ore_str_new(slice.as_ptr(), slice.len() as u32)
 }
 
+/// Take every nth element from a list.
+#[no_mangle]
+pub extern "C" fn ore_list_step(list: *mut OreList, n: i64) -> *mut OreList {
+    let result = ore_list_new();
+    if n <= 0 { return result; }
+    unsafe {
+        let src = &*list;
+        let mut i = 0;
+        while i < src.len as usize {
+            ore_list_push(result, *src.data.add(i));
+            i += n as usize;
+        }
+    }
+    result
+}
+
 /// Count occurrences of a substring.
 #[no_mangle]
 pub extern "C" fn ore_str_count(s: *mut OreStr, needle: *mut OreStr) -> i64 {
