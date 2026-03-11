@@ -446,3 +446,10 @@ fn control_chain_cmp() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["true", "false", "false", "false"]);
 }
+
+#[test]
+fn pipelines_comprehensive() {
+    let out = run_ore("pipelines/comprehensive.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["10", "100", "10", "hello world ore", "55", "11, 12, 13"]);
+}

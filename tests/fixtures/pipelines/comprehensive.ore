@@ -1,0 +1,30 @@
+fn double x:Int -> Int
+  x * 2
+
+fn main
+  -- Pipeline with named function
+  result := 5 | double
+  print result
+
+  -- Pipeline with lambda
+  result2 := 10 | (x => x * x)
+  print result2
+
+  -- Pipeline with named function + extra args
+  result3 := 3 | add(7)
+  print result3
+
+  -- Chain of pipes
+  result4 := "hello,world,ore".split(",") | join(" ")
+  print result4
+
+  -- Range + pipeline + method chain
+  total := range(1, 6) | map(x => x * x) | sum()
+  print total
+
+  -- Filter + take + join
+  big := range(1, 20) | filter(x => x > 10) | take(3) | join(", ")
+  print big
+
+fn add a:Int b:Int -> Int
+  a + b
