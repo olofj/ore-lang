@@ -1,0 +1,104 @@
+-- Showcase 60: Math and number theory
+
+fn fibonacci n:Int -> List[Int]
+  mut fibs := [0, 1]
+  mut i := 2
+  while i < n
+    fibs.push(fibs[i - 1] + fibs[i - 2])
+    i = i + 1
+  fibs
+
+fn factorial n:Int -> Int
+  if n <= 1
+    1
+  else
+    n * factorial(n - 1)
+
+fn pow_int base:Int exp:Int -> Int
+  if exp == 0
+    return 1
+  mut result := 1
+  mut b := base
+  mut e := exp
+  while e > 0
+    if e % 2 == 1
+      result = result * b
+    b = b * b
+    e = e / 2
+  result
+
+fn digit_sum n:Int -> Int
+  mut s := 0
+  mut num := n
+  if num < 0
+    num = -num
+  while num > 0
+    s = s + num % 10
+    num = num / 10
+  s
+
+fn reverse_int n:Int -> Int
+  mut reversed := 0
+  mut num := n
+  while num > 0
+    reversed = reversed * 10 + num % 10
+    num = num / 10
+  reversed
+
+fn is_palindrome_num n:Int -> Bool
+  n == reverse_int(n)
+
+fn main
+  -- Fibonacci sequence
+  fibs := fibonacci(15)
+  print "Fib(15): {fibs.join(", ")}"
+
+  -- Factorials
+  facts := range(0, 11).map(n => factorial(n))
+  print "Factorials: {facts.join(", ")}"
+
+  -- Powers of 2
+  powers := range(0, 11).map(n => pow_int(2, n))
+  print "Powers of 2: {powers.join(", ")}"
+
+  -- Digit sums
+  print "digit_sum(12345) = {digit_sum(12345)}"
+  print "digit_sum(99999) = {digit_sum(99999)}"
+
+  -- Palindrome numbers
+  mut palindromes := []
+  for n in range(100, 200)
+    if is_palindrome_num(n)
+      palindromes.push(n)
+  print "Palindromes 100-200: {palindromes.join(", ")}"
+
+  -- Perfect numbers up to 500
+  mut perfects := []
+  for n in range(2, 501)
+    mut divisor_sum := 1
+    mut d := 2
+    while d * d <= n
+      if n % d == 0
+        divisor_sum = divisor_sum + d
+        if d != n / d
+          divisor_sum = divisor_sum + n / d
+      d = d + 1
+    if divisor_sum == n
+      perfects.push(n)
+  print "Perfect numbers <= 500: {perfects.join(", ")}"
+
+  -- Triangle numbers
+  triangles := range(1, 11).map(n => n * (n + 1) / 2)
+  print "Triangle numbers: {triangles.join(", ")}"
+
+  -- Sum of cubes equals square of sum
+  sum10 := range(1, 11)
+    .map(n => n)
+  mut s := 0
+  mut sc := 0
+  for n in sum10
+    s = s + n
+    sc = sc + n * n * n
+  print "Sum 1-10 = {s}, squared = {s * s}"
+  print "Sum of cubes = {sc}"
+  print "Equal: {s * s == sc}"

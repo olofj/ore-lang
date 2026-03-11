@@ -1,0 +1,93 @@
+-- Showcase 59: Text processing and string operations
+
+fn count_vowels s:Str -> Int
+  vowels := "aeiouAEIOU"
+  mut count := 0
+  for ch in s.chars()
+    if vowels.contains(ch)
+      count = count + 1
+  count
+
+fn title_case s:Str -> Str
+  words := s.split(" ")
+  mut result := ""
+  mut first_word := true
+  for word in words
+    if word.len() > 0
+      cap := word.slice(0, 1).to_upper() + word.slice(1, word.len()).to_lower()
+      if first_word
+        result = cap
+        first_word = false
+      else
+        result = result + " " + cap
+  result
+
+fn repeat_str s:Str n:Int -> Str
+  mut result := ""
+  mut i := 0
+  while i < n
+    result = result + s
+    i = i + 1
+  result
+
+fn main
+  -- Vowel counting
+  msg := "Hello World"
+  print "Vowels in '{msg}': {count_vowels(msg)}"
+
+  -- Title case
+  print title_case("hello world from ore")
+
+  -- String repetition
+  print repeat_str("ab", 5)
+
+  -- Word frequency from sentence
+  sentence := "the cat sat on the mat the cat"
+  words := sentence.split(" ")
+  mut freq := {}
+  for word in words
+    if freq.contains(word)
+      freq.set(word, freq.get(word) + 1)
+    else
+      freq.set(word, 1)
+  print "the: {freq.get("the")}"
+  print "cat: {freq.get("cat")}"
+  print "sat: {freq.get("sat")}"
+
+  -- Build a simple bar chart
+  items := ["A", "B", "C", "D"]
+  values := [3, 7, 2, 5]
+  for i in range(0, 4)
+    bar := repeat_str("#", values[i])
+    print "{items[i]}: {bar}"
+
+  -- Number formatting
+  nums := [1, 12, 123, 1234, 12345]
+  for n in nums
+    s := str(n)
+    padded := repeat_str(" ", 6 - s.len()) + s
+    print ">{padded}<"
+
+  -- ROT13
+  input := "Hello World"
+  mut rot := ""
+  for ch in input.chars()
+    c := ord(ch)
+    if c >= 65 and c <= 90
+      rot = rot + chr((c - 65 + 13) % 26 + 65)
+    else if c >= 97 and c <= 122
+      rot = rot + chr((c - 97 + 13) % 26 + 97)
+    else
+      rot = rot + ch
+  print "ROT13('{input}'): {rot}"
+  -- Apply ROT13 twice to get back original
+  mut rot2 := ""
+  for ch in rot.chars()
+    c := ord(ch)
+    if c >= 65 and c <= 90
+      rot2 = rot2 + chr((c - 65 + 13) % 26 + 65)
+    else if c >= 97 and c <= 122
+      rot2 = rot2 + chr((c - 97 + 13) % 26 + 97)
+    else
+      rot2 = rot2 + ch
+  print "ROT13 roundtrip: {rot2}"

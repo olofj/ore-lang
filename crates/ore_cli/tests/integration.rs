@@ -1827,6 +1827,47 @@ fn showcase57() {
 }
 
 #[test]
+fn showcase58() {
+    let out = run_ore("showcase58.ore");
+    assert!(out.contains("Sum of squares of evens: 220"));
+    assert!(out.contains("Product of odds: 945"));
+    assert!(out.contains("Running max: 3, 3, 4, 4, 5, 9, 9, 9, 9, 9"));
+    assert!(out.contains("apple: 3"));
+    assert!(out.contains("banana: 2"));
+    assert!(out.contains("7x table: 7, 14, 21, 28, 35, 42, 49, 56, 63, 70"));
+    assert!(out.contains("Pascal row 6: 1, 6, 15, 20, 15, 6, 1"));
+    assert!(out.contains("Primes <= 30: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29"));
+}
+
+#[test]
+fn showcase59() {
+    let out = run_ore("showcase59.ore");
+    assert!(out.contains("Vowels in 'Hello World': 3"));
+    assert!(out.contains("Hello World From Ore"));
+    assert!(out.contains("ababababab"));
+    assert!(out.contains("the: 3"));
+    assert!(out.contains("cat: 2"));
+    assert!(out.contains("A: ###"));
+    assert!(out.contains("B: #######"));
+    assert!(out.contains(">     1<"));
+    assert!(out.contains("ROT13('Hello World'): Uryyb Jbeyq"));
+    assert!(out.contains("ROT13 roundtrip: Hello World"));
+}
+
+#[test]
+fn showcase60() {
+    let out = run_ore("showcase60.ore");
+    assert!(out.contains("Fib(15): 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377"));
+    assert!(out.contains("Factorials: 1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800"));
+    assert!(out.contains("Powers of 2: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024"));
+    assert!(out.contains("digit_sum(12345) = 15"));
+    assert!(out.contains("Palindromes 100-200: 101, 111, 121, 131, 141, 151, 161, 171, 181, 191"));
+    assert!(out.contains("Perfect numbers <= 500: 6, 28, 496"));
+    assert!(out.contains("Triangle numbers: 1, 3, 6, 10, 15, 21, 28, 36, 45, 55"));
+    assert!(out.contains("Equal: true"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

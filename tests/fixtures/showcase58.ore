@@ -1,0 +1,90 @@
+-- Showcase 58: Advanced data pipelines and functional composition
+
+fn square x:Int -> Int
+  x * x
+
+fn cube x:Int -> Int
+  x * x * x
+
+fn sum_list xs:List[Int] -> Int
+  mut total := 0
+  for x in xs
+    total = total + x
+  total
+
+fn product_list xs:List[Int] -> Int
+  mut result := 1
+  for x in xs
+    result = result * x
+  result
+
+fn main
+  -- Chained transformations
+  data := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+  -- Sum of squares of even numbers
+  result := data
+    .filter(n => n % 2 == 0)
+    .map(n => n * n)
+  print "Sum of squares of evens: {sum_list(result)}"
+
+  -- Product of odd numbers
+  odds := data.filter(n => n % 2 != 0)
+  print "Product of odds: {product_list(odds)}"
+
+  -- Running maximum
+  values := [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]
+  mut max_so_far := values[0]
+  mut running_max := []
+  for v in values
+    if v > max_so_far
+      max_so_far = v
+    running_max.push(max_so_far)
+  print "Running max: {running_max.join(", ")}"
+
+  -- Frequency count using map
+  words := ["apple", "banana", "apple", "cherry", "banana", "apple"]
+  mut freq := {}
+  for word in words
+    if freq.contains(word)
+      count := freq.get(word)
+      freq.set(word, count + 1)
+    else
+      freq.set(word, 1)
+  print "apple: {freq.get("apple")}"
+  print "banana: {freq.get("banana")}"
+  print "cherry: {freq.get("cherry")}"
+
+  -- Generate multiplication table row
+  base := 7
+  row := range(1, 11).map(n => base * n)
+  print "7x table: {row.join(", ")}"
+
+  -- Pascal's triangle row
+  mut pascal := [1]
+  for i in range(0, 6)
+    mut next := [1]
+    for j in range(0, pascal.len() - 1)
+      next.push(pascal[j] + pascal[j + 1])
+    next.push(1)
+    pascal = next
+  print "Pascal row 6: {pascal.join(", ")}"
+
+  -- Sieve-like: mark composites
+  limit := 30
+  mut sieve := range(0, limit + 1).map(n => 1)
+  sieve[0] = 0
+  sieve[1] = 0
+  mut p := 2
+  while p * p <= limit
+    if sieve[p] == 1
+      mut m := p * p
+      while m <= limit
+        sieve[m] = 0
+        m = m + p
+    p = p + 1
+  mut primes := []
+  for i in range(0, limit + 1)
+    if sieve[i] == 1
+      primes.push(i)
+  print "Primes <= 30: {primes.join(", ")}"
