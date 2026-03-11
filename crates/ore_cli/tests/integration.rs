@@ -2103,6 +2103,20 @@ fn showcase75() {
 }
 
 #[test]
+fn showcase76() {
+    let out = run_ore("showcase76.ore");
+    assert!(out.contains("v1 = (3.0, 4.0)"));
+    assert!(out.contains("|v1| = 5.0"));
+    assert!(out.contains("v1 + v2 = (4.0, 6.0)"));
+    assert!(out.contains("v1 * 2 = (6.0, 8.0)"));
+    assert!(out.contains("v1 . v2 = 11.0"));
+    assert!(out.contains("Area: 15.0"));
+    assert!(out.contains("Perimeter: 16.0"));
+    assert!(out.contains("Is square: false"));
+    assert!(out.contains("Square: true"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

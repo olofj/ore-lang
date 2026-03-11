@@ -1,0 +1,66 @@
+-- Showcase 76: Records with impl blocks
+
+type Vector { x: Float, y: Float }
+
+impl Vector
+  fn length self:Vector -> Float
+    sqrt(self.x * self.x + self.y * self.y)
+
+  fn add self:Vector other:Vector -> Vector
+    Vector(x: self.x + other.x, y: self.y + other.y)
+
+  fn scale self:Vector factor:Float -> Vector
+    Vector(x: self.x * factor, y: self.y * factor)
+
+  fn dot self:Vector other:Vector -> Float
+    self.x * other.x + self.y * other.y
+
+  fn display self:Vector -> Str
+    "({self.x}, {self.y})"
+
+type Rect { width: Float, height: Float }
+
+impl Rect
+  fn area self:Rect -> Float
+    self.width * self.height
+
+  fn perimeter self:Rect -> Float
+    2.0 * (self.width + self.height)
+
+  fn is_square self:Rect -> Bool
+    self.width == self.height
+
+  fn scale self:Rect factor:Float -> Rect
+    Rect(width: self.width * factor, height: self.height * factor)
+
+fn main
+  -- Vector operations
+  v1 := Vector(x: 3.0, y: 4.0)
+  v2 := Vector(x: 1.0, y: 2.0)
+
+  print "v1 = {v1.display()}"
+  print "v2 = {v2.display()}"
+  print "|v1| = {v1.length()}"
+
+  v3 := v1.add(v2)
+  print "v1 + v2 = {v3.display()}"
+
+  v4 := v1.scale(2.0)
+  print "v1 * 2 = {v4.display()}"
+
+  print "v1 . v2 = {v1.dot(v2)}"
+
+  -- Rectangle operations
+  r := Rect(width: 5.0, height: 3.0)
+  print ""
+  print "Rect: {r.width} x {r.height}"
+  print "Area: {r.area()}"
+  print "Perimeter: {r.perimeter()}"
+  print "Is square: {r.is_square()}"
+
+  r2 := r.scale(2.0)
+  print "Scaled: {r2.width} x {r2.height}"
+  print "Scaled area: {r2.area()}"
+
+  sq := Rect(width: 4.0, height: 4.0)
+  print "Square: {sq.is_square()}"
