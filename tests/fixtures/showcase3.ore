@@ -1,0 +1,63 @@
+-- Showcase 3: Advanced features
+-- Tests map iteration, range patterns, pipe else, enumeration,
+-- stdlib methods, and map merge
+
+fn classify_age age:Int -> Str
+  match age
+    0..2 -> "baby"
+    3..12 -> "child"
+    13..17 -> "teen"
+    18..64 -> "adult"
+    _ -> "senior"
+
+fn safe_div a:Int b:Int -> Int?
+  if b == 0
+    None
+  else
+    Some(a / b)
+
+fn main
+  -- Range patterns
+  print classify_age(1)
+  print classify_age(10)
+  print classify_age(15)
+  print classify_age(30)
+  print classify_age(70)
+
+  -- Pipe else
+  x := safe_div(10, 2) | else -1
+  print x
+  y := safe_div(10, 0) | else -1
+  print y
+
+  -- Map iteration
+  scores := {"math": 95, "english": 88, "science": 92}
+  mut total := 0
+  for subject, score in scores
+    total = total + score
+  print total
+
+  -- List enumeration
+  items := ["first", "second", "third"]
+  for i, item in items
+    print "{i}: {item}"
+
+  -- Int methods
+  print (-7).abs()
+  print 3.max(8)
+  print 15.clamp(0, 10)
+  print 2.pow(8)
+
+  -- String parsing
+  n := "42".parse_int()
+  print n + 8
+
+  -- Map merge
+  a := {"x": 1}
+  b := {"y": 2}
+  c := a.merge(b)
+  print c.len()
+
+  -- Pipeline with else
+  result := safe_div(100, 0) | else 0
+  print result

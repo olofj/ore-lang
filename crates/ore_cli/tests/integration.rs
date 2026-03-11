@@ -569,6 +569,30 @@ fn showcase2() {
 }
 
 #[test]
+fn showcase3() {
+    let out = run_ore("showcase3.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines[0], "baby");
+    assert_eq!(lines[1], "child");
+    assert_eq!(lines[2], "teen");
+    assert_eq!(lines[3], "adult");
+    assert_eq!(lines[4], "senior");
+    assert_eq!(lines[5], "5");
+    assert_eq!(lines[6], "-1");
+    assert_eq!(lines[7], "275"); // sum of scores (order-independent)
+    assert_eq!(lines[8], "0: first");
+    assert_eq!(lines[9], "1: second");
+    assert_eq!(lines[10], "2: third");
+    assert_eq!(lines[11], "7");
+    assert_eq!(lines[12], "8");
+    assert_eq!(lines[13], "10");
+    assert_eq!(lines[14], "256");
+    assert_eq!(lines[15], "50");
+    assert_eq!(lines[16], "2");
+    assert_eq!(lines[17], "0");
+}
+
+#[test]
 fn maps_typed_values() {
     let out = run_ore("maps/typed_values.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
