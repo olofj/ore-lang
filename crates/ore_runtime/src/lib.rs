@@ -266,6 +266,21 @@ pub extern "C" fn ore_str_trim(s: *mut OreStr) -> *mut OreStr {
     ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
 }
 
+/// Capitalize first letter of a string.
+#[no_mangle]
+pub extern "C" fn ore_str_capitalize(s: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let str_val = unsafe { (*s).as_str() };
+    if str_val.is_empty() { return ore_str_new(std::ptr::null(), 0); }
+    let mut result = String::with_capacity(str_val.len());
+    let mut chars = str_val.chars();
+    if let Some(first) = chars.next() {
+        result.extend(first.to_uppercase());
+        result.push_str(chars.as_str());
+    }
+    ore_str_new(result.as_ptr(), result.len() as u32)
+}
+
 /// Get a single character at an index. Returns empty string if out of bounds.
 #[no_mangle]
 pub extern "C" fn ore_str_char_at(s: *mut OreStr, idx: i64) -> *mut OreStr {

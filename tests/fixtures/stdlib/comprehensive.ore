@@ -1,0 +1,49 @@
+fn main
+  -- String methods
+  print "hello world".capitalize()
+  print "hello".char_at(0)
+  print "hello".char_at(-1)
+
+  -- List average
+  print [10, 20, 30].average()
+  print [1.0, 2.0, 3.0, 4.0].average()
+
+  -- Tap in pipeline (debug without affecting result)
+  total := [1, 2, 3, 4, 5]
+    | filter(x => x > 2)
+    | sum()
+  print total
+
+  -- Frequencies
+  votes := ["yes", "no", "yes", "yes", "no"]
+  f := votes.frequencies()
+  print f.get("yes")
+  print f.get("no")
+
+  -- Intersperse
+  parts := [1, 2, 3]
+  print parts.intersperse(0).join(" ")
+
+  -- Dedup
+  print [1, 1, 2, 2, 3, 1, 1].dedup().join(" ")
+
+  -- Map.get_or
+  m := {"a": 10}
+  print m.get_or("a", 0)
+  print m.get_or("z", 99)
+
+  -- String sort
+  words := ["cherry", "apple", "banana"]
+  words.sort()
+  print words.join(", ")
+
+  -- Float sort
+  floats := [3.14, 1.0, 2.71]
+  floats.sort()
+  print floats.min()
+  print floats.max()
+
+  -- Math
+  print sqrt(144.0)
+
+  print "stdlib ok"

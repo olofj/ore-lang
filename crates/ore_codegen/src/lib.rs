@@ -725,6 +725,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_trim_end", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_lines", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_char_at", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_str_capitalize", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_split", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3729,6 +3730,12 @@ impl<'ctx> CodeGen<'ctx> {
             "to_upper" => {
                 let rt = self.module.get_function("ore_str_to_upper").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "supper"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
+            "capitalize" => {
+                let rt = self.module.get_function("ore_str_capitalize").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "scap"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }

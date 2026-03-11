@@ -1199,6 +1199,25 @@ fn math_functions() {
 }
 
 #[test]
+fn stdlib_comprehensive() {
+    let out = run_ore("stdlib/comprehensive.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "Hello world", "h", "o",           // capitalize, char_at
+        "20.0", "2.5",                      // average
+        "12",                               // filter + sum
+        "3", "2",                           // frequencies
+        "1 0 2 0 3",                        // intersperse
+        "1 2 3 1",                          // dedup
+        "10", "99",                         // get_or
+        "apple, banana, cherry",            // string sort
+        "1.0", "3.14",                      // float sort min/max
+        "12.0",                             // sqrt
+        "stdlib ok",
+    ]);
+}
+
+#[test]
 fn showcase14() {
     let out = run_ore("showcase14.ore");
     assert!(out.contains("A: 3, B: 3, C: 2, F: 2"));
