@@ -6129,6 +6129,141 @@ fn showcase460_differentiation() {
 }
 
 #[test]
+fn showcase461_event_sourcing() {
+    let out = run_ore("showcase461.ore");
+    assert!(out.contains("Event Sourcing Pattern:"));
+    assert!(out.contains("+ 1000 -> balance = 1000"));
+    assert!(out.contains("Final balance: 2100"));
+    assert!(out.contains("Balance at time 2: 1500"));
+    assert!(out.contains("Balance at time 4: 1600"));
+    assert!(out.contains("Deposits: 4 totaling 2550"));
+    assert!(out.contains("Withdrawals: 3 totaling 450"));
+    assert!(out.contains("Balance after undoing last 2 events: 1450"));
+    assert!(out.contains("Peak balance: 2100"));
+    assert!(out.contains("Event sourcing: event log, replay, point-in-time, undo, statistics."));
+}
+
+#[test]
+fn showcase462_register_vm() {
+    let out = run_ore("showcase462.ore");
+    assert!(out.contains("Simple Register VM:"));
+    assert!(out.contains("MUL r4 = r2 * r3 = 20"));
+    assert!(out.contains("Result: 20"));
+    assert!(out.contains("Sum 1..5 = 15"));
+    assert!(out.contains("fib(9) = 34"));
+    assert!(out.contains("Register VM: arithmetic, loops, jumps, fibonacci."));
+}
+
+#[test]
+fn showcase463_constraint_satisfaction() {
+    let out = run_ore("showcase463.ore");
+    assert!(out.contains("Constraint Satisfaction Solver:"));
+    assert!(out.contains("Solution 1: [1, 3, 0, 2]"));
+    assert!(out.contains("Solution 2: [2, 0, 3, 1]"));
+    assert!(out.contains("Total 4-Queens solutions: 2"));
+    assert!(out.contains("Valid magic square!"));
+    assert!(out.contains("All columns sum to 10 - valid latin square!"));
+    assert!(out.contains("[7, 8]"));
+    assert!(out.contains("Total subsets summing to 15: 10"));
+    assert!(out.contains("Constraint satisfaction: n-queens, magic square, latin square, subset sum."));
+}
+
+#[test]
+fn showcase464_mcmc() {
+    let out = run_ore("showcase464.ore");
+    assert!(out.contains("Markov Chain Monte Carlo:"));
+    assert!(out.contains("Pi estimate (x1000): 3118"));
+    assert!(out.contains("Metropolis Sampler"));
+    assert!(out.contains("Random Walk Statistics"));
+    assert!(out.contains("Walk 1:"));
+    assert!(out.contains("E[X^2] for dice (6000 rolls): 14"));
+    assert!(out.contains("MCMC: pi estimation, Metropolis sampler, random walks, expected values."));
+}
+
+#[test]
+fn showcase465_ast_pretty_printer() {
+    let out = run_ore("showcase465.ore");
+    assert!(out.contains("AST Pretty Printer:"));
+    assert!(out.contains("Prefix:  * + 3 4 2"));
+    assert!(out.contains("Postfix: 3 4 + 2 *"));
+    assert!(out.contains("Result: 23"));
+    assert!(out.contains("Result: 49"));
+    assert!(out.contains("Node 8 (div): 15"));
+    assert!(out.contains("Final result: 15"));
+    assert!(out.contains("Reconstructed infix: (((2 + 3) * (7 - 1)) / 2)"));
+    assert!(out.contains("AST pretty printer: trees, evaluation, traversal, serialization."));
+}
+
+#[test]
+fn showcase466_build_system() {
+    let out = run_ore("showcase466.ore");
+    assert!(out.contains("Simple Build System:"));
+    assert!(out.contains("app <- main.o, libapp.a"));
+    assert!(out.contains("Step 1: build main.o"));
+    assert!(out.contains("Step 5: build app"));
+    assert!(out.contains("utils.o: REBUILD (source newer)"));
+    assert!(out.contains("[BUILD] ar rcs libapp.a utils.o math.o"));
+    assert!(out.contains("Built 4 targets, skipped 1"));
+    assert!(out.contains("Level 0: [main.o, utils.o, math.o]"));
+    assert!(out.contains("Build system: dependencies, topo-sort, rebuild check, parallel analysis."));
+}
+
+#[test]
+fn showcase467_othello() {
+    let out = run_ore("showcase467.ore");
+    assert!(out.contains("Othello/Reversi Game:"));
+    assert!(out.contains("Valid moves for Black:"));
+    assert!(out.contains("d3"));
+    assert!(out.contains("Flipped 1 piece(s)"));
+    assert!(out.contains("Score: Black=3, White=3"));
+    assert!(out.contains("Othello: board display, valid moves, flipping, scoring."));
+}
+
+#[test]
+fn showcase468_gc_simulation() {
+    let out = run_ore("showcase468.ore");
+    assert!(out.contains("Garbage Collector Simulation:"));
+    assert!(out.contains("Root set: [1, 7]"));
+    assert!(out.contains("Marked 4 objects"));
+    assert!(out.contains("[3] Map: FREED (256B)"));
+    assert!(out.contains("Freed: 4 objects, 416 bytes"));
+    assert!(out.contains("Live: 4 objects, 288 bytes"));
+    assert!(out.contains("Heap after compaction: 288 bytes used"));
+    assert!(out.contains("Generation 0 (young): 5 objects"));
+    assert!(out.contains("GC simulation: mark-sweep, compaction, generations, statistics."));
+}
+
+#[test]
+fn showcase469_http_parser() {
+    let out = run_ore("showcase469.ore");
+    assert!(out.contains("HTTP Request Parser:"));
+    assert!(out.contains("Method: GET"));
+    assert!(out.contains("Path: /index.html"));
+    assert!(out.contains("Host = example.com"));
+    assert!(out.contains("Method: POST"));
+    assert!(out.contains("name = John"));
+    assert!(out.contains("page = 1"));
+    assert!(out.contains("/ -> home_handler"));
+    assert!(out.contains("/missing -> 404 Not Found"));
+    assert!(out.contains("HTTP parser: request parsing, URL parsing, routing, response building."));
+}
+
+#[test]
+fn showcase470_etl_pipeline() {
+    let out = run_ore("showcase470.ore");
+    assert!(out.contains("Data Pipeline (ETL):"));
+    assert!(out.contains("Extracted 10 records"));
+    assert!(out.contains("Alice: Engineering, $85000, 5yr -> Mid"));
+    assert!(out.contains("Hank: Engineering, $95000, 8yr -> Senior"));
+    assert!(out.contains("Avg salary: $87500"));
+    assert!(out.contains("#1: Hank (score=119, dept=Engineering)"));
+    assert!(out.contains("All records valid!"));
+    assert!(out.contains("Total payroll: $747000"));
+    assert!(out.contains("Junior: 4, Mid: 4, Senior: 2"));
+    assert!(out.contains("ETL pipeline: extract, transform, aggregate, validate, report."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

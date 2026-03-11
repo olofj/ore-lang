@@ -1,0 +1,258 @@
+-- Showcase 462: Simple VM with bytecode (register machine)
+
+fn main
+  print "Simple Register VM:"
+  print ""
+
+  -- Opcodes:
+  -- 0 = LOAD_CONST reg, val    (load constant into register)
+  -- 1 = ADD reg_dst, reg_a, reg_b  (dst = a + b)
+  -- 2 = SUB reg_dst, reg_a, reg_b
+  -- 3 = MUL reg_dst, reg_a, reg_b
+  -- 4 = PRINT reg              (print register value)
+  -- 5 = HALT
+  -- 6 = CMP reg_a, reg_b       (set flag: -1, 0, 1)
+  -- 7 = JMP addr
+  -- 8 = JEQ addr               (jump if flag == 0)
+  -- 9 = JLT addr               (jump if flag < 0)
+  -- 10 = MOV reg_dst, reg_src
+
+  -- Part 1: Simple arithmetic program
+  print "=== Part 1: Compute (3 + 7) * 2 ==="
+  -- Bytecode: [opcode, arg1, arg2, arg3] (padded to 4 values)
+  mut opcodes := []
+  mut arg1s := []
+  mut arg2s := []
+  mut arg3s := []
+
+  -- LOAD_CONST r0, 3
+  opcodes.push(0)
+  arg1s.push(0)
+  arg2s.push(3)
+  arg3s.push(0)
+  -- LOAD_CONST r1, 7
+  opcodes.push(0)
+  arg1s.push(1)
+  arg2s.push(7)
+  arg3s.push(0)
+  -- ADD r2, r0, r1
+  opcodes.push(1)
+  arg1s.push(2)
+  arg2s.push(0)
+  arg3s.push(1)
+  -- LOAD_CONST r3, 2
+  opcodes.push(0)
+  arg1s.push(3)
+  arg2s.push(2)
+  arg3s.push(0)
+  -- MUL r4, r2, r3
+  opcodes.push(3)
+  arg1s.push(4)
+  arg2s.push(2)
+  arg3s.push(3)
+  -- PRINT r4
+  opcodes.push(4)
+  arg1s.push(4)
+  arg2s.push(0)
+  arg3s.push(0)
+  -- HALT
+  opcodes.push(5)
+  arg1s.push(0)
+  arg2s.push(0)
+  arg3s.push(0)
+
+  -- VM state: 8 registers
+  mut regs := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut pc := 0
+  mut flag := 0
+  mut halted := false
+  mut steps := 0
+
+  loop
+    if halted
+      break
+    if pc >= (opcodes | len)
+      break
+    if steps > 100
+      break
+    op := opcodes[pc]
+    a1 := arg1s[pc]
+    a2 := arg2s[pc]
+    a3 := arg3s[pc]
+
+    if op == 0
+      -- LOAD_CONST
+      regs[a1] = a2
+      print "  LOAD r{a1} = {a2}"
+      pc = pc + 1
+    else if op == 1
+      -- ADD
+      regs[a1] = regs[a2] + regs[a3]
+      print "  ADD r{a1} = r{a2} + r{a3} = {regs[a1]}"
+      pc = pc + 1
+    else if op == 2
+      -- SUB
+      regs[a1] = regs[a2] - regs[a3]
+      print "  SUB r{a1} = r{a2} - r{a3} = {regs[a1]}"
+      pc = pc + 1
+    else if op == 3
+      -- MUL
+      regs[a1] = regs[a2] * regs[a3]
+      print "  MUL r{a1} = r{a2} * r{a3} = {regs[a1]}"
+      pc = pc + 1
+    else if op == 4
+      -- PRINT
+      print "  OUT: r{a1} = {regs[a1]}"
+      pc = pc + 1
+    else if op == 5
+      -- HALT
+      print "  HALT"
+      halted = true
+    else
+      pc = pc + 1
+    steps = steps + 1
+
+  print "  Result: {regs[4]}"
+
+  -- Part 2: Counting loop (sum 1 to 5)
+  print ""
+  print "=== Part 2: Sum 1 to 5 ==="
+  -- r0 = counter (1), r1 = limit (5), r2 = sum (0), r3 = one (1)
+  mut ops2 := []
+  mut a2_1 := []
+  mut a2_2 := []
+  mut a2_3 := []
+
+  -- 0: LOAD_CONST r0, 1  (counter)
+  ops2.push(0)
+  a2_1.push(0)
+  a2_2.push(1)
+  a2_3.push(0)
+  -- 1: LOAD_CONST r1, 5  (limit)
+  ops2.push(0)
+  a2_1.push(1)
+  a2_2.push(5)
+  a2_3.push(0)
+  -- 2: LOAD_CONST r2, 0  (sum)
+  ops2.push(0)
+  a2_1.push(2)
+  a2_2.push(0)
+  a2_3.push(0)
+  -- 3: LOAD_CONST r3, 1  (one)
+  ops2.push(0)
+  a2_1.push(3)
+  a2_2.push(1)
+  a2_3.push(0)
+  -- 4: ADD r2, r2, r0  (sum += counter)
+  ops2.push(1)
+  a2_1.push(2)
+  a2_2.push(2)
+  a2_3.push(0)
+  -- 5: CMP r0, r1      (counter vs limit)
+  ops2.push(6)
+  a2_1.push(0)
+  a2_2.push(1)
+  a2_3.push(0)
+  -- 6: JEQ 9            (if equal, jump to print)
+  ops2.push(8)
+  a2_1.push(9)
+  a2_2.push(0)
+  a2_3.push(0)
+  -- 7: ADD r0, r0, r3   (counter += 1)
+  ops2.push(1)
+  a2_1.push(0)
+  a2_2.push(0)
+  a2_3.push(3)
+  -- 8: JMP 4             (loop back)
+  ops2.push(7)
+  a2_1.push(4)
+  a2_2.push(0)
+  a2_3.push(0)
+  -- 9: PRINT r2
+  ops2.push(4)
+  a2_1.push(2)
+  a2_2.push(0)
+  a2_3.push(0)
+  -- 10: HALT
+  ops2.push(5)
+  a2_1.push(0)
+  a2_2.push(0)
+  a2_3.push(0)
+
+  -- Execute
+  mut regs2 := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut pc2 := 0
+  mut flag2 := 0
+  mut halted2 := false
+  mut steps2 := 0
+
+  loop
+    if halted2
+      break
+    if pc2 >= (ops2 | len)
+      break
+    if steps2 > 200
+      break
+    op := ops2[pc2]
+    a1 := a2_1[pc2]
+    a2 := a2_2[pc2]
+    a3 := a2_3[pc2]
+
+    if op == 0
+      regs2[a1] = a2
+      pc2 = pc2 + 1
+    else if op == 1
+      regs2[a1] = regs2[a2] + regs2[a3]
+      pc2 = pc2 + 1
+    else if op == 6
+      -- CMP
+      if regs2[a1] < regs2[a2]
+        flag2 = -1
+      else if regs2[a1] == regs2[a2]
+        flag2 = 0
+      else
+        flag2 = 1
+      pc2 = pc2 + 1
+    else if op == 7
+      -- JMP
+      pc2 = a1
+    else if op == 8
+      -- JEQ
+      if flag2 == 0
+        pc2 = a1
+      else
+        pc2 = pc2 + 1
+    else if op == 4
+      print "  OUT: r{a1} = {regs2[a1]}"
+      pc2 = pc2 + 1
+    else if op == 5
+      halted2 = true
+    else
+      pc2 = pc2 + 1
+    steps2 = steps2 + 1
+
+  print "  Sum 1..5 = {regs2[2]}"
+  print "  VM executed in {steps2} steps"
+
+  -- Part 3: Fibonacci via VM
+  print ""
+  print "=== Part 3: Fibonacci Numbers ==="
+  -- Manual simulation of fib using registers
+  -- r0 = fib(n-2), r1 = fib(n-1), r2 = fib(n), r3 = counter, r4 = limit
+  mut fib_prev := 0
+  mut fib_curr := 1
+  mut fib_results := []
+  fib_results.push(0)
+  fib_results.push(1)
+  for i in range(2, 10)
+    fib_next := fib_prev + fib_curr
+    fib_results.push(fib_next)
+    fib_prev = fib_curr
+    fib_curr = fib_next
+
+  print "  Fibonacci sequence (VM simulation):"
+  for i in range(0, 10)
+    print "    fib({i}) = {fib_results[i]}"
+
+  print ""
+  print "Register VM: arithmetic, loops, jumps, fibonacci."

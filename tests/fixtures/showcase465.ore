@@ -1,0 +1,149 @@
+-- Showcase 465: Abstract syntax tree pretty printer
+
+fn main
+  print "AST Pretty Printer:"
+  print ""
+
+  -- Represent AST nodes using parallel arrays
+  -- node_type: "num", "var", "binop", "unop", "call", "if", "assign", "block"
+  -- node_val: value for num/var nodes, operator for binop/unop
+  -- node_left, node_right: child indices (-1 if none)
+
+  -- Part 1: Print simple arithmetic expression: (3 + 4) * 2
+  print "=== Part 1: Expression (3 + 4) * 2 ==="
+  print "  Tree:"
+  print "    Mul"
+  print "    +-- Add"
+  print "    |   +-- Num(3)"
+  print "    |   +-- Num(4)"
+  print "    +-- Num(2)"
+  print ""
+  print "  Infix:   (3 + 4) * 2"
+  print "  Prefix:  * + 3 4 2"
+  print "  Postfix: 3 4 + 2 *"
+
+  -- Part 2: Build and evaluate expression trees
+  print ""
+  print "=== Part 2: Expression Evaluation ==="
+  -- Encode expressions as strings in prefix notation
+  -- We'll evaluate them manually
+
+  -- Expression: + 3 * 4 5 = 3 + (4 * 5) = 23
+  print "  Expression: 3 + 4 * 5"
+  print "  AST (respecting precedence):"
+  print "    Add"
+  print "    +-- Num(3)"
+  print "    +-- Mul"
+  print "        +-- Num(4)"
+  print "        +-- Num(5)"
+  result1 := 3 + 4 * 5
+  print "  Result: {result1}"
+
+  -- Expression: (10 - 3) * (2 + 5) = 49
+  print ""
+  print "  Expression: (10 - 3) * (2 + 5)"
+  print "  AST:"
+  print "    Mul"
+  print "    +-- Sub"
+  print "    |   +-- Num(10)"
+  print "    |   +-- Num(3)"
+  print "    +-- Add"
+  print "        +-- Num(2)"
+  print "        +-- Num(5)"
+  result2 := (10 - 3) * (2 + 5)
+  print "  Result: {result2}"
+
+  -- Part 3: Print a program AST
+  print ""
+  print "=== Part 3: Program AST ==="
+  print "  Source code:"
+  print "    x := 10"
+  print "    y := x + 5"
+  print "    if y > 12"
+  print "      print y * 2"
+  print ""
+  print "  AST:"
+  print "    Program"
+  print "    +-- Assign"
+  print "    |   +-- Var(x)"
+  print "    |   +-- Num(10)"
+  print "    +-- Assign"
+  print "    |   +-- Var(y)"
+  print "    |   +-- Add"
+  print "    |       +-- Var(x)"
+  print "    |       +-- Num(5)"
+  print "    +-- If"
+  print "        +-- GT"
+  print "        |   +-- Var(y)"
+  print "        |   +-- Num(12)"
+  print "        +-- Print"
+  print "            +-- Mul"
+  print "                +-- Var(y)"
+  print "                +-- Num(2)"
+
+  -- Part 4: Build expression tree using parallel arrays and evaluate
+  print ""
+  print "=== Part 4: Tree Traversal ==="
+  -- Build tree for: ((2 + 3) * (7 - 1)) / 2
+  -- Node indices:
+  -- 0: Num(2), 1: Num(3), 2: Add(0,1)
+  -- 3: Num(7), 4: Num(1), 5: Sub(3,4)
+  -- 6: Mul(2,5), 7: Num(2), 8: Div(6,7)
+
+  node_types := ["num", "num", "add", "num", "num", "sub", "mul", "num", "div"]
+  node_vals := [2, 3, 0, 7, 1, 0, 0, 2, 0]
+  node_lefts := [-1, -1, 0, -1, -1, 3, 2, -1, 6]
+  node_rights := [-1, -1, 1, -1, -1, 4, 5, -1, 7]
+
+  -- Evaluate bottom-up
+  mut results := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 9)
+    ntype := node_types[i]
+    if ntype == "num"
+      results[i] = node_vals[i]
+    else if ntype == "add"
+      results[i] = results[node_lefts[i]] + results[node_rights[i]]
+    else if ntype == "sub"
+      results[i] = results[node_lefts[i]] - results[node_rights[i]]
+    else if ntype == "mul"
+      results[i] = results[node_lefts[i]] * results[node_rights[i]]
+    else if ntype == "div"
+      results[i] = results[node_lefts[i]] / results[node_rights[i]]
+
+  print "  Expression: ((2 + 3) * (7 - 1)) / 2"
+  print "  Node evaluations:"
+  for i in range(0, 9)
+    print "    Node {i} ({node_types[i]}): {results[i]}"
+  print "  Final result: {results[8]}"
+
+  -- Part 5: Serialize and deserialize expression
+  print ""
+  print "=== Part 5: S-Expression Format ==="
+  print "  Expression: ((2 + 3) * (7 - 1)) / 2"
+  print "  S-expression: (div (mul (add 2 3) (sub 7 1)) 2)"
+  print "  JSON-like: [div, [mul, [add, 2, 3], [sub, 7, 1]], 2]"
+
+  -- Generate infix from tree
+  -- For each node, build string
+  mut exprs := ["", "", "", "", "", "", "", "", ""]
+  for i in range(0, 9)
+    ntype := node_types[i]
+    if ntype == "num"
+      exprs[i] = str(node_vals[i])
+    else
+      li := node_lefts[i]
+      ri := node_rights[i]
+      left_s := exprs[li]
+      right_s := exprs[ri]
+      if ntype == "add"
+        exprs[i] = "(" + left_s + " + " + right_s + ")"
+      else if ntype == "sub"
+        exprs[i] = "(" + left_s + " - " + right_s + ")"
+      else if ntype == "mul"
+        exprs[i] = "(" + left_s + " * " + right_s + ")"
+      else if ntype == "div"
+        exprs[i] = "(" + left_s + " / " + right_s + ")"
+  print "  Reconstructed infix: {exprs[8]}"
+
+  print ""
+  print "AST pretty printer: trees, evaluation, traversal, serialization."

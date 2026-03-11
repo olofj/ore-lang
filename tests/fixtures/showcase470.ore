@@ -1,0 +1,171 @@
+-- Showcase 470: Data pipeline with transformations (ETL)
+
+fn main
+  print "Data Pipeline (ETL):"
+  print ""
+
+  -- Part 1: Extract - raw data records
+  print "=== Part 1: Extract ==="
+  -- Employee records as "name:dept:salary:years" strings
+  mut records := []
+  records.push("Alice:Engineering:85000:5")
+  records.push("Bob:Marketing:62000:3")
+  records.push("Carol:Engineering:92000:7")
+  records.push("Dave:Marketing:58000:2")
+  records.push("Eve:Engineering:78000:4")
+  records.push("Frank:Sales:71000:6")
+  records.push("Grace:Sales:65000:1")
+  records.push("Hank:Engineering:95000:8")
+  records.push("Iris:Marketing:68000:5")
+  records.push("Jack:Sales:73000:3")
+
+  print "  Extracted {records | len} records:"
+  for i in range(0, records | len)
+    print "    {records[i]}"
+
+  -- Part 2: Transform - parse and enrich data
+  print ""
+  print "=== Part 2: Transform ==="
+  mut names := []
+  mut depts := []
+  mut salaries := []
+  mut years := []
+  mut levels := []
+
+  for i in range(0, records | len)
+    parts := records[i].split(":")
+    names.push(parts[0])
+    depts.push(parts[1])
+    salaries.push(parts[2].parse_int())
+    years.push(parts[3].parse_int())
+    -- Derive seniority level
+    y := parts[3].parse_int()
+    if y >= 7
+      levels.push("Senior")
+    else if y >= 4
+      levels.push("Mid")
+    else
+      levels.push("Junior")
+
+  print "  Enriched with seniority levels:"
+  for i in range(0, names | len)
+    print "    {names[i]}: {depts[i]}, ${salaries[i]}, {years[i]}yr -> {levels[i]}"
+
+  -- Part 3: Filter and aggregate by department
+  print ""
+  print "=== Part 3: Aggregate by Department ==="
+  dept_names := ["Engineering", "Marketing", "Sales"]
+  for d in range(0, 3)
+    dept := dept_names[d]
+    mut count := 0
+    mut total_sal := 0
+    mut total_yrs := 0
+    mut max_sal := 0
+    mut min_sal := 999999
+    for i in range(0, names | len)
+      if depts[i] == dept
+        count = count + 1
+        total_sal = total_sal + salaries[i]
+        total_yrs = total_yrs + years[i]
+        if salaries[i] > max_sal
+          max_sal = salaries[i]
+        if salaries[i] < min_sal
+          min_sal = salaries[i]
+    avg_sal := total_sal / count
+    avg_yrs := total_yrs / count
+    print "  {dept}:"
+    print "    Count: {count}"
+    print "    Avg salary: ${avg_sal}"
+    print "    Salary range: ${min_sal} - ${max_sal}"
+    print "    Avg tenure: {avg_yrs} years"
+
+  -- Part 4: Salary band analysis
+  print ""
+  print "=== Part 4: Salary Bands ==="
+  bands := ["$50k-60k", "$60k-70k", "$70k-80k", "$80k-90k", "$90k-100k"]
+  band_mins := [50000, 60000, 70000, 80000, 90000]
+  band_maxs := [60000, 70000, 80000, 90000, 100000]
+
+  for b in range(0, 5)
+    mut count := 0
+    mut in_band := []
+    for i in range(0, names | len)
+      if salaries[i] >= band_mins[b] and salaries[i] < band_maxs[b]
+        count = count + 1
+        in_band.push(names[i])
+    if count > 0
+      joined := in_band.join(", ")
+      mut bar := ""
+      for j in range(0, count)
+        bar = bar + "##"
+      print "  {bands[b]}: {bar} ({count}) [{joined}]"
+    else
+      print "  {bands[b]}:  (0)"
+
+  -- Part 5: Top performers pipeline
+  print ""
+  print "=== Part 5: Top Performers ==="
+  -- Score = salary/1000 + years*3
+  mut scores := []
+  for i in range(0, names | len)
+    score := salaries[i] / 1000 + years[i] * 3
+    scores.push(score)
+
+  -- Find top 3 by score (simple selection)
+  mut used := [false, false, false, false, false, false, false, false, false, false]
+  for rank in range(0, 3)
+    mut best_idx := -1
+    mut best_score := -1
+    for i in range(0, names | len)
+      if not used[i] and scores[i] > best_score
+        best_score = scores[i]
+        best_idx = i
+    if best_idx >= 0
+      used[best_idx] = true
+      print "  #{rank + 1}: {names[best_idx]} (score={scores[best_idx]}, dept={depts[best_idx]})"
+
+  -- Part 6: Data validation
+  print ""
+  print "=== Part 6: Data Validation ==="
+  mut errors := 0
+  mut warnings := 0
+  for i in range(0, names | len)
+    if salaries[i] < 50000
+      print "  ERROR: {names[i]} salary below minimum (${salaries[i]})"
+      errors = errors + 1
+    if salaries[i] > 100000
+      print "  WARNING: {names[i]} salary above cap (${salaries[i]})"
+      warnings = warnings + 1
+    if years[i] > 10
+      print "  WARNING: {names[i]} tenure exceeds max ({years[i]}yr)"
+      warnings = warnings + 1
+  if errors == 0 and warnings == 0
+    print "  All records valid!"
+  else
+    print "  Errors: {errors}, Warnings: {warnings}"
+
+  -- Part 7: Summary report
+  print ""
+  print "=== Part 7: Pipeline Summary ==="
+  mut grand_total := 0
+  for i in range(0, names | len)
+    grand_total = grand_total + salaries[i]
+  print "  Total records processed: {names | len}"
+  print "  Total payroll: ${grand_total}"
+  print "  Average salary: ${grand_total / (names | len)}"
+
+  -- Count by level
+  mut junior_count := 0
+  mut mid_count := 0
+  mut senior_count := 0
+  for i in range(0, names | len)
+    if levels[i] == "Junior"
+      junior_count = junior_count + 1
+    else if levels[i] == "Mid"
+      mid_count = mid_count + 1
+    else
+      senior_count = senior_count + 1
+  print "  Junior: {junior_count}, Mid: {mid_count}, Senior: {senior_count}"
+
+  print ""
+  print "ETL pipeline: extract, transform, aggregate, validate, report."

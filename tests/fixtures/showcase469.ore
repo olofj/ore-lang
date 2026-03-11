@@ -1,0 +1,156 @@
+-- Showcase 469: HTTP request parser (parse method, path, headers from string)
+
+fn main
+  print "HTTP Request Parser:"
+  print ""
+
+  -- Part 1: Parse a simple GET request
+  print "=== Part 1: Parse GET Request ==="
+  -- Simulate HTTP request as lines
+  mut req1_lines := []
+  req1_lines.push("GET /index.html HTTP/1.1")
+  req1_lines.push("Host: example.com")
+  req1_lines.push("User-Agent: OreBot/1.0")
+  req1_lines.push("Accept: text/html")
+  req1_lines.push("Connection: keep-alive")
+
+  print "  Raw request:"
+  for i in range(0, req1_lines | len)
+    print "    {req1_lines[i]}"
+
+  -- Parse request line
+  request_line := req1_lines[0]
+  parts := request_line.split(" ")
+  method := parts[0]
+  path := parts[1]
+  version := parts[2]
+  print ""
+  print "  Parsed:"
+  print "    Method: {method}"
+  print "    Path: {path}"
+  print "    Version: {version}"
+
+  -- Parse headers
+  print "    Headers:"
+  mut header_names := []
+  mut header_vals := []
+  for i in range(1, req1_lines | len)
+    line := req1_lines[i]
+    colon_idx := line.index_of(":")
+    if colon_idx >= 0
+      name := line.substr(0, colon_idx)
+      val := line.substr(colon_idx + 2, line | len)
+      header_names.push(name)
+      header_vals.push(val)
+      print "      {name} = {val}"
+
+  -- Part 2: Parse POST request with body
+  print ""
+  print "=== Part 2: Parse POST Request ==="
+  mut req2_lines := []
+  req2_lines.push("POST /api/users HTTP/1.1")
+  req2_lines.push("Host: api.example.com")
+  req2_lines.push("Content-Type: application/json")
+  req2_lines.push("Content-Length: 42")
+  req2_lines.push("Authorization: Bearer token123")
+  req2_body := "name=John&email=john@example.com&age=30"
+
+  req2_request := req2_lines[0]
+  req2_parts := req2_request.split(" ")
+  print "  Method: {req2_parts[0]}"
+  print "  Path: {req2_parts[1]}"
+  print "  Headers:"
+  for i in range(1, req2_lines | len)
+    line := req2_lines[i]
+    colon_idx := line.index_of(":")
+    if colon_idx >= 0
+      name := line.substr(0, colon_idx)
+      val := line.substr(colon_idx + 2, line | len)
+      print "    {name}: {val}"
+  print "  Body: {req2_body}"
+
+  -- Parse form body
+  print "  Parsed body parameters:"
+  body_parts := req2_body.split("&")
+  for i in range(0, body_parts | len)
+    param := body_parts[i]
+    eq_idx := param.index_of("=")
+    if eq_idx >= 0
+      key := param.substr(0, eq_idx)
+      val := param.substr(eq_idx + 1, param | len)
+      print "    {key} = {val}"
+
+  -- Part 3: URL parsing
+  print ""
+  print "=== Part 3: URL Parsing ==="
+  urls := ["/users/123/profile", "/api/v2/items?page=1&limit=10", "/search?q=hello+world"]
+  for i in range(0, urls | len)
+    url := urls[i]
+    print "  URL: {url}"
+    -- Split path and query string
+    q_idx := url.index_of("?")
+    if q_idx >= 0
+      url_path := url.substr(0, q_idx)
+      query := url.substr(q_idx + 1, url | len)
+      print "    Path: {url_path}"
+      print "    Query: {query}"
+      -- Parse query params
+      qparts := query.split("&")
+      for j in range(0, qparts | len)
+        p := qparts[j]
+        eq := p.index_of("=")
+        if eq >= 0
+          k := p.substr(0, eq)
+          v := p.substr(eq + 1, p | len)
+          print "      {k} = {v}"
+    else
+      print "    Path: {url}"
+      print "    Query: (none)"
+      -- Parse path segments
+      segments := url.split("/")
+      mut seg_count := 0
+      for j in range(0, segments | len)
+        seg := segments[j]
+        if seg | len > 0
+          print "      Segment: {seg}"
+          seg_count = seg_count + 1
+
+  -- Part 4: HTTP status codes
+  print ""
+  print "=== Part 4: Response Builder ==="
+  status_codes := [200, 201, 301, 404, 500]
+  status_texts := ["OK", "Created", "Moved Permanently", "Not Found", "Internal Server Error"]
+  for i in range(0, 5)
+    code := status_codes[i]
+    text := status_texts[i]
+    print "  HTTP/1.1 {code} {text}"
+
+  -- Part 5: Build a response
+  print ""
+  print "=== Part 5: Full Response ==="
+  print "  HTTP/1.1 200 OK"
+  print "  Content-Type: text/html"
+  print "  Content-Length: 45"
+  print "  Server: OreHTTP/1.0"
+  print ""
+  print "  <html><body><h1>Hello!</h1></body></html>"
+
+  -- Part 6: Route matching
+  print ""
+  print "=== Part 6: Route Matching ==="
+  routes := ["/", "/about", "/users", "/api/health"]
+  handlers := ["home_handler", "about_handler", "users_handler", "health_handler"]
+  test_paths := ["/", "/about", "/users", "/missing", "/api/health"]
+
+  for i in range(0, 5)
+    test_path := test_paths[i]
+    mut matched := false
+    for j in range(0, 4)
+      if test_path == routes[j]
+        print "  {test_path} -> {handlers[j]}"
+        matched = true
+    if not matched
+      print "  {test_path} -> 404 Not Found"
+
+  print ""
+  print "HTTP parser: request parsing, URL parsing, routing, response building."

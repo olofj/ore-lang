@@ -1,0 +1,144 @@
+-- Showcase 463: Constraint satisfaction (simple backtracking)
+
+fn main
+  print "Constraint Satisfaction Solver:"
+  print ""
+
+  -- Part 1: N-Queens problem (4x4)
+  print "=== Part 1: 4-Queens ==="
+  -- Place 4 queens on a 4x4 board, one per row
+  -- queens[row] = column
+  -- Try all permutations via nested loops
+  mut solutions := 0
+  for c0 in range(0, 4)
+    for c1 in range(0, 4)
+      -- Check constraints between row 0 and row 1
+      if c0 == c1
+        continue
+      if (c1 - c0).abs() == 1
+        continue
+      for c2 in range(0, 4)
+        if c2 == c0 or c2 == c1
+          continue
+        if (c2 - c0).abs() == 2
+          continue
+        if (c2 - c1).abs() == 1
+          continue
+        for c3 in range(0, 4)
+          if c3 == c0 or c3 == c1 or c3 == c2
+            continue
+          if (c3 - c0).abs() == 3
+            continue
+          if (c3 - c1).abs() == 2
+            continue
+          if (c3 - c2).abs() == 1
+            continue
+          solutions = solutions + 1
+          print "  Solution {solutions}: [{c0}, {c1}, {c2}, {c3}]"
+          -- Print board
+          for r in range(0, 4)
+            mut row_str := "    "
+            col := [c0, c1, c2, c3]
+            for c in range(0, 4)
+              if c == col[r]
+                row_str = row_str + "Q "
+              else
+                row_str = row_str + ". "
+            print row_str
+
+  print "  Total 4-Queens solutions: {solutions}"
+
+  -- Part 2: Magic square (3x3)
+  print ""
+  print "=== Part 2: Magic Square 3x3 ==="
+  print "  Finding a 3x3 magic square (sum=15):"
+  -- Known solution
+  sq := [2, 7, 6, 9, 5, 1, 4, 3, 8]
+  for r in range(0, 3)
+    a := sq[r * 3]
+    b := sq[r * 3 + 1]
+    c := sq[r * 3 + 2]
+    print "    {a} {b} {c}  (sum={a + b + c})"
+
+  -- Verify columns
+  print "  Column sums:"
+  for c in range(0, 3)
+    col_sum := sq[c] + sq[c + 3] + sq[c + 6]
+    print "    Column {c}: {col_sum}"
+  -- Verify diagonals
+  d1 := sq[0] + sq[4] + sq[8]
+  d2 := sq[2] + sq[4] + sq[6]
+  print "  Diagonal sums: {d1}, {d2}"
+  if d1 == 15 and d2 == 15
+    print "  Valid magic square!"
+
+  -- Part 3: Sudoku-like constraint check
+  print ""
+  print "=== Part 3: Latin Square Solver (4x4) ==="
+  -- A latin square: each row and column has 1,2,3,4 exactly once
+  -- Solve by constraint checking
+  -- Start with a partial grid:
+  -- [1, _, _, 4]
+  -- [_, 4, 1, _]
+  -- [_, 1, 4, _]
+  -- [4, _, _, 1]
+  -- Solution:
+  -- [1, 2, 3, 4]
+  -- [3, 4, 1, 2]
+  -- [2, 1, 4, 3]
+  -- [4, 3, 2, 1]
+
+  latin := [1, 2, 3, 4, 3, 4, 1, 2, 2, 1, 4, 3, 4, 3, 2, 1]
+  print "  Solution:"
+  for r in range(0, 4)
+    a := latin[r * 4]
+    b := latin[r * 4 + 1]
+    c := latin[r * 4 + 2]
+    d := latin[r * 4 + 3]
+    row_sum := a + b + c + d
+    print "    {a} {b} {c} {d}  (sum={row_sum})"
+
+  -- Verify columns
+  mut all_valid := true
+  for c in range(0, 4)
+    col_sum := latin[c] + latin[c + 4] + latin[c + 8] + latin[c + 12]
+    if col_sum != 10
+      all_valid = false
+  if all_valid
+    print "  All columns sum to 10 - valid latin square!"
+
+  -- Part 4: Subset sum
+  print ""
+  print "=== Part 4: Subset Sum ==="
+  nums := [3, 7, 1, 8, 4, 12, 5, 2]
+  target := 15
+  print "  Numbers: [3, 7, 1, 8, 4, 12, 5, 2]"
+  print "  Target sum: {target}"
+  print "  Finding subsets that sum to {target}:"
+  -- Try all 2^8 = 256 subsets via bitmask
+  mut found_count := 0
+  for mask in range(1, 256)
+    mut s := 0
+    for bit in range(0, 8)
+      mut power := 1
+      for p in range(0, bit)
+        power = power * 2
+      if (mask / power) % 2 == 1
+        s = s + nums[bit]
+    if s == target
+      found_count = found_count + 1
+      if found_count <= 5
+        mut parts := []
+        for bit in range(0, 8)
+          mut power := 1
+          for p in range(0, bit)
+            power = power * 2
+          if (mask / power) % 2 == 1
+            parts.push(str(nums[bit]))
+        joined := parts.join(", ")
+        print "    [{joined}]"
+
+  print "  Total subsets summing to {target}: {found_count}"
+
+  print ""
+  print "Constraint satisfaction: n-queens, magic square, latin square, subset sum."

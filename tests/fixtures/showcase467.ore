@@ -1,0 +1,224 @@
+-- Showcase 467: Othello/Reversi game logic
+
+fn main
+  print "Othello/Reversi Game:"
+  print ""
+
+  -- Board: 8x8, 0=empty, 1=black, 2=white
+  -- Stored as flat list of 64 elements
+  mut board := []
+  for i in range(0, 64)
+    board.push(0)
+
+  -- Initial position: center 4 pieces
+  -- d4=white, e4=black, d5=black, e5=white
+  board[3 * 8 + 3] = 2  -- d4 white
+  board[3 * 8 + 4] = 1  -- e4 black
+  board[4 * 8 + 3] = 1  -- d5 black
+  board[4 * 8 + 4] = 2  -- e5 white
+
+  -- Part 1: Display initial board
+  print "=== Part 1: Initial Board ==="
+  col_labels := "  a b c d e f g h"
+  print col_labels
+  for r in range(0, 8)
+    mut row_str := str(r + 1) + " "
+    for c in range(0, 8)
+      val := board[r * 8 + c]
+      if val == 0
+        row_str = row_str + ". "
+      else if val == 1
+        row_str = row_str + "B "
+      else
+        row_str = row_str + "W "
+    print row_str
+
+  -- Part 2: Check valid moves for black
+  print ""
+  print "=== Part 2: Valid Moves for Black ==="
+  -- Directions: 8 directions as (dr, dc) pairs
+  drs := [-1, -1, -1, 0, 0, 1, 1, 1]
+  dcs := [-1, 0, 1, -1, 1, -1, 0, 1]
+
+  -- For each empty cell, check if placing black would flip any white pieces
+  mut valid_moves := []
+  mut valid_rows := []
+  mut valid_cols := []
+  player := 1
+  opponent := 2
+
+  for r in range(0, 8)
+    for c in range(0, 8)
+      if board[r * 8 + c] != 0
+        continue
+      mut is_valid := false
+      -- Check all 8 directions
+      for d in range(0, 8)
+        dr := drs[d]
+        dc := dcs[d]
+        mut nr := r + dr
+        mut nc := c + dc
+        mut found_opponent := false
+        mut steps := 0
+        loop
+          if nr < 0 or nr > 7 or nc < 0 or nc > 7
+            break
+          if steps > 7
+            break
+          cell := board[nr * 8 + nc]
+          if cell == opponent
+            found_opponent = true
+          else if cell == player and found_opponent
+            is_valid = true
+            break
+          else
+            break
+          nr = nr + dr
+          nc = nc + dc
+          steps = steps + 1
+      if is_valid
+        col_name := "abcdefgh"
+        letter := col_name.char_at(c)
+        valid_moves.push(letter + str(r + 1))
+        valid_rows.push(r)
+        valid_cols.push(c)
+
+  print "  Valid moves for Black:"
+  for i in range(0, valid_moves | len)
+    print "    {valid_moves[i]}"
+
+  -- Part 3: Make a move and flip pieces
+  print ""
+  print "=== Part 3: Black plays d3 ==="
+  -- Play at d3 (row=2, col=3)
+  move_r := 2
+  move_c := 3
+  board[move_r * 8 + move_c] = player
+
+  -- Flip opponent pieces
+  mut total_flipped := 0
+  for d in range(0, 8)
+    dr := drs[d]
+    dc := dcs[d]
+    mut nr := move_r + dr
+    mut nc := move_c + dc
+    mut to_flip := []
+    mut steps := 0
+    loop
+      if nr < 0 or nr > 7 or nc < 0 or nc > 7
+        break
+      if steps > 7
+        break
+      cell := board[nr * 8 + nc]
+      if cell == opponent
+        to_flip.push(nr * 8 + nc)
+      else if cell == player
+        -- Flip all collected pieces
+        for f in range(0, to_flip | len)
+          idx := to_flip[f]
+          board[idx] = player
+          total_flipped = total_flipped + 1
+        break
+      else
+        break
+      nr = nr + dr
+      nc = nc + dc
+      steps = steps + 1
+
+  print "  Flipped {total_flipped} piece(s)"
+  print ""
+  print col_labels
+  for r in range(0, 8)
+    mut row_str := str(r + 1) + " "
+    for c in range(0, 8)
+      val := board[r * 8 + c]
+      if val == 0
+        row_str = row_str + ". "
+      else if val == 1
+        row_str = row_str + "B "
+      else
+        row_str = row_str + "W "
+    print row_str
+
+  -- Part 4: Count pieces
+  print ""
+  print "=== Part 4: Score ==="
+  mut black_count := 0
+  mut white_count := 0
+  mut empty_count := 0
+  for i in range(0, 64)
+    if board[i] == 1
+      black_count = black_count + 1
+    else if board[i] == 2
+      white_count = white_count + 1
+    else
+      empty_count = empty_count + 1
+  print "  Black: {black_count}"
+  print "  White: {white_count}"
+  print "  Empty: {empty_count}"
+
+  -- Part 5: Play a few more moves
+  print ""
+  print "=== Part 5: White plays c5 ==="
+  -- White plays c5 (row=4, col=2)
+  wr := 4
+  wc := 2
+  board[wr * 8 + wc] = 2
+  -- Flip: d5 (4,3) is black, e5 is not - check direction right
+  -- Actually check properly
+  mut w_flipped := 0
+  for d in range(0, 8)
+    dr := drs[d]
+    dc := dcs[d]
+    mut nr := wr + dr
+    mut nc := wc + dc
+    mut to_flip := []
+    mut steps := 0
+    loop
+      if nr < 0 or nr > 7 or nc < 0 or nc > 7
+        break
+      if steps > 7
+        break
+      cell := board[nr * 8 + nc]
+      if cell == 1
+        to_flip.push(nr * 8 + nc)
+      else if cell == 2
+        for f in range(0, to_flip | len)
+          idx := to_flip[f]
+          board[idx] = 2
+          w_flipped = w_flipped + 1
+        break
+      else
+        break
+      nr = nr + dr
+      nc = nc + dc
+      steps = steps + 1
+
+  print "  Flipped {w_flipped} piece(s)"
+  print ""
+  print col_labels
+  for r in range(0, 8)
+    mut row_str := str(r + 1) + " "
+    for c in range(0, 8)
+      val := board[r * 8 + c]
+      if val == 0
+        row_str = row_str + ". "
+      else if val == 1
+        row_str = row_str + "B "
+      else
+        row_str = row_str + "W "
+    print row_str
+
+  -- Final count
+  mut b2 := 0
+  mut w2 := 0
+  for i in range(0, 64)
+    if board[i] == 1
+      b2 = b2 + 1
+    else if board[i] == 2
+      w2 = w2 + 1
+  print ""
+  print "  Score: Black={b2}, White={w2}"
+
+  print ""
+  print "Othello: board display, valid moves, flipping, scoring."

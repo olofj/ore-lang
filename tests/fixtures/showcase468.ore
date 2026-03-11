@@ -1,0 +1,147 @@
+-- Showcase 468: Simple garbage collector simulation
+
+fn main
+  print "Garbage Collector Simulation:"
+  print ""
+
+  -- Simulating a mark-and-sweep GC
+  -- Heap: objects with id, size, references to other objects
+  -- Using parallel arrays
+
+  -- Part 1: Setup heap
+  print "=== Part 1: Heap State ==="
+  obj_ids := [0, 1, 2, 3, 4, 5, 6, 7]
+  obj_sizes := [64, 128, 32, 256, 16, 48, 96, 64]
+  obj_names := ["String", "List", "Int", "Map", "Bool", "String", "Array", "Closure"]
+  -- References: each object can reference up to 2 others (-1 = none)
+  ref_a := [-1, 0, -1, 1, -1, -1, 3, 2]
+  ref_b := [-1, 2, -1, 5, -1, -1, -1, -1]
+
+  mut total_size := 0
+  for i in range(0, 8)
+    total_size = total_size + obj_sizes[i]
+    ra := ref_a[i]
+    rb := ref_b[i]
+    if ra == -1 and rb == -1
+      print "  [{i}] {obj_names[i]} ({obj_sizes[i]}B) -> (none)"
+    else if rb == -1
+      print "  [{i}] {obj_names[i]} ({obj_sizes[i]}B) -> [{ra}]"
+    else
+      print "  [{i}] {obj_names[i]} ({obj_sizes[i]}B) -> [{ra}, {rb}]"
+  print "  Total heap: {total_size} bytes"
+
+  -- Part 2: Mark phase - start from roots
+  print ""
+  print "=== Part 2: Mark Phase ==="
+  -- Root set: objects 1 and 7 (directly referenced by stack)
+  roots := [1, 7]
+  print "  Root set: [1, 7]"
+
+  mut marked := [false, false, false, false, false, false, false, false]
+  -- BFS marking using a work queue
+  mut queue := []
+  for i in range(0, 2)
+    root := roots[i]
+    queue.push(root)
+    marked[root] = true
+    print "  Mark root: [{root}] {obj_names[root]}"
+
+  mut qi := 0
+  mut mark_steps := 0
+  loop
+    if qi >= (queue | len)
+      break
+    if mark_steps > 50
+      break
+    curr := queue[qi]
+    qi = qi + 1
+    -- Follow references
+    ra := ref_a[curr]
+    rb := ref_b[curr]
+    if ra >= 0 and not marked[ra]
+      marked[ra] = true
+      queue.push(ra)
+      print "  Mark [{ra}] {obj_names[ra]} (reached from [{curr}])"
+    if rb >= 0 and not marked[rb]
+      marked[rb] = true
+      queue.push(rb)
+      print "  Mark [{rb}] {obj_names[rb]} (reached from [{curr}])"
+    mark_steps = mark_steps + 1
+
+  mut marked_count := 0
+  for i in range(0, 8)
+    if marked[i]
+      marked_count = marked_count + 1
+  print "  Marked {marked_count} objects"
+
+  -- Part 3: Sweep phase
+  print ""
+  print "=== Part 3: Sweep Phase ==="
+  mut freed_size := 0
+  mut freed_count := 0
+  mut live_size := 0
+  for i in range(0, 8)
+    if marked[i]
+      print "  [{i}] {obj_names[i]}: LIVE"
+      live_size = live_size + obj_sizes[i]
+    else
+      print "  [{i}] {obj_names[i]}: FREED ({obj_sizes[i]}B)"
+      freed_size = freed_size + obj_sizes[i]
+      freed_count = freed_count + 1
+  print "  Freed: {freed_count} objects, {freed_size} bytes"
+  print "  Live: {marked_count} objects, {live_size} bytes"
+
+  -- Part 4: Compaction simulation
+  print ""
+  print "=== Part 4: Compaction ==="
+  -- Move live objects to start of heap
+  mut new_addr := 0
+  mut old_addrs := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut new_addrs := [0, 0, 0, 0, 0, 0, 0, 0]
+  -- Calculate old addresses (consecutive)
+  mut addr := 0
+  for i in range(0, 8)
+    old_addrs[i] = addr
+    addr = addr + obj_sizes[i]
+
+  -- Compact live objects
+  print "  Relocations:"
+  mut compact_addr := 0
+  for i in range(0, 8)
+    if marked[i]
+      new_addrs[i] = compact_addr
+      if old_addrs[i] != compact_addr
+        print "    [{i}] {obj_names[i]}: 0x{old_addrs[i]} -> 0x{compact_addr}"
+      else
+        print "    [{i}] {obj_names[i]}: 0x{old_addrs[i]} (no move)"
+      compact_addr = compact_addr + obj_sizes[i]
+
+  print "  Heap after compaction: {compact_addr} bytes used"
+  print "  Free space: {total_size - compact_addr} bytes"
+
+  -- Part 5: GC statistics
+  print ""
+  print "=== Part 5: GC Statistics ==="
+  pct_freed := freed_size * 100 / total_size
+  pct_live := live_size * 100 / total_size
+  print "  Heap utilization before GC: 100%"
+  print "  Heap utilization after GC: {pct_live}%"
+  print "  Memory reclaimed: {pct_freed}%"
+  print "  Fragmentation eliminated: yes (after compaction)"
+
+  -- Part 6: Generation-based heuristic
+  print ""
+  print "=== Part 6: Generational Info ==="
+  gen := [0, 1, 0, 2, 0, 0, 1, 0]
+  gen_names := ["young", "middle", "old"]
+  for g in range(0, 3)
+    mut count := 0
+    mut size := 0
+    for i in range(0, 8)
+      if gen[i] == g
+        count = count + 1
+        size = size + obj_sizes[i]
+    print "  Generation {g} ({gen_names[g]}): {count} objects, {size} bytes"
+
+  print ""
+  print "GC simulation: mark-sweep, compaction, generations, statistics."

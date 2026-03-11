@@ -1,0 +1,123 @@
+-- Showcase 461: Event sourcing pattern (event log with replay)
+
+fn main
+  print "Event Sourcing Pattern:"
+  print ""
+
+  -- Part 1: Event log for a bank account
+  print "=== Part 1: Bank Account Events ==="
+  mut events := []
+  events.push("deposit:1000:1")
+  events.push("deposit:500:2")
+  events.push("withdraw:200:3")
+  events.push("deposit:300:4")
+  events.push("withdraw:150:5")
+  events.push("withdraw:100:6")
+  events.push("deposit:750:7")
+
+  print "  Event log:"
+  for i in range(0, events | len)
+    print "    [{i}] {events[i]}"
+
+  -- Part 2: Replay events to compute balance
+  print ""
+  print "=== Part 2: Replay to Compute Balance ==="
+  mut balance := 0
+  for i in range(0, events | len)
+    evt := events[i]
+    parts := evt.split(":")
+    kind := parts[0]
+    amount := parts[1].parse_int()
+    if kind == "deposit"
+      balance = balance + amount
+      print "  + {amount} -> balance = {balance}"
+    else
+      balance = balance - amount
+      print "  - {amount} -> balance = {balance}"
+  print "  Final balance: {balance}"
+
+  -- Part 3: Replay up to a specific point in time
+  print ""
+  print "=== Part 3: Point-in-Time Replay ==="
+  snapshots := [2, 4, 7]
+  for si in range(0, 3)
+    target := snapshots[si]
+    mut bal := 0
+    for i in range(0, events | len)
+      evt := events[i]
+      parts := evt.split(":")
+      kind := parts[0]
+      amount := parts[1].parse_int()
+      ts := parts[2].parse_int()
+      if ts <= target
+        if kind == "deposit"
+          bal = bal + amount
+        else
+          bal = bal - amount
+    print "  Balance at time {target}: {bal}"
+
+  -- Part 4: Event counting and aggregation
+  print ""
+  print "=== Part 4: Event Statistics ==="
+  mut deposit_count := 0
+  mut withdraw_count := 0
+  mut deposit_total := 0
+  mut withdraw_total := 0
+  for i in range(0, events | len)
+    evt := events[i]
+    parts := evt.split(":")
+    kind := parts[0]
+    amount := parts[1].parse_int()
+    if kind == "deposit"
+      deposit_count = deposit_count + 1
+      deposit_total = deposit_total + amount
+    else
+      withdraw_count = withdraw_count + 1
+      withdraw_total = withdraw_total + amount
+  print "  Deposits: {deposit_count} totaling {deposit_total}"
+  print "  Withdrawals: {withdraw_count} totaling {withdraw_total}"
+  print "  Net: {deposit_total - withdraw_total}"
+
+  -- Part 5: Undo last N events
+  print ""
+  print "=== Part 5: Undo Last 2 Events ==="
+  total_events := events | len
+  mut undo_bal := 0
+  undo_until := total_events - 2
+  for i in range(0, undo_until)
+    evt := events[i]
+    parts := evt.split(":")
+    kind := parts[0]
+    amount := parts[1].parse_int()
+    if kind == "deposit"
+      undo_bal = undo_bal + amount
+    else
+      undo_bal = undo_bal - amount
+  print "  Balance after undoing last 2 events: {undo_bal}"
+  print "  (Removed: withdraw:100 and deposit:750)"
+
+  -- Part 6: Running balance over time
+  print ""
+  print "=== Part 6: Running Balance ==="
+  mut running := 0
+  mut max_bal := 0
+  mut min_bal := 999999
+  for i in range(0, events | len)
+    evt := events[i]
+    parts := evt.split(":")
+    kind := parts[0]
+    amount := parts[1].parse_int()
+    if kind == "deposit"
+      running = running + amount
+    else
+      running = running - amount
+    if running > max_bal
+      max_bal = running
+    if running < min_bal
+      min_bal = running
+    print "  Time {i + 1}: balance = {running}"
+  print "  Peak balance: {max_bal}"
+  print "  Minimum balance: {min_bal}"
+
+  print ""
+  print "Event sourcing: event log, replay, point-in-time, undo, statistics."

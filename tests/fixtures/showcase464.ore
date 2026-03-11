@@ -1,0 +1,128 @@
+-- Showcase 464: Markov chain Monte Carlo (Metropolis sampler, deterministic seed)
+
+fn main
+  print "Markov Chain Monte Carlo:"
+  print ""
+
+  -- Simple LCG random number generator (deterministic)
+  -- seed = (seed * 1103515245 + 12345) % 2^31
+  -- We use modulo 2147483648
+
+  -- Part 1: Estimate pi using Monte Carlo
+  print "=== Part 1: Monte Carlo Pi Estimation ==="
+  mut seed := 42
+  mut inside := 0
+  n_samples := 10000
+
+  for i in range(0, n_samples)
+    -- Generate x in [0, 10000)
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    x := seed % 10000
+    -- Generate y in [0, 10000)
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    y := seed % 10000
+    -- Check if inside unit circle (scaled by 10000)
+    dist := x * x + y * y
+    if dist <= 10000 * 10000
+      inside = inside + 1
+
+  -- pi/4 = inside/total, so pi = 4 * inside / total
+  pi_est := 4 * inside * 1000 / n_samples
+  print "  Samples: {n_samples}"
+  print "  Inside circle: {inside}"
+  print "  Pi estimate (x1000): {pi_est}"
+
+  -- Part 2: Metropolis algorithm - sample from distribution
+  print ""
+  print "=== Part 2: Metropolis Sampler ==="
+  -- Sample from a target distribution proportional to e^(-x^2/2)
+  -- (standard normal, discretized)
+  -- We work in integer space [-50, 50] representing [-5.0, 5.0]
+
+  mut state := 0  -- start at 0
+  mut histogram := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Bins: [-5,-4), [-4,-3), ..., [4,5)
+  n_steps := 5000
+  seed = 123
+
+  for step in range(0, n_steps)
+    -- Propose a move: current + random(-10, 10)
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    proposal := state + (seed % 21) - 10
+
+    -- Compute acceptance: target(proposal) / target(current)
+    -- target(x) = exp(-x*x/200) (scaled)
+    -- We compare x^2 values: accept if proposal^2 <= current^2
+    -- or with some probability otherwise
+    current_energy := state * state
+    proposal_energy := proposal * proposal
+
+    if proposal_energy <= current_energy
+      state = proposal
+    else
+      -- Accept with probability proportional to energy difference
+      seed = (seed * 1103515245 + 12345) % 2147483648
+      threshold := proposal_energy - current_energy
+      if (seed % 200) < (200 - threshold)
+        if threshold < 200
+          state = proposal
+
+    -- Record in histogram
+    bin := (state + 50) / 10
+    if bin >= 0 and bin < 11
+      old := histogram[bin]
+      histogram[bin] = old + 1
+
+  print "  Distribution after {n_steps} steps:"
+  labels := ["-5", "-4", "-3", "-2", "-1", " 0", " 1", " 2", " 3", " 4", " 5"]
+  for i in range(0, 11)
+    count := histogram[i]
+    bar_len := count / 20
+    mut bar := ""
+    for j in range(0, bar_len)
+      bar = bar + "#"
+    print "    {labels[i]}: {bar} ({count})"
+
+  -- Part 3: Random walk statistics
+  print ""
+  print "=== Part 3: Random Walk Statistics ==="
+  seed = 7
+  n_walks := 5
+  walk_len := 200
+
+  for w in range(0, n_walks)
+    mut pos := 0
+    mut max_pos := 0
+    mut min_pos := 0
+    seed = seed + 137
+    for s in range(0, walk_len)
+      seed = (seed * 1103515245 + 12345) % 2147483648
+      bit := (seed / 65536) % 2
+      if bit == 0
+        pos = pos + 1
+      else
+        pos = pos - 1
+      if pos > max_pos
+        max_pos = pos
+      if pos < min_pos
+        min_pos = pos
+    print "  Walk {w + 1}: final={pos}, max={max_pos}, min={min_pos}, range={max_pos - min_pos}"
+
+  -- Part 4: Estimate expected value
+  print ""
+  print "=== Part 4: Expected Value Estimation ==="
+  -- E[X^2] for uniform distribution on [1, 6] (dice)
+  -- True value = (1+4+9+16+25+36)/6 = 91/6 ~ 15
+  seed = 999
+  mut total_sq := 0
+  n_rolls := 6000
+  for i in range(0, n_rolls)
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    die := (seed % 6) + 1
+    total_sq = total_sq + die * die
+  est := total_sq / n_rolls
+  print "  E[X^2] for dice (6000 rolls): {est}"
+  print "  Theoretical: 15 (91/6)"
+
+  print ""
+  print "MCMC: pi estimation, Metropolis sampler, random walks, expected values."

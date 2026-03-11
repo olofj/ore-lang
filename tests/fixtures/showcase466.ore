@@ -1,0 +1,157 @@
+-- Showcase 466: Simple build system (dependency resolution + rebuild check)
+
+fn main
+  print "Simple Build System:"
+  print ""
+
+  -- Part 1: Define build targets with dependencies
+  print "=== Part 1: Build Graph ==="
+  -- Targets and their dependencies (using parallel arrays)
+  targets := ["main.o", "utils.o", "math.o", "libapp.a", "app"]
+  -- Dependencies encoded as comma-separated target indices
+  -- main.o -> (none, source file only)
+  -- utils.o -> (none)
+  -- math.o -> (none)
+  -- libapp.a -> utils.o(1), math.o(2)
+  -- app -> main.o(0), libapp.a(3)
+  dep_counts := [0, 0, 0, 2, 2]
+  -- For targets with deps, store dep indices
+  dep_a := [0, 0, 0, 1, 0]
+  dep_b := [0, 0, 0, 2, 3]
+
+  -- Source files for each target
+  sources := ["main.c", "utils.c", "math.c", "", ""]
+
+  print "  Build graph:"
+  for i in range(0, 5)
+    if dep_counts[i] == 0
+      print "    {targets[i]} <- {sources[i]}"
+    else
+      da := dep_a[i]
+      db := dep_b[i]
+      print "    {targets[i]} <- {targets[da]}, {targets[db]}"
+
+  -- Part 2: Topological sort for build order
+  print ""
+  print "=== Part 2: Topological Sort ==="
+  -- Simple topological sort: build targets with 0 deps first
+  mut built := [false, false, false, false, false]
+  mut build_order := []
+  mut rounds := 0
+
+  loop
+    if build_order | len >= 5
+      break
+    if rounds > 10
+      break
+    mut progress := false
+    for i in range(0, 5)
+      if built[i]
+        continue
+      -- Check if all deps are built
+      if dep_counts[i] == 0
+        built[i] = true
+        build_order.push(i)
+        progress = true
+      else
+        da := dep_a[i]
+        db := dep_b[i]
+        if built[da] and built[db]
+          built[i] = true
+          build_order.push(i)
+          progress = true
+    rounds = rounds + 1
+    if not progress
+      break
+
+  print "  Build order:"
+  for i in range(0, build_order | len)
+    idx := build_order[i]
+    print "    Step {i + 1}: build {targets[idx]}"
+
+  -- Part 3: Simulate timestamps and rebuild checks
+  print ""
+  print "=== Part 3: Rebuild Check ==="
+  -- Simulated modification times (higher = newer)
+  -- Source files
+  src_times := [100, 95, 110, 0, 0]
+  -- Build artifact times (0 = not built)
+  mut obj_times := [105, 90, 105, 108, 112]
+
+  print "  Source vs artifact times:"
+  for i in range(0, 3)
+    print "    {sources[i]}: src={src_times[i]}, obj={obj_times[i]}"
+
+  -- Check what needs rebuilding
+  print "  Rebuild analysis:"
+  mut needs_rebuild := [false, false, false, false, false]
+  -- First pass: check source files
+  for i in range(0, 3)
+    if src_times[i] > obj_times[i]
+      needs_rebuild[i] = true
+      print "    {targets[i]}: REBUILD (source newer)"
+    else
+      print "    {targets[i]}: up to date"
+
+  -- Second pass: propagate rebuilds to dependents
+  for i in range(3, 5)
+    da := dep_a[i]
+    db := dep_b[i]
+    if needs_rebuild[da] or needs_rebuild[db]
+      needs_rebuild[i] = true
+      print "    {targets[i]}: REBUILD (dependency changed)"
+    else
+      print "    {targets[i]}: up to date"
+
+  -- Part 4: Execute build
+  print ""
+  print "=== Part 4: Build Execution ==="
+  mut build_count := 0
+  for i in range(0, build_order | len)
+    idx := build_order[i]
+    if needs_rebuild[idx]
+      build_count = build_count + 1
+      if dep_counts[idx] == 0
+        print "  [BUILD] cc -c {sources[idx]} -o {targets[idx]}"
+      else if idx == 3
+        da := dep_a[idx]
+        db := dep_b[idx]
+        print "  [BUILD] ar rcs {targets[idx]} {targets[da]} {targets[db]}"
+      else
+        da := dep_a[idx]
+        db := dep_b[idx]
+        print "  [BUILD] cc {targets[da]} {targets[db]} -o {targets[idx]}"
+    else
+      print "  [SKIP]  {targets[idx]} (up to date)"
+  print "  Built {build_count} targets, skipped {5 - build_count}"
+
+  -- Part 5: Parallel build opportunities
+  print ""
+  print "=== Part 5: Parallel Build Analysis ==="
+  -- Group targets by depth level (can be built in parallel within a level)
+  mut depths := [0, 0, 0, 0, 0]
+  for i in range(0, 5)
+    if dep_counts[i] > 0
+      da := dep_a[i]
+      db := dep_b[i]
+      d1 := depths[da]
+      d2 := depths[db]
+      if d1 > d2
+        depths[i] = d1 + 1
+      else
+        depths[i] = d2 + 1
+
+  for level in range(0, 3)
+    mut level_targets := []
+    for i in range(0, 5)
+      if depths[i] == level
+        level_targets.push(targets[i])
+    joined := level_targets.join(", ")
+    print "  Level {level}: [{joined}]"
+
+  max_parallel := 3
+  print "  Max parallelism: {max_parallel} jobs"
+  print "  Critical path length: 3 steps"
+
+  print ""
+  print "Build system: dependencies, topo-sort, rebuild check, parallel analysis."
