@@ -1,0 +1,80 @@
+-- Showcase 895: Wave Equation (1D String)
+
+-- Simulates a vibrating string governed by the 1D wave equation:
+--   d^2u/dt^2 = c^2 * d^2u/dx^2
+-- Uses second-order leapfrog finite difference scheme.
+-- CFL condition: c * dt / dx <= 1 for stability.
+
+fn main
+  print "Wave Equation: Vibrating String"
+  print "================================"
+
+  -- String parameters: 21 points (x = 0..20), fixed ends
+  n := 21
+  c := 1.0    -- wave speed
+  r2 := 0.64  -- (c * dt / dx)^2 = 0.8^2 = 0.64
+
+  print "Grid points: {n}, wave speed c = {str(c)}"
+  print "CFL number = 0.8 (stable if <= 1)"
+  print ""
+
+  -- Initial shape: triangular pluck peaking at index 7
+  peak := 7
+  mut u_curr := []
+  for i in range(0, n)
+    if i == 0 or i == n - 1
+      u_curr.push(0.0)
+    else if i <= peak
+      fi := i.to_float()
+      fp := peak.to_float()
+      u_curr.push(fi / fp)
+    else
+      fdiff := (n - 1 - i).to_float()
+      fdenom := (n - 1 - peak).to_float()
+      u_curr.push(fdiff / fdenom)
+
+  -- u_prev = u_curr (zero velocity initial condition)
+  mut u_prev := []
+  for i in range(0, n)
+    u_prev.push(u_curr[i] * 1.0)
+
+  -- Print initial state
+  print "Position: x=0  x=4  x=8  x=12 x=16 x=20"
+  mut row0 := "t=0 :"
+  for j in range(0, n)
+    if j % 4 == 0
+      v := u_curr[j] * 1.0
+      row0 = row0 + " " + str(v).substr(0, 5)
+  print row0
+
+  -- Time stepping
+  for step in range(0, 60)
+    -- Compute next time step
+    mut u_next := []
+    for i in range(0, n)
+      if i == 0 or i == n - 1
+        u_next.push(0.0)
+      else
+        left := u_curr[i - 1] * 1.0
+        center := u_curr[i] * 1.0
+        right := u_curr[i + 1] * 1.0
+        prev := u_prev[i] * 1.0
+        diff := left - 2.0 * center + right
+        u_next.push(2.0 * center - prev + r2 * diff)
+    u_prev = u_curr
+    u_curr = u_next
+
+    if step == 4 or step == 9 or step == 19 or step == 39 or step == 59
+      t_val := step + 1
+      mut row := "t={t_val}:"
+      for j in range(0, n)
+        if j % 4 == 0
+          v := u_curr[j] * 1.0
+          row = row + " " + str(v).substr(0, 5)
+      print row
+
+  print ""
+  print "Wave phenomena:"
+  print "  Pluck travels left and right, reflects at fixed ends"
+  print "  Period T = 2L/c = {str(2.0 * 20.0 / c)} time units"
+  print "  Energy conserved (no damping)"

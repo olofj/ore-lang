@@ -1,0 +1,82 @@
+-- Showcase 891: Projectile Motion with Drag
+
+-- Simulates a projectile under gravity and linear air drag.
+-- Drag force: F_drag = -b*v (linear model)
+-- Equations of motion:
+--   dvx/dt = -b/m * vx
+--   dvy/dt = -g - b/m * vy
+-- Uses Euler integration with small time steps.
+
+fn main
+  print "Projectile Motion with Air Drag"
+  print "================================"
+
+  -- Parameters
+  g := 9.81        -- gravity m/s^2
+  b := 0.1         -- drag coefficient kg/s
+  m := 1.0         -- mass kg
+  v0 := 50.0       -- initial speed m/s
+  angle_deg := 45.0
+  dt := 0.05       -- time step seconds
+
+  -- Convert angle to radians
+  angle_rad := angle_deg * pi() / 180.0
+
+  -- Initial velocity components
+  mut vx := v0 * cos(angle_rad)
+  mut vy := v0 * sin(angle_rad)
+  mut x := 0.0
+  mut y := 0.0
+  mut t := 0.0
+
+  drag := b / m
+
+  print "Initial speed: {str(v0)} m/s at {str(angle_deg)} degrees"
+  print "Drag coefficient b/m = {str(drag)}"
+  print ""
+  print "Time(s) | X(m)    | Y(m)    | Speed(m/s)"
+  print "--------+---------+---------+----------"
+
+  mut step := 0
+  mut max_y := 0.0
+  mut max_x := 0.0
+  mut land_t := 0.0
+
+  loop
+    -- Print every 10 steps
+    if step % 10 == 0
+      speed := sqrt(vx * vx + vy * vy)
+      ts := str(t).substr(0, 4)
+      xs := str(x).substr(0, 6)
+      ys := str(y).substr(0, 6)
+      ss := str(speed).substr(0, 6)
+      print "{ts}    | {xs}    | {ys}    | {ss}"
+
+    -- Update velocity with drag
+    ax := -drag * vx
+    ay := -g - drag * vy
+    vx = vx + ax * dt
+    vy = vy + ay * dt
+
+    -- Update position
+    x = x + vx * dt
+    y = y + vy * dt
+    t = t + dt
+
+    if y > max_y
+      max_y = y
+    max_x = x
+
+    step = step + 1
+
+    -- Stop when projectile hits ground
+    if y < 0.0 and t > 0.5
+      land_t = t
+      break
+
+  print ""
+  print "Results:"
+  print "  Max height: {str(max_y).substr(0, 6)} m"
+  print "  Range:      {str(max_x).substr(0, 6)} m"
+  print "  Flight time: {str(land_t).substr(0, 5)} s"
+  print "  (No drag range ~255.1 m, drag reduces range)"

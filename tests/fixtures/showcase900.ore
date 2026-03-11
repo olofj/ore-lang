@@ -1,0 +1,80 @@
+-- Showcase 900: Relativistic Kinematics
+-- Computes Lorentz factor, time dilation, length contraction,
+-- and relativistic energy/momentum for various speeds.
+
+fn fmt_float v:Float width:Int -> Str
+  mut s := str(v)
+  if s.len() > width
+    s = s.substr(0, width)
+  s.pad_right(width, " ")
+
+fn main
+  print "Relativistic Kinematics"
+  print "========================"
+
+  speeds := [0.1, 0.5, 0.8, 0.9, 0.99, 0.999]
+  print "Beta (v/c) | Gamma    | Time Dil | Length Contract"
+  print "-----------+----------+----------+----------------"
+
+  for i in range(0, 6)
+    beta := speeds[i]
+    beta2 := beta * beta
+    gamma := 1.0 / sqrt(1.0 - beta2)
+    len_con := 1.0 / gamma
+    bg := fmt_float(beta, 10)
+    gg := fmt_float(gamma, 8)
+    tg := fmt_float(gamma, 8)
+    lg := fmt_float(len_con, 6)
+    print "{bg} | {gg} | {tg} | {lg}"
+
+  -- Twin paradox
+  print ""
+  print "=== Twin Paradox ==="
+  v_twin := 0.8
+  gamma_twin := 1.0 / sqrt(1.0 - v_twin * v_twin)
+  earth_years := 10.0
+  ship_years := earth_years / gamma_twin
+  print "Ship speed: {str(v_twin)}c"
+  print "Earth time: {str(earth_years)} years"
+  print "Ship time:  {str(ship_years).substr(0, 4)} years"
+  diff := earth_years - ship_years
+  print "Age difference: {str(diff).substr(0, 4)} years"
+
+  -- Relativistic energy
+  print ""
+  print "=== Relativistic Energy ==="
+  print "Rest mass energy: E0 = mc^2 = 1.0"
+  test_betas := [0.1, 0.5, 0.9, 0.99]
+  for i in range(0, 4)
+    beta := test_betas[i]
+    gamma := 1.0 / sqrt(1.0 - beta * beta)
+    total_e := gamma
+    kinetic := gamma - 1.0
+    momentum := gamma * beta
+    bstr := fmt_float(beta, 4)
+    estr := fmt_float(total_e, 6)
+    kstr := fmt_float(kinetic, 6)
+    pstr := fmt_float(momentum, 6)
+    print "v={bstr}c: E={estr} KE={kstr} p={pstr}"
+
+  -- Relativistic velocity addition
+  print ""
+  print "=== Velocity Addition ==="
+  -- v_total = (v1 + v2) / (1 + v1*v2/c^2)
+  v1a := 0.5
+  v2a := 0.5
+  rel_a := (v1a + v2a) / (1.0 + v1a * v2a)
+  print "0.5c + 0.5c = {str(rel_a).substr(0,5)}c (classical: 1.0c)"
+
+  v1b := 0.9
+  v2b := 0.9
+  rel_b := (v1b + v2b) / (1.0 + v1b * v2b)
+  print "0.9c + 0.9c = {str(rel_b).substr(0,6)}c (classical: 1.8c)"
+
+  v1c := 0.5
+  v2c := 0.99
+  rel_c := (v1c + v2c) / (1.0 + v1c * v2c)
+  print "0.5c + 0.99c = {str(rel_c).substr(0,6)}c (classical: 1.49c)"
+
+  print ""
+  print "Nothing exceeds the speed of light!"

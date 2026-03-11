@@ -1,0 +1,96 @@
+-- Showcase 894: Heat Diffusion (1D)
+
+-- Simulates heat diffusion along a 1D rod using the heat equation:
+--   dT/dt = alpha * d^2T/dx^2
+-- where alpha is the thermal diffusivity.
+-- Uses explicit finite difference (FTCS scheme).
+-- Stability requires: alpha * dt / dx^2 <= 0.5
+
+fn make_grid n:Int t_left:Float t_right:Float t_init:Float -> List
+  mut grid := []
+  for i in range(0, n)
+    if i == 0
+      grid.push(t_left)
+    else if i == n - 1
+      grid.push(t_right)
+    else
+      grid.push(t_init)
+  grid
+
+fn diffuse_step grid:List alpha:Float dt:Float dx:Float -> List
+  n := grid.len()
+  mut new_grid := []
+  r := alpha * dt / (dx * dx)
+  for i in range(0, n)
+    if i == 0
+      new_grid.push(grid[0])
+    else if i == n - 1
+      new_grid.push(grid[n - 1])
+    else
+      left := grid[i - 1]
+      center := grid[i]
+      right := grid[i + 1]
+      new_grid.push(center + r * (left - 2.0 * center + right))
+  new_grid
+
+fn print_grid grid:List label:Str
+  n := grid.len()
+  -- Print selected points
+  mut row := label
+  for i in range(0, n)
+    if i % 4 == 0
+      v := grid[i]
+      vs := str(v).substr(0, 5)
+      row = row + " " + vs
+  print row
+
+fn main
+  print "Heat Diffusion in 1D Rod"
+  print "========================"
+
+  -- Rod parameters
+  length := 1.0   -- rod length in meters
+  n := 21         -- number of grid points
+  dx := length / 20.0
+  alpha := 0.01   -- thermal diffusivity m^2/s
+
+  -- Time stepping (stability: r = alpha*dt/dx^2 <= 0.5)
+  dt := 0.04      -- time step seconds (r = 0.01*0.04/0.0025 = 0.16)
+  r := alpha * dt / (dx * dx)
+
+  print "Grid points: {n}, dx = {str(dx).substr(0, 5)} m"
+  print "Thermal diffusivity alpha = {str(alpha)}"
+  print "Time step dt = {str(dt)} s, stability r = {str(r).substr(0, 5)} (must be <= 0.5)"
+  print ""
+  print "Initial condition: rod at 0 C, left end suddenly heated to 100 C"
+  print "Boundary: T(0,t)=100, T(L,t)=0, T(x,0)=0"
+  print ""
+
+  -- Initial condition: rod at 0, left boundary at 100
+  mut grid := make_grid(n, 100.0, 0.0, 0.0)
+
+  print "Position: x=0   x=0.2  x=0.4  x=0.6  x=0.8  x=1.0"
+  print_grid(grid, "t=0.0s:")
+
+  -- Time evolution
+  n_steps := 250
+  for step in range(0, n_steps)
+    grid = diffuse_step(grid, alpha, dt, dx)
+    if step == 24
+      print_grid(grid, "t=1.0s:")
+    if step == 49
+      print_grid(grid, "t=2.0s:")
+    if step == 99
+      print_grid(grid, "t=4.0s:")
+    if step == 199
+      print_grid(grid, "t=8.0s:")
+    if step == 249
+      print_grid(grid, "t=10.0s:")
+
+  -- Analytical steady state: linear T(x) = 100*(1 - x/L)
+  print ""
+  print "Steady-state (t->inf): linear profile T(x) = 100*(1 - x)"
+  print "Analytical: x=0.0->100, x=0.25->75, x=0.5->50, x=0.75->25, x=1.0->0"
+  t_mid := grid[10]
+  print "Simulated T(x=0.5) = {str(t_mid).substr(0, 7)} (analytical: 50.0)"
+  print "Heat flows from hot end (left) to cold end (right)"

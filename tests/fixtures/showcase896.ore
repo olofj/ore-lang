@@ -1,0 +1,108 @@
+-- Showcase 896: Pendulum Simulation
+
+-- Simulates a simple pendulum: point mass on massless rod.
+-- Exact equation: theta'' = -(g/L) * sin(theta)
+-- Small angle approximation: theta'' = -(g/L) * theta
+-- Compares exact (nonlinear) vs approximate (linear) solutions.
+-- Uses 4th-order Runge-Kutta integration.
+
+fn rk4_pendulum theta:Float omega:Float g_over_L:Float dt:Float -> List
+  -- State: [theta, omega], derivative: [omega, -(g/L)*sin(theta)]
+  -- k1
+  k1_theta := omega
+  k1_omega := -g_over_L * sin(theta)
+  -- k2
+  k2_theta := omega + 0.5 * dt * k1_omega
+  k2_omega := -g_over_L * sin(theta + 0.5 * dt * k1_theta)
+  -- k3
+  k3_theta := omega + 0.5 * dt * k2_omega
+  k3_omega := -g_over_L * sin(theta + 0.5 * dt * k2_theta)
+  -- k4
+  k4_theta := omega + dt * k3_omega
+  k4_omega := -g_over_L * sin(theta + dt * k3_theta)
+  -- Update
+  new_theta := theta + dt / 6.0 * (k1_theta + 2.0 * k2_theta + 2.0 * k3_theta + k4_theta)
+  new_omega := omega + dt / 6.0 * (k1_omega + 2.0 * k2_omega + 2.0 * k3_omega + k4_omega)
+  mut result := []
+  result.push(new_theta)
+  result.push(new_omega)
+  result
+
+fn main
+  print "Pendulum Simulation: Exact vs Small-Angle Approximation"
+  print "========================================================"
+
+  g := 9.81   -- gravity m/s^2
+  L := 1.0    -- pendulum length m
+  gL := g / L
+
+  -- Small angle: period T = 2*pi*sqrt(L/g)
+  T_small := 2.0 * pi() * sqrt(L / g)
+  print "Pendulum length L = {str(L)} m"
+  print "Small-angle period T = 2*pi*sqrt(L/g) = {str(T_small).substr(0, 6)} s"
+  print ""
+
+  dt := 0.01  -- time step
+  n_steps := 400
+
+  -- Initial conditions for comparison
+  theta0_small := 0.1    -- 0.1 rad ~ 5.7 degrees (small angle valid)
+  theta0_large := 1.2    -- 1.2 rad ~ 68.7 degrees (nonlinear effects)
+
+  print "--- Small Angle (theta0 = 0.1 rad ~ 5.7 deg) ---"
+  print "  t(s)   | Exact theta | Linear theta | Energy"
+  print "  -------+-----------+--------------+-------"
+
+  mut th_exact := theta0_small
+  mut om_exact := 0.0
+  mut th_linear := theta0_small
+  mut om_linear := 0.0
+
+  for step in range(0, n_steps)
+    t := step.to_float() * dt
+    if step % 40 == 0
+      e_exact := 0.5 * om_exact * om_exact + gL * (1.0 - cos(th_exact))
+      ts := str(t).substr(0, 4)
+      te := str(th_exact).substr(0, 8)
+      tl := str(th_linear).substr(0, 8)
+      ee := str(e_exact).substr(0, 7)
+      print "  {ts}   | {te}  | {tl}      | {ee}"
+    -- Exact (nonlinear) via RK4
+    res_exact := rk4_pendulum(th_exact, om_exact, gL, dt)
+    th_exact = res_exact[0] * 1.0
+    om_exact = res_exact[1] * 1.0
+    -- Linear approximation: analytic solution theta(t) = theta0 * cos(omega0 * t)
+    omega0 := sqrt(gL)
+    t_next := (step + 1).to_float() * dt
+    th_linear = theta0_small * cos(omega0 * t_next)
+    om_linear = -theta0_small * omega0 * sin(omega0 * t_next)
+
+  print ""
+  print "--- Large Angle (theta0 = 1.2 rad ~ 68.7 deg) ---"
+  print "  t(s)   | Exact theta | Linear theta | Difference"
+  print "  -------+-----------+--------------+-----------"
+
+  mut th_e2 := theta0_large
+  mut om_e2 := 0.0
+
+  for step in range(0, n_steps)
+    t := step.to_float() * dt
+    if step % 40 == 0
+      omega0 := sqrt(gL)
+      t_curr := step.to_float() * dt
+      th_lin := theta0_large * cos(omega0 * t_curr)
+      diff := th_e2 - th_lin
+      ts := str(t).substr(0, 4)
+      te := str(th_e2).substr(0, 8)
+      tl := str(th_lin).substr(0, 8)
+      ds := str(diff).substr(0, 8)
+      print "  {ts}   | {te}  | {tl}      | {ds}"
+    res := rk4_pendulum(th_e2, om_e2, gL, dt)
+    th_e2 = res[0] * 1.0
+    om_e2 = res[1] * 1.0
+
+  print ""
+  print "Summary:"
+  print "  Small-angle: linear approx excellent, period matches theory"
+  print "  Large-angle: nonlinear effects slow the pendulum (longer period)"
+  print "  Small-angle period: {str(T_small).substr(0, 6)} s"

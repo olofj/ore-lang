@@ -1,0 +1,108 @@
+-- Showcase 893: Orbital Mechanics (Kepler's Laws)
+
+-- Simulates a planet orbiting a star using Newton's law of gravity.
+-- F = G*M*m / r^2 directed toward star.
+-- Uses Verlet integration for energy conservation.
+-- Demonstrates Kepler's three laws:
+--   1. Orbits are ellipses (or circles for e=0)
+--   2. Equal areas in equal times (angular momentum conservation)
+--   3. T^2 proportional to a^3
+
+fn main
+  print "Orbital Mechanics: Kepler's Laws"
+  print "================================="
+
+  -- Gravitational parameter (G*M for Sun in AU^3/yr^2)
+  -- 1 AU = mean Earth-Sun distance, 1 yr = Earth orbital period
+  GM := 39.478  -- 4 * pi^2 in AU^3/yr^2
+
+  -- Simulate circular orbit first (Earth-like: a=1 AU, e=0)
+  -- Circular orbit: v = sqrt(GM/r)
+  r0 := 1.0
+  v_circ := sqrt(GM / r0)
+
+  print "Earth-like circular orbit: r = 1.0 AU"
+  print "Circular velocity: {str(v_circ).substr(0, 6)} AU/yr"
+  print ""
+
+  -- Initial conditions: position (1,0), velocity (0, v_circ)
+  mut px := r0
+  mut py := 0.0
+  mut vx := 0.0
+  mut vy := v_circ
+
+  dt := 0.002  -- time step in years
+  n_steps := 5000  -- ~10 orbital periods for Earth
+
+  mut t := 0.0
+  mut max_r := 0.0
+  mut min_r := r0
+  mut prev_x := px
+  mut prev_y := py
+  mut area_sum := 0.0  -- for Kepler's 2nd law check
+  mut orbit_crossings := 0  -- count y=0 crossings
+
+  print "Time(yr) | X(AU)  | Y(AU)  | r(AU)  | v(AU/yr)"
+  print "---------+--------+--------+--------+---------"
+
+  for i in range(0, n_steps)
+    r := sqrt(px * px + py * py)
+    if r > max_r
+      max_r = r
+    if r < min_r
+      min_r = r
+
+    -- Gravitational acceleration
+    r3 := r * r * r
+    ax := -GM * px / r3
+    ay := -GM * py / r3
+
+    -- Verlet integration
+    vx = vx + ax * dt
+    vy = vy + ay * dt
+    px = px + vx * dt
+    py = py + vy * dt
+    t = t + dt
+
+    -- Track area swept (cross product: 0.5 * |r x v|)
+    area := 0.5 * (px * vy - py * vx) * dt
+    area_sum = area_sum + area
+
+    -- Detect orbit crossing (y changes sign)
+    if prev_y < 0.0 and py > -0.001 and py < 0.001 and px > 0.0
+      orbit_crossings = orbit_crossings + 1
+    prev_x = px
+    prev_y = py
+
+    if i % 500 == 0
+      speed := sqrt(vx * vx + vy * vy)
+      ts := str(t).substr(0, 4)
+      xs := str(px).substr(0, 6)
+      ys := str(py).substr(0, 6)
+      rs := str(r).substr(0, 6)
+      vs := str(speed).substr(0, 6)
+      print "{ts}     | {xs}   | {ys}   | {rs}   | {vs}"
+
+  print ""
+  print "Kepler's Laws Verification:"
+  print "  1st Law: orbit eccentricity e ~ {str((max_r - min_r)/(max_r + min_r)).substr(0, 5)}"
+  print "     (circular orbit -> e ~ 0)"
+  print "  2nd Law: area swept = {str(area_sum).substr(0, 5)} AU^2 over {str(t).substr(0, 5)} yr"
+  print "     (equal areas in equal times: dA/dt = L/2m = const)"
+  print "  3rd Law: T^2/a^3 = {str(1.0 / GM * 4.0 * pi() * pi()).substr(0, 5)}"
+  print "     (for Earth: T=1yr, a=1AU -> T^2/a^3 = 1.0)"
+
+  -- Elliptical orbit: Mars-like (a=1.524 AU, e=0.093)
+  a_mars := 1.524
+  e_mars := 0.093
+  -- Perihelion distance: r_p = a*(1-e)
+  r_p := a_mars * (1.0 - e_mars)
+  -- Perihelion velocity: v_p = sqrt(GM*(1+e)/(a*(1-e)))
+  v_p := sqrt(GM * (1.0 + e_mars) / (a_mars * (1.0 - e_mars)))
+  -- Orbital period by Kepler's 3rd: T = 2*pi*sqrt(a^3/GM)
+  T_mars := 2.0 * pi() * sqrt(a_mars * a_mars * a_mars / GM)
+  print ""
+  print "Mars-like elliptical orbit (a=1.524 AU, e=0.093):"
+  print "  Perihelion: {str(r_p).substr(0, 5)} AU"
+  print "  Perihelion velocity: {str(v_p).substr(0, 5)} AU/yr"
+  print "  Orbital period: {str(T_mars).substr(0, 5)} yr (actual Mars: 1.881 yr)"

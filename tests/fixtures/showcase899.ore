@@ -1,0 +1,65 @@
+-- Showcase 899: Doppler Effect Calculation
+-- Computes observed frequency shifts for moving sources and observers.
+-- Covers classical Doppler for sound and relativistic Doppler for light.
+
+fn main
+  print "Doppler Effect Calculator"
+  print "========================="
+
+  v_sound := 343.0  -- m/s in air
+  f_source := 440.0  -- Hz (concert A)
+
+  print "Source frequency: {str(f_source)} Hz"
+  print "Speed of sound: {str(v_sound)} m/s"
+  print ""
+
+  -- Classical Doppler: f_obs = f_source * (v_sound + v_obs) / (v_sound + v_source)
+  -- Convention: positive = moving toward each other
+
+  -- Case 1: Source approaching at 30 m/s
+  vs1 := -30.0
+  f1 := f_source * (v_sound + 0.0) / (v_sound + vs1)
+  print "Source approaching at 30 m/s:"
+  print "  Observed: {str(f1).substr(0, 6)} Hz (higher pitch)"
+
+  -- Case 2: Source receding at 30 m/s
+  vs2 := 30.0
+  f2 := f_source * v_sound / (v_sound + vs2)
+  print "Source receding at 30 m/s:"
+  print "  Observed: {str(f2).substr(0, 6)} Hz (lower pitch)"
+
+  -- Case 3: Observer approaching at 20 m/s
+  vo3 := 20.0
+  f3 := f_source * (v_sound + vo3) / v_sound
+  print "Observer approaching at 20 m/s:"
+  print "  Observed: {str(f3).substr(0, 6)} Hz"
+
+  -- Case 4: Both moving - ambulance passing
+  print ""
+  print "=== Ambulance Siren ==="
+  siren := 700.0
+  ambulance_speed := 40.0
+
+  f_approach := siren * v_sound / (v_sound - ambulance_speed)
+  f_recede := siren * v_sound / (v_sound + ambulance_speed)
+  shift := f_approach - f_recede
+  print "Siren: {str(siren)} Hz, speed: {str(ambulance_speed)} m/s"
+  print "Approaching: {str(f_approach).substr(0, 6)} Hz"
+  print "Receding:    {str(f_recede).substr(0, 6)} Hz"
+  print "Total shift:  {str(shift).substr(0, 5)} Hz"
+
+  -- Relativistic Doppler (light)
+  print ""
+  print "=== Relativistic Doppler (Light) ==="
+  -- f_obs = f_source * sqrt((1 - beta) / (1 + beta)) for receding
+  -- beta = v/c
+  betas := [0.1, 0.5, 0.9]
+  for i in range(0, 3)
+    beta := betas[i]
+    -- Receding: redshift
+    f_rel := sqrt((1.0 - beta) / (1.0 + beta))
+    z := 1.0 / f_rel - 1.0
+    print "v = {str(beta)}c: ratio = {str(f_rel).substr(0, 5)}, redshift z = {str(z).substr(0, 5)}"
+
+  print ""
+  print "Doppler effect: key to radar, astronomy, and medical ultrasound"

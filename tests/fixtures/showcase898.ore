@@ -1,0 +1,88 @@
+-- Showcase 898: N-body Gravitational Simulation
+-- Two-body gravitational problem with Euler integration.
+-- Tracks energy conservation and orbital trajectory.
+
+fn main
+  print "N-body Gravitational Simulation"
+  print "================================"
+  print "Two-body problem: star + planet"
+
+  G := 10.0
+  m1 := 100.0  -- star mass (heavy, nearly stationary)
+  m2 := 1.0    -- planet mass
+
+  -- Star at origin, planet at (5, 0) with tangential velocity
+  mut x1 := 0.0
+  mut y1 := 0.0
+  mut vx1 := 0.0
+  mut vy1 := 0.0
+
+  mut x2 := 5.0
+  mut y2 := 0.0
+  mut vx2 := 0.0
+  -- Circular orbit speed: v = sqrt(G*M/r)
+  vy2_init := sqrt(G * m1 / 5.0)
+  mut vy2 := vy2_init
+
+  print "Orbital speed for circular orbit: {str(vy2_init).substr(0, 5)}"
+
+  dt := 0.001
+  n_steps := 2000
+
+  -- Initial energy
+  r0 := sqrt(x2 * x2 + y2 * y2)
+  ke0 := 0.5 * m2 * (vx2 * vx2 + vy2 * vy2)
+  pe0 := 0.0 - G * m1 * m2 / r0
+  e0 := ke0 + pe0
+  print "Initial KE: {str(ke0).substr(0, 6)}"
+  print "Initial PE: {str(pe0).substr(0, 7)}"
+  print "Initial E:  {str(e0).substr(0, 7)}"
+  print ""
+
+  mut min_r := r0
+  mut max_r := r0
+
+  -- Euler integration
+  for step in range(0, n_steps)
+    dx := x2 - x1
+    dy := y2 - y1
+    r2 := dx * dx + dy * dy
+    r := sqrt(r2)
+    r3 := r2 * r
+
+    -- Force on planet from star
+    fx := 0.0 - G * m1 * m2 * dx / r3
+    fy := 0.0 - G * m1 * m2 * dy / r3
+
+    -- Update planet (star barely moves due to large mass ratio)
+    vx2 = vx2 + fx / m2 * dt
+    vy2 = vy2 + fy / m2 * dt
+    x2 = x2 + vx2 * dt
+    y2 = y2 + vy2 * dt
+
+    cur_r := sqrt(x2 * x2 + y2 * y2)
+    if cur_r < min_r
+      min_r = cur_r
+    if cur_r > max_r
+      max_r = cur_r
+
+    if (step + 1) % 500 == 0
+      s := step + 1
+      ke := 0.5 * m2 * (vx2 * vx2 + vy2 * vy2)
+      pe := 0.0 - G * m1 * m2 / cur_r
+      e := ke + pe
+      print "Step {s}: r={str(cur_r).substr(0,5)} E={str(e).substr(0,7)}"
+
+  -- Final state
+  r_final := sqrt(x2 * x2 + y2 * y2)
+  ke_f := 0.5 * m2 * (vx2 * vx2 + vy2 * vy2)
+  pe_f := 0.0 - G * m1 * m2 / r_final
+  e_final := ke_f + pe_f
+
+  print ""
+  print "Min radius: {str(min_r).substr(0, 5)}"
+  print "Max radius: {str(max_r).substr(0, 5)}"
+  print "Final energy: {str(e_final).substr(0, 7)}"
+  de := (e_final - e0).abs()
+  print "Energy drift: {str(de).substr(0, 6)}"
+  print "Orbit is approximately circular: {min_r > 4.0 and max_r < 6.0}"

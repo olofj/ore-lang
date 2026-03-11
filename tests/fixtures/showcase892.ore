@@ -1,0 +1,93 @@
+-- Showcase 892: Simple Harmonic Oscillator
+
+-- Simulates a mass-spring-damper system (damped harmonic oscillator).
+-- Equation of motion: m*x'' + c*x' + k*x = 0
+-- Solutions:
+--   Underdamped (c < 2*sqrt(k*m)): oscillating decay
+--   Critically damped (c = 2*sqrt(k*m)): fastest return to equilibrium
+--   Overdamped (c > 2*sqrt(k*m)): slow exponential return
+-- Uses Euler-Cromer (symplectic) integration.
+
+fn abs_float x:Float -> Float
+  if x < 0.0 then -x else x
+
+fn simulate_osc mass:Float k:Float damping:Float x0:Float v0:Float steps:Int dt:Float -> List
+  -- Returns [t, x, v] at each step as flat list (every 5th step)
+  mut x := x0
+  mut v := v0
+  mut t := 0.0
+  mut results := []
+  for i in range(0, steps)
+    -- Acceleration: a = -(k/m)*x - (c/m)*v
+    a := -(k / mass) * x - (damping / mass) * v
+    v = v + a * dt
+    x = x + v * dt
+    t = t + dt
+    if i % 5 == 0
+      results.push(t)
+      results.push(x)
+      results.push(v)
+  results
+
+fn main
+  print "Simple Harmonic Oscillator (Mass-Spring-Damper)"
+  print "================================================"
+
+  m := 1.0    -- mass kg
+  k := 4.0    -- spring constant N/m
+  x0 := 1.0   -- initial displacement m
+  v0 := 0.0   -- initial velocity m/s
+  dt := 0.02  -- time step
+
+  omega0 := sqrt(k / m)
+  print "Natural frequency omega0 = sqrt(k/m) = {str(omega0).substr(0, 5)} rad/s"
+  print "Period T = {str(2.0 * pi() / omega0).substr(0, 5)} s"
+  print ""
+
+  -- Underdamped: c < 2*sqrt(km)
+  c_crit := 2.0 * sqrt(k * m)
+  c_under := 0.4
+  c_crit_val := c_crit
+  c_over := 6.0
+
+  print "Critical damping coefficient: {str(c_crit_val).substr(0, 4)}"
+  print ""
+
+  print "--- Underdamped (c = {str(c_under)}) ---"
+  print "  t       x(t)"
+  data_u := simulate_osc(m, k, c_under, x0, v0, 100, dt)
+  for i in range(0, 12)
+    idx := i * 3
+    t_val := data_u[idx]
+    x_val := data_u[idx + 1]
+    ts := str(t_val).substr(0, 4)
+    xs := str(x_val).substr(0, 7)
+    print "  {ts}    {xs}"
+
+  print ""
+  print "--- Critically Damped (c = {str(c_crit_val).substr(0, 4)}) ---"
+  print "  t       x(t)"
+  data_c := simulate_osc(m, k, c_crit_val, x0, v0, 100, dt)
+  for i in range(0, 12)
+    idx := i * 3
+    t_val := data_c[idx]
+    x_val := data_c[idx + 1]
+    ts := str(t_val).substr(0, 4)
+    xs := str(x_val).substr(0, 7)
+    print "  {ts}    {xs}"
+
+  print ""
+  print "--- Overdamped (c = {str(c_over)}) ---"
+  print "  t       x(t)"
+  data_o := simulate_osc(m, k, c_over, x0, v0, 100, dt)
+  for i in range(0, 12)
+    idx := i * 3
+    t_val := data_o[idx]
+    x_val := data_o[idx + 1]
+    ts := str(t_val).substr(0, 4)
+    xs := str(x_val).substr(0, 7)
+    print "  {ts}    {xs}"
+
+  print ""
+  print "Energy at t=0: E = 0.5*k*x0^2 = {str(0.5 * k * x0 * x0)} J"
+  print "Damping extracts energy: underdamped oscillates, overdamped decays monotonically"
