@@ -9392,6 +9392,172 @@ fn showcase720_grand_data_structures() {
 }
 
 #[test]
+fn showcase721_simple_shape_analysis() {
+    let out = run_ore("showcase721.ore");
+    assert!(out.contains("Simple Shape Analysis:"));
+    assert!(out.contains("Shape Point: 2 fields, parent=none"));
+    assert!(out.contains("Shape Rect: 4 fields, parent=Point"));
+    assert!(out.contains("Point: 2 allocations"));
+    assert!(out.contains("x -> 1 possible targets"));
+    assert!(out.contains("w -> 2 possible targets"));
+    assert!(out.contains("Point compatible with Rect (subset of fields)"));
+    assert!(out.contains("Point + field(w,h) -> Rect"));
+    assert!(out.contains("area(x): MONOMORPHIC (can devirtualize)"));
+    assert!(out.contains("area(w): POLYMORPHIC (2 shapes, inline cache)"));
+    assert!(out.contains("Monomorphic sites: 2"));
+    assert!(out.contains("Devirtualization rate: 66%"));
+    assert!(out.contains("Shape analysis: tracking object shapes enables devirtualization, inline caching, and field access optimization."));
+}
+
+#[test]
+fn showcase722_task_parallel_framework() {
+    let out = run_ore("showcase722.ore");
+    assert!(out.contains("Task-Parallel Framework:"));
+    assert!(out.contains("Tasks: 8"));
+    assert!(out.contains("Dependencies: 7"));
+    assert!(out.contains("Root task: 0 (cost=10)"));
+    assert!(out.contains("Topological order: 0, 1, 2, 3, 4, 5, 6, 7"));
+    assert!(out.contains("Critical path length: 60"));
+    assert!(out.contains("Task 0 -> Worker 0 [0..10]"));
+    assert!(out.contains("Total work: 135"));
+    assert!(out.contains("Parallel efficiency: 75%"));
+    assert!(out.contains("Task-parallel framework: dependency-driven scheduling with work stealing achieves near-optimal load balance."));
+}
+
+#[test]
+fn showcase723_polyhedral_compilation() {
+    let out = run_ore("showcase723.ore");
+    assert!(out.contains("Polyhedral Compilation Concepts:"));
+    assert!(out.contains("Domain size: 16 points"));
+    assert!(out.contains("Dependence vector 0: (1, 0)"));
+    assert!(out.contains("All dependencies lexicographically positive: LEGAL"));
+    assert!(out.contains("Wavefront 3: 4 points (parallel)"));
+    assert!(out.contains("Tile size: 2x2"));
+    assert!(out.contains("Tiles: 2 x 2 = 4"));
+    assert!(out.contains("Max parallelism per step: 4"));
+    assert!(out.contains("Theoretical speedup: 2x"));
+    assert!(out.contains("Tile fits in L1 cache: YES"));
+    assert!(out.contains("Polyhedral compilation: modeling loops as polyhedra enables systematic tiling, skewing, and parallelization."));
+}
+
+#[test]
+fn showcase724_bakers_treadmill_gc() {
+    let out = run_ore("showcase724.ore");
+    assert!(out.contains("Simple Garbage Collector (Baker's Treadmill):"));
+    assert!(out.contains("Heap size: 12 cells"));
+    assert!(out.contains("Alloc object 0, free=11"));
+    assert!(out.contains("References: A->B, A->C, B->D, C->E, D->F"));
+    assert!(out.contains("Root -> object 0 (A)"));
+    assert!(out.contains("Grey root object 0"));
+    assert!(out.contains("Step 1: scan 0, grey 1"));
+    assert!(out.contains("Mark complete in 6 steps"));
+    assert!(out.contains("Live objects: 6"));
+    assert!(out.contains("Removed A->C reference"));
+    assert!(out.contains("GC cycle 2 reclaimed: 2 objects"));
+    assert!(out.contains("Heap utilization: 33%"));
+    assert!(out.contains("Baker's treadmill: incremental tricolor marking with non-moving collection for predictable pause times."));
+}
+
+#[test]
+fn showcase725_cyk_parsing() {
+    let out = run_ore("showcase725.ore");
+    assert!(out.contains("CYK Parsing Algorithm:"));
+    assert!(out.contains("Total rules: 9"));
+    assert!(out.contains("Input: b a a b a"));
+    assert!(out.contains("table[1][0] += B"));
+    assert!(out.contains("table[1][1] += A"));
+    assert!(out.contains("Cells filled: 18"));
+    assert!(out.contains("String 'baaba' is in the language: YES"));
+    assert!(out.contains("Total entries: 26"));
+    assert!(out.contains("Table density: 20%"));
+    assert!(out.contains("CYK algorithm: dynamic programming on substrings for general context-free parsing in cubic time."));
+}
+
+#[test]
+fn showcase726_simple_alias_analysis() {
+    let out = run_ore("showcase726.ore");
+    assert!(out.contains("Simple Alias Analysis:"));
+    assert!(out.contains("stack_a: class=stack"));
+    assert!(out.contains("p1: points to 1 location(s)"));
+    assert!(out.contains("p4: points to 2 location(s)"));
+    assert!(out.contains("p7: points to 6 location(s)"));
+    assert!(out.contains("p1 vs p5: MustAlias"));
+    assert!(out.contains("p1 vs p2: NoAlias"));
+    assert!(out.contains("p3 vs p4: MayAlias"));
+    assert!(out.contains("func_a and func_b: INDEPENDENT (can parallelize)"));
+    assert!(out.contains("NoAlias: 18"));
+    assert!(out.contains("Disambiguation rate: 64%"));
+    assert!(out.contains("Alias analysis: disambiguating memory references enables load/store optimization, code motion, and parallelization."));
+}
+
+#[test]
+fn showcase727_range_tree_2d() {
+    let out = run_ore("showcase727.ore");
+    assert!(out.contains("Range Tree (2D Orthogonal):"));
+    assert!(out.contains("P0 = (2, 5)"));
+    assert!(out.contains("Root: x=[1,9], 8 points"));
+    assert!(out.contains("Left: x=[1,4], 4 points"));
+    assert!(out.contains("Query [2,7]x[2,6]: 3 points (P0 P1 P6)"));
+    assert!(out.contains("Query [1,4]x[1,8]: 4 points (P0 P2 P3 P6)"));
+    assert!(out.contains("Left child y-sorted: 2, 5, 6, 8"));
+    assert!(out.contains("With cascading: query O(log n + k) instead of O(log^2 n)"));
+    assert!(out.contains("Range tree: hierarchical decomposition of coordinates enables efficient multi-dimensional orthogonal range queries."));
+}
+
+#[test]
+fn showcase728_program_equivalence() {
+    let out = run_ore("showcase728.ore");
+    assert!(out.contains("Simple Program Equivalence Checking:"));
+    assert!(out.contains("Program A: r1=2*r0, r2=3*r0, r3=r1+r2"));
+    assert!(out.contains("x=0: A=0, B=0 [MATCH]"));
+    assert!(out.contains("x=10: A=50, B=50 [MATCH]"));
+    assert!(out.contains("All concrete tests pass"));
+    assert!(out.contains("Program A output: 5*x + 0"));
+    assert!(out.contains("Symbolic equivalence: PROVEN"));
+    assert!(out.contains("Counterexample: x=0, C=1, D=2"));
+    assert!(out.contains("x+x vs 2*x: VERIFIED"));
+    assert!(out.contains("Instructions saved: 2"));
+    assert!(out.contains("Program equivalence: symbolic execution and algebraic reasoning verify optimizations preserve program semantics."));
+}
+
+#[test]
+fn showcase729_top_tree_concepts() {
+    let out = run_ore("showcase729.ore");
+    assert!(out.contains("Top Tree Concepts:"));
+    assert!(out.contains("Nodes: 8, Edges: 7"));
+    assert!(out.contains("Node 1: degree 3"));
+    assert!(out.contains("Cluster 0: edge(0,1) w=3"));
+    assert!(out.contains("Sum weight: 7"));
+    assert!(out.contains("Max weight: 5"));
+    assert!(out.contains("Level 0: 7 clusters"));
+    assert!(out.contains("Weight sum: 13"));
+    assert!(out.contains("Weight max: 6"));
+    assert!(out.contains("Cut edge(1,4):"));
+    assert!(out.contains("Tree 1: 5 nodes"));
+    assert!(out.contains("Merged tree: 8 nodes"));
+    assert!(out.contains("Top trees: hierarchical cluster decomposition enabling efficient dynamic path and subtree operations on trees."));
+}
+
+#[test]
+fn showcase730_simple_effect_handlers() {
+    let out = run_ore("showcase730.ore");
+    assert!(out.contains("Simple Effect Handlers:"));
+    assert!(out.contains("Effect State: 2 operations"));
+    assert!(out.contains("put(10) -> state=10"));
+    assert!(out.contains("get() -> 15"));
+    assert!(out.contains("Final state: 15"));
+    assert!(out.contains("100 / 0: EXCEPTION (division by zero) -> handled with -1"));
+    assert!(out.contains("Exceptions handled: 1"));
+    assert!(out.contains("choose(1) + choose(3) = 4"));
+    assert!(out.contains("Solutions found: 3"));
+    assert!(out.contains("Step 2: state=6 -> EXCEPTION (exceeds 5)"));
+    assert!(out.contains("pure_add: pure (no effects)"));
+    assert!(out.contains("full_prog: 3 effect(s)"));
+    assert!(out.contains("Pure functions: 1/4"));
+    assert!(out.contains("Effect handlers: algebraic effects separate effect definition from interpretation, enabling modular and composable side-effect management."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,142 @@
+-- Showcase 729: Top Tree Concepts
+
+fn main
+  print "Top Tree Concepts:"
+  print ""
+
+  -- Top trees: hierarchical decomposition of trees for dynamic path/subtree queries
+  -- Support link, cut, path aggregate, and subtree aggregate in O(log n)
+
+  -- Part 1: Base tree
+  print "=== Part 1: Base Tree ==="
+  num_nodes := 8
+  num_edges := 7
+  mut edge_u := [0, 0, 1, 1, 2, 4, 4]
+  mut edge_v := [1, 2, 3, 4, 5, 6, 7]
+  mut edge_w := [3, 7, 2, 5, 4, 1, 6]
+  mut adj_count := [0, 0, 0, 0, 0, 0, 0, 0]
+  for e in range(0, num_edges)
+    adj_count[edge_u[e]] = adj_count[edge_u[e]] + 1
+    adj_count[edge_v[e]] = adj_count[edge_v[e]] + 1
+  print "  Nodes: {num_nodes}, Edges: {num_edges}"
+  for i in range(0, num_nodes)
+    print "  Node {i}: degree {adj_count[i]}"
+
+  -- Part 2: Cluster decomposition
+  print ""
+  print "=== Part 2: Cluster Decomposition ==="
+  -- A cluster is a connected subtree with at most 2 boundary nodes
+  -- Base clusters: individual edges
+  -- Merge operations: Compress (path) and Rake (star)
+  print "  Base clusters (edges):"
+  for e in range(0, num_edges)
+    print "    Cluster {e}: edge({edge_u[e]},{edge_v[e]}) w={edge_w[e]}"
+
+  -- Part 3: Compress operation
+  print ""
+  print "=== Part 3: Compress (Path Merge) ==="
+  -- Compress: merge two clusters sharing an internal degree-2 node
+  -- Example: edge(0,1) + edge(1,3) through node 1 (if degree 2)
+  -- After compress: path cluster (0,3) with aggregate
+  print "  Compress edge(1,3) + edge(1,4) through node 1:"
+  w_13 := edge_w[2]
+  w_14 := edge_w[3]
+  path_weight := w_13 + w_14
+  mut max_weight := w_13
+  if w_14 > max_weight
+    max_weight = w_14
+  bnd := "3,4"
+  print "    Path cluster: boundary=({bnd})"
+  print "    Sum weight: {path_weight}"
+  print "    Max weight: {max_weight}"
+
+  -- Part 4: Rake operation
+  print ""
+  print "=== Part 4: Rake (Star Merge) ==="
+  -- Rake: attach a subtree cluster to a path cluster at a boundary node
+  -- Example: rake edge(0,2) into the path through node 0
+  print "  Rake edge(0,2) into path at node 0:"
+  raked_weight := edge_w[1]
+  print "    Raked subtree weight: {raked_weight}"
+  print "    Subtree becomes internal to combined cluster"
+
+  -- Part 5: Build top tree bottom-up
+  print ""
+  print "=== Part 5: Top Tree Construction ==="
+  -- Level 0: 7 base clusters (edges)
+  -- Level 1: compress/rake to reduce
+  -- Level 2: further merges
+  -- Level 3: root cluster
+  mut level_clusters := [7, 4, 2, 1]
+  num_levels := 4
+  for l in range(0, num_levels)
+    print "  Level {l}: {level_clusters[l]} clusters"
+  print "  Tree height: {num_levels - 1}"
+
+  -- Part 6: Path query simulation
+  print ""
+  print "=== Part 6: Path Queries ==="
+  -- Query: max weight on path from node a to node b
+  -- Simulate by finding path and aggregating
+  -- Path 3->7: 3-1-4-7, weights: 2+5+6=13, max=6
+  print "  Path 3 -> 7:"
+  mut path_nodes := [3, 1, 4, 7]
+  mut path_weights := [2, 5, 6]
+  mut path_sum := 0
+  mut path_max := 0
+  for i in range(0, 3)
+    path_sum = path_sum + path_weights[i]
+    if path_weights[i] > path_max
+      path_max = path_weights[i]
+  print "    Path: 3-1-4-7"
+  print "    Weight sum: {path_sum}"
+  print "    Weight max: {path_max}"
+
+  -- Path 5->7: 5-2-0-1-4-7, weights: 4+7+3+5+6=25, max=7
+  print "  Path 5 -> 7:"
+  mut path2_w := [4, 7, 3, 5, 6]
+  mut sum2 := 0
+  mut max2 := 0
+  for i in range(0, 5)
+    sum2 = sum2 + path2_w[i]
+    if path2_w[i] > max2
+      max2 = path2_w[i]
+  print "    Path: 5-2-0-1-4-7"
+  print "    Weight sum: {sum2}"
+  print "    Weight max: {max2}"
+
+  -- Part 7: Dynamic operations
+  print ""
+  print "=== Part 7: Dynamic Operations ==="
+  -- Cut edge(1,4): splits into two trees
+  print "  Cut edge(1,4):"
+  -- Tree 1: {0,1,2,3,5}, Tree 2: {4,6,7}
+  mut tree1_size := 5
+  mut tree2_size := 3
+  print "    Tree 1: {tree1_size} nodes"
+  print "    Tree 2: {tree2_size} nodes"
+  -- Each tree gets its own top tree
+
+  -- Link: add edge(3,6) with weight 8
+  print "  Link edge(3,6) w=8:"
+  tree1_size = tree1_size + tree2_size
+  print "    Merged tree: {tree1_size} nodes"
+  -- New path 5->7: 5-2-0-1-3-6-4-7
+  mut path3_w := [4, 7, 3, 2, 8, 1, 6]
+  mut sum3 := 0
+  for i in range(0, 7)
+    sum3 = sum3 + path3_w[i]
+  print "    New path 5->7 weight: {sum3}"
+
+  -- Part 8: Complexity
+  print ""
+  print "=== Part 8: Complexity ==="
+  print "  Operations on n={num_nodes} nodes:"
+  print "  Path query: O(log n)"
+  print "  Link/Cut: O(log n)"
+  print "  Subtree aggregate: O(log n)"
+  print "  Space: O(n)"
+  print "  Top tree height: O(log n)"
+
+  print ""
+  print "Top trees: hierarchical cluster decomposition enabling efficient dynamic path and subtree operations on trees."

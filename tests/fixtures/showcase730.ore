@@ -1,0 +1,165 @@
+-- Showcase 730: Simple Effect Handlers
+
+fn main
+  print "Simple Effect Handlers:"
+  print ""
+
+  -- Algebraic effects: structured way to handle side effects
+  -- Effects are like resumable exceptions with handlers
+
+  -- Part 1: Effect system model
+  print "=== Part 1: Effect Types ==="
+  -- Effects: 0=State, 1=Exception, 2=IO, 3=Nondeterminism, 4=Async
+  num_effects := 5
+  mut effect_names := ["State", "Exception", "IO", "Nondeterminism", "Async"]
+  -- Operations per effect
+  mut effect_ops := [2, 1, 2, 1, 2]
+  mut op_names := ["get", "put", "raise", "read", "write", "choose", "fork", "await"]
+  mut op_effect := [0, 0, 1, 2, 2, 3, 4, 4]
+  num_ops := 8
+  for e in range(0, num_effects)
+    print "  Effect {effect_names[e]}: {effect_ops[e]} operations"
+
+  -- Part 2: State effect simulation
+  print ""
+  print "=== Part 2: State Effect Handler ==="
+  -- Simulate state effect: get/put with a handler
+  mut state := 0
+  mut log_len := 0
+  mut log_ops := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut log_vals := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Program: put(10), get, put(get+5), get
+  -- put 10
+  state = 10
+  log_ops[log_len] = 1
+  log_vals[log_len] = 10
+  log_len = log_len + 1
+  print "  put(10) -> state={state}"
+  -- get
+  val := state
+  log_ops[log_len] = 0
+  log_vals[log_len] = val
+  log_len = log_len + 1
+  print "  get() -> {val}"
+  -- put(val + 5)
+  state = val + 5
+  log_ops[log_len] = 1
+  log_vals[log_len] = state
+  log_len = log_len + 1
+  print "  put({state}) -> state={state}"
+  -- get
+  val2 := state
+  log_ops[log_len] = 0
+  log_vals[log_len] = val2
+  log_len = log_len + 1
+  print "  get() -> {val2}"
+  print "  Final state: {state}"
+  print "  Operations logged: {log_len}"
+
+  -- Part 3: Exception effect
+  print ""
+  print "=== Part 3: Exception Effect Handler ==="
+  -- Simulate try/catch as effect handler
+  -- Computation: divide 100 by each of [5, 2, 0, 4]
+  mut divisors := [5, 2, 0, 4]
+  mut results := [0, 0, 0, 0]
+  mut handled := [0, 0, 0, 0]
+  for i in range(0, 4)
+    if divisors[i] == 0
+      -- Raise exception effect
+      handled[i] = 1
+      results[i] = -1
+      print "  100 / {divisors[i]}: EXCEPTION (division by zero) -> handled with -1"
+    else
+      results[i] = 100 / divisors[i]
+      print "  100 / {divisors[i]} = {results[i]}"
+  mut exceptions := 0
+  for i in range(0, 4)
+    exceptions = exceptions + handled[i]
+  print "  Exceptions handled: {exceptions}"
+
+  -- Part 4: Nondeterminism effect
+  print ""
+  print "=== Part 4: Nondeterminism Effect Handler ==="
+  -- choose() returns all possible values
+  -- Simulate: find all pairs (a,b) where a in [1,2,3], b in [1,2,3], a+b=4
+  mut found := 0
+  for a in range(1, 4)
+    for b in range(1, 4)
+      if a + b == 4
+        print "  choose({a}) + choose({b}) = 4"
+        found = found + 1
+  print "  Solutions found: {found}"
+
+  -- Part 5: Handler composition
+  print ""
+  print "=== Part 5: Handler Composition ==="
+  -- Compose State + Exception: stateful computation that can fail
+  mut comp_state := 0
+  mut comp_error := false
+  -- Simulate: increment state, check > threshold, raise if so
+  threshold := 5
+  mut steps := [2, 1, 3, 2, 1]
+  for i in range(0, 5)
+    if not comp_error
+      comp_state = comp_state + steps[i]
+      if comp_state > threshold
+        comp_error = true
+        print "  Step {i}: state={comp_state} -> EXCEPTION (exceeds {threshold})"
+      else
+        print "  Step {i}: state={comp_state}"
+  if comp_error
+    print "  Computation aborted, last valid state <= {threshold}"
+  else
+    print "  Computation completed, final state={comp_state}"
+
+  -- Part 6: Effect row typing
+  print ""
+  print "=== Part 6: Effect Rows ==="
+  -- Track which effects each function uses (bitvector)
+  num_funcs := 4
+  mut func_names := ["pure_add", "stateful_inc", "io_print", "full_prog"]
+  -- effects[func * num_effects + effect] = 1
+  mut effects := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- pure_add: no effects
+  -- stateful_inc: State
+  effects[1 * num_effects + 0] = 1
+  -- io_print: IO
+  effects[2 * num_effects + 2] = 1
+  -- full_prog: State + IO + Exception
+  effects[3 * num_effects + 0] = 1
+  effects[3 * num_effects + 1] = 1
+  effects[3 * num_effects + 2] = 1
+  for f in range(0, num_funcs)
+    mut count := 0
+    for e in range(0, num_effects)
+      if effects[f * num_effects + e] == 1
+        count = count + 1
+    if count == 0
+      print "  {func_names[f]}: pure (no effects)"
+    else
+      print "  {func_names[f]}: {count} effect(s)"
+
+  -- Check if function is pure subset of another
+  -- pure_add can be called from anywhere
+  -- stateful_inc can be called from full_prog (State subset of State+IO+Exc)
+  print "  pure_add callable from stateful_inc: YES (pure subset)"
+  print "  stateful_inc callable from full_prog: YES (State subset)"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Effects modeled: {num_effects}"
+  print "  Operations: {num_ops}"
+  mut pure_funcs := 0
+  for f in range(0, num_funcs)
+    mut has_effect := false
+    for e in range(0, num_effects)
+      if effects[f * num_effects + e] == 1
+        has_effect = true
+    if not has_effect
+      pure_funcs = pure_funcs + 1
+  print "  Pure functions: {pure_funcs}/{num_funcs}"
+
+  print ""
+  print "Effect handlers: algebraic effects separate effect definition from interpretation, enabling modular and composable side-effect management."

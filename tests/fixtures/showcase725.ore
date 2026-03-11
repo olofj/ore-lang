@@ -1,0 +1,126 @@
+-- Showcase 725: CYK Parsing Algorithm
+
+fn main
+  print "CYK Parsing Algorithm:"
+  print ""
+
+  -- Cocke-Younger-Kasami: O(n^3) parsing for context-free grammars in CNF
+
+  -- Part 1: Grammar in Chomsky Normal Form
+  print "=== Part 1: Grammar (CNF) ==="
+  -- Non-terminals: S=0, A=1, B=2, C=3, D=4
+  -- Terminals: a=0, b=1
+  -- Rules (binary): S->AB, S->BC, A->BA, A->a, B->CC, B->b, C->AB, C->a, D->AA
+  num_rules := 9
+  mut rule_lhs := [0, 0, 1, 1, 2, 2, 3, 3, 4]
+  -- For terminal rules, rhs1 is terminal id and rhs2 = -1
+  -- For binary rules, rhs1 and rhs2 are non-terminal ids
+  mut rule_rhs1 := [1, 2, 2, 0, 3, 1, 1, 0, 1]
+  mut rule_rhs2 := [2, 3, 1, -1, 3, -1, 2, -1, 1]
+  mut nt_names := ["S", "A", "B", "C", "D"]
+  num_nts := 5
+  print "  Non-terminals: S, A, B, C, D"
+  print "  Binary rules: S->AB, S->BC, A->BA, B->CC, C->AB, D->AA"
+  print "  Terminal rules: A->a, B->b, C->a"
+  print "  Total rules: {num_rules}"
+
+  -- Part 2: Input string
+  print ""
+  print "=== Part 2: Input String ==="
+  -- Input: "baaba" encoded as [1, 0, 0, 1, 0]
+  input_len := 5
+  mut input := [1, 0, 0, 1, 0]
+  print "  Input: b a a b a"
+  print "  Length: {input_len}"
+
+  -- Part 3: CYK table initialization
+  print ""
+  print "=== Part 3: Initialize CYK Table ==="
+  -- table[i * input_len * num_nts + j * num_nts + nt] = 1 if NT can derive input[i..j+1]
+  -- Using span length and position indexing
+  table_size := input_len * input_len * num_nts
+  mut table := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Fill length-1 spans (terminal rules)
+  for i in range(0, input_len)
+    for r in range(0, num_rules)
+      if rule_rhs2[r] == -1
+        if rule_rhs1[r] == input[i]
+          nt := rule_lhs[r]
+          table[0 * input_len * num_nts + i * num_nts + nt] = 1
+          print "  table[1][{i}] += {nt_names[nt]}"
+
+  -- Part 4: Fill the table
+  print ""
+  print "=== Part 4: CYK Fill ==="
+  mut cells_filled := 0
+  -- span length from 2 to input_len
+  for span in range(2, input_len + 1)
+    for i in range(0, input_len - span + 1)
+      -- try all split points
+      for k in range(1, span)
+        -- left span: length k starting at i
+        -- right span: length (span-k) starting at i+k
+        left_row := (k - 1)
+        left_col := i
+        right_row := (span - k - 1)
+        right_col := i + k
+        -- Check all binary rules
+        for r in range(0, num_rules)
+          if rule_rhs2[r] != -1
+            b := rule_rhs1[r]
+            c := rule_rhs2[r]
+            if table[left_row * input_len * num_nts + left_col * num_nts + b] == 1 and table[right_row * input_len * num_nts + right_col * num_nts + c] == 1
+              nt := rule_lhs[r]
+              idx := (span - 1) * input_len * num_nts + i * num_nts + nt
+              if table[idx] == 0
+                table[idx] = 1
+                cells_filled = cells_filled + 1
+  print "  Cells filled: {cells_filled}"
+
+  -- Part 5: Check membership
+  print ""
+  print "=== Part 5: Parse Result ==="
+  -- Check if S is in table[input_len-1][0]
+  s_idx := (input_len - 1) * input_len * num_nts + 0 * num_nts + 0
+  if table[s_idx] == 1
+    print "  String 'baaba' is in the language: YES"
+  else
+    print "  String 'baaba' is in the language: NO"
+
+  -- Show which NTs derive the full string
+  print "  Non-terminals deriving full string:"
+  for nt in range(0, num_nts)
+    idx := (input_len - 1) * input_len * num_nts + 0 * num_nts + nt
+    if table[idx] == 1
+      print "    {nt_names[nt]}"
+
+  -- Part 6: Parse table statistics
+  print ""
+  print "=== Part 6: Table Statistics ==="
+  mut total_entries := 0
+  for span in range(0, input_len)
+    mut row_count := 0
+    for i in range(0, input_len - span)
+      for nt in range(0, num_nts)
+        if table[span * input_len * num_nts + i * num_nts + nt] == 1
+          row_count = row_count + 1
+          total_entries = total_entries + 1
+    print "  Span {span + 1}: {row_count} entries"
+  print "  Total entries: {total_entries}"
+  max_cells := input_len * input_len * num_nts
+  density := total_entries * 100 / max_cells
+  print "  Table density: {density}%"
+
+  -- Part 7: Complexity analysis
+  print ""
+  print "=== Part 7: Complexity ==="
+  n := input_len
+  g := num_rules
+  print "  Input length n = {n}"
+  print "  Grammar rules g = {g}"
+  print "  Time: O(n^3 * g) = O({n * n * n * g})"
+  print "  Space: O(n^2 * NT) = O({n * n * num_nts})"
+
+  print ""
+  print "CYK algorithm: dynamic programming on substrings for general context-free parsing in cubic time."

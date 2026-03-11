@@ -1,0 +1,177 @@
+-- Showcase 728: Simple Program Equivalence Checking
+
+fn main
+  print "Simple Program Equivalence Checking:"
+  print ""
+
+  -- Determine if two programs compute the same function
+  -- Uses symbolic execution on simple straight-line programs
+
+  -- Part 1: Program representation
+  print "=== Part 1: Program Representation ==="
+  -- Instructions: op=0 (const), op=1 (add), op=2 (mul), op=3 (sub), op=4 (neg)
+  -- Each instruction: [op, arg1, arg2, dest]
+  -- Registers: r0=input, r1..r7=temps
+
+  -- Program A: y = 2*x + 3*x (should equal 5*x)
+  -- r1 = 2 * r0, r2 = 3 * r0, r3 = r1 + r2
+  -- op: 1=add_reg, 2=mul_const
+  prog_a_len := 3
+  mut pa_op := [2, 2, 1]
+  mut pa_a1 := [0, 0, 1]
+  mut pa_a2 := [2, 3, 2]
+  mut pa_dest := [1, 2, 3]
+  print "  Program A: r1=2*r0, r2=3*r0, r3=r1+r2"
+  print "  Output register: r3"
+
+  -- Program B: y = 5*x
+  -- r1 = 5 * r0
+  prog_b_len := 1
+  mut pb_op := [2]
+  mut pb_a1 := [0]
+  mut pb_a2 := [5]
+  mut pb_dest := [1]
+  print "  Program B: r1=5*r0"
+  print "  Output register: r1"
+
+  -- Part 2: Concrete testing
+  print ""
+  print "=== Part 2: Concrete Testing ==="
+  mut test_inputs := [0, 1, 3, 7, 10]
+  mut all_match := true
+  for t in range(0, 5)
+    x := test_inputs[t]
+    -- Execute program A
+    mut ra := [0, 0, 0, 0, 0, 0, 0, 0]
+    ra[0] = x
+    for i in range(0, prog_a_len)
+      if pa_op[i] == 1
+        ra[pa_dest[i]] = ra[pa_a1[i]] + ra[pa_a2[i]]
+      else if pa_op[i] == 2
+        ra[pa_dest[i]] = ra[pa_a1[i]] * pa_a2[i]
+    result_a := ra[3]
+    -- Execute program B
+    mut rb := [0, 0, 0, 0, 0, 0, 0, 0]
+    rb[0] = x
+    for i in range(0, prog_b_len)
+      if pb_op[i] == 1
+        rb[pb_dest[i]] = rb[pb_a1[i]] + rb[pb_a2[i]]
+      else if pb_op[i] == 2
+        rb[pb_dest[i]] = rb[pb_a1[i]] * pb_a2[i]
+    result_b := rb[1]
+    mut eq_str := "MATCH"
+    if result_a != result_b
+      eq_str = "DIFFER"
+      all_match = false
+    print "  x={x}: A={result_a}, B={result_b} [{eq_str}]"
+  if all_match
+    print "  All concrete tests pass"
+
+  -- Part 3: Symbolic execution
+  print ""
+  print "=== Part 3: Symbolic Execution ==="
+  -- Represent symbolic values as linear expressions: coeff*x + const
+  -- reg_coeff[r] = coefficient of x, reg_const[r] = constant part
+  mut sa_coeff := [1, 0, 0, 0, 0, 0, 0, 0]
+  mut sa_const := [0, 0, 0, 0, 0, 0, 0, 0]
+  -- r0 = 1*x + 0 (the input)
+  for i in range(0, prog_a_len)
+    d := pa_dest[i]
+    if pa_op[i] == 2
+      -- multiply: reg * const
+      sa_coeff[d] = sa_coeff[pa_a1[i]] * pa_a2[i]
+      sa_const[d] = sa_const[pa_a1[i]] * pa_a2[i]
+    else if pa_op[i] == 1
+      -- add two regs
+      sa_coeff[d] = sa_coeff[pa_a1[i]] + sa_coeff[pa_a2[i]]
+      sa_const[d] = sa_const[pa_a1[i]] + sa_const[pa_a2[i]]
+  print "  Program A output: {sa_coeff[3]}*x + {sa_const[3]}"
+
+  mut sb_coeff := [1, 0, 0, 0, 0, 0, 0, 0]
+  mut sb_const := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, prog_b_len)
+    d := pb_dest[i]
+    if pb_op[i] == 2
+      sb_coeff[d] = sb_coeff[pb_a1[i]] * pb_a2[i]
+      sb_const[d] = sb_const[pb_a1[i]] * pb_a2[i]
+    else if pb_op[i] == 1
+      sb_coeff[d] = sb_coeff[pb_a1[i]] + sb_coeff[pb_a2[i]]
+      sb_const[d] = sb_const[pb_a1[i]] + sb_const[pb_a2[i]]
+  print "  Program B output: {sb_coeff[1]}*x + {sb_const[1]}"
+
+  if sa_coeff[3] == sb_coeff[1] and sa_const[3] == sb_const[1]
+    print "  Symbolic equivalence: PROVEN"
+  else
+    print "  Symbolic equivalence: DISPROVEN"
+
+  -- Part 4: Non-equivalent programs
+  print ""
+  print "=== Part 4: Non-Equivalent Programs ==="
+  -- Program C: y = 2*x + 1
+  -- Program D: y = 2*x + 2
+  print "  Program C: r1 = 2*x + 1"
+  print "  Program D: r1 = 2*x + 2"
+  c_coeff := 2
+  c_const := 1
+  d_coeff := 2
+  d_const := 2
+  if c_coeff == d_coeff and c_const == d_const
+    print "  Equivalence: PROVEN"
+  else
+    -- Find counterexample
+    -- For linear functions, any x works if constants differ
+    cx := 0
+    c_val := c_coeff * cx + c_const
+    d_val := d_coeff * cx + d_const
+    print "  Equivalence: DISPROVEN"
+    print "  Counterexample: x={cx}, C={c_val}, D={d_val}"
+
+  -- Part 5: Peephole optimization verification
+  print ""
+  print "=== Part 5: Peephole Optimization Verification ==="
+  -- Verify: x + x == 2 * x
+  -- Verify: x * 1 == x
+  -- Verify: x + 0 == x
+  -- Verify: x * 0 == 0
+  num_opts := 4
+  mut opt_names := ["x+x vs 2*x", "x*1 vs x", "x+0 vs x", "x*0 vs 0"]
+  mut opt_ok := [0, 0, 0, 0]
+  -- Test each with several values
+  for o in range(0, num_opts)
+    mut valid := true
+    for x in range(0, 8)
+      mut lhs := 0
+      mut rhs := 0
+      if o == 0
+        lhs = x + x
+        rhs = 2 * x
+      else if o == 1
+        lhs = x * 1
+        rhs = x
+      else if o == 2
+        lhs = x + 0
+        rhs = x
+      else
+        lhs = x * 0
+        rhs = 0
+      if lhs != rhs
+        valid = false
+    if valid
+      opt_ok[o] = 1
+      print "  {opt_names[o]}: VERIFIED"
+    else
+      print "  {opt_names[o]}: FAILED"
+
+  -- Part 6: Instruction count comparison
+  print ""
+  print "=== Part 6: Optimization Impact ==="
+  print "  Program A: {prog_a_len} instructions"
+  print "  Program B: {prog_b_len} instructions"
+  saved := prog_a_len - prog_b_len
+  print "  Instructions saved: {saved}"
+  pct := saved * 100 / prog_a_len
+  print "  Reduction: {pct}%"
+  print "  Equivalence verified: programs produce identical outputs"
+
+  print ""
+  print "Program equivalence: symbolic execution and algebraic reasoning verify optimizations preserve program semantics."

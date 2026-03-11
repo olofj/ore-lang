@@ -1,0 +1,127 @@
+-- Showcase 721: Simple Shape Analysis
+
+fn main
+  print "Simple Shape Analysis:"
+  print ""
+
+  -- Shape analysis determines the structure of heap-allocated objects
+  -- Used in compilers to optimize field accesses and devirtualize calls
+
+  -- Part 1: Shape descriptors
+  print "=== Part 1: Shape Descriptors ==="
+  -- Represent shapes as arrays: each shape has field count and field types
+  -- Shape 0: Point {x: Int, y: Int}
+  -- Shape 1: Rect {x: Int, y: Int, w: Int, h: Int}
+  -- Shape 2: Circle {x: Int, y: Int, r: Int}
+  num_shapes := 3
+  mut shape_names := ["Point", "Rect", "Circle"]
+  mut shape_field_count := [2, 4, 3]
+  mut shape_parent := [-1, 0, 0]
+  for i in range(0, num_shapes)
+    mut parent_str := "none"
+    if shape_parent[i] >= 0
+      parent_str = shape_names[shape_parent[i]]
+    print "  Shape {shape_names[i]}: {shape_field_count[i]} fields, parent={parent_str}"
+
+  -- Part 2: Object allocation tracking
+  print ""
+  print "=== Part 2: Allocation Tracking ==="
+  num_allocs := 6
+  mut alloc_shape := [0, 1, 2, 0, 1, 2]
+  mut alloc_site := [1, 2, 3, 1, 2, 3]
+  -- Count allocations per shape
+  for s in range(0, num_shapes)
+    mut count := 0
+    for a in range(0, num_allocs)
+      if alloc_shape[a] == s
+        count = count + 1
+    print "  {shape_names[s]}: {count} allocations"
+
+  -- Part 3: Points-to analysis
+  print ""
+  print "=== Part 3: Points-to Analysis ==="
+  -- Variables: x=0, y=1, z=2, w=3
+  num_vars := 4
+  mut var_names := ["x", "y", "z", "w"]
+  -- Each variable can point to multiple allocations (bitvector)
+  -- Encode as: points_to[var * num_allocs + alloc] = 1
+  mut points_to := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- x points to alloc 0 (Point)
+  points_to[0] = 1
+  -- y points to alloc 1 (Rect)
+  points_to[7] = 1
+  -- z = x (copy)
+  for a in range(0, num_allocs)
+    points_to[2 * num_allocs + a] = points_to[0 * num_allocs + a]
+  -- w = phi(x, y) - at merge point w could be either
+  for a in range(0, num_allocs)
+    if points_to[0 * num_allocs + a] == 1 or points_to[1 * num_allocs + a] == 1
+      points_to[3 * num_allocs + a] = 1
+
+  for v in range(0, num_vars)
+    mut targets := 0
+    for a in range(0, num_allocs)
+      if points_to[v * num_allocs + a] == 1
+        targets = targets + 1
+    print "  {var_names[v]} -> {targets} possible targets"
+
+  -- Part 4: Shape compatibility
+  print ""
+  print "=== Part 4: Shape Compatibility ==="
+  -- Check if shape A is compatible with shape B (B has at least A's fields)
+  for i in range(0, num_shapes)
+    for j in range(0, num_shapes)
+      if i != j
+        compat := shape_field_count[j] >= shape_field_count[i]
+        if compat
+          print "  {shape_names[i]} compatible with {shape_names[j]} (subset of fields)"
+
+  -- Part 5: Transition graph
+  print ""
+  print "=== Part 5: Shape Transitions ==="
+  -- When a field is added, shape transitions to a new shape
+  print "  Point + field(w,h) -> Rect"
+  print "  Point + field(r) -> Circle"
+  print "  Circle + field(w) -> Rect"
+
+  -- Part 6: Monomorphic call site analysis
+  print ""
+  print "=== Part 6: Call Site Analysis ==="
+  -- Call sites: which shapes can a variable have at each call?
+  num_call_sites := 3
+  mut cs_var := [0, 3, 1]
+  mut cs_names := ["area(x)", "area(w)", "area(y)"]
+  for c in range(0, num_call_sites)
+    v := cs_var[c]
+    mut possible_shapes := 0
+    for a in range(0, num_allocs)
+      if points_to[v * num_allocs + a] == 1
+        possible_shapes = possible_shapes + 1
+    if possible_shapes == 1
+      print "  {cs_names[c]}: MONOMORPHIC (can devirtualize)"
+    else if possible_shapes <= 3
+      print "  {cs_names[c]}: POLYMORPHIC ({possible_shapes} shapes, inline cache)"
+    else
+      print "  {cs_names[c]}: MEGAMORPHIC ({possible_shapes} shapes, virtual dispatch)"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  mut mono := 0
+  mut poly := 0
+  for c in range(0, num_call_sites)
+    v := cs_var[c]
+    mut count := 0
+    for a in range(0, num_allocs)
+      if points_to[v * num_allocs + a] == 1
+        count = count + 1
+    if count == 1
+      mono = mono + 1
+    else
+      poly = poly + 1
+  print "  Monomorphic sites: {mono}"
+  print "  Polymorphic sites: {poly}"
+  print "  Devirtualization rate: {mono * 100 / num_call_sites}%"
+
+  print ""
+  print "Shape analysis: tracking object shapes enables devirtualization, inline caching, and field access optimization."

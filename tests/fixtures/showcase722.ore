@@ -1,0 +1,159 @@
+-- Showcase 722: Task-Parallel Framework
+
+fn main
+  print "Task-Parallel Framework:"
+  print ""
+
+  -- Model a work-stealing task scheduler with dependency tracking
+
+  -- Part 1: Task graph
+  print "=== Part 1: Task Graph ==="
+  num_tasks := 8
+  mut task_cost := [10, 20, 15, 5, 30, 10, 25, 20]
+  mut task_done := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut task_worker := [-1, -1, -1, -1, -1, -1, -1, -1]
+  -- Dependencies: dep_from[i] must complete before dep_to[i]
+  num_deps := 7
+  mut dep_from := [0, 0, 1, 1, 2, 3, 5]
+  mut dep_to := [1, 2, 3, 4, 5, 6, 7]
+  print "  Tasks: {num_tasks}"
+  print "  Dependencies: {num_deps}"
+  -- Find root tasks (no incoming edges)
+  for t in range(0, num_tasks)
+    mut has_dep := false
+    for d in range(0, num_deps)
+      if dep_to[d] == t
+        has_dep = true
+    if not has_dep
+      print "  Root task: {t} (cost={task_cost[t]})"
+
+  -- Part 2: Topological ordering
+  print ""
+  print "=== Part 2: Topological Sort ==="
+  mut in_degree := [0, 0, 0, 0, 0, 0, 0, 0]
+  for d in range(0, num_deps)
+    t := dep_to[d]
+    in_degree[t] = in_degree[t] + 1
+  mut order := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut order_idx := 0
+  mut processed := [0, 0, 0, 0, 0, 0, 0, 0]
+  -- Kahn's algorithm
+  for round in range(0, num_tasks)
+    for t in range(0, num_tasks)
+      if processed[t] == 0 and in_degree[t] == 0
+        order[order_idx] = t
+        order_idx = order_idx + 1
+        processed[t] = 1
+        -- Reduce in-degree of successors
+        for d in range(0, num_deps)
+          if dep_from[d] == t
+            succ := dep_to[d]
+            in_degree[succ] = in_degree[succ] - 1
+        break
+  print "  Topological order: {order[0]}, {order[1]}, {order[2]}, {order[3]}, {order[4]}, {order[5]}, {order[6]}, {order[7]}"
+
+  -- Part 3: Critical path
+  print ""
+  print "=== Part 3: Critical Path ==="
+  mut earliest := [0, 0, 0, 0, 0, 0, 0, 0]
+  for idx in range(0, num_tasks)
+    t := order[idx]
+    earliest[t] = task_cost[t]
+    for d in range(0, num_deps)
+      if dep_to[d] == t
+        pred := dep_from[d]
+        candidate := earliest[pred] + task_cost[t]
+        if candidate > earliest[t]
+          earliest[t] = candidate
+  mut max_time := 0
+  mut critical_end := 0
+  for t in range(0, num_tasks)
+    if earliest[t] > max_time
+      max_time = earliest[t]
+      critical_end = t
+  print "  Earliest completion times:"
+  for t in range(0, num_tasks)
+    print "    Task {t}: finish by t={earliest[t]}"
+  print "  Critical path length: {max_time}"
+
+  -- Part 4: Work stealing simulation
+  print ""
+  print "=== Part 4: Work Stealing ==="
+  num_workers := 3
+  mut worker_time := [0, 0, 0]
+  mut worker_tasks := [0, 0, 0]
+  -- Reset for scheduling
+  for t in range(0, num_tasks)
+    task_done[t] = 0
+  -- Schedule tasks in topological order, assign to least-loaded worker
+  for idx in range(0, num_tasks)
+    t := order[idx]
+    -- Find worker with minimum current time
+    mut best_w := 0
+    mut best_time := worker_time[0]
+    for w in range(1, num_workers)
+      if worker_time[w] < best_time
+        best_time = worker_time[w]
+        best_w = w
+    -- Check dependency satisfaction
+    mut dep_ready_time := 0
+    for d in range(0, num_deps)
+      if dep_to[d] == t
+        pred := dep_from[d]
+        if earliest[pred] > dep_ready_time
+          dep_ready_time = earliest[pred]
+    mut start_time := worker_time[best_w]
+    if dep_ready_time > start_time
+      start_time = dep_ready_time
+    worker_time[best_w] = start_time + task_cost[t]
+    worker_tasks[best_w] = worker_tasks[best_w] + 1
+    task_worker[t] = best_w
+    print "  Task {t} -> Worker {best_w} [{start_time}..{start_time + task_cost[t]}]"
+
+  -- Part 5: Load balance analysis
+  print ""
+  print "=== Part 5: Load Balance ==="
+  mut total_work := 0
+  for t in range(0, num_tasks)
+    total_work = total_work + task_cost[t]
+  for w in range(0, num_workers)
+    print "  Worker {w}: {worker_tasks[w]} tasks, busy until t={worker_time[w]}"
+  mut makespan := 0
+  for w in range(0, num_workers)
+    if worker_time[w] > makespan
+      makespan = worker_time[w]
+  ideal := total_work / num_workers
+  print "  Total work: {total_work}"
+  print "  Ideal parallel time: {ideal}"
+  print "  Actual makespan: {makespan}"
+  efficiency := total_work * 100 / (makespan * num_workers)
+  print "  Parallel efficiency: {efficiency}%"
+
+  -- Part 6: Steal events
+  print ""
+  print "=== Part 6: Steal Simulation ==="
+  -- Simulate steals: idle worker takes from busiest
+  mut steal_count := 0
+  for round in range(0, 3)
+    mut min_w := 0
+    mut max_w := 0
+    for w in range(0, num_workers)
+      if worker_time[w] < worker_time[min_w]
+        min_w = w
+      if worker_time[w] > worker_time[max_w]
+        max_w = w
+    diff := worker_time[max_w] - worker_time[min_w]
+    if diff > 10
+      stolen := diff / 4
+      worker_time[max_w] = worker_time[max_w] - stolen
+      worker_time[min_w] = worker_time[min_w] + stolen
+      steal_count = steal_count + 1
+      print "  Steal: Worker {min_w} takes work from Worker {max_w} (amount={stolen})"
+    else
+      print "  Round {round}: balanced (diff={diff})"
+
+  print ""
+  print "  Total steals: {steal_count}"
+
+  print ""
+  print "Task-parallel framework: dependency-driven scheduling with work stealing achieves near-optimal load balance."

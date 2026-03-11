@@ -1,0 +1,177 @@
+-- Showcase 726: Simple Alias Analysis
+
+fn main
+  print "Simple Alias Analysis:"
+  print ""
+
+  -- Alias analysis determines if two pointers can refer to the same memory
+  -- Critical for optimization: code motion, parallelization, vectorization
+
+  -- Part 1: Memory locations
+  print "=== Part 1: Memory Model ==="
+  num_locs := 6
+  -- Locations: stack_a=0, stack_b=1, heap_x=2, heap_y=3, global_g=4, param_p=5
+  mut loc_names := ["stack_a", "stack_b", "heap_x", "heap_y", "global_g", "param_p"]
+  mut loc_class := [0, 0, 1, 1, 2, 3]
+  -- Classes: 0=stack, 1=heap, 2=global, 3=param
+  mut class_names := ["stack", "heap", "global", "param"]
+  for i in range(0, num_locs)
+    cls := loc_class[i]
+    print "  {loc_names[i]}: class={class_names[cls]}"
+
+  -- Part 2: Pointer variables
+  print ""
+  print "=== Part 2: Pointer Variables ==="
+  num_ptrs := 8
+  mut ptr_names := ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"]
+  -- Points-to sets: each pointer -> set of locations (bitvector)
+  -- Encode: pts[ptr * num_locs + loc] = 1
+  mut pts := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- p1 -> stack_a
+  pts[0 * num_locs + 0] = 1
+  -- p2 -> stack_b
+  pts[1 * num_locs + 1] = 1
+  -- p3 -> heap_x
+  pts[2 * num_locs + 2] = 1
+  -- p4 -> heap_x, heap_y (ambiguous)
+  pts[3 * num_locs + 2] = 1
+  pts[3 * num_locs + 3] = 1
+  -- p5 -> stack_a (alias of p1)
+  pts[4 * num_locs + 0] = 1
+  -- p6 -> global_g
+  pts[5 * num_locs + 4] = 1
+  -- p7 -> param_p (unknown: could be anything)
+  for i in range(0, num_locs)
+    pts[6 * num_locs + i] = 1
+  -- p8 -> heap_y
+  pts[7 * num_locs + 3] = 1
+
+  for p in range(0, num_ptrs)
+    mut count := 0
+    for l in range(0, num_locs)
+      if pts[p * num_locs + l] == 1
+        count = count + 1
+    print "  {ptr_names[p]}: points to {count} location(s)"
+
+  -- Part 3: Alias queries
+  print ""
+  print "=== Part 3: Alias Queries ==="
+  -- Check alias pairs
+  num_queries := 6
+  mut qa := [0, 0, 2, 3, 0, 2]
+  mut qb := [4, 1, 3, 7, 6, 5]
+  for q in range(0, num_queries)
+    a := qa[q]
+    b := qb[q]
+    -- Compute intersection of points-to sets
+    mut overlap := 0
+    mut total_a := 0
+    mut total_b := 0
+    for l in range(0, num_locs)
+      if pts[a * num_locs + l] == 1
+        total_a = total_a + 1
+      if pts[b * num_locs + l] == 1
+        total_b = total_b + 1
+      if pts[a * num_locs + l] == 1 and pts[b * num_locs + l] == 1
+        overlap = overlap + 1
+    mut result := "NoAlias"
+    if overlap > 0 and overlap == total_a and overlap == total_b
+      result = "MustAlias"
+    else if overlap > 0
+      result = "MayAlias"
+    print "  {ptr_names[a]} vs {ptr_names[b]}: {result}"
+
+  -- Part 4: Type-based disambiguation (TBAA)
+  print ""
+  print "=== Part 4: Type-Based Alias Analysis ==="
+  -- Types: int=0, float=1, char=2, struct_a=3, struct_b=4
+  num_types := 5
+  mut type_names := ["int", "float", "char", "struct_a", "struct_b"]
+  mut ptr_type := [0, 0, 1, 1, 0, 3, 4, 2]
+  -- Type compatibility matrix (strict aliasing: same type or char)
+  mut tbaa_queries := 4
+  mut tbaa_a := [0, 2, 5, 0]
+  mut tbaa_b := [1, 7, 6, 4]
+  for q in range(0, tbaa_queries)
+    a := tbaa_a[q]
+    b := tbaa_b[q]
+    ta := ptr_type[a]
+    tb := ptr_type[b]
+    -- char (type 2) aliases everything
+    if ta == tb
+      print "  {ptr_names[a]}:{type_names[ta]} vs {ptr_names[b]}:{type_names[tb]}: MayAlias (same type)"
+    else if ta == 2 or tb == 2
+      print "  {ptr_names[a]}:{type_names[ta]} vs {ptr_names[b]}:{type_names[tb]}: MayAlias (char rule)"
+    else
+      print "  {ptr_names[a]}:{type_names[ta]} vs {ptr_names[b]}:{type_names[tb]}: NoAlias (type mismatch)"
+
+  -- Part 5: Mod/Ref analysis
+  print ""
+  print "=== Part 5: Mod/Ref Analysis ==="
+  -- For each function call, determine what it may modify or reference
+  -- Simulate: func_a modifies heap_x, reads global_g
+  -- func_b modifies stack_a, reads heap_y
+  num_funcs := 2
+  mut func_names := ["func_a", "func_b"]
+  mut func_mod := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut func_ref := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  func_mod[0 * num_locs + 2] = 1
+  func_ref[0 * num_locs + 4] = 1
+  func_mod[1 * num_locs + 0] = 1
+  func_ref[1 * num_locs + 3] = 1
+  for f in range(0, num_funcs)
+    mut mods := 0
+    mut refs := 0
+    for l in range(0, num_locs)
+      if func_mod[f * num_locs + l] == 1
+        mods = mods + 1
+      if func_ref[f * num_locs + l] == 1
+        refs = refs + 1
+    print "  {func_names[f]}: modifies {mods} locs, reads {refs} locs"
+  -- Check if func_a and func_b are independent
+  mut conflict := false
+  for l in range(0, num_locs)
+    if func_mod[0 * num_locs + l] == 1 and func_mod[1 * num_locs + l] == 1
+      conflict = true
+    if func_mod[0 * num_locs + l] == 1 and func_ref[1 * num_locs + l] == 1
+      conflict = true
+    if func_ref[0 * num_locs + l] == 1 and func_mod[1 * num_locs + l] == 1
+      conflict = true
+  if not conflict
+    print "  func_a and func_b: INDEPENDENT (can parallelize)"
+  else
+    print "  func_a and func_b: DEPENDENT"
+
+  -- Part 6: Optimization opportunities
+  print ""
+  print "=== Part 6: Optimization Opportunities ==="
+  mut no_alias_count := 0
+  mut may_alias_count := 0
+  mut must_alias_count := 0
+  for i in range(0, num_ptrs)
+    for j in range(i + 1, num_ptrs)
+      mut overlap := 0
+      mut ti := 0
+      mut tj := 0
+      for l in range(0, num_locs)
+        if pts[i * num_locs + l] == 1
+          ti = ti + 1
+        if pts[j * num_locs + l] == 1
+          tj = tj + 1
+        if pts[i * num_locs + l] == 1 and pts[j * num_locs + l] == 1
+          overlap = overlap + 1
+      if overlap == 0
+        no_alias_count = no_alias_count + 1
+      else if overlap == ti and overlap == tj
+        must_alias_count = must_alias_count + 1
+      else
+        may_alias_count = may_alias_count + 1
+  total_pairs := num_ptrs * (num_ptrs - 1) / 2
+  print "  Total pointer pairs: {total_pairs}"
+  print "  NoAlias: {no_alias_count}"
+  print "  MayAlias: {may_alias_count}"
+  print "  MustAlias: {must_alias_count}"
+  print "  Disambiguation rate: {no_alias_count * 100 / total_pairs}%"
+
+  print ""
+  print "Alias analysis: disambiguating memory references enables load/store optimization, code motion, and parallelization."

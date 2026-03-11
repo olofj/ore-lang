@@ -1,0 +1,153 @@
+-- Showcase 727: Range Tree (2D Orthogonal)
+
+fn main
+  print "Range Tree (2D Orthogonal):"
+  print ""
+
+  -- A range tree answers 2D orthogonal range queries efficiently
+  -- For n points, queries take O(log^2 n) time
+
+  -- Part 1: Point set
+  print "=== Part 1: Point Set ==="
+  num_points := 8
+  mut px := [2, 7, 4, 1, 9, 5, 3, 8]
+  mut py := [5, 3, 8, 2, 7, 1, 6, 4]
+  for i in range(0, num_points)
+    print "  P{i} = ({px[i]}, {py[i]})"
+
+  -- Part 2: Sort by x-coordinate (for primary tree)
+  print ""
+  print "=== Part 2: Sort by X ==="
+  -- Index array for sorted order
+  mut sorted_idx := [0, 1, 2, 3, 4, 5, 6, 7]
+  -- Bubble sort by x
+  for i in range(0, num_points)
+    for j in range(0, num_points - 1 - i)
+      a := sorted_idx[j]
+      b := sorted_idx[j + 1]
+      if px[a] > px[b]
+        tmp := sorted_idx[j]
+        sorted_idx[j] = sorted_idx[j + 1]
+        sorted_idx[j + 1] = tmp
+  print "  Sorted by x:"
+  for i in range(0, num_points)
+    idx := sorted_idx[i]
+    print "    P{idx} = ({px[idx]}, {py[idx]})"
+
+  -- Part 3: Build primary tree (1D on x)
+  print ""
+  print "=== Part 3: Primary Tree Structure ==="
+  -- Binary tree stored in array, level-order
+  -- For 8 sorted points, tree has 15 nodes (some empty)
+  tree_size := 15
+  mut tree_x_lo := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut tree_x_hi := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut tree_count := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Root covers all points
+  first := sorted_idx[0]
+  last := sorted_idx[num_points - 1]
+  tree_x_lo[0] = px[first]
+  tree_x_hi[0] = px[last]
+  tree_count[0] = num_points
+  -- Level 1
+  mid := num_points / 2
+  mid_idx := sorted_idx[mid - 1]
+  mid_next := sorted_idx[mid]
+  tree_x_lo[1] = px[first]
+  tree_x_hi[1] = px[mid_idx]
+  tree_count[1] = mid
+  tree_x_lo[2] = px[mid_next]
+  tree_x_hi[2] = px[last]
+  tree_count[2] = num_points - mid
+  print "  Root: x=[{tree_x_lo[0]},{tree_x_hi[0]}], {tree_count[0]} points"
+  print "  Left: x=[{tree_x_lo[1]},{tree_x_hi[1]}], {tree_count[1]} points"
+  print "  Right: x=[{tree_x_lo[2]},{tree_x_hi[2]}], {tree_count[2]} points"
+  depth := 3
+  print "  Tree depth: {depth}"
+
+  -- Part 4: 2D range query (brute force for correctness)
+  print ""
+  print "=== Part 4: Range Queries ==="
+  -- Query: find all points in [x1,x2] x [y1,y2]
+  num_queries := 3
+  mut qx1 := [2, 1, 5]
+  mut qy1 := [2, 1, 3]
+  mut qx2 := [7, 4, 9]
+  mut qy2 := [6, 8, 7]
+  for q in range(0, num_queries)
+    mut count := 0
+    mut found := ""
+    for i in range(0, num_points)
+      if px[i] >= qx1[q] and px[i] <= qx2[q] and py[i] >= qy1[q] and py[i] <= qy2[q]
+        count = count + 1
+        if found == ""
+          found = "P" + str(i)
+        else
+          found = found + " P" + str(i)
+    print "  Query [{qx1[q]},{qx2[q]}]x[{qy1[q]},{qy2[q]}]: {count} points ({found})"
+
+  -- Part 5: Tree traversal for query
+  print ""
+  print "=== Part 5: Query Decomposition ==="
+  -- For query [2,7]x[2,6], show which tree nodes are visited
+  qx_lo := 2
+  qx_hi := 7
+  print "  Query x-range: [{qx_lo},{qx_hi}]"
+  -- Check root
+  if tree_x_lo[0] <= qx_hi and tree_x_hi[0] >= qx_lo
+    print "  Visit root [{tree_x_lo[0]},{tree_x_hi[0]}]: overlaps"
+  if tree_x_lo[1] <= qx_hi and tree_x_hi[1] >= qx_lo
+    if tree_x_lo[1] >= qx_lo and tree_x_hi[1] <= qx_hi
+      print "  Visit left [{tree_x_lo[1]},{tree_x_hi[1]}]: fully contained -> query y-tree"
+    else
+      print "  Visit left [{tree_x_lo[1]},{tree_x_hi[1]}]: partially overlaps -> recurse"
+  if tree_x_lo[2] <= qx_hi and tree_x_hi[2] >= qx_lo
+    if tree_x_lo[2] >= qx_lo and tree_x_hi[2] <= qx_hi
+      print "  Visit right [{tree_x_lo[2]},{tree_x_hi[2]}]: fully contained -> query y-tree"
+    else
+      print "  Visit right [{tree_x_lo[2]},{tree_x_hi[2]}]: partially overlaps -> recurse"
+
+  -- Part 6: Fractional cascading improvement
+  print ""
+  print "=== Part 6: Fractional Cascading ==="
+  -- Fractional cascading reduces query time from O(log^2 n) to O(log n + k)
+  -- Merge sorted y-lists with forwarding pointers
+  -- Left child y-sorted
+  mut left_y := [0, 0, 0, 0]
+  for i in range(0, mid)
+    idx := sorted_idx[i]
+    left_y[i] = py[idx]
+  -- Sort left_y
+  for i in range(0, mid)
+    for j in range(0, mid - 1 - i)
+      if left_y[j] > left_y[j + 1]
+        tmp := left_y[j]
+        left_y[j] = left_y[j + 1]
+        left_y[j + 1] = tmp
+  print "  Left child y-sorted: {left_y[0]}, {left_y[1]}, {left_y[2]}, {left_y[3]}"
+  -- Right child y-sorted
+  mut right_y := [0, 0, 0, 0]
+  for i in range(0, num_points - mid)
+    idx := sorted_idx[mid + i]
+    right_y[i] = py[idx]
+  for i in range(0, num_points - mid)
+    for j in range(0, num_points - mid - 1 - i)
+      if right_y[j] > right_y[j + 1]
+        tmp := right_y[j]
+        right_y[j] = right_y[j + 1]
+        right_y[j + 1] = tmp
+  print "  Right child y-sorted: {right_y[0]}, {right_y[1]}, {right_y[2]}, {right_y[3]}"
+  print "  With cascading: query O(log n + k) instead of O(log^2 n)"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Complexity Summary ==="
+  print "  Points: {num_points}"
+  print "  Build time: O(n log n)"
+  print "  Space: O(n log n)"
+  print "  Query (basic): O(log^2 n + k)"
+  print "  Query (cascading): O(log n + k)"
+  print "  where k = number of reported points"
+
+  print ""
+  print "Range tree: hierarchical decomposition of coordinates enables efficient multi-dimensional orthogonal range queries."
