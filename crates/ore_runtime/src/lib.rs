@@ -1178,6 +1178,28 @@ pub struct OreMap {
     kinds: std::collections::HashMap<String, i8>,
 }
 
+/// countBy: apply function to each element, count occurrences of each result (as string key).
+/// Returns a new OreMap with string keys and int counts.
+#[no_mangle]
+pub extern "C" fn ore_list_count_by(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreMap {
+    unsafe {
+        let src = &*list;
+        let result = ore_map_new();
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            let key_val = call_closure(func, env, val);
+            // key_val is a *mut OreStr cast to i64
+            let key_str = &*(key_val as *mut OreStr);
+            let key = key_str.as_str().to_string();
+            let map = &mut *result;
+            let count = map.inner.entry(key.clone()).or_insert(0);
+            *count += 1;
+            map.kinds.insert(key, 0); // 0 = Int
+        }
+        result
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_map_new() -> *mut OreMap {
     Box::into_raw(Box::new(OreMap {

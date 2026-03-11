@@ -1,0 +1,21 @@
+-- Test count_by method
+
+fn main
+  -- Word frequency counting
+  text := "the cat sat on the mat the cat"
+  counts := text.words().count_by(w => w)
+  print counts["the"]
+  print counts["cat"]
+  print counts["sat"]
+  print counts["on"]
+  print counts["mat"]
+  print counts.len()
+
+  -- Count by first letter
+  names := ["alice", "anna", "bob", "ben", "charlie"]
+  by_letter := names.count_by(n => n.substr(0, 1))
+  print by_letter["a"]
+  print by_letter["b"]
+  print by_letter["c"]
+
+  print "count_by ok"

@@ -955,3 +955,15 @@ fn control_comparison_chains() {
         "chains ok",
     ]);
 }
+
+#[test]
+fn lists_count_by() {
+    let out = run_ore("lists/count_by.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "3", "2", "1", "1", "1", // word counts
+        "5",                      // unique words
+        "2", "2", "1",           // by first letter
+        "count_by ok",
+    ]);
+}
