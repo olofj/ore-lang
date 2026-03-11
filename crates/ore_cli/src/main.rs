@@ -517,6 +517,10 @@ fn map_runtime_functions(
     map_fn!("ore_list_sort_str", ore_runtime::ore_list_sort_str);
     map_fn!("ore_list_sort_float", ore_runtime::ore_list_sort_float);
     map_fn!("ore_list_dedup", ore_runtime::ore_list_dedup);
+    map_fn!("ore_list_sum_float", ore_runtime::ore_list_sum_float);
+    map_fn!("ore_list_product_float", ore_runtime::ore_list_product_float);
+    map_fn!("ore_list_min_float", ore_runtime::ore_list_min_float);
+    map_fn!("ore_list_max_float", ore_runtime::ore_list_max_float);
     // Math functions
     map_fn!("ore_math_sqrt", ore_runtime::ore_math_sqrt);
     map_fn!("ore_math_sin", ore_runtime::ore_math_sin);

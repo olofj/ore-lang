@@ -1,0 +1,12 @@
+fn main
+  nums := [1.5, 2.5, 3.0, 4.0]
+  print nums.sum()
+  print nums.product()
+  print nums.min()
+  print nums.max()
+
+  -- Float map + sum pipeline
+  result := [1.0, 2.0, 3.0, 4.0, 5.0]
+    | map(x => x * x)
+    | sum()
+  print result

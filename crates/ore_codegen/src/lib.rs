@@ -792,6 +792,10 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_sort_str", void_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_sort_float", void_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_dedup", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_sum_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_product_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_min_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_max_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
         // Math functions
         self.module.add_function("ore_math_sqrt", f64_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_math_sin", f64_type.fn_type(&[f64_type.into()], false), ext);
@@ -3130,12 +3134,27 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::List))
             }
             "sum" => {
-                let rt = self.module.get_function("ore_list_sum").unwrap();
-                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sum"))?;
-                let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                if matches!(elem_kind, ValKind::Float) {
+                    let rt = self.module.get_function("ore_list_sum_float").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sumf"))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ValKind::Float))
+                } else {
+                    let rt = self.module.get_function("ore_list_sum").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sum"))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ValKind::Int))
+                }
             }
             "product" => {
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                if matches!(elem_kind, ValKind::Float) {
+                    let rt = self.module.get_function("ore_list_product_float").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "prodf"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Float));
+                }
                 let rt = self.module.get_function("ore_list_product").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "product"))?;
                 let val = self.call_result_to_value(result)?;
@@ -3310,16 +3329,32 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             "min" => {
-                let rt = self.module.get_function("ore_list_min").unwrap();
-                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmin"))?;
-                let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                if matches!(elem_kind, ValKind::Float) {
+                    let rt = self.module.get_function("ore_list_min_float").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lminf"))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ValKind::Float))
+                } else {
+                    let rt = self.module.get_function("ore_list_min").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmin"))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ValKind::Int))
+                }
             }
             "max" => {
-                let rt = self.module.get_function("ore_list_max").unwrap();
-                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmax"))?;
-                let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                if matches!(elem_kind, ValKind::Float) {
+                    let rt = self.module.get_function("ore_list_max_float").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmaxf"))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ValKind::Float))
+                } else {
+                    let rt = self.module.get_function("ore_list_max").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmax"))?;
+                    let val = self.call_result_to_value(result)?;
+                    Ok((val, ValKind::Int))
+                }
             }
             "count" => {
                 if args.len() != 1 {

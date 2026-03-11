@@ -1506,6 +1506,58 @@ pub extern "C" fn ore_list_sum(list: *mut OreList) -> i64 {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn ore_list_sum_float(list: *mut OreList) -> f64 {
+    unsafe {
+        let src = &*list;
+        let mut total: f64 = 0.0;
+        for i in 0..src.len as usize {
+            total += f64::from_bits(*src.data.add(i) as u64);
+        }
+        total
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_product_float(list: *mut OreList) -> f64 {
+    unsafe {
+        let src = &*list;
+        let mut total: f64 = 1.0;
+        for i in 0..src.len as usize {
+            total *= f64::from_bits(*src.data.add(i) as u64);
+        }
+        total
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_min_float(list: *mut OreList) -> f64 {
+    unsafe {
+        let src = &*list;
+        if src.len == 0 { return 0.0; }
+        let mut min = f64::from_bits(*src.data as u64);
+        for i in 1..src.len as usize {
+            let v = f64::from_bits(*src.data.add(i) as u64);
+            if v < min { min = v; }
+        }
+        min
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_max_float(list: *mut OreList) -> f64 {
+    unsafe {
+        let src = &*list;
+        if src.len == 0 { return 0.0; }
+        let mut max = f64::from_bits(*src.data as u64);
+        for i in 1..src.len as usize {
+            let v = f64::from_bits(*src.data.add(i) as u64);
+            if v > max { max = v; }
+        }
+        max
+    }
+}
+
 /// Product of all i64 elements in a list.
 #[no_mangle]
 pub extern "C" fn ore_list_product(list: *mut OreList) -> i64 {

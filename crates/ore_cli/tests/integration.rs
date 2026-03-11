@@ -1192,6 +1192,13 @@ fn math_functions() {
 }
 
 #[test]
+fn lists_float_ops() {
+    let out = run_ore("lists/float_ops.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["11.0", "45.0", "1.5", "4.0", "55.0"]);
+}
+
+#[test]
 fn lists_sort_strings() {
     let out = run_ore("lists/sort_strings.ore");
     let lines: Vec<&str> = out.lines().collect();
