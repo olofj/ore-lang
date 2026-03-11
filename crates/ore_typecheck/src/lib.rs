@@ -553,7 +553,7 @@ impl TypeChecker {
             }
 
             Expr::Match { subject, arms } => {
-                self.infer_expr(subject, env);
+                let subj_ty = self.infer_expr(subject, env);
                 let mut result_ty = Type::Any;
                 for arm in arms {
                     if let Some(guard) = &arm.guard {
@@ -563,6 +563,10 @@ impl TypeChecker {
                     if result_ty == Type::Any {
                         result_ty = arm_ty;
                     }
+                }
+                // Exhaustiveness check for enum types
+                if let Type::Enum(enum_name) = &subj_ty {
+                    self.check_match_exhaustiveness(enum_name, arms);
                 }
                 result_ty
             }
@@ -718,6 +722,68 @@ impl TypeChecker {
                 self.infer_expr(right, env);
                 Type::Unit
             }
+        }
+    }
+
+    fn check_match_exhaustiveness(&mut self, enum_name: &str, arms: &[MatchArm]) {
+        let enum_def = match self.enums.get(enum_name) {
+            Some(ed) => ed.clone(),
+            None => return,
+        };
+
+        // Check if there's a wildcard or catch-all pattern
+        let has_wildcard = arms.iter().any(|arm| {
+            self.pattern_is_wildcard(&arm.pattern)
+        });
+        if has_wildcard {
+            return;
+        }
+
+        // Collect covered variant names
+        let covered: std::collections::HashSet<String> = arms.iter()
+            .flat_map(|arm| self.pattern_variant_names(&arm.pattern))
+            .collect();
+
+        // Find uncovered variants
+        let missing: Vec<&str> = enum_def.variants.iter()
+            .filter(|(name, _)| !covered.contains(name))
+            .map(|(name, _)| name.as_str())
+            .collect();
+
+        if !missing.is_empty() {
+            self.err(format!(
+                "non-exhaustive match on {}: missing variant(s) {}",
+                enum_name,
+                missing.join(", ")
+            ));
+        }
+    }
+
+    fn pattern_is_wildcard(&self, pattern: &Pattern) -> bool {
+        match pattern {
+            Pattern::Wildcard => true,
+            Pattern::Variant { name, .. } => {
+                // A bare variable binding (not a known variant) acts as wildcard
+                !self.variant_to_enum.contains_key(name)
+            }
+            Pattern::Or(pats) => pats.iter().any(|p| self.pattern_is_wildcard(p)),
+            _ => false,
+        }
+    }
+
+    fn pattern_variant_names(&self, pattern: &Pattern) -> Vec<String> {
+        match pattern {
+            Pattern::Variant { name, .. } => {
+                if self.variant_to_enum.contains_key(name) {
+                    vec![name.clone()]
+                } else {
+                    vec![] // Variable binding, not a variant
+                }
+            }
+            Pattern::Or(pats) => pats.iter()
+                .flat_map(|p| self.pattern_variant_names(p))
+                .collect(),
+            _ => vec![],
         }
     }
 

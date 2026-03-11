@@ -1,0 +1,13 @@
+type Direction
+  North
+  South
+  East
+  West
+
+fn describe d:Direction -> Str
+  match d
+    North -> "up"
+    South -> "down"
+
+fn main
+  print describe(North())

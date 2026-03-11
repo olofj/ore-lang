@@ -209,6 +209,14 @@ fn traits_wrong_signature() {
 }
 
 #[test]
+fn traits_exhaustive_match() {
+    let stderr = run_ore_expect_error("traits/exhaustive_match.ore");
+    assert!(stderr.contains("non-exhaustive match"), "expected non-exhaustive match error, got: {}", stderr);
+    assert!(stderr.contains("East"), "expected missing East, got: {}", stderr);
+    assert!(stderr.contains("West"), "expected missing West, got: {}", stderr);
+}
+
+#[test]
 fn testing_assert_in_main() {
     let out = run_ore("testing/assert_in_main.ore");
     assert_eq!(out.trim(), "all assertions passed");
