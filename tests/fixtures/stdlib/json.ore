@@ -1,0 +1,23 @@
+-- JSON parse and stringify
+
+fn main
+  -- Parse JSON with integer values
+  data := json_parse("\{\"x\":10,\"y\":20}")
+  print data["x"]
+  print data["y"]
+
+  -- Stringify back to JSON
+  json := json_stringify(data)
+  print json
+
+  -- Round-trip empty object
+  empty := json_parse("\{}")
+  result := json_stringify(empty)
+  print result
+
+  -- Parse with mixed types - stringify preserves types
+  mixed := json_parse("\{\"name\":\"Alice\",\"age\":30,\"active\":true}")
+  mixed_json := json_stringify(mixed)
+  print mixed_json
+
+  print "json ok"

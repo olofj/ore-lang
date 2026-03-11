@@ -749,6 +749,9 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_file_write", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // JSON
+        self.module.add_function("ore_json_parse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_json_stringify", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_dynamic_to_str(i64, i8) -> ptr — dynamic dispatch for Result/Option payload to string
         self.module.add_function("ore_dynamic_to_str", ptr_type.fn_type(&[i64_type.into(), i8_type.into()], false), ext);
         // Channels
@@ -1465,6 +1468,26 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[path_val.into(), content_val.into()], "file_write"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Bool));
+                    }
+                    "json_parse" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "json_parse takes 1 argument".into() });
+                        }
+                        let str_val = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_json_parse").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[str_val.into()], "json_parse"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Map));
+                    }
+                    "json_stringify" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "json_stringify takes 1 argument".into() });
+                        }
+                        let map_val = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_json_stringify").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[map_val.into()], "json_stringify"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Str));
                     }
                     "range" => {
                         if args.len() != 2 {

@@ -278,6 +278,23 @@ fn stdlib_file_io() {
 }
 
 #[test]
+fn stdlib_json() {
+    let out = run_ore("stdlib/json.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines[0], "10");
+    assert_eq!(lines[1], "20");
+    // JSON stringify output (key order may vary)
+    assert!(lines[2].contains("\"x\":10"));
+    assert!(lines[2].contains("\"y\":20"));
+    assert_eq!(lines[3], "{}");
+    // Mixed types round-trip
+    assert!(lines[4].contains("\"name\":\"Alice\""));
+    assert!(lines[4].contains("\"age\":30"));
+    assert!(lines[4].contains("\"active\":true"));
+    assert_eq!(lines[5], "json ok");
+}
+
+#[test]
 fn stdlib_float_interp() {
     let out = run_ore("stdlib/interp.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

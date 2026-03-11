@@ -443,6 +443,9 @@ fn map_runtime_functions(
     map_fn!("ore_readln", ore_runtime::ore_readln);
     map_fn!("ore_file_read", ore_runtime::ore_file_read);
     map_fn!("ore_file_write", ore_runtime::ore_file_write);
+    // JSON
+    map_fn!("ore_json_parse", ore_runtime::ore_json_parse);
+    map_fn!("ore_json_stringify", ore_runtime::ore_json_stringify);
     // Assert
     map_fn!("ore_assert", ore_runtime::ore_assert);
     map_fn!("ore_assert_eq_int", ore_runtime::ore_assert_eq_int);

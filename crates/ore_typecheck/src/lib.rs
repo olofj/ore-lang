@@ -492,6 +492,8 @@ impl TypeChecker {
                             "float" => return Type::Float,
                             "str" => return Type::Str,
                             "file_read" | "file_write" => return Type::Str,
+                            "json_parse" => return Type::Map(Box::new(Type::Str), Box::new(Type::Any)),
+                            "json_stringify" => return Type::Str,
                             "channel" => return Type::Channel,
                             _ => {}
                         }

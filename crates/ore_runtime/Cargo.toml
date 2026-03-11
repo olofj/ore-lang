@@ -3,5 +3,8 @@ name = "ore_runtime"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies]
+serde_json = "1"
+
 [lib]
 crate-type = ["lib", "staticlib"]
