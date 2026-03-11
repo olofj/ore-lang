@@ -1,0 +1,60 @@
+-- Showcase 285: String pattern matching (simple regex-like)
+
+fn matches_char ch:Str pattern:Str -> Bool
+  if pattern == "."
+    return true
+  if pattern == "d"
+    c := ord(ch)
+    return c >= 48 and c <= 57
+  if pattern == "w"
+    c := ord(ch)
+    return (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or (c >= 48 and c <= 57) or c == 95
+  if pattern == "s"
+    return ch == " " or ch == "\t" or ch == "\n"
+  ch == pattern
+
+fn contains_pattern text:Str pattern:Str -> Bool
+  -- Simple: check if pattern appears as substring of char classes
+  plen := pattern.len()
+  tlen := text.len()
+  for start in range(0, tlen - plen + 1)
+    mut all_match := true
+    for j in range(0, plen)
+      if not matches_char(text.substr(start + j, 1), pattern.substr(j, 1))
+        all_match = false
+    if all_match
+      return true
+  false
+
+fn main
+  text := "Hello World 42 test_var 2024"
+  print "Text: {text}"
+
+  -- Character class tests
+  print ""
+  print "Pattern matching:"
+  patterns := ["Hello", "World", "ddd", "wwww", "dd dd"]
+  for p in patterns
+    result := if contains_pattern(text, p) then "found" else "not found"
+    print "  '{p}': {result}"
+
+  -- Simple word finder
+  print ""
+  print "Words in text:"
+  words := text.split(" ")
+  for word in words
+    -- Classify: number, identifier, or other
+    mut is_num := true
+    mut is_ident := true
+    for i in range(0, word.len())
+      ch := word.substr(i, 1)
+      if not matches_char(ch, "d")
+        is_num = false
+      if not matches_char(ch, "w")
+        is_ident = false
+    if is_num
+      print "  {word} -> number"
+    else if is_ident
+      print "  {word} -> identifier"
+    else
+      print "  {word} -> other"

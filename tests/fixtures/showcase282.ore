@@ -1,0 +1,39 @@
+-- Showcase 282: Simple hash map implementation
+
+fn hash_key key:Str buckets:Int -> Int
+  mut h := 0
+  for i in range(0, key.len())
+    c := ord(key.substr(i, 1))
+    h = (h * 31 + c) % buckets
+  h
+
+fn main
+  num_buckets := 8
+
+  -- Initialize bucket counts
+  mut counts := []
+  for i in range(0, num_buckets)
+    counts.push(0)
+
+  -- Hash some keys and show distribution
+  keys := ["apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "honeydew", "kiwi", "lemon", "mango", "nectarine", "orange", "papaya", "quince", "raspberry"]
+
+  print "Hash distribution ({num_buckets} buckets, {keys | count()} keys):"
+  for key in keys
+    bucket := hash_key(key, num_buckets)
+    counts[bucket] = counts[bucket] + 1
+    print "  {key} -> bucket {bucket}"
+
+  print ""
+  print "Bucket occupancy:"
+  for i in range(0, num_buckets)
+    mut bar := ""
+    for j in range(0, counts[i])
+      bar = "{bar}#"
+    print "  [{i}] {bar} ({counts[i]})"
+
+  -- Test collision resolution by probing
+  print ""
+  print "Hash values for similar strings:"
+  for prefix in ["test1", "test2", "test3", "test4"]
+    print "  {prefix} -> {hash_key(prefix, num_buckets)}"

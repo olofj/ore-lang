@@ -1,0 +1,68 @@
+-- Showcase 283: Expression evaluator (postfix)
+
+fn is_operator token:Str -> Bool
+  token == "+" or token == "-" or token == "*" or token == "/"
+
+fn main
+  -- Manual infix to postfix conversion examples
+  -- 3 + 4 * 2 => 3 4 2 * +
+  postfix1 := ["3", "4", "2", "*", "+"]
+  mut stack1 := []
+  for token in postfix1
+    if is_operator(token)
+      b := stack1.pop()
+      a := stack1.pop()
+      if token == "+"
+        stack1.push(a + b)
+      else if token == "-"
+        stack1.push(a - b)
+      else if token == "*"
+        stack1.push(a * b)
+      else
+        stack1.push(a / b)
+    else
+      stack1.push(token.to_int())
+  print "3 + 4 * 2 = {stack1[0]}"
+
+  -- (3 + 4) * 2 => 3 4 + 2 *
+  postfix2 := ["3", "4", "+", "2", "*"]
+  mut stack2 := []
+  for token in postfix2
+    if is_operator(token)
+      b := stack2.pop()
+      a := stack2.pop()
+      if token == "+"
+        stack2.push(a + b)
+      else if token == "-"
+        stack2.push(a - b)
+      else if token == "*"
+        stack2.push(a * b)
+      else
+        stack2.push(a / b)
+    else
+      stack2.push(token.to_int())
+  print "(3 + 4) * 2 = {stack2[0]}"
+
+  -- 10 - 2 * 3 + 1 => 10 2 3 * - 1 +
+  postfix3 := ["10", "2", "3", "*", "-", "1", "+"]
+  mut stack3 := []
+  for token in postfix3
+    if is_operator(token)
+      b := stack3.pop()
+      a := stack3.pop()
+      if token == "+"
+        stack3.push(a + b)
+      else if token == "-"
+        stack3.push(a - b)
+      else if token == "*"
+        stack3.push(a * b)
+      else
+        stack3.push(a / b)
+    else
+      stack3.push(token.to_int())
+  print "10 - 2 * 3 + 1 = {stack3[0]}"
+
+  print ""
+  print "Operator precedence:"
+  print "  +, - = 1"
+  print "  *, / = 2"

@@ -1,0 +1,73 @@
+-- Showcase 286: Tree data structure via arrays
+
+fn parent idx:Int -> Int
+  (idx - 1) / 2
+
+fn left_child idx:Int -> Int
+  2 * idx + 1
+
+fn right_child idx:Int -> Int
+  2 * idx + 2
+
+fn main
+  -- Binary tree stored as array
+  -- Level-order: [1, 2, 3, 4, 5, 6, 7]
+  --       1
+  --      / \
+  --     2   3
+  --    / \ / \
+  --   4  5 6  7
+  tree := [1, 2, 3, 4, 5, 6, 7]
+  size := tree | count()
+
+  print "Binary tree (array representation):"
+  print "  {tree | join(", ")}"
+
+  -- Print tree structure
+  print ""
+  print "Tree relationships:"
+  for i in range(0, size)
+    lc := left_child(i)
+    rc := right_child(i)
+    mut info := "Node {tree[i]}"
+    if lc < size
+      info = "{info}, left={tree[lc]}"
+    if rc < size
+      info = "{info}, right={tree[rc]}"
+    if i > 0
+      p := parent(i)
+      info = "{info}, parent={tree[p]}"
+    print "  {info}"
+
+  -- BFS traversal (already in order for array representation)
+  print ""
+  print "BFS: {tree | join(" -> ")}"
+
+  -- DFS preorder using stack
+  print ""
+  mut dfs_result := []
+  mut stack := [0]
+  mut slen := stack | count()
+  while slen > 0
+    idx := stack.pop()
+    if idx < size
+      dfs_result.push(tree[idx])
+      rc := right_child(idx)
+      if rc < size
+        stack.push(rc)
+      lc := left_child(idx)
+      if lc < size
+        stack.push(lc)
+    slen = stack | count()
+  print "DFS preorder: {dfs_result | join(" -> ")}"
+
+  -- Sum of all nodes
+  total := tree | sum()
+  print "Sum: {total}"
+
+  -- Leaf nodes
+  mut leaves := []
+  for i in range(0, size)
+    if left_child(i) >= size
+      leaves.push(tree[i])
+  print "Leaves: {leaves | join(", ")}"

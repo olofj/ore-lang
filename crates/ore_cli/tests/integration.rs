@@ -4144,6 +4144,82 @@ fn showcase280_polynomial() {
 }
 
 #[test]
+fn showcase281_tic_tac_toe() {
+    let out = run_ore("showcase281.ore");
+    assert!(out.contains("Winner:"));
+}
+
+#[test]
+fn showcase282_hash_map() {
+    let out = run_ore("showcase282.ore");
+    assert!(out.contains("apple -> bucket"));
+    assert!(out.contains("Bucket occupancy:"));
+}
+
+#[test]
+fn showcase283_postfix_eval() {
+    let out = run_ore("showcase283.ore");
+    assert!(out.contains("3 + 4 * 2 = 11"));
+    assert!(out.contains("(3 + 4) * 2 = 14"));
+}
+
+#[test]
+fn showcase284_game_of_life() {
+    let out = run_ore("showcase284.ore");
+    assert!(out.contains("Game of Life - Glider:"));
+    assert!(out.contains("Generation 0:"));
+    assert!(out.contains("Generation 4:"));
+}
+
+#[test]
+fn showcase285_pattern_match() {
+    let out = run_ore("showcase285.ore");
+    assert!(out.contains("'Hello': found"));
+    assert!(out.contains("Hello -> identifier"));
+    assert!(out.contains("42 -> number"));
+}
+
+#[test]
+fn showcase286_tree() {
+    let out = run_ore("showcase286.ore");
+    assert!(out.contains("DFS preorder: 1 -> 2 -> 4 -> 5 -> 3 -> 6 -> 7"));
+    assert!(out.contains("Leaves: 4, 5, 6, 7"));
+    assert!(out.contains("Sum: 28"));
+}
+
+#[test]
+fn showcase287_interpreter() {
+    let out = run_ore("showcase287.ore");
+    assert!(out.contains("1 + 2 + 3 = 6"));
+    assert!(out.contains("2 * 3 * 4 = 24"));
+    assert!(out.contains("Tokens of"));
+}
+
+#[test]
+fn showcase288_combinatorics() {
+    let out = run_ore("showcase288.ore");
+    assert!(out.contains("10! = 3628800"));
+    assert!(out.contains("Catalan numbers:"));
+    assert!(out.contains("C(0) = 1"));
+}
+
+#[test]
+fn showcase289_graph() {
+    let out = run_ore("showcase289.ore");
+    assert!(out.contains("BFS from 0:"));
+    assert!(out.contains("0 -> 1 -> 2 -> 3 -> 4 -> 5"));
+    assert!(out.contains("Path 0->5: yes"));
+}
+
+#[test]
+fn showcase290_hanoi() {
+    let out = run_ore("showcase290.ore");
+    assert!(out.contains("Move disk 1 from A to C"));
+    assert!(out.contains("3 disks: 7 moves"));
+    assert!(out.contains("10 disks: 1023 moves"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,66 @@
+-- Showcase 284: Conway's Game of Life (small board)
+
+fn count_neighbors grid:List row:Int col:Int rows:Int cols:Int -> Int
+  mut count := 0
+  for dr in range(-1, 2)
+    for dc in range(-1, 2)
+      if dr != 0 or dc != 0
+        r := row + dr
+        c := col + dc
+        if r >= 0 and r < rows and c >= 0 and c < cols
+          idx := r * cols + c
+          if grid[idx] == 1
+            count = count + 1
+  count
+
+fn step grid:List rows:Int cols:Int -> List
+  mut next := []
+  for r in range(0, rows)
+    for c in range(0, cols)
+      idx := r * cols + c
+      n := count_neighbors(grid, r, c, rows, cols)
+      if grid[idx] == 1
+        if n == 2 or n == 3
+          next.push(1)
+        else
+          next.push(0)
+      else
+        if n == 3
+          next.push(1)
+        else
+          next.push(0)
+  next
+
+fn print_grid grid:List rows:Int cols:Int
+  for r in range(0, rows)
+    mut line := ""
+    for c in range(0, cols)
+      idx := r * cols + c
+      if grid[idx] == 1
+        line = "{line}#"
+      else
+        line = "{line}."
+    print line
+
+fn main
+  rows := 6
+  cols := 6
+
+  -- Glider pattern
+  mut grid := []
+  for i in range(0, rows * cols)
+    grid.push(0)
+
+  -- Place glider at (1,1)
+  grid[1 * cols + 2] = 1
+  grid[2 * cols + 3] = 1
+  grid[3 * cols + 1] = 1
+  grid[3 * cols + 2] = 1
+  grid[3 * cols + 3] = 1
+
+  print "Game of Life - Glider:"
+  for gen in range(0, 5)
+    print "Generation {gen}:"
+    print_grid(grid, rows, cols)
+    print ""
+    grid = step(grid, rows, cols)

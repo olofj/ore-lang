@@ -1,0 +1,64 @@
+-- Showcase 287: Simple interpreter (arithmetic language)
+
+fn is_digit ch:Str -> Bool
+  c := ord(ch)
+  c >= 48 and c <= 57
+
+fn tokenize expr:Str -> List
+  mut tokens := []
+  mut i := 0
+  while i < expr.len()
+    ch := expr.substr(i, 1)
+    if ch == " "
+      i = i + 1
+    else if is_digit(ch)
+      mut num_str := ch
+      mut j := i + 1
+      while j < expr.len()
+        next := expr.substr(j, 1)
+        if is_digit(next)
+          num_str = "{num_str}{next}"
+          j = j + 1
+        else
+          break
+      tokens.push(num_str)
+      i = j
+    else
+      tokens.push(ch)
+      i = i + 1
+  tokens
+
+fn eval_simple expr:Str -> Int
+  -- Only handles: num op num op num ... (left to right, no precedence)
+  tokens := tokenize(expr)
+  mut result := tokens[0].to_int()
+  tc := tokens | count()
+  mut i := 1
+  while i < tc
+    op := tokens[i]
+    val := tokens[i + 1].to_int()
+    if op == "+"
+      result = result + val
+    else if op == "-"
+      result = result - val
+    else if op == "*"
+      result = result * val
+    else if op == "/"
+      result = result / val
+    i = i + 2
+  result
+
+fn main
+  exprs := ["1 + 2 + 3", "10 - 3 - 2", "2 * 3 * 4", "100 / 5 / 4", "5 + 3 * 2"]
+
+  print "Simple expression evaluator (left-to-right):"
+  for expr in exprs
+    result := eval_simple(expr)
+    print "  {expr} = {result}"
+
+  -- Tokenizer demo
+  print ""
+  sample := "123 + 456 * 789"
+  tokens := tokenize(sample)
+  print "Tokens of '{sample}':"
+  print "  {tokens | join(", ")}"
