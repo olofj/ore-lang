@@ -204,6 +204,7 @@ dependencies = [
  "ore_lexer",
  "ore_parser",
  "ore_runtime",
+ "ore_typecheck",
  "ore_types",
 ]
 

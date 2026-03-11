@@ -100,6 +100,13 @@ fn phase8_option() {
 }
 
 #[test]
+fn phase8_result_str() {
+    let out = run_ore("phase_8/result_str.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["Error: division by zero", "Ok: 5"]);
+}
+
+#[test]
 fn phase9_closures() {
     let out = run_ore("phase_9/closures.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

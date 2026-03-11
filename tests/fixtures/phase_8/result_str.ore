@@ -1,0 +1,22 @@
+fn divide a:Int b:Int -> Result
+  if b == 0
+    Err("division by zero")
+  else
+    Ok(a / b)
+
+fn compute -> Result
+  x := divide(10, 2)?
+  y := divide(x, 0)?
+  Ok(x + y)
+
+fn main
+  result := compute()
+  result :
+    Ok v -> print "Result: {v}"
+    Err e -> print "Error: {e}"
+
+  -- Test Ok path
+  ok_result := divide(10, 2)
+  ok_result :
+    Ok v -> print "Ok: {v}"
+    Err e -> print "Err: {e}"

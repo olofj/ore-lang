@@ -226,6 +226,8 @@ pub struct CodeGen<'ctx> {
     lambda_captures: HashMap<String, CaptureInfo<'ctx>>,
     /// Maps type name -> list of method names (for method call resolution)
     method_map: HashMap<String, Vec<String>>,
+    /// Maps variable name -> alloca for runtime kind tag (used for dynamic dispatch in Option/Result payloads)
+    dynamic_kind_tags: HashMap<String, PointerValue<'ctx>>,
 }
 
 #[derive(Debug)]
@@ -264,6 +266,7 @@ impl<'ctx> CodeGen<'ctx> {
             lambda_counter: 0,
             lambda_captures: HashMap::new(),
             method_map: HashMap::new(),
+            dynamic_kind_tags: HashMap::new(),
         }
     }
 
@@ -272,20 +275,40 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Built-in Option type: { i8, i64 } where tag=0 is None, tag=1 is Some
+    /// Built-in Option type: { i8 tag, i8 kind, i64 payload }
+    /// tag: 0=None, 1=Some; kind: ValKind discriminant of the payload
     fn option_type(&self) -> inkwell::types::StructType<'ctx> {
         self.context.struct_type(
-            &[self.context.i8_type().into(), self.context.i64_type().into()],
+            &[self.context.i8_type().into(), self.context.i8_type().into(), self.context.i64_type().into()],
             false,
         )
     }
 
-    /// Built-in Result type: { i8, i64 } where tag=0 is Ok, tag=1 is Err
+    /// Built-in Result type: { i8 tag, i8 kind, i64 payload }
+    /// tag: 0=Ok, 1=Err; kind: ValKind discriminant of the payload
     fn result_type(&self) -> inkwell::types::StructType<'ctx> {
         self.context.struct_type(
-            &[self.context.i8_type().into(), self.context.i64_type().into()],
+            &[self.context.i8_type().into(), self.context.i8_type().into(), self.context.i64_type().into()],
             false,
         )
     }
+
+    fn valkind_to_tag(&self, kind: &ValKind) -> u8 {
+        match kind {
+            ValKind::Int => 0,
+            ValKind::Float => 1,
+            ValKind::Bool => 2,
+            ValKind::Str => 3,
+            ValKind::Void => 4,
+            ValKind::Record(_) => 5,
+            ValKind::Enum(_) => 6,
+            ValKind::Option => 7,
+            ValKind::Result => 8,
+            ValKind::List => 9,
+            ValKind::Map => 10,
+        }
+    }
+
 
     pub fn compile_program(&mut self, program: &Program) -> Result<(), CodeGenError> {
         self.declare_runtime_functions();
@@ -575,6 +598,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_file_write", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_dynamic_to_str(i64, i8) -> ptr — dynamic dispatch for Result/Option payload to string
+        self.module.add_function("ore_dynamic_to_str", ptr_type.fn_type(&[i64_type.into(), i8_type.into()], false), ext);
     }
 
     fn type_expr_to_kind(&self, ty: &TypeExpr) -> ValKind {
@@ -938,6 +963,20 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::Print(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
+                // Check if printing a dynamic-kind variable (from Result/Option match)
+                if let Expr::Ident(name) = inner.as_ref() {
+                    if let Some(kind_alloca) = self.dynamic_kind_tags.get(name).copied() {
+                        let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_alloca, "dyn_kind"))?.into_int_value();
+                        let dyn_fn = self.module.get_function("ore_dynamic_to_str").unwrap();
+                        let result = bld!(self.builder.build_call(dyn_fn, &[val.into(), kind_i8.into()], "dyntos"))?;
+                        let str_ptr = self.call_result_to_value(result)?.into_pointer_value();
+                        let pf = self.module.get_function("ore_str_print").unwrap();
+                        bld!(self.builder.build_call(pf, &[str_ptr.into()], ""))?;
+                        let release = self.module.get_function("ore_str_release").unwrap();
+                        bld!(self.builder.build_call(release, &[str_ptr.into()], ""))?;
+                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                    }
+                }
                 self.compile_print(val, kind)?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
@@ -1174,74 +1213,51 @@ impl<'ctx> CodeGen<'ctx> {
                 let opt_ty = self.option_type();
                 let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_none"))?;
                 let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
-                let tag_val = self.context.i8_type().const_int(0, false);
-                bld!(self.builder.build_store(tag_ptr, tag_val))?;
+                bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(0, false)))?;
                 let result = bld!(self.builder.build_load(opt_ty, alloca, "none_val"))?;
                 Ok((result, ValKind::Option))
             }
             Expr::OptionSome(inner) => {
-                let (val, _kind) = self.compile_expr_with_kind(inner, func)?;
+                let (val, kind) = self.compile_expr_with_kind(inner, func)?;
                 let opt_ty = self.option_type();
                 let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_some"))?;
                 let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
-                let tag_val = self.context.i8_type().const_int(1, false);
-                bld!(self.builder.build_store(tag_ptr, tag_val))?;
-                let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 1, "val_ptr"))?;
-                // Convert the inner value to i64 for storage
-                let i64_val = match val {
-                    BasicValueEnum::IntValue(v) => {
-                        if v.get_type().get_bit_width() < 64 {
-                            bld!(self.builder.build_int_z_extend(v, self.context.i64_type(), "zext"))?
-                        } else {
-                            v
-                        }
-                    }
-                    _ => val.into_int_value(),
-                };
+                bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(1, false)))?;
+                let kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 1, "kind_ptr"))?;
+                let kind_tag = self.valkind_to_tag(&kind);
+                bld!(self.builder.build_store(kind_ptr, self.context.i8_type().const_int(kind_tag as u64, false)))?;
+                let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
+                let i64_val = self.value_to_i64(val)?;
                 bld!(self.builder.build_store(val_ptr, i64_val))?;
                 let result = bld!(self.builder.build_load(opt_ty, alloca, "some_val"))?;
                 Ok((result, ValKind::Option))
             }
             Expr::ResultOk(inner) => {
-                let (val, _kind) = self.compile_expr_with_kind(inner, func)?;
+                let (val, kind) = self.compile_expr_with_kind(inner, func)?;
                 let res_ty = self.result_type();
                 let alloca = bld!(self.builder.build_alloca(res_ty, "res_ok"))?;
                 let tag_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 0, "tag_ptr"))?;
-                let tag_val = self.context.i8_type().const_int(0, false); // Ok = 0
-                bld!(self.builder.build_store(tag_ptr, tag_val))?;
-                let val_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 1, "val_ptr"))?;
-                let i64_val = match val {
-                    BasicValueEnum::IntValue(v) => {
-                        if v.get_type().get_bit_width() < 64 {
-                            bld!(self.builder.build_int_z_extend(v, self.context.i64_type(), "zext"))?
-                        } else {
-                            v
-                        }
-                    }
-                    _ => val.into_int_value(),
-                };
+                bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(0, false)))?;
+                let kind_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 1, "kind_ptr"))?;
+                let kind_tag = self.valkind_to_tag(&kind);
+                bld!(self.builder.build_store(kind_ptr, self.context.i8_type().const_int(kind_tag as u64, false)))?;
+                let val_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 2, "val_ptr"))?;
+                let i64_val = self.value_to_i64(val)?;
                 bld!(self.builder.build_store(val_ptr, i64_val))?;
                 let result = bld!(self.builder.build_load(res_ty, alloca, "ok_val"))?;
                 Ok((result, ValKind::Result))
             }
             Expr::ResultErr(inner) => {
-                let (val, _kind) = self.compile_expr_with_kind(inner, func)?;
+                let (val, kind) = self.compile_expr_with_kind(inner, func)?;
                 let res_ty = self.result_type();
                 let alloca = bld!(self.builder.build_alloca(res_ty, "res_err"))?;
                 let tag_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 0, "tag_ptr"))?;
-                let tag_val = self.context.i8_type().const_int(1, false); // Err = 1
-                bld!(self.builder.build_store(tag_ptr, tag_val))?;
-                let val_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 1, "val_ptr"))?;
-                let i64_val = match val {
-                    BasicValueEnum::IntValue(v) => {
-                        if v.get_type().get_bit_width() < 64 {
-                            bld!(self.builder.build_int_z_extend(v, self.context.i64_type(), "zext"))?
-                        } else {
-                            v
-                        }
-                    }
-                    _ => val.into_int_value(),
-                };
+                bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(1, false)))?;
+                let kind_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 1, "kind_ptr"))?;
+                let kind_tag = self.valkind_to_tag(&kind);
+                bld!(self.builder.build_store(kind_ptr, self.context.i8_type().const_int(kind_tag as u64, false)))?;
+                let val_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 2, "val_ptr"))?;
+                let i64_val = self.value_to_i64(val)?;
                 bld!(self.builder.build_store(val_ptr, i64_val))?;
                 let result = bld!(self.builder.build_load(res_ty, alloca, "err_val"))?;
                 Ok((result, ValKind::Result))
@@ -1273,7 +1289,7 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_return(Some(&none_ret)))?;
                 // Some branch: extract value
                 self.builder.position_at_end(some_bb);
-                let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 1, "val_ptr"))?;
+                let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
                 let extracted = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "unwrapped"))?;
                 Ok((extracted, ValKind::Int))
             }
@@ -2046,11 +2062,18 @@ impl<'ctx> CodeGen<'ctx> {
 
                     // If Some, bind the payload
                     if vtag == 1 && !bindings.is_empty() {
-                        let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, subject_alloca, 1, "val_ptr"))?;
+                        // Read the kind tag to know the payload type
+                        let kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, subject_alloca, 1, "kind_ptr"))?;
+                        let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_ptr, "kind_tag"))?.into_int_value();
+                        let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, subject_alloca, 2, "val_ptr"))?;
                         let payload = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, &bindings[0]))?;
                         let alloca = bld!(self.builder.build_alloca(self.context.i64_type(), &bindings[0]))?;
                         bld!(self.builder.build_store(alloca, payload))?;
+                        // Store kind tag for dynamic dispatch in string interpolation
+                        let kind_alloca = bld!(self.builder.build_alloca(self.context.i8_type(), &format!("{}_kind", bindings[0])))?;
+                        bld!(self.builder.build_store(kind_alloca, kind_i8))?;
                         self.variables.insert(bindings[0].clone(), (alloca, self.context.i64_type().into(), ValKind::Int, false));
+                        self.dynamic_kind_tags.insert(bindings[0].clone(), kind_alloca);
                     }
 
                     let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
@@ -2287,11 +2310,16 @@ impl<'ctx> CodeGen<'ctx> {
                     let saved_vars = self.variables.clone();
 
                     if !bindings.is_empty() {
-                        let val_ptr = bld!(self.builder.build_struct_gep(res_ty, subject_alloca, 1, "val_ptr"))?;
+                        let kind_ptr = bld!(self.builder.build_struct_gep(res_ty, subject_alloca, 1, "kind_ptr"))?;
+                        let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_ptr, "kind_tag"))?.into_int_value();
+                        let val_ptr = bld!(self.builder.build_struct_gep(res_ty, subject_alloca, 2, "val_ptr"))?;
                         let payload = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, &bindings[0]))?;
                         let alloca = bld!(self.builder.build_alloca(self.context.i64_type(), &bindings[0]))?;
                         bld!(self.builder.build_store(alloca, payload))?;
+                        let kind_alloca = bld!(self.builder.build_alloca(self.context.i8_type(), &format!("{}_kind", bindings[0])))?;
+                        bld!(self.builder.build_store(kind_alloca, kind_i8))?;
                         self.variables.insert(bindings[0].clone(), (alloca, self.context.i64_type().into(), ValKind::Int, false));
+                        self.dynamic_kind_tags.insert(bindings[0].clone(), kind_alloca);
                     }
 
                     let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
@@ -2368,7 +2396,7 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_return(Some(&err_ret)))?;
         // Ok branch: extract the value
         self.builder.position_at_end(ok_bb);
-        let val_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 1, "val_ptr"))?;
+        let val_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 2, "val_ptr"))?;
         let extracted = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "unwrapped"))?;
         Ok((extracted, ValKind::Int))
     }
@@ -2520,7 +2548,19 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 StringPart::Expr(expr) => {
                     let (val, kind) = self.compile_expr_with_kind(expr, func)?;
-                    let p = self.value_to_str(val, kind)?;
+                    // Check if this is a variable with a dynamic kind tag (from Result/Option match)
+                    let p = if let Expr::Ident(name) = expr {
+                        if let Some(kind_alloca) = self.dynamic_kind_tags.get(name).copied() {
+                            let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_alloca, "dyn_kind"))?.into_int_value();
+                            let dyn_fn = self.module.get_function("ore_dynamic_to_str").unwrap();
+                            let result = bld!(self.builder.build_call(dyn_fn, &[val.into(), kind_i8.into()], "dyntos"))?;
+                            self.call_result_to_value(result)?.into_pointer_value()
+                        } else {
+                            self.value_to_str(val, kind)?
+                        }
+                    } else {
+                        self.value_to_str(val, kind)?
+                    };
                     temps.push(p);
                     p
                 }
@@ -2557,6 +2597,26 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         Ok(final_ptr)
+    }
+
+    /// Convert any BasicValueEnum to i64 for storage in Option/Result payloads.
+    fn value_to_i64(&mut self, val: BasicValueEnum<'ctx>) -> Result<inkwell::values::IntValue<'ctx>, CodeGenError> {
+        match val {
+            BasicValueEnum::IntValue(v) => {
+                if v.get_type().get_bit_width() < 64 {
+                    Ok(bld!(self.builder.build_int_z_extend(v, self.context.i64_type(), "zext"))?)
+                } else {
+                    Ok(v)
+                }
+            }
+            BasicValueEnum::FloatValue(v) => {
+                Ok(bld!(self.builder.build_bit_cast(v, self.context.i64_type(), "f2i"))?.into_int_value())
+            }
+            BasicValueEnum::PointerValue(v) => {
+                Ok(bld!(self.builder.build_ptr_to_int(v, self.context.i64_type(), "p2i"))?)
+            }
+            _ => Ok(val.into_int_value()),
+        }
     }
 
     fn value_to_str(

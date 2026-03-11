@@ -157,6 +157,32 @@ pub extern "C" fn ore_float_to_str(f: f64) -> *mut OreStr {
     ore_str_new(s.as_ptr(), s.len() as u32)
 }
 
+/// Dynamic to_str: converts a payload i64 to string based on a runtime kind tag.
+/// Kind tags: 0=Int, 1=Float, 2=Bool, 3=Str, 9=List, 10=Map
+#[no_mangle]
+pub extern "C" fn ore_dynamic_to_str(payload: i64, kind: i8) -> *mut OreStr {
+    match kind {
+        0 => ore_int_to_str(payload),
+        1 => ore_float_to_str(f64::from_bits(payload as u64)),
+        2 => ore_bool_to_str(payload as i8),
+        3 => {
+            // payload is a pointer to OreStr — retain and return it
+            let ptr = payload as *mut OreStr;
+            if !ptr.is_null() {
+                ore_str_retain(ptr);
+                ptr
+            } else {
+                let s = "None";
+                ore_str_new(s.as_ptr(), s.len() as u32)
+            }
+        }
+        _ => {
+            let s = format!("<dynamic:{}>", kind);
+            ore_str_new(s.as_ptr(), s.len() as u32)
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_str_len(s: *mut OreStr) -> i64 {
     if s.is_null() { return 0; }

@@ -318,6 +318,7 @@ fn run_repl() {
             map_fn!("ore_map_values", ore_runtime::ore_map_values);
             map_fn!("ore_map_print", ore_runtime::ore_map_print);
             map_fn!("ore_map_print_str", ore_runtime::ore_map_print_str);
+            map_fn!("ore_dynamic_to_str", ore_runtime::ore_dynamic_to_str);
 
             unsafe {
                 let main_fn: JitFunction<MainFunc> = ee
@@ -405,6 +406,7 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_map_values", ore_runtime::ore_map_values);
     map_fn!("ore_map_print", ore_runtime::ore_map_print);
     map_fn!("ore_map_print_str", ore_runtime::ore_map_print_str);
+    map_fn!("ore_dynamic_to_str", ore_runtime::ore_dynamic_to_str);
 
     unsafe {
         let main_fn: JitFunction<MainFunc> = ee
