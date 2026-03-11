@@ -1,0 +1,43 @@
+-- Showcase 217: String builder patterns
+
+fn repeat_char ch:Str n:Int -> Str
+  ch.repeat(n)
+
+fn box_text text:Str -> Str
+  width := text.len() + 4
+  top := "+{repeat_char("-", width - 2)}+"
+  mid := "| {text} |"
+  "{top}\n{mid}\n{top}"
+
+fn center_text text:Str width:Int -> Str
+  pad := width - text.len()
+  left := pad / 2
+  right := pad - left
+  "{" ".repeat(left)}{text}{" ".repeat(right)}"
+
+fn main
+  -- Box drawing
+  print box_text("Hello, Ore!")
+  print ""
+  print box_text("Welcome")
+  
+  -- Centered text
+  print ""
+  print "Centered in 30:"
+  words := ["short", "a bit longer", "the longest string here"]
+  for word in words
+    print "|{center_text(word, 30)}|"
+  
+  -- Table formatting
+  print ""
+  print "Formatted table:"
+  print "+{"-".repeat(12)}+{"-".repeat(8)}+{"-".repeat(10)}+"
+  print "| {"Name".pad_right(10, " ")} | {"Age".pad_right(6, " ")} | {"Score".pad_right(8, " ")} |"
+  print "+{"-".repeat(12)}+{"-".repeat(8)}+{"-".repeat(10)}+"
+  
+  names := ["Alice", "Bob", "Carol"]
+  ages := ["30", "25", "35"]
+  scores := ["95", "82", "91"]
+  for i in range(0, 3)
+    print "| {names[i].pad_right(10, " ")} | {ages[i].pad_right(6, " ")} | {scores[i].pad_right(8, " ")} |"
+  print "+{"-".repeat(12)}+{"-".repeat(8)}+{"-".repeat(10)}+"

@@ -1,0 +1,38 @@
+-- Showcase 211: Record methods and complex data
+
+type Vector { x:Float, y:Float }
+
+fn vec_add a:Vector b:Vector -> Vector
+  Vector(x: a.x + b.x, y: a.y + b.y)
+
+fn vec_scale v:Vector s:Float -> Vector
+  Vector(x: v.x * s, y: v.y * s)
+
+fn vec_dot a:Vector b:Vector -> Float
+  a.x * b.x + a.y * b.y
+
+fn vec_len v:Vector -> Float
+  sqrt(v.x * v.x + v.y * v.y)
+
+fn vec_str v:Vector -> Str
+  "({v.x}, {v.y})"
+
+fn main
+  a := Vector(x: 3.0, y: 4.0)
+  b := Vector(x: 1.0, y: 2.0)
+  
+  print "a = {vec_str(a)}"
+  print "b = {vec_str(b)}"
+  print ""
+  
+  c := vec_add(a, b)
+  print "a + b = {vec_str(c)}"
+  
+  d := vec_scale(a, 2.0)
+  print "a * 2 = {vec_str(d)}"
+  
+  dot := vec_dot(a, b)
+  print "a . b = {dot}"
+  
+  print "|a| = {vec_len(a)}"
+  print "|b| = {vec_len(b)}"

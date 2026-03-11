@@ -1,0 +1,42 @@
+-- Showcase 219: Pipeline operator showcase
+
+fn double x:Int -> Int
+  x * 2
+
+fn square x:Int -> Int
+  x * x
+
+fn negate x:Int -> Int
+  0 - x
+
+fn main
+  -- Basic pipeline
+  result := 5 | double | double | double
+  print "5 |> double |> double |> double = {result}"
+
+  -- Pipeline with lambdas
+  r2 := 10 | (x => x + 1) | (x => x * 3)
+  print "10 |> (+1) |> (*3) = {r2}"
+
+  -- Pipeline with named functions
+  r3 := 3 | square | double | negate
+  print "3 |> square |> double |> negate = {r3}"
+
+  -- Pipeline with list operations
+  print ""
+  evens := range(1, 21)
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | join(", ")
+  print "Even squares: {evens}"
+
+  -- Complex pipeline
+  print ""
+  data := range(1, 11)
+  stats := "count={data | count()}, sum={data | sum()}, min={data | min()}, max={data | max()}"
+  print stats
+
+  -- String transformation
+  print ""
+  greeting := "hello".to_upper()
+  print "*** {greeting} ***"

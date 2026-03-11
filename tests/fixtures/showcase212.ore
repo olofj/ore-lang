@@ -1,0 +1,46 @@
+-- Showcase 212: Advent-of-Code style problem
+
+fn main
+  -- Day 1: Sum of parsed numbers from strings
+  lines := ["1abc2", "pqr3stu8vwx", "a1b2c3d4e5f", "treb7uchet"]
+  
+  -- Extract first and last digit from each line
+  mut total := 0
+  for line in lines
+    mut first_digit := -1
+    mut last_digit := -1
+    for ch in line.chars()
+      if ch == "0" or ch == "1" or ch == "2" or ch == "3" or ch == "4" or ch == "5" or ch == "6" or ch == "7" or ch == "8" or ch == "9"
+        digit := ch.to_int()
+        if first_digit == -1
+          first_digit = digit
+        last_digit = digit
+    value := first_digit * 10 + last_digit
+    print "  {line} -> {value}"
+    total = total + value
+  print "Total: {total}"
+
+  -- Day 2-like: count valid passwords
+  print ""
+  passwords := ["1-3 a: abcde", "1-3 b: cdefg", "2-9 c: ccccccccc"]
+  mut valid := 0
+  for pw in passwords
+    -- Simple: just check if the password section contains the letter
+    parts := pw.split(": ")
+    rule := parts[0]
+    password := parts[1]
+    letter := rule.split(" ")[1]
+    mut count := 0
+    for ch in password.chars()
+      if ch == letter
+        count = count + 1
+    -- Parse min-max
+    range_parts := rule.split(" ")[0].split("-")
+    mn := range_parts[0].to_int()
+    mx := range_parts[1].to_int()
+    if count >= mn and count <= mx
+      print "  VALID: {pw} (found '{letter}' {count} times)"
+      valid = valid + 1
+    else
+      print "  INVALID: {pw} (found '{letter}' {count} times)"
+  print "Valid passwords: {valid}"

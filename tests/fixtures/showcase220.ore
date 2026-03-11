@@ -1,0 +1,36 @@
+-- Showcase 220: Map as a frequency counter and histogram
+
+fn main
+  -- Frequency counter
+  text := "abracadabra"
+  mut freq := {}
+  for ch in text.chars()
+    current := freq.get_or(ch, 0)
+    freq.set(ch, current + 1)
+
+  print "Character frequencies in '{text}':"
+  for ch in freq.keys()
+    count := freq[ch]    bar := "#".repeat(count)
+    print "  {ch}: {bar} ({count})"
+
+  -- Word frequency
+  print ""
+  sentence := "to be or not to be that is the question to be"
+  mut word_freq := {}
+  for word in sentence.split(" ")
+    current := word_freq.get_or(word, 0)
+    word_freq.set(word, current + 1)
+  
+  print "Word frequencies:"
+  for word in word_freq.keys()
+    count := word_freq[word]    print "  {word}: {count}"
+
+  -- Find most common
+  print ""
+  mut max_count := 0
+  mut max_word := ""
+  for word in word_freq.keys()
+    count := word_freq[word]    if count > max_count
+      max_count = count
+      max_word = word
+  print "Most common: '{max_word}' ({max_count} times)"

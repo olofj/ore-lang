@@ -1,0 +1,47 @@
+-- Showcase 214: Error handling patterns
+
+type DivResult
+  Success(val: Int)
+  Failure(msg: Str)
+
+fn safe_div a:Int b:Int -> DivResult
+  if b == 0
+    return Failure(msg: "division by zero")
+  Success(val: a / b)
+
+fn result_str r:DivResult -> Str
+  match r
+    Success v -> "Ok({v})"
+    Failure m -> "Err({m})"
+
+fn main
+  -- Safe division
+  print "Safe division:"
+  print "  {result_str(safe_div(10, 2))}"
+  print "  {result_str(safe_div(15, 3))}"
+  print "  {result_str(safe_div(7, 0))}"
+  print "  {result_str(safe_div(100, 4))}"
+  print "  {result_str(safe_div(1, 0))}"
+
+  -- Chain of operations that might fail
+  print ""
+  r1 := safe_div(100, 5)
+  match r1
+    Success v ->
+      r2 := safe_div(v, 2)
+      print "100 / 5 / 2 = {result_str(r2)}"
+    Failure m -> print "Failed: {m}"
+
+  -- Collecting successes
+  print ""
+  mut successes := 0
+  mut failures := 0
+  divisors := [1, 2, 0, 4, 0, 6]
+  for d in divisors
+    r := safe_div(100, d)
+    is_ok := result_str(r).starts_with("Ok")
+    if is_ok
+      successes = successes + 1
+    else
+      failures = failures + 1
+  print "Successes: {successes}, Failures: {failures}"

@@ -1,0 +1,45 @@
+-- Showcase 213: Functional list operations deep dive
+
+fn main
+  nums := range(1, 21)
+
+  -- Various pipeline operations
+  print "Original: {nums | join(", ")}"
+  
+  -- Every other element
+  evens := nums | filter(n => n % 2 == 0)
+  print "Evens: {evens | join(", ")}"
+  
+  odds := nums | filter(n => n % 2 != 0)
+  print "Odds: {odds | join(", ")}"
+
+  -- Squared
+  squared := nums | map(n => n * n) | take(10)
+  print "First 10 squares: {squared | join(", ")}"
+
+  -- Sum, min, max
+  print ""
+  print "Sum: {nums | sum()}"
+  print "Min: {nums | min()}"
+  print "Max: {nums | max()}"
+  print "Count: {nums | count()}"
+
+  -- Flat map
+  print ""
+  pairs := [1, 2, 3] | flat_map(n => [n, n * 10])
+  print "flat_map [1,2,3] -> [n, n*10]: {pairs | join(", ")}"
+
+  -- Any and all
+  print ""
+  print "any > 15: {nums | any(n => n > 15)}"
+  print "all > 0: {nums | all(n => n > 0)}"
+  print "all > 5: {nums | all(n => n > 5)}"
+
+  -- Reduce
+  product := [1, 2, 3, 4, 5] | fold(1, (acc, n) => acc * n)
+  print ""
+  print "Product of 1-5: {product}"
+
+  -- Reverse
+  first5 := range(1, 6)
+  print "Reverse 1-5: {first5 | reverse() | join(", ")}"

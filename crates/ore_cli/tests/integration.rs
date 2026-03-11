@@ -3554,6 +3554,98 @@ fn showcase210_pattern_matching() {
 }
 
 #[test]
+fn showcase211_vectors() {
+    let out = run_ore("showcase211.ore");
+    assert!(out.contains("a = (3.0, 4.0)"));
+    assert!(out.contains("a + b = (4.0, 6.0)"));
+    assert!(out.contains("a * 2 = (6.0, 8.0)"));
+    assert!(out.contains("a . b = 11.0"));
+    assert!(out.contains("|a| = 5.0"));
+}
+
+#[test]
+fn showcase212_advent_of_code() {
+    let out = run_ore("showcase212.ore");
+    assert!(out.contains("1abc2 -> 12"));
+    assert!(out.contains("Total: 142"));
+    assert!(out.contains("Valid passwords: 2"));
+}
+
+#[test]
+fn showcase213_list_operations() {
+    let out = run_ore("showcase213.ore");
+    assert!(out.contains("Evens: 2, 4, 6, 8"));
+    assert!(out.contains("Sum: 210"));
+    assert!(out.contains("flat_map [1,2,3] -> [n, n*10]: 1, 10, 2, 20, 3, 30"));
+    assert!(out.contains("any > 15: true"));
+    assert!(out.contains("all > 5: false"));
+    assert!(out.contains("Reverse 1-5: 5, 4, 3, 2, 1"));
+}
+
+#[test]
+fn showcase214_error_handling() {
+    let out = run_ore("showcase214.ore");
+    assert!(out.contains("Ok(5)"));
+    assert!(out.contains("Err(division by zero)"));
+    assert!(out.contains("100 / 5 / 2 = Ok(10)"));
+    assert!(out.contains("Successes: 4, Failures: 2"));
+}
+
+#[test]
+fn showcase215_sorting() {
+    let out = run_ore("showcase215.ore");
+    assert!(out.contains("Bubble sort: 11, 12, 22, 25, 34, 64, 90"));
+    assert!(out.contains("Selection sort: 11, 12, 22, 25, 34, 64, 90"));
+    assert!(out.contains("Insertion sort: 11, 12, 22, 25, 34, 64, 90"));
+    assert!(out.contains("All sorts agree: true"));
+}
+
+#[test]
+fn showcase216_game_of_life() {
+    let out = run_ore("showcase216.ore");
+    assert!(out.contains("Generation 0:"));
+    assert!(out.contains(".###...."));
+    assert!(out.contains("Generation 4:"));
+}
+
+#[test]
+fn showcase217_string_builder() {
+    let out = run_ore("showcase217.ore");
+    assert!(out.contains("| Hello, Ore! |"));
+    assert!(out.contains("| Welcome |"));
+    assert!(out.contains("| Alice"));
+    assert!(out.contains("| Bob"));
+}
+
+#[test]
+fn showcase218_recursive() {
+    let out = run_ore("showcase218.ore");
+    assert!(out.contains("Move disk 3 from A to C"));
+    assert!(out.contains("A(2,2) = 7"));
+    assert!(out.contains("A(3,3) = 61"));
+    assert!(out.contains("F(11) = 89"));
+}
+
+#[test]
+fn showcase219_pipeline() {
+    let out = run_ore("showcase219.ore");
+    assert!(out.contains("5 |> double |> double |> double = 40"));
+    assert!(out.contains("3 |> square |> double |> negate = -18"));
+    assert!(out.contains("Even squares: 4, 16, 36"));
+    assert!(out.contains("*** HELLO ***"));
+}
+
+#[test]
+fn showcase220_frequency() {
+    let out = run_ore("showcase220.ore");
+    assert!(out.contains("a: ##### (5)"));
+    assert!(out.contains("b: ## (2)"));
+    assert!(out.contains("to: 3"));
+    assert!(out.contains("be: 3"));
+    assert!(out.contains("Most common:"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

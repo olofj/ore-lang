@@ -1,0 +1,62 @@
+-- Showcase 215: Algorithms - sorting comparison
+
+fn bubble_sort lst:List[Int] -> List[Int]
+  mut arr := []
+  for v in lst
+    arr.push(v)
+  n := arr | count()
+  for i in range(0, n)
+    for j in range(0, n - i - 1)
+      if arr[j] > arr[j+1]
+        tmp := arr[j]
+        arr[j] = arr[j+1]
+        arr[j+1] = tmp
+  arr
+
+fn selection_sort lst:List[Int] -> List[Int]
+  mut arr := []
+  for v in lst
+    arr.push(v)
+  n := arr | count()
+  for i in range(0, n)
+    mut min_idx := i
+    for j in range(i + 1, n)
+      if arr[j] < arr[min_idx]
+        min_idx = j
+    if min_idx != i
+      tmp := arr[i]
+      arr[i] = arr[min_idx]
+      arr[min_idx] = tmp
+  arr
+
+fn insertion_sort lst:List[Int] -> List[Int]
+  mut arr := []
+  for v in lst
+    arr.push(v)
+  n := arr | count()
+  for i in range(1, n)
+    key := arr[i]
+    mut j := i - 1
+    while j >= 0 and arr[j] > key
+      arr[j + 1] = arr[j]
+      j = j - 1
+    arr[j + 1] = key
+  arr
+
+fn main
+  data := [64, 34, 25, 12, 22, 11, 90]
+  print "Original: {data | join(", ")}"
+  
+  b := bubble_sort(data)
+  print "Bubble sort: {b | join(", ")}"
+  
+  s := selection_sort(data)
+  print "Selection sort: {s | join(", ")}"
+  
+  i := insertion_sort(data)
+  print "Insertion sort: {i | join(", ")}"
+  
+  -- Verify all produce same result
+  print ""
+  all_same := (b | join(",")) == (s | join(",")) and (s | join(",")) == (i | join(","))
+  print "All sorts agree: {all_same}"

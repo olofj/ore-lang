@@ -1,0 +1,41 @@
+-- Showcase 218: Recursive algorithms
+
+fn tower_of_hanoi n:Int from:Str to:Str aux:Str
+  if n == 1
+    print "  Move disk 1 from {from} to {to}"
+    return 0
+  tower_of_hanoi(n - 1, from, aux, to)
+  print "  Move disk {n} from {from} to {to}"
+  tower_of_hanoi(n - 1, aux, to, from)
+  0
+
+fn ackermann m:Int n:Int -> Int
+  if m == 0
+    return n + 1
+  if n == 0
+    return ackermann(m - 1, 1)
+  ackermann(m - 1, ackermann(m, n - 1))
+
+fn main
+  -- Tower of Hanoi
+  print "Tower of Hanoi (3 disks):"
+  tower_of_hanoi(3, "A", "C", "B")
+
+  -- Ackermann function (small values)
+  print ""
+  print "Ackermann function:"
+  for m in range(0, 4)
+    for n in range(0, 4)
+      result := ackermann(m, n)
+      print "  A({m},{n}) = {result}"
+
+  -- Fibonacci with memoization (iterative)
+  print ""
+  print "Fibonacci (iterative):"
+  mut a := 0
+  mut b := 1
+  for i in range(0, 12)
+    print "  F({i}) = {a}"
+    c := a + b
+    a = b
+    b = c
