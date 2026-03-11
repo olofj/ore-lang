@@ -995,6 +995,16 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn showcase11() {
+    let out = run_ore("showcase11.ore");
+    assert!(out.contains("cumsum: 5 8 16 17 26 28 35"));
+    assert!(out.contains("palindromes: racecar, level, madam"));
+    assert!(out.contains("quarters: 6 15 24 33"));
+    assert!(out.contains("changes: 3 -2 4 3"));
+    assert!(out.contains("showcase11 ok"));
+}
+
+#[test]
 fn lists_scan() {
     let out = run_ore("lists/scan.ore");
     let lines: Vec<&str> = out.lines().collect();

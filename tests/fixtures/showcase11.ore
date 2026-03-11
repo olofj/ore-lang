@@ -1,0 +1,44 @@
+-- Showcase 11: Advanced functional programming patterns
+
+fn is_palindrome s:Str -> Bool
+  s == s.reverse()
+
+fn main
+  sep := " "
+  csep := ", "
+
+  -- Running sum with scan
+  data := [5, 3, 8, 1, 9, 2, 7]
+  cumsum := data.scan(0, (acc, x) => acc + x) | skip(1)
+  print "cumsum: {cumsum | join(sep)}"
+
+  -- Palindrome check
+  words := ["racecar", "hello", "level", "world", "madam"]
+  palindromes := words | filter(w => is_palindrome(w))
+  print "palindromes: {palindromes | join(csep)}"
+
+  -- Top 3 by absolute value
+  vals := [-5, 3, -8, 1, 9, -2, 7]
+  top3 := vals.sort_by(x => 0 - x.abs()) | take(3)
+  print "top3: {top3 | join(sep)}"
+
+  -- Chunk and sum
+  nums := range(1, 13)
+  quarterly := nums.chunks(3) | map(q => q.sum())
+  print "quarters: {quarterly | join(sep)}"
+
+  -- Partition, transform, rejoin
+  mixed := range(1, 11)
+  [evens, odds] := mixed.partition(x => x % 2 == 0)
+  doubled_evens := evens | map(x => x * 2)
+  tripled_odds := odds | map(x => x * 3)
+  print "doubled evens: {doubled_evens | join(sep)}"
+  print "tripled odds: {tripled_odds | join(sep)}"
+
+  -- Zip-with: pairwise differences
+  prices := [100, 103, 101, 105, 108]
+  shifted := prices | skip(1)
+  changes := shifted.zip_with(prices, (b, a) => b - a)
+  print "changes: {changes | join(sep)}"
+
+  print "showcase11 ok"
