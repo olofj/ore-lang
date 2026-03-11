@@ -1,0 +1,101 @@
+-- Showcase 352: Continued fractions
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  if x < 0
+    x = 0 - x
+  if y < 0
+    y = 0 - y
+  while y != 0
+    tmp := y
+    y = x % y
+    x = tmp
+  x
+
+fn cf_coefficients num:Int den:Int -> List
+  -- Compute continued fraction coefficients for num/den
+  mut result := []
+  mut n := num
+  mut d := den
+  mut steps := 0
+  while d != 0 and steps < 20
+    q := n / d
+    result.push(q)
+    tmp := d
+    d = n - q * d
+    n = tmp
+    steps = steps + 1
+  result
+
+fn cf_to_fraction coeffs:List -> List
+  -- Convert continued fraction back to [numerator, denominator]
+  c := coeffs | count()
+  if c == 0
+    return [0, 1]
+  mut num := coeffs[c - 1]
+  mut den := 1
+  mut i := c - 2
+  while i >= 0
+    -- num/den -> coeffs[i] + den/num = (coeffs[i]*num + den)/num
+    new_num := coeffs[i] * num + den
+    den = num
+    num = new_num
+    i = i - 1
+  [num, den]
+
+fn convergent coeffs:List n:Int -> List
+  -- Compute the nth convergent of a continued fraction
+  mut sub := []
+  for i in range(0, n + 1)
+    if i < (coeffs | count())
+      sub.push(coeffs[i])
+  cf_to_fraction(sub)
+
+fn main
+  print "Continued Fractions:"
+  print ""
+
+  -- Example: 355/113 (approximation of pi)
+  print "Continued fraction of 355/113:"
+  coeffs := cf_coefficients(355, 113)
+  print "  Coefficients: {coeffs | join(", ")}"
+  frac := cf_to_fraction(coeffs)
+  print "  Back to fraction: {frac[0]}/{frac[1]}"
+
+  -- Example: 3245/1000
+  print ""
+  print "Continued fraction of 3245/1000:"
+  c2 := cf_coefficients(3245, 1000)
+  print "  Coefficients: {c2 | join(", ")}"
+  f2 := cf_to_fraction(c2)
+  g := gcd(f2[0], f2[1])
+  print "  Fraction: {f2[0] / g}/{f2[1] / g}"
+
+  -- Convergents of 355/113
+  print ""
+  print "Convergents of [3, 7, 16]:"
+  pi_cf := [3, 7, 16]
+  for n in range(0, 3)
+    conv := convergent(pi_cf, n)
+    print "  C{n} = {conv[0]}/{conv[1]}"
+
+  -- Golden ratio approximation: successive Fibonacci ratios
+  print ""
+  print "Golden ratio via Fibonacci ratios:"
+  mut fib_a := 1
+  mut fib_b := 1
+  for i in range(0, 8)
+    cf := cf_coefficients(fib_b, fib_a)
+    print "  {fib_b}/{fib_a} = [{cf | join(", ")}]"
+    tmp := fib_b
+    fib_b = fib_a + fib_b
+    fib_a = tmp
+
+  -- Square root of 2 approximation via [1; 2, 2, 2, ...]
+  print ""
+  print "Sqrt(2) convergents via [1, 2, 2, 2, 2, 2]:"
+  sqrt2_cf := [1, 2, 2, 2, 2, 2]
+  for n in range(0, 6)
+    conv := convergent(sqrt2_cf, n)
+    print "  C{n} = {conv[0]}/{conv[1]}"

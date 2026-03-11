@@ -1,0 +1,98 @@
+-- Showcase 353: Conway's Game of Life (small grid, few generations)
+
+fn make_grid rows:Int cols:Int -> List
+  -- Flat list: rows*cols cells, 0=dead, 1=alive
+  mut grid := []
+  for i in range(0, rows * cols)
+    grid.push(0)
+  grid
+
+fn set_cell grid:List cols:Int r:Int c:Int -> List
+  grid[r * cols + c] = 1
+  grid
+
+fn get_cell grid:List rows:Int cols:Int r:Int c:Int -> Int
+  if r < 0 or r >= rows or c < 0 or c >= cols
+    return 0
+  grid[r * cols + c]
+
+fn count_neighbors grid:List rows:Int cols:Int r:Int c:Int -> Int
+  mut cnt := 0
+  for dr in range(-1, 2)
+    for dc in range(-1, 2)
+      if dr != 0 or dc != 0
+        cnt = cnt + get_cell(grid, rows, cols, r + dr, c + dc)
+  cnt
+
+fn step grid:List rows:Int cols:Int -> List
+  mut next := make_grid(rows, cols)
+  for r in range(0, rows)
+    for c in range(0, cols)
+      n := count_neighbors(grid, rows, cols, r, c)
+      cell := grid[r * cols + c]
+      if cell == 1 and (n == 2 or n == 3)
+        next[r * cols + c] = 1
+      if cell == 0 and n == 3
+        next[r * cols + c] = 1
+  next
+
+fn print_grid grid:List rows:Int cols:Int
+  for r in range(0, rows)
+    mut line := "  "
+    for c in range(0, cols)
+      if grid[r * cols + c] == 1
+        line = line + "#"
+      else
+        line = line + "."
+    print line
+
+fn count_alive grid:List -> Int
+  mut cnt := 0
+  for cell in grid
+    cnt = cnt + cell
+  cnt
+
+fn main
+  print "Conway's Game of Life:"
+  print ""
+
+  rows := 8
+  cols := 10
+
+  -- Blinker (period 2 oscillator)
+  print "Blinker oscillator:"
+  mut blinker := make_grid(rows, cols)
+  blinker = set_cell(blinker, cols, 2, 3)
+  blinker = set_cell(blinker, cols, 2, 4)
+  blinker = set_cell(blinker, cols, 2, 5)
+  for gen in range(0, 4)
+    print "  Gen {gen} (alive: {count_alive(blinker)}):"
+    print_grid(blinker, rows, cols)
+    blinker = step(blinker, rows, cols)
+
+  -- Glider
+  print ""
+  print "Glider:"
+  mut glider := make_grid(rows, cols)
+  glider = set_cell(glider, cols, 0, 1)
+  glider = set_cell(glider, cols, 1, 2)
+  glider = set_cell(glider, cols, 2, 0)
+  glider = set_cell(glider, cols, 2, 1)
+  glider = set_cell(glider, cols, 2, 2)
+  for gen in range(0, 5)
+    print "  Gen {gen} (alive: {count_alive(glider)}):"
+    print_grid(glider, rows, cols)
+    glider = step(glider, rows, cols)
+
+  -- Block (still life)
+  print ""
+  print "Block (still life):"
+  mut block := make_grid(6, 6)
+  block = set_cell(block, 6, 2, 2)
+  block = set_cell(block, 6, 2, 3)
+  block = set_cell(block, 6, 3, 2)
+  block = set_cell(block, 6, 3, 3)
+  for gen in range(0, 3)
+    print "  Gen {gen} (alive: {count_alive(block)}):"
+    print_grid(block, 6, 6)
+    block = step(block, 6, 6)

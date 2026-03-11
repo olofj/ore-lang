@@ -1,0 +1,149 @@
+-- Showcase 358: Polynomial evaluation and operations
+
+-- Polynomials represented as coefficient lists: [a0, a1, a2, ...] = a0 + a1*x + a2*x^2 + ...
+
+fn poly_eval coeffs:List x:Int -> Int
+  mut result := 0
+  mut power := 1
+  for c in coeffs
+    result = result + c * power
+    power = power * x
+  result
+
+fn poly_add a:List b:List -> List
+  ac := a | count()
+  bc := b | count()
+  mut maxlen := ac
+  if bc > maxlen
+    maxlen = bc
+  mut result := []
+  for i in range(0, maxlen)
+    mut av := 0
+    mut bv := 0
+    if i < ac
+      av = a[i]
+    if i < bc
+      bv = b[i]
+    result.push(av + bv)
+  result
+
+fn poly_mul a:List b:List -> List
+  ac := a | count()
+  bc := b | count()
+  mut result := []
+  for i in range(0, ac + bc - 1)
+    result.push(0)
+  for i in range(0, ac)
+    for j in range(0, bc)
+      result[i + j] = result[i + j] + a[i] * b[j]
+  result
+
+fn poly_derivative coeffs:List -> List
+  cc := coeffs | count()
+  if cc <= 1
+    return [0]
+  mut result := []
+  for i in range(1, cc)
+    result.push(coeffs[i] * i)
+  result
+
+fn abs_val n:Int -> Int
+  if n < 0
+    return 0 - n
+  n
+
+fn poly_to_str coeffs:List -> Str
+  cc := coeffs | count()
+  if cc == 0
+    return "0"
+  mut parts := []
+  mut first := true
+  for i in range(0, cc)
+    c := coeffs[i]
+    if c != 0
+      mut term := ""
+      if i == 0
+        term = str(c)
+      else if i == 1
+        if c == 1
+          term = "x"
+        else if c == -1
+          term = "-x"
+        else
+          term = str(c) + "x"
+      else
+        if c == 1
+          term = "x^" + str(i)
+        else if c == -1
+          term = "-x^" + str(i)
+        else
+          term = str(c) + "x^" + str(i)
+      if first
+        parts.push(term)
+        first = false
+      else
+        if c > 0
+          parts.push("+ " + term)
+        else
+          parts.push("- " + str(abs_val(c)))
+          if i == 1
+            -- Replace last with proper term
+            pc := parts | count()
+            parts[pc - 1] = "- " + str(abs_val(c)) + "x"
+          else if i > 1
+            pc := parts | count()
+            parts[pc - 1] = "- " + str(abs_val(c)) + "x^" + str(i)
+  if parts | count() == 0
+    return "0"
+  parts | join(" ")
+
+fn main
+  print "Polynomial Evaluation and Operations:"
+  print ""
+
+  -- Define polynomials
+  -- p(x) = 3 + 2x + x^2
+  p := [3, 2, 1]
+  print "p(x) = {poly_to_str(p)}"
+
+  -- q(x) = 1 - x + 2x^2
+  q := [1, -1, 2]
+  print "q(x) = {poly_to_str(q)}"
+
+  -- Evaluate at several points
+  print ""
+  print "Evaluation:"
+  for x in range(-2, 5)
+    print "  p({x}) = {poly_eval(p, x)}, q({x}) = {poly_eval(q, x)}"
+
+  -- Addition
+  print ""
+  sum := poly_add(p, q)
+  print "p(x) + q(x) = {poly_to_str(sum)}"
+
+  -- Multiplication
+  print ""
+  prod := poly_mul(p, q)
+  print "p(x) * q(x) = {poly_to_str(prod)}"
+  print "Verify at x=2: p(2)={poly_eval(p, 2)}, q(2)={poly_eval(q, 2)}, product={poly_eval(p, 2) * poly_eval(q, 2)}, direct={poly_eval(prod, 2)}"
+
+  -- Derivative
+  print ""
+  dp := poly_derivative(p)
+  dq := poly_derivative(q)
+  print "p'(x) = {poly_to_str(dp)}"
+  print "q'(x) = {poly_to_str(dq)}"
+
+  -- Second derivative
+  ddp := poly_derivative(dp)
+  print "p''(x) = {poly_to_str(ddp)}"
+
+  -- Chain: (x+1)^4 by repeated multiplication
+  print ""
+  print "Computing (x+1)^n:"
+  mut power := [1]
+  base := [1, 1]
+  for n in range(1, 6)
+    power = poly_mul(power, base)
+    print "  (x+1)^{n} = {poly_to_str(power)}"
+    print "    at x=1: {poly_eval(power, 1)}, at x=2: {poly_eval(power, 2)}"

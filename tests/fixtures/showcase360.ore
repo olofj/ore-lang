@@ -1,0 +1,130 @@
+-- Showcase 360: Matrix chain multiplication (optimal parenthesization)
+
+fn mcm_cost dims:List -> List
+  -- dims = [d0, d1, d2, ..., dn] for n matrices
+  -- Matrix i has dimensions dims[i] x dims[i+1]
+  -- Returns flat [cost_table, split_table] each n x n
+  n := dims | count() - 1
+
+  -- cost[i][j] = min scalar multiplications for matrices i..j
+  -- Stored as flat list: cost[i*n + j]
+  mut cost := []
+  mut split := []
+  for i in range(0, n * n)
+    cost.push(0)
+    split.push(0)
+
+  -- Chain length l = 2, 3, ..., n
+  for l in range(2, n + 1)
+    for i in range(0, n - l + 1)
+      j := i + l - 1
+      cost[i * n + j] = 999999999
+      for k in range(i, j)
+        q := cost[i * n + k] + cost[(k + 1) * n + j] + dims[i] * dims[k + 1] * dims[j + 1]
+        if q < cost[i * n + j]
+          cost[i * n + j] = q
+          split[i * n + j] = k
+
+  -- Return both tables concatenated
+  mut result := []
+  for v in cost
+    result.push(v)
+  for v in split
+    result.push(v)
+  result
+
+fn format_parens split:List n:Int i:Int j:Int -> Str
+  if i == j
+    return "M" + str(i + 1)
+  k := split[i * n + j]
+  left := format_parens(split, n, i, k)
+  right := format_parens(split, n, k + 1, j)
+  "(" + left + " x " + right + ")"
+
+fn main
+  print "Matrix Chain Multiplication:"
+  print ""
+
+  -- Example 1: 4 matrices
+  -- M1: 10x30, M2: 30x5, M3: 5x60, M4: 60x10
+  dims1 := [10, 30, 5, 60, 10]
+  n1 := 4
+  print "Example 1: 4 matrices"
+  print "  M1: 10x30, M2: 30x5, M3: 5x60, M4: 60x10"
+
+  tables1 := mcm_cost(dims1)
+  -- Extract cost and split tables
+  mut cost1 := []
+  mut split1 := []
+  for i in range(0, n1 * n1)
+    cost1.push(tables1[i])
+  for i in range(0, n1 * n1)
+    split1.push(tables1[n1 * n1 + i])
+
+  print "  Optimal cost: {cost1[0 * n1 + n1 - 1]} scalar multiplications"
+  parens1 := format_parens(split1, n1, 0, n1 - 1)
+  print "  Optimal order: {parens1}"
+
+  -- Show cost table
+  print ""
+  print "  Cost table:"
+  for i in range(0, n1)
+    mut line := "    "
+    for j in range(0, n1)
+      if j < i
+        line = line + "     - "
+      else
+        c := cost1[i * n1 + j]
+        mut s := str(c)
+        while s.len() < 6
+          s = " " + s
+        line = line + s + " "
+    print line
+
+  -- Example 2: 6 matrices
+  print ""
+  dims2 := [30, 35, 15, 5, 10, 20, 25]
+  n2 := 6
+  print "Example 2: 6 matrices"
+  print "  M1: 30x35, M2: 35x15, M3: 15x5, M4: 5x10, M5: 10x20, M6: 20x25"
+
+  tables2 := mcm_cost(dims2)
+  mut cost2 := []
+  mut split2 := []
+  for i in range(0, n2 * n2)
+    cost2.push(tables2[i])
+  for i in range(0, n2 * n2)
+    split2.push(tables2[n2 * n2 + i])
+
+  print "  Optimal cost: {cost2[0 * n2 + n2 - 1]} scalar multiplications"
+  parens2 := format_parens(split2, n2, 0, n2 - 1)
+  print "  Optimal order: {parens2}"
+
+  -- Naive vs optimal comparison
+  print ""
+  print "Comparison with naive left-to-right:"
+  -- Naive: ((((M1 x M2) x M3) x M4) x M5) x M6
+  -- Cost: 30*35*15 + 30*15*5 + 30*5*10 + 30*10*20 + 30*20*25
+  naive := 30*35*15 + 30*15*5 + 30*5*10 + 30*10*20 + 30*20*25
+  optimal := cost2[0 * n2 + n2 - 1]
+  print "  Naive cost: {naive}"
+  print "  Optimal cost: {optimal}"
+  savings := naive - optimal
+  print "  Savings: {savings} multiplications"
+
+  -- Example 3: Simple case
+  print ""
+  dims3 := [40, 20, 30, 10, 30]
+  n3 := 4
+  print "Example 3: 4 matrices"
+  print "  M1: 40x20, M2: 20x30, M3: 30x10, M4: 10x30"
+  tables3 := mcm_cost(dims3)
+  mut cost3 := []
+  mut split3 := []
+  for i in range(0, n3 * n3)
+    cost3.push(tables3[i])
+  for i in range(0, n3 * n3)
+    split3.push(tables3[n3 * n3 + i])
+  print "  Optimal cost: {cost3[0 * n3 + n3 - 1]}"
+  parens3 := format_parens(split3, n3, 0, n3 - 1)
+  print "  Optimal order: {parens3}"

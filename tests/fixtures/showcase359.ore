@@ -1,0 +1,124 @@
+-- Showcase 359: Simple cryptographic hash (djb2 and variations)
+
+fn djb2_hash text:Str -> Int
+  -- djb2 hash by Dan Bernstein
+  -- We work with positive integers, mod a large prime to avoid overflow
+  chars := text.chars()
+  mut hash := 5381
+  modval := 1000000007
+  for ch in chars
+    -- hash * 33 + char_code
+    -- Approximate char code from position in alphabet
+    code := char_code(ch)
+    hash = ((hash * 33) + code) % modval
+  hash
+
+fn char_code ch:Str -> Int
+  -- Simple character to number mapping
+  alphabet := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !.,;:-_"
+  chars := alphabet.chars()
+  ac := chars | count()
+  for i in range(0, ac)
+    if chars[i] == ch
+      return i + 32
+  0
+
+fn sdbm_hash text:Str -> Int
+  -- sdbm hash function
+  chars := text.chars()
+  mut hash := 0
+  modval := 1000000007
+  for ch in chars
+    code := char_code(ch)
+    hash = (code + (hash * 65599)) % modval
+  hash
+
+fn fnv1_hash text:Str -> Int
+  -- FNV-1 inspired hash
+  chars := text.chars()
+  mut hash := 2166136
+  modval := 1000000007
+  prime := 16777619
+  for ch in chars
+    code := char_code(ch)
+    hash = (hash * prime) % modval
+    hash = hash + code
+    hash = hash % modval
+  hash
+
+fn hash_to_hex hash:Int -> Str
+  -- Convert hash to hex-like string (base 16)
+  hex_chars := "0123456789abcdef"
+  hchars := hex_chars.chars()
+  mut result := ""
+  mut val := hash
+  if val < 0
+    val = 0 - val
+  if val == 0
+    return "00000000"
+  while val > 0
+    digit := val % 16
+    result = hchars[digit] + result
+    val = val / 16
+  -- Pad to 8 chars
+  while result.len() < 8
+    result = "0" + result
+  result
+
+fn main
+  print "Cryptographic Hash Functions:"
+  print ""
+
+  -- Test strings
+  inputs := ["hello", "world", "hello world", "ore language", "hash me"]
+
+  print "DJB2 hashes:"
+  for s in inputs
+    h := djb2_hash(s)
+    print "  djb2(\"{s}\") = {hash_to_hex(h)} ({h})"
+
+  print ""
+  print "SDBM hashes:"
+  for s in inputs
+    h := sdbm_hash(s)
+    print "  sdbm(\"{s}\") = {hash_to_hex(h)} ({h})"
+
+  print ""
+  print "FNV-1 hashes:"
+  for s in inputs
+    h := fnv1_hash(s)
+    print "  fnv1(\"{s}\") = {hash_to_hex(h)} ({h})"
+
+  -- Avalanche test: small change, big hash change
+  print ""
+  print "Avalanche effect (djb2):"
+  pairs := ["hello", "hellp", "abc", "abd", "test", "tess"]
+  pc := pairs | count()
+  mut i := 0
+  while i < pc
+    a := pairs[i]
+    b := pairs[i + 1]
+    ha := djb2_hash(a)
+    hb := djb2_hash(b)
+    mut diff := ha - hb
+    if diff < 0
+      diff = 0 - diff
+    print "  \"{a}\" -> {hash_to_hex(ha)}"
+    print "  \"{b}\" -> {hash_to_hex(hb)}"
+    print "  Difference: {diff}"
+    print ""
+    i = i + 2
+
+  -- Hash distribution test
+  print "Hash distribution (djb2 mod 10 for words):"
+  mut buckets := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  words := ["the", "quick", "brown", "fox", "jumps", "over", "lazy", "dog", "and", "cat", "sat", "on", "mat", "red", "blue", "one", "two", "big", "end", "run"]
+  for w in words
+    h := djb2_hash(w)
+    bucket := h % 10
+    buckets[bucket] = buckets[bucket] + 1
+  for i in range(0, 10)
+    mut bar := ""
+    for j in range(0, buckets[i])
+      bar = bar + "#"
+    print "  Bucket {i}: {bar} ({buckets[i]})"

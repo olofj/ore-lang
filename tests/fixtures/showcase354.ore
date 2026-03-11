@@ -1,0 +1,148 @@
+-- Showcase 354: Simple expression parser (tokenize + evaluate)
+
+-- Token types: 0=number, 1=plus, 2=minus, 3=star, 4=slash, 5=lparen, 6=rparen
+
+fn is_digit ch:Str -> Bool
+  ch == "0" or ch == "1" or ch == "2" or ch == "3" or ch == "4" or ch == "5" or ch == "6" or ch == "7" or ch == "8" or ch == "9"
+
+fn char_to_digit ch:Str -> Int
+  if ch == "0"
+    return 0
+  if ch == "1"
+    return 1
+  if ch == "2"
+    return 2
+  if ch == "3"
+    return 3
+  if ch == "4"
+    return 4
+  if ch == "5"
+    return 5
+  if ch == "6"
+    return 6
+  if ch == "7"
+    return 7
+  if ch == "8"
+    return 8
+  9
+
+fn tokenize expr:Str -> List
+  -- Returns flat list: [type1, val1, type2, val2, ...]
+  chars := expr.chars()
+  mut tokens := []
+  mut i := 0
+  len := chars | count()
+  while i < len
+    ch := chars[i]
+    if ch == " "
+      i = i + 1
+    else if is_digit(ch)
+      mut num := 0
+      while i < len
+        c := chars[i]
+        if is_digit(c)
+          num = num * 10 + char_to_digit(c)
+          i = i + 1
+        else
+          break
+      tokens.push(0)
+      tokens.push(num)
+    else if ch == "+"
+      tokens.push(1)
+      tokens.push(0)
+      i = i + 1
+    else if ch == "-"
+      tokens.push(2)
+      tokens.push(0)
+      i = i + 1
+    else if ch == "*"
+      tokens.push(3)
+      tokens.push(0)
+      i = i + 1
+    else
+      i = i + 1
+  tokens
+
+fn eval_tokens tokens:List -> Int
+  -- Simple precedence: * before +/-
+  -- First pass: evaluate all multiplications
+  mut vals := []
+  mut ops := []
+  tc := tokens | count()
+  mut i := 0
+  while i < tc
+    typ := tokens[i]
+    val := tokens[i + 1]
+    if typ == 0
+      vals.push(val)
+    else
+      ops.push(typ)
+    i = i + 2
+
+  -- Apply multiplications first
+  mut new_vals := []
+  mut new_ops := []
+  new_vals.push(vals[0])
+  oc := ops | count()
+  for j in range(0, oc)
+    if ops[j] == 3
+      -- Multiply
+      last_idx := new_vals | count() - 1
+      prev := new_vals[last_idx]
+      new_vals[last_idx] = prev * vals[j + 1]
+    else
+      new_vals.push(vals[j + 1])
+      new_ops.push(ops[j])
+
+  -- Apply additions and subtractions
+  mut result := new_vals[0]
+  noc := new_ops | count()
+  for j in range(0, noc)
+    if new_ops[j] == 1
+      result = result + new_vals[j + 1]
+    else if new_ops[j] == 2
+      result = result - new_vals[j + 1]
+  result
+
+fn evaluate expr:Str -> Int
+  tokens := tokenize(expr)
+  eval_tokens(tokens)
+
+fn main
+  print "Simple Expression Parser:"
+  print ""
+
+  -- Basic expressions
+  exprs := ["2 + 3", "10 - 4", "3 * 7", "2 + 3 * 4", "10 - 2 * 3", "1 + 2 + 3 + 4", "100 - 50 - 25", "2 * 3 * 4"]
+  for e in exprs
+    result := evaluate(e)
+    print "  {e} = {result}"
+
+  -- Verify operator precedence
+  print ""
+  print "Operator precedence tests:"
+  r1 := evaluate("2 + 3 * 4")
+  print "  2 + 3 * 4 = {r1} (expected 14)"
+  r2 := evaluate("10 - 2 * 3")
+  print "  10 - 2 * 3 = {r2} (expected 4)"
+  r3 := evaluate("1 + 2 * 3 + 4")
+  print "  1 + 2 * 3 + 4 = {r3} (expected 11)"
+
+  -- Tokenization demo
+  print ""
+  print "Tokenization of '5 + 12 * 3':"
+  toks := tokenize("5 + 12 * 3")
+  tc := toks | count()
+  mut i := 0
+  while i < tc
+    typ := toks[i]
+    val := toks[i + 1]
+    if typ == 0
+      print "  NUMBER({val})"
+    else if typ == 1
+      print "  PLUS"
+    else if typ == 2
+      print "  MINUS"
+    else if typ == 3
+      print "  STAR"
+    i = i + 2

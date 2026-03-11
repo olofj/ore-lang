@@ -1,0 +1,71 @@
+-- Showcase 351: Hamming numbers (regular numbers with only 2, 3, 5 as factors)
+
+fn is_hamming n:Int -> Bool
+  mut val := n
+  while val % 2 == 0
+    val = val / 2
+  while val % 3 == 0
+    val = val / 3
+  while val % 5 == 0
+    val = val / 5
+  val == 1
+
+fn factorize_235 n:Int -> Str
+  mut val := n
+  mut twos := 0
+  mut threes := 0
+  mut fives := 0
+  while val % 2 == 0
+    twos = twos + 1
+    val = val / 2
+  while val % 3 == 0
+    threes = threes + 1
+    val = val / 3
+  while val % 5 == 0
+    fives = fives + 1
+    val = val / 5
+  "2^{twos} * 3^{threes} * 5^{fives}"
+
+fn main
+  print "Hamming Numbers (Regular Numbers):"
+  print ""
+
+  -- Find first 20 Hamming numbers
+  mut hammings := []
+  mut n := 1
+  while hammings | count() < 20
+    if is_hamming(n)
+      hammings.push(n)
+    n = n + 1
+  print "First 20 Hamming numbers:"
+  print "  {hammings | join(", ")}"
+
+  -- Show factorizations
+  print ""
+  print "Factorizations:"
+  candidates := [1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 25, 27, 30, 32, 36]
+  for c in candidates
+    if c > 1
+      print "  {c} = {factorize_235(c)}"
+
+  -- Count Hamming numbers up to powers of 10
+  print ""
+  print "Hamming number counts:"
+  limits := [10, 50, 100, 200, 500]
+  for lim in limits
+    mut cnt := 0
+    for i in range(1, lim + 1)
+      if is_hamming(i)
+        cnt = cnt + 1
+    print "  Up to {lim}: {cnt} Hamming numbers"
+
+  -- Check non-Hamming numbers
+  print ""
+  print "First 10 non-Hamming numbers (> 1):"
+  mut non_ham := []
+  mut m := 2
+  while non_ham | count() < 10
+    if not is_hamming(m)
+      non_ham.push(m)
+    m = m + 1
+  print "  {non_ham | join(", ")}"

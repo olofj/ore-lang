@@ -1,0 +1,126 @@
+-- Showcase 355: Huffman-style encoding
+
+fn char_index ch:Str -> Int
+  -- Map character to index for tracking
+  alphabet := "abcdefghijklmnopqrstuvwxyz "
+  chars := alphabet.chars()
+  ac := chars | count()
+  for i in range(0, ac)
+    if chars[i] == ch
+      return i
+  -1
+
+fn main
+  print "Huffman-Style Encoding:"
+  print ""
+
+  text := "abracadabra"
+  print "Text: {text}"
+  print "Length: {text.len()} characters"
+
+  -- Count character frequencies using fixed array
+  mut freq := []
+  for i in range(0, 27)
+    freq.push(0)
+
+  chars := text.chars()
+  for ch in chars
+    idx := char_index(ch)
+    if idx >= 0
+      freq[idx] = freq[idx] + 1
+
+  -- Show frequencies
+  print ""
+  print "Character frequencies:"
+  alphabet := "abcdefghijklmnopqrstuvwxyz "
+  alpha_chars := alphabet.chars()
+  mut unique_count := 0
+  for i in range(0, 27)
+    if freq[i] > 0
+      print "  '{alpha_chars[i]}': {freq[i]}"
+      unique_count = unique_count + 1
+  print "Unique characters: {unique_count}"
+
+  -- Build simple variable-length codes
+  -- Sort characters by frequency and assign shorter codes to more frequent
+  -- Collect (freq, char_index) pairs, sort by freq descending
+  mut sorted_indices := []
+  mut sorted_freqs := []
+  for i in range(0, 27)
+    if freq[i] > 0
+      -- Insert in sorted order (descending by freq)
+      sc := sorted_indices | count()
+      mut inserted := false
+      for j in range(0, sc)
+        if not inserted and freq[i] > sorted_freqs[j]
+          -- Shift everything right
+          sorted_indices.push(0)
+          sorted_freqs.push(0)
+          new_sc := sorted_indices | count()
+          mut k := new_sc - 1
+          while k > j
+            sorted_indices[k] = sorted_indices[k - 1]
+            sorted_freqs[k] = sorted_freqs[k - 1]
+            k = k - 1
+          sorted_indices[j] = i
+          sorted_freqs[j] = freq[i]
+          inserted = true
+      if not inserted
+        sorted_indices.push(i)
+        sorted_freqs.push(freq[i])
+
+  -- Assign codes: most frequent gets shortest
+  print ""
+  print "Assigned codes (most frequent first):"
+  mut code_strs := []
+  for i in range(0, 27)
+    code_strs.push("")
+
+  sc := sorted_indices | count()
+  for i in range(0, sc)
+    idx := sorted_indices[i]
+    -- Generate a simple prefix-free code based on position
+    mut code := ""
+    if sc <= 2
+      code = str(i)
+    else if i == 0
+      code = "0"
+    else
+      -- Use 1-prefixed codes of varying length
+      mut val := i
+      mut bits := []
+      while val > 0
+        bits.push(val % 2)
+        val = val / 2
+      bits = bits | reverse()
+      for b in bits
+        code = code + str(b)
+      -- Pad to ensure prefix-free
+      if code.len() < 2
+        code = code + "0"
+    code_strs[idx] = code
+    print "  '{alpha_chars[idx]}' (freq={sorted_freqs[i]}): {code}"
+
+  -- Encode the text
+  mut encoded := ""
+  for ch in chars
+    idx := char_index(ch)
+    encoded = encoded + code_strs[idx]
+
+  print ""
+  print "Encoded: {encoded}"
+  print "Encoded length: {encoded.len()} bits"
+  orig_bits := text.len() * 8
+  print "Original: {orig_bits} bits (8 per char)"
+  print "Savings: {orig_bits - encoded.len()} bits"
+
+  -- Decode verification
+  print ""
+  print "Encoding summary:"
+  mut total_bits := 0
+  for i in range(0, sc)
+    idx := sorted_indices[i]
+    bits_used := code_strs[idx].len() * sorted_freqs[i]
+    total_bits = total_bits + bits_used
+    print "  '{alpha_chars[idx]}': {code_strs[idx]} x {sorted_freqs[i]} = {bits_used} bits"
+  print "Total: {total_bits} bits"

@@ -4764,6 +4764,110 @@ fn showcase350_number_spiral() {
 }
 
 #[test]
+fn showcase351_hamming_numbers() {
+    let out = run_ore("showcase351.ore");
+    assert!(out.contains("Hamming Numbers (Regular Numbers):"));
+    assert!(out.contains("1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 25, 27, 30, 32, 36"));
+    assert!(out.contains("Up to 100: 34 Hamming numbers"));
+    assert!(out.contains("7, 11, 13, 14, 17, 19, 21, 22, 23, 26"));
+}
+
+#[test]
+fn showcase352_continued_fractions() {
+    let out = run_ore("showcase352.ore");
+    assert!(out.contains("Continued Fractions:"));
+    assert!(out.contains("Coefficients: 3, 7, 16"));
+    assert!(out.contains("Back to fraction: 355/113"));
+    assert!(out.contains("C1 = 22/7"));
+    assert!(out.contains("C2 = 355/113"));
+    assert!(out.contains("C5 = 99/70"));
+}
+
+#[test]
+fn showcase353_game_of_life() {
+    let out = run_ore("showcase353.ore");
+    assert!(out.contains("Conway's Game of Life:"));
+    assert!(out.contains("Blinker oscillator:"));
+    assert!(out.contains("Gen 0 (alive: 3):"));
+    assert!(out.contains("Glider:"));
+    assert!(out.contains("Gen 0 (alive: 5):"));
+    assert!(out.contains("Block (still life):"));
+    assert!(out.contains("Gen 0 (alive: 4):"));
+}
+
+#[test]
+fn showcase354_expression_parser() {
+    let out = run_ore("showcase354.ore");
+    assert!(out.contains("Simple Expression Parser:"));
+    assert!(out.contains("2 + 3 * 4 = 14"));
+    assert!(out.contains("10 - 2 * 3 = 4"));
+    assert!(out.contains("1 + 2 * 3 + 4 = 11"));
+    assert!(out.contains("NUMBER(12)"));
+    assert!(out.contains("STAR"));
+}
+
+#[test]
+fn showcase355_huffman_encoding() {
+    let out = run_ore("showcase355.ore");
+    assert!(out.contains("Huffman-Style Encoding:"));
+    assert!(out.contains("Text: abracadabra"));
+    assert!(out.contains("'a': 5"));
+    assert!(out.contains("Unique characters: 5"));
+    assert!(out.contains("Encoded length: 18 bits"));
+    assert!(out.contains("Total: 18 bits"));
+}
+
+#[test]
+fn showcase356_bfs_pathfinding() {
+    let out = run_ore("showcase356.ore");
+    assert!(out.contains("Tower Defense Path Finding (BFS):"));
+    assert!(out.contains("Shortest path length: 16"));
+    assert!(out.contains("Shortest path length: 13"));
+    assert!(out.contains("Path has 14 cells"));
+}
+
+#[test]
+fn showcase357_rps_tournament() {
+    let out = run_ore("showcase357.ore");
+    assert!(out.contains("Rock-Paper-Scissors Tournament:"));
+    assert!(out.contains("Tournament standings:"));
+    assert!(out.contains("Tournament winner: Cissy with 10 points!"));
+    assert!(out.contains("Rocky vs Paige: 0-5-0 -> Paige wins"));
+}
+
+#[test]
+fn showcase358_polynomials() {
+    let out = run_ore("showcase358.ore");
+    assert!(out.contains("Polynomial Evaluation and Operations:"));
+    assert!(out.contains("p(x) = 3 + 2x + x^2"));
+    assert!(out.contains("p(x) + q(x) = 4 + x + 3x^2"));
+    assert!(out.contains("product=77, direct=77"));
+    assert!(out.contains("(x+1)^5 = 1 + 5x + 10x^2 + 10x^3 + 5x^4 + x^5"));
+    assert!(out.contains("at x=1: 32, at x=2: 243"));
+}
+
+#[test]
+fn showcase359_hash_functions() {
+    let out = run_ore("showcase359.ore");
+    assert!(out.contains("Cryptographic Hash Functions:"));
+    assert!(out.contains("djb2(\"hello\") = 25db7c56"));
+    assert!(out.contains("sdbm(\"hello\") = 12ea453d"));
+    assert!(out.contains("fnv1(\"hello\") = 1c64ebbb"));
+    assert!(out.contains("Hash distribution"));
+}
+
+#[test]
+fn showcase360_matrix_chain_multiplication() {
+    let out = run_ore("showcase360.ore");
+    assert!(out.contains("Matrix Chain Multiplication:"));
+    assert!(out.contains("Optimal cost: 5000 scalar multiplications"));
+    assert!(out.contains("((M1 x M2) x (M3 x M4))"));
+    assert!(out.contains("Optimal cost: 15125 scalar multiplications"));
+    assert!(out.contains("Savings: 25375 multiplications"));
+    assert!(out.contains("Optimal cost: 26000"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
