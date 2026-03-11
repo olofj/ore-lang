@@ -1227,6 +1227,46 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+/// unique_by: deduplicate using a key function that returns a string key
+#[no_mangle]
+pub extern "C" fn ore_list_unique_by(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        let mut seen = std::collections::HashSet::new();
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            let key_val = call_closure(func, env, val);
+            // Key is expected to be a string pointer
+            let key_str = &*(key_val as *mut OreStr);
+            let key = key_str.as_str().to_string();
+            if seen.insert(key) {
+                ore_list_push(result, val);
+            }
+        }
+        result
+    }
+}
+
+/// unique for string lists (compares by string value, not pointer)
+#[no_mangle]
+pub extern "C" fn ore_list_unique_str(list: *mut OreList) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        let mut seen = std::collections::HashSet::new();
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            let s = &*(val as *mut OreStr);
+            let key = s.as_str().to_string();
+            if seen.insert(key) {
+                ore_list_push(result, val);
+            }
+        }
+        result
+    }
+}
+
 /// tap: run a side-effect on the list and return it unchanged. Useful for debugging pipelines.
 #[no_mangle]
 pub extern "C" fn ore_list_tap(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {

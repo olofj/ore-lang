@@ -516,6 +516,8 @@ fn map_runtime_functions(
     map_fn!("ore_str_char_at", ore_runtime::ore_str_char_at);
     map_fn!("ore_str_capitalize", ore_runtime::ore_str_capitalize);
     map_fn!("ore_list_tap", ore_runtime::ore_list_tap);
+    map_fn!("ore_list_unique_by", ore_runtime::ore_list_unique_by);
+    map_fn!("ore_list_unique_str", ore_runtime::ore_list_unique_str);
     map_fn!("ore_list_average", ore_runtime::ore_list_average);
     map_fn!("ore_list_average_float", ore_runtime::ore_list_average_float);
     map_fn!("ore_list_map_with_index", ore_runtime::ore_list_map_with_index);
