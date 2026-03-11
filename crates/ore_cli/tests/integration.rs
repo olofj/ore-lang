@@ -917,3 +917,15 @@ fn lists_comprehension() {
         "comprehension ok",
     ]);
 }
+
+#[test]
+fn lists_destructure() {
+    let out = run_ore("lists/destructure.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "10", "20", "30",       // nums
+        "alice", "bob",         // strings
+        "100", "200",           // from literal
+        "destructure ok",
+    ]);
+}

@@ -146,6 +146,14 @@ impl Formatter {
                 self.format_expr(value, level);
                 self.out.push('\n');
             }
+            Stmt::LetDestructure { names, value } => {
+                self.indent(level);
+                self.out.push('[');
+                self.out.push_str(&names.join(", "));
+                self.out.push_str("] := ");
+                self.format_expr(value, level);
+                self.out.push('\n');
+            }
             Stmt::Assign { name, value } => {
                 self.indent(level);
                 self.out.push_str(&format!("{} = ", name));

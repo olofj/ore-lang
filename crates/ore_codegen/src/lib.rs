@@ -149,6 +149,7 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
 fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<String>, seen: &mut HashSet<String>) {
     match stmt {
         Stmt::Let { value, .. } => collect_free_vars(value, bound, free, seen),
+        Stmt::LetDestructure { value, .. } => collect_free_vars(value, bound, free, seen),
         Stmt::Assign { value, .. } => collect_free_vars(value, bound, free, seen),
         Stmt::Expr(e) => collect_free_vars(e, bound, free, seen),
         Stmt::Return(Some(e)) => collect_free_vars(e, bound, free, seen),
@@ -1014,6 +1015,39 @@ impl<'ctx> CodeGen<'ctx> {
                 if kind == ValKind::Map {
                     if let Some(vk) = self.last_map_val_kind.take() {
                         self.map_value_kinds.insert(name.clone(), vk);
+                    }
+                }
+                Ok(None)
+            }
+            Stmt::LetDestructure { names, value } => {
+                self.last_list_elem_kind = None;
+                let (val, _kind) = self.compile_expr_with_kind(value, func)?;
+                let list_ptr = val.into_pointer_value();
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                let list_get_fn = self.module.get_function("ore_list_get").unwrap();
+                let i64_type = self.context.i64_type();
+
+                for (i, name) in names.iter().enumerate() {
+                    let idx = i64_type.const_int(i as u64, false);
+                    let result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "destr"))?;
+                    let raw_val = self.call_result_to_value(result)?;
+
+                    match &elem_kind {
+                        ValKind::Str => {
+                            let ptr = bld!(self.builder.build_int_to_ptr(
+                                raw_val.into_int_value(),
+                                self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
+                            ))?;
+                            let pt = self.context.ptr_type(inkwell::AddressSpace::default());
+                            let alloca = bld!(self.builder.build_alloca(pt, name))?;
+                            bld!(self.builder.build_store(alloca, ptr))?;
+                            self.variables.insert(name.clone(), (alloca, pt.into(), ValKind::Str, false));
+                        }
+                        _ => {
+                            let alloca = bld!(self.builder.build_alloca(i64_type, name))?;
+                            bld!(self.builder.build_store(alloca, raw_val))?;
+                            self.variables.insert(name.clone(), (alloca, i64_type.into(), elem_kind.clone(), false));
+                        }
                     }
                 }
                 Ok(None)

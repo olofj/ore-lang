@@ -616,6 +616,36 @@ impl Parser {
                 let value = self.parse_expr(0)?;
                 Ok(Stmt::Let { name, mutable: true, value })
             }
+            Token::LBracket => {
+                // Could be destructuring [a, b, c] := expr or list expression
+                let saved = self.pos;
+                self.advance(); // consume '['
+                let mut names = Vec::new();
+                let mut is_destructure = true;
+                loop {
+                    match self.peek().clone() {
+                        Token::Ident(n) => {
+                            self.advance();
+                            names.push(n);
+                        }
+                        _ => { is_destructure = false; break; }
+                    }
+                    match self.peek() {
+                        Token::Comma => { self.advance(); }
+                        Token::RBracket => { self.advance(); break; }
+                        _ => { is_destructure = false; break; }
+                    }
+                }
+                if is_destructure && self.peek() == &Token::ColonEq {
+                    self.advance(); // consume ':='
+                    let value = self.parse_expr(0)?;
+                    return Ok(Stmt::LetDestructure { names, value });
+                }
+                // Not destructuring — backtrack and parse as expression
+                self.pos = saved;
+                let expr = self.parse_expr(0)?;
+                Ok(Stmt::Expr(expr))
+            }
             Token::Ident(_) => {
                 // Could be: binding (x := ...), assignment (x = ...),
                 // index assign (x[i] = ...), field assign (x.f = ...), or expression

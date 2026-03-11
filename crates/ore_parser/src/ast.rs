@@ -121,6 +121,10 @@ pub enum Stmt {
         mutable: bool,
         value: Expr,
     },
+    LetDestructure {
+        names: Vec<String>,
+        value: Expr,
+    },
     Assign {
         name: String,
         value: Expr,

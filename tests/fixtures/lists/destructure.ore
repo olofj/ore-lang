@@ -1,0 +1,22 @@
+-- Test list destructuring
+
+fn main
+  -- Basic destructuring
+  nums := [10, 20, 30]
+  [a, b, c] := nums
+  print a
+  print b
+  print c
+
+  -- Destructuring strings
+  names := ["alice", "bob"]
+  [first, second] := names
+  print first
+  print second
+
+  -- Destructuring from expression
+  [x, y] := [100, 200]
+  print x
+  print y
+
+  print "destructure ok"

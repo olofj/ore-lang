@@ -302,6 +302,20 @@ impl TypeChecker {
                 env.insert(name.clone(), ty.clone(), *mutable);
                 ty
             }
+            Stmt::LetDestructure { names, value } => {
+                let ty = self.infer_expr(value, env);
+                let elem_ty = match &ty {
+                    Type::List(t) => (**t).clone(),
+                    _ => {
+                        self.err("destructuring requires a list value".to_string());
+                        Type::Any
+                    }
+                };
+                for name in names {
+                    env.insert(name.clone(), elem_ty.clone(), false);
+                }
+                ty
+            }
             Stmt::Assign { name, value } => {
                 let val_ty = self.infer_expr(value, env);
                 if let Some((var_ty, mutable)) = env.lookup(name).cloned() {
