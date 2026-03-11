@@ -1717,6 +1717,37 @@ fn showcase47() {
 }
 
 #[test]
+fn showcase48() {
+    let out = run_ore("showcase48.ore");
+    assert!(out.contains("Final position: (1, 2)"));
+    assert!(out.contains("Sum of even squares 1-10: 220"));
+    assert!(out.contains("Cubes: 1, 8, 27, 64, 125"));
+    assert!(out.contains("10/3 = 3"));
+    assert!(out.contains("10/0 = -1"));
+    assert!(out.contains("Feature tour complete!"));
+}
+
+#[test]
+fn showcase49() {
+    let out = run_ore("showcase49.ore");
+    assert!(out.contains("Lines: 5"));
+    assert!(out.contains("Words: 12"));
+    assert!(out.contains("Exists: true"));
+    assert!(out.contains("Missing: false"));
+    assert!(out.contains("First line: Hello World"));
+}
+
+#[test]
+fn showcase50() {
+    let out = run_ore("showcase50.ore");
+    assert!(out.contains("'to': 2"));
+    assert!(out.contains("'be': 2"));
+    assert!(out.contains("Alice: 95"));
+    assert!(out.contains("Has alice: true"));
+    assert!(out.contains("cache item_5: 25"));
+}
+
+#[test]
 fn build_and_run_binary() {
     // Test `ore build` produces a working native binary
     let path = fixtures_dir().join("showcase36.ore");

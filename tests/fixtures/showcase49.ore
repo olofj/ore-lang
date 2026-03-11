@@ -1,0 +1,42 @@
+-- Showcase 49: File I/O and string processing
+-- Demonstrates: file operations, text processing pipeline
+
+fn word_count text:Str -> Int
+  text.words().len()
+
+fn line_count text:Str -> Int
+  text.lines().len()
+
+fn char_count text:Str -> Int
+  text.len()
+
+fn main
+  -- Write a test file
+  content := "Hello World\nThis is Ore\nFile I/O works!\nLine four\nLast line"
+  file_write("/tmp/ore_test_file.txt", content)
+
+  -- Read it back
+  read_back := file_read("/tmp/ore_test_file.txt")
+  print "Read back {char_count(read_back)} chars"
+  print "Lines: {line_count(read_back)}"
+  print "Words: {word_count(read_back)}"
+
+  -- Check file exists
+  print "Exists: {file_exists("/tmp/ore_test_file.txt")}"
+  print "Missing: {file_exists("/tmp/nonexistent_ore_file.txt")}"
+
+  -- Read lines
+  lines := file_read_lines("/tmp/ore_test_file.txt")
+  print "First line: {lines.get(0)}"
+  print "Last line: {lines.get(lines.len() - 1)}"
+
+  -- Append to file
+  file_append("/tmp/ore_test_file.txt", "\nAppended line")
+  updated := file_read("/tmp/ore_test_file.txt")
+  print "After append lines: {updated.lines().len()}"
+
+  -- Process lines with pipeline
+  upper_lines := file_read_lines("/tmp/ore_test_file.txt")
+    | map(line => line.to_upper())
+    | join(" | ")
+  print "Upper joined: {upper_lines}"

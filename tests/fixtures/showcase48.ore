@@ -1,0 +1,101 @@
+-- Showcase 48: Complete feature tour
+-- Demonstrates: every major language feature in one program
+
+-- 1. Enums
+type Direction
+  North
+  South
+  East
+  West
+
+fn dir_name d:Direction -> Str
+  d :
+    North -> "N"
+    South -> "S"
+    East -> "E"
+    West -> "W"
+
+-- 2. Records
+type Point { x: Int, y: Int }
+
+fn move_point p:Point d:Direction -> Point
+  d :
+    North -> Point(x: p.x, y: p.y + 1)
+    South -> Point(x: p.x, y: p.y - 1)
+    East -> Point(x: p.x + 1, y: p.y)
+    West -> Point(x: p.x - 1, y: p.y)
+
+-- 3. Higher-order functions
+fn apply f:(Int -> Int) x:Int -> Int
+  f(x)
+
+-- 4. Recursive function
+fn fib n:Int -> Int
+  if n < 2
+    return n
+  fib(n - 1) + fib(n - 2)
+
+-- 5. Option type
+fn safe_div a:Int b:Int -> Int?
+  if b == 0
+    return None
+  Some(a / b)
+
+fn main
+  -- Enums and records
+  pos := Point(x: 0, y: 0)
+  dirs := [North, East, East, North, West]
+  mut p := pos
+  for i in 0..dirs.len()
+    p = move_point(p, dirs.get(i))
+  print "Final position: ({p.x}, {p.y})"
+
+  -- Pipelines
+  result := range(1, 11)
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | reduce((a, b) => a + b)
+  print "Sum of even squares 1-10: {result}"
+
+  -- List comprehension
+  cubes := [n * n * n for n in range(1, 6)]
+  print "Cubes: {cubes.join(", ")}"
+
+  -- Higher-order + lambda
+  doubled := apply(x => x * 2, 21)
+  print "Applied: {doubled}"
+
+  -- Fibonacci with pipeline
+  fibs := range(0, 10) | map(n => fib(n))
+  print "Fibonacci: {fibs.join(", ")}"
+
+  -- Strings
+  msg := "Hello, Ore!"
+  print "Upper: {msg.to_upper()}"
+  print "Words: {msg.words().len()}"
+  print "Reversed: {msg.reverse()}"
+
+  -- Maps
+  freq := "abracadabra".chars().frequencies()
+  print "a count: {freq.get_or("a", 0)}"
+  print "b count: {freq.get_or("b", 0)}"
+
+  -- Match expression
+  for n in [1, 2, 3, 5, 8, 13]
+    match n
+      1 -> print "  {n}: one"
+      2 -> print "  {n}: two"
+      3 | 5 | 8 | 13 -> print "  {n}: fibonacci"
+      _ -> print "  {n}: other"
+
+  -- Option handling
+  div1 := safe_div(10, 3)
+  div2 := safe_div(10, 0)
+  print "10/3 = {div1.unwrap_or(-1)}"
+  print "10/0 = {div2.unwrap_or(-1)}"
+
+  -- String interpolation with expressions
+  x := 42
+  print "x={x}, x*2={x * 2}, x>40={x > 40}"
+
+  print "Feature tour complete!"

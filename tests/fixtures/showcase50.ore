@@ -1,0 +1,51 @@
+-- Showcase 50: Map-based data processing
+-- Demonstrates: map operations, data aggregation, key-value processing
+
+fn main
+  -- Create a word frequency map
+  text := "to be or not to be that is the question"
+  words := text.words()
+  freq := words.frequencies()
+  print "Word frequencies:"
+  print "  'to': {freq.get_or("to", 0)}"
+  print "  'be': {freq.get_or("be", 0)}"
+  print "  'or': {freq.get_or("or", 0)}"
+  print "  'the': {freq.get_or("the", 0)}"
+
+  -- Map operations
+  scores := {"alice": 95, "bob": 87, "charlie": 92, "diana": 88}
+  print "Alice: {scores.get_or("alice", 0)}"
+  print "Bob: {scores.get_or("bob", 0)}"
+
+  -- Map keys and values
+  k := scores.keys()
+  print "Keys: {k.join(", ")}"
+
+  -- Merge maps
+  more_scores := {"eve": 91, "frank": 85}
+  all_scores := scores.merge(more_scores)
+  print "Total entries: {all_scores.len()}"
+
+  -- Map contains
+  print "Has alice: {scores.contains("alice")}"
+  print "Has zoe: {scores.contains("zoe")}"
+
+  -- Process entries
+  entries := scores.entries()
+  print "Entries: {entries.len()}"
+
+  -- Count by category using group_by
+  numbers := range(1, 21)
+  groups := numbers | group_by(n => str(n % 3))
+  print "Group 0 count: {groups.get_or("0", []).len()}"
+  print "Group 1 count: {groups.get_or("1", []).len()}"
+
+  -- Use map as a simple cache/lookup
+  mut cache := {"": 0}
+  cache = {}
+  for i in 0..10
+    key := "item_" + str(i)
+    cache.set(key, i * i)
+  print "cache item_5: {cache.get_or("item_5", -1)}"
+  print "cache item_9: {cache.get_or("item_9", -1)}"
+  print "cache size: {cache.len()}"
