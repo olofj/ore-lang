@@ -778,6 +778,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_rand_int", i64_type.fn_type(&[i64_type.into(), i64_type.into()], false), ext);
         // Process
         self.module.add_function("ore_exit", void_type.fn_type(&[i64_type.into()], false), ext);
+        self.module.add_function("ore_exec", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_type_of", ptr_type.fn_type(&[i8_type.into()], false), ext);
         // Environment
         self.module.add_function("ore_env_get", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -1608,6 +1609,16 @@ impl<'ctx> CodeGen<'ctx> {
                         let rt = self.module.get_function("ore_exit").unwrap();
                         bld!(self.builder.build_call(rt, &[code.into()], ""))?;
                         return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Int));
+                    }
+                    "exec" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "exec takes 1 argument (command string)".into() });
+                        }
+                        let cmd_val = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_exec").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[cmd_val.into()], "exec"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Str));
                     }
                     "type_of" => {
                         if args.len() != 1 {

@@ -1640,6 +1640,28 @@ pub extern "C" fn ore_exit(code: i64) {
     std::process::exit(code as i32);
 }
 
+/// Execute a shell command and return its stdout as a string.
+#[no_mangle]
+pub extern "C" fn ore_exec(cmd: *mut OreStr) -> *mut OreStr {
+    if cmd.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let cmd_str = unsafe { (*cmd).as_str() };
+    match std::process::Command::new("sh")
+        .arg("-c")
+        .arg(cmd_str)
+        .output()
+    {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let trimmed = stdout.trim_end_matches('\n');
+            ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
+        }
+        Err(e) => {
+            eprintln!("exec error: {}", e);
+            ore_str_new(std::ptr::null(), 0)
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_type_of(kind: i8) -> *mut OreStr {
     let name = match kind {

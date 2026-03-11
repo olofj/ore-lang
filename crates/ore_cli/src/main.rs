@@ -506,6 +506,7 @@ fn map_runtime_functions(
     map_fn!("ore_rand_int", ore_runtime::ore_rand_int);
     // Process
     map_fn!("ore_exit", ore_runtime::ore_exit);
+    map_fn!("ore_exec", ore_runtime::ore_exec);
     map_fn!("ore_type_of", ore_runtime::ore_type_of);
     // Environment
     map_fn!("ore_env_get", ore_runtime::ore_env_get);

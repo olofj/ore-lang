@@ -520,6 +520,7 @@ impl TypeChecker {
                             "file_exists" => return Type::Bool,
                             "time_now" | "time_ms" | "rand_int" => return Type::Int,
                             "exit" => return Type::Unit,
+                            "exec" => return Type::Str,
                             "type_of" | "env_get" => return Type::Str,
                             "env_set" => return Type::Unit,
                             "json_parse" => return Type::Map(Box::new(Type::Str), Box::new(Type::Any)),
