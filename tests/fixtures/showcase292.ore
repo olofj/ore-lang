@@ -1,0 +1,44 @@
+-- Showcase 292: Dynamic programming - longest common subsequence
+
+fn lcs_length a:Str b:Str -> Int
+  m := a.len()
+  n := b.len()
+
+  -- 1D DP array (previous row)
+  mut prev := []
+  for j in range(0, n + 1)
+    prev.push(0)
+
+  for i in range(1, m + 1)
+    mut curr := [0]
+    for j in range(1, n + 1)
+      if a.substr(i - 1, 1) == b.substr(j - 1, 1)
+        curr.push(prev[j - 1] + 1)
+      else
+        val_a := curr[j - 1]
+        val_b := prev[j]
+        if val_a > val_b
+          curr.push(val_a)
+        else
+          curr.push(val_b)
+    prev = curr
+  prev[n]
+
+fn main
+  pairs := [
+    "ABCBDAB", "BDCAB",
+    "GXTXAYB", "AGGTAB",
+    "HELLO", "WORLD",
+    "ABCDEF", "ABCDEF",
+    "ABC", "XYZ"
+  ]
+
+  print "Longest Common Subsequence lengths:"
+  mut i := 0
+  pc := pairs | count()
+  while i < pc
+    a := pairs[i]
+    b := pairs[i + 1]
+    l := lcs_length(a, b)
+    print "  LCS('{a}', '{b}') = {l}"
+    i = i + 2

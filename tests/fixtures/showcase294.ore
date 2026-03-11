@@ -1,0 +1,60 @@
+-- Showcase 294: Bit manipulation
+
+fn count_bits n:Int -> Int
+  mut count := 0
+  mut x := n
+  while x > 0
+    if x % 2 == 1
+      count = count + 1
+    x = x / 2
+  count
+
+fn to_binary n:Int -> Str
+  if n == 0
+    return "0"
+  mut result := ""
+  mut x := n
+  while x > 0
+    if x % 2 == 1
+      result = "1{result}"
+    else
+      result = "0{result}"
+    x = x / 2
+  result
+
+fn is_power_of_two n:Int -> Bool
+  n > 0 and count_bits(n) == 1
+
+fn main
+  print "Bit counts:"
+  for n in [0, 1, 7, 15, 16, 255, 1023]
+    print "  {n} ({to_binary(n)}): {count_bits(n)} bits set"
+
+  print ""
+  print "Powers of 2:"
+  for n in [1, 2, 3, 4, 8, 15, 16, 32, 100, 128, 256]
+    p2 := if is_power_of_two(n) then "yes" else "no"
+    print "  {n}: {p2}"
+
+  -- XOR properties
+  print ""
+  print "XOR properties:"
+  a := 42
+  b := 73
+  print "  a = {a} ({to_binary(a)})"
+  print "  b = {b} ({to_binary(b)})"
+
+  -- Simulate XOR with bitwise operations
+  mut xor_result := 0
+  mut bit := 1
+  mut aa := a
+  mut bb := b
+  for i in range(0, 20)
+    a_bit := aa % 2
+    b_bit := bb % 2
+    if a_bit != b_bit
+      xor_result = xor_result + bit
+    aa = aa / 2
+    bb = bb / 2
+    bit = bit * 2
+  print "  a XOR b = {xor_result} ({to_binary(xor_result)})"

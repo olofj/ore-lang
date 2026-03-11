@@ -1,0 +1,86 @@
+-- Showcase 299: Number sequence puzzles
+
+fn triangular n:Int -> Int
+  n * (n + 1) / 2
+
+fn pentagonal n:Int -> Int
+  n * (3 * n - 1) / 2
+
+fn hexagonal n:Int -> Int
+  n * (2 * n - 1)
+
+fn is_perfect n:Int -> Bool
+  mut sum := 0
+  for i in range(1, n)
+    if n % i == 0
+      sum = sum + i
+  sum == n
+
+fn digit_sum n:Int -> Int
+  mut s := 0
+  mut x := n
+  while x > 0
+    s = s + x % 10
+    x = x / 10
+  s
+
+fn main
+  -- Triangular numbers
+  print "Triangular numbers:"
+  mut tri := range(1, 11) | map(n => n * (n + 1) / 2)
+  print "  {tri | join(", ")}"
+
+  -- Pentagonal numbers
+  print "Pentagonal numbers:"
+  mut pent := []
+  for n in range(1, 11)
+    pent.push(pentagonal(n))
+  print "  {pent | join(", ")}"
+
+  -- Perfect numbers up to 1000
+  print ""
+  print "Perfect numbers up to 1000:"
+  mut perfects := []
+  for n in range(2, 1001)
+    if is_perfect(n)
+      perfects.push(n)
+  print "  {perfects | join(", ")}"
+
+  -- Digital roots
+  print ""
+  print "Digital roots:"
+  for n in [9, 18, 123, 9999, 12345]
+    mut x := n
+    while x >= 10
+      x = digit_sum(x)
+    print "  {n} -> {x}"
+
+  -- Happy numbers
+  print ""
+  print "Happy numbers (1-50):"
+  mut happy := []
+  for n in range(1, 51)
+    mut x := n
+    mut seen := {}
+    mut is_happy := false
+    for step in range(0, 100)
+      x = digit_sum_sq(x)
+      if x == 1
+        is_happy = true
+        break
+      key := "{x}"
+      if seen.contains(key)
+        break
+      seen.set(key, 1)
+    if is_happy
+      happy.push(n)
+  print "  {happy | join(", ")}"
+
+fn digit_sum_sq n:Int -> Int
+  mut s := 0
+  mut x := n
+  while x > 0
+    d := x % 10
+    s = s + d * d
+    x = x / 10
+  s

@@ -1,0 +1,51 @@
+-- Showcase 298: Simple database queries
+
+fn main
+  -- Parallel arrays as table columns
+  names := ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace"]
+  ages := [30, 25, 35, 28, 32, 45, 27]
+  cities := ["NYC", "LA", "NYC", "Chicago", "LA", "NYC", "Chicago"]
+  salaries := [85, 72, 90, 65, 78, 95, 70]
+
+  count := names | count()
+
+  -- SELECT * WHERE age > 30
+  print "WHERE age > 30:"
+  for i in range(0, count)
+    if ages[i] > 30
+      print "  {names[i]}, age {ages[i]}, {cities[i]}, ${salaries[i]}k"
+
+  -- GROUP BY city, AVG(salary)
+  print ""
+  print "AVG salary by city:"
+  mut city_sum := {}
+  mut city_count := {}
+  for i in range(0, count)
+    c := cities[i]
+    if city_sum.contains(c)
+      city_sum.set(c, city_sum[c] + salaries[i])
+      city_count.set(c, city_count[c] + 1)
+    else
+      city_sum.set(c, salaries[i])
+      city_count.set(c, 1)
+
+  for c in city_sum.keys()
+    avg := city_sum[c] / city_count[c]
+    print "  {c}: ${avg}k (n={city_count[c]})"
+
+  -- ORDER BY salary DESC (selection sort)
+  mut idx := range(0, count) | map(i => i)
+  for i in range(0, count)
+    mut max_j := i
+    for j in range(i + 1, count)
+      if salaries[idx[j]] > salaries[idx[max_j]]
+        max_j = j
+    if max_j != i
+      tmp := idx[i]
+      idx[i] = idx[max_j]
+      idx[max_j] = tmp
+
+  print ""
+  print "ORDER BY salary DESC:"
+  for i in idx
+    print "  {names[i]}: ${salaries[i]}k"

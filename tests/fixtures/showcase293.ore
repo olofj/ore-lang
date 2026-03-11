@@ -1,0 +1,74 @@
+-- Showcase 293: Sudoku validator
+
+fn is_valid_group vals:List -> Bool
+  mut seen := {}
+  for v in vals
+    if v < 1 or v > 9
+      return false
+    key := "{v}"
+    if seen.contains(key)
+      return false
+    seen.set(key, 1)
+  true
+
+fn main
+  -- Valid Sudoku row example
+  -- Represent as flat 9x9 array
+  board := [
+    5,3,4,6,7,8,9,1,2,
+    6,7,2,1,9,5,3,4,8,
+    1,9,8,3,4,2,5,6,7,
+    8,5,9,7,6,1,4,2,3,
+    4,2,6,8,5,3,7,9,1,
+    7,1,3,9,2,4,8,5,6,
+    9,6,1,5,3,7,2,8,4,
+    2,8,7,4,1,9,6,3,5,
+    3,4,5,2,8,6,1,7,9
+  ]
+
+  -- Validate rows
+  mut rows_ok := true
+  for r in range(0, 9)
+    mut row := []
+    for c in range(0, 9)
+      row.push(board[r * 9 + c])
+    if not is_valid_group(row)
+      rows_ok = false
+      print "Row {r} invalid!"
+
+  -- Validate columns
+  mut cols_ok := true
+  for c in range(0, 9)
+    mut col := []
+    for r in range(0, 9)
+      col.push(board[r * 9 + c])
+    if not is_valid_group(col)
+      cols_ok = false
+      print "Col {c} invalid!"
+
+  -- Validate 3x3 boxes
+  mut boxes_ok := true
+  for br in range(0, 3)
+    for bc in range(0, 3)
+      mut box_vals := []
+      for r in range(0, 3)
+        for c in range(0, 3)
+          box_vals.push(board[(br * 3 + r) * 9 + bc * 3 + c])
+      if not is_valid_group(box_vals)
+        boxes_ok = false
+        print "Box ({br},{bc}) invalid!"
+
+  if rows_ok and cols_ok and boxes_ok
+    print "Sudoku is valid!"
+
+  -- Print the board
+  print ""
+  for r in range(0, 9)
+    mut line := ""
+    for c in range(0, 9)
+      if c > 0 and c % 3 == 0
+        line = "{line}| "
+      line = "{line}{board[r * 9 + c]} "
+    print line
+    if r == 2 or r == 5
+      print "------+-------+------"

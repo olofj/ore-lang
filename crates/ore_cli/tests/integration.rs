@@ -4220,6 +4220,81 @@ fn showcase290_hanoi() {
 }
 
 #[test]
+fn showcase291_morse() {
+    let out = run_ore("showcase291.ore");
+    assert!(out.contains("HELLO -> .... . .-.. .-.. ---"));
+    assert!(out.contains("SOS -> ... --- ..."));
+}
+
+#[test]
+fn showcase292_lcs() {
+    let out = run_ore("showcase292.ore");
+    assert!(out.contains("LCS('ABCBDAB', 'BDCAB') = 4"));
+    assert!(out.contains("LCS('ABCDEF', 'ABCDEF') = 6"));
+    assert!(out.contains("LCS('ABC', 'XYZ') = 0"));
+}
+
+#[test]
+fn showcase293_sudoku() {
+    let out = run_ore("showcase293.ore");
+    assert!(out.contains("Sudoku is valid!"));
+}
+
+#[test]
+fn showcase294_bits() {
+    let out = run_ore("showcase294.ore");
+    assert!(out.contains("255 (11111111): 8 bits set"));
+    assert!(out.contains("128: yes"));
+    assert!(out.contains("100: no"));
+}
+
+#[test]
+fn showcase295_parser() {
+    let out = run_ore("showcase295.ore");
+    assert!(out.contains("Left-to-right: 224"));
+    assert!(out.contains("With precedence: 176"));
+}
+
+#[test]
+fn showcase296_determinant() {
+    let out = run_ore("showcase296.ore");
+    assert!(out.contains("= -2"));
+    assert!(out.contains("Identity 3x3 det = 1"));
+}
+
+#[test]
+fn showcase297_vigenere() {
+    let out = run_ore("showcase297.ore");
+    assert!(out.contains("Encrypted: RIJVS UYVJN"));
+    assert!(out.contains("Decrypted: HELLO WORLD"));
+}
+
+#[test]
+fn showcase298_queries() {
+    let out = run_ore("showcase298.ore");
+    assert!(out.contains("WHERE age > 30:"));
+    assert!(out.contains("AVG salary by city:"));
+    assert!(out.contains("ORDER BY salary DESC:"));
+}
+
+#[test]
+fn showcase299_sequences() {
+    let out = run_ore("showcase299.ore");
+    assert!(out.contains("Perfect numbers up to 1000:"));
+    assert!(out.contains("6,"));
+    assert!(out.contains("Happy numbers"));
+}
+
+#[test]
+fn showcase300_grand_finale() {
+    let out = run_ore("showcase300.ore");
+    assert!(out.contains("=== Ore Language - Showcase 300 ==="));
+    assert!(out.contains("Sum 1-100: 5050"));
+    assert!(out.contains("5! = 120"));
+    assert!(out.contains("=== 300 showcases complete! ==="));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

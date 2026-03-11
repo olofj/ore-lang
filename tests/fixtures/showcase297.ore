@@ -1,0 +1,60 @@
+-- Showcase 297: Simple encryption (Vigenere cipher)
+
+fn vigenere_encrypt text:Str key:Str -> Str
+  upper := text.to_upper()
+  key_upper := key.to_upper()
+  key_len := key_upper.len()
+  mut result := ""
+  mut ki := 0
+  for i in range(0, upper.len())
+    ch := upper.substr(i, 1)
+    c := ord(ch)
+    if c >= 65 and c <= 90
+      k := ord(key_upper.substr(ki % key_len, 1)) - 65
+      shifted := (c - 65 + k) % 26 + 65
+      result = "{result}{chr(shifted)}"
+      ki = ki + 1
+    else
+      result = "{result}{ch}"
+  result
+
+fn vigenere_decrypt text:Str key:Str -> Str
+  key_upper := key.to_upper()
+  key_len := key_upper.len()
+  mut result := ""
+  mut ki := 0
+  for i in range(0, text.len())
+    ch := text.substr(i, 1)
+    c := ord(ch)
+    if c >= 65 and c <= 90
+      k := ord(key_upper.substr(ki % key_len, 1)) - 65
+      shifted := (c - 65 - k + 26) % 26 + 65
+      result = "{result}{chr(shifted)}"
+      ki = ki + 1
+    else
+      result = "{result}{ch}"
+  result
+
+fn main
+  message := "HELLO WORLD"
+  key := "KEY"
+
+  encrypted := vigenere_encrypt(message, key)
+  decrypted := vigenere_decrypt(encrypted, key)
+
+  print "Vigenere Cipher:"
+  print "  Message:   {message}"
+  print "  Key:       {key}"
+  print "  Encrypted: {encrypted}"
+  print "  Decrypted: {decrypted}"
+
+  -- With longer key
+  print ""
+  msg2 := "ATTACK AT DAWN"
+  key2 := "LEMON"
+  enc2 := vigenere_encrypt(msg2, key2)
+  dec2 := vigenere_decrypt(enc2, key2)
+  print "  Message:   {msg2}"
+  print "  Key:       {key2}"
+  print "  Encrypted: {enc2}"
+  print "  Decrypted: {dec2}"

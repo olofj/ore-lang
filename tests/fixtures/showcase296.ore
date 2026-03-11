@@ -1,0 +1,40 @@
+-- Showcase 296: Matrix determinant
+
+fn det2x2 a:Int b:Int c:Int d:Int -> Int
+  a * d - b * c
+
+fn main
+  -- 2x2 determinant
+  print "2x2 determinant:"
+  print "  |1 2| = {det2x2(1, 2, 3, 4)}"
+  print "  |3 4|"
+
+  print ""
+  print "  |5 3| = {det2x2(5, 3, 2, 7)}"
+  print "  |2 7|"
+
+  -- 3x3 determinant (cofactor expansion)
+  -- | 1  2  3 |
+  -- | 4  5  6 |
+  -- | 7  8  9 |
+  a := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  d := a[0] * det2x2(a[4], a[5], a[7], a[8]) - a[1] * det2x2(a[3], a[5], a[6], a[8]) + a[2] * det2x2(a[3], a[4], a[6], a[7])
+  print ""
+  print "3x3 determinant:"
+  print "  |1 2 3|"
+  print "  |4 5 6| = {d}"
+  print "  |7 8 9|"
+
+  -- Another 3x3
+  b := [2, 1, 3, 0, 4, 1, 5, 2, 1]
+  d2 := b[0] * det2x2(b[4], b[5], b[7], b[8]) - b[1] * det2x2(b[3], b[5], b[6], b[8]) + b[2] * det2x2(b[3], b[4], b[6], b[7])
+  print ""
+  print "  |2 1 3|"
+  print "  |0 4 1| = {d2}"
+  print "  |5 2 1|"
+
+  -- Identity matrix det = 1
+  id := [1, 0, 0, 0, 1, 0, 0, 0, 1]
+  d3 := id[0] * det2x2(id[4], id[5], id[7], id[8]) - id[1] * det2x2(id[3], id[5], id[6], id[8]) + id[2] * det2x2(id[3], id[4], id[6], id[7])
+  print ""
+  print "Identity 3x3 det = {d3}"

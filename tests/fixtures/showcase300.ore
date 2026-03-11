@@ -1,0 +1,74 @@
+-- Showcase 300: Grand finale - Ore language comprehensive demo
+
+fn fib n:Int -> Int
+  if n < 2 then n
+  else fib(n - 1) + fib(n - 2)
+
+fn gcd a:Int b:Int -> Int
+  if b == 0 then a
+  else gcd(b, a % b)
+
+type Color
+  Red
+  Green
+  Blue
+
+fn color_name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+
+fn main
+  print "=== Ore Language - Showcase 300 ==="
+  print ""
+
+  -- Pipelines
+  squares := range(1, 11) | map(n => n * n)
+  print "Squares: {squares | join(", ")}"
+
+  even_squares := range(1, 21) | filter(n => n % 2 == 0) | map(n => n * n) | take(5)
+  print "First 5 even squares: {even_squares | join(", ")}"
+
+  total := range(1, 101) | sum()
+  print "Sum 1-100: {total}"
+
+  -- Recursion
+  print ""
+  fibs := range(0, 11) | map(n => fib(n))
+  print "Fibonacci: {fibs | join(", ")}"
+
+  -- GCD
+  print "GCD(48, 18) = {gcd(48, 18)}"
+
+  -- Enums
+  print ""
+  colors := [Red, Green, Blue]
+  for c in colors
+    print "Color: {color_name(c)}"
+
+  -- String operations
+  print ""
+  msg := "Hello from Ore!"
+  print "Message: {msg}"
+  print "Upper: {msg.to_upper()}"
+  print "Length: {msg.len()}"
+  print "Contains 'Ore': {msg.contains("Ore")}"
+  print "Replace: {msg.replace("Ore", "the future")}"
+
+  -- Maps
+  print ""
+  mut scores := {}
+  scores.set("Alice", 95)
+  scores.set("Bob", 87)
+  scores.set("Carol", 92)
+  for name in scores.keys()
+    print "{name}: {scores[name]}"
+
+  -- Fold
+  product := [1, 2, 3, 4, 5] | fold(1, (acc, n) => acc * n)
+  print ""
+  print "5! = {product}"
+
+  print ""
+  print "=== 300 showcases complete! ==="

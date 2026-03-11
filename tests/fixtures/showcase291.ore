@@ -1,0 +1,45 @@
+-- Showcase 291: Morse code translator
+
+fn char_to_morse ch:Str -> Str
+  if ch == "A" then ".-"
+  else if ch == "B" then "-..."
+  else if ch == "C" then "-.-."
+  else if ch == "D" then "-.."
+  else if ch == "E" then "."
+  else if ch == "F" then "..-."
+  else if ch == "G" then "--."
+  else if ch == "H" then "...."
+  else if ch == "I" then ".."
+  else if ch == "J" then ".---"
+  else if ch == "K" then "-.-"
+  else if ch == "L" then ".-.."
+  else if ch == "M" then "--"
+  else if ch == "N" then "-."
+  else if ch == "O" then "---"
+  else if ch == "P" then ".--."
+  else if ch == "Q" then "--.-"
+  else if ch == "R" then ".-."
+  else if ch == "S" then "..."
+  else if ch == "T" then "-"
+  else if ch == "U" then "..-"
+  else if ch == "V" then "...-"
+  else if ch == "W" then ".--"
+  else if ch == "X" then "-..-"
+  else if ch == "Y" then "-.--"
+  else if ch == "Z" then "--.."
+  else if ch == " " then "/"
+  else "?"
+
+fn to_morse text:Str -> Str
+  upper := text.to_upper()
+  mut result := []
+  for i in range(0, upper.len())
+    ch := upper.substr(i, 1)
+    result.push(char_to_morse(ch))
+  result | join(" ")
+
+fn main
+  messages := ["HELLO", "SOS", "ORE LANG"]
+  for msg in messages
+    morse := to_morse(msg)
+    print "{msg} -> {morse}"
