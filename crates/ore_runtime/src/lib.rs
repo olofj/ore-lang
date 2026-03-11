@@ -572,6 +572,26 @@ pub extern "C" fn ore_file_read(path: *mut OreStr) -> *mut OreStr {
 }
 
 #[no_mangle]
+pub extern "C" fn ore_file_read_lines(path: *mut OreStr) -> *mut OreList {
+    if path.is_null() { return ore_list_new(); }
+    let path_str = unsafe { (*path).as_str() };
+    match std::fs::read_to_string(path_str) {
+        Ok(contents) => {
+            let list = ore_list_new();
+            for line in contents.lines() {
+                let s = ore_str_new(line.as_ptr(), line.len() as u32);
+                ore_list_push(list, s as i64);
+            }
+            list
+        }
+        Err(e) => {
+            eprintln!("error reading file '{}': {}", path_str, e);
+            ore_list_new()
+        }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn ore_file_write(path: *mut OreStr, content: *mut OreStr) -> i8 {
     if path.is_null() { return 0; }
     let path_str = unsafe { (*path).as_str() };

@@ -492,6 +492,7 @@ fn map_runtime_functions(
     // I/O
     map_fn!("ore_readln", ore_runtime::ore_readln);
     map_fn!("ore_file_read", ore_runtime::ore_file_read);
+    map_fn!("ore_file_read_lines", ore_runtime::ore_file_read_lines);
     map_fn!("ore_file_write", ore_runtime::ore_file_write);
     map_fn!("ore_file_exists", ore_runtime::ore_file_exists);
     map_fn!("ore_file_append", ore_runtime::ore_file_append);

@@ -515,6 +515,7 @@ impl TypeChecker {
                             "float" => return Type::Float,
                             "str" => return Type::Str,
                             "file_read" => return Type::Str,
+                            "file_read_lines" => return Type::List(Box::new(Type::Str)),
                             "file_write" | "file_append" => return Type::Bool,
                             "file_exists" => return Type::Bool,
                             "time_now" | "time_ms" | "rand_int" => return Type::Int,

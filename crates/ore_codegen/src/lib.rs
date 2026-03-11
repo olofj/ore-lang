@@ -764,6 +764,7 @@ impl<'ctx> CodeGen<'ctx> {
         // I/O
         self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_file_read_lines", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_file_write", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_file_exists", i8_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_file_append", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
@@ -1539,6 +1540,17 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_read"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
+                    }
+                    "file_read_lines" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "file_read_lines takes 1 argument".into() });
+                        }
+                        let path_val = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_file_read_lines").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_read_lines"))?;
+                        let val = self.call_result_to_value(result)?;
+                        self.last_list_elem_kind = Some(ValKind::Str);
+                        return Ok((val, ValKind::List));
                     }
                     "file_write" | "file_append" => {
                         if args.len() != 2 {
