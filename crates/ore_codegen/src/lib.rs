@@ -623,6 +623,11 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_print_float_no_newline", void_type.fn_type(&[f64_type.into()], false), ext);
         // ore_print_bool_no_newline(i8)
         self.module.add_function("ore_print_bool_no_newline", void_type.fn_type(&[i8_type.into()], false), ext);
+        // stderr print functions
+        self.module.add_function("ore_eprint_str", void_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_eprint_int", void_type.fn_type(&[i64_type.into()], false), ext);
+        self.module.add_function("ore_eprint_float", void_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_eprint_bool", void_type.fn_type(&[i8_type.into()], false), ext);
         // ore_str_retain(ptr)
         self.module.add_function("ore_str_retain", void_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_str_release(ptr)
@@ -1726,6 +1731,31 @@ impl<'ctx> CodeGen<'ctx> {
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Str);
                         return Ok((val, ValKind::List));
+                    }
+                    "eprint" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "eprint takes 1 argument".into() });
+                        }
+                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                        match kind {
+                            ValKind::Str => {
+                                let rt = self.module.get_function("ore_eprint_str").unwrap();
+                                bld!(self.builder.build_call(rt, &[val.into()], ""))?;
+                            }
+                            ValKind::Float => {
+                                let rt = self.module.get_function("ore_eprint_float").unwrap();
+                                bld!(self.builder.build_call(rt, &[val.into()], ""))?;
+                            }
+                            ValKind::Bool => {
+                                let rt = self.module.get_function("ore_eprint_bool").unwrap();
+                                bld!(self.builder.build_call(rt, &[val.into()], ""))?;
+                            }
+                            _ => {
+                                let rt = self.module.get_function("ore_eprint_int").unwrap();
+                                bld!(self.builder.build_call(rt, &[val.into()], ""))?;
+                            }
+                        }
+                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
                     }
                     "exit" => {
                         if args.len() != 1 {

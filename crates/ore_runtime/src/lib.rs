@@ -169,6 +169,41 @@ pub extern "C" fn ore_str_print(s: *mut OreStr) {
     }
 }
 
+// ── Stderr printing ──
+
+#[no_mangle]
+pub extern "C" fn ore_eprint_str(s: *mut OreStr) {
+    let stderr = std::io::stderr();
+    let mut handle = stderr.lock();
+    if s.is_null() {
+        let _ = writeln!(handle);
+    } else {
+        unsafe {
+            let _ = writeln!(handle, "{}", (*s).as_str());
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_eprint_int(n: i64) {
+    eprintln!("{}", n);
+}
+
+#[no_mangle]
+pub extern "C" fn ore_eprint_float(f: f64) {
+    let s = format!("{}", f);
+    if s.contains('.') {
+        eprintln!("{}", s);
+    } else {
+        eprintln!("{}.0", s);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_eprint_bool(b: i8) {
+    eprintln!("{}", if b != 0 { "true" } else { "false" });
+}
+
 #[no_mangle]
 pub extern "C" fn ore_int_to_str(n: i64) -> *mut OreStr {
     let s = n.to_string();
