@@ -1,0 +1,138 @@
+-- Showcase 997: Distributed Hash Table Simulation (Consistent Hashing)
+
+-- Simulate a DHT with N virtual nodes on a ring [0, 1000)
+-- Each "server" owns a segment of the ring
+-- Keys are hashed to ring positions and routed to responsible server
+
+fn hash_key key:Str -> Int
+  n := key.len()
+  mut h := 5381
+  mut i := 0
+  while i < n
+    c := ord(key.char_at(i))
+    h = h * 31 + c
+    -- keep in range [0, 999]
+    if h > 999999
+      h = h - (h / 1000000) * 1000000
+    i = i + 1
+  -- final mod
+  h - (h / 1000) * 1000
+
+fn get_server_for_key hash:Int server_positions:List n_servers:Int -> Int
+  -- Find first server with position >= hash (wrap around)
+  mut best := 0
+  mut best_pos := 1001
+  mut i := 0
+  while i < n_servers
+    pos := server_positions[i]
+    if pos >= hash and pos < best_pos
+      best_pos = pos
+      best = i
+    i = i + 1
+  -- If no server found with pos >= hash, wrap around to first server
+  if best_pos == 1001
+    mut min_pos := 1001
+    mut min_i := 0
+    mut j := 0
+    while j < n_servers
+      pos := server_positions[j]
+      if pos < min_pos
+        min_pos = pos
+        min_i = j
+      j = j + 1
+    best = min_i
+  best
+
+fn server_load server_positions:List n_servers:Int n_keys:Int key_hashes:List -> List
+  mut loads := [0, 0, 0, 0]
+  mut i := 0
+  while i < n_keys
+    h := key_hashes[i]
+    srv := get_server_for_key(h, server_positions, n_servers)
+    loads[srv] = loads[srv] + 1
+    i = i + 1
+  loads
+
+fn get_server_name names:List i:Int -> Str
+  names[i]
+
+fn main
+  print "Distributed Hash Table Simulation"
+  print "=================================="
+  print ""
+  print "Ring size: 1000 positions"
+  print "Consistent hashing with 4 virtual nodes"
+  print ""
+
+  -- 4 servers at ring positions
+  server_positions := [120, 350, 620, 850]
+  server_names := ["Node-A", "Node-B", "Node-C", "Node-D"]
+  n_servers := 4
+
+  print "Server ring positions:"
+  mut i := 0
+  while i < n_servers
+    pos := server_positions[i]
+    name := get_server_name(server_names, i)
+    print "  {name}: position {pos}"
+    i = i + 1
+  print ""
+
+  -- Hash some keys
+  mut keys := ["user:alice", "user:bob", "user:carol", "session:xyz123"]
+  keys.push("cache:home")
+  keys.push("cache:profile")
+  keys.push("data:record1")
+  keys.push("data:record2")
+  n_keys := keys.count()
+
+  print "Key routing:"
+  mut key_hashes := [0]
+  key_hashes.pop()
+  mut j := 0
+  while j < n_keys
+    key := keys[j]
+    h := hash_key(key)
+    srv := get_server_for_key(h, server_positions, n_servers)
+    sname := get_server_name(server_names, srv)
+    key_hashes.push(h)
+    key_pad := key.pad_right(20)
+    print "  {key_pad} hash={h}  -> {sname}"
+    j = j + 1
+  print ""
+
+  -- Load distribution
+  loads := server_load(server_positions, n_servers, n_keys, key_hashes)
+  print "Load distribution:"
+  mut total_load := 0
+  mut k := 0
+  while k < n_servers
+    name := get_server_name(server_names, k)
+    load := loads[k]
+    total_load = total_load + load
+    pct := load * 100 / n_keys
+    print "  {name}: {load} keys ({pct}%)"
+    k = k + 1
+  print "  Total: {total_load} keys"
+  print ""
+
+  -- Simulate node failure: Node-B goes down, remap its keys to Node-C
+  print "Simulating Node-B failure..."
+  mut new_positions := [120, 620, 850, 999]
+  mut new_names := ["Node-A", "Node-C", "Node-D", "Node-C-virtual"]
+  new_n := 4
+  mut remapped := 0
+  mut m := 0
+  while m < n_keys
+    h := key_hashes[m]
+    old_srv := get_server_for_key(h, server_positions, n_servers)
+    new_srv := get_server_for_key(h, new_positions, new_n)
+    if old_srv == 1
+      new_sname := get_server_name(new_names, new_srv)
+      key := keys[m]
+      print "  Remapping {key} -> {new_sname}"
+      remapped = remapped + 1
+    m = m + 1
+  print "  {remapped} keys remapped"
+  print ""
+  print "DHT simulation complete."

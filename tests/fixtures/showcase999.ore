@@ -1,0 +1,103 @@
+-- Showcase 999: Simple Ray Tracer (ASCII art spheres)
+-- Orthographic projection ray tracer with integer math
+
+-- Sphere: [cx, cy, cz, r]
+-- Returns squared distance from ray to sphere center, or -1 if no hit
+-- For orthographic rays: ray goes straight along z from pixel (px, py)
+fn sphere_hit_ortho px:Int py:Int cx:Int cy:Int cz:Int r:Int -> Int
+  dx := px - cx
+  dy := py - cy
+  dist2 := dx * dx + dy * dy
+  r2 := r * r
+  if dist2 > r2
+    -1
+  else
+    -- z of hit point: cz - sqrt(r2 - dist2)
+    dz := sqrt((r2 - dist2).to_float()).to_int()
+    cz - dz
+
+fn shade_point px:Int py:Int cx:Int cy:Int cz:Int r:Int hit_z:Int -> Str
+  -- Normal at hit point
+  nx := (px - cx) * 100 / r
+  ny := (py - cy) * 100 / r
+  -- nz = (hit_z - cz) * 100 / r (should be negative for front face)
+  -- Light from (1, 2, -3) direction
+  light_x := 57  -- normalized approx
+  light_y := 114
+  light_z := -171
+  light_len := 210  -- approx sqrt(1+4+9)*100
+  diffuse := nx * light_x + ny * light_y - 171 * 100 / r * (hit_z - cz)
+  -- Clamp diffuse
+  if diffuse > 7000
+    "@"
+  else if diffuse > 4000
+    "#"
+  else if diffuse > 1000
+    "o"
+  else if diffuse > -2000
+    "+"
+  else
+    "."
+
+fn trace px:Int py:Int spheres:List n:Int -> Str
+  mut best_z := 999999
+  mut best_i := -1
+  mut i := 0
+  while i < n
+    cx := spheres[i * 4]
+    cy := spheres[i * 4 + 1]
+    cz := spheres[i * 4 + 2]
+    r := spheres[i * 4 + 3]
+    hz := sphere_hit_ortho(px, py, cx, cy, cz, r)
+    if hz >= 0 and hz < best_z
+      best_z = hz
+      best_i = i
+    i = i + 1
+  if best_i < 0
+    " "
+  else
+    cx := spheres[best_i * 4]
+    cy := spheres[best_i * 4 + 1]
+    cz := spheres[best_i * 4 + 2]
+    r := spheres[best_i * 4 + 3]
+    shade_point(px, py, cx, cy, cz, r, best_z)
+
+fn main
+  print "Simple Ray Tracer (Orthographic)"
+  print "================================="
+  print ""
+
+  -- Three spheres in the scene
+  mut spheres := [0]
+  spheres.pop()
+  -- Large center sphere: center (0,0,100), r=80
+  spheres.push(0)    spheres.push(0)   spheres.push(100) spheres.push(80)
+  -- Upper-right sphere: center (90, 60, 80), r=45
+  spheres.push(90)   spheres.push(60)  spheres.push(80)  spheres.push(45)
+  -- Lower-left sphere: center (-80, -70, 60), r=40
+  spheres.push(-80)  spheres.push(-70) spheres.push(60)  spheres.push(40)
+  n_spheres := 3
+
+  print "Scene: 3 spheres (orthographic projection)"
+  print ""
+
+  rows := 22
+  cols := 60
+  mut row := 0
+  while row < rows
+    mut line := ""
+    py := 110 - row * 220 / rows
+    mut col := 0
+    while col < cols
+      px := col * 300 / cols - 150
+      pixel := trace(px, py, spheres, n_spheres)
+      line = line + pixel
+      col = col + 1
+    print line
+    row = row + 1
+
+  print ""
+  print "Spheres: center r=80, upper-right r=45, lower-left r=40"
+  print "Rendered {cols}x{rows} ASCII image"
+  print ""
+  print "Ray tracer complete."

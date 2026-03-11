@@ -1,0 +1,155 @@
+-- Showcase 998: Blockchain Simulation (blocks, hashing, validation)
+
+-- Block: [index, prev_hash, data_hash, nonce, block_hash]
+-- Simple hash: djb2 variant on string representation
+
+fn hash_str s:Str -> Int
+  n := s.len()
+  mut h := 5381
+  mut i := 0
+  while i < n
+    c := ord(s.char_at(i))
+    h = h * 33 + c
+    if h > 99999999
+      h = h - (h / 100000000) * 100000000
+    i = i + 1
+  h
+
+fn compute_block_hash idx:Int prev_hash:Int data:Str nonce:Int -> Int
+  combined := str(idx) + str(prev_hash) + data + str(nonce)
+  hash_str(combined)
+
+fn mine_block idx:Int prev_hash:Int data:Str difficulty:Int -> List
+  -- Find nonce such that hash % (10^difficulty) == 0
+  mut target := 1
+  mut d := 0
+  while d < difficulty
+    target = target * 10
+    d = d + 1
+  mut nonce := 0
+  mut found_hash := 0
+  mut found := false
+  while found == false
+    h := compute_block_hash(idx, prev_hash, data, nonce)
+    if h - (h / target) * target < (target / 5)
+      found_hash = h
+      found = true
+    else
+      nonce = nonce + 1
+    if nonce > 10000
+      -- Give up, just use current nonce
+      found_hash = h
+      found = true
+  mut block := [0]
+  block.pop()
+  block.push(idx)
+  block.push(prev_hash)
+  block.push(hash_str(data))
+  block.push(nonce)
+  block.push(found_hash)
+  block
+
+fn block_idx b:List -> Int
+  b[0]
+
+fn block_prev_hash b:List -> Int
+  b[1]
+
+fn block_data_hash b:List -> Int
+  b[2]
+
+fn block_nonce b:List -> Int
+  b[3]
+
+fn block_hash b:List -> Int
+  b[4]
+
+fn validate_chain blocks:List n_blocks:Int -> Bool
+  mut valid := true
+  mut i := 1
+  while i < n_blocks
+    prev := blocks[(i - 1) * 5 + 4]
+    cur_prev := blocks[i * 5 + 1]
+    if prev != cur_prev
+      valid = false
+    i = i + 1
+  valid
+
+fn print_block b:List label:Str
+  idx := block_idx(b)
+  prev := block_prev_hash(b)
+  dh := block_data_hash(b)
+  nonce := block_nonce(b)
+  bh := block_hash(b)
+  print "  Block {idx} ({label}):"
+  print "    prev_hash : {prev}"
+  print "    data_hash : {dh}"
+  print "    nonce     : {nonce}"
+  print "    block_hash: {bh}"
+
+fn main
+  print "Blockchain Simulation"
+  print "====================="
+  print ""
+
+  difficulty := 2
+
+  -- Genesis block
+  print "Mining genesis block..."
+  genesis := mine_block(0, 0, "Genesis Block", difficulty)
+  gen_hash := block_hash(genesis)
+  print_block(genesis, "Genesis")
+  print ""
+
+  -- Block 1
+  print "Mining block 1..."
+  block1 := mine_block(1, gen_hash, "Alice sends 10 coins to Bob", difficulty)
+  b1_hash := block_hash(block1)
+  print_block(block1, "Tx: Alice->Bob 10")
+  print ""
+
+  -- Block 2
+  print "Mining block 2..."
+  block2 := mine_block(2, b1_hash, "Bob sends 3 coins to Carol", difficulty)
+  b2_hash := block_hash(block2)
+  print_block(block2, "Tx: Bob->Carol 3")
+  print ""
+
+  -- Block 3
+  print "Mining block 3..."
+  block3 := mine_block(3, b2_hash, "Carol sends 1 coin to Dave", difficulty)
+  b3_hash := block_hash(block3)
+  print_block(block3, "Tx: Carol->Dave 1")
+  print ""
+
+  -- Build chain as flat list
+  mut chain := [0]
+  chain.pop()
+  mut ci := 0
+  while ci < 5
+    chain.push(genesis[ci])
+    ci = ci + 1
+  mut ci2 := 0
+  while ci2 < 5
+    chain.push(block1[ci2])
+    ci2 = ci2 + 1
+  mut ci3 := 0
+  while ci3 < 5
+    chain.push(block2[ci3])
+    ci3 = ci3 + 1
+  mut ci4 := 0
+  while ci4 < 5
+    chain.push(block3[ci4])
+    ci4 = ci4 + 1
+
+  valid := validate_chain(chain, 4)
+  print "Chain validation: {valid}"
+  print ""
+
+  -- Tamper with block 1 and re-validate
+  print "Tampering with block 1 (altering its hash)..."
+  chain[1 * 5 + 4] = 999999  -- corrupt block 1's hash
+  tampered := validate_chain(chain, 4)
+  print "Chain validation after tamper: {tampered}"
+  print ""
+  print "Blockchain simulation complete."

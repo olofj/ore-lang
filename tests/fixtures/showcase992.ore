@@ -1,0 +1,201 @@
+-- Showcase 992: Graph Algorithms Toolkit (DFS, BFS, cycle detection, shortest path)
+
+-- Graph as adjacency list: flat list of edges [src, dst, src, dst, ...]
+-- For simplicity: 5 nodes (0-4)
+
+fn has_edge edges:List src:Int dst:Int -> Bool
+  n := edges.count()
+  mut i := 0
+  mut found := false
+  while i < n
+    if edges[i] == src and edges[i + 1] == dst
+      found = true
+    i = i + 2
+  found
+
+fn neighbors edges:List src:Int n_nodes:Int -> List
+  mut result := [0]
+  result.pop()
+  n := edges.count()
+  mut i := 0
+  while i < n
+    if edges[i] == src
+      result.push(edges[i + 1])
+    i = i + 2
+  result
+
+fn dfs_visit edges:List node:Int visited:List n_nodes:Int order:List -> List
+  visited[node] = 1
+  order.push(node)
+  nbrs := neighbors(edges, node, n_nodes)
+  mut i := 0
+  mut cur_order := order
+  while i < nbrs.count()
+    nb := nbrs[i]
+    if visited[nb] == 0
+      cur_order = dfs_visit(edges, nb, visited, n_nodes, cur_order)
+    i = i + 1
+  cur_order
+
+fn bfs edges:List start:Int n_nodes:Int -> List
+  mut visited := [0, 0, 0, 0, 0]
+  mut queue := [start]
+  visited[start] = 1
+  mut order := [0]
+  order.pop()
+  while queue.count() > 0
+    node := queue[0]
+    mut new_queue := [0]
+    new_queue.pop()
+    mut qi := 1
+    while qi < queue.count()
+      new_queue.push(queue[qi])
+      qi = qi + 1
+    queue = new_queue
+    order.push(node)
+    nbrs := neighbors(edges, node, n_nodes)
+    mut i := 0
+    while i < nbrs.count()
+      nb := nbrs[i]
+      if visited[nb] == 0
+        visited[nb] = 1
+        queue.push(nb)
+      i = i + 1
+  order
+
+fn has_cycle_util edges:List node:Int visited:List rec_stack:List n_nodes:Int -> Bool
+  visited[node] = 1
+  rec_stack[node] = 1
+  nbrs := neighbors(edges, node, n_nodes)
+  mut i := 0
+  mut found := false
+  while i < nbrs.count()
+    nb := nbrs[i]
+    if visited[nb] == 0
+      if has_cycle_util(edges, nb, visited, rec_stack, n_nodes)
+        found = true
+    else if rec_stack[nb] == 1
+      found = true
+    i = i + 1
+  rec_stack[node] = 0
+  found
+
+fn has_cycle edges:List n_nodes:Int -> Bool
+  mut visited := [0, 0, 0, 0, 0]
+  mut rec_stack := [0, 0, 0, 0, 0]
+  mut found := false
+  mut i := 0
+  while i < n_nodes
+    if visited[i] == 0
+      if has_cycle_util(edges, i, visited, rec_stack, n_nodes)
+        found = true
+    i = i + 1
+  found
+
+-- BFS shortest path (unweighted), returns distance or -1
+fn shortest_path edges:List src:Int dst:Int n_nodes:Int -> Int
+  mut dist := [-1, -1, -1, -1, -1]
+  dist[src] = 0
+  mut queue := [src]
+  while queue.count() > 0
+    node := queue[0]
+    mut new_q := [0]
+    new_q.pop()
+    mut qi := 1
+    while qi < queue.count()
+      new_q.push(queue[qi])
+      qi = qi + 1
+    queue = new_q
+    if node == dst
+      queue.push(-99)
+      queue.push(-99)
+      queue.push(-99)
+      queue.push(-99)
+      queue.push(-99)
+      -- signal done by clearing
+      queue = [0]
+      queue.pop()
+    else
+      nbrs := neighbors(edges, node, n_nodes)
+      mut i := 0
+      while i < nbrs.count()
+        nb := nbrs[i]
+        if dist[nb] == -1
+          dist[nb] = dist[node] + 1
+          queue.push(nb)
+        i = i + 1
+  dist[dst]
+
+fn main
+  print "Graph Algorithms Toolkit"
+  print "========================"
+  print ""
+
+  -- Build a directed graph with 5 nodes
+  -- Edges: 0->1, 0->2, 1->3, 2->3, 3->4
+  mut edges := [0]
+  edges.pop()
+  edges.push(0)  edges.push(1)
+  edges.push(0)  edges.push(2)
+  edges.push(1)  edges.push(3)
+  edges.push(2)  edges.push(3)
+  edges.push(3)  edges.push(4)
+  n := 5
+
+  print "Graph edges: 0->1, 0->2, 1->3, 2->3, 3->4"
+  print ""
+
+  -- DFS from node 0
+  mut visited := [0, 0, 0, 0, 0]
+  mut order := [0]
+  order.pop()
+  dfs_order := dfs_visit(edges, 0, visited, n, order)
+  mut dfs_str := ""
+  mut i := 0
+  while i < dfs_order.count()
+    if i > 0
+      dfs_str = dfs_str + " -> "
+    dfs_str = dfs_str + str(dfs_order[i])
+    i = i + 1
+  print "DFS from 0: {dfs_str}"
+
+  -- BFS from node 0
+  bfs_order := bfs(edges, 0, n)
+  mut bfs_str := ""
+  mut j := 0
+  while j < bfs_order.count()
+    if j > 0
+      bfs_str = bfs_str + " -> "
+    bfs_str = bfs_str + str(bfs_order[j])
+    j = j + 1
+  print "BFS from 0: {bfs_str}"
+  print ""
+
+  -- Cycle detection (no cycle)
+  cycle1 := has_cycle(edges, n)
+  print "Has cycle (DAG): {cycle1}"
+
+  -- Add back edge to create cycle
+  edges.push(4)
+  edges.push(1)
+  cycle2 := has_cycle(edges, n)
+  print "Has cycle (with 4->1): {cycle2}"
+  print ""
+
+  -- Shortest path (remove cycle edge for clean graph)
+  mut edges2 := [0]
+  edges2.pop()
+  edges2.push(0)  edges2.push(1)
+  edges2.push(0)  edges2.push(2)
+  edges2.push(1)  edges2.push(3)
+  edges2.push(2)  edges2.push(3)
+  edges2.push(3)  edges2.push(4)
+
+  d04 := shortest_path(edges2, 0, 4, n)
+  d02 := shortest_path(edges2, 0, 2, n)
+  d13 := shortest_path(edges2, 1, 3, n)
+  print "Shortest path 0->4: {d04} hops"
+  print "Shortest path 0->2: {d02} hops"
+  print "Shortest path 1->3: {d13} hops"
+  print ""
+  print "Graph algorithms complete."

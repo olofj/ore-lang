@@ -1,0 +1,147 @@
+-- Showcase 995: Neural Network - Single Layer Perceptron Training
+
+-- Simple perceptron learning XOR-like patterns
+-- Inputs: 2D points, binary labels
+-- sigmoid approximation via tanh-like piece
+
+fn sigmoid_approx x:Float -> Float
+  -- Fast sigmoid approximation: 1/(1+e^-x) ~ 0.5 + x/4 clamped to [0,1]
+  if x > 2.0
+    1.0
+  else if x < -2.0
+    0.0
+  else
+    0.5 + x * 0.25
+
+fn dot w0:Float w1:Float b:Float x0:Float x1:Float -> Float
+  w0 * x0 + w1 * x1 + b
+
+fn predict w0:Float w1:Float bias:Float x0:Float x1:Float -> Float
+  z := dot(w0, w1, bias, x0, x1)
+  sigmoid_approx(z)
+
+fn loss pred:Float label:Float -> Float
+  diff := pred - label
+  if diff > 0.0
+    diff * diff
+  else
+    diff * diff * -1.0 * -1.0
+
+fn train_step w0:Float w1:Float bias:Float x0:Float x1:Float label:Float lr:Float -> List
+  pred := predict(w0, w1, bias, x0, x1)
+  err := pred - label
+  -- gradient descent
+  new_w0 := w0 - lr * err * x0
+  new_w1 := w1 - lr * err * x1
+  new_b := bias - lr * err
+  mut params := [0.0]
+  params.pop()
+  params.push(new_w0)
+  params.push(new_w1)
+  params.push(new_b)
+  params
+
+fn get_param params:List i:Int -> Float
+  params[i]
+
+fn main
+  print "Neural Network: Single Layer Perceptron"
+  print "======================================="
+  print ""
+
+  -- AND gate training data: [x0, x1, label]
+  -- (0,0)->0, (0,1)->0, (1,0)->0, (1,1)->1
+  mut x0s := [0.0, 0.0, 1.0, 1.0]
+  mut x1s := [0.0, 1.0, 0.0, 1.0]
+  mut labels := [0.0, 0.0, 0.0, 1.0]
+
+  print "Training AND gate perceptron..."
+  print "Data: (0,0)->0, (0,1)->0, (1,0)->0, (1,1)->1"
+  print ""
+
+  -- Initialize weights
+  mut w0 := 0.1
+  mut w1 := 0.1
+  mut bias := -0.5
+  lr := 0.5
+
+  -- Train for 20 epochs
+  mut epoch := 0
+  while epoch < 20
+    mut total_loss := 0.0
+    mut i := 0
+    while i < 4
+      xi0 := x0s[i]
+      xi1 := x1s[i]
+      lbl := labels[i]
+      params := train_step(w0, w1, bias, xi0, xi1, lbl, lr)
+      w0 = get_param(params, 0)
+      w1 = get_param(params, 1)
+      bias = get_param(params, 2)
+      pred := predict(w0, w1, bias, xi0, xi1)
+      err := pred - lbl
+      sq_loss := err * err
+      total_loss = total_loss + sq_loss
+      i = i + 1
+    if epoch == 0 or epoch == 9 or epoch == 19
+      loss_int := (total_loss * 1000.0).to_int()
+      w0_int := (w0 * 100.0).to_int()
+      w1_int := (w1 * 100.0).to_int()
+      b_int := (bias * 100.0).to_int()
+      ep := epoch + 1
+      print "Epoch {ep}: loss={loss_int}/1000  w0={w0_int}/100 w1={w1_int}/100 b={b_int}/100"
+    epoch = epoch + 1
+
+  print ""
+  print "Final predictions (AND gate):"
+  mut j := 0
+  while j < 4
+    xi0 := x0s[j]
+    xi1 := x1s[j]
+    lbl := labels[j]
+    pred := predict(w0, w1, bias, xi0, xi1)
+    pred_int := (pred * 100.0).to_int()
+    lbl_int := lbl.to_int()
+    xi0_int := xi0.to_int()
+    xi1_int := xi1.to_int()
+    print "  ({xi0_int},{xi1_int}) -> pred={pred_int}/100  label={lbl_int}"
+    j = j + 1
+
+  print ""
+
+  -- OR gate
+  mut labels2 := [0.0, 1.0, 1.0, 1.0]
+  mut w0b := 0.1
+  mut w1b := 0.1
+  mut biasb := -0.1
+
+  mut epoch2 := 0
+  while epoch2 < 20
+    mut i := 0
+    while i < 4
+      xi0 := x0s[i]
+      xi1 := x1s[i]
+      lbl := labels2[i]
+      params := train_step(w0b, w1b, biasb, xi0, xi1, lbl, lr)
+      w0b = get_param(params, 0)
+      w1b = get_param(params, 1)
+      biasb = get_param(params, 2)
+      i = i + 1
+    epoch2 = epoch2 + 1
+
+  print "Final predictions (OR gate):"
+  mut k := 0
+  while k < 4
+    xi0 := x0s[k]
+    xi1 := x1s[k]
+    lbl := labels2[k]
+    pred := predict(w0b, w1b, biasb, xi0, xi1)
+    pred_int := (pred * 100.0).to_int()
+    lbl_int := lbl.to_int()
+    xi0_int := xi0.to_int()
+    xi1_int := xi1.to_int()
+    print "  ({xi0_int},{xi1_int}) -> pred={pred_int}/100  label={lbl_int}"
+    k = k + 1
+
+  print ""
+  print "Perceptron training complete."

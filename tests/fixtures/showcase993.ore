@@ -1,0 +1,138 @@
+-- Showcase 993: Database Engine Simulation (CREATE, INSERT, SELECT, WHERE, ORDER BY)
+
+-- Simple in-memory table with parallel lists for columns
+-- names: List[Str], ages: List[Int], scores: List[Int]
+
+fn get_name names:List i:Int -> Str
+  names[i]
+
+fn db_select_all names:List ages:List scores:List
+  n := names.count()
+  print "  Name           | Age | Score"
+  print "  ---------------+-----+------"
+  mut i := 0
+  while i < n
+    name := get_name(names, i)
+    age := ages[i]
+    score := scores[i]
+    name_pad := name.pad_right(15)
+    age_s := str(age).pad_left(3)
+    score_s := str(score).pad_left(5)
+    print "  {name_pad}| {age_s} | {score_s}"
+    i = i + 1
+
+fn db_where_age_gt names:List ages:List scores:List threshold:Int -> List
+  n := names.count()
+  mut result_names := [""]
+  result_names.pop()
+  mut result_ages := [0]
+  result_ages.pop()
+  mut result_scores := [0]
+  result_scores.pop()
+  mut i := 0
+  while i < n
+    age := ages[i]
+    if age > threshold
+      result_names.push(names[i])
+      result_ages.push(ages[i])
+      result_scores.push(scores[i])
+    i = i + 1
+  -- return names list (print externally)
+  db_select_all(result_names, result_ages, result_scores)
+  result_names
+
+fn db_where_score_gt names:List ages:List scores:List threshold:Int -> List
+  n := names.count()
+  mut result_names := [""]
+  result_names.pop()
+  mut result_ages := [0]
+  result_ages.pop()
+  mut result_scores := [0]
+  result_scores.pop()
+  mut i := 0
+  while i < n
+    score := scores[i]
+    if score > threshold
+      result_names.push(names[i])
+      result_ages.push(ages[i])
+      result_scores.push(scores[i])
+    i = i + 1
+  db_select_all(result_names, result_ages, result_scores)
+  result_names
+
+fn sort_by_age_step names:List ages:List scores:List i:Int j:Int -> Int
+  -- one bubble step, returns 1 if swap happened
+  age_j := ages[j]
+  age_prev := ages[j - 1]
+  if age_j < age_prev
+    n0 := names[j]
+    a0 := ages[j]
+    s0 := scores[j]
+    n1 := names[j - 1]
+    a1 := ages[j - 1]
+    s1 := scores[j - 1]
+    names[j] = n1
+    ages[j] = a1
+    scores[j] = s1
+    names[j - 1] = n0
+    ages[j - 1] = a0
+    scores[j - 1] = s0
+    1
+  else
+    0
+
+fn db_order_by_age names:List ages:List scores:List
+  n := names.count()
+  mut i := 1
+  while i < n
+    mut j := i
+    while j > 0
+      sort_by_age_step(names, ages, scores, i, j)
+      j = j - 1
+    i = i + 1
+  db_select_all(names, ages, scores)
+
+fn main
+  print "Database Engine Simulation"
+  print "=========================="
+  print ""
+
+  print "CREATE TABLE users (name TEXT, age INT, score INT)"
+  mut names := ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank"]
+  mut ages := [30, 25, 35, 28, 32, 22]
+  mut scores := [95, 72, 88, 61, 99, 55]
+  print "INSERT 6 rows"
+  print ""
+
+  -- SELECT *
+  print "SELECT * FROM users:"
+  db_select_all(names, ages, scores)
+  print ""
+
+  -- WHERE age > 28
+  print "SELECT * FROM users WHERE age > 28:"
+  db_where_age_gt(names, ages, scores, 28)
+  print ""
+
+  -- WHERE score > 70
+  print "SELECT * FROM users WHERE score > 70:"
+  db_where_score_gt(names, ages, scores, 70)
+  print ""
+
+  -- ORDER BY age (sort in place)
+  mut sort_names := ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank"]
+  mut sort_ages := [30, 25, 35, 28, 32, 22]
+  mut sort_scores := [95, 72, 88, 61, 99, 55]
+  print "SELECT * FROM users ORDER BY age:"
+  db_order_by_age(sort_names, sort_ages, sort_scores)
+  print ""
+
+  -- Aggregate
+  total := scores.sum()
+  avg := total / scores.count()
+  print "SELECT AVG(score) FROM users: {avg}"
+  mx := scores.max()
+  mn := scores.min()
+  print "SELECT MAX(score): {mx}, MIN(score): {mn}"
+  print ""
+  print "Database simulation complete."

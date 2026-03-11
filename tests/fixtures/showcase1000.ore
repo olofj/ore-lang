@@ -1,0 +1,235 @@
+-- Showcase 1000: Grand Finale - Ore Language Feature Tour
+-- Demonstrates ALL major features: functions, closures, pipelines, types,
+-- enums, match, options, results, strings, lists, maps, traits, records
+
+-- ===== ENUM TYPES =====
+type Shape
+  Circle(radius: Int)
+  Rectangle(width: Int, height: Int)
+  Triangle(base: Int, height: Int)
+
+type Outcome
+  Success(value: Int)
+  Failure(code: Int)
+
+-- ===== RECORD TYPES =====
+type Point { x: Int, y: Int }
+
+type Stats { count: Int, total: Int, min_val: Int, max_val: Int }
+
+-- ===== TRAITS =====
+trait Labeled
+  fn label self:Self -> Str
+
+-- ===== IMPL BLOCKS =====
+impl Point
+  fn distance_to self:Point other:Point -> Int
+    dx := self.x - other.x
+    dy := self.y - other.y
+    sqrt((dx * dx + dy * dy).to_float()).to_int()
+
+  fn to_str self:Point -> Str
+    "({self.x},{self.y})"
+
+-- ===== FUNCTIONS =====
+fn shape_area s:Shape -> Int
+  s :
+    Circle r -> r * r * 3
+    Rectangle w h -> w * h
+    Triangle b h -> b * h / 2
+
+fn shape_label s:Shape -> Str
+  s :
+    Circle r -> "Circle(r={r})"
+    Rectangle w h -> "Rect({w}x{h})"
+    Triangle b h -> "Triangle(b={b},h={h})"
+
+fn safe_div a:Int b:Int -> Outcome
+  if b == 0
+    Failure(code: -1)
+  else
+    Success(value: a / b)
+
+fn outcome_str o:Outcome -> Str
+  o :
+    Success v -> "Ok({v})"
+    Failure c -> "Err(code={c})"
+
+fn make_stats nums:List -> Stats
+  Stats(count: nums.count(), total: nums.sum(), min_val: nums.min(), max_val: nums.max())
+
+fn fibonacci n:Int -> Int
+  if n <= 1
+    n
+  else
+    fibonacci(n - 1) + fibonacci(n - 2)
+
+fn apply_twice f:(Int -> Int) x:Int -> Int
+  f(f(x))
+
+fn classify n:Int -> Str
+  match n
+    0 -> "zero"
+    1 -> "one"
+    n if n < 0 -> "negative"
+    n if n < 10 -> "small"
+    n if n < 100 -> "medium"
+    n -> "large"
+
+fn main
+  print "============================================"
+  print "   Ore Language Grand Showcase (1000th!)"
+  print "============================================"
+  print ""
+
+  -- 1. FUNCTIONS & CLOSURES
+  print "1. Functions & Closures"
+  print "-----------------------"
+  fib8 := fibonacci(8)
+  print "  fibonacci(8) = {fib8}"
+  double := x => x * 2
+  result := apply_twice(double, 5)
+  print "  apply_twice(double, 5) = {result}"
+  vals := [1, 2, 3, 4, 5]
+  products := vals | map(x => x * 6) | map(x => str(x)) | join(", ")
+  print "  [1..5] * 6 = [{products}]"
+  print ""
+
+  -- 2. ENUMS & MATCH
+  print "2. Enums & Match"
+  print "----------------"
+  mut shapes := [Circle(radius: 7)]
+  shapes.push(Rectangle(width: 4, height: 6))
+  shapes.push(Triangle(base: 5, height: 8))
+  mut i := 0
+  while i < shapes.count()
+    s := shapes[i]
+    lbl := shape_label(s)
+    a := shape_area(s)
+    print "  {lbl}: area~{a}"
+    i = i + 1
+  print ""
+
+  -- 3. RECORDS & METHODS
+  print "3. Records & Methods"
+  print "--------------------"
+  p1 := Point(x: 0, y: 0)
+  p2 := Point(x: 3, y: 4)
+  p3 := Point(x: 6, y: 8)
+  d12 := p1.distance_to(p2)
+  d23 := p2.distance_to(p3)
+  p1x := p1.x
+  p1y := p1.y
+  p2x := p2.x
+  p2y := p2.y
+  p3x := p3.x
+  p3y := p3.y
+  print "  ({p1x},{p1y}) to ({p2x},{p2y}): dist={d12}"
+  print "  ({p2x},{p2y}) to ({p3x},{p3y}): dist={d23}"
+  print ""
+
+  -- 4. LISTS & PIPELINES
+  print "4. Lists & Pipelines"
+  print "--------------------"
+  nums := [5, 3, 8, 1, 9, 2, 7, 4, 6, 10]
+  sorted_asc := nums | sort() | map(x => str(x)) | join(", ")
+  evens := nums | filter(x => x - (x / 2) * 2 == 0)
+  ev_str := evens | map(x => str(x)) | join(", ")
+  total := evens | sum()
+  mx := nums | max()
+  mn := nums | min()
+  print "  nums sorted: [{sorted_asc}]"
+  print "  evens: [{ev_str}]  sum={total}"
+  print "  min={mn}, max={mx}"
+  print ""
+
+  -- 5. STRING OPERATIONS
+  print "5. String Operations"
+  print "--------------------"
+  msg := "  ore language is expressive and fast  "
+  trimmed := msg.trim()
+  caps := trimmed.capitalize()
+  wds := trimmed.words()
+  wc := wds.count()
+  first_w := wds.first()
+  print "  trimmed: '{trimmed}'"
+  print "  capitalized: '{caps}'"
+  print "  words: {wc}, first='{first_w}'"
+  rep := "abc".repeat(3)
+  rev := "hello".reverse()
+  print "  repeat('abc', 3) = '{rep}'"
+  print "  reverse('hello') = '{rev}'"
+  print ""
+
+  -- 6. MAPS
+  print "6. Maps"
+  print "-------"
+  mut scores := {"alice": 95, "bob": 78, "carol": 88}
+  scores.set("dave", 91)
+  scores.set("eve", 74)
+  n_entries := scores.len()
+  alice := scores.get("alice")
+  frank := scores.get_or("frank", 0)
+  print "  Entries: {n_entries}"
+  print "  alice={alice}, frank(default)={frank}"
+  scores.remove("bob")
+  print "  After removing bob: {scores.len()} entries"
+  print ""
+
+  -- 7. OPTION
+  print "7. Option"
+  print "---------"
+  nums2 := [10, 20, 30, 40, 50]
+  found := nums2 | find_index(x => x == 30)
+  not_found := nums2 | find_index(x => x == 99)
+  print "  find_index(30): {found}"
+  print "  find_index(99): {not_found}"
+  maybe := Some(42)
+  none := None
+  v1 := maybe | unwrap_or(0)
+  v2 := none | unwrap_or(-1)
+  print "  Some(42) | unwrap_or(0) = {v1}"
+  print "  None | unwrap_or(-1) = {v2}"
+  print ""
+
+  -- 8. RESULT / OUTCOME
+  print "8. Result / Outcome"
+  print "-------------------"
+  o1 := safe_div(100, 4)
+  o2 := safe_div(10, 0)
+  o3 := safe_div(42, 6)
+  print "  100/4 = {outcome_str(o1)}"
+  print "  10/0  = {outcome_str(o2)}"
+  print "  42/6  = {outcome_str(o3)}"
+  print ""
+
+  -- 9. PATTERN MATCHING
+  print "9. Pattern Matching"
+  print "-------------------"
+  test_vals := [-5, 0, 1, 7, 42, 200]
+  mut m := 0
+  while m < test_vals.count()
+    n := test_vals[m]
+    cls := classify(n)
+    print "  {n} -> {cls}"
+    m = m + 1
+  print ""
+
+  -- 10. STATS & AGGREGATE
+  print "10. Statistics"
+  print "--------------"
+  data := [12, 45, 7, 88, 23, 67, 34, 91, 56, 29]
+  st := make_stats(data)
+  avg := st.total / st.count
+  above := data | filter(x => x > avg) | count()
+  top3 := data | sort() | reverse() | take(3) | map(x => str(x)) | join(", ")
+  print "  count={st.count}, sum={st.total}, avg={avg}"
+  print "  min={st.min_val}, max={st.max_val}"
+  print "  above avg: {above}"
+  print "  top 3: [{top3}]"
+  print ""
+
+  print "============================================"
+  print "   All Ore features demonstrated!"
+  print "   Showcase 1000 - Grand Finale Complete!"
+  print "============================================"

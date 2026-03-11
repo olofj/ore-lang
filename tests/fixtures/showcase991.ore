@@ -1,0 +1,141 @@
+-- Showcase 991: Matrix Operations (add, multiply, transpose, determinant)
+
+-- Matrix stored as flat list, row-major order
+-- mat_get(m, rows, cols, r, c) -> element
+
+fn mat_get m:List rows:Int cols:Int r:Int c:Int -> Int
+  m[r * cols + c]
+
+fn mat_set m:List cols:Int r:Int c:Int val:Int -> List
+  idx := r * cols + c
+  m[idx] = val
+  m
+
+fn make_matrix rows:Int cols:Int -> List
+  mut m := [0]
+  m.pop()
+  total := rows * cols
+  mut i := 0
+  while i < total
+    m.push(0)
+    i = i + 1
+  m
+
+fn mat_add a:List b:List rows:Int cols:Int -> List
+  total := rows * cols
+  mut c := make_matrix(rows, cols)
+  mut i := 0
+  while i < total
+    c[i] = a[i] + b[i]
+    i = i + 1
+  c
+
+fn mat_mul a:List b:List n:Int -> List
+  mut c := make_matrix(n, n)
+  mut r := 0
+  while r < n
+    mut col := 0
+    while col < n
+      mut s := 0
+      mut k := 0
+      while k < n
+        s = s + mat_get(a, n, n, r, k) * mat_get(b, n, n, k, col)
+        k = k + 1
+      c = mat_set(c, n, r, col, s)
+      col = col + 1
+    r = r + 1
+  c
+
+fn mat_transpose a:List rows:Int cols:Int -> List
+  mut t := make_matrix(cols, rows)
+  mut r := 0
+  while r < rows
+    mut c := 0
+    while c < cols
+      v := mat_get(a, rows, cols, r, c)
+      t = mat_set(t, rows, c, r, v)
+      c = c + 1
+    r = r + 1
+  t
+
+fn det2 m:List -> Int
+  mat_get(m, 2, 2, 0, 0) * mat_get(m, 2, 2, 1, 1) - mat_get(m, 2, 2, 0, 1) * mat_get(m, 2, 2, 1, 0)
+
+fn det3 m:List -> Int
+  a00 := mat_get(m, 3, 3, 0, 0)
+  a01 := mat_get(m, 3, 3, 0, 1)
+  a02 := mat_get(m, 3, 3, 0, 2)
+  a10 := mat_get(m, 3, 3, 1, 0)
+  a11 := mat_get(m, 3, 3, 1, 1)
+  a12 := mat_get(m, 3, 3, 1, 2)
+  a20 := mat_get(m, 3, 3, 2, 0)
+  a21 := mat_get(m, 3, 3, 2, 1)
+  a22 := mat_get(m, 3, 3, 2, 2)
+  a00 * (a11 * a22 - a12 * a21) - a01 * (a10 * a22 - a12 * a20) + a02 * (a10 * a21 - a11 * a20)
+
+fn print_mat m:List rows:Int cols:Int
+  mut r := 0
+  while r < rows
+    mut row_str := "  ["
+    mut c := 0
+    while c < cols
+      v := mat_get(m, rows, cols, r, c)
+      if c > 0
+        row_str = row_str + ", "
+      row_str = row_str + str(v)
+      c = c + 1
+    row_str = row_str + "]"
+    print row_str
+    r = r + 1
+
+fn main
+  print "Matrix Operations"
+  print "================="
+  print ""
+
+  -- 2x2 matrices
+  mut a2 := make_matrix(2, 2)
+  a2[0] = 1  a2[1] = 2
+  a2[2] = 3  a2[3] = 4
+
+  mut b2 := make_matrix(2, 2)
+  b2[0] = 5  b2[1] = 6
+  b2[2] = 7  b2[3] = 8
+
+  print "A (2x2):"
+  print_mat(a2, 2, 2)
+  print "B (2x2):"
+  print_mat(b2, 2, 2)
+  print ""
+
+  add2 := mat_add(a2, b2, 2, 2)
+  print "A + B:"
+  print_mat(add2, 2, 2)
+  print ""
+
+  mul2 := mat_mul(a2, b2, 2)
+  print "A * B:"
+  print_mat(mul2, 2, 2)
+  print ""
+
+  trans2 := mat_transpose(a2, 2, 2)
+  print "Transpose of A:"
+  print_mat(trans2, 2, 2)
+  print ""
+
+  d2 := det2(a2)
+  print "det(A) = {d2}"
+  print ""
+
+  -- 3x3 determinant
+  mut m3 := make_matrix(3, 3)
+  m3[0] = 1  m3[1] = 2  m3[2] = 3
+  m3[3] = 0  m3[4] = 1  m3[5] = 4
+  m3[6] = 5  m3[7] = 6  m3[8] = 0
+
+  print "M (3x3):"
+  print_mat(m3, 3, 3)
+  d3 := det3(m3)
+  print "det(M) = {d3}"
+  print ""
+  print "Matrix operations complete."

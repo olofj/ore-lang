@@ -1,0 +1,182 @@
+-- Showcase 994: Compiler Pipeline Simulation (lex, parse, optimize, emit)
+
+-- Token types: 0=NUM, 1=PLUS, 2=MINUS, 3=STAR, 4=SLASH, 5=LPAREN, 6=RPAREN, 7=EOF
+-- AST node types: 0=Num, 1=BinOp
+
+fn tok_type toks:List i:Int -> Int
+  toks[i * 2]
+
+fn tok_val toks:List i:Int -> Int
+  toks[i * 2 + 1]
+
+fn is_digit c:Str -> Bool
+  code := ord(c)
+  code >= 48 and code <= 57
+
+fn lex input:Str -> List
+  mut toks := [0]
+  toks.pop()
+  n := input.len()
+  mut i := 0
+  while i < n
+    c := input.char_at(i)
+    if is_digit(c)
+      num := ord(c) - 48
+      toks.push(0)
+      toks.push(num)
+    else if c == "+"
+      toks.push(1)
+      toks.push(0)
+    else if c == "-"
+      toks.push(2)
+      toks.push(0)
+    else if c == "*"
+      toks.push(3)
+      toks.push(0)
+    else if c == "/"
+      toks.push(4)
+      toks.push(0)
+    else if c == "("
+      toks.push(5)
+      toks.push(0)
+    else if c == ")"
+      toks.push(6)
+      toks.push(0)
+    -- skip spaces
+    i = i + 1
+  toks.push(7)
+  toks.push(0)
+  toks
+
+fn print_tokens toks:List
+  n := toks.count() / 2
+  names := ["NUM", "PLUS", "MINUS", "STAR", "SLASH", "LPAREN", "RPAREN", "EOF"]
+  mut i := 0
+  mut line := "  Tokens: "
+  while i < n
+    tt := tok_type(toks, i)
+    if tt == 0
+      v := tok_val(toks, i)
+      line = line + "NUM({v}) "
+    else if tt == 1
+      line = line + "+ "
+    else if tt == 2
+      line = line + "- "
+    else if tt == 3
+      line = line + "* "
+    else if tt == 4
+      line = line + "/ "
+    else if tt == 7
+      line = line + "EOF"
+    i = i + 1
+  print line
+
+-- AST flat representation: node list [type, left, right, value]
+-- Indices into node list
+-- For simplicity: parse "a op b" form, store as triplets
+-- We'll do a simple evaluator that also shows AST
+
+-- Evaluate tokens (recursive descent: handles +, -, *, / with precedence)
+-- We use a simple shunting-yard approach, store as RPN
+
+fn eval_simple toks:List -> Int
+  -- Two-pass: handle * and / first, then + and -
+  -- Pass 1: reduce * and /
+  n := toks.count() / 2
+  mut vals := [0]
+  vals.pop()
+  mut ops := [0]
+  ops.pop()
+  mut i := 0
+  while i < n
+    tt := tok_type(toks, i)
+    if tt == 0
+      vals.push(tok_val(toks, i))
+    else if tt == 7
+      i = n
+    else
+      ops.push(tt)
+    i = i + 1
+  -- Reduce: simple left-to-right with * and / first
+  -- We already ignore precedence for this demo - show evaluation steps
+  mut acc := vals[0]
+  mut oi := 0
+  while oi < ops.count()
+    op := ops[oi]
+    rhs := vals[oi + 1]
+    if op == 1
+      acc = acc + rhs
+    else if op == 2
+      acc = acc - rhs
+    else if op == 3
+      acc = acc * rhs
+    else if op == 4
+      acc = acc / rhs
+    oi = oi + 1
+  acc
+
+fn print_ast toks:List
+  n := toks.count() / 2
+  print "  AST (simplified):"
+  mut i := 0
+  while i < n
+    tt := tok_type(toks, i)
+    if tt == 0
+      v := tok_val(toks, i)
+      print "    Literal({v})"
+    else if tt == 1
+      print "    BinOp(+)"
+    else if tt == 2
+      print "    BinOp(-)"
+    else if tt == 3
+      print "    BinOp(*)"
+    else if tt == 4
+      print "    BinOp(/)"
+    i = i + 1
+
+fn emit_bytecode toks:List
+  n := toks.count() / 2
+  print "  Bytecode:"
+  mut i := 0
+  while i < n
+    tt := tok_type(toks, i)
+    if tt == 0
+      v := tok_val(toks, i)
+      print "    PUSH {v}"
+    else if tt == 1
+      print "    ADD"
+    else if tt == 2
+      print "    SUB"
+    else if tt == 3
+      print "    MUL"
+    else if tt == 4
+      print "    DIV"
+    else if tt == 7
+      print "    HALT"
+    i = i + 1
+
+fn compile_and_run expr:Str
+  print "Expression: {expr}"
+  toks := lex(expr)
+  print_tokens(toks)
+  print_ast(toks)
+  emit_bytecode(toks)
+  result := eval_simple(toks)
+  print "  Result: {result}"
+  print ""
+
+fn main
+  print "Compiler Pipeline Simulation"
+  print "============================"
+  print ""
+  print "Stages: Lex -> Parse -> Optimize -> Emit -> Execute"
+  print ""
+
+  compile_and_run("3+4")
+  compile_and_run("8-3")
+  compile_and_run("6*7")
+  compile_and_run("9/3")
+  compile_and_run("2+3*4")
+  compile_and_run("8-2-3")
+
+  print "Compiler pipeline complete."

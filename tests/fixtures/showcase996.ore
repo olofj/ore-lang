@@ -1,0 +1,192 @@
+-- Showcase 996: Operating System Scheduler Simulation (Multi-Level Feedback Queue)
+
+-- Process: [pid, name_idx, burst_remaining, priority_queue, total_wait]
+-- 3 queues: Q0 (quantum=2), Q1 (quantum=4), Q2 (FCFS)
+-- If a process exceeds its quantum in Qi, demote to Qi+1
+
+fn proc_pid p:List -> Int
+  p[0]
+
+fn proc_burst p:List -> Int
+  p[2]
+
+fn proc_queue p:List -> Int
+  p[3]
+
+fn proc_wait p:List -> Int
+  p[4]
+
+fn get_name names:List i:Int -> Str
+  names[i]
+
+fn make_proc pid:Int name_idx:Int burst:Int -> List
+  [pid, name_idx, burst, 0, 0]
+
+fn run_mlfq procs:List names:List -> List
+  -- Returns list of completed processes with their stats
+  -- Each completed proc: [pid, name_idx, burst_orig, finish_time, wait_time]
+  mut queue0 := [0]
+  queue0.pop()
+  mut queue1 := [0]
+  queue1.pop()
+  mut queue2 := [0]
+  queue2.pop()
+  mut completed := [0]
+  completed.pop()
+  mut time := 0
+
+  -- Initialize: all processes start in Q0
+  -- procs is a flat list: [pid, name_idx, burst, queue, wait] per process
+  -- We'll use indices: each proc takes 5 slots
+  n_procs := procs.count() / 5
+  mut i := 0
+  while i < n_procs
+    queue0.push(i)
+    i = i + 1
+
+  mut all_done := false
+  mut ticks := 0
+  while all_done == false and ticks < 200
+    -- Run from Q0 first
+    if queue0.count() > 0
+      idx := queue0[0]
+      mut nq := [0]
+      nq.pop()
+      mut qi := 1
+      while qi < queue0.count()
+        nq.push(queue0[qi])
+        qi = qi + 1
+      queue0 = nq
+
+      burst := procs[idx * 5 + 2]
+      quantum := 2
+      run_time := if burst > quantum then quantum else burst
+      procs[idx * 5 + 2] = burst - run_time
+      time = time + run_time
+
+      -- Update wait time for processes not running
+      mut wi := 0
+      while wi < n_procs
+        if wi != idx and procs[wi * 5 + 2] > 0
+          procs[wi * 5 + 4] = procs[wi * 5 + 4] + run_time
+        wi = wi + 1
+
+      if procs[idx * 5 + 2] == 0
+        completed.push(idx)
+        completed.push(time)
+      else
+        procs[idx * 5 + 3] = 1
+        queue1.push(idx)
+    else if queue1.count() > 0
+      idx := queue1[0]
+      mut nq := [0]
+      nq.pop()
+      mut qi := 1
+      while qi < queue1.count()
+        nq.push(queue1[qi])
+        qi = qi + 1
+      queue1 = nq
+
+      burst := procs[idx * 5 + 2]
+      quantum := 4
+      run_time := if burst > quantum then quantum else burst
+      procs[idx * 5 + 2] = burst - run_time
+      time = time + run_time
+
+      mut wi := 0
+      while wi < n_procs
+        if wi != idx and procs[wi * 5 + 2] > 0
+          procs[wi * 5 + 4] = procs[wi * 5 + 4] + run_time
+        wi = wi + 1
+
+      if procs[idx * 5 + 2] == 0
+        completed.push(idx)
+        completed.push(time)
+      else
+        procs[idx * 5 + 3] = 2
+        queue2.push(idx)
+    else if queue2.count() > 0
+      idx := queue2[0]
+      mut nq := [0]
+      nq.pop()
+      mut qi := 1
+      while qi < queue2.count()
+        nq.push(queue2[qi])
+        qi = qi + 1
+      queue2 = nq
+
+      burst := procs[idx * 5 + 2]
+      procs[idx * 5 + 2] = 0
+      time = time + burst
+
+      mut wi := 0
+      while wi < n_procs
+        if wi != idx and procs[wi * 5 + 2] > 0
+          procs[wi * 5 + 4] = procs[wi * 5 + 4] + burst
+        wi = wi + 1
+
+      completed.push(idx)
+      completed.push(time)
+    else
+      all_done = true
+    ticks = ticks + 1
+
+  completed
+
+fn main
+  print "OS Scheduler: Multi-Level Feedback Queue"
+  print "========================================"
+  print ""
+  print "Queues: Q0 (quantum=2), Q1 (quantum=4), Q2 (FCFS)"
+  print "Demotion: process exceeding quantum moves to next queue"
+  print ""
+
+  names := ["Idle", "Browser", "Compiler", "Editor", "Music", "Kernel"]
+
+  -- Processes: [pid, name_idx, burst, queue, wait]
+  mut procs := [0]
+  procs.pop()
+  -- pid=1 Browser burst=3
+  procs.push(1)  procs.push(1)  procs.push(3)  procs.push(0)  procs.push(0)
+  -- pid=2 Compiler burst=9
+  procs.push(2)  procs.push(2)  procs.push(9)  procs.push(0)  procs.push(0)
+  -- pid=3 Editor burst=2
+  procs.push(3)  procs.push(3)  procs.push(2)  procs.push(0)  procs.push(0)
+  -- pid=4 Music burst=5
+  procs.push(4)  procs.push(4)  procs.push(5)  procs.push(0)  procs.push(0)
+
+  n_procs := procs.count() / 5
+  print "Processes:"
+  mut i := 0
+  while i < n_procs
+    pid := procs[i * 5]
+    nidx := procs[i * 5 + 1]
+    burst := procs[i * 5 + 2]
+    name := get_name(names, nidx)
+    print "  P{pid} ({name}): burst={burst}"
+    i = i + 1
+  print ""
+
+  completed := run_mlfq(procs, names)
+  print "Completion order:"
+  nc := completed.count() / 2
+  mut total_finish := 0
+  mut j := 0
+  while j < nc
+    idx := completed[j * 2]
+    finish := completed[j * 2 + 1]
+    pid := procs[idx * 5]
+    nidx := procs[idx * 5 + 1]
+    burst_orig := procs[idx * 5 + 2]
+    wait := procs[idx * 5 + 4]
+    name := get_name(names, nidx)
+    final_queue := procs[idx * 5 + 3]
+    print "  P{pid} ({name}): finish={finish}  wait={wait}  final_queue=Q{final_queue}"
+    total_finish = total_finish + finish
+    j = j + 1
+
+  avg_finish := total_finish / nc
+  print ""
+  print "Average finish time: {avg_finish}"
+  print ""
+  print "Scheduler simulation complete."

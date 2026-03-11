@@ -11917,6 +11917,94 @@ fn showcase_990() {
 }
 
 #[test]
+fn showcase_991() {
+    let out = run_ore("showcase991.ore");
+    assert!(out.contains("Matrix Operations"), "got: {out}");
+    assert!(out.contains("A * B:"), "got: {out}");
+    assert!(out.contains("det(A) = -2"), "got: {out}");
+    assert!(out.contains("Matrix operations complete."), "got: {out}");
+}
+
+#[test]
+fn showcase_992() {
+    let out = run_ore("showcase992.ore");
+    assert!(out.contains("Graph Algorithms Toolkit"), "got: {out}");
+    assert!(out.contains("DFS from 0: 0 -> 1 -> 3 -> 4 -> 2"), "got: {out}");
+    assert!(out.contains("Has cycle (DAG): false"), "got: {out}");
+    assert!(out.contains("Has cycle (with 4->1): true"), "got: {out}");
+}
+
+#[test]
+fn showcase_993() {
+    let out = run_ore("showcase993.ore");
+    assert!(out.contains("Database Engine Simulation"), "got: {out}");
+    assert!(out.contains("SELECT * FROM users ORDER BY age:"), "got: {out}");
+    assert!(out.contains("Frank          |  22 |"), "got: {out}");
+    assert!(out.contains("Database simulation complete."), "got: {out}");
+}
+
+#[test]
+fn showcase_994() {
+    let out = run_ore("showcase994.ore");
+    assert!(out.contains("Compiler Pipeline Simulation"), "got: {out}");
+    assert!(out.contains("Expression: 6*7"), "got: {out}");
+    assert!(out.contains("Result: 42"), "got: {out}");
+    assert!(out.contains("Compiler pipeline complete."), "got: {out}");
+}
+
+#[test]
+fn showcase_995() {
+    let out = run_ore("showcase995.ore");
+    assert!(out.contains("Neural Network: Single Layer Perceptron"), "got: {out}");
+    assert!(out.contains("AND gate"), "got: {out}");
+    assert!(out.contains("OR gate"), "got: {out}");
+    assert!(out.contains("Perceptron training complete."), "got: {out}");
+}
+
+#[test]
+fn showcase_996() {
+    let out = run_ore("showcase996.ore");
+    assert!(out.contains("Multi-Level Feedback Queue"), "got: {out}");
+    assert!(out.contains("P3 (Editor): finish=6"), "got: {out}");
+    assert!(out.contains("Scheduler simulation complete."), "got: {out}");
+}
+
+#[test]
+fn showcase_997() {
+    let out = run_ore("showcase997.ore");
+    assert!(out.contains("Distributed Hash Table Simulation"), "got: {out}");
+    assert!(out.contains("Node-A: 2 keys"), "got: {out}");
+    assert!(out.contains("1 keys remapped"), "got: {out}");
+    assert!(out.contains("DHT simulation complete."), "got: {out}");
+}
+
+#[test]
+fn showcase_998() {
+    let out = run_ore("showcase998.ore");
+    assert!(out.contains("Blockchain Simulation"), "got: {out}");
+    assert!(out.contains("Chain validation: true"), "got: {out}");
+    assert!(out.contains("Chain validation after tamper: false"), "got: {out}");
+    assert!(out.contains("Blockchain simulation complete."), "got: {out}");
+}
+
+#[test]
+fn showcase_999() {
+    let out = run_ore("showcase999.ore");
+    assert!(out.contains("Simple Ray Tracer"), "got: {out}");
+    assert!(out.contains("Ray tracer complete."), "got: {out}");
+    assert!(out.contains("Rendered 60x22"), "got: {out}");
+}
+
+#[test]
+fn showcase_1000() {
+    let out = run_ore("showcase1000.ore");
+    assert!(out.contains("Ore Language Grand Showcase"), "got: {out}");
+    assert!(out.contains("fibonacci(8) = 21"), "got: {out}");
+    assert!(out.contains("100/4 = Ok(25)"), "got: {out}");
+    assert!(out.contains("Grand Finale Complete!"), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
