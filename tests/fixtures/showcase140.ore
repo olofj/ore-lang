@@ -1,0 +1,51 @@
+-- Showcase 140: Test-driven development
+
+fn fibonacci n:Int -> Int
+  if n <= 1 then n
+  else fibonacci(n - 1) + fibonacci(n - 2)
+
+fn factorial n:Int -> Int
+  if n <= 1 then 1
+  else n * factorial(n - 1)
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    false
+  else
+    mut divisor := 2
+    mut result := true
+    while divisor * divisor <= n
+      if n % divisor == 0
+        result = false
+      divisor = divisor + 1
+    result
+
+test "fibonacci base cases"
+  assert_eq fibonacci(0), 0
+  assert_eq fibonacci(1), 1
+
+test "fibonacci sequence"
+  assert_eq fibonacci(5), 5
+  assert_eq fibonacci(10), 55
+  assert_eq fibonacci(12), 144
+
+test "factorial"
+  assert_eq factorial(0), 1
+  assert_eq factorial(1), 1
+  assert_eq factorial(5), 120
+  assert_eq factorial(10), 3628800
+
+test "prime detection"
+  assert is_prime(2)
+  assert is_prime(7)
+  assert is_prime(13)
+  assert_eq is_prime(1), false
+  assert_eq is_prime(4), false
+  assert_eq is_prime(9), false
+
+test "string operations"
+  assert_eq "hello".to_upper(), "HELLO"
+  assert_eq "  spaces  ".trim(), "spaces"
+  assert "hello world".contains("world")
+  assert_eq "abc".reverse(), "cba"
+  assert_eq "ha".repeat(3), "hahaha"

@@ -1,0 +1,49 @@
+-- Showcase 138: Real-world utility functions
+
+fn is_palindrome s:Str -> Bool
+  s == s.reverse()
+
+fn shift_char c:Str shift:Int -> Str
+  code := ord(c)
+  if code >= 65 and code <= 90 then chr((code - 65 + shift) % 26 + 65)
+  else if code >= 97 and code <= 122 then chr((code - 97 + shift) % 26 + 97)
+  else c
+
+fn caesar_encrypt text:Str shift:Int -> Str
+  text.chars() | map(c => shift_char(c, shift)) | join("")
+
+fn word_count text:Str -> Int
+  text.split(" ").len()
+
+fn main
+  -- Palindrome check
+  words := ["racecar", "hello", "madam", "world", "level"]
+  for w in words
+    result := if is_palindrome(w) then "yes" else "no"
+    print "{w}: palindrome? {result}"
+
+  -- Caesar cipher
+  print ""
+  message := "Hello World"
+  encrypted := caesar_encrypt(message, 3)
+  decrypted := caesar_encrypt(encrypted, 23)
+  print "original:  {message}"
+  print "encrypted: {encrypted}"
+  print "decrypted: {decrypted}"
+
+  -- Word count
+  print ""
+  texts := ["the quick brown fox", "hello", "one two three four five six"]
+  for t in texts
+    print "\"{t}\" -> {word_count(t)} words"
+
+  -- String processing pipeline
+  print ""
+  csv := "name,age,city\nAlice,30,NYC\nBob,25,LA\nCharlie,35,Chicago"
+  lines := csv.lines()
+  header := lines.first()
+  print "header: {header}"
+  data_lines := lines.skip(1)
+  for line in data_lines
+    fields := line.split(",")
+    print "  {fields.first()} from {fields.last()}"

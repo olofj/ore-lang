@@ -2856,6 +2856,40 @@ fn showcase137_match_guards() {
 }
 
 #[test]
+fn showcase138_utility_functions() {
+    let out = run_ore("showcase138.ore");
+    assert!(out.contains("racecar: palindrome? yes"));
+    assert!(out.contains("hello: palindrome? no"));
+    assert!(out.contains("encrypted: Khoor Zruog"));
+    assert!(out.contains("decrypted: Hello World"));
+    assert!(out.contains("Alice from NYC"));
+}
+
+#[test]
+fn showcase139_map_processing() {
+    let out = run_ore("showcase139.ore");
+    assert!(out.contains("hello: 3"));
+    assert!(out.contains("total items: 158"));
+    assert!(out.contains("after merge: 6 types"));
+    assert!(out.contains("has sword: true"));
+    assert!(out.contains("wand count: 0"));
+    assert!(out.contains("Alice: 95"));
+}
+
+#[test]
+fn showcase140_test_driven() {
+    // This uses `ore test`, not `ore run`
+    let path = fixtures_dir().join("showcase140.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore test");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "ore test failed: {}", stderr);
+    assert!(stderr.contains("5 passed, 0 failed"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

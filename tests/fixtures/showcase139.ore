@@ -1,0 +1,41 @@
+-- Showcase 139: Map-based data processing
+
+fn main
+  -- Frequency analysis
+  text := "hello world hello ore hello world"
+  freqs := text.split(" ").frequencies()
+  print "word frequencies:"
+  for word in freqs.keys().sort()
+    print "  {word}: {freqs.get(word)}"
+
+  -- Inventory system
+  print ""
+  inventory := {"sword": 1, "shield": 2, "potion": 5, "arrow": 50, "gold": 100}
+  total := inventory.values().sum()
+  print "total items: {total}"
+
+  -- Map merge
+  new_items := {"potion": 3, "bomb": 2}
+  combined := inventory.merge(new_items)
+  print "after merge: {combined.len()} types"
+
+  -- Config-style map
+  print ""
+  config := {"host": "localhost", "port": "8080", "debug": "true"}
+  for k in config.keys().sort()
+    print "{k} = {config.get(k)}"
+
+  -- Map filtering
+  print ""
+  scores := {"Alice": 95, "Bob": 72, "Charlie": 88, "Diana": 61}
+  passing := scores.filter((k, v) => v >= 70)
+  print "passing:"
+  for name in passing.keys().sort()
+    print "  {name}: {passing.get(name)}"
+
+  -- Map operations
+  print ""
+  print "has sword: {inventory.contains("sword")}"
+  print "has wand: {inventory.contains("wand")}"
+  print "arrow count: {inventory.get_or("arrow", 0)}"
+  print "wand count: {inventory.get_or("wand", 0)}"
