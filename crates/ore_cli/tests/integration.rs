@@ -1303,3 +1303,28 @@ fn showcase13() {
     assert!(out.contains("log(e^2): 2.0"));
     assert!(out.contains("showcase13 ok"));
 }
+
+#[test]
+fn showcase15() {
+    let out = run_ore("showcase15.ore");
+    assert!(out.contains("Words: 15"));
+    assert!(out.contains("Unique words: 11"));
+    assert!(out.contains("Occurrences of 'the': 3"));
+    assert!(out.contains("Occurrences of 'fox': 2"));
+    assert!(out.contains("Total chars: 59"));
+    assert!(out.contains("Long words: brown, indeed, jumps, lazy, over, quick, very"));
+    assert!(out.contains("(9) + (16) + (25)"));
+    assert!(out.contains("Sum=295 Min=10 Max=70"));
+}
+
+#[test]
+fn showcase16() {
+    let out = run_ore("showcase16.ore");
+    assert!(out.contains("Primes: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47"));
+    assert!(out.contains("Count: 15"));
+    assert!(out.contains("Sum: 328"));
+    assert!(out.contains("Max steps: 20"));
+    assert!(out.contains("1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz"));
+    assert!(out.contains("Pi approx: 3.14"));
+    assert!(out.contains("Pi actual: 3.14159"));
+}

@@ -1,0 +1,63 @@
+-- Showcase 16: Number crunching with pipelines and lambdas
+-- Demonstrates: float operations, math functions, list comprehensions, pipeline chains
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  if n < 4
+    return true
+  if n % 2 == 0
+    return false
+  mut i := 3
+  while i * i <= n
+    if n % i == 0
+      return false
+    i += 2
+  true
+
+fn collatz n:Int -> Int
+  mut x := n
+  mut steps := 0
+  while x != 1
+    if x % 2 == 0
+      x = x / 2
+    else
+      x = x * 3 + 1
+    steps += 1
+  steps
+
+fn main
+  -- Find primes up to 50
+  primes := [n for n in 2..50 if is_prime(n)]
+  print "Primes: {primes.join(", ")}"
+  print "Count: {primes.len()}"
+  print "Sum: {primes.sum()}"
+
+  -- Collatz sequence lengths for 1..20
+  lengths := [collatz(n) for n in 1..20]
+  print "Collatz lengths: {lengths.join(", ")}"
+  print "Max steps: {lengths.max()}"
+
+  -- FizzBuzz with pipelines
+  results := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+  fizzbuzz := results | map(n => fizz(n))
+  print fizzbuzz.join(" ")
+
+  -- Math: approximate pi using Leibniz series
+  mut pi_approx := 0.0
+  mut sign := 1.0
+  for i in 0..999
+    pi_approx = pi_approx + sign / (2.0 * i.to_float() + 1.0)
+    sign = sign * -1.0
+  pi_approx = pi_approx * 4.0
+  print "Pi approx: {pi_approx}"
+  print "Pi actual: {pi()}"
+
+fn fizz n:Int -> Str
+  if n % 15 == 0
+    return "FizzBuzz"
+  if n % 3 == 0
+    return "Fizz"
+  if n % 5 == 0
+    return "Buzz"
+  "{n}"

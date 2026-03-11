@@ -1,0 +1,49 @@
+-- Showcase 15: Text analysis pipeline
+-- Demonstrates: string methods, list operations, maps, pipelines, lambdas
+
+fn word_count text:Str -> Int
+  text.words().len()
+
+fn char_frequency text:Str -> Map
+  chars := text.to_lower().chars()
+  chars.frequencies()
+
+fn main
+  text := "The quick brown fox jumps over the lazy dog. The fox was very quick indeed."
+
+  -- Word count
+  print "Words: {word_count(text)}"
+
+  -- Unique words (case-insensitive)
+  words := text.to_lower().replace(".", "").words()
+  unique := words.unique()
+  print "Unique words: {unique.len()}"
+
+  -- Most common words
+  freq := words.frequencies()
+  print "Occurrences of 'the': {freq.get("the")}"
+  print "Occurrences of 'fox': {freq.get("fox")}"
+
+  -- Average word length
+  lengths := words | map(w => w.len())
+  total := lengths.sum()
+  print "Total chars: {total}"
+
+  -- Filter long words
+  long_words := words.unique() | filter(w => w.len() > 3) | sort
+  print "Long words: {long_words.join(", ")}"
+
+  -- Pipeline: transform and collect
+  result := [1, 2, 3, 4, 5]
+    | map(n => n * n)
+    | filter(n => n > 5)
+    | map(n => "({n})")
+    | join(" + ")
+  print result
+
+  -- Nested data processing
+  nums := [10, 25, 30, 45, 50, 65, 70]
+  stats_sum := nums.sum()
+  stats_min := nums.min()
+  stats_max := nums.max()
+  print "Sum={stats_sum} Min={stats_min} Max={stats_max}"
