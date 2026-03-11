@@ -1,0 +1,56 @@
+-- Showcase 170: Complex data transformations
+
+fn histogram data:List[Int] max_val:Int -> List[Int]
+  mut counts := []
+  for i in range(0, max_val + 1)
+    counts.push(0)
+  for v in data
+    if v >= 0 and v <= max_val
+      counts.set(v, counts[v] + 1)
+  counts
+
+fn main
+  -- Build histogram
+  data := [1, 3, 2, 3, 1, 4, 2, 3, 1, 5, 3, 2, 1, 3, 4]
+  counts := histogram(data, 5)
+  for i in range(1, 6)
+    bar := "#".repeat(counts[i])
+    print "{i}: {bar} ({counts[i]})"
+
+  -- Matrix rotation (90 degrees clockwise)
+  print ""
+  -- Original 3x3 matrix: [1,2,3; 4,5,6; 7,8,9]
+  m := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  size := 3
+  print "original:"
+  for r in range(0, size)
+    row := range(0, size) | map(c => m[r * size + c]) | join(" ")
+    print "  {row}"
+
+  print "rotated 90°:"
+  for r in range(0, size)
+    row := range(0, size) | map(c => m[(size - 1 - c) * size + r]) | join(" ")
+    print "  {row}"
+
+  -- Run-length encoding
+  print ""
+  input := [1, 1, 1, 2, 2, 3, 3, 3, 3, 1, 1]
+  mut rle := []
+  mut rle_counts := []
+  mut current := input[0]
+  mut run_len := 1
+  for i in range(1, input | count())
+    if input[i] == current
+      run_len = run_len + 1
+    else
+      rle.push(current)
+      rle_counts.push(run_len)
+      current = input[i]
+      run_len = 1
+  rle.push(current)
+  rle_counts.push(run_len)
+
+  mut rle_strs := []
+  for i in range(0, rle | count())
+    rle_strs.push("{rle[i]}x{rle_counts[i]}")
+  print "RLE: {rle_strs | join(", ")}"

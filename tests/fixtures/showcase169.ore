@@ -1,0 +1,45 @@
+-- Showcase 169: Error handling patterns with Result
+
+fn parse_positive s:Str -> Result[Int]
+  n := s.to_int()
+  if n > 0
+    Ok(n)
+  else
+    Err("not positive: {s}")
+
+fn divide a:Int b:Int -> Result[Int]
+  if b == 0
+    Err("division by zero")
+  else
+    Ok(a / b)
+
+fn main
+  -- Basic Result handling
+  for s in ["42", "0", "-5", "hello"]
+    r := parse_positive(s)
+    match r
+      Ok v -> print "{s} -> ok: {v}"
+      Err e -> print "{s} -> error: {e}"
+
+  -- Division with error handling
+  print ""
+  pairs := [[10, 3], [15, 0], [100, 7], [0, 5]]
+  for p in pairs
+    a := p[0]
+    b := p[1]
+    r := divide(a, b)
+    match r
+      Ok v -> print "{a} / {b} = {v}"
+      Err e -> print "{a} / {b}: {e}"
+
+  -- Method chaining on Result
+  print ""
+  r := Ok(10)
+  print "ok(10) is_ok: {r.is_ok()}"
+  print "ok(10) is_err: {r.is_err()}"
+  print "ok(10) unwrap: {r.unwrap()}"
+  print "ok(10) unwrap_or(0): {r.unwrap_or(0)}"
+
+  e := Err("bad")
+  print "err is_ok: {e.is_ok()}"
+  print "err unwrap_or(99): {e.unwrap_or(99)}"

@@ -1,0 +1,39 @@
+-- Showcase 168: Higher-order functions and pipelines
+
+fn apply_twice f:(Int -> Int) x:Int -> Int
+  f(f(x))
+
+fn main
+  -- Apply twice with lambdas
+  print "double twice 3: {apply_twice(n => n * 2, 3)}"
+  print "increment twice 10: {apply_twice(n => n + 1, 10)}"
+  print "square twice 3: {apply_twice(n => n * n, 3)}"
+
+  -- Pipeline with multiple stages
+  print ""
+  result := range(1, 11)
+    | map(n => n * n)
+    | filter(n => n > 10)
+    | map(n => n - 1)
+    | join(", ")
+  print "pipeline: {result}"
+
+  -- Fold to compute factorial
+  print ""
+  for n in [1, 5, 7, 10]
+    fact := range(1, n + 1) | fold(1, (acc, x) => acc * x)
+    print "{n}! = {fact}"
+
+  -- Scan to show partial products
+  print ""
+  partials := range(1, 6) | scan(1, (acc, x) => acc * x)
+  print "partial products: {partials | join(", ")}"
+
+  -- Chain of transformations
+  print ""
+  words := ["hello", "world", "foo", "bar", "baz"]
+  result2 := words
+    | filter(w => w.len() > 3)
+    | map(w => w.to_upper())
+    | join(", ")
+  print "long words: {result2}"

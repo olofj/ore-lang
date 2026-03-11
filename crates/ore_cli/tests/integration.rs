@@ -3160,6 +3160,34 @@ fn showcase167_cellular_automaton() {
 }
 
 #[test]
+fn showcase168_higher_order() {
+    let out = run_ore("showcase168.ore");
+    assert!(out.contains("double twice 3: 12"));
+    assert!(out.contains("square twice 3: 81"));
+    assert!(out.contains("5! = 120"));
+    assert!(out.contains("10! = 3628800"));
+    assert!(out.contains("long words: HELLO, WORLD"));
+}
+
+#[test]
+fn showcase169_result_handling() {
+    let out = run_ore("showcase169.ore");
+    assert!(out.contains("42 -> ok: 42"));
+    assert!(out.contains("0 -> error: not positive"));
+    assert!(out.contains("division by zero"));
+    assert!(out.contains("ok(10) unwrap: 10"));
+    assert!(out.contains("err unwrap_or(99): 99"));
+}
+
+#[test]
+fn showcase170_data_transforms() {
+    let out = run_ore("showcase170.ore");
+    assert!(out.contains("3: ##### (5)"));
+    assert!(out.contains("7 4 1"));
+    assert!(out.contains("RLE: 1x3, 2x2, 3x4, 1x2"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
