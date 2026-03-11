@@ -38,7 +38,10 @@ impl Formatter {
             Item::TypeDef(td) => {
                 self.indent(level);
                 if !td.type_params.is_empty() {
-                self.out.push_str(&format!("type {}[{}] {{ ", td.name, td.type_params.join(", ")));
+                let tp_strs: Vec<String> = td.type_params.iter().map(|tp| {
+                    if let Some(ref b) = tp.bound { format!("{}: {}", tp.name, b) } else { tp.name.clone() }
+                }).collect();
+                self.out.push_str(&format!("type {}[{}] {{ ", td.name, tp_strs.join(", ")));
             } else {
                 self.out.push_str(&format!("type {} {{ ", td.name));
             }
@@ -105,7 +108,10 @@ impl Formatter {
         self.indent(level);
         self.out.push_str(&format!("fn {}", f.name));
         if !f.type_params.is_empty() {
-            self.out.push_str(&format!("[{}]", f.type_params.join(", ")));
+            let tp_strs: Vec<String> = f.type_params.iter().map(|tp| {
+                if let Some(ref b) = tp.bound { format!("{}: {}", tp.name, b) } else { tp.name.clone() }
+            }).collect();
+            self.out.push_str(&format!("[{}]", tp_strs.join(", ")));
         }
         for p in &f.params {
             self.out.push_str(&format!(" {}:{}", p.name, format_type_expr(&p.ty)));

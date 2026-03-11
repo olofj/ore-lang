@@ -4259,7 +4259,7 @@ impl<'ctx> CodeGen<'ctx> {
         for (i, tp) in generic_fn.type_params.iter().enumerate() {
             // Match type params to arg kinds based on param positions
             // Find which argument position uses this type param
-            let concrete = if let Some(kind) = self.find_concrete_for_type_param(tp, &generic_fn.params, arg_kinds) {
+            let concrete = if let Some(kind) = self.find_concrete_for_type_param(&tp.name, &generic_fn.params, arg_kinds) {
                 kind
             } else if i < arg_kinds.len() {
                 // Fallback: positional mapping
@@ -4267,7 +4267,7 @@ impl<'ctx> CodeGen<'ctx> {
             } else {
                 TypeExpr::Named("Int".to_string()) // default fallback
             };
-            subst.insert(tp.clone(), concrete);
+            subst.insert(tp.name.clone(), concrete);
         }
 
         // Create specialized FnDef

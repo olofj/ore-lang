@@ -273,7 +273,7 @@ impl Parser {
 
     // ── Type Definitions ──
 
-    fn parse_record_body(&mut self, name: String, type_params: Vec<String>) -> Result<TypeDef, ParseError> {
+    fn parse_record_body(&mut self, name: String, type_params: Vec<TypeParam>) -> Result<TypeDef, ParseError> {
         self.expect(&Token::LBrace)?;
         self.skip_whitespace_tokens();
         let mut fields = Vec::new();
@@ -358,27 +358,39 @@ impl Parser {
     }
 
     /// Parse optional type parameters: [T, U, V]
-    fn parse_optional_type_params(&mut self) -> Result<Vec<String>, ParseError> {
+    fn parse_optional_type_params(&mut self) -> Result<Vec<TypeParam>, ParseError> {
         if self.peek() != &Token::LBracket {
             return Ok(Vec::new());
         }
         self.advance(); // consume '['
         let mut params = Vec::new();
         if self.peek() != &Token::RBracket {
-            match self.peek().clone() {
-                Token::Ident(name) => { self.advance(); params.push(name); }
-                _ => return Err(self.error("expected type parameter name".into())),
-            }
+            params.push(self.parse_type_param()?);
             while self.peek() == &Token::Comma {
                 self.advance();
-                match self.peek().clone() {
-                    Token::Ident(name) => { self.advance(); params.push(name); }
-                    _ => return Err(self.error("expected type parameter name".into())),
-                }
+                params.push(self.parse_type_param()?);
             }
         }
         self.expect(&Token::RBracket)?;
         Ok(params)
+    }
+
+    fn parse_type_param(&mut self) -> Result<TypeParam, ParseError> {
+        let name = match self.peek().clone() {
+            Token::Ident(n) => { self.advance(); n }
+            _ => return Err(self.error("expected type parameter name".into())),
+        };
+        // Check for trait bound: T: TraitName
+        let bound = if self.peek() == &Token::Colon {
+            self.advance(); // consume ':'
+            match self.peek().clone() {
+                Token::Ident(b) => { self.advance(); Some(b) }
+                _ => return Err(self.error("expected trait name after ':'".into())),
+            }
+        } else {
+            None
+        };
+        Ok(TypeParam { name, bound })
     }
 
     fn parse_type_expr(&mut self) -> Result<TypeExpr, ParseError> {

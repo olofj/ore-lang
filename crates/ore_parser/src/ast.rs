@@ -40,7 +40,7 @@ pub struct TraitMethod {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeDef {
     pub name: String,
-    pub type_params: Vec<String>,
+    pub type_params: Vec<TypeParam>,
     pub fields: Vec<FieldDef>,
 }
 
@@ -63,9 +63,15 @@ pub struct Variant {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct TypeParam {
+    pub name: String,
+    pub bound: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct FnDef {
     pub name: String,
-    pub type_params: Vec<String>,
+    pub type_params: Vec<TypeParam>,
     pub params: Vec<Param>,
     pub ret_type: Option<TypeExpr>,
     pub body: Block,
