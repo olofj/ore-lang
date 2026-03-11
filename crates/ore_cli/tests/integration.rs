@@ -889,3 +889,17 @@ fn generics_monomorphize() {
         "10", "abab",
     ]);
 }
+
+#[test]
+fn lists_string_compare() {
+    let out = run_ore("lists/string_compare.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "true",     // any: has_bob
+        "true",     // all: all_short
+        "1",        // filter: just_alice.len()
+        "charlie",  // find
+        "3",        // count: != bob
+        "string_compare ok",
+    ]);
+}

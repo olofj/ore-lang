@@ -1232,6 +1232,26 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((val, ValKind::Str));
                 }
 
+                // If both sides are strings but represented as i64 (e.g. in lambdas), convert to pointers
+                let (lhs, rhs) = if lk == ValKind::Str && _rk == ValKind::Str {
+                    let l = if lhs.is_int_value() {
+                        bld!(self.builder.build_int_to_ptr(
+                            lhs.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()),
+                            "l2p"
+                        ))?.into()
+                    } else { lhs };
+                    let r = if rhs.is_int_value() {
+                        bld!(self.builder.build_int_to_ptr(
+                            rhs.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()),
+                            "r2p"
+                        ))?.into()
+                    } else { rhs };
+                    (l, r)
+                } else {
+                    (lhs, rhs)
+                };
                 let result = self.compile_binop(*op, lhs, rhs)?;
                 // Determine result kind
                 let result_kind = match op {
@@ -2643,7 +2663,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone();
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
-                        let kinds: Vec<ValKind> = vec![elem_kind.unwrap_or(ValKind::Int)];
+                        let kinds: Vec<ValKind> = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
                         self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
@@ -2665,7 +2685,17 @@ impl<'ctx> CodeGen<'ctx> {
                     rt, &[list_val.into(), fn_ptr.into(), env_ptr.into(), default_val.into()], "find"
                 ))?;
                 let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                let ek = elem_kind.unwrap_or(ValKind::Int);
+                match ek {
+                    ValKind::Str | ValKind::List | ValKind::Map => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            val.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()), "find2p"
+                        ))?;
+                        Ok((ptr.into(), ek))
+                    }
+                    _ => Ok((val, ek))
+                }
             }
             "join" => {
                 // join(separator_str)
@@ -2786,14 +2816,34 @@ impl<'ctx> CodeGen<'ctx> {
                 let zero = self.context.i64_type().const_int(0, false);
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), zero.into()], "first"))?;
                 let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                let ek = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                match ek {
+                    ValKind::Str | ValKind::List | ValKind::Map => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            val.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()), "first2p"
+                        ))?;
+                        Ok((ptr.into(), ek))
+                    }
+                    _ => Ok((val, ek))
+                }
             }
             "last" => {
                 let rt = self.module.get_function("ore_list_get").unwrap();
                 let neg_one = self.context.i64_type().const_int((-1i64) as u64, true);
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), neg_one.into()], "last"))?;
                 let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                let ek = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                match ek {
+                    ValKind::Str | ValKind::List | ValKind::Map => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            val.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()), "last2p"
+                        ))?;
+                        Ok((ptr.into(), ek))
+                    }
+                    _ => Ok((val, ek))
+                }
             }
             "min" => {
                 let rt = self.module.get_function("ore_list_min").unwrap();

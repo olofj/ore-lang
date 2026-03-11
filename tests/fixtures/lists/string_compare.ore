@@ -1,0 +1,26 @@
+-- Test string comparison in lambdas
+
+fn main
+  names := ["alice", "bob", "charlie", "dave"]
+
+  -- any with string equality
+  has_bob := names.any(n => n == "bob")
+  print has_bob
+
+  -- all with string comparison
+  all_short := names.all(n => n.len() < 10)
+  print all_short
+
+  -- filter with string equality
+  just_alice := names.filter(n => n == "alice")
+  print just_alice.len()
+
+  -- find with string comparison
+  found := names.find(n => n == "charlie")
+  print found
+
+  -- count with string equality
+  c := names.count(n => n != "bob")
+  print c
+
+  print "string_compare ok"
