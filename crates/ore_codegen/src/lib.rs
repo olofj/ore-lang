@@ -2753,6 +2753,9 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Record(ref name) => {
                 self.record_to_str(val, name)
             }
+            ValKind::Enum(ref name) => {
+                self.enum_to_str(val, name)
+            }
             _ => {
                 // Fallback: convert as int
                 let int_to_str = self.module.get_function("ore_int_to_str").unwrap();
@@ -2823,6 +2826,135 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(current)
     }
 
+    fn enum_to_str(
+        &mut self,
+        val: BasicValueEnum<'ctx>,
+        enum_name: &str,
+    ) -> Result<PointerValue<'ctx>, CodeGenError> {
+        let enum_info = self.enums.get(enum_name).ok_or_else(|| CodeGenError {
+            msg: format!("undefined enum '{}' for display", enum_name),
+        })?;
+        let enum_type = enum_info.enum_type;
+        let variants: Vec<_> = enum_info.variants.iter().map(|v| {
+            (v.name.clone(), v.tag, v.field_names.clone(), v.field_kinds.clone(), v.payload_type)
+        }).collect();
+
+        let str_new = self.module.get_function("ore_str_new").unwrap();
+        let concat_fn = self.module.get_function("ore_str_concat").unwrap();
+        let release_fn = self.module.get_function("ore_str_release").unwrap();
+
+        // Store enum to alloca
+        let alloca = bld!(self.builder.build_alloca(enum_type, "enum_tmp"))?;
+        bld!(self.builder.build_store(alloca, val))?;
+
+        // Result alloca (must be before the switch)
+        let result_alloca = bld!(self.builder.build_alloca(self.ptr_type(), "enum_str_result"))?;
+
+        // Read tag
+        let tag_ptr = bld!(self.builder.build_struct_gep(enum_type, alloca, 0, "tag_ptr"))?;
+        let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+
+        let current_fn = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+
+        // Create merge block and default block
+        let merge_bb = self.context.append_basic_block(current_fn, "enum_str_merge");
+        let default_bb = self.context.append_basic_block(current_fn, "enum_str_default");
+
+        // Build variant blocks first (collect cases), then build switch in entry block
+        let mut cases = Vec::new();
+        for (vname, vtag, field_names, field_kinds, payload_type) in &variants {
+            let bb = self.context.append_basic_block(current_fn, &format!("enum_str_{}", vname));
+            self.builder.position_at_end(bb);
+
+            if field_names.is_empty() {
+                let name_ptr = self.builder_string_const(vname);
+                let name_str = bld!(self.builder.build_call(str_new, &[name_ptr.into(), self.context.i32_type().const_int(vname.len() as u64, false).into()], "s"))?;
+                let name_val = self.call_result_to_value(name_str)?.into_pointer_value();
+                bld!(self.builder.build_store(result_alloca, name_val))?;
+            } else {
+                let prefix = format!("{}(", vname);
+                let prefix_ptr = self.builder_string_const(&prefix);
+                let prefix_len = self.context.i32_type().const_int(prefix.len() as u64, false);
+                let prefix_str = bld!(self.builder.build_call(str_new, &[prefix_ptr.into(), prefix_len.into()], "s"))?;
+                let mut current = self.call_result_to_value(prefix_str)?.into_pointer_value();
+
+                let data_ptr = bld!(self.builder.build_struct_gep(enum_type, alloca, 1, "data_ptr"))?;
+                let payload_ptr = bld!(self.builder.build_pointer_cast(data_ptr, self.ptr_type(), "payload"))?;
+
+                for (i, (fname, fkind)) in field_names.iter().zip(field_kinds.iter()).enumerate() {
+                    let label = if i == 0 { format!("{}: ", fname) } else { format!(", {}: ", fname) };
+                    let label_ptr = self.builder_string_const(&label);
+                    let label_len = self.context.i32_type().const_int(label.len() as u64, false);
+                    let label_str = bld!(self.builder.build_call(str_new, &[label_ptr.into(), label_len.into()], "s"))?;
+                    let label_val = self.call_result_to_value(label_str)?.into_pointer_value();
+                    let next = bld!(self.builder.build_call(concat_fn, &[current.into(), label_val.into()], "cat"))?;
+                    let next_ptr = self.call_result_to_value(next)?.into_pointer_value();
+                    bld!(self.builder.build_call(release_fn, &[current.into()], ""))?;
+                    bld!(self.builder.build_call(release_fn, &[label_val.into()], ""))?;
+                    current = next_ptr;
+
+                    let field_ptr = bld!(self.builder.build_struct_gep(*payload_type, payload_ptr, i as u32, &format!("f_{}", fname)))?;
+                    let field_ty = payload_type.get_field_type_at_index(i as u32).unwrap();
+                    let field_val = bld!(self.builder.build_load(field_ty, field_ptr, fname))?;
+                    let field_str = self.value_to_str(field_val, fkind.clone())?;
+
+                    let next2 = bld!(self.builder.build_call(concat_fn, &[current.into(), field_str.into()], "cat"))?;
+                    let next2_ptr = self.call_result_to_value(next2)?.into_pointer_value();
+                    bld!(self.builder.build_call(release_fn, &[current.into()], ""))?;
+                    bld!(self.builder.build_call(release_fn, &[field_str.into()], ""))?;
+                    current = next2_ptr;
+                }
+
+                let suffix_ptr = self.builder_string_const(")");
+                let suffix_str = bld!(self.builder.build_call(str_new, &[suffix_ptr.into(), self.context.i32_type().const_int(1, false).into()], "s"))?;
+                let suffix_val = self.call_result_to_value(suffix_str)?.into_pointer_value();
+                let final_str = bld!(self.builder.build_call(concat_fn, &[current.into(), suffix_val.into()], "cat"))?;
+                let final_ptr = self.call_result_to_value(final_str)?.into_pointer_value();
+                bld!(self.builder.build_call(release_fn, &[current.into()], ""))?;
+                bld!(self.builder.build_call(release_fn, &[suffix_val.into()], ""))?;
+                bld!(self.builder.build_store(result_alloca, final_ptr))?;
+            }
+
+            bld!(self.builder.build_unconditional_branch(merge_bb))?;
+            cases.push((self.context.i8_type().const_int(*vtag as u64, false), bb));
+        }
+
+        // Default block
+        self.builder.position_at_end(default_bb);
+        let unknown_s = self.builder_string_const("<unknown>");
+        let unknown_str = bld!(self.builder.build_call(str_new, &[unknown_s.into(), self.context.i32_type().const_int(9, false).into()], "s"))?;
+        let unknown_ptr = self.call_result_to_value(unknown_str)?.into_pointer_value();
+        bld!(self.builder.build_store(result_alloca, unknown_ptr))?;
+        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+        // Now we need to insert the switch. The entry block where we read the tag
+        // needs a terminator (the switch). But we already moved the builder away.
+        // We need to go back to the entry block and add the switch there.
+        // The entry block is the one containing the tag load. Let's use a dedicated block.
+        // Actually, the tag load was in the current insert block before we started building variant blocks.
+        // We need to split: create a switch block right after the tag load.
+
+        // The trick: the alloca + tag load were in the original block. We need to terminate
+        // that block with a branch to a switch block. But the original block might already
+        // have other code. Let's just use an unconditional branch from wherever we were
+        // to a new switch block.
+
+        // Actually, the simplest approach: the entry block (where tag was loaded) doesn't have
+        // a terminator yet. We need to go back there and add one.
+        // But we've moved the builder. The tag was loaded in the block that was current
+        // when enum_to_str was called. That block now has no terminator.
+
+        // Let's find that block: it's the one containing the alloca instruction
+        let entry_block = alloca.as_instruction_value().unwrap().get_parent().unwrap();
+        self.builder.position_at_end(entry_block);
+        bld!(self.builder.build_switch(tag, default_bb, &cases))?;
+
+        // Position at merge for subsequent code
+        self.builder.position_at_end(merge_bb);
+        let result = bld!(self.builder.build_load(self.ptr_type(), result_alloca, "enum_str_val"))?.into_pointer_value();
+        Ok(result)
+    }
+
     fn compile_print(
         &mut self,
         val: BasicValueEnum<'ctx>,
@@ -2853,6 +2985,13 @@ impl<'ctx> CodeGen<'ctx> {
             }
             ValKind::Record(ref name) => {
                 let s = self.record_to_str(val, name)?;
+                let pf = self.module.get_function("ore_str_print").unwrap();
+                bld!(self.builder.build_call(pf, &[s.into()], ""))?;
+                let release = self.module.get_function("ore_str_release").unwrap();
+                bld!(self.builder.build_call(release, &[s.into()], ""))?;
+            }
+            ValKind::Enum(ref name) => {
+                let s = self.enum_to_str(val, name)?;
                 let pf = self.module.get_function("ore_str_print").unwrap();
                 bld!(self.builder.build_call(pf, &[s.into()], ""))?;
                 let release = self.module.get_function("ore_str_release").unwrap();

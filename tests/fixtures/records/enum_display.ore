@@ -1,0 +1,16 @@
+type Shape
+  Circle(radius: Float)
+  Rect(width: Float, height: Float)
+
+type Color
+  Red()
+  Green()
+  Blue()
+
+fn main
+  c := Circle(radius: 5.0)
+  print c
+  r := Rect(width: 3.0, height: 4.0)
+  print r
+  print Red()
+  print Blue()

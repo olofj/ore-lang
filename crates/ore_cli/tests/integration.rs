@@ -342,3 +342,15 @@ fn records_display() {
         "Point(x: 3, y: 4)",
     ]);
 }
+
+#[test]
+fn enum_display() {
+    let out = run_ore("records/enum_display.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "Circle(radius: 5.0)",
+        "Rect(width: 3.0, height: 4.0)",
+        "Red",
+        "Blue",
+    ]);
+}
