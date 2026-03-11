@@ -1,0 +1,98 @@
+-- Showcase 583: Simple SSA (Static Single Assignment) Construction
+
+fn main
+  print "SSA Construction:"
+  print ""
+
+  -- Part 1: Original program (before SSA)
+  print "=== Part 1: Original Program ==="
+  print "  x = 1"
+  print "  x = x + 2"
+  print "  y = x * 3"
+  print "  if cond:"
+  print "    x = 10"
+  print "  else:"
+  print "    x = 20"
+  print "  z = x + y"
+
+  -- Part 2: Variable versions
+  print ""
+  print "=== Part 2: SSA Renaming ==="
+  mut var_names := ["x", "x", "y", "x", "x", "x", "z"]
+  mut var_versions := [1, 2, 1, 3, 4, 5, 1]
+  mut var_defs := ["1", "x_1 + 2", "x_2 * 3", "10", "20", "phi(x_3, x_4)", "x_5 + y_1"]
+  num_vars := 7
+
+  for i in range(0, num_vars)
+    print "  {var_names[i]}_{var_versions[i]} = {var_defs[i]}"
+
+  -- Part 3: Basic blocks
+  print ""
+  print "=== Part 3: Basic Blocks ==="
+  mut bb_names := ["BB0 (entry)", "BB1 (then)", "BB2 (else)", "BB3 (merge)"]
+  mut bb_start := [0, 3, 4, 5]
+  mut bb_end := [3, 4, 5, 7]
+  num_blocks := 4
+
+  for b in range(0, num_blocks)
+    print "  {bb_names[b]}:"
+    for i in range(bb_start[b], bb_end[b])
+      print "    {var_names[i]}_{var_versions[i]} = {var_defs[i]}"
+
+  -- Part 4: Phi functions
+  print ""
+  print "=== Part 4: Phi Functions ==="
+  print "  BB3 has phi function:"
+  print "    x_5 = phi(x_3 from BB1, x_4 from BB2)"
+  print "  Phi needed because x is defined in both branches"
+
+  -- Part 5: Dominance analysis
+  print ""
+  print "=== Part 5: Dominance Tree ==="
+  mut dom_parent := [-1, 0, 0, 0]
+  print "  BB0 dominates: BB1, BB2, BB3"
+  print "  BB1 dominates: (none)"
+  print "  BB2 dominates: (none)"
+  print "  BB3 dominates: (none)"
+
+  -- Dominance frontier
+  print "  Dominance frontiers:"
+  print "    DF(BB0) = empty"
+  print "    DF(BB1) = (BB3)"
+  print "    DF(BB2) = (BB3)"
+  print "    DF(BB3) = empty"
+
+  -- Part 6: Use-def chains
+  print ""
+  print "=== Part 6: Use-Def Chains ==="
+  print "  x_1: defined in BB0, used by x_2"
+  print "  x_2: defined in BB0, used by y_1"
+  print "  y_1: defined in BB0, used by z_1"
+  print "  x_3: defined in BB1, used by x_5 (phi)"
+  print "  x_4: defined in BB2, used by x_5 (phi)"
+  print "  x_5: defined in BB3, used by z_1"
+  print "  z_1: defined in BB3, used by (output)"
+
+  -- Part 7: Constant propagation on SSA
+  print ""
+  print "=== Part 7: Optimization ==="
+  print "  x_1 = 1 (constant)"
+  print "  x_2 = 1 + 2 = 3 (folded)"
+  print "  y_1 = 3 * 3 = 9 (folded)"
+  x2_val := 1 + 2
+  y1_val := x2_val * 3
+  print "  x_3 = 10, x_4 = 20 (both constant)"
+  print "  x_5 = phi(10, 20) -> not constant (depends on branch)"
+  print "  Optimized values: x_2={x2_val}, y_1={y1_val}"
+
+  -- Part 8: Statistics
+  print ""
+  print "=== Part 8: Statistics ==="
+  print "  Original variables: 3 (x, y, z)"
+  print "  SSA versions: {num_vars}"
+  print "  Basic blocks: {num_blocks}"
+  print "  Phi functions: 1"
+  print "  Constants found: 4"
+
+  print ""
+  print "SSA construction: renaming, basic blocks, phi functions, dominance, use-def chains, optimization."

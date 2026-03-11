@@ -1,0 +1,122 @@
+-- Showcase 589: Simple Neural Architecture Search
+
+fn main
+  print "Neural Architecture Search:"
+  print ""
+
+  -- Part 1: Search space
+  print "=== Part 1: Search Space ==="
+  mut layer_types := ["conv3x3", "conv5x5", "maxpool", "avgpool", "skip", "dense"]
+  num_layer_types := 6
+  max_layers := 5
+  print "  Layer types: {num_layer_types}"
+  print "  Max layers: {max_layers}"
+  for i in range(0, num_layer_types)
+    print "    {i}: {layer_types[i]}"
+
+  -- Part 2: Candidate architectures (encoded as layer indices)
+  print ""
+  print "=== Part 2: Candidate Architectures ==="
+  -- 6 candidates, each with 5 layers
+  mut arch_l1 := [0, 1, 0, 0, 2, 5]
+  mut arch_l2 := [0, 0, 1, 5, 0, 0]
+  mut arch_l3 := [2, 2, 0, 0, 0, 2]
+  mut arch_l4 := [5, 0, 2, 2, 5, 5]
+  mut arch_l5 := [5, 5, 5, 5, 5, 5]
+  num_archs := 6
+
+  -- Pre-computed accuracy scores (simulated, deterministic)
+  mut arch_acc := [87, 82, 85, 78, 91, 84]
+  -- Pre-computed parameter counts (thousands)
+  mut arch_params := [320, 480, 410, 150, 280, 350]
+  -- Pre-computed latency (ms)
+  mut arch_latency := [12, 18, 15, 8, 10, 14]
+
+  for a in range(0, num_archs)
+    l1 := arch_l1[a]
+    l2 := arch_l2[a]
+    l3 := arch_l3[a]
+    l4 := arch_l4[a]
+    l5 := arch_l5[a]
+    print "  Arch-{a}: [{layer_types[l1]}, {layer_types[l2]}, {layer_types[l3]}, {layer_types[l4]}, {layer_types[l5]}]"
+    print "    Accuracy: {arch_acc[a]}%, Params: {arch_params[a]}K, Latency: {arch_latency[a]}ms"
+
+  -- Part 3: Pareto frontier
+  print ""
+  print "=== Part 3: Pareto Frontier ==="
+  -- A point is Pareto optimal if no other point is better in all objectives
+  mut pareto := [0, 0, 0, 0, 0, 0]
+  for i in range(0, num_archs)
+    mut dominated := 0
+    for j in range(0, num_archs)
+      if i != j
+        -- j dominates i if j is >= in accuracy and <= in params and latency, with at least one strict
+        if arch_acc[j] >= arch_acc[i] and arch_params[j] <= arch_params[i] and arch_latency[j] <= arch_latency[i]
+          if arch_acc[j] > arch_acc[i] or arch_params[j] < arch_params[i] or arch_latency[j] < arch_latency[i]
+            dominated = 1
+    if dominated == 0
+      pareto[i] = 1
+      print "  Pareto optimal: Arch-{i} (acc={arch_acc[i]}%, params={arch_params[i]}K, lat={arch_latency[i]}ms)"
+
+  mut pareto_count := 0
+  for i in range(0, num_archs)
+    if pareto[i] == 1
+      pareto_count = pareto_count + 1
+  print "  Pareto set size: {pareto_count}"
+
+  -- Part 4: Tournament selection
+  print ""
+  print "=== Part 4: Tournament Selection ==="
+  -- Pairs: (0,1), (2,3), (4,5) - pick higher accuracy
+  mut winners := [0, 0, 0]
+  if arch_acc[0] >= arch_acc[1]
+    winners[0] = 0
+  else
+    winners[0] = 1
+  if arch_acc[2] >= arch_acc[3]
+    winners[1] = 2
+  else
+    winners[1] = 3
+  if arch_acc[4] >= arch_acc[5]
+    winners[2] = 4
+  else
+    winners[2] = 5
+  for i in range(0, 3)
+    w := winners[i]
+    print "  Tournament {i}: Arch-{w} wins (acc={arch_acc[w]}%)"
+
+  -- Part 5: Best architecture
+  print ""
+  print "=== Part 5: Best Architecture ==="
+  mut best_idx := 0
+  mut best_acc := 0
+  for i in range(0, num_archs)
+    if arch_acc[i] > best_acc
+      best_acc = arch_acc[i]
+      best_idx = i
+  print "  Best: Arch-{best_idx}"
+  print "  Accuracy: {arch_acc[best_idx]}%"
+  print "  Parameters: {arch_params[best_idx]}K"
+  print "  Latency: {arch_latency[best_idx]}ms"
+
+  -- Part 6: Efficiency score
+  print ""
+  print "=== Part 6: Efficiency Scores ==="
+  for i in range(0, num_archs)
+    efficiency := arch_acc[i] * 1000 / (arch_params[i] + arch_latency[i])
+    print "  Arch-{i}: efficiency={efficiency}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Architectures evaluated: {num_archs}"
+  print "  Pareto optimal: {pareto_count}"
+  print "  Best accuracy: {best_acc}%"
+  mut total_params := 0
+  for i in range(0, num_archs)
+    total_params = total_params + arch_params[i]
+  avg_params := total_params / num_archs
+  print "  Avg parameters: {avg_params}K"
+
+  print ""
+  print "Neural architecture search: candidates, Pareto frontier, tournament, efficiency scores."

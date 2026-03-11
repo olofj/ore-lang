@@ -1,0 +1,109 @@
+-- Showcase 582: Bloom Filter Applications (Spell Checker, URL Dedup)
+
+fn main
+  print "Bloom Filter Applications:"
+  print ""
+
+  -- Part 1: Bloom filter setup
+  print "=== Part 1: Bloom Filter Setup ==="
+  filter_size := 32
+  num_hashes := 3
+  mut bits := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  print "  Filter size: {filter_size} bits"
+  print "  Hash functions: {num_hashes}"
+  print "  All bits initialized to 0"
+
+  -- Part 2: Hash functions (simple deterministic)
+  print ""
+  print "=== Part 2: Spell Checker Dictionary ==="
+  -- Insert words using simple hash: use word lengths and character sums
+  mut dict_words := ["hello", "world", "apple", "orange", "grape", "banana", "cherry", "melon"]
+  num_dict := 8
+  -- Pre-computed hash positions for each word (3 hashes each, mod 32)
+  mut h1 := [5, 15, 1, 22, 17, 2, 8, 13]
+  mut h2 := [12, 28, 7, 31, 25, 19, 14, 21]
+  mut h3 := [20, 3, 16, 9, 30, 11, 27, 6]
+
+  for i in range(0, num_dict)
+    bits[h1[i]] = 1
+    bits[h2[i]] = 1
+    bits[h3[i]] = 1
+    print "  Added '{dict_words[i]}' -> bits [{h1[i]}, {h2[i]}, {h3[i]}]"
+
+  -- Count set bits
+  mut set_bits := 0
+  for i in range(0, filter_size)
+    if bits[i] == 1
+      set_bits = set_bits + 1
+  print "  Bits set: {set_bits}/{filter_size}"
+
+  -- Part 3: Spell checking
+  print ""
+  print "=== Part 3: Spell Checking ==="
+  mut check_words := ["hello", "world", "appple", "ornage", "grape", "banan"]
+  mut check_h1 := [5, 15, 4, 23, 17, 10]
+  mut check_h2 := [12, 28, 18, 26, 25, 24]
+  mut check_h3 := [20, 3, 29, 0, 30, 10]
+  num_checks := 6
+
+  mut correct := 0
+  mut misspelled := 0
+  for i in range(0, num_checks)
+    p1 := check_h1[i]
+    p2 := check_h2[i]
+    p3 := check_h3[i]
+    if bits[p1] == 1 and bits[p2] == 1 and bits[p3] == 1
+      print "  '{check_words[i]}': probably correct"
+      correct = correct + 1
+    else
+      print "  '{check_words[i]}': misspelled"
+      misspelled = misspelled + 1
+  print "  Correct: {correct}, Misspelled: {misspelled}"
+
+  -- Part 4: URL deduplication
+  print ""
+  print "=== Part 4: URL Deduplication ==="
+  mut url_bits := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  mut urls := ["example.com", "test.org", "demo.net", "example.com", "foo.io", "test.org", "bar.dev", "foo.io"]
+  mut url_h1 := [2, 10, 18, 2, 26, 10, 6, 26]
+  mut url_h2 := [9, 21, 29, 9, 5, 21, 14, 5]
+  num_urls := 8
+
+  mut new_urls := 0
+  mut dup_urls := 0
+  for i in range(0, num_urls)
+    p1 := url_h1[i]
+    p2 := url_h2[i]
+    if url_bits[p1] == 1 and url_bits[p2] == 1
+      print "  '{urls[i]}': duplicate (skip)"
+      dup_urls = dup_urls + 1
+    else
+      url_bits[p1] = 1
+      url_bits[p2] = 1
+      print "  '{urls[i]}': new (crawl)"
+      new_urls = new_urls + 1
+  print "  New URLs: {new_urls}, Duplicates: {dup_urls}"
+
+  -- Part 5: False positive analysis
+  print ""
+  print "=== Part 5: False Positive Analysis ==="
+  fill_ratio := set_bits * 100 / filter_size
+  print "  Fill ratio: {fill_ratio}%"
+  print "  Expected FP rate increases with fill ratio"
+  if fill_ratio < 50
+    print "  Status: Low false positive rate"
+  else
+    print "  Status: Consider larger filter"
+
+  -- Part 6: Statistics
+  print ""
+  print "=== Part 6: Statistics ==="
+  print "  Dictionary words: {num_dict}"
+  print "  Spell checks: {num_checks}"
+  print "  URLs processed: {num_urls}"
+  print "  New URLs: {new_urls}"
+  print "  Duplicate URLs: {dup_urls}"
+
+  print ""
+  print "Bloom filter: spell checker, URL dedup, false positive analysis."

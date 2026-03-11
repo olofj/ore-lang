@@ -1,0 +1,111 @@
+-- Showcase 585: Simple Database Transaction Log (WAL)
+
+fn main
+  print "Database Transaction Log (WAL):"
+  print ""
+
+  -- Part 1: WAL setup
+  print "=== Part 1: WAL Setup ==="
+  mut log_lsn := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  mut log_txn := [1, 1, 2, 1, 2, 3, 3, 2, 1, 3]
+  mut log_ops := ["BEGIN", "WRITE", "BEGIN", "WRITE", "WRITE", "BEGIN", "WRITE", "COMMIT", "COMMIT", "COMMIT"]
+  mut log_tables := ["", "users", "", "orders", "items", "", "accounts", "", "", ""]
+  mut log_keys := ["", "id=1", "", "id=5", "id=3", "", "id=7", "", "", ""]
+  mut log_values := ["", "name=Alice", "", "total=100", "qty=3", "", "balance=500", "", "", ""]
+  num_entries := 10
+  print "  WAL initialized with {num_entries} entries"
+  print "  Log format: [LSN] TXN-id OP table key=value"
+
+  -- Part 2: Write log entries
+  print ""
+  print "=== Part 2: WAL Entries ==="
+  for i in range(0, num_entries)
+    if log_ops[i] == "BEGIN"
+      print "  [{log_lsn[i]}] TXN-{log_txn[i]} BEGIN"
+    else if log_ops[i] == "COMMIT"
+      print "  [{log_lsn[i]}] TXN-{log_txn[i]} COMMIT"
+    else
+      print "  [{log_lsn[i]}] TXN-{log_txn[i]} WRITE {log_tables[i]} {log_keys[i]} -> {log_values[i]}"
+
+  -- Part 3: Transaction tracking
+  print ""
+  print "=== Part 3: Transaction Status ==="
+  mut txn_ids := [1, 2, 3]
+  mut txn_status := ["active", "active", "active"]
+  num_txns := 3
+
+  for i in range(0, num_entries)
+    for t in range(0, num_txns)
+      if log_txn[i] == txn_ids[t]
+        if log_ops[i] == "COMMIT"
+          txn_status[t] = "committed"
+
+  for t in range(0, num_txns)
+    print "  TXN-{txn_ids[t]}: {txn_status[t]}"
+
+  -- Part 4: Checkpoint
+  print ""
+  print "=== Part 4: Checkpoint ==="
+  checkpoint_lsn := 6
+  print "  Checkpoint at LSN: {checkpoint_lsn}"
+  print "  Active transactions at checkpoint:"
+  -- At LSN 6: TXN-1 started at 1, TXN-2 started at 3, TXN-3 starts at 6
+  for t in range(0, num_txns)
+    mut started := 0
+    mut committed := 0
+    for i in range(0, num_entries)
+      if log_lsn[i] <= checkpoint_lsn and log_txn[i] == txn_ids[t]
+        if log_ops[i] == "BEGIN"
+          started = 1
+        if log_ops[i] == "COMMIT"
+          committed = 1
+    if started == 1 and committed == 0
+      print "    TXN-{txn_ids[t]}: in progress"
+
+  -- Part 5: Recovery (redo)
+  print ""
+  print "=== Part 5: Recovery (Redo) ==="
+  print "  Recovering from checkpoint at LSN {checkpoint_lsn}:"
+  mut redo_count := 0
+  for i in range(0, num_entries)
+    if log_lsn[i] > checkpoint_lsn and log_ops[i] == "WRITE"
+      print "    Redo LSN {log_lsn[i]}: WRITE {log_tables[i]} {log_keys[i]}"
+      redo_count = redo_count + 1
+  if redo_count == 0
+    print "    No writes to redo after checkpoint"
+  print "  Redo operations: {redo_count}"
+
+  -- Part 6: Log compaction
+  print ""
+  print "=== Part 6: Log Compaction ==="
+  -- Find minimum LSN of committed transactions
+  mut can_compact := 0
+  for i in range(0, num_entries)
+    if log_lsn[i] < checkpoint_lsn
+      can_compact = can_compact + 1
+  print "  Entries before checkpoint: {can_compact}"
+  print "  Entries after checkpoint: {num_entries - can_compact}"
+  print "  Compactable entries: {can_compact}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Log entries: {num_entries}"
+  print "  Transactions: {num_txns}"
+  mut writes := 0
+  mut commits := 0
+  mut begins := 0
+  for i in range(0, num_entries)
+    if log_ops[i] == "WRITE"
+      writes = writes + 1
+    if log_ops[i] == "COMMIT"
+      commits = commits + 1
+    if log_ops[i] == "BEGIN"
+      begins = begins + 1
+  print "  BEGINs: {begins}"
+  print "  WRITEs: {writes}"
+  print "  COMMITs: {commits}"
+  print "  Checkpoint LSN: {checkpoint_lsn}"
+
+  print ""
+  print "WAL: entries, transactions, checkpoint, recovery, compaction."

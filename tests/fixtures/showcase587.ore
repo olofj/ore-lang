@@ -1,0 +1,109 @@
+-- Showcase 587: Simple Message Queue (Producer/Consumer)
+
+fn main
+  print "Message Queue System:"
+  print ""
+
+  -- Part 1: Queue setup
+  print "=== Part 1: Queue Setup ==="
+  queue_capacity := 8
+  mut queue_msgs := ["", "", "", "", "", "", "", ""]
+  mut queue_prio := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut head := 0
+  mut tail := 0
+  mut size := 0
+  print "  Queue capacity: {queue_capacity}"
+  print "  Initial size: {size}"
+
+  -- Part 2: Producers
+  print ""
+  print "=== Part 2: Producing Messages ==="
+  mut prod_msgs := ["order-create", "payment-process", "email-send", "log-write", "cache-invalidate", "notify-user"]
+  mut prod_prio := [3, 5, 2, 1, 4, 3]
+  num_produced := 6
+
+  for i in range(0, num_produced)
+    if size < queue_capacity
+      queue_msgs[tail] = prod_msgs[i]
+      queue_prio[tail] = prod_prio[i]
+      tail = (tail + 1) % queue_capacity
+      size = size + 1
+      print "  Enqueue: '{prod_msgs[i]}' (priority={prod_prio[i]}), size={size}"
+    else
+      print "  Queue full! Dropped: '{prod_msgs[i]}'"
+
+  -- Part 3: Consumers
+  print ""
+  print "=== Part 3: Consuming Messages ==="
+  mut consumed := 0
+  -- Consume 3 messages
+  for c in range(0, 3)
+    if size > 0
+      msg := queue_msgs[head]
+      prio := queue_prio[head]
+      head = (head + 1) % queue_capacity
+      size = size - 1
+      consumed = consumed + 1
+      print "  Dequeue: '{msg}' (priority={prio}), remaining={size}"
+    else
+      print "  Queue empty!"
+  print "  Consumed: {consumed}"
+
+  -- Part 4: Produce more (wrapping)
+  print ""
+  print "=== Part 4: More Production ==="
+  mut more_msgs := ["audit-log", "backup-start", "health-check"]
+  mut more_prio := [2, 4, 1]
+  for i in range(0, 3)
+    if size < queue_capacity
+      queue_msgs[tail] = more_msgs[i]
+      queue_prio[tail] = more_prio[i]
+      tail = (tail + 1) % queue_capacity
+      size = size + 1
+      print "  Enqueue: '{more_msgs[i]}' (priority={more_prio[i]}), size={size}"
+
+  -- Part 5: Priority-based processing
+  print ""
+  print "=== Part 5: Priority Processing ==="
+  -- Find highest priority in current queue
+  mut highest_prio := 0
+  mut highest_idx := head
+  mut idx := head
+  for i in range(0, size)
+    pos := (head + i) % queue_capacity
+    if queue_prio[pos] > highest_prio
+      highest_prio = queue_prio[pos]
+      highest_idx = pos
+  print "  Highest priority in queue: {highest_prio}"
+  print "  Message: '{queue_msgs[highest_idx]}'"
+  print "  Current queue ({size} messages):"
+  for i in range(0, size)
+    pos := (head + i) % queue_capacity
+    print "    [{i}] '{queue_msgs[pos]}' prio={queue_prio[pos]}"
+
+  -- Part 6: Drain queue
+  print ""
+  print "=== Part 6: Drain Queue ==="
+  mut drain_count := 0
+  for c in range(0, 10)
+    if size > 0
+      msg := queue_msgs[head]
+      head = (head + 1) % queue_capacity
+      size = size - 1
+      drain_count = drain_count + 1
+      print "  Processed: '{msg}'"
+  print "  Drained: {drain_count} messages"
+  print "  Queue size: {size}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  total_produced := num_produced + 3
+  total_consumed := consumed + drain_count
+  print "  Total produced: {total_produced}"
+  print "  Total consumed: {total_consumed}"
+  print "  Queue capacity: {queue_capacity}"
+  print "  Final queue size: {size}"
+
+  print ""
+  print "Message queue: producers, consumers, circular buffer, priority processing, drain."

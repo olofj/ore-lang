@@ -7535,6 +7535,139 @@ fn showcase580_numerical_integration() {
 }
 
 #[test]
+fn showcase581_container_orchestration() {
+    let out = run_ore("showcase581.ore");
+    assert!(out.contains("Container Orchestration:"));
+    assert!(out.contains("Scheduled web-app -> node-1"));
+    assert!(out.contains("Scheduled db-primary -> node-1"));
+    assert!(out.contains("Scheduled cache -> node-2"));
+    assert!(out.contains("node-1: CPU 8/8 (100%), MEM 28/32 (87%)"));
+    assert!(out.contains("node-1: 3 pod(s)"));
+    assert!(out.contains("Scheduled: 8"));
+    assert!(out.contains("Failed: 0"));
+    assert!(out.contains("Container orchestration: nodes, pods, first-fit scheduling, utilization, health checks."));
+}
+
+#[test]
+fn showcase582_bloom_filter() {
+    let out = run_ore("showcase582.ore");
+    assert!(out.contains("Bloom Filter Applications:"));
+    assert!(out.contains("Bits set: 24/32"));
+    assert!(out.contains("'hello': probably correct"));
+    assert!(out.contains("'appple': misspelled"));
+    assert!(out.contains("Correct: 3, Misspelled: 3"));
+    assert!(out.contains("New URLs: 5, Duplicates: 3"));
+    assert!(out.contains("Fill ratio: 75%"));
+    assert!(out.contains("Bloom filter: spell checker, URL dedup, false positive analysis."));
+}
+
+#[test]
+fn showcase583_ssa_construction() {
+    let out = run_ore("showcase583.ore");
+    assert!(out.contains("SSA Construction:"));
+    assert!(out.contains("x_5 = phi(x_3, x_4)"));
+    assert!(out.contains("BB0 (entry):"));
+    assert!(out.contains("BB3 has phi function:"));
+    assert!(out.contains("Optimized values: x_2=3, y_1=9"));
+    assert!(out.contains("SSA versions: 7"));
+    assert!(out.contains("Phi functions: 1"));
+    assert!(out.contains("SSA construction: renaming, basic blocks, phi functions, dominance, use-def chains, optimization."));
+}
+
+#[test]
+fn showcase584_reaction_diffusion() {
+    let out = run_ore("showcase584.ore");
+    assert!(out.contains("Reaction-Diffusion System:"));
+    assert!(out.contains("Diffusion rate U: 2"));
+    assert!(out.contains("After diffusion step:"));
+    assert!(out.contains("Feed rate: 4%"));
+    assert!(out.contains("U average: 81"));
+    assert!(out.contains("Pattern type: spots (activator dip in center)"));
+    assert!(out.contains("Reaction-diffusion: grid setup, diffusion, reaction, evolution, pattern analysis."));
+}
+
+#[test]
+fn showcase585_wal_transaction_log() {
+    let out = run_ore("showcase585.ore");
+    assert!(out.contains("Database Transaction Log (WAL):"));
+    assert!(out.contains("[2] TXN-1 WRITE users id=1 -> name=Alice"));
+    assert!(out.contains("TXN-1: committed"));
+    assert!(out.contains("Checkpoint at LSN: 6"));
+    assert!(out.contains("Redo LSN 7: WRITE accounts id=7"));
+    assert!(out.contains("Redo operations: 1"));
+    assert!(out.contains("BEGINs: 3"));
+    assert!(out.contains("WRITEs: 4"));
+    assert!(out.contains("COMMITs: 3"));
+    assert!(out.contains("WAL: entries, transactions, checkpoint, recovery, compaction."));
+}
+
+#[test]
+fn showcase586_quadtree() {
+    let out = run_ore("showcase586.ore");
+    assert!(out.contains("Spatial Indexing (Quadtree):"));
+    assert!(out.contains("A (10,20) -> SW"));
+    assert!(out.contains("NW: 4 points"));
+    assert!(out.contains("SE: 3 points"));
+    assert!(out.contains("Points in range: 5"));
+    assert!(out.contains("Nearest: J (55,55)"));
+    assert!(out.contains("Distance squared: 50"));
+    assert!(out.contains("Quadtree: points, quadrants, subdivision, range query, nearest neighbor."));
+}
+
+#[test]
+fn showcase587_message_queue() {
+    let out = run_ore("showcase587.ore");
+    assert!(out.contains("Message Queue System:"));
+    assert!(out.contains("Enqueue: 'order-create' (priority=3), size=1"));
+    assert!(out.contains("Dequeue: 'order-create' (priority=3), remaining=5"));
+    assert!(out.contains("Consumed: 3"));
+    assert!(out.contains("Highest priority in queue: 4"));
+    assert!(out.contains("Drained: 6 messages"));
+    assert!(out.contains("Total produced: 9"));
+    assert!(out.contains("Total consumed: 9"));
+    assert!(out.contains("Message queue: producers, consumers, circular buffer, priority processing, drain."));
+}
+
+#[test]
+fn showcase588_abstract_interpretation() {
+    let out = run_ore("showcase588.ore");
+    assert!(out.contains("Abstract Interpretation - Constant Propagation:"));
+    assert!(out.contains("c = const(8) (5 + 3)"));
+    assert!(out.contains("e = const(16) (8 * 2)"));
+    assert!(out.contains("h = TOP (phi of 10 and 20 -> different constants)"));
+    assert!(out.contains("Constants found: 7"));
+    assert!(out.contains("Optimization ratio: 70%"));
+    assert!(out.contains("Abstract interpretation: constant propagation, lattice, widening, transfer functions."));
+}
+
+#[test]
+fn showcase589_neural_architecture_search() {
+    let out = run_ore("showcase589.ore");
+    assert!(out.contains("Neural Architecture Search:"));
+    assert!(out.contains("Pareto optimal: Arch-4 (acc=91%, params=280K, lat=10ms)"));
+    assert!(out.contains("Pareto set size: 2"));
+    assert!(out.contains("Tournament 2: Arch-4 wins (acc=91%)"));
+    assert!(out.contains("Best: Arch-4"));
+    assert!(out.contains("Accuracy: 91%"));
+    assert!(out.contains("Avg parameters: 331K"));
+    assert!(out.contains("Neural architecture search: candidates, Pareto frontier, tournament, efficiency scores."));
+}
+
+#[test]
+fn showcase590_petri_net() {
+    let out = run_ore("showcase590.ore");
+    assert!(out.contains("Petri Net Simulation:"));
+    assert!(out.contains("Step 1: fire 'start' (idle->ready)"));
+    assert!(out.contains("Step 15: fire 'finish' (running->done)"));
+    assert!(out.contains("done: 3 token(s)"));
+    assert!(out.contains("finish: fired 3 times"));
+    assert!(out.contains("Token conservation: PASSED"));
+    assert!(out.contains("No enabled transitions - DEADLOCK or complete"));
+    assert!(out.contains("Total steps: 15"));
+    assert!(out.contains("Petri net: places, transitions, firing, reachability, conservation, deadlock detection."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

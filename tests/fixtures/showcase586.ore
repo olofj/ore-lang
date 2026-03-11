@@ -1,0 +1,125 @@
+-- Showcase 586: Spatial Indexing (Quadtree Concepts)
+
+fn main
+  print "Spatial Indexing (Quadtree):"
+  print ""
+
+  -- Part 1: Point data
+  print "=== Part 1: Point Data ==="
+  mut px := [10, 80, 30, 60, 15, 90, 45, 70, 25, 55]
+  mut py := [20, 70, 50, 40, 85, 15, 65, 30, 95, 55]
+  mut names := ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+  num_points := 10
+  bounds := 100
+
+  for i in range(0, num_points)
+    print "  Point {names[i]}: ({px[i]}, {py[i]})"
+
+  -- Part 2: Quadrant assignment (root level)
+  print ""
+  print "=== Part 2: Root Quadrants ==="
+  mid := 50
+  print "  Split at ({mid}, {mid})"
+  mut quad_names := ["NW", "NE", "SW", "SE"]
+  mut quad_counts := [0, 0, 0, 0]
+
+  for i in range(0, num_points)
+    mut q := 0
+    if px[i] < mid and py[i] >= mid
+      q = 0
+    else if px[i] >= mid and py[i] >= mid
+      q = 1
+    else if px[i] < mid and py[i] < mid
+      q = 2
+    else
+      q = 3
+    quad_counts[q] = quad_counts[q] + 1
+    print "  {names[i]} ({px[i]},{py[i]}) -> {quad_names[q]}"
+
+  for q in range(0, 4)
+    print "  {quad_names[q]}: {quad_counts[q]} points"
+
+  -- Part 3: Subdivision (NW quadrant, split at 25,75)
+  print ""
+  print "=== Part 3: Subdivision ==="
+  nw_mid_x := 25
+  nw_mid_y := 75
+  print "  Subdividing NW at ({nw_mid_x}, {nw_mid_y})"
+
+  -- NW quadrant has points with x<50, y>=50
+  mut nw_sub := [0, 0, 0, 0]
+  for i in range(0, num_points)
+    if px[i] < mid and py[i] >= mid
+      if px[i] < nw_mid_x and py[i] >= nw_mid_y
+        nw_sub[0] = nw_sub[0] + 1
+        print "  {names[i]} -> NW.NW"
+      else if px[i] >= nw_mid_x and py[i] >= nw_mid_y
+        nw_sub[1] = nw_sub[1] + 1
+        print "  {names[i]} -> NW.NE"
+      else if px[i] < nw_mid_x and py[i] < nw_mid_y
+        nw_sub[2] = nw_sub[2] + 1
+        print "  {names[i]} -> NW.SW"
+      else
+        nw_sub[3] = nw_sub[3] + 1
+        print "  {names[i]} -> NW.SE"
+
+  -- Part 4: Range query
+  print ""
+  print "=== Part 4: Range Query ==="
+  qx1 := 20
+  qy1 := 30
+  qx2 := 70
+  qy2 := 80
+  print "  Query rect: ({qx1},{qy1}) to ({qx2},{qy2})"
+  mut found := 0
+  for i in range(0, num_points)
+    if px[i] >= qx1 and px[i] <= qx2 and py[i] >= qy1 and py[i] <= qy2
+      print "  Found: {names[i]} ({px[i]},{py[i]})"
+      found = found + 1
+  print "  Points in range: {found}"
+
+  -- Part 5: Nearest neighbor (brute force with distances)
+  print ""
+  print "=== Part 5: Nearest Neighbor ==="
+  target_x := 50
+  target_y := 50
+  print "  Query point: ({target_x}, {target_y})"
+  mut min_dist := 999999
+  mut nearest := 0
+  for i in range(0, num_points)
+    dx := px[i] - target_x
+    dy := py[i] - target_y
+    dist := dx * dx + dy * dy
+    if dist < min_dist
+      min_dist = dist
+      nearest = i
+  print "  Nearest: {names[nearest]} ({px[nearest]},{py[nearest]})"
+  print "  Distance squared: {min_dist}"
+
+  -- Part 6: Tree depth analysis
+  print ""
+  print "=== Part 6: Tree Depth ==="
+  max_per_node := 2
+  print "  Max points per node: {max_per_node}"
+  -- Compute depth needed
+  mut depth := 0
+  mut remaining := num_points
+  for d in range(0, 5)
+    if remaining > max_per_node
+      depth = depth + 1
+      remaining = remaining / 4 + 1
+  print "  Estimated depth: {depth}"
+  print "  Root children: 4"
+  print "  Total nodes (estimated): 5"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Points: {num_points}"
+  print "  Bounds: {bounds}x{bounds}"
+  print "  Tree depth: {depth}"
+  print "  Range query results: {found}"
+  print "  Nearest to ({target_x},{target_y}): {names[nearest]}"
+
+  print ""
+  print "Quadtree: points, quadrants, subdivision, range query, nearest neighbor."

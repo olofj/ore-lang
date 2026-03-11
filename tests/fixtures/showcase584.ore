@@ -1,0 +1,122 @@
+-- Showcase 584: Reaction-Diffusion System (Simple Patterns)
+
+fn main
+  print "Reaction-Diffusion System:"
+  print ""
+
+  -- Part 1: Grid setup (1D for simplicity)
+  print "=== Part 1: Grid Setup ==="
+  grid_size := 16
+  -- U concentration (activator)
+  mut u := [100, 100, 100, 100, 100, 100, 50, 50, 50, 50, 100, 100, 100, 100, 100, 100]
+  -- V concentration (inhibitor)
+  mut v := [0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 0, 0, 0, 0, 0, 0]
+  print "  Grid size: {grid_size}"
+  print "  Initial U (activator): center dip"
+  print "  Initial V (inhibitor): center spike"
+
+  -- Part 2: Diffusion step
+  print ""
+  print "=== Part 2: Diffusion ==="
+  diff_u := 2
+  diff_v := 1
+  print "  Diffusion rate U: {diff_u}"
+  print "  Diffusion rate V: {diff_v}"
+
+  -- Apply diffusion (one step)
+  mut new_u := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut new_v := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  for i in range(1, grid_size - 1)
+    laplacian_u := u[i - 1] - 2 * u[i] + u[i + 1]
+    new_u[i] = u[i] + diff_u * laplacian_u / 10
+    laplacian_v := v[i - 1] - 2 * v[i] + v[i + 1]
+    new_v[i] = v[i] + diff_v * laplacian_v / 10
+
+  -- Boundary conditions
+  new_u[0] = u[0]
+  new_v[0] = v[0]
+  last := grid_size - 1
+  new_u[last] = u[last]
+  new_v[last] = v[last]
+
+  print "  After diffusion step:"
+  print "  U[6]={new_u[6]}, U[7]={new_u[7]}, U[8]={new_u[8]}"
+  print "  V[6]={new_v[6]}, V[7]={new_v[7]}, V[8]={new_v[8]}"
+
+  -- Part 3: Reaction step (Gray-Scott like: simplified)
+  print ""
+  print "=== Part 3: Reaction ==="
+  feed_rate := 4
+  kill_rate := 6
+  print "  Feed rate: {feed_rate}%"
+  print "  Kill rate: {kill_rate}%"
+
+  -- Apply reaction to diffused values
+  for i in range(0, grid_size)
+    ui := new_u[i]
+    vi := new_v[i]
+    -- Simplified reaction: du = feed*(100-u) - u*v/100
+    -- dv = u*v/100 - (feed+kill)*v
+    du := feed_rate * (100 - ui) / 100 - ui * vi / 100
+    dv := ui * vi / 100 - (feed_rate + kill_rate) * vi / 100
+    new_u[i] = ui + du
+    new_v[i] = vi + dv
+    if new_u[i] < 0
+      new_u[i] = 0
+    if new_v[i] < 0
+      new_v[i] = 0
+
+  print "  After reaction step:"
+  print "  U[6]={new_u[6]}, U[7]={new_u[7]}, U[8]={new_u[8]}"
+  print "  V[6]={new_v[6]}, V[7]={new_v[7]}, V[8]={new_v[8]}"
+
+  -- Part 4: Multiple iterations
+  print ""
+  print "=== Part 4: Evolution ==="
+  -- Update u and v
+  for i in range(0, grid_size)
+    u[i] = new_u[i]
+    v[i] = new_v[i]
+
+  -- Run 3 more diffusion-only steps
+  for step in range(0, 3)
+    for i in range(1, grid_size - 1)
+      lap := u[i - 1] - 2 * u[i] + u[i + 1]
+      new_u[i] = u[i] + diff_u * lap / 10
+    new_u[0] = u[0]
+    new_u[last] = u[last]
+    for i in range(0, grid_size)
+      u[i] = new_u[i]
+    print "  Step {step + 1}: U[6]={u[6]}, U[7]={u[7]}, U[8]={u[8]}"
+
+  -- Part 5: Pattern analysis
+  print ""
+  print "=== Part 5: Pattern Analysis ==="
+  mut min_u := 9999
+  mut max_u := -9999
+  mut total_u := 0
+  for i in range(0, grid_size)
+    total_u = total_u + u[i]
+    if u[i] < min_u
+      min_u = u[i]
+    if u[i] > max_u
+      max_u = u[i]
+  avg_u := total_u / grid_size
+  print "  U range: [{min_u}, {max_u}]"
+  print "  U average: {avg_u}"
+  print "  Pattern type: spots (activator dip in center)"
+
+  -- Part 6: Statistics
+  print ""
+  print "=== Part 6: Statistics ==="
+  print "  Grid size: {grid_size}"
+  print "  Diffusion rates: U={diff_u}, V={diff_v}"
+  print "  Feed rate: {feed_rate}%"
+  print "  Kill rate: {kill_rate}%"
+  print "  Total steps: 4"
+  print "  Min U: {min_u}"
+  print "  Max U: {max_u}"
+
+  print ""
+  print "Reaction-diffusion: grid setup, diffusion, reaction, evolution, pattern analysis."

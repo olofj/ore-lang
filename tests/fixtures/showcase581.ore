@@ -1,0 +1,100 @@
+-- Showcase 581: Simple Container Orchestration (Scheduling Pods)
+
+fn main
+  print "Container Orchestration:"
+  print ""
+
+  -- Part 1: Node setup
+  print "=== Part 1: Nodes ==="
+  mut node_names := ["node-1", "node-2", "node-3", "node-4"]
+  mut node_cpu := [8, 4, 16, 8]
+  mut node_mem := [32, 16, 64, 32]
+  mut node_used_cpu := [0, 0, 0, 0]
+  mut node_used_mem := [0, 0, 0, 0]
+  num_nodes := 4
+
+  for i in range(0, num_nodes)
+    print "  {node_names[i]}: {node_cpu[i]} CPU, {node_mem[i]}GB RAM"
+
+  -- Part 2: Pod definitions
+  print ""
+  print "=== Part 2: Pods ==="
+  mut pod_names := ["web-app", "api-server", "db-primary", "cache", "worker-1", "worker-2", "monitor", "gateway"]
+  mut pod_cpu := [2, 2, 4, 1, 2, 2, 1, 1]
+  mut pod_mem := [4, 8, 16, 4, 8, 8, 2, 2]
+  mut pod_node := [-1, -1, -1, -1, -1, -1, -1, -1]
+  num_pods := 8
+
+  for i in range(0, num_pods)
+    print "  {pod_names[i]}: needs {pod_cpu[i]} CPU, {pod_mem[i]}GB RAM"
+
+  -- Part 3: First-fit scheduling
+  print ""
+  print "=== Part 3: Scheduling ==="
+  mut scheduled := 0
+  mut failed := 0
+
+  for p in range(0, num_pods)
+    mut placed := 0
+    for n in range(0, num_nodes)
+      if placed == 0
+        avail_cpu := node_cpu[n] - node_used_cpu[n]
+        avail_mem := node_mem[n] - node_used_mem[n]
+        if avail_cpu >= pod_cpu[p] and avail_mem >= pod_mem[p]
+          pod_node[p] = n
+          node_used_cpu[n] = node_used_cpu[n] + pod_cpu[p]
+          node_used_mem[n] = node_used_mem[n] + pod_mem[p]
+          placed = 1
+          scheduled = scheduled + 1
+          print "  Scheduled {pod_names[p]} -> {node_names[n]}"
+    if placed == 0
+      failed = failed + 1
+      print "  FAILED to schedule {pod_names[p]}"
+
+  -- Part 4: Node utilization
+  print ""
+  print "=== Part 4: Node Utilization ==="
+  for n in range(0, num_nodes)
+    cpu_pct := node_used_cpu[n] * 100 / node_cpu[n]
+    mem_pct := node_used_mem[n] * 100 / node_mem[n]
+    print "  {node_names[n]}: CPU {node_used_cpu[n]}/{node_cpu[n]} ({cpu_pct}%), MEM {node_used_mem[n]}/{node_mem[n]} ({mem_pct}%)"
+
+  -- Part 5: Pod placement summary
+  print ""
+  print "=== Part 5: Placement Summary ==="
+  for n in range(0, num_nodes)
+    mut count := 0
+    for p in range(0, num_pods)
+      if pod_node[p] == n
+        count = count + 1
+    print "  {node_names[n]}: {count} pod(s)"
+
+  -- Part 6: Health checks
+  print ""
+  print "=== Part 6: Health Checks ==="
+  mut health_status := ["healthy", "healthy", "healthy", "healthy", "healthy", "healthy", "healthy", "healthy"]
+  for p in range(0, num_pods)
+    if pod_node[p] >= 0
+      print "  {pod_names[p]}: {health_status[p]}"
+    else
+      print "  {pod_names[p]}: unscheduled"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Nodes: {num_nodes}"
+  print "  Pods: {num_pods}"
+  print "  Scheduled: {scheduled}"
+  print "  Failed: {failed}"
+  mut total_cpu := 0
+  mut total_mem := 0
+  for n in range(0, num_nodes)
+    total_cpu = total_cpu + node_used_cpu[n]
+    total_mem = total_mem + node_used_mem[n]
+  cap_cpu := 8 + 4 + 16 + 8
+  cap_mem := 32 + 16 + 64 + 32
+  print "  Total CPU used: {total_cpu}/{cap_cpu}"
+  print "  Total MEM used: {total_mem}/{cap_mem}"
+
+  print ""
+  print "Container orchestration: nodes, pods, first-fit scheduling, utilization, health checks."

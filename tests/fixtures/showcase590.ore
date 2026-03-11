@@ -1,0 +1,111 @@
+-- Showcase 590: Petri Net Simulation
+
+fn main
+  print "Petri Net Simulation:"
+  print ""
+
+  -- Part 1: Net definition
+  print "=== Part 1: Net Definition ==="
+  mut place_names := ["idle", "ready", "running", "waiting", "done"]
+  mut tokens := [3, 0, 0, 0, 0]
+  num_places := 5
+
+  mut trans_names := ["start", "execute", "wait", "resume", "finish"]
+  num_trans := 5
+
+  print "  Places:"
+  for i in range(0, num_places)
+    print "    {place_names[i]}: {tokens[i]} token(s)"
+  print "  Transitions:"
+  for i in range(0, num_trans)
+    print "    {trans_names[i]}"
+
+  -- Part 2: Incidence matrix (input arcs)
+  print ""
+  print "=== Part 2: Connections ==="
+  -- Input arcs: which place each transition reads from (index, -1 = none)
+  mut input_place := [0, 1, 2, 3, 2]
+  -- Output arcs: which place each transition writes to
+  mut output_place := [1, 2, 3, 2, 4]
+
+  for t in range(0, num_trans)
+    ip := input_place[t]
+    op := output_place[t]
+    print "  {trans_names[t]}: {place_names[ip]} -> {place_names[op]}"
+
+  -- Part 3: Firing simulation
+  print ""
+  print "=== Part 3: Simulation ==="
+  mut steps := 0
+  mut fired_count := [0, 0, 0, 0, 0]
+
+  -- Run simulation for multiple steps
+  for step in range(0, 12)
+    mut any_fired := 0
+    -- Try each transition in order
+    for t in range(0, num_trans)
+      ip := input_place[t]
+      if tokens[ip] > 0
+        tokens[ip] = tokens[ip] - 1
+        op := output_place[t]
+        tokens[op] = tokens[op] + 1
+        fired_count[t] = fired_count[t] + 1
+        steps = steps + 1
+        any_fired = 1
+        print "  Step {steps}: fire '{trans_names[t]}' ({place_names[ip]}->{place_names[op]})"
+
+  -- Part 4: State after simulation
+  print ""
+  print "=== Part 4: Final State ==="
+  for i in range(0, num_places)
+    print "  {place_names[i]}: {tokens[i]} token(s)"
+
+  -- Part 5: Transition statistics
+  print ""
+  print "=== Part 5: Transition Stats ==="
+  for t in range(0, num_trans)
+    print "  {trans_names[t]}: fired {fired_count[t]} times"
+
+  -- Part 6: Reachability analysis
+  print ""
+  print "=== Part 6: Reachability ==="
+  -- Check if all tokens eventually reach 'done'
+  mut total_tokens := 0
+  for i in range(0, num_places)
+    total_tokens = total_tokens + tokens[i]
+  print "  Total tokens: {total_tokens}"
+  print "  Tokens in 'done': {tokens[4]}"
+  print "  Tokens in transit: {total_tokens - tokens[4]}"
+
+  -- Invariant: total tokens should be conserved
+  print "  Conservation check: {total_tokens} == 3 (initial)"
+  if total_tokens == 3
+    print "  Token conservation: PASSED"
+  else
+    print "  Token conservation: FAILED"
+
+  -- Part 7: Deadlock detection
+  print ""
+  print "=== Part 7: Deadlock Detection ==="
+  mut can_fire := 0
+  for t in range(0, num_trans)
+    ip := input_place[t]
+    if tokens[ip] > 0
+      can_fire = can_fire + 1
+      print "  Transition '{trans_names[t]}' is enabled"
+  if can_fire == 0
+    print "  No enabled transitions - DEADLOCK or complete"
+  else
+    print "  Enabled transitions: {can_fire}"
+
+  -- Part 8: Statistics
+  print ""
+  print "=== Part 8: Statistics ==="
+  print "  Places: {num_places}"
+  print "  Transitions: {num_trans}"
+  print "  Total steps: {steps}"
+  print "  Initial tokens: 3"
+  print "  Final tokens in done: {tokens[4]}"
+
+  print ""
+  print "Petri net: places, transitions, firing, reachability, conservation, deadlock detection."
