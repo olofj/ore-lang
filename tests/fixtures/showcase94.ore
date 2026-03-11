@@ -1,0 +1,64 @@
+-- Showcase 94: Nested data structures and complex expressions
+
+type Point { x: Float, y: Float }
+
+impl Point
+  fn distance self:Point other:Point -> Float
+    dx := self.x - other.x
+    dy := self.y - other.y
+    sqrt(dx * dx + dy * dy)
+
+  fn midpoint self:Point other:Point -> Point
+    Point(x: (self.x + other.x) / 2.0, y: (self.y + other.y) / 2.0)
+
+fn main
+  -- Complex expressions
+  a := (2 + 3) * (4 - 1)
+  print "complex: {a}"
+
+  b := 10 / 3 + 10 % 3
+  print "div+mod: {b}"
+
+  -- If/else as expression
+  x := 42
+  label := if x > 50
+    "big"
+  else
+    "small"
+  print "label: {label}"
+
+  -- Nested if/else
+  grade := 85
+  letter := if grade >= 90
+    "A"
+  else if grade >= 80
+    "B"
+  else if grade >= 70
+    "C"
+  else
+    "F"
+  print "grade: {letter}"
+
+  -- Record methods
+  p1 := Point(x: 0.0, y: 0.0)
+  p2 := Point(x: 3.0, y: 4.0)
+  print "distance: {p1.distance(p2)}"
+
+  mid := p1.midpoint(p2)
+  print "midpoint: ({mid.x}, {mid.y})"
+
+  -- Chained operations
+  nums := range(1, 11)
+  result := nums
+    .filter(n => n % 2 == 0)
+    .map(n => n * n)
+    .sum()
+  print "sum of even squares: {result}"
+
+  -- String building
+  mut words := [0]
+  words.pop()
+  items := ["alpha", "beta", "gamma", "delta"]
+  for item in items
+    words.push(item.len())
+  print "lengths: {words.join(", ")}"

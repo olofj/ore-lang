@@ -2362,6 +2362,27 @@ fn showcase93_json() {
 }
 
 #[test]
+fn showcase94_complex_expressions() {
+    let out = run_ore("showcase94.ore");
+    assert!(out.contains("complex: 15"));
+    assert!(out.contains("label: small"));
+    assert!(out.contains("grade: B"));
+    assert!(out.contains("distance: 5.0"));
+    assert!(out.contains("midpoint: (1.5, 2.0)"));
+    assert!(out.contains("sum of even squares: 220"));
+}
+
+#[test]
+fn showcase95_functional_patterns() {
+    let out = run_ore("showcase95.ore");
+    assert!(out.contains("double twice 3: 12"));
+    assert!(out.contains("sum of odd squares: 165"));
+    assert!(out.contains("product of evens: 3840"));
+    assert!(out.contains("running total: 55"));
+    assert!(out.contains("not div by 2,3,5: 7, 11, 13, 17, 19"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

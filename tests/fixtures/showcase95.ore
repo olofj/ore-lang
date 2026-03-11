@@ -1,0 +1,55 @@
+-- Showcase 95: Functional programming patterns
+
+fn compose f:(Int -> Int) g:(Int -> Int) -> (Int -> Int)
+  n => f(g(n))
+
+fn apply_twice f:(Int -> Int) x:Int -> Int
+  f(f(x))
+
+fn main
+  -- Higher-order function composition
+  double := n => n * 2
+  add_one := n => n + 1
+
+  -- apply_twice
+  print "double twice 3: {apply_twice(double, 3)}"
+  print "add_one twice 10: {apply_twice(add_one, 10)}"
+
+  -- Pipeline with complex lambdas
+  data := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+  -- Sum of squares of odds
+  result := data
+    .filter(n => n % 2 != 0)
+    .map(n => n * n)
+    .sum()
+  print "sum of odd squares: {result}"
+
+  -- Product of evens
+  prod := data
+    .filter(n => n % 2 == 0)
+    .reduce((a, b) => a * b)
+  print "product of evens: {prod}"
+
+  -- Fold to build running totals
+  running := data.fold(0, (acc, n) => acc + n)
+  print "running total: {running}"
+
+  -- Scan to see each intermediate value
+  scanned := data.scan(0, (acc, n) => acc + n)
+  print "scan: {scanned.join(", ")}"
+
+  -- zip-like with indices
+  letters := ["a", "b", "c", "d", "e"]
+  for i in range(0, letters.len())
+    print "  {i}: {letters[i]}"
+
+  -- Complex filter chain
+  nums := range(2, 50)
+  result2 := nums
+    .filter(n => n % 2 != 0)
+    .filter(n => n % 3 != 0)
+    .filter(n => n % 5 != 0)
+    .take(5)
+    .join(", ")
+  print "not div by 2,3,5: {result2}"
