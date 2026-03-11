@@ -22,6 +22,31 @@ impl Formatter {
         Self { out: String::new() }
     }
 
+    /// Format an expression as inline (single line), using `if/then/else` for conditionals.
+    fn format_expr_inline(&mut self, expr: &Expr, level: usize) {
+        match expr {
+            Expr::IfElse { cond, then_block, else_block } => {
+                self.out.push_str("if ");
+                self.format_expr_inline(cond, level);
+                self.out.push_str(" then ");
+                if let Some(s) = then_block.stmts.last() {
+                    if let Stmt::Expr(e) = &s.stmt {
+                        self.format_expr_inline(e, level);
+                    }
+                }
+                if let Some(eb) = else_block {
+                    self.out.push_str(" else ");
+                    if let Some(s) = eb.stmts.last() {
+                        if let Stmt::Expr(e) = &s.stmt {
+                            self.format_expr_inline(e, level);
+                        }
+                    }
+                }
+            }
+            _ => self.format_expr(expr, level),
+        }
+    }
+
     fn indent(&mut self, level: usize) {
         for _ in 0..level {
             self.out.push_str("  ");
@@ -369,7 +394,7 @@ impl Formatter {
                         }
                         StringPart::Expr(expr) => {
                             self.out.push('{');
-                            self.format_expr(expr, level);
+                            self.format_expr_inline(expr, level);
                             self.out.push('}');
                         }
                     }
