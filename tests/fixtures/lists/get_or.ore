@@ -1,0 +1,7 @@
+fn main
+  nums := [10, 20, 30]
+  print nums.get_or(0, -1)
+  print nums.get_or(2, -1)
+  print nums.get_or(5, -1)
+  print nums.get_or(-1, -1)
+  print nums.get_or(-5, 99)

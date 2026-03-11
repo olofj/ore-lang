@@ -1390,6 +1390,13 @@ fn strings_triple_quoted() {
 }
 
 #[test]
+fn lists_get_or() {
+    let out = run_ore("lists/get_or.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["10", "30", "-1", "30", "99"]);
+}
+
+#[test]
 fn showcase18() {
     let out = run_ore("showcase18.ore");
     assert!(out.contains("*****"));

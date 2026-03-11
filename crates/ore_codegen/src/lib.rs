@@ -658,6 +658,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_push", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_get(ptr, i64) -> i64
         self.module.add_function("ore_list_get", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_list_get_or", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_len(ptr) -> i64
         self.module.add_function("ore_list_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_set(ptr, i64, i64)
@@ -2767,6 +2768,32 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(list_get, &[list_val.into(), idx.into()], "get"))?;
                 let raw_val = self.call_result_to_value(result)?;
                 // Convert i64 to the correct type based on element kind
+                match &elem_kind {
+                    ValKind::Str => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            raw_val.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
+                        ))?;
+                        Ok((ptr.into(), ValKind::Str))
+                    }
+                    ValKind::Float => {
+                        let f = bld!(self.builder.build_bit_cast(raw_val, self.context.f64_type(), "i2f"))?;
+                        Ok((f, ValKind::Float))
+                    }
+                    _ => Ok((raw_val, elem_kind))
+                }
+            }
+            "get_or" => {
+                if args.len() != 2 {
+                    return Err(CodeGenError { line: None, msg: "get_or takes 2 arguments (index, default)".into() });
+                }
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                let idx = self.compile_expr(&args[0], func)?;
+                let default = self.compile_expr(&args[1], func)?;
+                let default_i64 = self.value_to_i64(default)?;
+                let rt = self.module.get_function("ore_list_get_or").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), idx.into(), default_i64.into()], "getor"))?;
+                let raw_val = self.call_result_to_value(result)?;
                 match &elem_kind {
                     ValKind::Str => {
                         let ptr = bld!(self.builder.build_int_to_ptr(

@@ -879,6 +879,19 @@ pub extern "C" fn ore_list_get(list: *mut OreList, index: i64) -> i64 {
 }
 
 #[no_mangle]
+pub extern "C" fn ore_list_get_or(list: *mut OreList, index: i64, default: i64) -> i64 {
+    unsafe {
+        let list = &*list;
+        let idx = if index < 0 { list.len + index } else { index };
+        if idx < 0 || idx >= list.len {
+            default
+        } else {
+            *list.data.add(idx as usize)
+        }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn ore_list_len(list: *mut OreList) -> i64 {
     unsafe { (*list).len }
 }
