@@ -645,6 +645,24 @@ pub extern "C" fn ore_list_sort(list: *mut OreList) {
 }
 
 #[no_mangle]
+pub extern "C" fn ore_list_sort_by(
+    list: *mut OreList,
+    cmp: extern "C" fn(i64, i64, *mut u8) -> i64,
+    env_ptr: *mut u8,
+) {
+    unsafe {
+        let list = &mut *list;
+        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        slice.sort_by(|a, b| {
+            let result = cmp(*a, *b, env_ptr);
+            if result < 0 { std::cmp::Ordering::Less }
+            else if result > 0 { std::cmp::Ordering::Greater }
+            else { std::cmp::Ordering::Equal }
+        });
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn ore_list_reverse(list: *mut OreList) {
     unsafe {
         let list = &mut *list;
