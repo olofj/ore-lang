@@ -1,0 +1,5 @@
+fn get_name -> Int
+  "alice"
+
+fn main
+  print get_name()

@@ -274,7 +274,16 @@ impl TypeChecker {
             env.insert(p.name.clone(), ty, false);
         }
         let ret_ty = fndef.ret_type.as_ref().map(|t| self.resolve_type_expr(t)).unwrap_or(Type::Unit);
-        self.check_block(&fndef.body, &mut env, &ret_ty);
+        let body_ty = self.check_block(&fndef.body, &mut env, &ret_ty);
+        // Check return type mismatch (skip for main and for Any/Unit)
+        if fndef.name != "main" && ret_ty != Type::Unit && ret_ty != Type::Any
+            && body_ty != Type::Any && !body_ty.compatible_with(&ret_ty)
+        {
+            self.err(format!(
+                "function '{}' declared to return {}, but body returns {}",
+                fndef.name, ret_ty, body_ty
+            ));
+        }
     }
 
     fn check_block(&mut self, block: &Block, env: &mut Env, ret_ty: &Type) -> Type {

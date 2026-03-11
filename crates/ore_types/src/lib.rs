@@ -50,7 +50,13 @@ impl Type {
         if *self == Type::Any || *other == Type::Any {
             return true;
         }
-        self == other
+        match (self, other) {
+            (Type::Option(a), Type::Option(b)) => a.compatible_with(b),
+            (Type::Result(a1, a2), Type::Result(b1, b2)) => a1.compatible_with(b1) && a2.compatible_with(b2),
+            (Type::List(a), Type::List(b)) => a.compatible_with(b),
+            (Type::Map(k1, v1), Type::Map(k2, v2)) => k1.compatible_with(k2) && v1.compatible_with(v2),
+            _ => self == other,
+        }
     }
 }
 

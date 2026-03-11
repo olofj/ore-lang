@@ -209,6 +209,12 @@ fn traits_wrong_signature() {
 }
 
 #[test]
+fn traits_return_type_mismatch() {
+    let stderr = run_ore_expect_error("traits/return_type_mismatch.ore");
+    assert!(stderr.contains("declared to return Int, but body returns Str"), "expected return type mismatch, got: {}", stderr);
+}
+
+#[test]
 fn traits_arg_type_mismatch() {
     let stderr = run_ore_expect_error("traits/arg_type_mismatch.ore");
     assert!(stderr.contains("argument 2 of 'add' expects Int, got Str"), "expected type mismatch, got: {}", stderr);
