@@ -1,0 +1,50 @@
+-- Showcase 304: Error handling with Result
+
+type ParseError
+  InvalidFormat
+  OutOfRange
+
+fn parse_bounded s:Str min_val:Int max_val:Int -> Result
+  n := s.to_int()
+  if n < min_val or n > max_val
+    Err("out of range: {n}")
+  else
+    Ok(n)
+
+fn safe_divide a:Int b:Int -> Result
+  if b == 0
+    Err("division by zero")
+  else
+    Ok(a / b)
+
+fn main
+  -- Basic Result usage
+  r1 := safe_divide(10, 3)
+  print "10 / 3 = {r1 | else 0}"
+
+  r2 := safe_divide(10, 0)
+  print "10 / 0 = {r2 | else -1}"
+
+  -- Result methods
+  print ""
+  print "is_ok: {r1.is_ok()}, is_err: {r2.is_err()}"
+
+  -- Parse with bounds checking
+  print ""
+  tests := ["42", "150", "0", "-5"]
+  for s in tests
+    result := parse_bounded(s, 1, 100)
+    if result.is_ok()
+      print "  '{s}' -> Ok({result | else 0})"
+    else
+      print "  '{s}' -> Err"
+
+  -- Chained operations with | else
+  print ""
+  value := safe_divide(100, 4) | else 0
+  doubled := value * 2
+  print "100/4 * 2 = {doubled}"
+
+  -- Pipeline with Result
+  final_result := safe_divide(42, 6) | else 0
+  print "42/6 = {final_result}"

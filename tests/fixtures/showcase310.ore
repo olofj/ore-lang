@@ -1,0 +1,60 @@
+-- Showcase 310: Advanced enum patterns
+
+type Expr
+  Num(value: Int)
+  Add(left: Int, right: Int)
+  Mul(left: Int, right: Int)
+  Neg(value: Int)
+
+fn eval e:Expr -> Int
+  match e
+    Num v -> v
+    Add l r -> l + r
+    Mul l r -> l * r
+    Neg v -> 0 - v
+
+fn expr_str e:Expr -> Str
+  match e
+    Num v -> "{v}"
+    Add l r -> "({l} + {r})"
+    Mul l r -> "({l} * {r})"
+    Neg v -> "(-{v})"
+
+type Day
+  Mon
+  Tue
+  Wed
+  Thu
+  Fri
+  Sat
+  Sun
+
+fn is_weekend d:Day -> Bool
+  match d
+    Sat -> true
+    Sun -> true
+    _ -> false
+
+fn day_name d:Day -> Str
+  match d
+    Mon -> "Monday"
+    Tue -> "Tuesday"
+    Wed -> "Wednesday"
+    Thu -> "Thursday"
+    Fri -> "Friday"
+    Sat -> "Saturday"
+    Sun -> "Sunday"
+
+fn main
+  -- Expression evaluation
+  exprs := [Num(value: 42), Add(left: 10, right: 20), Mul(left: 6, right: 7), Neg(value: 5)]
+  print "Expressions:"
+  for e in exprs
+    print "  {expr_str(e)} = {eval(e)}"
+
+  -- Day enum
+  print ""
+  days := [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+  for d in days
+    we := if is_weekend(d) then " (weekend)" else ""
+    print "  {day_name(d)}{we}"

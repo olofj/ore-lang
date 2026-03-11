@@ -4295,6 +4295,86 @@ fn showcase300_grand_finale() {
 }
 
 #[test]
+fn showcase301_pipe_precedence() {
+    let out = run_ore("showcase301.ore");
+    assert!(out.contains("count > 3: true"));
+    assert!(out.contains("empty list"));
+    assert!(out.contains("pipe else then pipe: 10"));
+}
+
+#[test]
+fn showcase302_formatting() {
+    let out = run_ore("showcase302.ore");
+    assert!(out.contains("Alice"));
+    assert!(out.contains("Average age: 30"));
+    assert!(out.contains("|-- src/"));
+}
+
+#[test]
+fn showcase303_functional() {
+    let out = run_ore("showcase303.ore");
+    assert!(out.contains("Sum of even squares (1-10): 220"));
+    assert!(out.contains("5! = 120"));
+    assert!(out.contains("FizzBuzz count (1-100):"));
+}
+
+#[test]
+fn showcase304_result() {
+    let out = run_ore("showcase304.ore");
+    assert!(out.contains("10 / 3 = 3"));
+    assert!(out.contains("10 / 0 = -1"));
+    assert!(out.contains("100/4 * 2 = 50"));
+}
+
+#[test]
+fn showcase305_state_machine() {
+    let out = run_ore("showcase305.ore");
+    assert!(out.contains("Start: Idle"));
+    assert!(out.contains("Running"));
+    assert!(out.contains("Paused"));
+}
+
+#[test]
+fn showcase306_iterators() {
+    let out = run_ore("showcase306.ore");
+    assert!(out.contains("[0] alpha"));
+    assert!(out.contains("Running average:"));
+    assert!(out.contains("Mapped x10: 10, 20, 30, 40, 50"));
+}
+
+#[test]
+fn showcase307_impl() {
+    let out = run_ore("showcase307.ore");
+    assert!(out.contains("a = (3, 4)"));
+    assert!(out.contains("|a|^2 = 25"));
+    assert!(out.contains("2(a+b) = (8, 12)"));
+}
+
+#[test]
+fn showcase308_option() {
+    let out = run_ore("showcase308.ore");
+    assert!(out.contains("Find user 1: Alice"));
+    assert!(out.contains("Find user 99: unknown"));
+    assert!(out.contains("is_some: true"));
+}
+
+#[test]
+fn showcase309_strings() {
+    let out = run_ore("showcase309.ore");
+    assert!(out.contains("[palindrome]"));
+    assert!(out.contains("Palindromes: radar, kayak, noon, civic"));
+    assert!(out.contains("Title case: Hello World From Ore"));
+}
+
+#[test]
+fn showcase310_enums() {
+    let out = run_ore("showcase310.ore");
+    assert!(out.contains("= 42"));
+    assert!(out.contains("Monday"));
+    assert!(out.contains("Saturday (weekend)"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

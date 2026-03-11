@@ -1,0 +1,52 @@
+-- Showcase 302: Data formatting
+
+fn repeat_str s:Str n:Int -> Str
+  mut result := ""
+  for i in range(0, n)
+    result = "{result}{s}"
+  result
+
+fn indent level:Int -> Str
+  repeat_str("  ", level)
+
+fn main
+  -- Build formatted table
+  headers := ["Name", "Age", "City"]
+  names := ["Alice", "Bob", "Carol"]
+  ages := [30, 25, 35]
+  cities := ["NYC", "LA", "Chicago"]
+
+  -- Print header
+  print "{headers[0]}    | {headers[1]} | {headers[2]}"
+  print "--------+-----+---------"
+
+  -- Print rows
+  for i in range(0, names | count())
+    name := names[i]
+    -- Pad name to 7 chars
+    mut padded := name
+    while padded.len() < 7
+      padded = "{padded} "
+    print "{padded} | {ages[i]}  | {cities[i]}"
+
+  -- Summary
+  print ""
+  total_age := ages | sum()
+  avg_age := total_age / (ages | count())
+  print "Average age: {avg_age}"
+  print "Total records: {names | count()}"
+
+  -- Tree-like output
+  print ""
+  print "Project"
+  dirs := ["src", "tests", "docs"]
+  files_per := [3, 2, 1]
+  for i in range(0, dirs | count())
+    last_dir := i == dirs | count() - 1
+    branch := if last_dir then "`--" else "|--"
+    print "{indent(1)}{branch} {dirs[i]}/"
+    for j in range(0, files_per[i])
+      last_file := j == files_per[i] - 1
+      prefix := if last_dir then "   " else "|  "
+      fbranch := if last_file then "`--" else "|--"
+      print "{indent(1)}{prefix} {fbranch} file{j + 1}.ore"

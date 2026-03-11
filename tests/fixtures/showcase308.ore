@@ -1,0 +1,39 @@
+-- Showcase 308: Option chaining
+
+fn find_user id:Int -> Str?
+  if id == 1 then Some("Alice")
+  else if id == 2 then Some("Bob")
+  else None
+
+fn get_age name:Str -> Int?
+  if name == "Alice" then Some(30)
+  else if name == "Bob" then Some(25)
+  else None
+
+fn main
+  -- Basic Option
+  print "Find user 1: {find_user(1) | else "unknown"}"
+  print "Find user 99: {find_user(99) | else "unknown"}"
+
+  -- Option methods
+  opt := find_user(1)
+  print ""
+  print "is_some: {opt.is_some()}"
+  print "is_none: {opt.is_none()}"
+
+  -- Unwrap with default
+  name1 := find_user(1) | else "nobody"
+  name2 := find_user(99) | else "nobody"
+  print ""
+  print "User 1: {name1}"
+  print "User 99: {name2}"
+
+  -- Chained lookups
+  print ""
+  for id in [1, 2, 3]
+    user := find_user(id) | else "unknown"
+    if user != "unknown"
+      age := get_age(user) | else 0
+      print "User {id}: {user}, age {age}"
+    else
+      print "User {id}: not found"

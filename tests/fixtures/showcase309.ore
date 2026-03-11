@@ -1,0 +1,56 @@
+-- Showcase 309: String processing pipeline
+
+fn count_vowels s:Str -> Int
+  mut count := 0
+  lower := s.to_lower()
+  for i in range(0, lower.len())
+    ch := lower.substr(i, 1)
+    if ch == "a" or ch == "e" or ch == "i" or ch == "o" or ch == "u"
+      count = count + 1
+  count
+
+fn is_palindrome s:Str -> Bool
+  lower := s.to_lower()
+  n := lower.len()
+  mut result := true
+  for i in range(0, n / 2)
+    if lower.substr(i, 1) != lower.substr(n - 1 - i, 1)
+      result = false
+  result
+
+fn main
+  -- String analysis
+  words := ["hello", "racecar", "world", "madam", "ore", "level", "rust"]
+
+  print "Word analysis:"
+  for word in words
+    vowels := count_vowels(word)
+    pal := if is_palindrome(word) then " [palindrome]" else ""
+    print "  {word}: {word.len()} chars, {vowels} vowels{pal}"
+
+  -- Pipeline string operations
+  print ""
+  sentence := "The Quick Brown Fox Jumps Over The Lazy Dog"
+  word_list := sentence.split(" ")
+  print "Sentence: {sentence}"
+  print "Words: {word_list | count()}"
+  print "Chars: {sentence.len()}"
+
+  -- Find palindromes
+  print ""
+  test_words := ["radar", "hello", "kayak", "world", "noon", "civic", "test"]
+  mut palindromes := []
+  for w in test_words
+    if is_palindrome(w)
+      palindromes.push(w)
+  print "Palindromes: {palindromes | join(", ")}"
+
+  -- Title case (capitalize first letter)
+  print ""
+  parts := "hello world from ore".split(" ")
+  mut titled := []
+  for p in parts
+    first := p.substr(0, 1).to_upper()
+    rest := p.substr(1, p.len() - 1)
+    titled.push("{first}{rest}")
+  print "Title case: {titled | join(" ")}"

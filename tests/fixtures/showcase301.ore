@@ -1,0 +1,48 @@
+-- Showcase 301: Pipeline precedence (pipe binds tighter than comparisons)
+
+fn find x:Int -> Int?
+  if x > 0 then Some(x) else None
+
+fn main
+  -- Pipeline result in comparison
+  nums := [1, 2, 3, 4, 5]
+
+  if nums | count() > 3
+    print "count > 3: true"
+
+  if nums | count() == 5
+    print "count == 5: true"
+
+  if nums | sum() >= 15
+    print "sum >= 15: true"
+
+  -- Pipeline in while condition
+  mut stack := [10, 20, 30]
+  mut popped := []
+  while stack | count() > 0
+    popped.push(stack.pop())
+  print "Popped: {popped | join(", ")}"
+
+  -- Pipeline with boolean operators
+  data := [1, 2, 3]
+  if data | count() > 0 and data | sum() > 5
+    print "non-empty and sum > 5"
+
+  -- Pipeline equality check
+  empty := []
+  if empty | count() == 0
+    print "empty list"
+
+  -- Pipeline in complex expression
+  words := ["hello", "world", "foo"]
+  if words | count() != 0 and words | count() <= 5
+    print "1-5 words"
+
+  -- Pipeline chain then compare
+  evens := range(1, 11) | filter(n => n % 2 == 0)
+  if evens | count() == 5
+    print "5 even numbers in 1-10"
+
+  -- Pipe else then pipe
+  result := find(5) | else 0 | (n => n * 2)
+  print "pipe else then pipe: {result}"

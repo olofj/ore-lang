@@ -1,0 +1,55 @@
+-- Showcase 305: Enum-based state machine
+
+type State
+  Idle
+  Running(progress: Int)
+  Paused(at: Int)
+  Done(result: Int)
+  Error(msg: Str)
+
+fn state_name s:State -> Str
+  match s
+    Idle -> "Idle"
+    Running _ -> "Running"
+    Paused _ -> "Paused"
+    Done _ -> "Done"
+    Error _ -> "Error"
+
+fn step state:State input:Int -> State
+  match state
+    Idle ->
+      if input > 0
+        Running(progress: 0)
+      else
+        Error(msg: "invalid input")
+    Running p ->
+      new_p := p + input
+      if new_p >= 100
+        Done(result: new_p)
+      else if input == 0
+        Paused(at: p)
+      else
+        Running(progress: new_p)
+    Paused at ->
+      if input > 0
+        Running(progress: at)
+      else
+        Idle
+    Done _ -> Done(result: 0)
+    Error _ -> Idle
+
+fn main
+  mut state := Idle
+  inputs := [1, 25, 0, 1, 30, 50, 20]
+
+  print "State machine simulation:"
+  print "  Start: {state_name(state)}"
+
+  for input in inputs
+    state = step(state, input)
+    print "  Input {input}: {state_name(state)}"
+
+  -- Verify final state
+  match state
+    Done r -> print "Completed with result: {r}"
+    _ -> print "Not done yet"

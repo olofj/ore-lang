@@ -1,0 +1,51 @@
+-- Showcase 303: Functional programming patterns
+
+fn compose f:(Int -> Int) g:(Int -> Int) x:Int -> Int
+  f(g(x))
+
+fn apply_twice f:(Int -> Int) x:Int -> Int
+  f(f(x))
+
+fn main
+  -- Higher-order functions
+  double := n => n * 2
+  inc := n => n + 1
+
+  print "double(5) = {double(5)}"
+  print "inc(5) = {inc(5)}"
+  print "compose(double, inc, 5) = {compose(double, inc, 5)}"
+  print "apply_twice(double, 3) = {apply_twice(double, 3)}"
+
+  -- Pipeline transformations
+  print ""
+  result := range(1, 11)
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | sum()
+  print "Sum of even squares (1-10): {result}"
+
+  -- Fold patterns
+  product := range(1, 6) | fold(1, (acc, n) => acc * n)
+  print "5! = {product}"
+
+  maximum := [3, 7, 2, 9, 4] | fold(0, (a, b) => if a > b then a else b)
+  print "Max: {maximum}"
+
+  -- Count with filter
+  count := range(1, 101) | filter(n => n % 3 == 0 and n % 5 == 0) | count()
+  print "FizzBuzz count (1-100): {count}"
+
+  -- Pipeline with string operations
+  print ""
+  words := ["hello", "WORLD", "Foo", "BAR"]
+  lower := words | map(w => w.to_lower())
+  print "Lowered: {lower | join(", ")}"
+
+  -- Chained operations
+  data := range(1, 21)
+  result2 := data
+    | filter(n => n % 2 != 0)
+    | map(n => n * 3)
+    | filter(n => n > 20)
+    | take(3)
+  print "Filtered chain: {result2 | join(", ")}"

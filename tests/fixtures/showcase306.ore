@@ -1,0 +1,41 @@
+-- Showcase 306: Iterator patterns with pipelines
+
+fn main
+  -- Enumerate (manual)
+  items := ["alpha", "beta", "gamma", "delta"]
+  print "Enumerated:"
+  for i in range(0, items | count())
+    print "  [{i}] {items[i]}"
+
+  -- Windowed iteration
+  print ""
+  data := [1, 4, 2, 8, 5, 7, 3]
+  print "Consecutive pairs:"
+  dc := data | count()
+  for i in range(0, dc - 1)
+    a := data[i]
+    b := data[i + 1]
+    trend := if b > a then "up" else if b < a then "down" else "flat"
+    print "  {a} -> {b}: {trend}"
+
+  -- Running average
+  print ""
+  print "Running average:"
+  mut running_sum := 0
+  for i in range(0, dc)
+    running_sum = running_sum + data[i]
+    avg := running_sum / (i + 1)
+    print "  After {i + 1} items: avg = {avg}"
+
+  -- Zip two lists
+  print ""
+  keys := ["x", "y", "z"]
+  vals := [10, 20, 30]
+  print "Zipped:"
+  for i in range(0, keys | count())
+    print "  {keys[i]} = {vals[i]}"
+
+  -- Flatten via pipeline
+  print ""
+  flat := [1, 2, 3, 4, 5] | map(n => n * 10)
+  print "Mapped x10: {flat | join(", ")}"
