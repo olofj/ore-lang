@@ -1,0 +1,53 @@
+-- Showcase 122: Generic data structures
+
+fn stack_push[T] stack:List[T] item:T -> List[T]
+  mut s := stack
+  s.push(item)
+  s
+
+fn stack_peek[T] stack:List[T] -> T
+  stack[stack.len() - 1]
+
+fn stack_pop[T] stack:List[T] -> List[T]
+  stack.take(stack.len() - 1)
+
+fn queue_enqueue[T] q:List[T] item:T -> List[T]
+  mut q2 := q
+  q2.push(item)
+  q2
+
+fn queue_dequeue[T] q:List[T] -> List[T]
+  q.skip(1)
+
+fn queue_front[T] q:List[T] -> T
+  q[0]
+
+fn main
+  -- Stack operations
+  mut s := []
+  s = stack_push(s, 10)
+  s = stack_push(s, 20)
+  s = stack_push(s, 30)
+  print "top: {stack_peek(s)}"
+  s = stack_pop(s)
+  print "after pop: {stack_peek(s)}"
+  print "stack: {s.join(", ")}"
+
+  -- Queue operations
+  print ""
+  mut q := []
+  q = queue_enqueue(q, 1)
+  q = queue_enqueue(q, 2)
+  q = queue_enqueue(q, 3)
+  print "front: {queue_front(q)}"
+  q = queue_dequeue(q)
+  print "after dequeue: {queue_front(q)}"
+  print "queue: {q.join(", ")}"
+
+  -- Using generics with different types
+  print ""
+  mut s2 := []
+  s2 = stack_push(s2, "a")
+  s2 = stack_push(s2, "b")
+  s2 = stack_push(s2, "c")
+  print "string stack: {s2.join(", ")}"

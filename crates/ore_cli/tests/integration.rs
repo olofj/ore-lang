@@ -2658,6 +2658,28 @@ fn showcase120_iterators() {
 }
 
 #[test]
+fn showcase121_chained_if_then_else() {
+    let out = run_ore("showcase121.ore");
+    assert!(out.contains("-5C: freezing"));
+    assert!(out.contains("25C: warm"));
+    assert!(out.contains("95: A"));
+    assert!(out.contains("50: F"));
+    assert!(out.contains("-3: negative"));
+    assert!(out.contains("0: zero"));
+    assert!(out.contains("42 is even"));
+}
+
+#[test]
+fn showcase122_generic_data_structures() {
+    let out = run_ore("showcase122.ore");
+    assert!(out.contains("top: 30"));
+    assert!(out.contains("after pop: 20"));
+    assert!(out.contains("front: 1"));
+    assert!(out.contains("after dequeue: 2"));
+    assert!(out.contains("string stack: a, b, c"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
