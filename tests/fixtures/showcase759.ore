@@ -1,0 +1,144 @@
+-- Showcase 759: Run-Length Encoding
+
+fn rle_encode s:Str -> Str
+  -- Encode: "aaabbc" -> "3a2b1c"
+  n := s.len()
+  if n == 0
+    ""
+  else
+    mut result := ""
+    mut count := 1
+    mut current := s.char_at(0)
+    for i in range(1, n)
+      c := s.char_at(i)
+      if c == current
+        count = count + 1
+      else
+        result = result + str(count) + current
+        current = c
+        count = 1
+    result = result + str(count) + current
+    result
+
+fn rle_decode s:Str -> Str
+  -- Decode: "3a2b1c" -> "aaabbc"
+  n := s.len()
+  mut result := ""
+  mut i := 0
+  while i < n
+    -- Read digits
+    mut num := 0
+    while i < n and ord(s.char_at(i)) >= ord("0") and ord(s.char_at(i)) <= ord("9")
+      num = num * 10 + ord(s.char_at(i)) - ord("0")
+      i = i + 1
+    -- Read character
+    if i < n
+      c := s.char_at(i)
+      result = result + c.repeat(num)
+      i = i + 1
+  result
+
+fn rle_encode_pairs s:Str -> List
+  -- Returns list of [count, char] pairs as strings
+  n := s.len()
+  mut result := []
+  if n == 0
+    result
+  else
+    mut count := 1
+    mut current := s.char_at(0)
+    for i in range(1, n)
+      c := s.char_at(i)
+      if c == current
+        count = count + 1
+      else
+        result.push(str(count) + current)
+        current = c
+        count = 1
+    result.push(str(count) + current)
+    result
+
+fn compression_ratio original:Str encoded:Str -> Int
+  orig_len := original.len()
+  enc_len := encoded.len()
+  -- Return ratio * 100 (integer percentage)
+  if orig_len == 0
+    100
+  else
+    enc_len * 100 / orig_len
+
+fn main
+  print "Run-Length Encoding (RLE):"
+  print ""
+
+  -- Part 1: Basic encoding
+  print "=== Part 1: Basic Encoding ==="
+  enc1 := rle_encode("aaabbc")
+  print "  'aaabbc' -> '{enc1}'"
+  enc2 := rle_encode("AABBBCCCC")
+  print "  'AABBBCCCC' -> '{enc2}'"
+  enc3 := rle_encode("abcd")
+  print "  'abcd' -> '{enc3}' (no runs)"
+  enc4 := rle_encode("aaaaaaaaaa")
+  print "  'aaaaaaaaaa' -> '{enc4}'"
+
+  -- Part 2: Decoding
+  print ""
+  print "=== Part 2: Decoding ==="
+  dec1 := rle_decode("3a2b1c")
+  print "  '3a2b1c' -> '{dec1}'"
+  dec2 := rle_decode("2A3B4C")
+  print "  '2A3B4C' -> '{dec2}'"
+  dec3 := rle_decode("10a")
+  print "  '10a' -> '{dec3}'"
+
+  -- Part 3: Roundtrip
+  print ""
+  print "=== Part 3: Roundtrip Verification ==="
+  inputs := ["hello", "aaabbbccc", "xyzxyz", "rrrrrrrr"]
+  for i in range(0, 4)
+    s := inputs[i]
+    enc := rle_encode(s)
+    dec := rle_decode(enc)
+    mut match_str := "OK"
+    if s != dec
+      match_str = "FAIL"
+    print "  '{s}' -> '{enc}' -> '{dec}' [{match_str}]"
+
+  -- Part 4: Compression ratio
+  print ""
+  print "=== Part 4: Compression Analysis ==="
+  tests := ["aaaaaaaaaa", "aaabbbccc", "abcabcabc", "aabbccddee"]
+  for i in range(0, 4)
+    s := tests[i]
+    enc := rle_encode(s)
+    ratio := compression_ratio(s, enc)
+    print "  '{s}' ({s.len()} chars) -> '{enc}' ({enc.len()} chars): {ratio}%"
+
+  -- Part 5: Pairs representation
+  print ""
+  print "=== Part 5: Run Pairs ==="
+  pairs := rle_encode_pairs("aaabbbccddddde")
+  pairs_str := pairs | join(", ")
+  print "  'aaabbbccddddde' runs: [{pairs_str}]"
+
+  -- Part 6: Applications
+  print ""
+  print "=== Part 6: Applications ==="
+  print "  Bitmap images: rows of same-color pixels"
+  print "  Fax transmission: black/white runs"
+  print "  BWT output: highly compressible with RLE"
+  print "  DNA sequences: repeat regions"
+  print "  Simple, fast: O(n) encode and decode"
+
+  -- Part 7: Worst case
+  print ""
+  print "=== Part 7: Best and Worst Cases ==="
+  best := rle_encode("aaaaaaaaaaaaaaaa")
+  worst := rle_encode("abcdefgh")
+  print "  Best: 'aaaaaaaaaaaaaaaa' ({16} chars) -> '{best}' ({best.len()} chars)"
+  print "  Worst: 'abcdefgh' (8 chars) -> '{worst}' ({worst.len()} chars)"
+  print "  RLE expands non-repetitive data!"
+
+  print ""
+  print "Run-length encoding: lossless compression that replaces consecutive identical chars with count+char."

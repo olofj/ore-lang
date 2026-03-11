@@ -1,0 +1,134 @@
+-- Showcase 757: Manacher's Algorithm (Palindrome)
+
+fn manachers s:Str -> List
+  -- Returns p[] where p[i] = radius of longest palindrome centered at i
+  -- Works on transformed string: #a#b#c# to handle even-length palindromes
+  n := s.len()
+  -- Build transformed string: insert '#' between chars and at boundaries
+  mut t := "#"
+  for i in range(0, n)
+    t = t + s.char_at(i) + "#"
+  tn := t.len()
+  mut p := []
+  for i in range(0, tn)
+    p.push(0)
+  mut c := 0
+  mut r := 0
+  for i in range(1, tn)
+    mut mirror := 2 * c - i
+    if mirror < 0
+      mirror = 0
+    if i < r
+      rem := r - i
+      if p[mirror] < rem
+        p[i] = p[mirror]
+      else
+        p[i] = rem
+    -- Attempt to expand palindrome centered at i
+    mut left := i - p[i] - 1
+    mut right := i + p[i] + 1
+    while left >= 0 and right < tn and t.char_at(left) == t.char_at(right)
+      p[i] = p[i] + 1
+      left = left - 1
+      right = right + 1
+    -- Update center and right boundary
+    if i + p[i] > r
+      c = i
+      r = i + p[i]
+  p
+
+fn longest_palindrome s:Str -> Str
+  n := s.len()
+  mut t := "#"
+  for i in range(0, n)
+    t = t + s.char_at(i) + "#"
+  p := manachers(s)
+  tn := t.len()
+  mut max_len := 0
+  mut max_center := 0
+  for i in range(0, tn)
+    if p[i] > max_len
+      max_len = p[i]
+      max_center = i
+  -- Extract substring from original string
+  start := (max_center - max_len) / 2
+  length := max_len
+  s.substr(start, length)
+
+fn count_palindromes s:Str -> Int
+  n := s.len()
+  mut t := "#"
+  for i in range(0, n)
+    t = t + s.char_at(i) + "#"
+  p := manachers(s)
+  tn := t.len()
+  -- Each palindrome of radius r contributes floor((r+1)/2) palindromes
+  mut count := 0
+  for i in range(0, tn)
+    count = count + (p[i] + 1) / 2
+  count
+
+fn is_palindrome s:Str -> Bool
+  p := longest_palindrome(s)
+  p.len() == s.len()
+
+fn main
+  print "Manacher's Algorithm (Palindromes):"
+  print ""
+
+  -- Part 1: Longest palindromic substring
+  print "=== Part 1: Longest Palindromic Substring ==="
+  lp1 := longest_palindrome("babad")
+  print "  'babad' -> '{lp1}'"
+  lp2 := longest_palindrome("cbbd")
+  print "  'cbbd' -> '{lp2}'"
+  lp3 := longest_palindrome("racecar")
+  print "  'racecar' -> '{lp3}'"
+  lp4 := longest_palindrome("abacaba")
+  print "  'abacaba' -> '{lp4}'"
+
+  -- Part 2: Palindrome check
+  print ""
+  print "=== Part 2: Palindrome Detection ==="
+  words := ["racecar", "level", "hello", "madam", "noon", "world"]
+  for i in range(0, 6)
+    w := words[i]
+    is_pal := is_palindrome(w)
+    if is_pal
+      print "  '{w}': palindrome"
+    else
+      print "  '{w}': not a palindrome"
+
+  -- Part 3: Count all palindromic substrings
+  print ""
+  print "=== Part 3: Palindrome Count ==="
+  cnt1 := count_palindromes("aaa")
+  print "  'aaa' palindromes: {cnt1}"
+  cnt2 := count_palindromes("abc")
+  print "  'abc' palindromes: {cnt2}"
+  cnt3 := count_palindromes("abba")
+  print "  'abba' palindromes: {cnt3}"
+
+  -- Part 4: Algorithm explanation
+  print ""
+  print "=== Part 4: How Manacher Works ==="
+  print "  1. Transform string: abc -> #a#b#c#"
+  print "  2. Track rightmost palindrome boundary r, center c"
+  print "  3. Mirror: p[mirror] gives starting point"
+  print "  4. Expand and update if we extend boundary"
+  print "  5. Result: O(n) - each char added to boundary once"
+
+  -- Part 5: Radius array
+  print ""
+  print "=== Part 5: Radius Array ==="
+  s5 := "abacaba"
+  p5 := manachers(s5)
+  p5_str := p5 | map(x => str(x)) | join(", ")
+  print "  s = '{s5}'"
+  print "  Transformed: #a#b#a#c#a#b#a#"
+  print "  p = [{p5_str}]"
+  max_r := p5.max()
+  print "  Max radius: {max_r} (palindrome length {max_r})"
+
+  print ""
+  print "Manacher's: O(n) algorithm finding all palindromic substrings simultaneously."

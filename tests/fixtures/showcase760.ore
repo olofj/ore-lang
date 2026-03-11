@@ -1,0 +1,188 @@
+-- Showcase 760: Lempel-Ziv Compression Simulation (LZ77)
+
+fn lz77_encode s:Str window_size:Int -> List
+  -- LZ77 encoding: returns list of tokens as strings
+  -- Token format: "offset,length,char" for back-reference, "0,0,char" for literal
+  n := s.len()
+  mut tokens := []
+  mut pos := 0
+  while pos < n
+    -- Search backward window for longest match
+    mut win_start := pos - window_size
+    if win_start < 0
+      win_start = 0
+    mut best_offset := 0
+    mut best_length := 0
+    -- Try each position in window
+    for search in range(win_start, pos)
+      mut length := 0
+      while pos + length < n and s.char_at(search + length) == s.char_at(pos + length)
+        length = length + 1
+        -- Don't let match run past search position into itself too far
+        if search + length >= pos + length
+          length = length -- allowed: copy-ahead is valid in LZ77
+      if length > best_length
+        best_length = length
+        best_offset = pos - search
+    -- Emit token
+    if best_length >= 2
+      -- Back-reference token
+      mut next_char := ""
+      if pos + best_length < n
+        next_char = s.char_at(pos + best_length)
+      else
+        next_char = ""
+      tokens.push(str(best_offset) + "," + str(best_length) + "," + next_char)
+      pos = pos + best_length + 1
+      if next_char == ""
+        pos = pos - 1
+    else
+      -- Literal token
+      tokens.push("0,0," + s.char_at(pos))
+      pos = pos + 1
+  tokens
+
+fn lz77_token_count s:Str window_size:Int -> Int
+  n := s.len()
+  mut count := 0
+  mut pos := 0
+  while pos < n
+    mut win_start := pos - window_size
+    if win_start < 0
+      win_start = 0
+    mut best_length := 0
+    for search in range(win_start, pos)
+      mut length := 0
+      while pos + length < n and s.char_at(search + length) == s.char_at(pos + length)
+        length = length + 1
+      if length > best_length
+        best_length = length
+    count = count + 1
+    if best_length >= 2
+      pos = pos + best_length + 1
+      if pos - 1 >= n
+        pos = n
+    else
+      pos = pos + 1
+  count
+
+fn lz78_encode s:Str -> List
+  -- LZ78: dictionary-based encoding
+  -- Each token is "dict_index,char"
+  n := s.len()
+  mut tokens := []
+  mut dict := [""]  -- dict[0] = empty string
+  mut i := 0
+  while i < n
+    -- Find longest match in dictionary
+    mut best_idx := 0
+    mut best_len := 0
+    dict_size := dict.count()
+    for d in range(0, dict_size)
+      dstr := dict[d]
+      dlen := dstr.len()
+      -- Check if s[i..i+dlen] == dstr
+      if dlen <= n - i
+        mut matches := true
+        for k in range(0, dlen)
+          if s.char_at(i + k) != dstr.char_at(k)
+            matches = false
+        if matches and dlen > best_len
+          best_len = dlen
+          best_idx = d
+    -- Next char
+    if i + best_len < n
+      next_char := s.char_at(i + best_len)
+      token := str(best_idx) + "," + next_char
+      tokens.push(token)
+      -- Add to dictionary
+      new_entry := dict[best_idx] + next_char
+      dict.push(new_entry)
+      i = i + best_len + 1
+    else
+      -- End of string with match
+      tokens.push(str(best_idx) + ",")
+      i = n
+  tokens
+
+fn main
+  print "Lempel-Ziv Compression Simulation:"
+  print ""
+
+  -- Part 1: LZ77 encoding
+  print "=== Part 1: LZ77 Encoding ==="
+  s1 := "abcabcabc"
+  t1 := lz77_encode(s1, 8)
+  t1_str := t1 | join(" | ")
+  cnt1 := lz77_token_count(s1, 8)
+  print "  Input: '{s1}' ({s1.len()} chars)"
+  print "  Tokens: {t1_str}"
+  print "  Token count: {cnt1}"
+
+  s2 := "aaaaaaaaa"
+  cnt2 := lz77_token_count(s2, 8)
+  t2 := lz77_encode(s2, 8)
+  t2_str := t2 | join(" | ")
+  print "  Input: '{s2}'"
+  print "  Tokens: {t2_str}"
+  print "  Token count: {cnt2}"
+
+  -- Part 2: LZ78 encoding
+  print ""
+  print "=== Part 2: LZ78 (Dictionary) Encoding ==="
+  s3 := "abababab"
+  t3 := lz78_encode(s3)
+  t3_str := t3 | join(", ")
+  print "  Input: '{s3}'"
+  print "  Tokens (dict_idx,char): {t3_str}"
+  print "  Token count: {t3.count()}"
+
+  s4 := "abcabcabc"
+  t4 := lz78_encode(s4)
+  t4_str := t4 | join(", ")
+  print "  Input: '{s4}'"
+  print "  Tokens: {t4_str}"
+  print "  Token count: {t4.count()}"
+
+  -- Part 3: Compression comparison
+  print ""
+  print "=== Part 3: Compression Comparison ==="
+  inputs := ["aaaa", "abab", "abcd", "aababcabcd"]
+  for i in range(0, 4)
+    s := inputs[i]
+    n_chars := s.len()
+    n_tok := lz77_token_count(s, 8)
+    t78 := lz78_encode(s)
+    n_tok78 := t78.count()
+    print "  '{s}': {n_chars} chars, LZ77={n_tok} tokens, LZ78={n_tok78} tokens"
+
+  -- Part 4: How LZ77 works
+  print ""
+  print "=== Part 4: LZ77 Token Format ==="
+  print "  Token = (offset, length, next_char)"
+  print "  offset: how far back in window"
+  print "  length: how many chars to copy"
+  print "  next_char: first new character"
+  print "  Example: (3,4,x) = go back 3, copy 4 chars, then 'x'"
+
+  -- Part 5: LZ78 dictionary growth
+  print ""
+  print "=== Part 5: LZ78 Dictionary Growth ==="
+  s5 := "abcabcabc"
+  t5 := lz78_encode(s5)
+  print "  Encoding 'abcabcabc':"
+  for i in range(0, t5.count())
+    tok := t5[i]
+    print "    Token {i + 1}: ({tok})"
+
+  -- Part 6: Applications
+  print ""
+  print "=== Part 6: LZ Family Applications ==="
+  print "  LZ77: basis for DEFLATE (gzip, PNG, zlib)"
+  print "  LZ78: basis for LZW (GIF, TIFF, early modems)"
+  print "  LZW: variant used in compress, GIF"
+  print "  Both achieve entropy-approaching compression"
+  print "  Asymptotically optimal for stationary sources"
+
+  print ""
+  print "Lempel-Ziv: dictionary-based compression algorithms achieving near-optimal compression ratios."

@@ -1,0 +1,150 @@
+-- Showcase 758: Burrows-Wheeler Transform
+
+fn bwt_encode s:Str -> Str
+  -- BWT forward transform
+  n := s.len() + 1
+  full := s + "$"
+  -- Sort rotation indices via insertion sort
+  mut indices := []
+  for i in range(0, n)
+    indices.push(i)
+  -- Bubble sort rotations
+  for pass in range(0, n - 1)
+    for i in range(0, n - 1 - pass)
+      ia := indices[i]
+      ib := indices[i + 1]
+      mut k := 0
+      mut swap := false
+      mut done := false
+      while k < n and done == false
+        ca := ord(full.char_at((ia + k) % n))
+        cb := ord(full.char_at((ib + k) % n))
+        if ca > cb
+          swap = true
+          done = true
+        else
+          if ca < cb
+            done = true
+        k = k + 1
+      if swap
+        tmp := indices[i]
+        indices[i] = indices[i + 1]
+        indices[i + 1] = tmp
+  -- Take last char of each sorted rotation
+  mut result := ""
+  for i in range(0, n)
+    idx := indices[i]
+    last_pos := (idx + n - 1) % n
+    result = result + full.char_at(last_pos)
+  result
+
+fn char_rank c:Str -> Int
+  -- Rank of char for sorting: '$'=0, 'a'=1, ..., 'z'=26
+  if c == "$"
+    0
+  else
+    ord(c) - ord("a") + 1
+
+fn bwt_decode bwt:Str -> Str
+  n := bwt.len()
+  -- Sort BWT to get first column
+  mut first_col := bwt.chars()
+  -- Bubble sort first_col by char_rank
+  for pass in range(0, n - 1)
+    for i in range(0, n - 1 - pass)
+      ci := first_col[i]
+      cj := first_col[i + 1]
+      if char_rank(ci) > char_rank(cj)
+        first_col[i] = cj
+        first_col[i + 1] = ci
+  -- Build LF mapping
+  mut lf := []
+  for i in range(0, n)
+    lf.push(0)
+  -- For each position in last col (bwt), find corresponding row in first col
+  mut next_fc := []
+  for i in range(0, n)
+    next_fc.push(0)
+  -- Count occurrences of each char seen so far in bwt
+  -- LF[i] = rank of bwt[i] among same chars, then find in first_col
+  for i in range(0, n)
+    c := bwt.char_at(i)
+    -- Count how many times c appears in bwt[0..i-1]
+    mut cnt := 0
+    for j in range(0, i)
+      if bwt.char_at(j) == c
+        cnt = cnt + 1
+    -- Find the cnt-th occurrence of c in first_col
+    mut found := 0
+    mut fc_idx := 0
+    mut looking := true
+    while fc_idx < n and looking
+      if first_col[fc_idx] == c
+        if found == cnt
+          lf[i] = fc_idx
+          looking = false
+        found = found + 1
+      fc_idx = fc_idx + 1
+  -- Find start row (where '$' appears in bwt)
+  mut start_row := 0
+  for i in range(0, n)
+    if bwt.char_at(i) == "$"
+      start_row = i
+  -- Reconstruct by following LF links, reading bwt chars in reverse
+  mut row := start_row
+  mut result := ""
+  for i in range(0, n - 1)
+    row = lf[row]
+    result = bwt.char_at(row) + result
+  result
+
+fn main
+  print "Burrows-Wheeler Transform:"
+  print ""
+
+  -- Part 1: Encode examples
+  print "=== Part 1: BWT Encoding ==="
+  bwt1 := bwt_encode("banana")
+  print "  BWT('banana') = '{bwt1}'"
+  bwt2 := bwt_encode("abracadabra")
+  print "  BWT('abracadabra') = '{bwt2}'"
+
+  -- Part 2: Decode roundtrip
+  print ""
+  print "=== Part 2: Roundtrip Decoding ==="
+  dec1 := bwt_decode(bwt1)
+  print "  Encode 'banana' -> '{bwt1}' -> decode -> '{dec1}'"
+  dec2 := bwt_decode(bwt2)
+  print "  Encode 'abracadabra' -> '{bwt2}' -> decode -> '{dec2}'"
+
+  -- Part 3: Properties of BWT
+  print ""
+  print "=== Part 3: Properties ==="
+  print "  BWT groups similar characters together"
+  print "  This makes run-length encoding very effective"
+  print "  Reversible with just the last column + sentinel"
+  print "  Used in: bzip2 compression, genome alignment (BWA)"
+
+  -- Part 4: Compression demonstration
+  print ""
+  print "=== Part 4: Character Grouping ==="
+  bwt3 := bwt_encode("abababab")
+  print "  'abababab' -> '{bwt3}'"
+  bwt4 := bwt_encode("aaabbbccc")
+  print "  'aaabbbccc' -> '{bwt4}'"
+  print "  Runs of same chars compress well with RLE"
+
+  -- Part 5: Sorted rotations of banana
+  print ""
+  print "=== Part 5: Sorted Rotations of 'banana' ==="
+  print "  $banana -> last char: a"
+  print "  a$banan -> last char: n"
+  print "  ana$ban -> last char: n"
+  print "  anana$b -> last char: b"
+  print "  banana$ -> last char: $"
+  print "  na$bana -> last char: a"
+  print "  nana$ba -> last char: a"
+  print "  BWT = 'annb$aa'"
+
+  print ""
+  print "Burrows-Wheeler: reversible transform grouping repeated chars for compression."

@@ -1,0 +1,132 @@
+-- Showcase 755: KMP Failure Function (Prefix Function)
+
+fn prefix_function s:Str -> List
+  -- pi[i] = length of longest proper prefix of s[0..i] that is also a suffix
+  n := s.len()
+  mut pi := []
+  for i in range(0, n)
+    pi.push(0)
+  mut k := 0
+  for i in range(1, n)
+    while k > 0 and s.char_at(k) != s.char_at(i)
+      k = pi[k - 1]
+    if s.char_at(k) == s.char_at(i)
+      k = k + 1
+    pi[i] = k
+  pi
+
+fn period s:Str -> Int
+  -- Shortest period of string s
+  n := s.len()
+  pi := prefix_function(s)
+  last := pi[n - 1]
+  cand := n - last
+  if n % cand == 0
+    cand
+  else
+    n
+
+fn count_prefix_occurrences text:Str pattern:Str -> Int
+  -- Count occurrences using prefix function on concatenated string
+  m := pattern.len()
+  n := text.len()
+  combined := pattern + "#" + text
+  pi := prefix_function(combined)
+  mut count := 0
+  for i in range(m + 1, m + 1 + n)
+    if pi[i] == m
+      count = count + 1
+  count
+
+fn find_all_occurrences text:Str pattern:Str -> List
+  m := pattern.len()
+  n := text.len()
+  combined := pattern + "#" + text
+  pi := prefix_function(combined)
+  mut positions := []
+  for i in range(m + 1, m + 1 + n)
+    if pi[i] == m
+      positions.push(i - 2 * m)
+  positions
+
+fn main
+  print "KMP Prefix (Failure) Function:"
+  print ""
+
+  -- Part 1: Prefix function computation
+  print "=== Part 1: Prefix Function Examples ==="
+  s1 := "aabaabaab"
+  pi1 := prefix_function(s1)
+  pi1_str := pi1 | map(x => str(x)) | join(", ")
+  print "  s = '{s1}'"
+  print "  pi = [{pi1_str}]"
+
+  s2 := "abcabcabc"
+  pi2 := prefix_function(s2)
+  pi2_str := pi2 | map(x => str(x)) | join(", ")
+  print "  s = '{s2}'"
+  print "  pi = [{pi2_str}]"
+
+  s3 := "aaaa"
+  pi3 := prefix_function(s3)
+  pi3_str := pi3 | map(x => str(x)) | join(", ")
+  print "  s = '{s3}'"
+  print "  pi = [{pi3_str}]"
+
+  -- Part 2: String period
+  print ""
+  print "=== Part 2: String Periods ==="
+  p1 := period("abcabcabc")
+  print "  period('abcabcabc') = {p1}"
+  p2 := period("aaaaaa")
+  print "  period('aaaaaa') = {p2}"
+  p3 := period("abcdef")
+  print "  period('abcdef') = {p3}"
+  p4 := period("ababab")
+  print "  period('ababab') = {p4}"
+
+  -- Part 3: Count occurrences using prefix function
+  print ""
+  print "=== Part 3: Pattern Matching via Prefix Function ==="
+  text1 := "abcabcabc"
+  pat1 := "abc"
+  cnt1 := count_prefix_occurrences(text1, pat1)
+  print "  '{pat1}' in '{text1}': {cnt1} times"
+
+  text2 := "mississippi"
+  pat2 := "iss"
+  cnt2 := count_prefix_occurrences(text2, pat2)
+  print "  '{pat2}' in '{text2}': {cnt2} times"
+
+  -- Part 4: Find all positions
+  print ""
+  print "=== Part 4: All Match Positions ==="
+  pos1 := find_all_occurrences("ababcabab", "abab")
+  pos1_str := pos1 | map(x => str(x)) | join(", ")
+  print "  'abab' in 'ababcabab': [{pos1_str}]"
+
+  pos2 := find_all_occurrences("aaaaaa", "aa")
+  pos2_str := pos2 | map(x => str(x)) | join(", ")
+  print "  'aa' in 'aaaaaa': [{pos2_str}]"
+
+  -- Part 5: Properties
+  print ""
+  print "=== Part 5: Properties ==="
+  print "  pi[i] = longest proper prefix of s[0..i] = suffix"
+  print "  pi[0] = 0 always (no proper prefix)"
+  print "  0 <= pi[i] <= i"
+  print "  pi[i] <= pi[i-1] + 1"
+  print "  Used in: KMP search, period finding, Z-function"
+
+  -- Part 6: Border array relationship
+  print ""
+  print "=== Part 6: Border Array ==="
+  s4 := "aabaa"
+  pi4 := prefix_function(s4)
+  pi4_str := pi4 | map(x => str(x)) | join(", ")
+  print "  s = '{s4}', pi = [{pi4_str}]"
+  print "  Borders of 'aabaa': '', 'a', 'aa' (lengths 0, 1, 2)"
+  print "  pi[4] = {pi4[4]} means 'aa' is longest border"
+
+  print ""
+  print "Prefix function: encodes all prefix-suffix overlaps, enabling O(n) pattern matching."

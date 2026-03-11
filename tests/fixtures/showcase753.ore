@@ -1,0 +1,133 @@
+-- Showcase 753: Edit Distance (Levenshtein)
+
+fn min3 a:Int b:Int c:Int -> Int
+  mut m := a
+  if b < m
+    m = b
+  if c < m
+    m = c
+  m
+
+fn edit_distance s:Str t:Str -> Int
+  -- Dynamic programming O(mn) time, O(mn) space
+  m := s.len()
+  n := t.len()
+  -- Build DP table as flat list (row-major)
+  -- dp[i][j] = edit distance of s[0..i] and t[0..j]
+  mut dp := []
+  for i in range(0, (m + 1) * (n + 1))
+    dp.push(0)
+  -- Base cases: dp[i][0] = i, dp[0][j] = j
+  for i in range(0, m + 1)
+    dp[i * (n + 1)] = i
+  for j in range(0, n + 1)
+    dp[j] = j
+  -- Fill table
+  for i in range(1, m + 1)
+    for j in range(1, n + 1)
+      mut cost := 0
+      if s.char_at(i - 1) != t.char_at(j - 1)
+        cost = 1
+      del_op := dp[(i - 1) * (n + 1) + j] + 1
+      ins_op := dp[i * (n + 1) + (j - 1)] + 1
+      sub_op := dp[(i - 1) * (n + 1) + (j - 1)] + cost
+      dp[i * (n + 1) + j] = min3(del_op, ins_op, sub_op)
+  dp[m * (n + 1) + n]
+
+fn edit_distance_space_opt s:Str t:Str -> Int
+  -- O(min(m,n)) space using two rows
+  m := s.len()
+  n := t.len()
+  mut prev := []
+  mut curr := []
+  for j in range(0, n + 1)
+    prev.push(j)
+    curr.push(0)
+  for i in range(1, m + 1)
+    curr[0] = i
+    for j in range(1, n + 1)
+      mut cost := 0
+      if s.char_at(i - 1) != t.char_at(j - 1)
+        cost = 1
+      del_op := prev[j] + 1
+      ins_op := curr[j - 1] + 1
+      sub_op := prev[j - 1] + cost
+      curr[j] = min3(del_op, ins_op, sub_op)
+    -- Swap rows
+    for j in range(0, n + 1)
+      prev[j] = curr[j]
+  prev[n]
+
+fn main
+  print "Edit Distance (Levenshtein):"
+  print ""
+
+  -- Part 1: Classic examples
+  print "=== Part 1: Classic Examples ==="
+  d1 := edit_distance("kitten", "sitting")
+  print "  kitten -> sitting: {d1} operations"
+  d2 := edit_distance("saturday", "sunday")
+  print "  saturday -> sunday: {d2} operations"
+  d3 := edit_distance("intention", "execution")
+  print "  intention -> execution: {d3} operations"
+
+  -- Part 2: Space optimized
+  print ""
+  print "=== Part 2: Space-Optimized Version ==="
+  d4 := edit_distance_space_opt("kitten", "sitting")
+  print "  kitten -> sitting: {d4} (space-opt)"
+  d5 := edit_distance_space_opt("abc", "yabd")
+  print "  abc -> yabd: {d5} (space-opt)"
+
+  -- Part 3: Properties
+  print ""
+  print "=== Part 3: Properties ==="
+  -- Symmetry: d(s,t) == d(t,s)
+  da := edit_distance("abc", "bca")
+  db := edit_distance("bca", "abc")
+  print "  d(abc,bca) = {da}, d(bca,abc) = {db} (symmetric)"
+  -- Triangle inequality
+  dac := edit_distance("abc", "xyz")
+  dab := edit_distance("abc", "abd")
+  dbc := edit_distance("abd", "xyz")
+  print "  d(abc,xyz) = {dac}, d(abc,abd) = {dab}, d(abd,xyz) = {dbc}"
+  print "  Triangle: {dac} <= {dab} + {dbc} = {dab + dbc}"
+
+  -- Part 4: Edge cases
+  print ""
+  print "=== Part 4: Edge Cases ==="
+  d6 := edit_distance("", "abc")
+  print "  empty -> 'abc': {d6}"
+  d7 := edit_distance("abc", "")
+  print "  'abc' -> empty: {d7}"
+  d8 := edit_distance("abc", "abc")
+  print "  'abc' -> 'abc': {d8}"
+  d9 := edit_distance("a", "b")
+  print "  'a' -> 'b': {d9}"
+
+  -- Part 5: Applications
+  print ""
+  print "=== Part 5: Applications ==="
+  print "  Spell checking: find closest word"
+  words := ["cat", "bat", "hat", "mat", "car", "can", "cap"]
+  query := "car"
+  print "  Query: '{query}'"
+  mut best_word := words[0]
+  mut best_dist := edit_distance(query, words[0])
+  for i in range(1, 7)
+    w := words[i]
+    d := edit_distance(query, w)
+    if d < best_dist
+      best_dist = d
+      best_word = w
+  print "  Closest word: '{best_word}' (distance {best_dist})"
+
+  -- Part 6: Complexity
+  print ""
+  print "=== Part 6: Complexity ==="
+  print "  Time: O(m*n) for strings of length m and n"
+  print "  Space: O(m*n) standard, O(min(m,n)) optimized"
+  print "  Operations: insert=1, delete=1, substitute=1"
+
+  print ""
+  print "Levenshtein distance: minimum single-character edits to transform one string into another."

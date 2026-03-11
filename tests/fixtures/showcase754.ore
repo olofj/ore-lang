@@ -1,0 +1,128 @@
+-- Showcase 754: Longest Common Subsequence
+
+fn lcs_length s:Str t:Str -> Int
+  m := s.len()
+  n := t.len()
+  -- dp[i][j] = LCS length of s[0..i] and t[0..j]
+  -- Stored as flat list of size (m+1)*(n+1)
+  mut dp := []
+  for i in range(0, (m + 1) * (n + 1))
+    dp.push(0)
+  for i in range(1, m + 1)
+    for j in range(1, n + 1)
+      if s.char_at(i - 1) == t.char_at(j - 1)
+        dp[i * (n + 1) + j] = dp[(i - 1) * (n + 1) + (j - 1)] + 1
+      else
+        prev_i := dp[(i - 1) * (n + 1) + j]
+        prev_j := dp[i * (n + 1) + (j - 1)]
+        if prev_i > prev_j
+          dp[i * (n + 1) + j] = prev_i
+        else
+          dp[i * (n + 1) + j] = prev_j
+  dp[m * (n + 1) + n]
+
+fn lcs_string s:Str t:Str -> Str
+  m := s.len()
+  n := t.len()
+  mut dp := []
+  for i in range(0, (m + 1) * (n + 1))
+    dp.push(0)
+  for i in range(1, m + 1)
+    for j in range(1, n + 1)
+      if s.char_at(i - 1) == t.char_at(j - 1)
+        dp[i * (n + 1) + j] = dp[(i - 1) * (n + 1) + (j - 1)] + 1
+      else
+        prev_i := dp[(i - 1) * (n + 1) + j]
+        prev_j := dp[i * (n + 1) + (j - 1)]
+        if prev_i > prev_j
+          dp[i * (n + 1) + j] = prev_i
+        else
+          dp[i * (n + 1) + j] = prev_j
+  -- Backtrack to find the LCS
+  mut result := ""
+  mut i := m
+  mut j := n
+  while i > 0 and j > 0
+    if s.char_at(i - 1) == t.char_at(j - 1)
+      result = s.char_at(i - 1) + result
+      i = i - 1
+      j = j - 1
+    else
+      if dp[(i - 1) * (n + 1) + j] > dp[i * (n + 1) + (j - 1)]
+        i = i - 1
+      else
+        j = j - 1
+  result
+
+fn main
+  print "Longest Common Subsequence:"
+  print ""
+
+  -- Part 1: Basic examples
+  print "=== Part 1: Basic Examples ==="
+  s1 := "ABCBDAB"
+  t1 := "BDCAB"
+  len1 := lcs_length(s1, t1)
+  lcs1 := lcs_string(s1, t1)
+  print "  LCS('ABCBDAB', 'BDCAB') = '{lcs1}' (length {len1})"
+
+  s2 := "AGGTAB"
+  t2 := "GXTXAYB"
+  len2 := lcs_length(s2, t2)
+  lcs2 := lcs_string(s2, t2)
+  print "  LCS('AGGTAB', 'GXTXAYB') = '{lcs2}' (length {len2})"
+
+  s3 := "MZJAWXU"
+  t3 := "XMJYAUZ"
+  len3 := lcs_length(s3, t3)
+  lcs3 := lcs_string(s3, t3)
+  print "  LCS('MZJAWXU', 'XMJYAUZ') = '{lcs3}' (length {len3})"
+
+  -- Part 2: Properties
+  print ""
+  print "=== Part 2: Properties ==="
+  -- LCS is >= 0 and <= min(m,n)
+  la := lcs_length("abc", "abc")
+  lb := lcs_length("abc", "xyz")
+  lc := lcs_length("abc", "")
+  print "  LCS of identical: {la}"
+  print "  LCS of disjoint: {lb}"
+  print "  LCS with empty: {lc}"
+
+  -- Part 3: LCS vs edit distance
+  print ""
+  print "=== Part 3: LCS vs Edit Distance ==="
+  print "  LCS focuses on common characters"
+  print "  Edit distance counts minimal changes"
+  s4 := "sunday"
+  t4 := "saturday"
+  l4 := lcs_length(s4, t4)
+  print "  LCS('sunday', 'saturday') = {l4}"
+  print "  Relation: edit_dist <= m + n - 2*LCS"
+  m4 := s4.len()
+  n4 := t4.len()
+  bound := m4 + n4 - 2 * l4
+  print "  Upper edit bound: {m4} + {n4} - 2*{l4} = {bound}"
+
+  -- Part 4: DNA example
+  print ""
+  print "=== Part 4: Bioinformatics Example ==="
+  dna1 := "ATCGTTAG"
+  dna2 := "ATCGTTAG"
+  dna3 := "AGCATGC"
+  l5 := lcs_length(dna1, dna3)
+  lcs5 := lcs_string(dna1, dna3)
+  print "  DNA1: '{dna1}'"
+  print "  DNA2: '{dna3}'"
+  print "  Common subsequence: '{lcs5}' (length {l5})"
+
+  -- Part 5: Complexity
+  print ""
+  print "=== Part 5: Complexity ==="
+  print "  Time: O(m*n)"
+  print "  Space: O(m*n) for full DP table"
+  print "  Space optimized: O(min(m,n)) for length only"
+  print "  Applications: diff tools, bioinformatics, version control"
+
+  print ""
+  print "LCS: finds the longest sequence of characters common to two strings (non-contiguous)."

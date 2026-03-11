@@ -1,0 +1,124 @@
+-- Showcase 752: KMP (Knuth-Morris-Pratt) String Matching
+
+fn build_failure pattern:Str -> List
+  m := pattern.len()
+  mut fail := [0]
+  for i in range(1, m)
+    fail.push(0)
+  mut k := 0
+  for i in range(1, m)
+    while k > 0 and pattern.char_at(k) != pattern.char_at(i)
+      k = fail[k - 1]
+    if pattern.char_at(k) == pattern.char_at(i)
+      k = k + 1
+    fail[i] = k
+  fail
+
+fn kmp_search text:Str pattern:Str -> Int
+  n := text.len()
+  m := pattern.len()
+  if m == 0
+    0
+  else
+    fail := build_failure(pattern)
+    mut q := 0
+    mut result := -1
+    mut found := false
+    for i in range(0, n)
+      while q > 0 and pattern.char_at(q) != text.char_at(i)
+        q = fail[q - 1]
+      if pattern.char_at(q) == text.char_at(i)
+        q = q + 1
+      if q == m
+        result = i - m + 1
+        found = true
+    result
+
+fn kmp_count text:Str pattern:Str -> Int
+  n := text.len()
+  m := pattern.len()
+  if m == 0
+    0
+  else
+    fail := build_failure(pattern)
+    mut q := 0
+    mut count := 0
+    for i in range(0, n)
+      while q > 0 and pattern.char_at(q) != text.char_at(i)
+        q = fail[q - 1]
+      if pattern.char_at(q) == text.char_at(i)
+        q = q + 1
+      if q == m
+        count = count + 1
+        q = fail[q - 1]
+    count
+
+fn main
+  print "KMP String Matching:"
+  print ""
+
+  -- Part 1: Failure function
+  print "=== Part 1: Failure Function ==="
+  pat1 := "ababc"
+  fail1 := build_failure(pat1)
+  print "  Pattern: '{pat1}'"
+  fail1_str := fail1 | map(x => str(x)) | join(", ")
+  print "  Failure: [{fail1_str}]"
+
+  pat2 := "aabaa"
+  fail2 := build_failure(pat2)
+  print "  Pattern: '{pat2}'"
+  fail2_str := fail2 | map(x => str(x)) | join(", ")
+  print "  Failure: [{fail2_str}]"
+
+  -- Part 2: Basic search
+  print ""
+  print "=== Part 2: Search Examples ==="
+  text1 := "aabxaaabxaaabxba"
+  pat3 := "aaabx"
+  idx1 := kmp_search(text1, pat3)
+  print "  Text: '{text1}'"
+  print "  Pattern: '{pat3}' -> index: {idx1}"
+
+  text2 := "the quick brown fox"
+  pat4 := "brown"
+  idx2 := kmp_search(text2, pat4)
+  print "  'brown' in text -> index: {idx2}"
+
+  pat5 := "xyz"
+  idx3 := kmp_search(text2, pat5)
+  print "  'xyz' in text -> index: {idx3}"
+
+  -- Part 3: Count occurrences
+  print ""
+  print "=== Part 3: Count Occurrences ==="
+  text3 := "ababababab"
+  pat6 := "aba"
+  cnt := kmp_count(text3, pat6)
+  print "  'aba' in 'ababababab' -> count: {cnt}"
+
+  text4 := "mississippi"
+  pat7 := "iss"
+  cnt2 := kmp_count(text4, pat7)
+  print "  'iss' in 'mississippi' -> count: {cnt2}"
+
+  -- Part 4: KMP vs naive
+  print ""
+  print "=== Part 4: Complexity Comparison ==="
+  print "  Naive: O(nm) worst case"
+  print "  KMP: O(n+m) always"
+  print "  Preprocessing: O(m) for failure function"
+  print "  No backtracking in text - never re-reads characters"
+
+  -- Part 5: Edge cases
+  print ""
+  print "=== Part 5: Edge Cases ==="
+  idx4 := kmp_search("aaa", "aaa")
+  print "  Pattern equals text: index {idx4}"
+  idx5 := kmp_search("abc", "abcd")
+  print "  Pattern longer: index {idx5}"
+  idx6 := kmp_search("aaaa", "aaa")
+  print "  'aaa' in 'aaaa': index {idx6}"
+
+  print ""
+  print "KMP: linear O(n+m) time with failure function enabling zero backtracking."

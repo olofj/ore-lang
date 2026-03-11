@@ -1,0 +1,138 @@
+-- Showcase 756: Z-Algorithm for String Matching
+
+fn z_function s:Str -> List
+  -- z[i] = length of longest substring starting at s[i] that matches a prefix of s
+  n := s.len()
+  mut z := []
+  for i in range(0, n)
+    z.push(0)
+  z[0] = n
+  mut l := 0
+  mut r := 0
+  for i in range(1, n)
+    if i < r
+      z_prev := z[i - l]
+      rem := r - i
+      if z_prev < rem
+        z[i] = z_prev
+      else
+        z[i] = rem
+    -- Extend z[i] as far as possible
+    while i + z[i] < n and s.char_at(z[i]) == s.char_at(i + z[i])
+      z[i] = z[i] + 1
+    -- Update window
+    if i + z[i] > r
+      l = i
+      r = i + z[i]
+  z
+
+fn z_search text:Str pattern:Str -> List
+  -- Find all occurrences of pattern in text using Z-algorithm
+  m := pattern.len()
+  n := text.len()
+  combined := pattern + "$" + text
+  z := z_function(combined)
+  mut positions := []
+  for i in range(m + 1, m + 1 + n)
+    if z[i] >= m
+      positions.push(i - m - 1)
+  positions
+
+fn z_count text:Str pattern:Str -> Int
+  m := pattern.len()
+  n := text.len()
+  combined := pattern + "$" + text
+  z := z_function(combined)
+  mut count := 0
+  for i in range(m + 1, m + 1 + n)
+    if z[i] >= m
+      count = count + 1
+  count
+
+fn main
+  print "Z-Algorithm for String Matching:"
+  print ""
+
+  -- Part 1: Z-function examples
+  print "=== Part 1: Z-Function Examples ==="
+  s1 := "aabxaa"
+  z1 := z_function(s1)
+  z1_str := z1 | map(x => str(x)) | join(", ")
+  print "  s = '{s1}'"
+  print "  z = [{z1_str}]"
+
+  s2 := "aaaaaa"
+  z2 := z_function(s2)
+  z2_str := z2 | map(x => str(x)) | join(", ")
+  print "  s = '{s2}'"
+  print "  z = [{z2_str}]"
+
+  s3 := "abcabcabc"
+  z3 := z_function(s3)
+  z3_str := z3 | map(x => str(x)) | join(", ")
+  print "  s = '{s3}'"
+  print "  z = [{z3_str}]"
+
+  -- Part 2: Pattern searching
+  print ""
+  print "=== Part 2: Pattern Searching ==="
+  text1 := "abcabcabcabc"
+  pat1 := "abc"
+  pos1 := z_search(text1, pat1)
+  pos1_str := pos1 | map(x => str(x)) | join(", ")
+  print "  '{pat1}' in '{text1}': [{pos1_str}]"
+
+  text2 := "mississippi"
+  pat2 := "ss"
+  pos2 := z_search(text2, pat2)
+  pos2_str := pos2 | map(x => str(x)) | join(", ")
+  print "  '{pat2}' in '{text2}': [{pos2_str}]"
+
+  cnt := z_count("aaaa", "aa")
+  print "  'aa' in 'aaaa': {cnt} occurrences"
+
+  -- Part 3: Z vs prefix function
+  print ""
+  print "=== Part 3: Z vs Prefix Function ==="
+  print "  Z-function: z[i] = match length of s[i..] with s"
+  print "  Prefix function: pi[i] = longest border of s[0..i]"
+  print "  Both enable O(n) string matching"
+  print "  Z-function is often simpler to implement correctly"
+
+  -- Part 4: String period via Z-function
+  print ""
+  print "=== Part 4: Period via Z-Function ==="
+  s4 := "abababab"
+  z4 := z_function(s4)
+  n4 := s4.len()
+  mut period := n4
+  mut found_period := false
+  for i in range(1, n4)
+    if found_period == false
+      if z4[i] + i == n4 and n4 % i == 0
+        period = i
+        found_period = true
+  print "  '{s4}': period = {period}"
+
+  s5 := "abcabcabc"
+  z5 := z_function(s5)
+  n5 := s5.len()
+  mut period5 := n5
+  mut found5 := false
+  for i in range(1, n5)
+    if found5 == false
+      if z5[i] + i == n5 and n5 % i == 0
+        period5 = i
+        found5 = true
+  print "  '{s5}': period = {period5}"
+
+  -- Part 5: Complexity
+  print ""
+  print "=== Part 5: Complexity ==="
+  print "  Time: O(n) - each character added to window at most once"
+  print "  Space: O(n) for Z-array"
+  print "  Matching: O(n+m) using separator trick"
+  print "  Window [l,r]: rightmost prefix-match seen so far"
+
+  print ""
+  print "Z-algorithm: linear time string analysis via prefix-match lengths at each position."
