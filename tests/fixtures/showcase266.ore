@@ -1,0 +1,56 @@
+-- Showcase 266: Stack-based calculator
+
+fn main
+  -- Evaluate RPN expression: 3 4 + 2 * 7 -
+  tokens := ["3", "4", "+", "2", "*", "7", "-"]
+  mut stack := []
+
+  for token in tokens
+    if token == "+"
+      b := stack.pop()
+      a := stack.pop()
+      stack.push(a + b)
+    else if token == "-"
+      b := stack.pop()
+      a := stack.pop()
+      stack.push(a - b)
+    else if token == "*"
+      b := stack.pop()
+      a := stack.pop()
+      stack.push(a * b)
+    else
+      stack.push(token.to_int())
+
+  print "3 4 + 2 * 7 - = {stack[0]}"
+
+  -- Another expression: 5 1 2 + 4 * + 3 -
+  tokens2 := ["5", "1", "2", "+", "4", "*", "+", "3", "-"]
+  mut stack2 := []
+  for token in tokens2
+    if token == "+"
+      b := stack2.pop()
+      a := stack2.pop()
+      stack2.push(a + b)
+    else if token == "-"
+      b := stack2.pop()
+      a := stack2.pop()
+      stack2.push(a - b)
+    else if token == "*"
+      b := stack2.pop()
+      a := stack2.pop()
+      stack2.push(a * b)
+    else
+      stack2.push(token.to_int())
+
+  print "5 1 2 + 4 * + 3 - = {stack2[0]}"
+
+  -- Fibonacci using stack
+  print ""
+  print "Fibonacci via stack:"
+  mut fib_stack := [0, 1]
+  for i in range(0, 8)
+    n := fib_stack | count()
+    a := fib_stack[n - 2]
+    b := fib_stack[n - 1]
+    fib_stack.push(a + b)
+  print "  {fib_stack | join(", ")}"

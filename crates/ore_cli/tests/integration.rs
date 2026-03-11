@@ -3983,6 +3983,88 @@ fn showcase260_features_tour() {
 }
 
 #[test]
+fn showcase261_roman_numerals() {
+    let out = run_ore("showcase261.ore");
+    assert!(out.contains("42 -> XLII -> 42"));
+    assert!(out.contains("1994 -> MCMXCIV -> 1994"));
+    assert!(out.contains("3999 -> MMMCMXCIX -> 3999"));
+}
+
+#[test]
+fn showcase262_rle_encoding() {
+    let out = run_ore("showcase262.ore");
+    assert!(out.contains("AAABBBCCDDDDDEEE -> 3A3B2C5D3E -> AAABBBCCDDDDDEEE"));
+    assert!(out.contains("ABCDE -> ABCDE -> ABCDE"));
+}
+
+#[test]
+fn showcase263_linked_list() {
+    let out = run_ore("showcase263.ore");
+    assert!(out.contains("10 -> 20 -> 30 -> 40 -> 50"));
+    assert!(out.contains("50 -> 40 -> 30 -> 20 -> 10"));
+    assert!(out.contains("After insert 25 at pos 2:"));
+    assert!(out.contains("Find 20: index 1"));
+}
+
+#[test]
+fn showcase264_vector_ops() {
+    let out = run_ore("showcase264.ore");
+    assert!(out.contains("Dot product [1,2,3].[4,5,6] = 32"));
+    assert!(out.contains("Cross product: -3, 6, -3"));
+    assert!(out.contains("Sum of squares: 55"));
+}
+
+#[test]
+fn showcase265_text_statistics() {
+    let out = run_ore("showcase265.ore");
+    assert!(out.contains("Word count: 13"));
+    assert!(out.contains("the: 4"));
+    assert!(out.contains("Unique words: 8"));
+}
+
+#[test]
+fn showcase266_stack_calculator() {
+    let out = run_ore("showcase266.ore");
+    assert!(out.contains("3 4 + 2 * 7 - = 7"));
+    assert!(out.contains("5 1 2 + 4 * + 3 - = 14"));
+    assert!(out.contains("0, 1, 1, 2, 3, 5, 8, 13, 21, 34"));
+}
+
+#[test]
+fn showcase267_look_and_say() {
+    let out = run_ore("showcase267.ore");
+    assert!(out.contains("1: 1"));
+    assert!(out.contains("4: 1211"));
+    assert!(out.contains("8: 1113213211"));
+}
+
+#[test]
+fn showcase268_histogram() {
+    let out = run_ore("showcase268.ore");
+    assert!(out.contains("Monthly Sales:"));
+    assert!(out.contains("Distribution:"));
+    assert!(out.contains("(6)"));
+}
+
+#[test]
+fn showcase269_calendar() {
+    let out = run_ore("showcase269.ore");
+    assert!(out.contains("Mar 2024"));
+    assert!(out.contains("Su Mo Tu We Th Fr Sa"));
+    assert!(out.contains("2000 leap year: yes"));
+    assert!(out.contains("1900 leap year: no"));
+}
+
+#[test]
+fn showcase270_mini_database() {
+    let out = run_ore("showcase270.ore");
+    assert!(out.contains("Lookup 'Carol': index 2"));
+    assert!(out.contains("Engineering team:"));
+    assert!(out.contains("Eve: 95k"));
+    assert!(out.contains("Sorted by salary:"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

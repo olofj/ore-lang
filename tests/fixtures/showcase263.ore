@@ -1,0 +1,46 @@
+-- Showcase 263: Linked list via maps
+
+fn main
+  -- Simulate a linked list using maps
+  -- Each node: map with "val" and "next" (index or -1)
+  mut vals := [10, 20, 30, 40, 50]
+
+  -- Forward traversal
+  print "Forward:"
+  mut items := []
+  for v in vals
+    items.push(v)
+  print "  {items | join(" -> ")}"
+
+  -- Reverse
+  print "Reverse:"
+  mut rev := []
+  n := items | count()
+  for i in range(0, n)
+    rev.push(items[n - 1 - i])
+  print "  {rev | join(" -> ")}"
+
+  -- Insert at position 2
+  mut new_list := []
+  for i in range(0, items | count())
+    if i == 2
+      new_list.push(25)
+    new_list.push(items[i])
+  print "After insert 25 at pos 2:"
+  print "  {new_list | join(" -> ")}"
+
+  -- Delete at position 3
+  mut del_list := []
+  for i in range(0, new_list | count())
+    if i != 3
+      del_list.push(new_list[i])
+  print "After delete pos 3:"
+  print "  {del_list | join(" -> ")}"
+
+  -- Find element
+  target := 20
+  mut found := -1
+  for i in range(0, del_list | count())
+    if del_list[i] == target
+      found = i
+  print "Find {target}: index {found}"

@@ -1,0 +1,48 @@
+-- Showcase 262: Run-length encoding
+
+fn rle_encode s:Str -> Str
+  if s.len() == 0
+    return ""
+  mut result := ""
+  mut count := 1
+  mut prev := s.substr(0, 1)
+  for i in range(1, s.len())
+    ch := s.substr(i, 1)
+    if ch == prev
+      count = count + 1
+    else
+      if count > 1
+        result = "{result}{count}{prev}"
+      else
+        result = "{result}{prev}"
+      prev = ch
+      count = 1
+  if count > 1
+    result = "{result}{count}{prev}"
+  else
+    result = "{result}{prev}"
+  result
+
+fn rle_decode s:Str -> Str
+  mut result := ""
+  mut num_str := ""
+  for i in range(0, s.len())
+    ch := s.substr(i, 1)
+    o := ord(ch)
+    if o >= 48 and o <= 57
+      num_str = "{num_str}{ch}"
+    else
+      mut count := 1
+      if num_str.len() > 0
+        count = num_str.to_int()
+        num_str = ""
+      for j in range(0, count)
+        result = "{result}{ch}"
+  result
+
+fn main
+  tests := ["AAABBBCCDDDDDEEE", "ABCDE", "AAAAAA", "AABBA"]
+  for s in tests
+    encoded := rle_encode(s)
+    decoded := rle_decode(encoded)
+    print "{s} -> {encoded} -> {decoded}"

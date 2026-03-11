@@ -1,0 +1,59 @@
+-- Showcase 264: Vector operations with pipelines
+
+fn main
+  -- Dot product
+  v1 := [1, 2, 3]
+  v2 := [4, 5, 6]
+  mut dot := 0
+  for i in range(0, 3)
+    dot = dot + v1[i] * v2[i]
+  print "Dot product [1,2,3].[4,5,6] = {dot}"
+
+  -- Vector addition
+  mut sum_vec := []
+  for i in range(0, 3)
+    sum_vec.push(v1[i] + v2[i])
+  print "Sum: {sum_vec | join(", ")}"
+
+  -- Scalar multiply
+  scaled := v1 | map(x => x * 3)
+  print "Scaled x3: {scaled | join(", ")}"
+
+  -- Magnitude squared
+  mut mag_sq := 0
+  for x in v1
+    mag_sq = mag_sq + x * x
+  print "Magnitude^2 of [1,2,3] = {mag_sq}"
+
+  -- Cross product (3D)
+  mut cross := []
+  cross.push(v1[1] * v2[2] - v1[2] * v2[1])
+  cross.push(v1[2] * v2[0] - v1[0] * v2[2])
+  cross.push(v1[0] * v2[1] - v1[1] * v2[0])
+  print "Cross product: {cross | join(", ")}"
+
+  -- Normalize (integer approximation)
+  print ""
+  print "Pipeline vector operations:"
+  data := range(1, 6) | map(n => n * n)
+  print "Squares 1-5: {data | join(", ")}"
+
+  total := data | sum()
+  print "Sum of squares: {total}"
+
+  cumulative := data | fold(0, (acc, n) => acc + n)
+  print "Running total: {cumulative}"
+
+  -- Element-wise operations via zip-like pattern
+  a := [10, 20, 30, 40, 50]
+  b := [1, 2, 3, 4, 5]
+  mut diff := []
+  for i in range(0, a | count())
+    diff.push(a[i] - b[i])
+  print ""
+  print "Element-wise difference: {diff | join(", ")}"
+
+  mut product := []
+  for i in range(0, a | count())
+    product.push(a[i] * b[i])
+  print "Element-wise product: {product | join(", ")}"

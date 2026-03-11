@@ -1,0 +1,46 @@
+-- Showcase 265: Text statistics
+
+fn main
+  text := "the quick brown fox jumps over the lazy dog the fox the dog"
+  words := text.split(" ")
+
+  print "Text: {text}"
+  print "Word count: {words | count()}"
+
+  -- Character count (no spaces)
+  mut chars := 0
+  for w in words
+    chars = chars + w.len()
+  print "Characters (no spaces): {chars}"
+  print "Characters (with spaces): {text.len()}"
+
+  -- Word frequency
+  mut freq := {}
+  for word in words
+    if freq.contains(word)
+      freq.set(word, freq[word] + 1)
+    else
+      freq.set(word, 1)
+
+  print ""
+  print "Word frequencies:"
+  for key in freq.keys()
+    print "  {key}: {freq[key]}"
+
+  -- Find longest word
+  mut longest := ""
+  for word in words
+    if word.len() > longest.len()
+      longest = word
+  print ""
+  print "Longest word: {longest} ({longest.len()} chars)"
+
+  -- Average word length
+  avg := chars / (words | count())
+  print "Average word length: {avg}"
+
+  -- Unique words
+  mut unique := {}
+  for word in words
+    unique.set(word, 1)
+  print "Unique words: {unique.keys() | count()}"

@@ -1,0 +1,33 @@
+-- Showcase 267: Conway sequences (look-and-say)
+
+fn look_and_say s:Str -> Str
+  if s.len() == 0
+    return ""
+  mut result := ""
+  mut count := 1
+  mut prev := s.substr(0, 1)
+  for i in range(1, s.len())
+    ch := s.substr(i, 1)
+    if ch == prev
+      count = count + 1
+    else
+      result = "{result}{count}{prev}"
+      prev = ch
+      count = 1
+  result = "{result}{count}{prev}"
+  result
+
+fn main
+  mut seq := "1"
+  print "Look-and-say sequence:"
+  for i in range(0, 8)
+    print "  {i + 1}: {seq}"
+    seq = look_and_say(seq)
+
+  -- Length growth
+  print ""
+  print "Length growth:"
+  mut s := "1"
+  for i in range(0, 12)
+    print "  Step {i + 1}: length {s.len()}"
+    s = look_and_say(s)

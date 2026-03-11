@@ -1,0 +1,49 @@
+-- Showcase 261: Roman numeral converter
+
+fn to_roman n:Int -> Str
+  mut result := ""
+  mut remaining := n
+
+  values := [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
+  symbols := ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
+
+  for i in range(0, values | count())
+    while remaining >= values[i]
+      result = "{result}{symbols[i]}"
+      remaining = remaining - values[i]
+  result
+
+fn from_roman s:Str -> Int
+  mut total := 0
+  mut prev := 0
+  for i in range(0, s.len())
+    ch := s.substr(i, 1)
+    mut val := 0
+    if ch == "M"
+      val = 1000
+    else if ch == "D"
+      val = 500
+    else if ch == "C"
+      val = 100
+    else if ch == "L"
+      val = 50
+    else if ch == "X"
+      val = 10
+    else if ch == "V"
+      val = 5
+    else if ch == "I"
+      val = 1
+    if val > prev and prev > 0
+      total = total + val - 2 * prev
+    else
+      total = total + val
+    prev = val
+  total
+
+fn main
+  -- Convert integers to Roman numerals
+  test_values := [1, 4, 9, 14, 42, 99, 399, 1994, 2024, 3999]
+  for v in test_values
+    roman := to_roman(v)
+    back := from_roman(roman)
+    print "{v} -> {roman} -> {back}"

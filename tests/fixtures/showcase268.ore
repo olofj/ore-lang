@@ -1,0 +1,43 @@
+-- Showcase 268: Histogram / bar chart
+
+fn bar n:Int max_val:Int width:Int -> Str
+  bar_len := n * width / max_val
+  mut result := ""
+  for i in range(0, bar_len)
+    result = "{result}#"
+  result
+
+fn main
+  -- Monthly data
+  labels := ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+  values := [12, 28, 15, 42, 35, 20]
+
+  -- Find max for scaling
+  mut max_val := 0
+  for v in values
+    if v > max_val
+      max_val = v
+
+  print "Monthly Sales:"
+  print ""
+  for i in range(0, labels | count())
+    b := bar(values[i], max_val, 30)
+    print "  {labels[i]} | {b} {values[i]}"
+
+  -- Distribution histogram
+  print ""
+  data := [1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 3, 2, 4, 3, 5, 4, 3]
+  mut buckets := [0, 0, 0, 0, 0]
+  for v in data
+    idx := v - 1
+    buckets[idx] = buckets[idx] + 1
+
+  mut max_count := 0
+  for c in buckets
+    if c > max_count
+      max_count = c
+
+  print "Distribution:"
+  for i in range(0, 5)
+    b := bar(buckets[i], max_count, 20)
+    print "  {i + 1} | {b} ({buckets[i]})"

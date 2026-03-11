@@ -1,0 +1,63 @@
+-- Showcase 270: Mini database with indexing
+
+fn main
+  -- Table: list of maps (rows)
+  mut employees := []
+  mut name_index := {}
+
+  -- Insert records
+  names := ["Alice", "Bob", "Carol", "Dave", "Eve"]
+  depts := ["Eng", "Sales", "Eng", "Sales", "Eng"]
+  salaries := [90, 70, 85, 65, 95]
+
+  for i in range(0, names | count())
+    name_index.set(names[i], i)
+    employees.push(names[i])
+
+  -- Lookup by index
+  print "Lookup 'Carol': index {name_index["Carol"]}"
+  print "  Name: {names[name_index["Carol"]]}"
+  print "  Dept: {depts[name_index["Carol"]]}"
+  print "  Salary: {salaries[name_index["Carol"]]}"
+
+  -- Filter by department
+  print ""
+  print "Engineering team:"
+  for i in range(0, names | count())
+    if depts[i] == "Eng"
+      print "  {names[i]}: {salaries[i]}k"
+
+  -- Aggregate: avg salary per dept
+  print ""
+  mut dept_sum := {}
+  mut dept_count := {}
+  for i in range(0, names | count())
+    d := depts[i]
+    if dept_sum.contains(d)
+      dept_sum.set(d, dept_sum[d] + salaries[i])
+      dept_count.set(d, dept_count[d] + 1)
+    else
+      dept_sum.set(d, salaries[i])
+      dept_count.set(d, 1)
+
+  print "Average salary by department:"
+  for d in dept_sum.keys()
+    avg := dept_sum[d] / dept_count[d]
+    print "  {d}: {avg}k"
+
+  -- Sort by salary (selection sort indices)
+  mut indices := range(0, names | count()) | map(i => i)
+  for i in range(0, indices | count())
+    mut min_idx := i
+    for j in range(i + 1, indices | count())
+      if salaries[indices[j]] < salaries[indices[min_idx]]
+        min_idx = j
+    if min_idx != i
+      tmp := indices[i]
+      indices[i] = indices[min_idx]
+      indices[min_idx] = tmp
+
+  print ""
+  print "Sorted by salary:"
+  for i in indices
+    print "  {names[i]}: {salaries[i]}k ({depts[i]})"

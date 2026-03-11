@@ -1,0 +1,68 @@
+-- Showcase 269: Calendar generation
+
+fn is_leap year:Int -> Bool
+  if year % 400 == 0
+    true
+  else if year % 100 == 0
+    false
+  else if year % 4 == 0
+    true
+  else
+    false
+
+fn days_in_month m:Int year:Int -> Int
+  if m == 2
+    if is_leap(year) then 29 else 28
+  else if m == 4 or m == 6 or m == 9 or m == 11
+    30
+  else
+    31
+
+fn day_of_week year:Int month:Int day:Int -> Int
+  -- Zeller's congruence (simplified)
+  mut y := year
+  mut m := month
+  if m < 3
+    m = m + 12
+    y = y - 1
+  (day + 13 * (m + 1) / 5 + y + y / 4 - y / 100 + y / 400) % 7
+
+fn main
+  year := 2024
+  month := 3
+
+  month_names := ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+  print "    {month_names[month]} {year}"
+  print "Su Mo Tu We Th Fr Sa"
+
+  start_dow := day_of_week(year, month, 1)
+  -- Adjust: Zeller gives 0=Saturday, 1=Sunday...
+  first_day := (start_dow + 6) % 7
+
+  -- Print leading spaces
+  mut line := ""
+  for i in range(0, first_day)
+    line = "{line}   "
+
+  days := days_in_month(month, year)
+  mut dow := first_day
+  for d in range(1, days + 1)
+    if d < 10
+      line = "{line} {d} "
+    else
+      line = "{line}{d} "
+    dow = dow + 1
+    if dow == 7
+      print line
+      line = ""
+      dow = 0
+  if line.len() > 0
+    print line
+
+  -- Leap year check
+  print ""
+  test_years := [1900, 2000, 2024, 2023, 2100]
+  for y in test_years
+    leap := if is_leap(y) then "yes" else "no"
+    print "{y} leap year: {leap}"
