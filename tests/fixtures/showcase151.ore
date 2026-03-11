@@ -1,0 +1,49 @@
+-- Showcase 151: Mutable data structures
+
+fn main
+  -- Mutable list operations
+  mut stack := []
+  stack.push(1)
+  stack.push(2)
+  stack.push(3)
+  print "stack: {stack | join(", ")}"
+  top := stack.pop()
+  print "popped: {top}"
+  print "after pop: {stack | join(", ")}"
+
+  -- Building a list with mutation
+  print ""
+  mut primes := []
+  for n in range(2, 30)
+    mut is_prime := true
+    mut d := 2
+    while d * d <= n
+      if n % d == 0
+        is_prime = false
+      d = d + 1
+    if is_prime
+      primes.push(n)
+  print "primes < 30: {primes | join(", ")}"
+
+  -- Mutable map
+  print ""
+  mut counts := {}
+  words := "the cat sat on the mat the cat".split(" ")
+  for w in words
+    if counts.contains(w)
+      counts.set(w, counts.get(w) + 1)
+    else
+      counts.set(w, 1)
+  for k in counts.keys().sort()
+    print "  {k}: {counts.get(k)}"
+
+  -- Accumulator pattern
+  print ""
+  mut max_so_far := 0
+  mut count_increases := 0
+  values := [3, 7, 2, 9, 1, 8, 4, 6]
+  for v in values
+    if v > max_so_far
+      max_so_far = v
+      count_increases = count_increases + 1
+  print "max: {max_so_far}, increases: {count_increases}"

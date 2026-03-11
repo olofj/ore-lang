@@ -2992,6 +2992,26 @@ fn showcase150_feature_summary() {
 }
 
 #[test]
+fn showcase151_mutable_data() {
+    let out = run_ore("showcase151.ore");
+    assert!(out.contains("stack: 1, 2, 3"));
+    assert!(out.contains("popped: 3"));
+    assert!(out.contains("primes < 30: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29"));
+    assert!(out.contains("the: 3"));
+    assert!(out.contains("max: 9, increases: 3"));
+}
+
+#[test]
+fn showcase152_math_numerical() {
+    let out = run_ore("showcase152.ore");
+    assert!(out.contains("perfect numbers < 1000: 6, 28, 496"));
+    assert!(out.contains("gcd(12, 8) = 4, lcm = 24"));
+    assert!(out.contains("fibonacci < 100: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89"));
+    assert!(out.contains("digit_sum(123) = 6"));
+    assert!(out.contains("powers of 2: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
