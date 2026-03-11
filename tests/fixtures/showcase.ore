@@ -15,6 +15,27 @@ fn fib n:Int -> Int
   else
     fib(n - 1) + fib(n - 2)
 
+fn fizzbuzz n:Int -> Str
+  if n % 15 == 0
+    "FizzBuzz"
+  else if n % 3 == 0
+    "Fizz"
+  else if n % 5 == 0
+    "Buzz"
+  else
+    str(n)
+
+type Color
+  Red()
+  Green()
+  Blue()
+
+fn color_name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+
 fn main
   -- Basic arithmetic and pipelines
   result := 5 | n => n * 2 | n => n + 1
@@ -25,14 +46,22 @@ fn main
   p2 := Point(x: 4.0, y: 6.0)
   print distance(p1, p2)
 
-  -- Lists with methods
+  -- Lists with methods and multi-line pipes
   nums := [5, 3, 1, 4, 2]
   big := nums.filter(n => n > 2)
   print big
 
-  -- For-each loop
+  -- Multi-line pipe chain
+  evens := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    | filter (n => n % 2 == 0)
+    | map (n => n * n)
+  print evens.join(", ")
+
+  -- For-each with continue
   mut total := 0
-  for x in [10, 20, 30]
+  for x in [10, -5, 20, -3, 30]
+    if x < 0
+      continue
     total = total + x
   print total
 
@@ -58,3 +87,18 @@ fn main
   -- Maps
   m := {"x": 10, "y": 20}
   print m.len()
+
+  -- Match keyword with enums
+  print color_name(Red())
+  print color_name(Blue())
+
+  -- Literal match
+  x := 42
+  label := match x
+    1 -> "one"
+    42 -> "the answer"
+    _ -> "other"
+  print label
+
+  -- FizzBuzz
+  print fizzbuzz(15)
