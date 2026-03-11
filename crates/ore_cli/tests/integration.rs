@@ -5509,6 +5509,137 @@ fn showcase410_lambda_calculus() {
 }
 
 #[test]
+fn showcase411_mandelbrot() {
+    let out = run_ore("showcase411.ore");
+    assert!(out.contains("Mandelbrot Set (ASCII Art):"));
+    assert!(out.contains("c=(0, 0): 20 iterations (inside set)"));
+    assert!(out.contains("c=(-1, 0): 20 iterations (inside set)"));
+    assert!(out.contains("c=(2, 0): 2 iterations (escapes immediately)"));
+    assert!(out.contains("Mandelbrot set rendered with fixed-point arithmetic."));
+}
+
+#[test]
+fn showcase412_genetic_algorithm() {
+    let out = run_ore("showcase412.ore");
+    assert!(out.contains("Genetic Algorithm (String Evolution):"));
+    assert!(out.contains("Target: \"hello world\""));
+    assert!(out.contains("Population size: 20"));
+    assert!(out.contains("Mutation rate: 15%"));
+    assert!(out.contains("Gen 0:"));
+    assert!(out.contains("Final result after"));
+    assert!(out.contains("Genetic algorithm evolves strings toward a target."));
+}
+
+#[test]
+fn showcase413_postfix_to_infix() {
+    let out = run_ore("showcase413.ore");
+    assert!(out.contains("Postfix (RPN) to Infix Converter:"));
+    assert!(out.contains("Infix:  3 + 4"));
+    assert!(out.contains("Value:  7"));
+    assert!(out.contains("Infix:  (3 + 4) * 2"));
+    assert!(out.contains("Value:  14"));
+    assert!(out.contains("Infix:  (2 + 3) * (4 - 5)"));
+    assert!(out.contains("Value:  -5"));
+    assert!(out.contains("Infix:  10 - 2"));
+    assert!(out.contains("Value:  8"));
+    assert!(out.contains("Postfix expressions converted to infix with correct parentheses."));
+}
+
+#[test]
+fn showcase414_dijkstra() {
+    let out = run_ore("showcase414.ore");
+    assert!(out.contains("Dijkstra's Shortest Path Algorithm:"));
+    assert!(out.contains("to B: distance=1, path=A -> B"));
+    assert!(out.contains("to C: distance=2, path=A -> C"));
+    assert!(out.contains("to E: distance=4, path=A -> B -> E"));
+    assert!(out.contains("to F: distance=11, path=A -> C -> F"));
+    assert!(out.contains("to D: distance=20, path=A -> C -> D"));
+    assert!(out.contains("Dijkstra's algorithm finds shortest paths in weighted graphs."));
+}
+
+#[test]
+fn showcase415_look_and_say() {
+    let out = run_ore("showcase415.ore");
+    assert!(out.contains("Conway's Look-and-Say Sequence:"));
+    assert!(out.contains("Term 1: 1 (length 1)"));
+    assert!(out.contains("Term 2: 11 (length 2)"));
+    assert!(out.contains("Term 3: 21 (length 2)"));
+    assert!(out.contains("Term 4: 1211 (length 4)"));
+    assert!(out.contains("Term 5: 111221 (length 6)"));
+    assert!(out.contains("22: 22 -> 22 -> 22 -> 22 -> 22 -> 22"));
+    assert!(out.contains("The look-and-say sequence grows at Conway's constant ratio ~1.303577."));
+}
+
+#[test]
+fn showcase416_brainfuck() {
+    let out = run_ore("showcase416.ore");
+    assert!(out.contains("Brainfuck Interpreter:"));
+    assert!(out.contains("Output: 1 2 3 4 5"));
+    assert!(out.contains("Output: 7"));
+    assert!(out.contains("Output: 15"));
+    assert!(out.contains("Output: 5 4 3 2 1"));
+    assert!(out.contains("Output: 12"));
+    assert!(out.contains("Output: 1 4 9 16 25"));
+    assert!(out.contains("Output: 1 3 6 10"));
+    assert!(out.contains("Brainfuck: Turing-complete with just 8 commands."));
+}
+
+#[test]
+fn showcase417_text_justification() {
+    let out = run_ore("showcase417.ore");
+    assert!(out.contains("Text Justification Algorithm:"));
+    assert!(out.contains("Justified to 50 columns:"));
+    assert!(out.contains("Narrow justification (30 columns):"));
+    assert!(out.contains("|              CHAPTER ONE               |"));
+    assert!(out.contains("|             The Beginning              |"));
+    assert!(out.contains("|             by Author Name             |"));
+    assert!(out.contains("Text justification distributes spaces evenly across lines."));
+}
+
+#[test]
+fn showcase418_power_set() {
+    let out = run_ore("showcase418.ore");
+    assert!(out.contains("Power Set Generation:"));
+    assert!(out.contains("[1 2 3]"));
+    assert!(out.contains("Total: 8 subsets"));
+    assert!(out.contains("[a b c d]"));
+    assert!(out.contains("Total: 16 subsets"));
+    assert!(out.contains("[3 1 8] = 12"));
+    assert!(out.contains("[8 4] = 12"));
+    assert!(out.contains("Found 3 subsets"));
+    assert!(out.contains("Size 0: 1 subsets"));
+    assert!(out.contains("Size 3: 10 subsets"));
+    assert!(out.contains("Power sets grow exponentially: |P(S)| = 2^|S|."));
+}
+
+#[test]
+fn showcase419_lcs_diff() {
+    let out = run_ore("showcase419.ore");
+    assert!(out.contains("Longest Common Subsequence with Diff:"));
+    assert!(out.contains("LCS length: 4"));
+    assert!(out.contains("LCS length: 5"));
+    assert!(out.contains("LCS length: 3 (same = no diff)"));
+    assert!(out.contains("LCS length: 0"));
+    assert!(out.contains("+ 2"));
+    assert!(out.contains("- 4"));
+    assert!(out.contains("+ 9"));
+    assert!(out.contains("LCS computes the longest common subsequence for diff output."));
+}
+
+#[test]
+fn showcase420_spreadsheet() {
+    let out = run_ore("showcase420.ore");
+    assert!(out.contains("Simple Spreadsheet Evaluator:"));
+    assert!(out.contains("A5 (total revenue) = 5500"));
+    assert!(out.contains("C5 (total profit) = 2500"));
+    assert!(out.contains("A1 = 1000"));
+    assert!(out.contains("D4 = 50"));
+    assert!(out.contains("Grade Calculator Spreadsheet:"));
+    assert!(out.contains("Weighted average formula: HW*30% + Midterm*30% + Final*40%"));
+    assert!(out.contains("Spreadsheet evaluator: formulas compute cell dependencies."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,125 @@
+-- Showcase 415: Conway's look-and-say sequence extended
+
+-- The look-and-say sequence: each term describes the previous term
+-- 1, 11, 21, 1211, 111221, 312211, ...
+-- "1" -> "one 1" -> "11"
+-- "11" -> "two 1s" -> "21"
+
+fn look_and_say s:Str -> Str
+  ch := s | chars()
+  n := ch | count()
+  if n == 0
+    return ""
+  mut result := ""
+  mut current := ch[0]
+  mut run_count := 1
+  for i in range(1, n)
+    if ch[i] == current
+      run_count = run_count + 1
+    else
+      result = result + str(run_count) + current
+      current = ch[i]
+      run_count = 1
+  result = result + str(run_count) + current
+  result
+
+fn count_digits s:Str -> List
+  -- Returns counts of each digit [0-9]
+  ch := s | chars()
+  mut counts := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, ch | count())
+    c := ch[i]
+    if c == "0"
+      counts[0] = counts[0] + 1
+    else if c == "1"
+      counts[1] = counts[1] + 1
+    else if c == "2"
+      counts[2] = counts[2] + 1
+    else if c == "3"
+      counts[3] = counts[3] + 1
+    else if c == "4"
+      counts[4] = counts[4] + 1
+    else if c == "5"
+      counts[5] = counts[5] + 1
+    else if c == "6"
+      counts[6] = counts[6] + 1
+    else if c == "7"
+      counts[7] = counts[7] + 1
+    else if c == "8"
+      counts[8] = counts[8] + 1
+    else if c == "9"
+      counts[9] = counts[9] + 1
+  counts
+
+fn main
+  print "Conway's Look-and-Say Sequence:"
+  print ""
+
+  -- Generate first 15 terms starting from "1"
+  print "Starting from '1':"
+  mut term := "1"
+  for i in range(1, 16)
+    ch := term | chars()
+    len := ch | count()
+    if len <= 60
+      print "  Term {i}: {term} (length {len})"
+    else
+      -- Show truncated
+      mut preview := ""
+      for j in range(0, 40)
+        preview = preview + ch[j]
+      print "  Term {i}: {preview}... (length {len})"
+    term = look_and_say(term)
+
+  print ""
+
+  -- Show growth pattern
+  print "Length growth (starting from '1'):"
+  mut s := "1"
+  mut lengths := []
+  for i in range(0, 20)
+    ch := s | chars()
+    lengths.push(ch | count())
+    s = look_and_say(s)
+
+  for i in range(0, 20)
+    mut bar_len := lengths[i]
+    if bar_len > 50
+      bar_len = 50
+    mut bar := ""
+    for j in range(0, bar_len)
+      bar = bar + "#"
+    print "  {i + 1}: {bar} ({lengths[i]})"
+
+  print ""
+
+  -- Digit frequency analysis for term 12
+  print "Digit frequency in term 12:"
+  mut t := "1"
+  for i in range(0, 11)
+    t = look_and_say(t)
+  freqs := count_digits(t)
+  ch12 := t | chars()
+  total := ch12 | count()
+  for d in range(0, 10)
+    f := freqs[d]
+    if f > 0
+      pct := f * 100 / total
+      print "  Digit {d}: {f} times ({pct}%)"
+
+  print ""
+
+  -- Try different seeds
+  print "Different starting seeds:"
+  seeds := ["2", "3", "22", "12"]
+  for si in range(0, 4)
+    seed := str(seeds[si])
+    mut seq := seed
+    mut display := seed
+    for j in range(0, 5)
+      seq = look_and_say(seq)
+      display = display + " -> " + seq
+    print "  {seed}: {display}"
+
+  print ""
+  print "The look-and-say sequence grows at Conway's constant ratio ~1.303577."

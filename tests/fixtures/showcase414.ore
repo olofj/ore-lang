@@ -1,0 +1,191 @@
+-- Showcase 414: Dijkstra's algorithm (shortest path)
+
+-- Graph represented as adjacency list using parallel arrays
+-- edges_from[i], edges_to[i], edges_weight[i] represent edge i
+
+fn dijkstra num_nodes:Int edges_from:List edges_to:List edges_weight:List src:Int -> List
+  inf := 999999
+  mut dist := []
+  mut visited := []
+  mut prev := []
+  for i in range(0, num_nodes)
+    dist.push(inf)
+    visited.push(0)
+    prev.push(-1)
+  dist[src] = 0
+
+  for step in range(0, num_nodes)
+    -- Find unvisited node with minimum distance
+    mut min_dist := inf + 1
+    mut u := -1
+    for i in range(0, num_nodes)
+      if visited[i] == 0 and dist[i] < min_dist
+        min_dist = dist[i]
+        u = i
+    if u == -1
+      break
+    visited[u] = 1
+
+    -- Relax edges from u
+    num_edges := edges_from | count()
+    for e in range(0, num_edges)
+      if edges_from[e] == u
+        v := edges_to[e]
+        w := edges_weight[e]
+        new_dist := dist[u] + w
+        if new_dist < dist[v]
+          dist[v] = new_dist
+          prev[v] = u
+  dist
+
+fn dijkstra_prev num_nodes:Int edges_from:List edges_to:List edges_weight:List src:Int -> List
+  inf := 999999
+  mut dist := []
+  mut visited := []
+  mut prev := []
+  for i in range(0, num_nodes)
+    dist.push(inf)
+    visited.push(0)
+    prev.push(-1)
+  dist[src] = 0
+
+  for step in range(0, num_nodes)
+    mut min_dist := inf + 1
+    mut u := -1
+    for i in range(0, num_nodes)
+      if visited[i] == 0 and dist[i] < min_dist
+        min_dist = dist[i]
+        u = i
+    if u == -1
+      break
+    visited[u] = 1
+
+    num_edges := edges_from | count()
+    for e in range(0, num_edges)
+      if edges_from[e] == u
+        v := edges_to[e]
+        w := edges_weight[e]
+        new_dist := dist[u] + w
+        if new_dist < dist[v]
+          dist[v] = new_dist
+          prev[v] = u
+  prev
+
+fn reconstruct_path prev:List src:Int dest:Int -> List
+  mut path := []
+  mut current := dest
+  mut steps := 0
+  loop
+    if current == -1 or steps > 20
+      break
+    path.push(current)
+    if current == src
+      break
+    current = prev[current]
+    steps = steps + 1
+  -- Reverse the path
+  mut reversed := []
+  for i in range(0, path | count())
+    reversed.push(path[path | count() - 1 - i])
+  reversed
+
+fn path_to_str path:List -> Str
+  mut s := ""
+  for i in range(0, path | count())
+    if i > 0
+      s = s + " -> "
+    s = s + str(path[i])
+  s
+
+fn node_name idx:Int -> Str
+  if idx == 0 then "A"
+  else if idx == 1 then "B"
+  else if idx == 2 then "C"
+  else if idx == 3 then "D"
+  else if idx == 4 then "E"
+  else if idx == 5 then "F"
+  else if idx == 6 then "G"
+  else if idx == 7 then "H"
+  else str(idx)
+
+fn path_names path:List -> Str
+  mut s := ""
+  for i in range(0, path | count())
+    if i > 0
+      s = s + " -> "
+    s = s + node_name(path[i])
+  s
+
+fn main
+  print "Dijkstra's Shortest Path Algorithm:"
+  print ""
+
+  -- Graph 1: Simple 5-node graph
+  --     1     4
+  -- A ----> B ----> D
+  -- |       |       ^
+  -- |2      |3      |1
+  -- v       v       |
+  -- C ----> E ------+
+  --     5
+  print "Graph 1: 5 nodes (A=0, B=1, C=2, D=3, E=4)"
+  print "  A->B:1, A->C:2, B->D:4, B->E:3, C->E:5, E->D:1"
+  mut ef1 := [0, 0, 1, 1, 2, 4]
+  mut et1 := [1, 2, 3, 4, 4, 3]
+  mut ew1 := [1, 2, 4, 3, 5, 1]
+
+  dist1 := dijkstra(5, ef1, et1, ew1, 0)
+  prev1 := dijkstra_prev(5, ef1, et1, ew1, 0)
+  print ""
+  print "  Shortest distances from A:"
+  for i in range(0, 5)
+    nm := node_name(i)
+    d := dist1[i]
+    path := reconstruct_path(prev1, 0, i)
+    pstr := path_names(path)
+    print "    to {nm}: distance={d}, path={pstr}"
+
+  print ""
+
+  -- Graph 2: 6-node graph with multiple shortest paths
+  print "Graph 2: 6 nodes"
+  print "  A->B:7, A->C:9, A->F:14, B->C:10, B->D:15"
+  print "  C->D:11, C->F:2, D->E:6, E->F:9"
+  mut ef2 := [0, 0, 0, 1, 1, 2, 2, 3, 4]
+  mut et2 := [1, 2, 5, 2, 3, 3, 5, 4, 5]
+  mut ew2 := [7, 9, 14, 10, 15, 11, 2, 6, 9]
+
+  dist2 := dijkstra(6, ef2, et2, ew2, 0)
+  prev2 := dijkstra_prev(6, ef2, et2, ew2, 0)
+  print ""
+  print "  Shortest distances from A:"
+  for i in range(0, 6)
+    nm := node_name(i)
+    d := dist2[i]
+    path := reconstruct_path(prev2, 0, i)
+    pstr := path_names(path)
+    print "    to {nm}: distance={d}, path={pstr}"
+
+  print ""
+
+  -- Graph 3: 8-node grid-like graph
+  print "Graph 3: 8-node grid"
+  -- 0-1-2-3
+  -- | | | |
+  -- 4-5-6-7
+  mut ef3 := [0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7]
+  mut et3 := [1, 4, 0, 2, 5, 1, 3, 6, 2, 7, 0, 5, 1, 4, 6, 2, 5, 7, 3, 6]
+  mut ew3 := [2, 3, 2, 1, 4, 1, 2, 3, 2, 1, 3, 2, 4, 2, 1, 3, 1, 2, 1, 2]
+
+  dist3 := dijkstra(8, ef3, et3, ew3, 0)
+  prev3 := dijkstra_prev(8, ef3, et3, ew3, 0)
+  print "  Shortest distances from A:"
+  for i in range(0, 8)
+    nm := node_name(i)
+    d := dist3[i]
+    path := reconstruct_path(prev3, 0, i)
+    pstr := path_names(path)
+    print "    to {nm}: distance={d}, path={pstr}"
+
+  print ""
+  print "Dijkstra's algorithm finds shortest paths in weighted graphs."

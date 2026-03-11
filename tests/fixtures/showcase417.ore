@@ -1,0 +1,184 @@
+-- Showcase 417: Text justification algorithm
+
+-- Justify text to a given line width by distributing spaces evenly
+
+fn repeat_ch c:Str n:Int -> Str
+  mut s := ""
+  for i in range(0, n)
+    s = s + c
+  s
+
+fn center_text text:Str width:Int -> Str
+  tlen := text | len()
+  if tlen >= width
+    return text
+  pad := width - tlen
+  left_pad := pad / 2
+  right_pad := pad - left_pad
+  repeat_ch(" ", left_pad) + text + repeat_ch(" ", right_pad)
+
+-- Split text into words, stored as start/end indices
+fn find_word_bounds text:Str -> List
+  -- Returns flat list: [start0, end0, start1, end1, ...]
+  ch := text | chars()
+  n := ch | count()
+  mut bounds := []
+  mut i := 0
+  loop
+    if i >= n
+      break
+    -- Skip spaces
+    loop
+      if i >= n
+        break
+      if ch[i] != " "
+        break
+      i = i + 1
+    if i >= n
+      break
+    start := i
+    -- Read word
+    loop
+      if i >= n
+        break
+      if ch[i] == " "
+        break
+      i = i + 1
+    bounds.push(start)
+    bounds.push(i)
+  bounds
+
+fn extract_word text:Str start:Int end_pos:Int -> Str
+  text | substr(start, end_pos - start)
+
+fn justify_and_print text:Str width:Int
+  bounds := find_word_bounds(text)
+  num_words := bounds | count() / 2
+
+  -- First, compute word lengths and determine line breaks
+  -- Store line info as: which word indices start/end each line
+  mut line_starts := []
+  mut line_ends := []
+  mut cur_start := 0
+  mut cur_len := 0
+
+  for wi in range(0, num_words)
+    si := wi * 2
+    ei := si + 1
+    wstart := bounds[si]
+    wend := bounds[ei]
+    wlen := wend - wstart
+    if cur_len == 0
+      cur_len = wlen
+    else if cur_len + 1 + wlen <= width
+      cur_len = cur_len + 1 + wlen
+    else
+      line_starts.push(cur_start)
+      line_ends.push(wi)
+      cur_start = wi
+      cur_len = wlen
+
+  if cur_len > 0
+    line_starts.push(cur_start)
+    line_ends.push(num_words)
+
+  num_lines := line_starts | count()
+  for li in range(0, num_lines)
+    ws := line_starts[li]
+    we := line_ends[li]
+    n := we - ws
+    is_last := li == num_lines - 1
+
+    if n == 1 or is_last
+      -- Left align
+      mut line := ""
+      for wi in range(ws, we)
+        if wi > ws
+          line = line + " "
+        si := wi * 2
+        ei := si + 1
+        line = line + extract_word(text, bounds[si], bounds[ei])
+      remaining := width - (line | len())
+      if remaining > 0
+        line = line + repeat_ch(" ", remaining)
+      print "|{line}|"
+    else
+      -- Calculate total word length
+      mut total_chars := 0
+      for wi in range(ws, we)
+        si := wi * 2
+        ei := si + 1
+        total_chars = total_chars + bounds[ei] - bounds[si]
+      total_spaces := width - total_chars
+      gaps := n - 1
+      base_sp := total_spaces / gaps
+      extra := total_spaces - base_sp * gaps
+
+      mut line := ""
+      for wi in range(ws, we)
+        si := wi * 2
+        ei := si + 1
+        line = line + extract_word(text, bounds[si], bounds[ei])
+        gap_idx := wi - ws
+        if gap_idx < gaps
+          mut sp := base_sp
+          if gap_idx < extra
+            sp = sp + 1
+          line = line + repeat_ch(" ", sp)
+      print "|{line}|"
+
+fn main
+  print "Text Justification Algorithm:"
+  print ""
+
+  width := 50
+  border := "+" + repeat_ch("-", width) + "+"
+
+  text1 := "The quick brown fox jumps over the lazy dog near the river bank where the old oak tree stands tall against the evening sky"
+
+  print "Justified to {width} columns:"
+  print border
+  justify_and_print(text1, width)
+  print border
+  print ""
+
+  text2 := "To be or not to be that is the question whether it is nobler in the mind to suffer the slings and arrows of outrageous fortune or to take arms against a sea of troubles"
+
+  print "Shakespeare justified to {width} columns:"
+  print border
+  justify_and_print(text2, width)
+  print border
+  print ""
+
+  narrow := 30
+  nborder := "+" + repeat_ch("-", narrow) + "+"
+  text3 := "Algorithms are the foundation of computer science and software engineering"
+
+  print "Narrow justification ({narrow} columns):"
+  print nborder
+  justify_and_print(text3, narrow)
+  print nborder
+  print ""
+
+  wide := 60
+  wborder := "+" + repeat_ch("-", wide) + "+"
+  text4 := "In the beginning was the word and the word was with code and the word was code"
+
+  print "Wide justification ({wide} columns):"
+  print wborder
+  justify_and_print(text4, wide)
+  print wborder
+  print ""
+
+  print "Centered title:"
+  cwidth := 40
+  cborder := "+" + repeat_ch("-", cwidth) + "+"
+  print cborder
+  print "|{center_text("CHAPTER ONE", cwidth)}|"
+  print "|{center_text("The Beginning", cwidth)}|"
+  print "|{center_text("", cwidth)}|"
+  print "|{center_text("by Author Name", cwidth)}|"
+  print cborder
+
+  print ""
+  print "Text justification distributes spaces evenly across lines."

@@ -1,0 +1,124 @@
+-- Showcase 418: Power set generation
+
+-- Generate all subsets of a given set using bit manipulation
+
+fn list_to_str lst:List -> Str
+  mut s := "["
+  n := lst | count()
+  for i in range(0, n)
+    if i > 0
+      s = s + " "
+    s = s + str(lst[i])
+  s + "]"
+
+-- Check if bit k is set in number n
+fn bit_set n:Int k:Int -> Bool
+  mut power := 1
+  for i in range(0, k)
+    power = power * 2
+  (n / power) % 2 == 1
+
+-- Compute 2^n
+fn pow2 n:Int -> Int
+  mut result := 1
+  for i in range(0, n)
+    result = result * 2
+  result
+
+fn main
+  print "Power Set Generation:"
+  print ""
+
+  -- Power set of [1 2 3]
+  set1 := [1, 2, 3]
+  n1 := 3
+  total1 := pow2(n1)
+  print "Set: [1 2 3]"
+  print "Power set ({total1} subsets):"
+
+  mut count1 := 0
+  for mask in range(0, total1)
+    mut subset := []
+    for bit in range(0, n1)
+      if bit_set(mask, bit)
+        subset.push(set1[bit])
+    print "  {list_to_str(subset)}"
+    count1 = count1 + 1
+  print "Total: {count1} subsets"
+  print ""
+
+  -- Power set of [a b c d] using indices
+  print "Set: [a b c d]"
+  n2 := 4
+  total2 := pow2(n2)
+  print "Power set ({total2} subsets):"
+  labels := "abcd" | chars()
+
+  mut count2 := 0
+  for mask in range(0, total2)
+    mut s := "["
+    mut first := true
+    for bit in range(0, n2)
+      if bit_set(mask, bit)
+        if not first
+          s = s + " "
+        s = s + str(labels[bit])
+        first = false
+    s = s + "]"
+    print "  {s}"
+    count2 = count2 + 1
+  print "Total: {count2} subsets"
+  print ""
+
+  -- Subset sum problem
+  print "Subset sum problem:"
+  nums := [3, 7, 1, 8, 4]
+  target := 12
+  n3 := 5
+  total3 := pow2(n3)
+  print "Set: [3 7 1 8 4]  Target sum: {target}"
+  print "Subsets that sum to {target}:"
+
+  mut found := 0
+  for mask in range(1, total3)
+    mut s := 0
+    mut subset := []
+    for bit in range(0, n3)
+      if bit_set(mask, bit)
+        s = s + nums[bit]
+        subset.push(nums[bit])
+    if s == target
+      print "  {list_to_str(subset)} = {target}"
+      found = found + 1
+  print "Found {found} subsets"
+  print ""
+
+  -- Subset statistics
+  print "Power set sizes:"
+  for n in range(0, 7)
+    p := pow2(n)
+    mut bar := ""
+    mut bar_len := p
+    if bar_len > 40
+      bar_len = 40
+    for j in range(0, bar_len)
+      bar = bar + "#"
+    print "  |S|={n}: 2^{n} = {p} subsets {bar}"
+  print ""
+
+  -- Count subsets by size for [1 2 3 4 5]
+  print "Subsets of [1..5] grouped by size:"
+  n5 := 5
+  total5 := pow2(n5)
+  mut size_counts := [0, 0, 0, 0, 0, 0]
+  for mask in range(0, total5)
+    mut sz := 0
+    for bit in range(0, n5)
+      if bit_set(mask, bit)
+        sz = sz + 1
+    size_counts[sz] = size_counts[sz] + 1
+  for sz in range(0, 6)
+    print "  Size {sz}: {size_counts[sz]} subsets"
+
+  print ""
+  print "Power sets grow exponentially: |P(S)| = 2^|S|."

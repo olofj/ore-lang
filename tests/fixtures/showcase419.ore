@@ -1,0 +1,216 @@
+-- Showcase 419: Longest common subsequence with diff output
+
+-- Compute LCS length and backtrack to produce diff
+-- Uses a 2D table stored as flat list
+
+fn get_dp dp:List i:Int j:Int nb:Int -> Int
+  idx := i * (nb + 1) + j
+  dp[idx]
+
+fn lcs_length a:List b:List na:Int nb:Int -> List
+  total := (na + 1) * (nb + 1)
+  mut dp := []
+  for k in range(0, total)
+    dp.push(0)
+
+  for i in range(1, na + 1)
+    for j in range(1, nb + 1)
+      if a[i - 1] == b[j - 1]
+        prev_idx := (i - 1) * (nb + 1) + j - 1
+        cur_idx := i * (nb + 1) + j
+        dp[cur_idx] = dp[prev_idx] + 1
+      else
+        up_idx := (i - 1) * (nb + 1) + j
+        left_idx := i * (nb + 1) + j - 1
+        cur_idx := i * (nb + 1) + j
+        up := dp[up_idx]
+        left := dp[left_idx]
+        if up > left
+          dp[cur_idx] = up
+        else
+          dp[cur_idx] = left
+  dp
+
+fn print_int_diff a:List b:List dp:List na:Int nb:Int
+  mut diff_ops := []
+  mut diff_vals := []
+  mut i := na
+  mut j := nb
+
+  loop
+    if i == 0 and j == 0
+      break
+    if i > 0 and j > 0 and a[i - 1] == b[j - 1]
+      diff_ops.push(0)
+      diff_vals.push(a[i - 1])
+      i = i - 1
+      j = j - 1
+    else if j > 0 and (i == 0 or get_dp(dp, i, j - 1, nb) >= get_dp(dp, i - 1, j, nb))
+      diff_ops.push(1)
+      diff_vals.push(b[j - 1])
+      j = j - 1
+    else
+      diff_ops.push(-1)
+      diff_vals.push(a[i - 1])
+      i = i - 1
+
+  n := diff_ops | count()
+  for k in range(0, n)
+    idx := n - 1 - k
+    op := diff_ops[idx]
+    val := diff_vals[idx]
+    if op == 0
+      print "    {val}"
+    else if op == 1
+      print "  + {val}"
+    else
+      print "  - {val}"
+
+-- For char sequences, encode chars as integers
+fn char_code c:Str -> Int
+  if c == "A" then 1
+  else if c == "B" then 2
+  else if c == "C" then 3
+  else if c == "D" then 4
+  else if c == "E" then 5
+  else if c == "F" then 6
+  else if c == "G" then 7
+  else if c == "H" then 8
+  else if c == "X" then 24
+  else if c == "Y" then 25
+  else if c == "Z" then 26
+  else 0
+
+fn code_to_char n:Int -> Str
+  if n == 1 then "A"
+  else if n == 2 then "B"
+  else if n == 3 then "C"
+  else if n == 4 then "D"
+  else if n == 5 then "E"
+  else if n == 6 then "F"
+  else if n == 7 then "G"
+  else if n == 8 then "H"
+  else if n == 24 then "X"
+  else if n == 25 then "Y"
+  else if n == 26 then "Z"
+  else "?"
+
+fn encode_str s:Str -> List
+  ch := s | chars()
+  mut codes := []
+  for i in range(0, ch | count())
+    codes.push(char_code(str(ch[i])))
+  codes
+
+fn print_char_diff a:List b:List dp:List na:Int nb:Int
+  mut diff_ops := []
+  mut diff_vals := []
+  mut i := na
+  mut j := nb
+
+  loop
+    if i == 0 and j == 0
+      break
+    if i > 0 and j > 0 and a[i - 1] == b[j - 1]
+      diff_ops.push(0)
+      diff_vals.push(a[i - 1])
+      i = i - 1
+      j = j - 1
+    else if j > 0 and (i == 0 or get_dp(dp, i, j - 1, nb) >= get_dp(dp, i - 1, j, nb))
+      diff_ops.push(1)
+      diff_vals.push(b[j - 1])
+      j = j - 1
+    else
+      diff_ops.push(-1)
+      diff_vals.push(a[i - 1])
+      i = i - 1
+
+  n := diff_ops | count()
+  for k in range(0, n)
+    idx := n - 1 - k
+    op := diff_ops[idx]
+    val := code_to_char(diff_vals[idx])
+    if op == 0
+      print "    {val}"
+    else if op == 1
+      print "  + {val}"
+    else
+      print "  - {val}"
+
+fn main
+  print "Longest Common Subsequence with Diff:"
+  print ""
+
+  -- Example 1: Character-level LCS
+  print "Example 1: Character diff"
+  s1 := "ABCBDAB"
+  s2 := "BDCABA"
+  a1 := encode_str(s1)
+  b1 := encode_str(s2)
+  na1 := a1 | count()
+  nb1 := b1 | count()
+  dp1 := lcs_length(a1, b1, na1, nb1)
+  lcs1 := get_dp(dp1, na1, nb1, nb1)
+  print "  String A: {s1}"
+  print "  String B: {s2}"
+  print "  LCS length: {lcs1}"
+  print "  Diff:"
+  print_char_diff(a1, b1, dp1, na1, nb1)
+  print ""
+
+  -- Example 2: Number sequences
+  print "Example 2: Number sequence diff"
+  seq1 := [1, 3, 4, 5, 6, 7, 8]
+  seq2 := [1, 2, 3, 5, 7, 8, 9]
+  ns1 := seq1 | count()
+  ns2 := seq2 | count()
+  dp2 := lcs_length(seq1, seq2, ns1, ns2)
+  lcs2 := get_dp(dp2, ns1, ns2, ns2)
+  print "  Seq A: [1 3 4 5 6 7 8]"
+  print "  Seq B: [1 2 3 5 7 8 9]"
+  print "  LCS length: {lcs2}"
+  print "  Diff:"
+  print_int_diff(seq1, seq2, dp2, ns1, ns2)
+  print ""
+
+  -- Example 3: Identical sequences
+  print "Example 3: Identical sequences"
+  same1 := [10, 20, 30]
+  same2 := [10, 20, 30]
+  dp3 := lcs_length(same1, same2, 3, 3)
+  lcs3 := get_dp(dp3, 3, 3, 3)
+  print "  Both: [10 20 30]"
+  print "  LCS length: {lcs3} (same = no diff)"
+  print "  Diff:"
+  print_int_diff(same1, same2, dp3, 3, 3)
+  print ""
+
+  -- Example 4: Completely different
+  print "Example 4: Completely different"
+  diff1 := [1, 2, 3]
+  diff2 := [4, 5, 6]
+  dp4 := lcs_length(diff1, diff2, 3, 3)
+  lcs4 := get_dp(dp4, 3, 3, 3)
+  print "  Seq A: [1 2 3]"
+  print "  Seq B: [4 5 6]"
+  print "  LCS length: {lcs4}"
+  print "  Diff:"
+  print_int_diff(diff1, diff2, dp4, 3, 3)
+  print ""
+
+  -- Example 5: Long common prefix/suffix
+  print "Example 5: Long common prefix and suffix"
+  pre1 := [1, 2, 3, 9, 9, 7, 8, 9]
+  pre2 := [1, 2, 3, 5, 5, 7, 8, 9]
+  np1 := pre1 | count()
+  np2 := pre2 | count()
+  dp5 := lcs_length(pre1, pre2, np1, np2)
+  lcs5 := get_dp(dp5, np1, np2, np2)
+  print "  Seq A: [1 2 3 9 9 7 8 9]"
+  print "  Seq B: [1 2 3 5 5 7 8 9]"
+  print "  LCS length: {lcs5}"
+  print "  Diff:"
+  print_int_diff(pre1, pre2, dp5, np1, np2)
+
+  print ""
+  print "LCS computes the longest common subsequence for diff output."

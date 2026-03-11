@@ -1,0 +1,257 @@
+-- Showcase 412: Genetic algorithm (simple optimization)
+
+-- Simple genetic algorithm to find a target string
+-- using selection, crossover, and mutation
+
+-- Use a deterministic PRNG for reproducibility
+fn prng_next seed:Int -> Int
+  -- Linear congruential generator
+  result := (seed * 1103515245 + 12345) % 2147483647
+  if result < 0 then 0 - result else result
+
+fn prng_range seed:Int lo:Int hi:Int -> List
+  -- Returns [next_seed, value_in_range]
+  next := prng_next(seed)
+  spread := hi - lo
+  mut val := next % spread
+  if val < 0
+    val = 0 - val
+  val = val + lo
+  mut result := []
+  result.push(next)
+  result.push(val)
+  result
+
+-- Target: represent string as list of char codes
+-- We'll use simple integers 0-25 for a-z, 26 for space
+fn char_to_code c:Str -> Int
+  if c == "a" then 0
+  else if c == "b" then 1
+  else if c == "c" then 2
+  else if c == "d" then 3
+  else if c == "e" then 4
+  else if c == "f" then 5
+  else if c == "g" then 6
+  else if c == "h" then 7
+  else if c == "i" then 8
+  else if c == "j" then 9
+  else if c == "k" then 10
+  else if c == "l" then 11
+  else if c == "m" then 12
+  else if c == "n" then 13
+  else if c == "o" then 14
+  else if c == "p" then 15
+  else if c == "q" then 16
+  else if c == "r" then 17
+  else if c == "s" then 18
+  else if c == "t" then 19
+  else if c == "u" then 20
+  else if c == "v" then 21
+  else if c == "w" then 22
+  else if c == "x" then 23
+  else if c == "y" then 24
+  else if c == "z" then 25
+  else 26
+
+fn code_to_char c:Int -> Str
+  if c == 0 then "a"
+  else if c == 1 then "b"
+  else if c == 2 then "c"
+  else if c == 3 then "d"
+  else if c == 4 then "e"
+  else if c == 5 then "f"
+  else if c == 6 then "g"
+  else if c == 7 then "h"
+  else if c == 8 then "i"
+  else if c == 9 then "j"
+  else if c == 10 then "k"
+  else if c == 11 then "l"
+  else if c == 12 then "m"
+  else if c == 13 then "n"
+  else if c == 14 then "o"
+  else if c == 15 then "p"
+  else if c == 16 then "q"
+  else if c == 17 then "r"
+  else if c == 18 then "s"
+  else if c == 19 then "t"
+  else if c == 20 then "u"
+  else if c == 21 then "v"
+  else if c == 22 then "w"
+  else if c == 23 then "x"
+  else if c == 24 then "y"
+  else if c == 25 then "z"
+  else " "
+
+fn str_to_codes s:Str -> List
+  ch := s | chars()
+  mut codes := []
+  for i in range(0, ch | count())
+    codes.push(char_to_code(ch[i]))
+  codes
+
+fn codes_to_str codes:List -> Str
+  mut s := ""
+  for i in range(0, codes | count())
+    s = s + code_to_char(codes[i])
+  s
+
+-- Fitness: number of matching positions
+fn fitness individual:List target_codes:List -> Int
+  mut score := 0
+  for i in range(0, target_codes | count())
+    if individual[i] == target_codes[i]
+      score = score + 1
+  score
+
+-- Create random individual
+fn random_individual length:Int seed:Int -> List
+  mut genes := []
+  mut s := seed
+  for i in range(0, length)
+    r := prng_range(s, 0, 27)
+    s = r[0]
+    genes.push(r[1])
+  genes.push(s)
+  genes
+
+-- Crossover two parents (single point)
+fn crossover p1:List p2:List length:Int seed:Int -> List
+  r := prng_range(seed, 1, length)
+  point := r[1]
+  next_seed := r[0]
+  mut child := []
+  for i in range(0, length)
+    if i < point
+      child.push(p1[i])
+    else
+      child.push(p2[i])
+  child.push(next_seed)
+  child
+
+-- Mutate an individual
+fn mutate individual:List length:Int seed:Int mutation_rate:Int -> List
+  mut genes := []
+  mut s := seed
+  for i in range(0, length)
+    r := prng_range(s, 0, 100)
+    s = r[0]
+    if r[1] < mutation_rate
+      r2 := prng_range(s, 0, 27)
+      s = r2[0]
+      genes.push(r2[1])
+    else
+      genes.push(individual[i])
+  genes.push(s)
+  genes
+
+fn main
+  print "Genetic Algorithm (String Evolution):"
+  print ""
+
+  target := "hello world"
+  target_codes := str_to_codes(target)
+  length := target_codes | count()
+  pop_size := 20
+  mutation_rate := 15
+
+  print "Target: \"{target}\""
+  print "Population size: {pop_size}"
+  print "Mutation rate: {mutation_rate}%"
+  print ""
+
+  -- Initialize population
+  mut population := []
+  mut seed := 42
+  for i in range(0, pop_size)
+    ind := random_individual(length, seed)
+    seed = ind[length]
+    mut genes := []
+    for j in range(0, length)
+      genes.push(ind[j])
+    population.push(genes)
+
+  -- Evolution loop
+  max_gens := 200
+  mut best_fitness := 0
+  mut best_str := ""
+  mut gen := 0
+
+  loop
+    if gen >= max_gens or best_fitness == length
+      break
+
+    -- Evaluate fitness of all individuals
+    mut fitnesses := []
+    mut best_idx := 0
+    mut best_fit := 0
+    for i in range(0, pop_size)
+      f := fitness(population[i], target_codes)
+      fitnesses.push(f)
+      if f > best_fit
+        best_fit = f
+        best_idx = i
+
+    if best_fit > best_fitness
+      best_fitness = best_fit
+      best_str = codes_to_str(population[best_idx])
+
+    -- Print progress every 20 generations or when improved
+    if gen % 20 == 0 or best_fit == length
+      current_best := codes_to_str(population[best_idx])
+      print "  Gen {gen}: best fitness = {best_fit}/{length}, best = \"{current_best}\""
+
+    if best_fit == length
+      break
+
+    -- Selection and reproduction (tournament selection)
+    mut new_pop := []
+    -- Keep the best (elitism)
+    mut elite := []
+    for j in range(0, length)
+      elite.push(population[best_idx][j])
+    new_pop.push(elite)
+
+    for i in range(1, pop_size)
+      -- Tournament: pick 2 random, take better
+      r1 := prng_range(seed, 0, pop_size)
+      seed = r1[0]
+      r2 := prng_range(seed, 0, pop_size)
+      seed = r2[0]
+      idx1 := r1[1]
+      idx2 := r2[1]
+      mut parent1_idx := idx1
+      mut parent2_idx := idx2
+      if fitnesses[idx2] > fitnesses[idx1]
+        parent1_idx = idx2
+        parent2_idx = idx1
+
+      -- Crossover
+      child_result := crossover(population[parent1_idx], population[parent2_idx], length, seed)
+      seed = child_result[length]
+      mut child := []
+      for j in range(0, length)
+        child.push(child_result[j])
+
+      -- Mutation
+      mut_result := mutate(child, length, seed, mutation_rate)
+      seed = mut_result[length]
+      mut mutated := []
+      for j in range(0, length)
+        mutated.push(mut_result[j])
+
+      new_pop.push(mutated)
+
+    population = new_pop
+    gen = gen + 1
+
+  print ""
+  print "Final result after {gen} generations:"
+  print "  Best string: \"{best_str}\""
+  print "  Fitness: {best_fitness}/{length}"
+  if best_fitness == length
+    print "  Target reached!"
+  else
+    print "  Target not reached within {max_gens} generations."
+
+  print ""
+  print "Genetic algorithm evolves strings toward a target."

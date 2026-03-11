@@ -1,0 +1,196 @@
+-- Showcase 420: Simple spreadsheet evaluator
+
+-- A small spreadsheet with formulas referencing cells
+-- Grid: 5 rows x 4 cols (A-D, rows 1-5)
+-- Cell values stored in flat array: cells[row * 4 + col]
+
+fn col_name idx:Int -> Str
+  if idx == 0 then "A"
+  else if idx == 1 then "B"
+  else if idx == 2 then "C"
+  else "D"
+
+fn cell_name row:Int col:Int -> Str
+  col_name(col) + str(row + 1)
+
+fn pad_right s:Str width:Int -> Str
+  mut result := s
+  loop
+    if result | len() >= width
+      break
+    result = result + " "
+  result
+
+fn pad_left s:Str width:Int -> Str
+  mut result := s
+  loop
+    if result | len() >= width
+      break
+    result = " " + result
+  result
+
+fn print_grid cells:List rows:Int cols:Int
+  -- Print header
+  mut header := "     |"
+  for c in range(0, cols)
+    header = header + " " + pad_right(col_name(c), 8) + "|"
+  print header
+  sep := "-----+" + "----------+" + "---------+" + "---------+" + "---------+"
+  print sep
+
+  for r in range(0, rows)
+    mut line := "  " + str(r + 1) + "  |"
+    for c in range(0, cols)
+      idx := r * cols + c
+      val := cells[idx]
+      line = line + " " + pad_left(str(val), 8) + "|"
+    print line
+  print sep
+
+fn sum_range cells:List start_row:Int start_col:Int end_row:Int end_col:Int cols:Int -> Int
+  mut total := 0
+  for r in range(start_row, end_row + 1)
+    for c in range(start_col, end_col + 1)
+      idx := r * cols + c
+      total = total + cells[idx]
+  total
+
+fn cell_val cells:List row:Int col:Int cols:Int -> Int
+  idx := row * cols + col
+  cells[idx]
+
+fn main
+  print "Simple Spreadsheet Evaluator:"
+  print ""
+
+  rows := 5
+  cols := 4
+
+  -- Initialize cells: 5x4 = 20 cells
+  mut cells := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Set up a sales report spreadsheet
+  -- Row 0: Q1 data
+  -- Row 1: Q2 data
+  -- Row 2: Q3 data
+  -- Row 3: Q4 data
+  -- Row 4: Totals (formulas)
+  -- Col A: Revenue
+  -- Col B: Costs
+  -- Col C: Profit (A - B)
+  -- Col D: Margin % (C * 100 / A)
+
+  print "Setting up sales report..."
+  print ""
+
+  -- Q1: Revenue=1000, Costs=600
+  cells[0] = 1000
+  cells[1] = 600
+
+  -- Q2: Revenue=1500, Costs=800
+  cells[4] = 1500
+  cells[5] = 800
+
+  -- Q3: Revenue=1200, Costs=700
+  cells[8] = 1200
+  cells[9] = 700
+
+  -- Q4: Revenue=1800, Costs=900
+  cells[12] = 1800
+  cells[13] = 900
+
+  -- Calculate Profit (Col C) = Revenue - Costs
+  print "Evaluating formulas..."
+  for r in range(0, 4)
+    rev_idx := r * cols + 0
+    cost_idx := r * cols + 1
+    profit_idx := r * cols + 2
+    cells[profit_idx] = cells[rev_idx] - cells[cost_idx]
+
+  -- Calculate Margin % (Col D) = Profit * 100 / Revenue
+  for r in range(0, 4)
+    profit_idx := r * cols + 2
+    rev_idx := r * cols + 0
+    margin_idx := r * cols + 3
+    if cells[rev_idx] != 0
+      cells[margin_idx] = cells[profit_idx] * 100 / cells[rev_idx]
+
+  -- Row 4: SUM formulas for each column
+  for c in range(0, 3)
+    total := sum_range(cells, 0, c, 3, c, cols)
+    cells[4 * cols + c] = total
+
+  -- Total margin = total profit * 100 / total revenue
+  total_profit := cells[4 * cols + 2]
+  total_rev := cells[4 * cols + 0]
+  if total_rev != 0
+    cells[4 * cols + 3] = total_profit * 100 / total_rev
+
+  -- Print the spreadsheet
+  print ""
+  print "     Revenue  Costs  Profit  Margin%"
+  print_grid(cells, rows, cols)
+  print ""
+
+  -- Print formulas used
+  print "Formulas:"
+  print "  C1 = A1 - B1  (Revenue - Costs)"
+  print "  D1 = C1 * 100 / A1  (Profit margin %)"
+  print "  A5 = SUM(A1:A4)  (Total revenue)"
+  print "  B5 = SUM(B1:B4)  (Total costs)"
+  print "  C5 = SUM(C1:C4)  (Total profit)"
+  print "  D5 = C5 * 100 / A5  (Overall margin)"
+  print ""
+
+  -- Cell reference examples
+  print "Cell references:"
+  print "  A1 = {cell_val(cells, 0, 0, cols)}"
+  print "  B2 = {cell_val(cells, 1, 1, cols)}"
+  print "  C3 = {cell_val(cells, 2, 2, cols)}"
+  print "  D4 = {cell_val(cells, 3, 3, cols)}"
+  print "  A5 (total revenue) = {cell_val(cells, 4, 0, cols)}"
+  print "  C5 (total profit) = {cell_val(cells, 4, 2, cols)}"
+  print ""
+
+  -- Second example: grade calculator
+  print "Grade Calculator Spreadsheet:"
+  print ""
+  mut grades := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Col A: Homework, Col B: Midterm, Col C: Final, Col D: Weighted avg
+  -- Student 1
+  grades[0] = 85
+  grades[1] = 78
+  grades[2] = 92
+  -- Student 2
+  grades[4] = 92
+  grades[5] = 88
+  grades[6] = 95
+  -- Student 3
+  grades[8] = 70
+  grades[9] = 65
+  grades[10] = 72
+  -- Student 4
+  grades[12] = 95
+  grades[13] = 90
+  grades[14] = 88
+
+  -- Weighted average: HW*30% + Mid*30% + Final*40%
+  for r in range(0, 4)
+    hw := grades[r * cols + 0]
+    mid := grades[r * cols + 1]
+    fin := grades[r * cols + 2]
+    avg := (hw * 30 + mid * 30 + fin * 40) / 100
+    grades[r * cols + 3] = avg
+
+  -- Row 4: Class averages
+  for c in range(0, 4)
+    total := sum_range(grades, 0, c, 3, c, cols)
+    grades[4 * cols + c] = total / 4
+
+  print "     HW     Mid    Final  Weighted"
+  print_grid(grades, rows, cols)
+  print ""
+  print "Weighted average formula: HW*30% + Midterm*30% + Final*40%"
+
+  print ""
+  print "Spreadsheet evaluator: formulas compute cell dependencies."

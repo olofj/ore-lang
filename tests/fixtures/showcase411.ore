@@ -1,0 +1,87 @@
+-- Showcase 411: Mandelbrot set (ASCII art)
+
+-- Compute Mandelbrot set and render as ASCII art
+-- For each point c = (cx, cy) in the complex plane,
+-- iterate z = z^2 + c and check if |z| escapes
+
+fn mandelbrot_escape cx:Int cy:Int max_iter:Int -> Int
+  -- We use fixed-point arithmetic: values are multiplied by 1000
+  -- cx, cy are in range [-2000, 1000] x [-1500, 1500]
+  mut zx := 0
+  mut zy := 0
+  mut i := 0
+  loop
+    if i >= max_iter
+      break
+    -- z^2: (zx + zy*i)^2 = zx^2 - zy^2 + 2*zx*zy*i
+    zx2 := zx * zx
+    zy2 := zy * zy
+    -- Check escape: |z|^2 > 4 (in fixed point: > 4000000)
+    if zx2 + zy2 > 4000000
+      break
+    -- New z = z^2 + c (divide by 1000 to keep fixed point)
+    new_zx := zx2 / 1000 - zy2 / 1000 + cx
+    new_zy := 2 * zx * zy / 1000 + cy
+    zx = new_zx
+    zy = new_zy
+    i = i + 1
+  i
+
+fn main
+  print "Mandelbrot Set (ASCII Art):"
+  print ""
+
+  max_iter := 20
+  chars := " .:-=+*#%@"
+  char_list := chars | chars()
+  num_chars := char_list | count()
+
+  -- Render a 60x24 grid
+  -- x range: -2.0 to 1.0 (fixed point: -2000 to 1000)
+  -- y range: -1.2 to 1.2 (fixed point: -1200 to 1200)
+  width := 60
+  height := 24
+
+  for row in range(0, height)
+    cy := -1200 + row * 2400 / height
+    mut line := ""
+    for col in range(0, width)
+      cx := -2000 + col * 3000 / width
+      iters := mandelbrot_escape(cx, cy, max_iter)
+      if iters == max_iter
+        line = line + " "
+      else
+        idx := iters * num_chars / max_iter
+        if idx >= num_chars
+          idx2 := num_chars - 1
+          line = line + char_list[idx2]
+        else
+          line = line + char_list[idx]
+      line = line
+    print line
+  print ""
+
+  -- Show iteration counts for a few interesting points
+  print "Iteration counts at key points:"
+  -- Origin (inside set)
+  i0 := mandelbrot_escape(0, 0, max_iter)
+  print "  c=(0, 0): {i0} iterations (inside set)"
+
+  -- c = -1, 0 (period-2 cycle, inside)
+  i1 := mandelbrot_escape(-1000, 0, max_iter)
+  print "  c=(-1, 0): {i1} iterations (inside set)"
+
+  -- c = 0.3, 0 (outside)
+  i2 := mandelbrot_escape(300, 0, max_iter)
+  print "  c=(0.3, 0): {i2} iterations (escapes quickly)"
+
+  -- c = -0.75, 0.1 (near boundary)
+  i3 := mandelbrot_escape(-750, 100, max_iter)
+  print "  c=(-0.75, 0.1): {i3} iterations (near boundary)"
+
+  -- c = 2, 0 (escapes immediately)
+  i4 := mandelbrot_escape(2000, 0, max_iter)
+  print "  c=(2, 0): {i4} iterations (escapes immediately)"
+
+  print ""
+  print "Mandelbrot set rendered with fixed-point arithmetic."
