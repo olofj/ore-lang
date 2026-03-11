@@ -3,8 +3,7 @@
 
 fn eval_rpn expr:Str -> Int
   tokens := expr.words()
-  mut stack := [0]
-  stack = []
+  mut stack := []
   for i in 0..tokens.len()
     token := tokens.get(i)
     if token == "+"

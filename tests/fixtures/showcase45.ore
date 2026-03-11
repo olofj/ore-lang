@@ -42,8 +42,7 @@ fn euler9 -> Int
 -- Problem 10: Sum of primes below 2000 (reduced for speed)
 fn euler10 limit:Int -> Int
   -- Simple sieve
-  mut is_p := [0]
-  is_p = []
+  mut is_p := []
   for i in 0..limit
     if i < 2
       is_p = is_p + [0]

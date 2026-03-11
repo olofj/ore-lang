@@ -1150,7 +1150,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(None)
             }
             Stmt::Assign { name, value } => {
-                let (val, _kind) = self.compile_expr_with_kind(value, func)?;
+                let (val, kind) = self.compile_expr_with_kind(value, func)?;
                 let (ptr, _, _, is_mut) = self.variables.get(name).ok_or_else(|| CodeGenError {
                     line: None, msg: format!("undefined variable '{}'", name),
                 })?;
@@ -1160,6 +1160,17 @@ impl<'ctx> CodeGen<'ctx> {
                     });
                 }
                 bld!(self.builder.build_store(*ptr, val))?;
+                // Update element kind tracking for lists and maps on reassignment
+                if kind == ValKind::List {
+                    if let Some(ek) = self.last_list_elem_kind.clone() {
+                        self.list_element_kinds.insert(name.clone(), ek);
+                    }
+                }
+                if kind == ValKind::Map {
+                    if let Some(vk) = self.last_map_val_kind.clone() {
+                        self.map_value_kinds.insert(name.clone(), vk);
+                    }
+                }
                 Ok(None)
             }
             Stmt::IndexAssign { object, index, value } => {
@@ -1363,13 +1374,21 @@ impl<'ctx> CodeGen<'ctx> {
                     return self.compile_pipeline_with_kind(left, right, func);
                 }
                 let (lhs, lk) = self.compile_expr_with_kind(left, func)?;
+                let lhs_elem_kind = self.last_list_elem_kind.clone();
                 let (rhs, _rk) = self.compile_expr_with_kind(right, func)?;
+                let rhs_elem_kind = self.last_list_elem_kind.clone();
 
                 // List concatenation: list + list
                 if lk == ValKind::List && *op == BinOp::Add {
                     let rt = self.module.get_function("ore_list_concat").unwrap();
                     let result = bld!(self.builder.build_call(rt, &[lhs.into(), rhs.into()], "lcat"))?;
                     let val = self.call_result_to_value(result)?;
+                    // Preserve element kind: prefer RHS (the appended elements) if it has a concrete kind
+                    if rhs_elem_kind.is_some() {
+                        self.last_list_elem_kind = rhs_elem_kind;
+                    } else if lhs_elem_kind.is_some() {
+                        self.last_list_elem_kind = lhs_elem_kind;
+                    }
                     return Ok((val, ValKind::List));
                 }
 

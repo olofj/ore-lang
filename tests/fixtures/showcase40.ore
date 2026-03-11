@@ -3,8 +3,7 @@
 
 fn sieve limit:Int -> List[Int]
   -- Create boolean array (1 = prime candidate)
-  mut is_prime := [0]
-  is_prime = []
+  mut is_prime := []
   for i in 0..limit
     if i < 2
       is_prime = is_prime + [0]
@@ -22,8 +21,7 @@ fn sieve limit:Int -> List[Int]
     i += 1
 
   -- Collect primes
-  mut primes := [0]
-  primes = []
+  mut primes := []
   for i in 0..limit
     if is_prime.get(i) == 1
       primes = primes + [i]

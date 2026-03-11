@@ -39,16 +39,14 @@ fn main
   print "Age range: {ages.min()} - {ages.max()}"
 
   -- NYC residents
-  mut nyc_residents := [""]
-  nyc_residents = []
+  mut nyc_residents := []
   for i in 0..names.len()
     if cities.get(i) == "NYC"
       nyc_residents = nyc_residents + [names.get(i)]
   print "NYC residents: {nyc_residents.join(", ")}"
 
   -- People over 30
-  mut over_30 := [""]
-  over_30 = []
+  mut over_30 := []
   for i in 0..names.len()
     if ages.get(i) > 30
       over_30 = over_30 + [names.get(i)]

@@ -2,8 +2,7 @@
 -- Demonstrates: nested loops, 2D grid as flat list, complex logic
 
 fn make_grid rows:Int cols:Int -> List[Int]
-  mut grid := [0]
-  grid = []
+  mut grid := []
   for i in 0..rows * cols
     grid = grid + [0]
   grid

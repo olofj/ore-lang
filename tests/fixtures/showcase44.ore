@@ -5,8 +5,7 @@ fn idx cols:Int r:Int c:Int -> Int
   r * cols + c
 
 fn make_grid rows:Int cols:Int val:Int -> List[Int]
-  mut grid := [0]
-  grid = []
+  mut grid := []
   for i in 0..rows * cols
     grid = grid + [val]
   grid

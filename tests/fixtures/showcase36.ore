@@ -48,8 +48,7 @@ fn main
   print "Fibonacci: {fibs.join(", ")}"
 
   -- Perfect numbers up to 1000
-  mut perfects := [0]
-  perfects = []
+  mut perfects := []
   for n in 2..500
     if is_perfect(n)
       perfects = perfects + [n]
@@ -60,8 +59,7 @@ fn main
   print "Digit sums: {sums.join(", ")}"
 
   -- Armstrong numbers (narcissistic) in 100-999
-  mut armstrongs := [0]
-  armstrongs = []
+  mut armstrongs := []
   for n in 100..1000
     if is_armstrong(n)
       armstrongs = armstrongs + [n]

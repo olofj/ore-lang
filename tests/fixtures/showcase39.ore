@@ -4,8 +4,7 @@
 fn bf_run program:Str -> Str
   -- Memory tape (256 cells)
   tape_size := 256
-  mut tape := [0]
-  tape = []
+  mut tape := []
   for i in 0..tape_size
     tape = tape + [0]
 

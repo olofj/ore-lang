@@ -32,8 +32,7 @@ fn print_cells cells:List[Int]
 
 fn step cells:List[Int] -> List[Int]
   n := cells.len()
-  mut next := [0]
-  next = []
+  mut next := []
   for i in 0..n
     left := cells.get((i - 1 + n) % n)
     center := cells.get(i)
@@ -44,8 +43,7 @@ fn step cells:List[Int] -> List[Int]
 fn main
   -- Initialize with a single cell in the middle
   width := 40
-  mut cells := [0]
-  cells = []
+  mut cells := []
   for i in 0..width
     if i == width - 1
       cells = cells + [1]
