@@ -10403,6 +10403,186 @@ fn showcase810_zkp_graph_coloring() {
 }
 
 #[test]
+fn showcase811_regex_nfa() {
+    let out = run_ore("showcase811.ore");
+    assert!(out.contains("Regular Expression to NFA (Thompson's Construction):"), "got: {out}");
+    assert!(out.contains("'ab' matches 'ab': true"), "got: {out}");
+    assert!(out.contains("'a*' matches '': true"), "got: {out}");
+    assert!(out.contains("Thompson's NFA: O(n) states for regex of length n."), "got: {out}");
+}
+
+#[test]
+fn showcase812_nfa_to_dfa() {
+    let out = run_ore("showcase812.ore");
+    assert!(out.contains("NFA to DFA (Subset Construction):"), "got: {out}");
+    assert!(out.contains("'abb' -> accepted: true"), "got: {out}");
+    assert!(out.contains("'ab' -> accepted: false"), "got: {out}");
+    assert!(out.contains("Subset construction: DFA has at most 2^N states for N-state NFA."), "got: {out}");
+}
+
+#[test]
+fn showcase813_ll1_parser() {
+    let out = run_ore("showcase813.ore");
+    assert!(out.contains("LL(1) Parser Table Construction:"), "got: {out}");
+    assert!(out.contains("Parse result: ACCEPTED"), "got: {out}");
+    assert!(out.contains("M[E,id] = 'E -> T E'' correct: true"), "got: {out}");
+    assert!(out.contains("LL(1) parsing: O(n) time, predictive top-down parsing with 1-token lookahead."), "got: {out}");
+}
+
+#[test]
+fn showcase814_lr0_parser() {
+    let out = run_ore("showcase814.ore");
+    assert!(out.contains("LR(0) Item Sets and Parser:"), "got: {out}");
+    assert!(out.contains("Parse result: ACCEPTED"), "got: {out}");
+    assert!(out.contains("S' -> S ."), "got: {out}");
+    assert!(out.contains("LR(0) items: dotted productions track parse state; shift/reduce drives bottom-up parsing."), "got: {out}");
+}
+
+#[test]
+fn showcase815_type_inference() {
+    let out = run_ore("showcase815.ore");
+    assert!(out.contains("Type Inference (Hindley-Milner Simulation):"), "got: {out}");
+    assert!(out.contains("1 + 2 : Int"), "got: {out}");
+    assert!(out.contains("if true then 1 else true : type error = true"), "got: {out}");
+    assert!(out.contains("HM type inference: Damas-Milner Algorithm W, O(n * alpha(n)) with union-find."), "got: {out}");
+}
+
+#[test]
+fn showcase816_lambda_calculus() {
+    let out = run_ore("showcase816.ore");
+    assert!(out.contains("Lambda Calculus Evaluator:"), "got: {out}");
+    assert!(out.contains("ADD 2 3 = 5"), "got: {out}");
+    assert!(out.contains("FACT 7 = 5040"), "got: {out}");
+    assert!(out.contains("Lambda calculus: Turing-complete with only variables, abstraction, and application."), "got: {out}");
+}
+
+#[test]
+fn showcase817_cps_transform() {
+    let out = run_ore("showcase817.ore");
+    assert!(out.contains("Continuation-Passing Style (CPS) Transform:"), "got: {out}");
+    assert!(out.contains("fact(7): direct=5040, cps=5040, match=true"), "got: {out}");
+    assert!(out.contains("sum(1..10) = 55, expected=55, ok=true"), "got: {out}");
+    assert!(out.contains("CPS transform: make implicit control flow explicit via continuation functions."), "got: {out}");
+}
+
+#[test]
+fn showcase818_ssa_form() {
+    let out = run_ore("showcase818.ore");
+    assert!(out.contains("SSA Form Construction:"), "got: {out}");
+    assert!(out.contains("x_3 = phi [x_1, B0], [x_2, B1]"), "got: {out}");
+    assert!(out.contains("x_0: defined once = true"), "got: {out}");
+    assert!(out.contains("SSA form: enables O(n) dataflow algorithms; foundation of modern compiler optimization."), "got: {out}");
+}
+
+#[test]
+fn showcase819_register_allocation() {
+    let out = run_ore("showcase819.ore");
+    assert!(out.contains("Register Allocation (Graph Coloring):"), "got: {out}");
+    assert!(out.contains("Coloring valid (no conflicts): true"), "got: {out}");
+    assert!(out.contains("a -> R0"), "got: {out}");
+    assert!(out.contains("Graph coloring register allocation: NP-complete in general, but heuristics work well."), "got: {out}");
+}
+
+#[test]
+fn showcase820_gc_mark_sweep() {
+    let out = run_ore("showcase820.ore");
+    assert!(out.contains("Garbage Collector Simulation (Mark-Sweep):"), "got: {out}");
+    assert!(out.contains("Obj6: GARBAGE (free 32 bytes)"), "got: {out}");
+    assert!(out.contains("Freed objects: 2 (96 bytes)"), "got: {out}");
+    assert!(out.contains("Mark-sweep GC: trace live objects from roots, reclaim everything else."), "got: {out}");
+}
+
+#[test]
+fn showcase821_newtons_method() {
+    let out = run_ore("showcase821.ore");
+    assert!(out.contains("Newton's Method for Root Finding:"), "got: {out}");
+    assert!(out.contains("sqrt(2.0) = 1.4142"), "got: {out}");
+    assert!(out.contains("cbrt(8.0) = 2.0"), "got: {out}");
+    assert!(out.contains("Newton's method: quadratic convergence, doubles correct digits each iteration."), "got: {out}");
+}
+
+#[test]
+fn showcase822_bisection_method() {
+    let out = run_ore("showcase822.ore");
+    assert!(out.contains("Bisection Method for Root Finding:"), "got: {out}");
+    assert!(out.contains("Root: x = 1.5214"), "got: {out}");
+    assert!(out.contains("Root: x = 0.7391"), "got: {out}");
+    assert!(out.contains("Bisection method: guaranteed convergence, linear rate, requires sign change bracket."), "got: {out}");
+}
+
+#[test]
+fn showcase823_simpsons_rule() {
+    let out = run_ore("showcase823.ore");
+    assert!(out.contains("Numerical Integration (Simpson's Rule):"), "got: {out}");
+    assert!(out.contains("Simpson(100 panels) = 0.333333"), "got: {out}");
+    assert!(out.contains("Simpson(100 panels) = 2.0"), "got: {out}");
+    assert!(out.contains("Simpson's rule: O(h^4) accuracy, exact for polynomials up to degree 3."), "got: {out}");
+}
+
+#[test]
+fn showcase824_runge_kutta() {
+    let out = run_ore("showcase824.ore");
+    assert!(out.contains("Runge-Kutta ODE Solver (RK4):"), "got: {out}");
+    assert!(out.contains("0.5  1.6487"), "got: {out}");
+    assert!(out.contains("t=0.5: RK4=0.6065"), "got: {out}");
+    assert!(out.contains("RK4: gold standard explicit ODE solver with fourth-order accuracy."), "got: {out}");
+}
+
+#[test]
+fn showcase825_gaussian_elimination() {
+    let out = run_ore("showcase825.ore");
+    assert!(out.contains("Gaussian Elimination:"), "got: {out}");
+    assert!(out.contains("x = 1.0"), "got: {out}");
+    assert!(out.contains("2x+y+z = 4.0 (expected 4.0)"), "got: {out}");
+    assert!(out.contains("Gaussian elimination: O(n^3) for n equations, foundation of linear algebra solvers."), "got: {out}");
+}
+
+#[test]
+fn showcase826_lu_decomposition() {
+    let out = run_ore("showcase826.ore");
+    assert!(out.contains("LU Decomposition:"), "got: {out}");
+    assert!(out.contains("x = [1.0, 1.0, 1.0]"), "got: {out}");
+    assert!(out.contains("det(A) = U[0][0]*U[1][1]*U[2][2] = 2.0*1.0*2.0 = 4.0"), "got: {out}");
+    assert!(out.contains("LU decomposition: A=LU enables efficient multiple right-hand-side solves."), "got: {out}");
+}
+
+#[test]
+fn showcase827_jacobi_method() {
+    let out = run_ore("showcase827.ore");
+    assert!(out.contains("Jacobi Iterative Method:"), "got: {out}");
+    assert!(out.contains("Final: x=1.0, y=1.0, z=1.0"), "got: {out}");
+    assert!(out.contains("10x+2y+z = 13.0 (expected 13.0)"), "got: {out}");
+    assert!(out.contains("Jacobi method: simple iterative solver, converges for diagonally dominant systems."), "got: {out}");
+}
+
+#[test]
+fn showcase828_fft_simulation() {
+    let out = run_ore("showcase828.ore");
+    assert!(out.contains("Fast Fourier Transform Simulation:"), "got: {out}");
+    assert!(out.contains("k=1: |X[1]| = 4.0"), "got: {out}");
+    assert!(out.contains("k=3: |X[3]| = 2.0"), "got: {out}");
+    assert!(out.contains("FFT: O(N log N) algorithm for DFT, cornerstone of signal processing."), "got: {out}");
+}
+
+#[test]
+fn showcase829_lagrange_interpolation() {
+    let out = run_ore("showcase829.ore");
+    assert!(out.contains("Polynomial Interpolation (Lagrange Method):"), "got: {out}");
+    assert!(out.contains("p(0.5) = 2.25, exact = 2.25"), "got: {out}");
+    assert!(out.contains("x=pi/4: interpolated=0.705889"), "got: {out}");
+    assert!(out.contains("Lagrange interpolation: unique polynomial through n+1 points, exact for polynomials deg<=n."), "got: {out}");
+}
+
+#[test]
+fn showcase830_numerical_differentiation() {
+    let out = run_ore("showcase830.ore");
+    assert!(out.contains("Numerical Differentiation:"), "got: {out}");
+    assert!(out.contains("Exact f'(2) = 3*(4) - 2 = 10.0"), "got: {out}");
+    assert!(out.contains("Central  difference: 10.01"), "got: {out}");
+    assert!(out.contains("Numerical differentiation: finite differences approximate derivatives, O(h) to O(h^4)."), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,126 @@
+-- Showcase 824: Runge-Kutta ODE Solver (RK4)
+
+-- Solve dy/dt = f(t, y) with RK4 method
+
+fn round4 x:Float -> Float
+  (x * 10000.0).round() / 10000.0
+
+-- ODE 1: dy/dt = y,  exact: y = e^t
+fn ode1 t:Float y:Float -> Float
+  y
+
+-- ODE 2: dy/dt = -y, exact: y = e^(-t)
+fn ode2 t:Float y:Float -> Float
+  y * -1.0
+
+-- ODE 3: dy/dt = t*y, exact: y = e^(t^2/2)
+fn ode3 t:Float y:Float -> Float
+  t * y
+
+-- RK4 step for ode1
+fn rk4_step1 t:Float y:Float h:Float -> Float
+  k1 := h * ode1(t, y)
+  k2 := h * ode1(t + h / 2.0, y + k1 / 2.0)
+  k3 := h * ode1(t + h / 2.0, y + k2 / 2.0)
+  k4 := h * ode1(t + h, y + k3)
+  y + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
+
+-- RK4 step for ode2
+fn rk4_step2 t:Float y:Float h:Float -> Float
+  k1 := h * ode2(t, y)
+  k2 := h * ode2(t + h / 2.0, y + k1 / 2.0)
+  k3 := h * ode2(t + h / 2.0, y + k2 / 2.0)
+  k4 := h * ode2(t + h, y + k3)
+  y + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
+
+-- RK4 step for ode3
+fn rk4_step3 t:Float y:Float h:Float -> Float
+  k1 := h * ode3(t, y)
+  k2 := h * ode3(t + h / 2.0, y + k1 / 2.0)
+  k3 := h * ode3(t + h / 2.0, y + k2 / 2.0)
+  k4 := h * ode3(t + h, y + k3)
+  y + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
+
+fn main
+  print "Runge-Kutta ODE Solver (RK4):"
+  print ""
+
+  h := 0.1
+  steps := 10
+
+  print "=== ODE: dy/dt = y, y(0)=1 (exact: y=e^t) ==="
+  print "  t     RK4       Exact     Error"
+  mut y1 := 1.0
+  for i in range(0, steps + 1)
+    t := i.to_float() * h
+    exact := f_exp_approx(t)
+    yr := round4(y1)
+    er := round4(exact)
+    diff := round4((y1 - exact).abs())
+    print "  {round4(t)}  {yr}    {er}  {diff}"
+    if i < steps
+      y1 = rk4_step1(t, y1, h)
+  print ""
+
+  print "=== ODE: dy/dt = -y, y(0)=1 (exact: y=e^(-t)) ==="
+  mut y2 := 1.0
+  for i in range(0, 6)
+    t := i.to_float() * h
+    exact := f_exp_neg(t)
+    yr := round4(y2)
+    er := round4(exact)
+    print "  t={round4(t)}: RK4={yr}, exact={er}"
+    if i < 5
+      y2 = rk4_step2(t, y2, h)
+  print ""
+
+  print "=== ODE: dy/dt = t*y, y(0)=1 (exact: y=e^(t^2/2)) ==="
+  mut y3 := 1.0
+  for i in range(0, 6)
+    t := i.to_float() * h
+    exact := f_half_gauss(t)
+    yr := round4(y3)
+    er := round4(exact)
+    print "  t={round4(t)}: RK4={yr}, exact={er}"
+    if i < 5
+      y3 = rk4_step3(t, y3, h)
+  print ""
+
+  print "=== RK4 Method Summary ==="
+  print "  Order: 4 (error ~ h^4 per step, global error ~ h^4)"
+  print "  Stages: 4 function evaluations per step"
+  print "  Stable for many stiff and non-stiff ODEs"
+  print ""
+  print "RK4: gold standard explicit ODE solver with fourth-order accuracy."
+
+fn f_exp_approx t:Float -> Float
+  -- e^t via 12-term Taylor
+  mut r := 1.0
+  mut term := 1.0
+  for k in range(1, 12)
+    kf := k.to_float()
+    term = term * t / kf
+    r = r + term
+  r
+
+fn f_exp_neg t:Float -> Float
+  -- e^(-t) via 12-term Taylor
+  nt := t * -1.0
+  mut r := 1.0
+  mut term := 1.0
+  for k in range(1, 12)
+    kf := k.to_float()
+    term = term * nt / kf
+    r = r + term
+  r
+
+fn f_half_gauss t:Float -> Float
+  -- e^(t^2/2) via 12-term Taylor
+  x := t * t / 2.0
+  mut r := 1.0
+  mut term := 1.0
+  for k in range(1, 12)
+    kf := k.to_float()
+    term = term * x / kf
+    r = r + term
+  r

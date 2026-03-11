@@ -1,0 +1,120 @@
+-- Showcase 827: Jacobi Iterative Method for Linear Systems
+
+fn abs_float x:Float -> Float
+  if x < 0.0
+    x * -1.0
+  else
+    x
+
+fn round4 x:Float -> Float
+  (x * 10000.0).round() / 10000.0
+
+fn main
+  print "Jacobi Iterative Method:"
+  print ""
+
+  -- Diagonally dominant system (required for convergence):
+  -- 10x +  y +  z =  12  (solution: x=1, y=1, z=1... wait let's check)
+  -- Actually we want x+y+z = 3 with diag dominant:
+  -- 10x +  2y +  1z = 13
+  --  1x + 10y +  2z = 13
+  --  2x +  1y + 10z = 13
+  -- Sum = 13/13 = 1 for each, so x=y=z=1
+
+  print "=== System (diagonally dominant) ==="
+  print "  10x + 2y +  z = 13"
+  print "   x + 10y + 2z = 13"
+  print "   2x +  y + 10z = 13"
+  print "  Exact solution: x=1, y=1, z=1"
+  print ""
+
+  -- Jacobi: x_new[i] = (b[i] - sum_{j!=i} A[i][j]*x[j]) / A[i][i]
+  -- Starting guess: x=0, y=0, z=0
+  mut x := 0.0
+  mut y := 0.0
+  mut z := 0.0
+
+  tol := 0.000001
+  max_iter := 50
+
+  print "=== Iteration History ==="
+  mut iter := 0
+  mut converged := false
+  while iter < max_iter and not converged
+    x_new := (13.0 - 2.0 * y - 1.0 * z) / 10.0
+    y_new := (13.0 - 1.0 * x - 2.0 * z) / 10.0
+    z_new := (13.0 - 2.0 * x - 1.0 * y) / 10.0
+
+    res := abs_float(x_new - x) + abs_float(y_new - y) + abs_float(z_new - z)
+    x = x_new
+    y = y_new
+    z = z_new
+    iter = iter + 1
+
+    if iter <= 5
+      xr := round4(x)
+      yr := round4(y)
+      zr := round4(z)
+      rr := round4(res)
+      print "  iter {iter}: x={xr}, y={yr}, z={zr}, residual={rr}"
+
+    if res < tol
+      converged = true
+
+  print "  ..."
+  print "  Converged after {iter} iterations"
+  xr := round4(x)
+  yr := round4(y)
+  zr := round4(z)
+  print "  Final: x={xr}, y={yr}, z={zr}"
+  print ""
+
+  -- Verify
+  chk1 := round4(10.0 * x + 2.0 * y + 1.0 * z)
+  chk2 := round4(1.0 * x + 10.0 * y + 2.0 * z)
+  chk3 := round4(2.0 * x + 1.0 * y + 10.0 * z)
+  print "=== Verification ==="
+  print "  10x+2y+z = {chk1} (expected 13.0)"
+  print "  x+10y+2z = {chk2} (expected 13.0)"
+  print "  2x+y+10z = {chk3} (expected 13.0)"
+  print ""
+
+  -- 4x4 example
+  print "=== 4x4 System ==="
+  print "  20x +  y +  z +  w = 23"
+  print "   x + 20y +  z +  w = 23"
+  print "   x +  y + 20z +  w = 23"
+  print "   x +  y +  z + 20w = 23"
+  print "  Exact solution: x=y=z=w=1"
+
+  mut x4 := 0.0
+  mut y4 := 0.0
+  mut z4 := 0.0
+  mut w4 := 0.0
+  mut iter4 := 0
+  mut conv4 := false
+  while iter4 < max_iter and not conv4
+    xn4 := (23.0 - y4 - z4 - w4) / 20.0
+    yn4 := (23.0 - x4 - z4 - w4) / 20.0
+    zn4 := (23.0 - x4 - y4 - w4) / 20.0
+    wn4 := (23.0 - x4 - y4 - z4) / 20.0
+    res4 := abs_float(xn4 - x4) + abs_float(yn4 - y4) + abs_float(zn4 - z4) + abs_float(wn4 - w4)
+    x4 = xn4
+    y4 = yn4
+    z4 = zn4
+    w4 = wn4
+    iter4 = iter4 + 1
+    if res4 < tol
+      conv4 = true
+
+  print "  Converged in {iter4} iterations"
+  print "  x={round4(x4)}, y={round4(y4)}, z={round4(z4)}, w={round4(w4)}"
+  print ""
+
+  print "=== Convergence Condition ==="
+  print "  Jacobi converges if matrix is strictly diagonally dominant:"
+  print "  |A[i][i]| > sum over j!=i of |A[i][j]| for all i"
+  print "  Spectral radius of iteration matrix < 1"
+  print ""
+
+  print "Jacobi method: simple iterative solver, converges for diagonally dominant systems."

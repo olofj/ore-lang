@@ -1,0 +1,121 @@
+-- Showcase 822: Bisection Method for Root Finding
+
+fn abs_float x:Float -> Float
+  if x < 0.0
+    x * -1.0
+  else
+    x
+
+-- f(x) = x^3 - x - 2  (root near x=1.5214)
+fn f1 x:Float -> Float
+  x * x * x - x - 2.0
+
+-- f(x) = cos(x) - x  (root near x=0.7391)
+fn f2 x:Float -> Float
+  cos(x) - x
+
+-- f(x) = x^2 - 4  (root at x=2)
+fn f3 x:Float -> Float
+  x * x - 4.0
+
+fn bisect_f1 a:Float b:Float tol:Float -> Float
+  mut lo := a
+  mut hi := b
+  mut mid := (lo + hi) / 2.0
+  mut iter := 0
+  while abs_float(hi - lo) > tol and iter < 100
+    mid = (lo + hi) / 2.0
+    fmid := f1(mid)
+    flo := f1(lo)
+    if fmid == 0.0
+      lo = mid
+      hi = mid
+    else if flo * fmid < 0.0
+      hi = mid
+    else
+      lo = mid
+    iter = iter + 1
+  (lo + hi) / 2.0
+
+fn bisect_f2 a:Float b:Float tol:Float -> Float
+  mut lo := a
+  mut hi := b
+  mut iter := 0
+  while abs_float(hi - lo) > tol and iter < 100
+    mid := (lo + hi) / 2.0
+    fmid := f2(mid)
+    flo := f2(lo)
+    if fmid == 0.0
+      lo = mid
+      hi = mid
+    else if flo * fmid < 0.0
+      hi = mid
+    else
+      lo = mid
+    iter = iter + 1
+  (lo + hi) / 2.0
+
+fn bisect_f3 a:Float b:Float tol:Float -> Float
+  mut lo := a
+  mut hi := b
+  mut iter := 0
+  while abs_float(hi - lo) > tol and iter < 100
+    mid := (lo + hi) / 2.0
+    fmid := f3(mid)
+    flo := f3(lo)
+    if fmid == 0.0
+      lo = mid
+      hi = mid
+    else if flo * fmid < 0.0
+      hi = mid
+    else
+      lo = mid
+    iter = iter + 1
+  (lo + hi) / 2.0
+
+fn round4 x:Float -> Float
+  (x * 10000.0).round() / 10000.0
+
+fn main
+  print "Bisection Method for Root Finding:"
+  print ""
+
+  tol := 0.00001
+
+  print "=== f(x) = x^3 - x - 2 on [1, 2] ==="
+  r1 := bisect_f1(1.0, 2.0, tol)
+  r1r := round4(r1)
+  v1 := round4(f1(r1))
+  print "  Root: x = {r1r}"
+  print "  f(root) = {v1}"
+  print ""
+
+  print "=== f(x) = cos(x) - x on [0, 1] ==="
+  r2 := bisect_f2(0.0, 1.0, tol)
+  r2r := round4(r2)
+  v2 := round4(f2(r2))
+  print "  Root: x = {r2r}"
+  print "  f(root) = {v2}"
+  print ""
+
+  print "=== f(x) = x^2 - 4 on [0, 3] ==="
+  r3 := bisect_f3(0.0, 3.0, tol)
+  r3r := round4(r3)
+  v3 := round4(f3(r3))
+  print "  Root: x = {r3r}"
+  print "  f(root) = {v3}"
+  print ""
+
+  print "=== Convergence Rate ==="
+  print "  Bisection halves the interval each iteration."
+  print "  For tolerance 0.00001 on [1, 2]: ~17 iterations needed."
+  steps := 17
+  interval := 1.0
+  mut iv := interval
+  for i in range(0, steps)
+    iv = iv / 2.0
+  iv4 := round4(iv)
+  print "  After {steps} halvings: interval width = {iv4}"
+
+  print ""
+  print "Bisection method: guaranteed convergence, linear rate, requires sign change bracket."

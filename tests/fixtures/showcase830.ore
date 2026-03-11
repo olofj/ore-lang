@@ -1,0 +1,112 @@
+-- Showcase 830: Numerical Differentiation
+
+fn abs_float x:Float -> Float
+  if x < 0.0
+    x * -1.0
+  else
+    x
+
+fn round6 x:Float -> Float
+  (x * 1000000.0).round() / 1000000.0
+
+fn round8 x:Float -> Float
+  (x * 100000000.0).round() / 100000000.0
+
+-- f(x) = x^3 - 2x + 1, f'(x) = 3x^2 - 2
+fn f x:Float -> Float
+  x * x * x - 2.0 * x + 1.0
+
+fn f_exact_deriv x:Float -> Float
+  3.0 * x * x - 2.0
+
+-- g(x) = sin(x), g'(x) = cos(x)
+fn g x:Float -> Float
+  sin(x)
+
+fn g_exact_deriv x:Float -> Float
+  cos(x)
+
+-- Forward difference: f'(x) ~ (f(x+h) - f(x)) / h
+fn forward_diff_f x:Float h:Float -> Float
+  (f(x + h) - f(x)) / h
+
+-- Backward difference: f'(x) ~ (f(x) - f(x-h)) / h
+fn backward_diff_f x:Float h:Float -> Float
+  (f(x) - f(x - h)) / h
+
+-- Central difference: f'(x) ~ (f(x+h) - f(x-h)) / (2h)
+fn central_diff_f x:Float h:Float -> Float
+  (f(x + h) - f(x - h)) / (2.0 * h)
+
+-- Second derivative: f''(x) ~ (f(x+h) - 2f(x) + f(x-h)) / h^2
+fn second_diff_f x:Float h:Float -> Float
+  (f(x + h) - 2.0 * f(x) + f(x - h)) / (h * h)
+
+-- Central difference for g(x)=sin(x)
+fn central_diff_g x:Float h:Float -> Float
+  (g(x + h) - g(x - h)) / (2.0 * h)
+
+fn main
+  print "Numerical Differentiation:"
+  print ""
+
+  x0 := 2.0
+  exact := f_exact_deriv(x0)
+  print "=== f(x) = x^3 - 2x + 1 at x=2 ==="
+  print "  Exact f'(2) = 3*(4) - 2 = {exact}"
+  print ""
+
+  print "=== Comparison of Differentiation Schemes (h=0.1) ==="
+  h := 0.1
+  fwd := forward_diff_f(x0, h)
+  bwd := backward_diff_f(x0, h)
+  cen := central_diff_f(x0, h)
+  print "  Forward  difference: {round6(fwd)}, error={round6(abs_float(fwd - exact))}"
+  print "  Backward difference: {round6(bwd)}, error={round6(abs_float(bwd - exact))}"
+  print "  Central  difference: {round6(cen)}, error={round6(abs_float(cen - exact))}"
+  print ""
+
+  print "=== Effect of Step Size h on Central Difference ==="
+  print "  h           f'(2) approx    error"
+  hs := [1.0, 0.1, 0.01, 0.001, 0.0001]
+  for i in range(0, 5)
+    hi := hs[i]
+    ci := central_diff_f(x0, hi)
+    erri := abs_float(ci - exact)
+    print "  {hi}      {round8(ci)}     {round8(erri)}"
+  print ""
+
+  print "=== Second Derivative f''(x) = 6x at x=2 (exact=12) ==="
+  print "  h=0.1: {round6(second_diff_f(x0, 0.1))}"
+  print "  h=0.01: {round6(second_diff_f(x0, 0.01))}"
+  print "  h=0.001: {round6(second_diff_f(x0, 0.001))}"
+  print ""
+
+  print "=== Differentiating sin(x) at x=pi/4 ==="
+  xg := pi() / 4.0
+  exact_g := g_exact_deriv(xg)
+  print "  Exact cos(pi/4) = {round6(exact_g)}"
+  hg_vals := [0.1, 0.01, 0.001]
+  for i in range(0, 3)
+    hgi := hg_vals[i]
+    approx_g := central_diff_g(xg, hgi)
+    err_g := abs_float(approx_g - exact_g)
+    print "  h={hgi}: approx={round6(approx_g)}, error={round6(err_g)}"
+  print ""
+
+  print "=== Richardson Extrapolation ==="
+  print "  Combines two finite difference estimates to cancel leading error term"
+  h1 := 0.1
+  h2 := 0.05
+  d1 := central_diff_f(x0, h1)
+  d2 := central_diff_f(x0, h2)
+  -- Richardson: (4*D(h/2) - D(h)) / 3 cancels O(h^2) error -> O(h^4)
+  rich := (4.0 * d2 - d1) / 3.0
+  err_rich := abs_float(rich - exact)
+  err_plain := abs_float(d2 - exact)
+  print "  Central diff (h=0.1): error={round6(abs_float(d1-exact))}"
+  print "  Central diff (h=0.05): error={round6(err_plain)}"
+  print "  Richardson extrapolated: {round6(rich)}, error={round6(err_rich)}"
+  print ""
+
+  print "Numerical differentiation: finite differences approximate derivatives, O(h) to O(h^4)."

@@ -1,0 +1,105 @@
+-- Showcase 829: Polynomial Interpolation (Lagrange Method)
+
+fn round4 x:Float -> Float
+  (x * 10000.0).round() / 10000.0
+
+fn round6 x:Float -> Float
+  (x * 1000000.0).round() / 1000000.0
+
+-- Lagrange basis polynomial L_i(x) for given nodes
+-- L_i(x) = product_{j!=i} (x - x_j) / (x_i - x_j)
+
+-- 4-point Lagrange interpolation
+fn lagrange4 x:Float x0:Float x1:Float x2:Float x3:Float y0:Float y1:Float y2:Float y3:Float -> Float
+  -- Basis polynomial for point 0
+  l0 := ((x - x1) * (x - x2) * (x - x3)) / ((x0 - x1) * (x0 - x2) * (x0 - x3))
+  l1 := ((x - x0) * (x - x2) * (x - x3)) / ((x1 - x0) * (x1 - x2) * (x1 - x3))
+  l2 := ((x - x0) * (x - x1) * (x - x3)) / ((x2 - x0) * (x2 - x1) * (x2 - x3))
+  l3 := ((x - x0) * (x - x1) * (x - x2)) / ((x3 - x0) * (x3 - x1) * (x3 - x2))
+  y0 * l0 + y1 * l1 + y2 * l2 + y3 * l3
+
+-- 3-point Lagrange
+fn lagrange3 x:Float x0:Float x1:Float x2:Float y0:Float y1:Float y2:Float -> Float
+  l0 := ((x - x1) * (x - x2)) / ((x0 - x1) * (x0 - x2))
+  l1 := ((x - x0) * (x - x2)) / ((x1 - x0) * (x1 - x2))
+  l2 := ((x - x0) * (x - x1)) / ((x2 - x0) * (x2 - x1))
+  y0 * l0 + y1 * l1 + y2 * l2
+
+fn main
+  print "Polynomial Interpolation (Lagrange Method):"
+  print ""
+
+  -- Example 1: Interpolate sin(x) using 4 points
+  -- Nodes at x=0, pi/6, pi/3, pi/2
+  p6 := pi() / 6.0   -- 30 degrees
+  p3 := pi() / 3.0   -- 60 degrees
+  p2 := pi() / 2.0   -- 90 degrees
+
+  s0 := sin(0.0)
+  s1 := sin(p6)
+  s2 := sin(p3)
+  s3 := sin(p2)
+
+  print "=== Interpolating sin(x) with 4 nodes ==="
+  print "  Nodes: x=0, pi/6, pi/3, pi/2"
+  print "  sin(0)    = {round6(s0)}"
+  print "  sin(pi/6) = {round6(s1)}"
+  print "  sin(pi/3) = {round6(s2)}"
+  print "  sin(pi/2) = {round6(s3)}"
+  print ""
+
+  print "  Evaluating interpolant at intermediate points:"
+  -- Test at x = pi/4 (45 degrees)
+  p4 := pi() / 4.0
+  interp1 := lagrange4(p4, 0.0, p6, p3, p2, s0, s1, s2, s3)
+  exact1 := sin(p4)
+  err1 := round6((interp1 - exact1).abs())
+  print "  x=pi/4: interpolated={round6(interp1)}, exact={round6(exact1)}, error={err1}"
+
+  -- Test at x = pi/12
+  p12 := pi() / 12.0
+  interp2 := lagrange4(p12, 0.0, p6, p3, p2, s0, s1, s2, s3)
+  exact2 := sin(p12)
+  err2 := round6((interp2 - exact2).abs())
+  print "  x=pi/12: interpolated={round6(interp2)}, exact={round6(exact2)}, error={err2}"
+  print ""
+
+  -- Example 2: Exact polynomial recovery
+  -- Polynomial: p(x) = x^2 + 2x + 1 = (x+1)^2
+  -- Nodes at x=0,1,2,3 with values 1,4,9,16
+  print "=== Exact Polynomial Recovery: p(x) = x^2 + 2x + 1 ==="
+  print "  Nodes: (0,1), (1,4), (2,9), (3,16)"
+  test_xs := [0.5, 1.5, 2.5]
+  for i in range(0, 3)
+    tx := test_xs[i]
+    interp := lagrange4(tx, 0.0, 1.0, 2.0, 3.0, 1.0, 4.0, 9.0, 16.0)
+    exact := tx * tx + 2.0 * tx + 1.0
+    print "  p({tx}) = {round4(interp)}, exact = {round4(exact)}"
+  print ""
+
+  -- Example 3: Newton's divided differences approach comparison
+  print "=== 3-Point Example: f(x) = 1/(1+x^2) (Runge's function) ==="
+  print "  Nodes: (-1, 0.5), (0, 1.0), (1, 0.5)"
+  -- f(x) = 1/(1+x^2)
+  -- f(-1)=0.5, f(0)=1.0, f(1)=0.5
+  runge_xs := [-0.5, 0.0, 0.5]
+  for i in range(0, 3)
+    tx := runge_xs[i]
+    interp := lagrange3(tx, -1.0, 0.0, 1.0, 0.5, 1.0, 0.5)
+    exact := 1.0 / (1.0 + tx * tx)
+    print "  x={tx}: interpolated={round4(interp)}, exact={round4(exact)}"
+  print ""
+
+  -- Runge's phenomenon note
+  print "=== Runge's Phenomenon ==="
+  print "  High-degree polynomial interpolation can oscillate wildly"
+  print "  Especially near edges of interpolation interval"
+  print "  Solution: Chebyshev nodes or piecewise (spline) interpolation"
+  print ""
+  -- Demonstrate with Runge function at edges
+  interp_edge := lagrange3(-0.9, -1.0, 0.0, 1.0, 0.5, 1.0, 0.5)
+  exact_edge := 1.0 / (1.0 + 0.81)
+  print "  At x=-0.9: interpolated={round4(interp_edge)}, exact={round4(exact_edge)}"
+  print ""
+
+  print "Lagrange interpolation: unique polynomial through n+1 points, exact for polynomials deg<=n."

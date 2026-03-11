@@ -1,0 +1,83 @@
+-- Showcase 821: Newton's Method for Root Finding
+
+fn abs_float x:Float -> Float
+  if x < 0.0
+    x * -1.0
+  else
+    x
+
+fn newton_sqrt target:Float -> Float
+  -- Find x such that x^2 - target = 0
+  -- f(x) = x^2 - target, f'(x) = 2x
+  mut x := target / 2.0
+  mut iter := 0
+  mut converged := false
+  while iter < 100 and not converged
+    fx := x * x - target
+    fpx := 2.0 * x
+    x_new := x - fx / fpx
+    diff := abs_float(x_new - x)
+    x = x_new
+    iter = iter + 1
+    if diff < 0.000001
+      converged = true
+  x
+
+fn newton_cbrt target:Float -> Float
+  -- Find x such that x^3 - target = 0
+  -- f(x) = x^3 - target, f'(x) = 3x^2
+  mut x := target / 3.0
+  mut iter := 0
+  mut converged := false
+  while iter < 100 and not converged
+    fx := x * x * x - target
+    fpx := 3.0 * x * x
+    if abs_float(fpx) < 0.000001
+      converged = true
+    else
+      x_new := x - fx / fpx
+      diff := abs_float(x_new - x)
+      x = x_new
+      iter = iter + 1
+      if diff < 0.000001
+        converged = true
+  x
+
+fn round4 x:Float -> Float
+  (x * 10000.0).round() / 10000.0
+
+fn main
+  print "Newton's Method for Root Finding:"
+  print ""
+
+  print "=== Square Roots ==="
+  targets := [2.0, 9.0, 16.0, 25.0, 50.0]
+  for i in range(0, 5)
+    t := targets[i]
+    r := newton_sqrt(t)
+    r4 := round4(r)
+    print "  sqrt({t}) = {r4}"
+
+  print ""
+  print "=== Cube Roots ==="
+  cubetargets := [8.0, 27.0, 64.0, 125.0]
+  for i in range(0, 4)
+    t := cubetargets[i]
+    r := newton_cbrt(t)
+    r4 := round4(r)
+    print "  cbrt({t}) = {r4}"
+
+  print ""
+  print "=== Convergence Analysis ==="
+  print "  Finding sqrt(2):"
+  mut x := 1.0
+  for step in range(0, 6)
+    fx := x * x - 2.0
+    fpx := 2.0 * x
+    x_new := x - fx / fpx
+    r4 := round4(x)
+    print "    step {step}: x = {r4}"
+    x = x_new
+
+  print ""
+  print "Newton's method: quadratic convergence, doubles correct digits each iteration."

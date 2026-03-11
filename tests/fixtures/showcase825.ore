@@ -1,0 +1,121 @@
+-- Showcase 825: Gaussian Elimination
+
+fn round4 x:Float -> Float
+  (x * 10000.0).round() / 10000.0
+
+fn main
+  print "Gaussian Elimination:"
+  print ""
+
+  -- Solve 3x3 system: Ax = b
+  -- [2  1  1] [x]   [ 4]
+  -- [4  3  3] [y] = [10]
+  -- [8  7  9] [z]   [24]
+  -- exact solution: x=1, y=1, z=1
+
+  print "=== System 1: 3x3 Linear System ==="
+  print "  2x + y + z =  4"
+  print "  4x + 3y + 3z = 10"
+  print "  8x + 7y + 9z = 24"
+  print ""
+
+  -- Row 0
+  mut a00 := 2.0
+  mut a01 := 1.0
+  mut a02 := 1.0
+  mut b0  := 4.0
+
+  -- Row 1
+  mut a10 := 4.0
+  mut a11 := 3.0
+  mut a12 := 3.0
+  mut b1  := 10.0
+
+  -- Row 2
+  mut a20 := 8.0
+  mut a21 := 7.0
+  mut a22 := 9.0
+  mut b2  := 24.0
+
+  -- Eliminate column 0 from rows 1 and 2
+  f10 := a10 / a00
+  a10 = a10 - f10 * a00
+  a11 = a11 - f10 * a01
+  a12 = a12 - f10 * a02
+  b1  = b1  - f10 * b0
+
+  f20 := a20 / a00
+  a20 = a20 - f20 * a00
+  a21 = a21 - f20 * a01
+  a22 = a22 - f20 * a02
+  b2  = b2  - f20 * b0
+
+  -- Eliminate column 1 from row 2
+  f21 := a21 / a11
+  a20 = a20 - f21 * a10
+  a21 = a21 - f21 * a11
+  a22 = a22 - f21 * a12
+  b2  = b2  - f21 * b1
+
+  print "=== After Forward Elimination ==="
+  print "  Row 0: {round4(a00)}  {round4(a01)}  {round4(a02)}  | {round4(b0)}"
+  print "  Row 1: {round4(a10)}  {round4(a11)}  {round4(a12)}  | {round4(b1)}"
+  print "  Row 2: {round4(a20)}  {round4(a21)}  {round4(a22)} | {round4(b2)}"
+  print ""
+
+  -- Back substitution
+  z := b2 / a22
+  y := (b1 - a12 * z) / a11
+  x := (b0 - a02 * z - a01 * y) / a00
+
+  print "=== Solution ==="
+  print "  x = {round4(x)}"
+  print "  y = {round4(y)}"
+  print "  z = {round4(z)}"
+  print ""
+
+  -- Verify original equations
+  check1 := round4(2.0 * x + 1.0 * y + 1.0 * z)
+  check2 := round4(4.0 * x + 3.0 * y + 3.0 * z)
+  check3 := round4(8.0 * x + 7.0 * y + 9.0 * z)
+  print "=== Verification ==="
+  print "  2x+y+z = {check1} (expected 4.0)"
+  print "  4x+3y+3z = {check2} (expected 10.0)"
+  print "  8x+7y+9z = {check3} (expected 24.0)"
+  print ""
+
+  -- Second system: x=1, y=2
+  -- 3x + 2y = 7
+  -- x  + 4y = 9
+  print "=== System 2: 2x2 ==="
+  print "  3x + 2y = 7"
+  print "   x + 4y = 9"
+  mut c00 := 3.0
+  mut c01 := 2.0
+  mut d0  := 7.0
+  mut c10 := 1.0
+  mut c11 := 4.0
+  mut d1  := 9.0
+
+  fc := c10 / c00
+  c10 = c10 - fc * c00
+  c11 = c11 - fc * c01
+  d1  = d1  - fc * d0
+
+  y2 := d1 / c11
+  x2 := (d0 - c01 * y2) / c00
+  print "  x = {round4(x2)}"
+  print "  y = {round4(y2)}"
+  cv1 := round4(3.0 * x2 + 2.0 * y2)
+  cv2 := round4(x2 + 4.0 * y2)
+  print "  Check: 3x+2y = {cv1} (expected 7.0)"
+  print "  Check: x+4y = {cv2} (expected 9.0)"
+  print ""
+
+  print "=== Operation Count ==="
+  print "  For n=3: forward elimination ~ n^3/3 = 9 multiplications"
+  print "  Back substitution ~ n^2/2 = 4.5 operations"
+  print "  Total O(n^3) for large n"
+  print ""
+
+  print "Gaussian elimination: O(n^3) for n equations, foundation of linear algebra solvers."
