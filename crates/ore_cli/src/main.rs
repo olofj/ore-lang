@@ -319,11 +319,12 @@ fn fmt_file(path: &Path) -> Result<String, String> {
 fn run_repl() {
     use std::io::{self, BufRead, Write};
 
-    eprintln!("Ore REPL (type :quit to exit)");
+    eprintln!("Ore REPL v0.1.0 (type :quit to exit, :help for help)");
 
     let stdin = io::stdin();
     let mut lines = stdin.lock().lines();
     let mut line_num = 0u64;
+    let mut definitions = String::new(); // accumulated fn/type definitions
 
     loop {
         eprint!("ore> ");
@@ -341,11 +342,59 @@ fn run_repl() {
         if trimmed == ":quit" || trimmed == ":q" {
             break;
         }
+        if trimmed == ":help" || trimmed == ":h" {
+            eprintln!("Commands:");
+            eprintln!("  :quit, :q    Exit the REPL");
+            eprintln!("  :clear, :c   Clear accumulated definitions");
+            eprintln!("  :defs, :d    Show accumulated definitions");
+            eprintln!("  :help, :h    Show this help");
+            eprintln!();
+            eprintln!("Enter expressions to evaluate, or define functions/types.");
+            eprintln!("Multi-line: start with 'fn' or 'type', enter blank line to end.");
+            continue;
+        }
+        if trimmed == ":clear" || trimmed == ":c" {
+            definitions.clear();
+            eprintln!("Definitions cleared.");
+            continue;
+        }
+        if trimmed == ":defs" || trimmed == ":d" {
+            if definitions.is_empty() {
+                eprintln!("(no definitions)");
+            } else {
+                eprintln!("{}", definitions);
+            }
+            continue;
+        }
 
         line_num += 1;
 
-        // Wrap the line in fn main
-        let source = format!("fn main\n  {}\n", trimmed);
+        // Multi-line mode for function/type definitions
+        let mut input = line.clone();
+        if trimmed.starts_with("fn ") || trimmed.starts_with("type ") {
+            loop {
+                eprint!("...  ");
+                io::stderr().flush().unwrap();
+                match lines.next() {
+                    Some(Ok(next_line)) => {
+                        if next_line.trim().is_empty() {
+                            break;
+                        }
+                        input.push('\n');
+                        input.push_str(&next_line);
+                    }
+                    _ => break,
+                }
+            }
+            // Store the definition
+            definitions.push_str(&input);
+            definitions.push('\n');
+            eprintln!("Defined.");
+            continue;
+        }
+
+        // Wrap the expression in fn main with accumulated definitions
+        let source = format!("{}\nfn main\n  {}\n", definitions, trimmed);
 
         let result = (|| -> Result<(), String> {
             let tokens = ore_lexer::lex(&source).map_err(|e| e.to_string())?;
