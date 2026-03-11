@@ -747,6 +747,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_index_of", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_unique", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_flatten", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_partition", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_window", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_chunks", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_str_reverse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -2644,6 +2645,35 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                 }
                 // filter preserves element kind, no update needed
+                Ok((val, ValKind::List))
+            }
+            "partition" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "partition takes exactly 1 argument".into() });
+                }
+                let elem_kind = self.last_list_elem_kind.clone();
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        let kinds: Vec<ValKind> = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "partition argument must be a function".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let rt = self.module.get_function("ore_list_partition").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "part"))?;
+                let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::List);
                 Ok((val, ValKind::List))
             }
             "each" => {

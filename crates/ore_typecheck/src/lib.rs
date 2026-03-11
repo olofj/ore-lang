@@ -881,7 +881,7 @@ impl TypeChecker {
                 "push" => Type::Unit,
                 "get" => *elem.clone(),
                 "contains" | "is_empty" => Type::Bool,
-                "map" | "filter" => obj_ty.clone(),
+                "map" | "filter" | "partition" => obj_ty.clone(),
                 "each" => Type::Unit,
                 "reduce" => Type::Any,
                 "find" | "min_by" | "max_by" => *elem.clone(),

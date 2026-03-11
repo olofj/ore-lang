@@ -426,6 +426,7 @@ fn map_runtime_functions(
     map_fn!("ore_list_count", ore_runtime::ore_list_count);
     map_fn!("ore_list_sort_by", ore_runtime::ore_list_sort_by);
     map_fn!("ore_list_sort_by_key", ore_runtime::ore_list_sort_by_key);
+    map_fn!("ore_list_partition", ore_runtime::ore_list_partition);
     map_fn!("ore_list_min_by", ore_runtime::ore_list_min_by);
     map_fn!("ore_list_max_by", ore_runtime::ore_list_max_by);
     map_fn!("ore_list_sort_by_key_str", ore_runtime::ore_list_sort_by_key_str);

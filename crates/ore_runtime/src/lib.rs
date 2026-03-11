@@ -1231,6 +1231,34 @@ pub extern "C" fn ore_list_skip(list: *mut OreList, n: i64) -> *mut OreList {
     }
 }
 
+/// Partition list into two lists: [matching, not_matching].
+/// Returns a list containing two inner lists.
+#[no_mangle]
+pub extern "C" fn ore_list_partition(
+    list: *mut OreList,
+    func: *const u8,
+    env_ptr: *mut u8,
+) -> *mut OreList {
+    let matching = ore_list_new();
+    let not_matching = ore_list_new();
+    unsafe {
+        let src = &*list;
+        for i in 0..src.len as usize {
+            let elem = *src.data.add(i);
+            let result = call_closure(func, env_ptr, elem);
+            if result != 0 {
+                ore_list_push(matching, elem);
+            } else {
+                ore_list_push(not_matching, elem);
+            }
+        }
+    }
+    let result = ore_list_new();
+    ore_list_push(result, matching as i64);
+    ore_list_push(result, not_matching as i64);
+    result
+}
+
 /// Sliding windows of size n. Returns list of lists.
 #[no_mangle]
 pub extern "C" fn ore_list_window(list: *mut OreList, n: i64) -> *mut OreList {

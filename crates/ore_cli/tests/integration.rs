@@ -995,6 +995,13 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn lists_partition() {
+    let out = run_ore("lists/partition.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["2 4 6 8", "1 3 5 7"]);
+}
+
+#[test]
 fn lists_range_step() {
     let out = run_ore("lists/range_step.ore");
     let lines: Vec<&str> = out.lines().collect();
