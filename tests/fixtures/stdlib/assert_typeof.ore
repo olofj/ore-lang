@@ -1,0 +1,12 @@
+fn main
+  -- assert passes
+  assert(true)
+  assert(1 + 1 == 2)
+  assert(5 > 3, "math works")
+
+  -- typeof
+  print typeof(42)
+  print typeof("hello")
+  print typeof(true)
+  print typeof(3.14)
+  print typeof([1, 2, 3])

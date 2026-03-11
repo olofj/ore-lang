@@ -649,6 +649,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_repeat", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_str_index_of", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_assert_fail", void_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_reduce(ptr, i64, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_reduce", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
@@ -1288,6 +1289,52 @@ impl<'ctx> CodeGen<'ctx> {
                             }
                             _ => return Err(CodeGenError { line: None, msg: "len() not supported on this type".into() }),
                         }
+                    }
+                    "assert" => {
+                        if args.is_empty() || args.len() > 2 {
+                            return Err(CodeGenError { line: None, msg: "assert takes 1-2 arguments (condition, optional message)".into() });
+                        }
+                        let (cond, _) = self.compile_expr_with_kind(&args[0], func)?;
+                        let cond_bool = cond.into_int_value();
+
+                        let pass_bb = self.context.append_basic_block(func, "assert_pass");
+                        let fail_bb = self.context.append_basic_block(func, "assert_fail");
+                        bld!(self.builder.build_conditional_branch(cond_bool, pass_bb, fail_bb))?;
+
+                        self.builder.position_at_end(fail_bb);
+                        let msg = if args.len() == 2 {
+                            self.compile_expr(&args[1], func)?.into_pointer_value()
+                        } else {
+                            let line = self.current_line;
+                            self.compile_string_literal(&format!("assertion failed at line {}", line))?
+                        };
+                        let rt = self.module.get_function("ore_assert_fail").unwrap();
+                        bld!(self.builder.build_call(rt, &[msg.into()], ""))?;
+                        bld!(self.builder.build_unreachable())?;
+
+                        self.builder.position_at_end(pass_bb);
+                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                    }
+                    "typeof" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "typeof takes 1 argument".into() });
+                        }
+                        let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                        let type_name = match kind {
+                            ValKind::Int => "Int",
+                            ValKind::Float => "Float",
+                            ValKind::Bool => "Bool",
+                            ValKind::Str => "Str",
+                            ValKind::List => "List",
+                            ValKind::Map => "Map",
+                            ValKind::Option => "Option",
+                            ValKind::Result => "Result",
+                            ValKind::Void => "Void",
+                            ValKind::Record(ref n) => n.as_str(),
+                            ValKind::Enum(ref n) => n.as_str(),
+                        };
+                        let str_val = self.compile_string_literal(type_name)?;
+                        return Ok((str_val.into(), ValKind::Str));
                     }
                     _ => {}
                 }

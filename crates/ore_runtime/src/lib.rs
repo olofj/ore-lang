@@ -410,6 +410,19 @@ pub extern "C" fn ore_list_slice(list: *mut OreList, start: i64, end: i64) -> *m
     result
 }
 
+// ── Assert ──
+
+#[no_mangle]
+pub extern "C" fn ore_assert_fail(msg: *mut OreStr) {
+    let s = if msg.is_null() {
+        "assertion failed".to_string()
+    } else {
+        unsafe { (*msg).as_str().to_string() }
+    };
+    eprintln!("{}", s);
+    std::process::exit(1);
+}
+
 // ── I/O ──
 
 #[no_mangle]

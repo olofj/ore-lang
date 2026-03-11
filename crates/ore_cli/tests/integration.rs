@@ -483,6 +483,13 @@ fn control_option_methods() {
 }
 
 #[test]
+fn stdlib_assert_typeof() {
+    let out = run_ore("stdlib/assert_typeof.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["Int", "Str", "Bool", "Float", "List"]);
+}
+
+#[test]
 fn pipelines_comprehensive() {
     let out = run_ore("pipelines/comprehensive.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
