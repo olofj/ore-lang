@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
-#[command(name = "ore", about = "The Ore programming language compiler")]
+#[command(name = "ore", about = "The Ore programming language compiler", version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
