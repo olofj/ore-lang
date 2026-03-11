@@ -1,0 +1,232 @@
+-- Showcase 428: DFA minimization
+
+-- Minimize a deterministic finite automaton using partition refinement
+-- States stored as integers, transitions in flat arrays
+
+fn main
+  print "DFA Minimization:"
+  print ""
+
+  -- Example DFA that recognizes strings ending in "ab" over alphabet (a, b)
+  -- States: 0(start), 1(saw a), 2(accept: saw ab), 3(dead equivalent to 0), 4(equiv to 1)
+  -- This DFA has redundant states that can be minimized
+
+  num_states := 5
+  num_symbols := 2  -- 0=a, 1=b
+
+  -- Transition table: trans[state * num_symbols + symbol] = next_state
+  -- State 0: a->1, b->0
+  -- State 1: a->1, b->2
+  -- State 2: a->1, b->0  (accept)
+  -- State 3: a->4, b->3  (equivalent to state 0)
+  -- State 4: a->4, b->2  (equivalent to state 1)
+  mut trans := [1, 0, 1, 2, 1, 0, 4, 3, 4, 2]
+
+  -- Accept states
+  mut is_accept := [0, 0, 1, 0, 0]
+
+  print "Original DFA ({num_states} states):"
+  print "  State 0 (start): a->1, b->0"
+  print "  State 1:         a->1, b->2"
+  print "  State 2 (accept):a->1, b->0"
+  print "  State 3:         a->4, b->3"
+  print "  State 4:         a->4, b->2"
+  print ""
+
+  -- Test some strings on original DFA
+  print "Testing original DFA:"
+  -- Test "ab" -> accept
+  mut state := 0
+  state = trans[state * 2 + 0]  -- a
+  state = trans[state * 2 + 1]  -- b
+  print "  'ab' -> state {state}, accept: {is_accept[state] == 1}"
+
+  -- Test "aab" -> accept
+  state = 0
+  state = trans[state * 2 + 0]  -- a
+  state = trans[state * 2 + 0]  -- a
+  state = trans[state * 2 + 1]  -- b
+  print "  'aab' -> state {state}, accept: {is_accept[state] == 1}"
+
+  -- Test "bb" -> reject
+  state = 0
+  state = trans[state * 2 + 1]  -- b
+  state = trans[state * 2 + 1]  -- b
+  print "  'bb' -> state {state}, accept: {is_accept[state] == 1}"
+
+  -- Test "aba" -> reject
+  state = 0
+  state = trans[state * 2 + 0]  -- a
+  state = trans[state * 2 + 1]  -- b
+  state = trans[state * 2 + 0]  -- a
+  print "  'aba' -> state {state}, accept: {is_accept[state] == 1}"
+
+  -- Minimize using partition refinement (Hopcroft's algorithm simplified)
+  print ""
+  print "Minimization (partition refinement):"
+
+  -- Initial partition: accept states vs non-accept states
+  -- Partition assignment: partition[state] = partition_id
+  mut partition := []
+  for i in range(0, num_states)
+    if is_accept[i] == 1
+      partition.push(1)
+    else
+      partition.push(0)
+
+  print "  Initial: non-accept=[0,1,3,4], accept=[2]"
+
+  -- Refine partitions
+  mut changed := true
+  mut iteration := 0
+
+  loop
+    if not changed
+      break
+    if iteration > 10
+      break
+    changed = false
+    iteration = iteration + 1
+
+    -- For each pair of states in the same partition,
+    -- check if they go to the same partition on each symbol
+    mut new_partition := []
+    for i in range(0, num_states)
+      new_partition.push(partition[i] * 100)
+
+    -- Encode transition behavior for each state
+    for i in range(0, num_states)
+      for s in range(0, num_symbols)
+        next := trans[i * num_symbols + s]
+        new_partition[i] = new_partition[i] + partition[next] * (s + 1) * 10
+
+    -- Normalize: map encoded values to sequential IDs
+    mut ids := []
+    mut id_vals := []
+    mut next_id := 0
+
+    for i in range(0, num_states)
+      enc := new_partition[i]
+      mut found := -1
+      for j in range(0, ids | count())
+        if id_vals[j] == enc
+          found = j
+      if found == -1
+        ids.push(next_id)
+        id_vals.push(enc)
+        new_partition[i] = next_id
+        next_id = next_id + 1
+      else
+        new_partition[i] = ids[found]
+
+    -- Check if partition changed
+    for i in range(0, num_states)
+      if new_partition[i] != partition[i]
+        changed = true
+    partition = new_partition
+
+    -- Print current partitions
+    mut groups := ""
+    for p in range(0, next_id)
+      if groups | len() > 0
+        groups = groups + ", "
+      mut members := "["
+      mut first := true
+      for i in range(0, num_states)
+        if partition[i] == p
+          if not first
+            members = members + ","
+          members = members + str(i)
+          first = false
+      members = members + "]"
+      groups = groups + members
+    print "  Iteration {iteration}: {groups}"
+
+  -- Build minimized DFA
+  print ""
+  print "Minimized DFA:"
+  -- Count unique partitions
+  mut max_part := 0
+  for i in range(0, num_states)
+    if partition[i] > max_part
+      max_part = partition[i]
+  min_states := max_part + 1
+  print "  States: {min_states} (reduced from {num_states})"
+
+  -- Show which original states merged
+  print "  State mapping:"
+  for p in range(0, min_states)
+    mut members := ""
+    mut is_acc := false
+    for i in range(0, num_states)
+      if partition[i] == p
+        if members | len() > 0
+          members = members + ", "
+        members = members + str(i)
+        if is_accept[i] == 1
+          is_acc = true
+    mut label := ""
+    if is_acc
+      label = " (accept)"
+    if p == partition[0]
+      label = label + " (start)"
+    print "    Minimized state {p} = original states [{members}]{label}"
+
+  -- Show minimized transitions
+  print "  Transitions:"
+  for p in range(0, min_states)
+    -- Find a representative state for this partition
+    mut rep := 0
+    for i in range(0, num_states)
+      if partition[i] == p
+        rep = i
+
+    t_a := partition[trans[rep * 2 + 0]]
+    t_b := partition[trans[rep * 2 + 1]]
+    print "    State {p}: a->{t_a}, b->{t_b}"
+
+  -- Test minimized DFA
+  print ""
+  print "Testing minimized DFA:"
+  -- "ab"
+  state = partition[0]  -- start
+  state = partition[trans[0 * 2 + 0]]  -- This is wrong, need to use minimized transitions
+  -- Let me just trace through the representative states
+  mut ms := partition[0]
+  -- Find rep for ms, apply 'a'
+  mut rep := 0
+  for i in range(0, num_states)
+    if partition[i] == ms
+      rep = i
+  ms = partition[trans[rep * 2 + 0]]  -- a
+  rep = 0
+  for i in range(0, num_states)
+    if partition[i] == ms
+      rep = i
+  ms = partition[trans[rep * 2 + 1]]  -- b
+  mut acc := false
+  for i in range(0, num_states)
+    if partition[i] == ms and is_accept[i] == 1
+      acc = true
+  print "  'ab' -> minimized state {ms}, accept: {acc}"
+
+  -- "bb"
+  ms = partition[0]
+  rep = 0
+  for i in range(0, num_states)
+    if partition[i] == ms
+      rep = i
+  ms = partition[trans[rep * 2 + 1]]  -- b
+  rep = 0
+  for i in range(0, num_states)
+    if partition[i] == ms
+      rep = i
+  ms = partition[trans[rep * 2 + 1]]  -- b
+  acc = false
+  for i in range(0, num_states)
+    if partition[i] == ms and is_accept[i] == 1
+      acc = true
+  print "  'bb' -> minimized state {ms}, accept: {acc}"
+
+  print ""
+  print "DFA minimization: equivalent states merged via partition refinement."

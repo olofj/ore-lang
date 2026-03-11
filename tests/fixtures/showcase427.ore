@@ -1,0 +1,154 @@
+-- Showcase 427: Matrix LU decomposition
+
+-- LU decomposition: factor A = L * U where L is lower triangular, U is upper triangular
+-- Using integer-scaled arithmetic (scale factor 1000) for precision
+
+fn mat_get m:List cols:Int r:Int c:Int -> Int
+  m[r * cols + c]
+
+fn main
+  print "LU Decomposition (Integer Arithmetic):"
+  print ""
+
+  -- 3x3 matrix A (values scaled by 100 for precision)
+  -- A = [[2, 1, 1], [4, 3, 3], [8, 7, 9]] * 100
+  n := 3
+  mut a := [200, 100, 100, 400, 300, 300, 800, 700, 900]
+
+  print "Matrix A (scaled by 100):"
+  for r in range(0, n)
+    mut row := "  ["
+    for c in range(0, n)
+      if c > 0
+        row = row + ", "
+      v := a[r * n + c]
+      row = row + str(v)
+    row = row + "]"
+    print row
+
+  -- Initialize L as identity (scaled by 100) and U as copy of A
+  mut l := [100, 0, 0, 0, 100, 0, 0, 0, 100]
+  mut u := []
+  for i in range(0, 9)
+    u.push(a[i])
+
+  -- Gaussian elimination to compute L and U
+  -- For each pivot column k
+  for k in range(0, n)
+    pivot := u[k * n + k]
+    -- For each row below pivot
+    for i in range(k + 1, n)
+      -- factor = u[i][k] / u[k][k] (keep scaled by 100)
+      factor := u[i * n + k] * 100 / pivot
+      l[i * n + k] = factor
+
+      -- Subtract factor * row k from row i
+      for j in range(k, n)
+        u[i * n + j] = u[i * n + j] - factor * u[k * n + j] / 100
+
+  print ""
+  print "L matrix (lower triangular, scaled by 100):"
+  for r in range(0, n)
+    mut row := "  ["
+    for c in range(0, n)
+      if c > 0
+        row = row + ", "
+      row = row + str(l[r * n + c])
+    row = row + "]"
+    print row
+
+  print ""
+  print "U matrix (upper triangular, scaled by 100):"
+  for r in range(0, n)
+    mut row := "  ["
+    for c in range(0, n)
+      if c > 0
+        row = row + ", "
+      row = row + str(u[r * n + c])
+    row = row + "]"
+    print row
+
+  -- Verify: L * U should equal A
+  print ""
+  print "Verification (L * U, scaled by 10000):"
+  mut prod := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for r in range(0, n)
+    for c in range(0, n)
+      mut s := 0
+      for k2 in range(0, n)
+        s = s + l[r * n + k2] * u[k2 * n + c]
+      prod[r * n + c] = s
+
+  for r in range(0, n)
+    mut row := "  ["
+    for c in range(0, n)
+      if c > 0
+        row = row + ", "
+      row = row + str(prod[r * n + c])
+    row = row + "]"
+    print row
+
+  -- Divide by 100 to get back to A's scale
+  print ""
+  print "L * U / 100 (should match A):"
+  mut matches := true
+  for r in range(0, n)
+    mut row := "  ["
+    for c in range(0, n)
+      if c > 0
+        row = row + ", "
+      v := prod[r * n + c] / 100
+      row = row + str(v)
+      if v != a[r * n + c]
+        matches = false
+    row = row + "]"
+    print row
+
+  print ""
+  if matches
+    print "Decomposition verified: L * U = A"
+  else
+    print "Decomposition has rounding errors (integer arithmetic)"
+
+  -- Solve Ax = b using LU decomposition
+  -- b = [1, 2, 3] * 100
+  print ""
+  print "Solving Ax = b where b = [100, 200, 300]:"
+
+  -- Forward substitution: Ly = b
+  mut y := [0, 0, 0]
+  b := [100, 200, 300]
+  for i in range(0, n)
+    mut s2 := b[i] * 100
+    for j in range(0, i)
+      s2 = s2 - l[i * n + j] * y[j]
+    y[i] = s2 / l[i * n + i]
+
+  print "  Forward substitution (y): [{y[0]}, {y[1]}, {y[2]}]"
+
+  -- Back substitution: Ux = y
+  mut x := [0, 0, 0]
+  -- Start from last row
+  x[2] = y[2] * 100 / u[2 * n + 2]
+  x[1] = (y[1] * 100 - u[1 * n + 2] * x[2]) / u[1 * n + 1]
+  x[0] = (y[0] * 100 - u[0 * n + 1] * x[1] - u[0 * n + 2] * x[2]) / u[0 * n + 0]
+
+  print "  Back substitution (x): [{x[0]}, {x[1]}, {x[2]}]"
+
+  -- Verify: A * x should equal b * 100
+  print ""
+  print "Verification A * x:"
+  for r in range(0, n)
+    mut s3 := 0
+    for c in range(0, n)
+      s3 = s3 + a[r * n + c] * x[c]
+    print "  Row {r}: {s3 / 100} (expected: {b[r]})"
+
+  -- Determinant from U diagonal
+  det := u[0] * u[4] * u[8]
+  print ""
+  print "Determinant (from U diagonal product): {det}"
+  print "  det = {u[0]} * {u[4]} * {u[8]} / 10000 = {det / 10000}"
+
+  print ""
+  print "LU decomposition: factor matrix into lower and upper triangular."

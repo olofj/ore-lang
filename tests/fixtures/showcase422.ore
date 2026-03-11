@@ -1,0 +1,188 @@
+-- Showcase 422: Simple neural network (perceptron training)
+
+-- Train a perceptron to learn logical functions (AND, OR)
+-- Using fixed-point arithmetic (multiply by 1000)
+
+fn main
+  print "Perceptron Neural Network Training:"
+  print ""
+
+  -- AND gate training data
+  -- Inputs: (x1, x2), Expected output
+  -- (0,0)->0, (0,1)->0, (1,0)->0, (1,1)->1
+  x1_data := [0, 0, 1, 1]
+  x2_data := [0, 1, 0, 1]
+  and_targets := [0, 0, 0, 1]
+  or_targets := [0, 1, 1, 1]
+
+  -- Train AND perceptron
+  print "Training AND gate perceptron:"
+  print "  Inputs: (0,0)=0, (0,1)=0, (1,0)=0, (1,1)=1"
+  print ""
+
+  -- Weights (fixed point * 1000), bias
+  mut w1 := 100
+  mut w2 := 100
+  mut bias := -200
+  learning_rate := 200
+
+  -- Training loop
+  for epoch in range(0, 20)
+    mut total_error := 0
+    for i in range(0, 4)
+      x1 := x1_data[i]
+      x2 := x2_data[i]
+      target := and_targets[i]
+
+      -- Forward pass: sum = w1*x1 + w2*x2 + bias
+      sum := w1 * x1 + w2 * x2 + bias
+
+      -- Step activation: output = 1 if sum > 0 else 0
+      mut output := 0
+      if sum > 0
+        output = 1
+
+      -- Error
+      error := target - output
+      total_error = total_error + error * error
+
+      -- Update weights
+      w1 = w1 + learning_rate * error * x1
+      w2 = w2 + learning_rate * error * x2
+      bias = bias + learning_rate * error
+
+    if epoch % 5 == 0
+      print "  Epoch {epoch}: error={total_error}, w1={w1}, w2={w2}, bias={bias}"
+
+  -- Test AND
+  print ""
+  print "AND gate results:"
+  for i in range(0, 4)
+    x1 := x1_data[i]
+    x2 := x2_data[i]
+    sum := w1 * x1 + w2 * x2 + bias
+    mut output := 0
+    if sum > 0
+      output = 1
+    print "  ({x1}, {x2}) -> {output}  (expected: {and_targets[i]})"
+
+  -- Train OR perceptron
+  print ""
+  print "Training OR gate perceptron:"
+  print "  Inputs: (0,0)=0, (0,1)=1, (1,0)=1, (1,1)=1"
+  print ""
+
+  mut ow1 := 100
+  mut ow2 := 100
+  mut obias := -200
+
+  for epoch in range(0, 20)
+    mut total_error := 0
+    for i in range(0, 4)
+      x1 := x1_data[i]
+      x2 := x2_data[i]
+      target := or_targets[i]
+      sum := ow1 * x1 + ow2 * x2 + obias
+      mut output := 0
+      if sum > 0
+        output = 1
+      error := target - output
+      total_error = total_error + error * error
+      ow1 = ow1 + learning_rate * error * x1
+      ow2 = ow2 + learning_rate * error * x2
+      obias = obias + learning_rate * error
+
+    if epoch % 5 == 0
+      print "  Epoch {epoch}: error={total_error}, w1={ow1}, w2={ow2}, bias={obias}"
+
+  -- Test OR
+  print ""
+  print "OR gate results:"
+  for i in range(0, 4)
+    x1 := x1_data[i]
+    x2 := x2_data[i]
+    sum := ow1 * x1 + ow2 * x2 + obias
+    mut output := 0
+    if sum > 0
+      output = 1
+    print "  ({x1}, {x2}) -> {output}  (expected: {or_targets[i]})"
+
+  -- Train NAND perceptron
+  print ""
+  print "Training NAND gate perceptron:"
+  nand_targets := [1, 1, 1, 0]
+
+  mut nw1 := 100
+  mut nw2 := 100
+  mut nbias := 0
+
+  for epoch in range(0, 20)
+    mut total_error := 0
+    for i in range(0, 4)
+      x1 := x1_data[i]
+      x2 := x2_data[i]
+      target := nand_targets[i]
+      sum := nw1 * x1 + nw2 * x2 + nbias
+      mut output := 0
+      if sum > 0
+        output = 1
+      error := target - output
+      total_error = total_error + error * error
+      nw1 = nw1 + learning_rate * error * x1
+      nw2 = nw2 + learning_rate * error * x2
+      nbias = nbias + learning_rate * error
+
+  print "NAND gate results:"
+  for i in range(0, 4)
+    x1 := x1_data[i]
+    x2 := x2_data[i]
+    sum := nw1 * x1 + nw2 * x2 + nbias
+    mut output := 0
+    if sum > 0
+      output = 1
+    print "  ({x1}, {x2}) -> {output}  (expected: {nand_targets[i]})"
+
+  -- Show that XOR cannot be learned by a single perceptron
+  print ""
+  print "XOR gate attempt (single perceptron cannot learn XOR):"
+  xor_targets := [0, 1, 1, 0]
+  mut xw1 := 100
+  mut xw2 := 100
+  mut xbias := 0
+
+  for epoch in range(0, 50)
+    for i in range(0, 4)
+      x1 := x1_data[i]
+      x2 := x2_data[i]
+      target := xor_targets[i]
+      sum := xw1 * x1 + xw2 * x2 + xbias
+      mut output := 0
+      if sum > 0
+        output = 1
+      error := target - output
+      xw1 = xw1 + learning_rate * error * x1
+      xw2 = xw2 + learning_rate * error * x2
+      xbias = xbias + learning_rate * error
+
+  mut xor_errors := 0
+  print "XOR gate results:"
+  for i in range(0, 4)
+    x1 := x1_data[i]
+    x2 := x2_data[i]
+    sum := xw1 * x1 + xw2 * x2 + xbias
+    mut output := 0
+    if sum > 0
+      output = 1
+    expected := xor_targets[i]
+    mut status := "correct"
+    if output != expected
+      status = "WRONG"
+      xor_errors = xor_errors + 1
+    print "  ({x1}, {x2}) -> {output}  (expected: {expected}) {status}"
+
+  print ""
+  if xor_errors > 0
+    print "XOR has {xor_errors} errors - not linearly separable!"
+  print "Single perceptron can only learn linearly separable functions."
+  print ""
+  print "Perceptron: the simplest neural network unit."

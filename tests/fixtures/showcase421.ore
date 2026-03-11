@@ -1,0 +1,105 @@
+-- Showcase 421: Huffman encoding and decoding
+
+fn main
+  print "Huffman Encoding/Decoding:"
+  print ""
+
+  text := "abracadabra"
+  print "Input text: {text}"
+  text_len := text | len()
+  print ""
+
+  -- Character frequencies for "abracadabra": a=5, b=2, r=2, c=1, d=1
+  print "Character frequencies:"
+  print "  'a': 5"
+  print "  'b': 2"
+  print "  'r': 2"
+  print "  'c': 1"
+  print "  'd': 1"
+
+  -- Build Huffman tree step by step
+  print ""
+  print "Building Huffman tree:"
+  print "  Pool: d(1), c(1), b(2), r(2), a(5)"
+  print "  Step 1: Merge d(1) + c(1) -> N1(2)"
+  print "  Step 2: Merge N1(2) + b(2) -> N2(4)"
+  print "  Step 3: Merge r(2) + N2(4) -> N3(6)"
+  print "  Step 4: Merge a(5) + N3(6) -> root(11)"
+
+  -- Codes: a=0, r=10, b=111, d=1100, c=1101
+  code_chars := ["a", "b", "r", "c", "d"]
+  codes := ["0", "111", "10", "1101", "1100"]
+
+  print ""
+  print "Huffman codes:"
+  for i in range(0, 5)
+    print "  '{code_chars[i]}' -> {codes[i]}"
+
+  -- Encode the text character by character
+  mut encoded := ""
+  for i in range(0, text_len)
+    ch := text | substr(i, 1)
+    -- Find matching code
+    for j in range(0, 5)
+      if ch == str(code_chars[j])
+        encoded = encoded + str(codes[j])
+
+  print ""
+  print "Encoded: {encoded}"
+  enc_bits := encoded | len()
+  print "Encoded length: {enc_bits} bits"
+  orig_bits := text_len * 8
+  print "Original length: {orig_bits} bits (8 bits per char)"
+  ratio := enc_bits * 100 / orig_bits
+  print "Compression ratio: {ratio}%"
+
+  -- Decode the encoded string using prefix matching
+  mut decoded := ""
+  enc_len := encoded | len()
+  mut pos := 0
+
+  loop
+    if pos >= enc_len
+      break
+
+    mut matched := false
+    for j in range(0, 5)
+      if not matched
+        code := str(codes[j])
+        code_len := code | len()
+        if pos + code_len <= enc_len
+          sub := encoded | substr(pos, code_len)
+          if sub == code
+            decoded = decoded + str(code_chars[j])
+            pos = pos + code_len
+            matched = true
+
+    if not matched
+      pos = pos + 1
+
+  print ""
+  print "Decoded: {decoded}"
+
+  if decoded == text
+    print "Decoding verified: matches original!"
+  else
+    print "Decoding error!"
+
+  -- Show bit savings per character
+  print ""
+  print "Bits per character:"
+  print "  'a' (freq 5): 1 bit   -> saves 2 bits each"
+  print "  'r' (freq 2): 2 bits  -> saves 1 bit each"
+  print "  'b' (freq 2): 3 bits  -> same as fixed"
+  print "  'c' (freq 1): 4 bits  -> costs 1 extra"
+  print "  'd' (freq 1): 4 bits  -> costs 1 extra"
+
+  total_bits := 5 * 1 + 2 * 3 + 2 * 2 + 1 * 4 + 1 * 4
+  print ""
+  print "Total encoded bits: {total_bits}"
+  print "Fixed-width (3 bits each): {text_len * 3} bits"
+  savings := text_len * 3 - total_bits
+  print "Savings: {savings} bits"
+
+  print ""
+  print "Huffman coding: optimal prefix-free variable-length encoding."

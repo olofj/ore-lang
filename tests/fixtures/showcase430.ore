@@ -1,0 +1,252 @@
+-- Showcase 430: Dynamic programming collection
+
+-- Rod cutting, coin change, longest increasing subsequence, edit distance
+
+fn max a:Int b:Int -> Int
+  if a > b then a else b
+
+fn min a:Int b:Int -> Int
+  if a < b then a else b
+
+fn main
+  print "Dynamic Programming Collection:"
+  print ""
+
+  -- 1. Rod Cutting Problem
+  print "=== Rod Cutting ==="
+  -- Given a rod of length n and price table, find max revenue
+  -- prices[i] = price of rod of length i+1
+  prices := [1, 5, 8, 9, 10, 17, 17, 20]
+  n := 8
+  print "Rod length: {n}"
+  mut price_str := ""
+  for i in range(0, n)
+    if i > 0
+      price_str = price_str + ", "
+    price_str = price_str + str(i + 1) + "=" + str(prices[i])
+  print "Prices: {price_str}"
+
+  -- dp[i] = max revenue for rod of length i
+  mut dp := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut cuts := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  for i in range(1, n + 1)
+    mut best := 0
+    mut best_cut := 0
+    for j in range(1, i + 1)
+      val := prices[j - 1] + dp[i - j]
+      if val > best
+        best = val
+        best_cut = j
+    dp[i] = best
+    cuts[i] = best_cut
+
+  print "Max revenue: {dp[n]}"
+
+  -- Trace back cuts
+  mut cut_list := ""
+  mut remaining := n
+  loop
+    if remaining <= 0
+      break
+    c := cuts[remaining]
+    if cut_list | len() > 0
+      cut_list = cut_list + " + "
+    cut_list = cut_list + str(c)
+    remaining = remaining - c
+  print "Optimal cuts: {cut_list}"
+  print ""
+
+  -- 2. Coin Change Problem
+  print "=== Coin Change ==="
+  coins := [1, 5, 10, 25]
+  amount := 36
+  print "Coins: [1, 5, 10, 25]"
+  print "Amount: {amount}"
+
+  -- dp2[i] = min coins to make amount i
+  mut dp2 := []
+  mut coin_used := []
+  for i in range(0, amount + 1)
+    dp2.push(9999)
+    coin_used.push(-1)
+  dp2[0] = 0
+
+  for i in range(1, amount + 1)
+    for ci in range(0, 4)
+      c := coins[ci]
+      if c <= i and dp2[i - c] + 1 < dp2[i]
+        dp2[i] = dp2[i - c] + 1
+        coin_used[i] = c
+
+  print "Minimum coins: {dp2[amount]}"
+
+  -- Trace back which coins
+  mut coin_list := ""
+  mut rem := amount
+  loop
+    if rem <= 0
+      break
+    c := coin_used[rem]
+    if coin_list | len() > 0
+      coin_list = coin_list + " + "
+    coin_list = coin_list + str(c)
+    rem = rem - c
+  print "Coins used: {coin_list}"
+  print ""
+
+  -- 3. Longest Increasing Subsequence
+  print "=== Longest Increasing Subsequence ==="
+  seq := [10, 9, 2, 5, 3, 7, 101, 18]
+  seq_len := seq | count()
+  print "Sequence: {seq | join(", ")}"
+
+  -- dp3[i] = length of LIS ending at index i
+  mut dp3 := []
+  mut prev := []
+  for i in range(0, seq_len)
+    dp3.push(1)
+    prev.push(-1)
+
+  for i in range(1, seq_len)
+    for j in range(0, i)
+      if seq[j] < seq[i] and dp3[j] + 1 > dp3[i]
+        dp3[i] = dp3[j] + 1
+        prev[i] = j
+
+  -- Find max LIS length and its ending index
+  mut lis_len := 0
+  mut lis_end := 0
+  for i in range(0, seq_len)
+    if dp3[i] > lis_len
+      lis_len = dp3[i]
+      lis_end = i
+
+  print "LIS length: {lis_len}"
+
+  -- Trace back
+  mut lis := []
+  mut idx := lis_end
+  loop
+    if idx == -1
+      break
+    lis.push(seq[idx])
+    idx = prev[idx]
+  print "LIS: {lis | reverse() | join(", ")}"
+  print ""
+
+  -- 4. Edit Distance (Levenshtein)
+  print "=== Edit Distance ==="
+  word1 := "kitten"
+  word2 := "sitting"
+  len1 := word1 | len()
+  len2 := word2 | len()
+  print "Word 1: {word1} (length {len1})"
+  print "Word 2: {word2} (length {len2})"
+
+  -- dp4 is a (len1+1) x (len2+1) matrix stored flat
+  total_cells := (len1 + 1) * (len2 + 1)
+  mut dp4 := []
+  for i in range(0, total_cells)
+    dp4.push(0)
+
+  -- Base cases
+  cols := len2 + 1
+  for i in range(0, len1 + 1)
+    dp4[i * cols + 0] = i
+  for j in range(0, len2 + 1)
+    dp4[0 * cols + j] = j
+
+  -- Fill DP table
+  for i in range(1, len1 + 1)
+    for j in range(1, len2 + 1)
+      c1 := word1 | substr(i - 1, 1)
+      c2 := word2 | substr(j - 1, 1)
+      if c1 == c2
+        dp4[i * cols + j] = dp4[(i - 1) * cols + (j - 1)]
+      else
+        ins := dp4[i * cols + (j - 1)] + 1
+        del := dp4[(i - 1) * cols + j] + 1
+        sub := dp4[(i - 1) * cols + (j - 1)] + 1
+        dp4[i * cols + j] = min(ins, min(del, sub))
+
+  ed := dp4[len1 * cols + len2]
+  print "Edit distance: {ed}"
+
+  -- Trace back operations
+  mut ops := []
+  mut i := len1
+  mut j := len2
+  loop
+    if i == 0 and j == 0
+      break
+    if i > 0 and j > 0
+      c1 := word1 | substr(i - 1, 1)
+      c2 := word2 | substr(j - 1, 1)
+      if c1 == c2
+        ops.push("keep " + c1)
+        i = i - 1
+        j = j - 1
+      else if dp4[(i - 1) * cols + (j - 1)] <= dp4[(i - 1) * cols + j] and dp4[(i - 1) * cols + (j - 1)] <= dp4[i * cols + (j - 1)]
+        ops.push("sub " + c1 + "->" + c2)
+        i = i - 1
+        j = j - 1
+      else if dp4[(i - 1) * cols + j] <= dp4[i * cols + (j - 1)]
+        ops.push("del " + c1)
+        i = i - 1
+      else
+        ops.push("ins " + c2)
+        j = j - 1
+    else if i > 0
+      ops.push("del " + word1 | substr(i - 1, 1))
+      i = i - 1
+    else
+      ops.push("ins " + word2 | substr(j - 1, 1))
+      j = j - 1
+
+  print "Operations: {ops | reverse() | join(", ")}"
+
+  -- 5. 0/1 Knapsack
+  print ""
+  print "=== 0/1 Knapsack ==="
+  weights := [2, 3, 4, 5]
+  values := [3, 4, 5, 6]
+  capacity := 8
+  num_items := 4
+  print "Items: (weight, value) = (2,3), (3,4), (4,5), (5,6)"
+  print "Capacity: {capacity}"
+
+  -- dp5[(i+1)*(capacity+1) + w] = max value using items 0..i with capacity w
+  rows := num_items + 1
+  kcols := capacity + 1
+  mut dp5 := []
+  for i in range(0, rows * kcols)
+    dp5.push(0)
+
+  for i in range(1, rows)
+    for w in range(0, kcols)
+      -- Don't take item i-1
+      dp5[i * kcols + w] = dp5[(i - 1) * kcols + w]
+      -- Take item i-1 if it fits
+      wi := weights[i - 1]
+      if wi <= w
+        take := dp5[(i - 1) * kcols + (w - wi)] + values[i - 1]
+        if take > dp5[i * kcols + w]
+          dp5[i * kcols + w] = take
+
+  print "Max value: {dp5[num_items * kcols + capacity]}"
+
+  -- Trace back items
+  mut selected := ""
+  mut w := capacity
+  for i2 in range(0, num_items)
+    i := num_items - i2
+    if dp5[i * kcols + w] != dp5[(i - 1) * kcols + w]
+      if selected | len() > 0
+        selected = selected + ", "
+      selected = selected + "item" + str(i) + "(w=" + str(weights[i - 1]) + ",v=" + str(values[i - 1]) + ")"
+      w = w - weights[i - 1]
+  print "Selected: {selected}"
+
+  print ""
+  print "Dynamic programming: optimal substructure + overlapping subproblems."

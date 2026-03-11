@@ -5640,6 +5640,130 @@ fn showcase420_spreadsheet() {
 }
 
 #[test]
+fn showcase421_huffman() {
+    let out = run_ore("showcase421.ore");
+    assert!(out.contains("Huffman Encoding/Decoding:"));
+    assert!(out.contains("'a': 5"));
+    assert!(out.contains("'a' -> 0"));
+    assert!(out.contains("Encoded length: 23 bits"));
+    assert!(out.contains("Compression ratio: 26%"));
+    assert!(out.contains("Decoded: abracadabra"));
+    assert!(out.contains("Decoding verified: matches original!"));
+    assert!(out.contains("Huffman coding: optimal prefix-free variable-length encoding."));
+}
+
+#[test]
+fn showcase422_perceptron() {
+    let out = run_ore("showcase422.ore");
+    assert!(out.contains("Perceptron Neural Network Training:"));
+    assert!(out.contains("(0, 0) -> 0  (expected: 0)"));
+    assert!(out.contains("(1, 1) -> 1  (expected: 1)"));
+    assert!(out.contains("OR gate results:"));
+    assert!(out.contains("NAND gate results:"));
+    assert!(out.contains("XOR has 2 errors - not linearly separable!"));
+    assert!(out.contains("Perceptron: the simplest neural network unit."));
+}
+
+#[test]
+fn showcase423_maze() {
+    let out = run_ore("showcase423.ore");
+    assert!(out.contains("Maze Generation (DFS Backtracker):"));
+    assert!(out.contains("48 cells visited"));
+    assert!(out.contains("| S "));
+    assert!(out.contains(" E |"));
+    assert!(out.contains("Path length: 20 steps"));
+    assert!(out.contains("Maze generation with DFS backtracker and BFS solver."));
+}
+
+#[test]
+fn showcase424_rbtree() {
+    let out = run_ore("showcase424.ore");
+    assert!(out.contains("Red-Black Tree Balancing:"));
+    assert!(out.contains("Insert 10: (fixes: 0)"));
+    assert!(out.contains("Insert 30: (fixes: 1)"));
+    assert!(out.contains("Root is black: true"));
+    assert!(out.contains("No red-red parent-child: true"));
+    assert!(out.contains("Total nodes: 7"));
+    assert!(out.contains("Red-black trees: self-balancing BST with O(log n) operations."));
+}
+
+#[test]
+fn showcase425_pretty_printer() {
+    let out = run_ore("showcase425.ore");
+    assert!(out.contains("JSON-like Pretty Printer:"));
+    assert!(out.contains("name: Alice"));
+    assert!(out.contains("age: 30"));
+    assert!(out.contains("- 95"));
+    assert!(out.contains("host: localhost"));
+    assert!(out.contains("Total nodes: 8"));
+    assert!(out.contains("Pretty printing: structured display of nested data."));
+}
+
+#[test]
+fn showcase426_forth() {
+    let out = run_ore("showcase426.ore");
+    assert!(out.contains("Forth-like Stack Language Interpreter:"));
+    assert!(out.contains("=> 7"));
+    assert!(out.contains("=> 16"));
+    assert!(out.contains("=> 49"));
+    assert!(out.contains("=> -7"));
+    assert!(out.contains("5! = 120"));
+    assert!(out.contains("0 1 1 2 3 5 8 13 21 34"));
+    assert!(out.contains("Result: 110"));
+    assert!(out.contains("Forth: stack-based concatenative programming language."));
+}
+
+#[test]
+fn showcase427_lu_decomposition() {
+    let out = run_ore("showcase427.ore");
+    assert!(out.contains("LU Decomposition (Integer Arithmetic):"));
+    assert!(out.contains("Decomposition verified: L * U = A"));
+    assert!(out.contains("Forward substitution (y): [100, 0, -100]"));
+    assert!(out.contains("Back substitution (x): [50, 50, -50]"));
+    assert!(out.contains("Row 0: 100 (expected: 100)"));
+    assert!(out.contains("LU decomposition: factor matrix into lower and upper triangular."));
+}
+
+#[test]
+fn showcase428_dfa_minimization() {
+    let out = run_ore("showcase428.ore");
+    assert!(out.contains("DFA Minimization:"));
+    assert!(out.contains("Original DFA (5 states):"));
+    assert!(out.contains("States: 3 (reduced from 5)"));
+    assert!(out.contains("Minimized state 0 = original states [0, 3]"));
+    assert!(out.contains("'ab' -> minimized state 2, accept: true"));
+    assert!(out.contains("'bb' -> minimized state 0, accept: false"));
+    assert!(out.contains("DFA minimization: equivalent states merged via partition refinement."));
+}
+
+#[test]
+fn showcase429_compiler_phases() {
+    let out = run_ore("showcase429.ore");
+    assert!(out.contains("Compiler Phases Demo (Lex -> Parse -> Eval):"));
+    assert!(out.contains("=== Phase 1: Lexer ==="));
+    assert!(out.contains("[0] NUM(3)"));
+    assert!(out.contains("[3] STAR"));
+    assert!(out.contains("=== Phase 2: Parser ==="));
+    assert!(out.contains("AST (7 nodes):"));
+    assert!(out.contains("=== Phase 3: Evaluator ==="));
+    assert!(out.contains("Result: 3 + x * (2 + y) = 48"));
+    assert!(out.contains("Compiler pipeline: source -> tokens -> AST -> result."));
+}
+
+#[test]
+fn showcase430_dynamic_programming() {
+    let out = run_ore("showcase430.ore");
+    assert!(out.contains("Dynamic Programming Collection:"));
+    assert!(out.contains("Max revenue: 22"));
+    assert!(out.contains("Optimal cuts: 2 + 6"));
+    assert!(out.contains("Minimum coins: 3"));
+    assert!(out.contains("LIS length: 4"));
+    assert!(out.contains("Edit distance: 3"));
+    assert!(out.contains("Max value: 10"));
+    assert!(out.contains("Dynamic programming: optimal substructure + overlapping subproblems."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

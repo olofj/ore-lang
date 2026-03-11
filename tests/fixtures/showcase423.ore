@@ -1,0 +1,251 @@
+-- Showcase 423: Maze generation (recursive backtracker)
+
+-- Generate a maze using a stack-based DFS approach
+-- Grid cells store wall info as bitmask: 1=N, 2=E, 4=S, 8=W
+
+fn main
+  print "Maze Generation (DFS Backtracker):"
+  print ""
+
+  width := 8
+  height := 6
+  total := width * height
+
+  -- Initialize visited array and walls
+  -- Each cell has 4 walls initially (1+2+4+8 = 15)
+  mut visited := []
+  mut walls := []
+  for i in range(0, total)
+    visited.push(0)
+    walls.push(15)
+
+  -- Pseudo-random number generator (LCG)
+  mut seed := 42
+
+  -- Stack for DFS
+  mut stack := []
+
+  -- Start at cell (0, 0)
+  start := 0
+  visited[start] = 1
+  stack.push(start)
+  mut visit_count := 1
+
+  loop
+    if stack | count() == 0
+      break
+
+    current := stack[stack | count() - 1]
+    cx := current % width
+    cy := current / width
+
+    -- Find unvisited neighbors
+    mut neighbors := []
+    mut n_count := 0
+
+    -- North
+    if cy > 0
+      n := (cy - 1) * width + cx
+      if visited[n] == 0
+        neighbors.push(n)
+        n_count = n_count + 1
+
+    -- East
+    if cx < width - 1
+      n := cy * width + cx + 1
+      if visited[n] == 0
+        neighbors.push(n)
+        n_count = n_count + 1
+
+    -- South
+    if cy < height - 1
+      n := (cy + 1) * width + cx
+      if visited[n] == 0
+        neighbors.push(n)
+        n_count = n_count + 1
+
+    -- West
+    if cx > 0
+      n := cy * width + cx - 1
+      if visited[n] == 0
+        neighbors.push(n)
+        n_count = n_count + 1
+
+    if n_count == 0
+      -- Backtrack: pop stack
+      mut new_stack := []
+      for i in range(0, stack | count() - 1)
+        new_stack.push(stack[i])
+      stack = new_stack
+    else
+      -- Choose a "random" neighbor using LCG
+      seed = (seed * 1103515245 + 12345) % 2147483647
+      mut choice := seed % n_count
+      if choice < 0
+        choice = 0 - choice
+      next := neighbors[choice]
+      nx := next % width
+      ny := next / width
+
+      -- Remove walls between current and next
+      if ny < cy
+        -- Next is north
+        walls[current] = walls[current] - 1
+        walls[next] = walls[next] - 4
+      else if nx > cx
+        -- Next is east
+        walls[current] = walls[current] - 2
+        walls[next] = walls[next] - 8
+      else if ny > cy
+        -- Next is south
+        walls[current] = walls[current] - 4
+        walls[next] = walls[next] - 1
+      else
+        -- Next is west
+        walls[current] = walls[current] - 8
+        walls[next] = walls[next] - 2
+
+      visited[next] = 1
+      visit_count = visit_count + 1
+      stack.push(next)
+
+  print "Maze ({width}x{height}), {visit_count} cells visited:"
+  print ""
+
+  -- Render the maze
+  -- Top border
+  mut top := "+"
+  for x in range(0, width)
+    top = top + "---+"
+  print top
+
+  for y in range(0, height)
+    -- Cell row: west walls and spaces
+    mut row := ""
+    for x in range(0, width)
+      cell := y * width + x
+      w := walls[cell]
+      -- West wall (bit 8)
+      if x == 0
+        row = row + "|"
+      -- Cell content
+      if y == 0 and x == 0
+        row = row + " S "
+      else if y == height - 1 and x == width - 1
+        row = row + " E "
+      else
+        row = row + "   "
+      -- East wall (bit 2)
+      if w % 4 >= 2
+        row = row + "|"
+      else
+        row = row + " "
+    print row
+
+    -- Bottom border row: south walls
+    mut bottom := "+"
+    for x in range(0, width)
+      cell := y * width + x
+      w := walls[cell]
+      -- South wall (bit 4)
+      if w % 8 >= 4
+        bottom = bottom + "---+"
+      else
+        bottom = bottom + "   +"
+    print bottom
+
+  -- Solve the maze using BFS
+  print ""
+  print "Solving maze (BFS from S to E)..."
+
+  mut dist := []
+  mut parent := []
+  for i in range(0, total)
+    dist.push(-1)
+    parent.push(-1)
+
+  mut queue := [0]
+  dist[0] = 0
+  mut solved := false
+
+  loop
+    if queue | count() == 0
+      break
+    if solved
+      break
+
+    -- Dequeue
+    cur := queue[0]
+    mut new_q := []
+    for i in range(1, queue | count())
+      new_q.push(queue[i])
+    queue = new_q
+
+    cx2 := cur % width
+    cy2 := cur / width
+    w := walls[cur]
+
+    -- Check north (bit 1 not set means no wall)
+    if w % 2 == 0 and cy2 > 0
+      n := (cy2 - 1) * width + cx2
+      if dist[n] == -1
+        dist[n] = dist[cur] + 1
+        parent[n] = cur
+        queue.push(n)
+        if n == total - 1
+          solved = true
+
+    -- Check east (bit 2 not set)
+    if w % 4 < 2 and cx2 < width - 1
+      n := cy2 * width + cx2 + 1
+      if dist[n] == -1
+        dist[n] = dist[cur] + 1
+        parent[n] = cur
+        queue.push(n)
+        if n == total - 1
+          solved = true
+
+    -- Check south (bit 4 not set)
+    if w % 8 < 4 and cy2 < height - 1
+      n := (cy2 + 1) * width + cx2
+      if dist[n] == -1
+        dist[n] = dist[cur] + 1
+        parent[n] = cur
+        queue.push(n)
+        if n == total - 1
+          solved = true
+
+    -- Check west (bit 8 not set)
+    if w >= 8
+      if cx2 > 0
+        -- wall present
+        noop := 0
+      else
+        noop := 0
+    else
+      if cx2 > 0
+        n := cy2 * width + cx2 - 1
+        if dist[n] == -1
+          dist[n] = dist[cur] + 1
+          parent[n] = cur
+          queue.push(n)
+          if n == total - 1
+            solved = true
+
+  goal := total - 1
+  path_len := dist[goal]
+  print "Path length: {path_len} steps"
+
+  -- Trace back the path
+  mut path := []
+  mut cur := goal
+  loop
+    if cur == -1
+      break
+    path.push(cur)
+    cur = parent[cur]
+
+  print "Path (cell indices): {path | reverse() | join(" -> ")}"
+
+  print ""
+  print "Maze generation with DFS backtracker and BFS solver."

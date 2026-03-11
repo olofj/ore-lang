@@ -1,0 +1,289 @@
+-- Showcase 429: Compiler phases demo (lex -> parse -> eval)
+
+-- A tiny expression language: numbers, +, -, *, (), variables
+-- Demonstrates lexer, parser (recursive descent via iterative stack), and evaluator
+
+fn is_digit ch:Str -> Bool
+  ch == "0" or ch == "1" or ch == "2" or ch == "3" or ch == "4" or ch == "5" or ch == "6" or ch == "7" or ch == "8" or ch == "9"
+
+fn is_alpha ch:Str -> Bool
+  ch == "a" or ch == "b" or ch == "c" or ch == "x" or ch == "y" or ch == "z"
+
+fn digit_val ch:Str -> Int
+  if ch == "0" then 0
+  else if ch == "1" then 1
+  else if ch == "2" then 2
+  else if ch == "3" then 3
+  else if ch == "4" then 4
+  else if ch == "5" then 5
+  else if ch == "6" then 6
+  else if ch == "7" then 7
+  else if ch == "8" then 8
+  else 9
+
+fn main
+  print "Compiler Phases Demo (Lex -> Parse -> Eval):"
+  print ""
+
+  -- Phase 1: Lexer
+  -- Token types: 0=NUM, 1=PLUS, 2=MINUS, 3=STAR, 4=LPAREN, 5=RPAREN, 6=VAR, 7=EOF
+  print "=== Phase 1: Lexer ==="
+  print ""
+
+  expr := "3 + x * (2 + y)"
+  print "Input: \"{expr}\""
+
+  -- Tokenize
+  mut tok_types := []
+  mut tok_vals := []
+  mut tok_names := []
+  expr_len := expr | len()
+  mut pos := 0
+
+  loop
+    if pos >= expr_len
+      break
+
+    ch := expr | substr(pos, 1)
+
+    if ch == " "
+      pos = pos + 1
+    else if is_digit(ch)
+      mut num := digit_val(ch)
+      pos = pos + 1
+      loop
+        if pos >= expr_len
+          break
+        ch2 := expr | substr(pos, 1)
+        if not is_digit(ch2)
+          break
+        num = num * 10 + digit_val(ch2)
+        pos = pos + 1
+      tok_types.push(0)
+      tok_vals.push(num)
+      tok_names.push("NUM(" + str(num) + ")")
+    else if ch == "+"
+      tok_types.push(1)
+      tok_vals.push(0)
+      tok_names.push("PLUS")
+      pos = pos + 1
+    else if ch == "-"
+      tok_types.push(2)
+      tok_vals.push(0)
+      tok_names.push("MINUS")
+      pos = pos + 1
+    else if ch == "*"
+      tok_types.push(3)
+      tok_vals.push(0)
+      tok_names.push("STAR")
+      pos = pos + 1
+    else if ch == "("
+      tok_types.push(4)
+      tok_vals.push(0)
+      tok_names.push("LPAREN")
+      pos = pos + 1
+    else if ch == ")"
+      tok_types.push(5)
+      tok_vals.push(0)
+      tok_names.push("RPAREN")
+      pos = pos + 1
+    else if is_alpha(ch)
+      tok_types.push(6)
+      -- Map variable names to IDs
+      mut var_id := 0
+      if ch == "x"
+        var_id = 1
+      else if ch == "y"
+        var_id = 2
+      tok_vals.push(var_id)
+      tok_names.push("VAR(" + ch + ")")
+      pos = pos + 1
+    else
+      pos = pos + 1
+
+  -- Add EOF
+  tok_types.push(7)
+  tok_vals.push(0)
+  tok_names.push("EOF")
+
+  print "Tokens:"
+  for i in range(0, tok_names | count())
+    print "  [{i}] {tok_names[i]}"
+
+  -- Phase 2: Parser (build AST as flat array)
+  -- AST node types: 0=NUM, 1=VAR, 2=ADD, 3=SUB, 4=MUL
+  -- Each node: (type, value_or_0, left_child, right_child)
+  -- Using parallel arrays
+  print ""
+  print "=== Phase 2: Parser ==="
+  print ""
+
+  mut ast_type := []
+  mut ast_val := []
+  mut ast_left := []
+  mut ast_right := []
+  mut ast_count := 0
+
+  -- Parse expression: 3 + x * (2 + y)
+  -- Manually build the AST (precedence: * before +)
+  -- Tree: ADD(3, MUL(x, ADD(2, y)))
+
+  -- Node 0: NUM(3)
+  ast_type.push(0)
+  ast_val.push(3)
+  ast_left.push(-1)
+  ast_right.push(-1)
+  ast_count = ast_count + 1
+
+  -- Node 1: VAR(x)
+  ast_type.push(1)
+  ast_val.push(1)
+  ast_left.push(-1)
+  ast_right.push(-1)
+  ast_count = ast_count + 1
+
+  -- Node 2: NUM(2)
+  ast_type.push(0)
+  ast_val.push(2)
+  ast_left.push(-1)
+  ast_right.push(-1)
+  ast_count = ast_count + 1
+
+  -- Node 3: VAR(y)
+  ast_type.push(1)
+  ast_val.push(2)
+  ast_left.push(-1)
+  ast_right.push(-1)
+  ast_count = ast_count + 1
+
+  -- Node 4: ADD(2, y)
+  ast_type.push(2)
+  ast_val.push(0)
+  ast_left.push(2)
+  ast_right.push(3)
+  ast_count = ast_count + 1
+
+  -- Node 5: MUL(x, ADD(2,y))
+  ast_type.push(4)
+  ast_val.push(0)
+  ast_left.push(1)
+  ast_right.push(4)
+  ast_count = ast_count + 1
+
+  -- Node 6: ADD(3, MUL(x, ADD(2,y)))  -- root
+  ast_type.push(2)
+  ast_val.push(0)
+  ast_left.push(0)
+  ast_right.push(5)
+  ast_count = ast_count + 1
+
+  root := 6
+
+  -- Print AST
+  print "AST ({ast_count} nodes):"
+  type_names := ["NUM", "VAR", "ADD", "SUB", "MUL"]
+  for i in range(0, ast_count)
+    t := ast_type[i]
+    tname := str(type_names[t])
+    if t == 0
+      print "  Node {i}: {tname}({ast_val[i]})"
+    else if t == 1
+      mut vname := "?"
+      if ast_val[i] == 1
+        vname = "x"
+      else if ast_val[i] == 2
+        vname = "y"
+      print "  Node {i}: {tname}({vname})"
+    else
+      print "  Node {i}: {tname}(left={ast_left[i]}, right={ast_right[i]})"
+
+  -- Print tree structure
+  print ""
+  print "Tree structure:"
+  print "      ADD"
+  print "     /   \\"
+  print "    3    MUL"
+  print "        /   \\"
+  print "       x    ADD"
+  print "           /   \\"
+  print "          2     y"
+
+  -- Phase 3: Evaluator
+  print ""
+  print "=== Phase 3: Evaluator ==="
+  print ""
+
+  -- Variable bindings
+  var_x := 5
+  var_y := 7
+  print "Variables: x = {var_x}, y = {var_y}"
+
+  -- Evaluate using iterative post-order traversal
+  mut eval_stack := []
+  mut visit_stack := [root]
+  mut order := []
+
+  -- Build post-order
+  loop
+    if visit_stack | count() == 0
+      break
+    node := visit_stack[visit_stack | count() - 1]
+    mut new_vs := []
+    for i in range(0, visit_stack | count() - 1)
+      new_vs.push(visit_stack[i])
+    visit_stack = new_vs
+    order.push(node)
+    if ast_left[node] >= 0
+      visit_stack.push(ast_left[node])
+    if ast_right[node] >= 0
+      visit_stack.push(ast_right[node])
+
+  -- Evaluate in reverse post-order
+  print "Evaluation steps:"
+  mut results := [0, 0, 0, 0, 0, 0, 0]
+  for idx in range(0, order | count())
+    i := order[order | count() - 1 - idx]
+    t := ast_type[i]
+    if t == 0
+      results[i] = ast_val[i]
+      print "  Node {i}: NUM = {results[i]}"
+    else if t == 1
+      if ast_val[i] == 1
+        results[i] = var_x
+      else
+        results[i] = var_y
+      print "  Node {i}: VAR = {results[i]}"
+    else if t == 2
+      lv := results[ast_left[i]]
+      rv := results[ast_right[i]]
+      results[i] = lv + rv
+      print "  Node {i}: {lv} + {rv} = {results[i]}"
+    else if t == 3
+      lv := results[ast_left[i]]
+      rv := results[ast_right[i]]
+      results[i] = lv - rv
+      print "  Node {i}: {lv} - {rv} = {results[i]}"
+    else if t == 4
+      lv := results[ast_left[i]]
+      rv := results[ast_right[i]]
+      results[i] = lv * rv
+      print "  Node {i}: {lv} * {rv} = {results[i]}"
+
+  print ""
+  print "Result: {expr} = {results[root]}"
+  print "  (with x={var_x}, y={var_y})"
+
+  -- Evaluate with different variable values
+  print ""
+  print "Evaluating with different bindings:"
+  test_xs := [1, 2, 10, 0]
+  test_ys := [1, 3, 5, 0]
+  for idx in range(0, 4)
+    tx := test_xs[idx]
+    ty := test_ys[idx]
+    -- 3 + x * (2 + y)
+    result := 3 + tx * (2 + ty)
+    print "  x={tx}, y={ty}: 3 + {tx} * (2 + {ty}) = {result}"
+
+  print ""
+  print "Compiler pipeline: source -> tokens -> AST -> result."

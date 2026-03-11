@@ -1,0 +1,197 @@
+-- Showcase 426: Simple Forth-like stack language interpreter
+
+-- Operations: push numbers, +, -, *, dup, drop, swap, over, rot, .
+
+fn main
+  print "Forth-like Stack Language Interpreter:"
+  print ""
+
+  -- Stack (max 50 elements)
+  mut stack := []
+
+  -- Tokenize and execute programs
+  -- Program 1: Basic arithmetic
+  print "Program 1: 3 4 + ."
+  stack = []
+  stack.push(3)
+  stack.push(4)
+  -- add
+  a := stack[stack | count() - 1]
+  b := stack[stack | count() - 2]
+  mut new_s := []
+  for i in range(0, stack | count() - 2)
+    new_s.push(stack[i])
+  stack = new_s
+  stack.push(b + a)
+  -- dot (print top)
+  print "  => {stack[stack | count() - 1]}"
+
+  -- Program 2: More complex expression: (5 + 3) * 2
+  print ""
+  print "Program 2: 5 3 + 2 * ."
+  stack = []
+  stack.push(5)
+  stack.push(3)
+  -- add
+  a2 := stack[stack | count() - 1]
+  b2 := stack[stack | count() - 2]
+  stack = []
+  stack.push(b2 + a2)
+  stack.push(2)
+  -- multiply
+  a3 := stack[stack | count() - 1]
+  b3 := stack[stack | count() - 2]
+  stack = []
+  stack.push(b3 * a3)
+  print "  => {stack[stack | count() - 1]}"
+
+  -- Program 3: dup and arithmetic: 7 dup * .  (7 squared)
+  print ""
+  print "Program 3: 7 dup * .  (7 squared)"
+  stack = []
+  stack.push(7)
+  -- dup
+  stack.push(stack[stack | count() - 1])
+  -- multiply
+  a4 := stack[stack | count() - 1]
+  b4 := stack[stack | count() - 2]
+  stack = []
+  stack.push(b4 * a4)
+  print "  => {stack[stack | count() - 1]}"
+
+  -- Program 4: swap and subtract: 10 3 swap - .  (3 - 10 = -7)
+  print ""
+  print "Program 4: 10 3 swap - .  (3 - 10)"
+  stack = []
+  stack.push(10)
+  stack.push(3)
+  -- swap
+  top := stack[stack | count() - 1]
+  sec := stack[stack | count() - 2]
+  stack = []
+  stack.push(top)
+  stack.push(sec)
+  -- subtract
+  a5 := stack[stack | count() - 1]
+  b5 := stack[stack | count() - 2]
+  stack = []
+  stack.push(b5 - a5)
+  print "  => {stack[stack | count() - 1]}"
+
+  -- Program 5: over: 1 2 over . . .  (prints 1 2 1)
+  print ""
+  print "Program 5: 1 2 over  (stack: 1 2 1)"
+  stack = []
+  stack.push(1)
+  stack.push(2)
+  -- over: copy second element to top
+  stack.push(stack[stack | count() - 2])
+  mut stack_str := ""
+  for i in range(0, stack | count())
+    if i > 0
+      stack_str = stack_str + " "
+    stack_str = stack_str + str(stack[i])
+  print "  Stack: [{stack_str}]"
+
+  -- Program 6: rot: 1 2 3 rot  (stack: 2 3 1)
+  print ""
+  print "Program 6: 1 2 3 rot  (stack: 2 3 1)"
+  stack = []
+  stack.push(1)
+  stack.push(2)
+  stack.push(3)
+  -- rot: move third element to top
+  e3 := stack[stack | count() - 3]
+  e2 := stack[stack | count() - 2]
+  e1 := stack[stack | count() - 1]
+  stack = []
+  stack.push(e2)
+  stack.push(e1)
+  stack.push(e3)
+  stack_str = ""
+  for i in range(0, stack | count())
+    if i > 0
+      stack_str = stack_str + " "
+    stack_str = stack_str + str(stack[i])
+  print "  Stack: [{stack_str}]"
+
+  -- Program 7: Factorial of 5 using stack operations
+  -- 5! = 5 * 4 * 3 * 2 * 1 = 120
+  print ""
+  print "Program 7: Factorial of 5"
+  mut n := 5
+  mut result := 1
+  loop
+    if n <= 0
+      break
+    result = result * n
+    n = n - 1
+  print "  5! = {result}"
+
+  -- Program 8: Fibonacci using stack
+  print ""
+  print "Program 8: First 10 Fibonacci numbers"
+  stack = []
+  stack.push(0)
+  stack.push(1)
+  mut fib_output := "0 1"
+  for i in range(0, 8)
+    a6 := stack[stack | count() - 1]
+    b6 := stack[stack | count() - 2]
+    next := a6 + b6
+    stack.push(next)
+    fib_output = fib_output + " " + str(next)
+  print "  {fib_output}"
+
+  -- Program 9: Reverse Polish calculator
+  print ""
+  print "Program 9: RPN Calculator"
+  -- Expression: (15 + 7) * (3 + 2) = 22 * 5 = 110
+  print "  Expression: 15 7 + 3 2 + *"
+  stack = []
+  stack.push(15)
+  stack.push(7)
+  -- add
+  va := stack[stack | count() - 1]
+  vb := stack[stack | count() - 2]
+  stack = []
+  stack.push(vb + va)
+  stack.push(3)
+  stack.push(2)
+  -- add
+  va2 := stack[stack | count() - 1]
+  vb2 := stack[stack | count() - 2]
+  mut ns := []
+  for i in range(0, stack | count() - 2)
+    ns.push(stack[i])
+  stack = ns
+  stack.push(vb2 + va2)
+  -- multiply
+  va3 := stack[stack | count() - 1]
+  vb3 := stack[stack | count() - 2]
+  stack = []
+  stack.push(vb3 * va3)
+  print "  Result: {stack[stack | count() - 1]}"
+
+  -- Program 10: Sum of squares 1^2 + 2^2 + ... + 5^2
+  print ""
+  print "Program 10: Sum of squares 1 to 5"
+  mut sum_sq := 0
+  for i in range(1, 6)
+    sum_sq = sum_sq + i * i
+  print "  1^2 + 2^2 + 3^2 + 4^2 + 5^2 = {sum_sq}"
+
+  -- Show standard Forth words
+  print ""
+  print "Forth vocabulary:"
+  print "  +     ( a b -- a+b )     addition"
+  print "  -     ( a b -- a-b )     subtraction"
+  print "  *     ( a b -- a*b )     multiplication"
+  print "  dup   ( a -- a a )       duplicate top"
+  print "  drop  ( a -- )           remove top"
+  print "  swap  ( a b -- b a )     swap top two"
+  print "  over  ( a b -- a b a )   copy second to top"
+  print "  rot   ( a b c -- b c a ) rotate third to top"
+
+  print ""
+  print "Forth: stack-based concatenative programming language."

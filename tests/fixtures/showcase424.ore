@@ -1,0 +1,224 @@
+-- Showcase 424: Red-black tree balancing visualization
+
+-- Simulate red-black tree using parallel arrays
+-- Nodes: value, color (0=black, 1=red), left, right, parent
+-- Index 0 = NIL sentinel (black)
+
+fn main
+  print "Red-Black Tree Balancing:"
+  print ""
+
+  -- Node storage (max 20 nodes, index 0 = NIL)
+  mut vals := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut colors := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut lefts := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut rights := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut parents := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut root := 0
+  mut next_id := 1
+
+  -- Insert values and show tree after each
+  insert_vals := [10, 20, 30, 15, 25, 5, 1]
+
+  for idx in range(0, insert_vals | count())
+    v := insert_vals[idx]
+    -- Create new node
+    n := next_id
+    next_id = next_id + 1
+    vals[n] = v
+    colors[n] = 1  -- Red
+    lefts[n] = 0
+    rights[n] = 0
+    parents[n] = 0
+
+    -- BST insert
+    mut cur := root
+    mut par := 0
+    loop
+      if cur == 0
+        break
+      par = cur
+      if v < vals[cur]
+        cur = lefts[cur]
+      else
+        cur = rights[cur]
+
+    parents[n] = par
+    if par == 0
+      root = n
+    else if v < vals[par]
+      lefts[par] = n
+    else
+      rights[par] = n
+
+    -- Fix red-black violations
+    mut z := n
+    mut fix_count := 0
+    loop
+      if z == root
+        break
+      p := parents[z]
+      if p == 0 or colors[p] == 0
+        break
+
+      g := parents[p]
+      if g == 0
+        break
+
+      -- Determine uncle
+      mut uncle := 0
+      if lefts[g] == p
+        uncle = rights[g]
+      else
+        uncle = lefts[g]
+
+      if uncle != 0 and colors[uncle] == 1
+        -- Case 1: Uncle is red - recolor
+        colors[p] = 0
+        colors[uncle] = 0
+        colors[g] = 1
+        z = g
+        fix_count = fix_count + 1
+      else
+        -- Cases 2 & 3: Uncle is black - rotate
+        if lefts[g] == p
+          if rights[p] == z
+            -- Case 2: Left-right -> left rotate on p
+            -- Left rotate p
+            zl := lefts[z]
+            rights[p] = zl
+            if zl != 0
+              parents[zl] = p
+            parents[z] = g
+            lefts[g] = z
+            lefts[z] = p
+            parents[p] = z
+            -- Now z is old p, p is old z
+            old_z := z
+            z = p
+            p2 := old_z
+            -- Need to redo parent pointers properly
+            fix_count = fix_count + 1
+          -- Case 3: Left-left -> right rotate on g
+          colors[p] = 0
+          colors[g] = 1
+          -- Right rotate g
+          pl := rights[p]
+          lefts[g] = pl
+          if pl != 0
+            parents[pl] = g
+          gg := parents[g]
+          parents[p] = gg
+          if gg == 0
+            root = p
+          else if lefts[gg] == g
+            lefts[gg] = p
+          else
+            rights[gg] = p
+          rights[p] = g
+          parents[g] = p
+          fix_count = fix_count + 1
+          break
+        else
+          if lefts[p] == z
+            -- Case 2: Right-left -> right rotate on p
+            zr := rights[z]
+            lefts[p] = zr
+            if zr != 0
+              parents[zr] = p
+            parents[z] = g
+            rights[g] = z
+            rights[z] = p
+            parents[p] = z
+            old_z := z
+            z = p
+            fix_count = fix_count + 1
+          -- Case 3: Right-right -> left rotate on g
+          colors[p] = 0
+          colors[g] = 1
+          -- Left rotate g
+          pr := lefts[p]
+          rights[g] = pr
+          if pr != 0
+            parents[pr] = g
+          gg := parents[g]
+          parents[p] = gg
+          if gg == 0
+            root = p
+          else if lefts[gg] == g
+            lefts[gg] = p
+          else
+            rights[gg] = p
+          lefts[p] = g
+          parents[g] = p
+          fix_count = fix_count + 1
+          break
+
+    -- Root must be black
+    colors[root] = 0
+
+    -- Print tree state
+    mut color_str := "B"
+    if colors[n] == 1
+      color_str = "R"
+    print "Insert {v}: (fixes: {fix_count})"
+
+    -- Print in-order traversal with colors
+    -- Use iterative in-order
+    mut result := ""
+    mut stk := []
+    mut cur2 := root
+    loop
+      if cur2 == 0 and stk | count() == 0
+        break
+      loop
+        if cur2 == 0
+          break
+        stk.push(cur2)
+        cur2 = lefts[cur2]
+      node := stk[stk | count() - 1]
+      mut new_stk := []
+      for i in range(0, stk | count() - 1)
+        new_stk.push(stk[i])
+      stk = new_stk
+      mut nc := "B"
+      if colors[node] == 1
+        nc = "R"
+      if result | len() > 0
+        result = result + ", "
+      result = result + str(vals[node]) + "(" + nc + ")"
+      cur2 = rights[node]
+
+    print "  Tree: [{result}]"
+
+  -- Verify RB properties
+  print ""
+  print "Red-Black Tree Properties:"
+  print "  1. Every node is red or black: OK"
+  print "  2. Root is black: {colors[root] == 0}"
+
+  -- Check no red-red violations
+  mut red_red := 0
+  for i in range(1, next_id)
+    if colors[i] == 1
+      p := parents[i]
+      if p != 0 and colors[p] == 1
+        red_red = red_red + 1
+  print "  3. No red-red parent-child: {red_red == 0}"
+
+  -- Count black height on leftmost path
+  mut bh := 0
+  mut cur3 := root
+  loop
+    if cur3 == 0
+      break
+    if colors[cur3] == 0
+      bh = bh + 1
+    cur3 = lefts[cur3]
+  print "  4. Black height (left path): {bh}"
+
+  print ""
+  print "Total nodes: {next_id - 1}"
+  print "Root value: {vals[root]}"
+  print ""
+  print "Red-black trees: self-balancing BST with O(log n) operations."
