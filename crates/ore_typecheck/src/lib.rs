@@ -531,7 +531,7 @@ impl TypeChecker {
                             "args" => return Type::List(Box::new(Type::Str)),
                             "range" | "repeat" => return Type::List(Box::new(Type::Int)),
                             "time_now" | "time_ms" | "rand_int" => return Type::Int,
-                            "exit" | "eprint" => return Type::Unit,
+                            "exit" | "eprint" | "assert" | "assert_eq" | "assert_ne" => return Type::Unit,
                             "exec" => return Type::Str,
                             "type_of" | "env_get" => return Type::Str,
                             "env_set" => return Type::Unit,
@@ -540,7 +540,7 @@ impl TypeChecker {
                             "channel" => return Type::Channel,
                             "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "math_abs" | "math_floor" | "math_ceil" | "math_round" => return Type::Float,
                             "pow" | "atan2" => return Type::Float,
-                            "pi" | "euler" => return Type::Float,
+                            "pi" | "euler" | "e" => return Type::Float,
                             _ => {}
                         }
 
@@ -579,7 +579,43 @@ impl TypeChecker {
                             return Type::Enum(enum_name);
                         }
 
-                        // Record construction handled separately
+                        // Record construction
+                        if self.records.contains_key(name) {
+                            return Type::Record(name.clone());
+                        }
+
+                        // Check if it's a variable that holds a function
+                        if let Some((ty, _)) = env.lookup(name) {
+                            return ty.clone();
+                        }
+
+                        // Pipeline method names used as standalone functions (e.g., list | map(f))
+                        // These are resolved at codegen time, so skip them here
+                        const PIPELINE_METHODS: &[&str] = &[
+                            "map", "filter", "each", "reduce", "fold", "scan", "join",
+                            "sort", "sort_by", "sort_by_key", "reverse", "unique", "dedup",
+                            "take", "skip", "take_while", "drop_while", "step",
+                            "flatten", "flat_map", "zip", "zip_with", "enumerate",
+                            "window", "chunks", "intersperse", "partition", "group_by",
+                            "count_by", "frequencies", "to_map", "first", "last",
+                            "sum", "product", "min", "max", "average", "any", "all",
+                            "find", "find_index", "index_of", "contains",
+                            "push", "pop", "insert", "remove_at", "clear", "set", "get", "get_or",
+                            "len", "is_empty", "slice",
+                            "to_upper", "to_lower", "trim", "trim_start", "trim_end",
+                            "split", "replace", "starts_with", "ends_with", "repeat",
+                            "capitalize", "count", "strip_prefix", "strip_suffix",
+                            "substr", "chars", "char_at", "pad_left", "pad_right", "words", "lines",
+                            "to_int", "to_float", "to_str", "parse_int", "parse_float",
+                            "abs", "floor", "ceil", "round", "sqrt", "pow", "clamp",
+                            "unwrap_or", "typeof", "merge", "keys", "values", "entries",
+                            "par_map", "par_each", "send", "recv", "tap",
+                            "map_with_index", "each_with_index",
+                            "__range",
+                        ];
+                        if !PIPELINE_METHODS.contains(&name.as_str()) && !name.starts_with("__") {
+                            self.err(format!("undefined function '{}'", name));
+                        }
                         Type::Any
                     }
                     _ => {
