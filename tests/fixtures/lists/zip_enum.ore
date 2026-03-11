@@ -1,0 +1,9 @@
+fn main
+  a := [1, 2, 3]
+  b := [10, 20, 30]
+  print a.any(x => x > 2)
+  print a.any(x => x > 10)
+  print a.all(x => x > 0)
+  print a.all(x => x > 2)
+  print a.zip(b).len()
+  print a.enumerate().len()

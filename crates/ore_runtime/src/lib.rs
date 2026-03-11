@@ -799,6 +799,70 @@ pub extern "C" fn ore_list_join(list: *mut OreList, sep: *mut OreStr) -> *mut Or
     }
 }
 
+/// Returns 1 (true) if any element satisfies the predicate, 0 otherwise.
+#[no_mangle]
+pub extern "C" fn ore_list_any(list: *mut OreList, func: *const u8, env: *mut u8) -> i8 {
+    unsafe {
+        let src = &*list;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            if call_closure(func, env, val) != 0 {
+                return 1;
+            }
+        }
+        0
+    }
+}
+
+/// Returns 1 (true) if all elements satisfy the predicate, 0 otherwise.
+#[no_mangle]
+pub extern "C" fn ore_list_all(list: *mut OreList, func: *const u8, env: *mut u8) -> i8 {
+    unsafe {
+        let src = &*list;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            if call_closure(func, env, val) == 0 {
+                return 0;
+            }
+        }
+        1
+    }
+}
+
+/// Zip two lists into a list of [a, b] pairs (as nested lists).
+#[no_mangle]
+pub extern "C" fn ore_list_zip(a: *mut OreList, b: *mut OreList) -> *mut OreList {
+    unsafe {
+        let a = &*a;
+        let b = &*b;
+        let result = ore_list_new();
+        let min_len = a.len.min(b.len) as usize;
+        for i in 0..min_len {
+            let pair = ore_list_new();
+            ore_list_push(pair, *a.data.add(i));
+            ore_list_push(pair, *b.data.add(i));
+            ore_list_push(result, pair as i64);
+        }
+        result
+    }
+}
+
+/// Enumerate: returns list of [index, value] pairs.
+#[no_mangle]
+pub extern "C" fn ore_list_enumerate(list: *mut OreList) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        for i in 0..src.len as usize {
+            let pair = ore_list_new();
+            ore_list_push(pair, i as i64);
+            ore_list_push(pair, *src.data.add(i));
+            ore_list_push(result, pair as i64);
+        }
+        result
+    }
+}
+
 // ── Maps ──
 
 /// OreMap: A string-keyed map storing i64 values (which can be pointers to strings, lists, etc.)

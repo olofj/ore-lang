@@ -587,6 +587,14 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_par_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_par_each(ptr, fn_ptr, env_ptr)
         self.module.add_function("ore_list_par_each", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_any(ptr, fn_ptr, env_ptr) -> i8
+        self.module.add_function("ore_list_any", i8_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_all(ptr, fn_ptr, env_ptr) -> i8
+        self.module.add_function("ore_list_all", i8_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_zip(ptr, ptr) -> ptr
+        self.module.add_function("ore_list_zip", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_enumerate(ptr) -> ptr
+        self.module.add_function("ore_list_enumerate", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         // String utilities
         self.module.add_function("ore_float_to_str", ptr_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_str_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -1739,6 +1747,50 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), sep.into()], "join"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
+            }
+            "any" | "all" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: format!("{} takes 1 argument (predicate)", method) });
+                }
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        self.compile_lambda(params, body, func)?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { msg: format!("{} argument must be a function", method) }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let runtime_fn_name = format!("ore_list_{}", method);
+                let rt = self.module.get_function(&runtime_fn_name).unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], method))?;
+                let val = self.call_result_to_value(result)?;
+                let bool_val = bld!(self.builder.build_int_truncate(val.into_int_value(), self.context.bool_type(), &format!("{}_bool", method)))?;
+                Ok((bool_val.into(), ValKind::Bool))
+            }
+            "zip" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "zip takes 1 argument (other list)".into() });
+                }
+                let other = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_list_zip").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), other.into()], "zip"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            "enumerate" => {
+                let rt = self.module.get_function("ore_list_enumerate").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "enum"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
             }
             _ => Err(CodeGenError { msg: format!("unknown list method '{}'", method) }),
         }

@@ -400,3 +400,17 @@ fn concurrency_each_pipe() {
     let out = run_ore("concurrency/each_pipe.ore");
     assert_eq!(out.trim(), "[2, 4, 6, 8, 10]");
 }
+
+#[test]
+fn lists_any_all() {
+    let out = run_ore("lists/any_all.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["true", "false", "true", "false"]);
+}
+
+#[test]
+fn lists_zip_enum() {
+    let out = run_ore("lists/zip_enum.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["true", "false", "true", "false", "3", "3"]);
+}
