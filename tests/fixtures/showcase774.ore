@@ -1,0 +1,104 @@
+-- Showcase 774: Kruskal's MST with Union-Find
+
+fn find parent:List i:Int -> Int
+  -- Find root of component (path compression via iteration)
+  mut root := i
+  mut cur := parent[i]
+  while cur != root
+    root = cur
+    cur = parent[cur]
+  root
+
+fn union parent:List rank:List a:Int b:Int -> Bool
+  -- Union by rank, returns true if merged (was in different sets)
+  ra := find(parent, a)
+  rb := find(parent, b)
+  if ra == rb
+    false
+  else
+    ranka := rank[ra]
+    rankb := rank[rb]
+    if ranka < rankb
+      parent[ra] = rb
+    else if ranka > rankb
+      parent[rb] = ra
+    else
+      parent[rb] = ra
+      rank[ra] = ranka + 1
+    true
+
+fn main
+  print "Kruskal's Minimum Spanning Tree with Union-Find:"
+  print ""
+
+  -- Kruskal's: sort all edges by weight, add edge if it doesn't form cycle
+  -- Uses union-find (disjoint set union) data structure
+  -- Time complexity: O(E log E)
+
+  n := 7  -- vertices
+  n_edges := 11
+
+  -- Edges (from, to, weight) - already sorted by weight
+  mut efrom := [0, 1, 3, 2, 4, 2, 1, 0, 5, 4, 3]
+  mut eto   := [1, 4, 4, 5, 5, 3, 2, 3, 6, 6, 5]
+  mut ewt   := [7, 8, 9, 10, 11, 12, 14, 16, 2, 6, 5]
+
+  -- Sort edges by weight (bubble sort)
+  for i in range(0, n_edges - 1)
+    for j in range(0, n_edges - 1 - i)
+      if ewt[j] > ewt[j + 1]
+        tmp := ewt[j]
+        ewt[j] = ewt[j + 1]
+        ewt[j + 1] = tmp
+        tmpf := efrom[j]
+        efrom[j] = efrom[j + 1]
+        efrom[j + 1] = tmpf
+        tmpt := eto[j]
+        eto[j] = eto[j + 1]
+        eto[j + 1] = tmpt
+
+  print "=== Edges Sorted by Weight ==="
+  for i in range(0, n_edges)
+    print "  V{efrom[i]} - V{eto[i]}, weight={ewt[i]}"
+
+  -- Initialize union-find
+  mut parent := [0, 1, 2, 3, 4, 5, 6]
+  mut rnk    := [0, 0, 0, 0, 0, 0, 0]
+
+  print ""
+  print "=== Kruskal's Algorithm ==="
+  mut mst_weight := 0
+  mut mst_edges := 0
+  mut mst_from := [0, 0, 0, 0, 0, 0]
+  mut mst_to   := [0, 0, 0, 0, 0, 0]
+  mut mst_wt   := [0, 0, 0, 0, 0, 0]
+
+  for i in range(0, n_edges)
+    u := efrom[i]
+    v := eto[i]
+    w := ewt[i]
+    merged := union(parent, rnk, u, v)
+    if merged
+      mst_from[mst_edges] = u
+      mst_to[mst_edges] = v
+      mst_wt[mst_edges] = w
+      mst_weight = mst_weight + w
+      mst_edges = mst_edges + 1
+      print "  Added V{u}-V{v} (w={w}), MST edges={mst_edges}, total weight={mst_weight}"
+    else
+      print "  Skip V{u}-V{v} (w={w}): would create cycle"
+    if mst_edges == n - 1
+      print "  MST complete!"
+
+  print ""
+  print "=== MST Result ==="
+  for i in range(0, mst_edges)
+    print "  V{mst_from[i]} - V{mst_to[i]}, weight={mst_wt[i]}"
+
+  print ""
+  print "Total MST weight: {mst_weight}"
+  print "MST edges: {mst_edges} (need {n - 1} for {n} vertices)"
+
+  print ""
+  print "Union-Find operations: find (path compression), union (rank-based)"
+  print "Kruskal's: O(E log E) MST via edge sorting and cycle detection."

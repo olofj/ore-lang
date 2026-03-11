@@ -1,0 +1,113 @@
+-- Showcase 773: Prim's Minimum Spanning Tree
+
+fn main
+  print "Prim's Minimum Spanning Tree:"
+  print ""
+
+  -- Prim's algorithm: builds MST by greedily adding minimum weight edge
+  -- that connects a new vertex to the growing tree
+  -- Time complexity: O(V^2) with adjacency matrix
+
+  -- Undirected weighted graph, 6 vertices
+  n := 6
+  inf := 9999
+
+  -- Adjacency matrix (symmetric)
+  mut r0 := [0, 4, inf, inf, inf, 10]
+  mut r1 := [4, 0, 8, inf, inf, 2]
+  mut r2 := [inf, 8, 0, 7, inf, inf]
+  mut r3 := [inf, inf, 7, 0, 9, inf]
+  mut r4 := [inf, inf, inf, 9, 0, 6]
+  mut r5 := [10, 2, inf, inf, 6, 0]
+
+  print "=== Graph (Adjacency Matrix) ==="
+  print "     V0   V1   V2   V3   V4   V5"
+  for i in range(0, n)
+    mut row := "V{i}: "
+    for j in range(0, n)
+      mut val := 0
+      if i == 0
+        val = r0[j]
+      else if i == 1
+        val = r1[j]
+      else if i == 2
+        val = r2[j]
+      else if i == 3
+        val = r3[j]
+      else if i == 4
+        val = r4[j]
+      else
+        val = r5[j]
+      if val == inf
+        row = "{row} inf "
+      else
+        row = "{row}  {val}  "
+    print row
+
+  -- Prim's algorithm starting from vertex 0
+  mut in_mst := [false, false, false, false, false, false]
+  mut key    := [inf, inf, inf, inf, inf, inf]  -- min edge to reach each vertex
+  mut parent := [-1, -1, -1, -1, -1, -1]        -- MST parent
+
+  key[0] = 0  -- start from vertex 0
+  mut mst_weight := 0
+
+  print ""
+  print "=== Prim's Algorithm (start at V0) ==="
+
+  for step in range(0, n)
+    -- Find vertex with minimum key not yet in MST
+    mut min_key := inf
+    mut u := -1
+    for v in range(0, n)
+      if not in_mst[v] and key[v] < min_key
+        min_key = key[v]
+        u = v
+
+    if u == -1
+      print "  No more reachable vertices"
+    else
+      -- Add u to MST
+      in_mst[u] = true
+      if parent[u] != -1
+        mst_weight = mst_weight + key[u]
+        print "  Step {step + 1}: Add V{u} via edge V{parent[u]}-V{u}, weight={key[u]}, MST weight={mst_weight}"
+      else
+        print "  Step {step + 1}: Start at V{u}"
+
+      -- Update keys of adjacent vertices
+      for v in range(0, n)
+        if not in_mst[v]
+          mut edge_w := 0
+          if u == 0
+            edge_w = r0[v]
+          else if u == 1
+            edge_w = r1[v]
+          else if u == 2
+            edge_w = r2[v]
+          else if u == 3
+            edge_w = r3[v]
+          else if u == 4
+            edge_w = r4[v]
+          else
+            edge_w = r5[v]
+          if edge_w < key[v]
+            key[v] = edge_w
+            parent[v] = u
+
+  print ""
+  print "=== MST Edges ==="
+  for v in range(1, n)
+    print "  V{parent[v]} - V{v}, weight={key[v]}"
+
+  print ""
+  print "Total MST weight: {mst_weight}"
+
+  print ""
+  print "=== MST Properties ==="
+  print "Vertices: {n}"
+  print "MST edges: {n - 1}"
+  print "MST is connected and acyclic: true"
+
+  print ""
+  print "Prim's algorithm: greedy MST construction, O(V^2) with adjacency matrix."

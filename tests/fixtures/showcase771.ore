@@ -1,0 +1,134 @@
+-- Showcase 771: Floyd-Warshall Shortest Paths
+
+fn main
+  print "Floyd-Warshall All-Pairs Shortest Paths:"
+  print ""
+
+  -- Floyd-Warshall: finds shortest paths between all pairs of vertices
+  -- Works with negative edges (but not negative cycles)
+  -- Time complexity: O(V^3)
+
+  -- Graph with 5 vertices (0-indexed)
+  -- Use 9999 to represent infinity (no direct edge)
+  n := 5
+  inf := 9999
+
+  -- Distance matrix (adjacency + weights)
+  -- dist[i][j] = direct edge weight from i to j
+  mut d0 := [0, 10, inf, 30, 100]
+  mut d1 := [inf, 0, 50, inf, inf]
+  mut d2 := [inf, inf, 0, inf, 10]
+  mut d3 := [inf, inf, 20, 0, 60]
+  mut d4 := [inf, inf, inf, inf, 0]
+
+  print "=== Initial Graph (weight matrix) ==="
+  print "     V0    V1    V2    V3    V4"
+  for i in range(0, n)
+    mut row := "V{i}: "
+    for j in range(0, n)
+      mut val := 0
+      if i == 0
+        val = d0[j]
+      else if i == 1
+        val = d1[j]
+      else if i == 2
+        val = d2[j]
+      else if i == 3
+        val = d3[j]
+      else
+        val = d4[j]
+      if val == inf
+        row = "{row}  inf"
+      else
+        row = "{row}  {val} "
+    print row
+
+  -- Floyd-Warshall: for each intermediate vertex k
+  -- dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])
+  print ""
+  print "=== Running Floyd-Warshall ==="
+
+  for k in range(0, n)
+    for i in range(0, n)
+      for j in range(0, n)
+        -- Get current values
+        mut dij := 0
+        mut dik := 0
+        mut dkj := 0
+
+        if i == 0
+          dij = d0[j]
+          dik = d0[k]
+        else if i == 1
+          dij = d1[j]
+          dik = d1[k]
+        else if i == 2
+          dij = d2[j]
+          dik = d2[k]
+        else if i == 3
+          dij = d3[j]
+          dik = d3[k]
+        else
+          dij = d4[j]
+          dik = d4[k]
+
+        if k == 0
+          dkj = d0[j]
+        else if k == 1
+          dkj = d1[j]
+        else if k == 2
+          dkj = d2[j]
+        else if k == 3
+          dkj = d3[j]
+        else
+          dkj = d4[j]
+
+        -- Update if shorter path through k
+        if dik < inf and dkj < inf
+          candidate := dik + dkj
+          if candidate < dij
+            if i == 0
+              d0[j] = candidate
+            else if i == 1
+              d1[j] = candidate
+            else if i == 2
+              d2[j] = candidate
+            else if i == 3
+              d3[j] = candidate
+            else
+              d4[j] = candidate
+
+    print "  After k={k}: updated shortest paths through vertex {k}"
+
+  print ""
+  print "=== All-Pairs Shortest Distances ==="
+  print "     V0    V1    V2    V3    V4"
+  for i in range(0, n)
+    mut row := "V{i}: "
+    for j in range(0, n)
+      mut val := 0
+      if i == 0
+        val = d0[j]
+      else if i == 1
+        val = d1[j]
+      else if i == 2
+        val = d2[j]
+      else if i == 3
+        val = d3[j]
+      else
+        val = d4[j]
+      if val == inf
+        row = "{row}  inf"
+      else
+        row = "{row}  {val} "
+    print row
+
+  print ""
+  print "=== Shortest Path Examples ==="
+  print "V0 to V2: {d0[2]} (via V3->V2: 30+20=50)"
+  print "V0 to V4: {d0[4]} (via V3->V2->V4: 30+20+10=60)"
+  print "V1 to V4: {d1[4]} (via V2->V4: 50+10=60)"
+  print "V0 to V1: {d0[1]} (direct: 10)"
+
+  print ""
+  print "Floyd-Warshall: O(V^3) dynamic programming for all-pairs shortest paths."

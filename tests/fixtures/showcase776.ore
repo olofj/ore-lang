@@ -1,0 +1,110 @@
+-- Showcase 776: Bipartite Matching (Hopcroft-Karp style augmenting paths)
+
+fn try_augment adj0:List adj1:List adj2:List adj3:List adj4:List match_r:List visited:List u:Int -> Bool
+  -- Try to find augmenting path from left vertex u using DFS
+  mut adj := [0, 0, 0, 0, 0]
+  if u == 0
+    adj = adj0
+  else if u == 1
+    adj = adj1
+  else if u == 2
+    adj = adj2
+  else if u == 3
+    adj = adj3
+  else
+    adj = adj4
+
+  nr := 5
+  mut result := false
+  mut vi := 0
+  while vi < nr and not result
+    v := adj[vi]
+    vi = vi + 1
+    if v >= 0 and not visited[v]
+      visited[v] = true
+      -- v is unmatched OR its current match can find another path
+      mr := match_r[v]
+      if mr == -1
+        match_r[v] = u
+        result = true
+      else
+        -- Try to re-route mr's match
+        other := try_augment(adj0, adj1, adj2, adj3, adj4, match_r, visited, mr)
+        if other
+          match_r[v] = u
+          result = true
+  result
+
+fn main
+  print "Bipartite Matching:"
+  print ""
+
+  -- Bipartite matching: find maximum matching in a bipartite graph
+  -- Left vertices: jobs 0-4, Right vertices: workers 0-4
+  -- Edge (j, w): job j can be done by worker w
+
+  nl := 5  -- left vertices (jobs)
+  nr := 5  -- right vertices (workers)
+
+  print "=== Bipartite Graph (Jobs -> Workers) ==="
+  print "Job 0: workers 0, 1"
+  print "Job 1: workers 1, 2"
+  print "Job 2: workers 0, 3"
+  print "Job 3: workers 2, 4"
+  print "Job 4: workers 3, 4"
+
+  -- Adjacency lists for left vertices (padded with -1)
+  mut adj0 := [0, 1, -1, -1, -1]
+  mut adj1 := [1, 2, -1, -1, -1]
+  mut adj2 := [0, 3, -1, -1, -1]
+  mut adj3 := [2, 4, -1, -1, -1]
+  mut adj4 := [3, 4, -1, -1, -1]
+
+  -- match_r[v] = left vertex matched to right vertex v (-1 if unmatched)
+  mut match_r := [-1, -1, -1, -1, -1]
+
+  print ""
+  print "=== Augmenting Path Search ==="
+
+  mut matching := 0
+  for u in range(0, nl)
+    mut visited := [false, false, false, false, false]
+    found := try_augment(adj0, adj1, adj2, adj3, adj4, match_r, visited, u)
+    if found
+      matching = matching + 1
+      print "  Job {u}: matched! Total matching={matching}"
+    else
+      print "  Job {u}: no augmenting path found"
+
+  print ""
+  print "=== Matching Result ==="
+  for v in range(0, nr)
+    u := match_r[v]
+    if u != -1
+      print "  Job {u} <-> Worker {v}"
+    else
+      print "  Worker {v}: unmatched"
+
+  print ""
+  print "Maximum matching size: {matching}"
+
+  -- Verify by showing which jobs are matched
+  mut matched_jobs := [false, false, false, false, false]
+  for v in range(0, nr)
+    u := match_r[v]
+    if u != -1
+      matched_jobs[u] = true
+
+  print ""
+  print "=== Job Assignment Summary ==="
+  mut unmatched := 0
+  for u in range(0, nl)
+    if matched_jobs[u]
+      print "  Job {u}: assigned"
+    else
+      unmatched = unmatched + 1
+      print "  Job {u}: unassigned"
+  print "Unmatched jobs: {unmatched}"
+
+  print ""
+  print "Bipartite matching: O(V*E) via augmenting paths for optimal assignment."

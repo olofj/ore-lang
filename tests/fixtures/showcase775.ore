@@ -1,0 +1,134 @@
+-- Showcase 775: Network Flow (Ford-Fulkerson)
+
+fn get_cap cap0:List cap1:List cap2:List cap3:List cap4:List cap5:List i:Int j:Int -> Int
+  if i == 0
+    cap0[j]
+  else if i == 1
+    cap1[j]
+  else if i == 2
+    cap2[j]
+  else if i == 3
+    cap3[j]
+  else if i == 4
+    cap4[j]
+  else
+    cap5[j]
+
+fn set_cap cap0:List cap1:List cap2:List cap3:List cap4:List cap5:List i:Int j:Int v:Int -> Bool
+  if i == 0
+    cap0[j] = v
+  else if i == 1
+    cap1[j] = v
+  else if i == 2
+    cap2[j] = v
+  else if i == 3
+    cap3[j] = v
+  else if i == 4
+    cap4[j] = v
+  else
+    cap5[j] = v
+  true
+
+fn main
+  print "Network Flow (Ford-Fulkerson):"
+  print ""
+
+  -- Ford-Fulkerson: find max flow from source to sink
+  -- Uses BFS (Edmonds-Karp) to find augmenting paths
+  -- Time complexity: O(V * E^2)
+
+  n := 6  -- vertices: 0=source, 5=sink
+  source := 0
+  sink := 5
+
+  -- Residual capacity matrix
+  mut cap0 := [0, 16, 13, 0, 0, 0]
+  mut cap1 := [0, 0, 10, 12, 0, 0]
+  mut cap2 := [0, 4, 0, 0, 14, 0]
+  mut cap3 := [0, 0, 9, 0, 0, 20]
+  mut cap4 := [0, 0, 0, 7, 0, 4]
+  mut cap5 := [0, 0, 0, 0, 0, 0]
+
+  print "=== Network Capacities ==="
+  print "Source: V{source}, Sink: V{sink}"
+  print "Edges:"
+  for i in range(0, n)
+    for j in range(0, n)
+      c := get_cap(cap0, cap1, cap2, cap3, cap4, cap5, i, j)
+      if c > 0
+        print "  V{i} -> V{j}, capacity={c}"
+
+  mut max_flow := 0
+  mut path_num := 0
+
+  print ""
+  print "=== Ford-Fulkerson Augmenting Paths ==="
+
+  -- BFS to find augmenting path, repeat until no path exists
+  mut searching := true
+  while searching
+    -- BFS: find path from source to sink
+    mut visited := [false, false, false, false, false, false]
+    mut prev    := [-1, -1, -1, -1, -1, -1]
+    mut queue   := [source, -1, -1, -1, -1, -1]
+    mut qhead   := 0
+    mut qtail   := 1
+    visited[source] = true
+    mut found := false
+
+    while qhead < qtail and not found
+      u := queue[qhead]
+      qhead = qhead + 1
+      for v in range(0, n)
+        c := get_cap(cap0, cap1, cap2, cap3, cap4, cap5, u, v)
+        if not visited[v] and c > 0
+          visited[v] = true
+          prev[v] = u
+          if v == sink
+            found = true
+          else
+            queue[qtail] = v
+            qtail = qtail + 1
+
+    if not found
+      searching = false
+    else
+      -- Find min capacity along the path
+      mut path_flow := 9999
+      mut v := sink
+      while v != source
+        u := prev[v]
+        c := get_cap(cap0, cap1, cap2, cap3, cap4, cap5, u, v)
+        if c < path_flow
+          path_flow = c
+        v = u
+
+      -- Print path
+      path_num = path_num + 1
+      mut path_str := "V{sink}"
+      mut pv := sink
+      while pv != source
+        pu := prev[pv]
+        path_str = "V{pu}->{path_str}"
+        pv = pu
+      print "  Path {path_num}: {path_str}, flow={path_flow}"
+
+      -- Update residual capacities
+      v = sink
+      while v != source
+        u := prev[v]
+        cu := get_cap(cap0, cap1, cap2, cap3, cap4, cap5, u, v)
+        cv := get_cap(cap0, cap1, cap2, cap3, cap4, cap5, v, u)
+        set_cap(cap0, cap1, cap2, cap3, cap4, cap5, u, v, cu - path_flow)
+        set_cap(cap0, cap1, cap2, cap3, cap4, cap5, v, u, cv + path_flow)
+        v = u
+
+      max_flow = max_flow + path_flow
+
+  print ""
+  print "=== Result ==="
+  print "Maximum flow: {max_flow}"
+  print "Augmenting paths found: {path_num}"
+
+  print ""
+  print "Ford-Fulkerson: finds max flow via repeated augmenting paths in residual graph."

@@ -1,0 +1,172 @@
+-- Showcase 777: Strongly Connected Components (Tarjan's Algorithm)
+
+fn main
+  print "Tarjan's Strongly Connected Components:"
+  print ""
+
+  -- Tarjan's SCC: finds all SCCs using DFS with a stack
+  -- Uses discovery time and low-link values
+  -- Time complexity: O(V + E)
+
+  -- Directed graph with 8 vertices
+  n := 8
+
+  -- Adjacency list (each row: neighbors, -1 = end)
+  mut adj0 := [1, -1, -1, -1]
+  mut adj1 := [2, 4, 5, -1]
+  mut adj2 := [3, 6, -1, -1]
+  mut adj3 := [2, 7, -1, -1]  -- 2-3 form a cycle
+  mut adj4 := [0, 5, -1, -1]  -- 4-0-1-4 form a cycle
+  mut adj5 := [6, -1, -1, -1]
+  mut adj6 := [5, -1, -1, -1]  -- 5-6 form a cycle
+  mut adj7 := [3, 6, -1, -1]
+
+  print "=== Directed Graph Edges ==="
+  print "V0 -> V1"
+  print "V1 -> V2, V4, V5"
+  print "V2 -> V3, V6"
+  print "V3 -> V2, V7"
+  print "V4 -> V0, V5"
+  print "V5 -> V6"
+  print "V6 -> V5"
+  print "V7 -> V3, V6"
+
+  -- Tarjan's state
+  mut disc   := [-1, -1, -1, -1, -1, -1, -1, -1]  -- discovery time
+  mut low    := [-1, -1, -1, -1, -1, -1, -1, -1]  -- low-link value
+  mut on_stk := [false, false, false, false, false, false, false, false]
+  mut stk    := [-1, -1, -1, -1, -1, -1, -1, -1]
+  mut stk_top := 0
+  mut timer  := 0
+  mut scc_count := 0
+  mut scc_id := [-1, -1, -1, -1, -1, -1, -1, -1]  -- which SCC each vertex belongs to
+
+  -- SCC member arrays (up to 4 SCCs, up to 4 members each)
+  mut scc0 := [-1, -1, -1, -1]
+  mut scc1 := [-1, -1, -1, -1]
+  mut scc2 := [-1, -1, -1, -1]
+  mut scc3 := [-1, -1, -1, -1]
+  mut scc_sz := [0, 0, 0, 0]
+
+  print ""
+  print "=== Tarjan's DFS ==="
+
+  -- Iterative DFS simulation using explicit stack
+  -- Process each unvisited vertex
+  for start in range(0, n)
+    if disc[start] == -1
+      -- DFS from start
+      mut dfs_stack := [start, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+      mut dfs_iter  := [0,     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+      mut dfs_top := 1
+
+      disc[start] = timer
+      low[start] = timer
+      timer = timer + 1
+      stk[stk_top] = start
+      stk_top = stk_top + 1
+      on_stk[start] = true
+
+      while dfs_top > 0
+        u := dfs_stack[dfs_top - 1]
+        it := dfs_iter[dfs_top - 1]
+
+        -- Get u's neighbors
+        mut adj_u := [0, 0, 0, 0]
+        if u == 0
+          adj_u = adj0
+        else if u == 1
+          adj_u = adj1
+        else if u == 2
+          adj_u = adj2
+        else if u == 3
+          adj_u = adj3
+        else if u == 4
+          adj_u = adj4
+        else if u == 5
+          adj_u = adj5
+        else if u == 6
+          adj_u = adj6
+        else
+          adj_u = adj7
+
+        if it < 4 and adj_u[it] != -1
+          v := adj_u[it]
+          dfs_iter[dfs_top - 1] = it + 1
+          if disc[v] == -1
+            -- Tree edge: push v
+            disc[v] = timer
+            low[v] = timer
+            timer = timer + 1
+            stk[stk_top] = v
+            stk_top = stk_top + 1
+            on_stk[v] = true
+            dfs_stack[dfs_top] = v
+            dfs_iter[dfs_top] = 0
+            dfs_top = dfs_top + 1
+          else if on_stk[v]
+            -- Back edge: update low
+            if disc[v] < low[u]
+              low[u] = disc[v]
+        else
+          -- Done with u: pop from DFS stack
+          dfs_top = dfs_top - 1
+          if dfs_top > 0
+            parent := dfs_stack[dfs_top - 1]
+            if low[u] < low[parent]
+              low[parent] = low[u]
+
+          -- Check if u is root of SCC
+          if low[u] == disc[u]
+            -- Pop SCC from stack
+            mut sz := 0
+            mut popping := true
+            while popping
+              w := stk[stk_top - 1]
+              stk_top = stk_top - 1
+              on_stk[w] = false
+              scc_id[w] = scc_count
+              if scc_count == 0
+                scc0[sz] = w
+              else if scc_count == 1
+                scc1[sz] = w
+              else if scc_count == 2
+                scc2[sz] = w
+              else
+                scc3[sz] = w
+              sz = sz + 1
+              if w == u
+                popping = false
+            scc_sz[scc_count] = sz
+            print "  SCC {scc_count}: {sz} vertices (root={u}, disc={disc[u]}, low={low[u]})"
+            scc_count = scc_count + 1
+
+  print ""
+  print "=== Strongly Connected Components ==="
+  print "Found {scc_count} SCCs:"
+  for s in range(0, scc_count)
+    mut sz := scc_sz[s]
+    mut members := ""
+    mut scc_arr := [0, 0, 0, 0]
+    if s == 0
+      scc_arr = scc0
+    else if s == 1
+      scc_arr = scc1
+    else if s == 2
+      scc_arr = scc2
+    else
+      scc_arr = scc3
+    for mi in range(0, sz)
+      if members == ""
+        members = "V{scc_arr[mi]}"
+      else
+        members = "{members}, V{scc_arr[mi]}"
+    print "  SCC {s}: {members}"
+
+  print ""
+  print "=== Vertex SCC Membership ==="
+  for v in range(0, n)
+    print "  V{v} -> SCC {scc_id[v]}"
+
+  print ""
+  print "Tarjan's algorithm: O(V+E) SCC decomposition using DFS low-link values."

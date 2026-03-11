@@ -1,0 +1,157 @@
+-- Showcase 779: Euler Path and Circuit (Hierholzer's Algorithm)
+
+fn main
+  print "Euler Path and Circuit (Hierholzer's Algorithm):"
+  print ""
+
+  -- Euler circuit: visits every edge exactly once, returns to start
+  -- Euler path: visits every edge exactly once (different start/end)
+  -- Conditions:
+  --   Circuit: all vertices have even degree
+  --   Path: exactly 2 vertices have odd degree (start and end)
+
+  -- Graph 1: Euler Circuit
+  -- Pentagon: V0-V1-V2-V3-V4-V0 plus V0-V2, V1-V3, V2-V4, V3-V0, V4-V1
+  -- Each vertex has degree 4 (even)
+  n1 := 5
+  -- Edge list
+  mut e1f := [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]
+  mut e1t := [1, 2, 3, 4, 0, 2, 3, 4, 0, 1]
+  n1e := 10
+
+  mut deg1 := [0, 0, 0, 0, 0]
+  for i in range(0, n1e)
+    deg1[e1f[i]] = deg1[e1f[i]] + 1
+    deg1[e1t[i]] = deg1[e1t[i]] + 1
+
+  print "=== Graph 1: Euler Circuit ==="
+  print "Edges (complete graph K5 minus some):"
+  print "  Outer: V0-V1, V1-V2, V2-V3, V3-V4, V4-V0"
+  print "  Inner: V0-V2, V1-V3, V2-V4, V3-V0, V4-V1"
+  print "Vertex degrees:"
+  mut odd1 := 0
+  for i in range(0, n1)
+    is_odd := deg1[i] % 2 == 1
+    if is_odd
+      odd1 = odd1 + 1
+    print "  V{i}: degree={deg1[i]}"
+  if odd1 == 0
+    print "Euler circuit exists (all even degrees)!"
+  else
+    print "No Euler circuit ({odd1} odd-degree vertices)"
+
+  -- Adjacency matrix for Hierholzer
+  -- rem[i*5+j] = # of edges remaining between i and j
+  mut rem := [0,1,1,1,1, 1,0,1,1,1, 1,1,0,1,1, 1,1,1,0,1, 1,1,1,1,0]
+
+  mut circuit := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut circ_sz := 0
+  mut cstk    := [0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut cstk_top := 1
+  mut ipos    := [0, 0, 0, 0, 0]
+
+  print ""
+  print "=== Hierholzer's Algorithm (start V0) ==="
+
+  while cstk_top > 0
+    u := cstk[cstk_top - 1]
+    mut found := false
+    mut vv := ipos[u]
+    while vv < n1 and not found
+      if rem[u * n1 + vv] > 0
+        v := vv
+        rem[u * n1 + v] = rem[u * n1 + v] - 1
+        rem[v * n1 + u] = rem[v * n1 + u] - 1
+        cstk[cstk_top] = v
+        cstk_top = cstk_top + 1
+        ipos[u] = vv
+        found = true
+      vv = vv + 1
+    if not found
+      circuit[circ_sz] = u
+      circ_sz = circ_sz + 1
+      cstk_top = cstk_top - 1
+
+  mut path_str := ""
+  for i in range(0, circ_sz)
+    if path_str == ""
+      path_str = "V{circuit[i]}"
+    else
+      path_str = "{path_str}->V{circuit[i]}"
+  print "Circuit ({circ_sz} steps): {path_str}"
+  print "Edges traversed: {circ_sz - 1} (expected {n1e})"
+
+  -- Graph 2: Euler Path (2 odd-degree vertices)
+  print ""
+  print "=== Graph 2: Euler Path ==="
+  print "Path graph: V0-V1-V2-V3-V4 (linear chain)"
+  n2 := 5
+  mut e2f := [0, 1, 2, 3]
+  mut e2t := [1, 2, 3, 4]
+  n2e := 4
+  mut deg2 := [0, 0, 0, 0, 0]
+  for i in range(0, n2e)
+    deg2[e2f[i]] = deg2[e2f[i]] + 1
+    deg2[e2t[i]] = deg2[e2t[i]] + 1
+
+  mut odd2 := 0
+  mut path_start := 0
+  mut path_end := 0
+  for i in range(0, n2)
+    is_odd := deg2[i] % 2 == 1
+    if is_odd
+      if odd2 == 0
+        path_start = i
+      else
+        path_end = i
+      odd2 = odd2 + 1
+    print "  V{i}: degree={deg2[i]}, odd={is_odd}"
+
+  if odd2 == 2
+    print "Euler path exists! From V{path_start} to V{path_end}"
+  else
+    print "Odd vertex count: {odd2}"
+
+  -- Hierholzer for Euler path (start from odd-degree vertex)
+  mut rem2 := [0,1,0,0,0, 1,0,1,0,0, 0,1,0,1,0, 0,0,1,0,1, 0,0,0,1,0]
+  mut epth  := [-1,-1,-1,-1,-1,-1,-1,-1]
+  mut ep_sz := 0
+  mut estk  := [path_start,-1,-1,-1,-1,-1,-1,-1]
+  mut estk_top := 1
+  mut epos  := [0, 0, 0, 0, 0]
+
+  while estk_top > 0
+    u := estk[estk_top - 1]
+    mut fd := false
+    mut vv := epos[u]
+    while vv < n2 and not fd
+      if rem2[u * n2 + vv] > 0
+        v := vv
+        rem2[u * n2 + v] = rem2[u * n2 + v] - 1
+        rem2[v * n2 + u] = rem2[v * n2 + u] - 1
+        estk[estk_top] = v
+        estk_top = estk_top + 1
+        epos[u] = vv
+        fd = true
+      vv = vv + 1
+    if not fd
+      epth[ep_sz] = u
+      ep_sz = ep_sz + 1
+      estk_top = estk_top - 1
+
+  mut ep_str := ""
+  for i in range(0, ep_sz)
+    if ep_str == ""
+      ep_str = "V{epth[i]}"
+    else
+      ep_str = "{ep_str}->V{epth[i]}"
+  print "Euler path: {ep_str}"
+
+  print ""
+  print "=== Summary ==="
+  print "Euler circuit: start=end, all even degrees, {n1e} edges"
+  print "Euler path: start/=end, exactly 2 odd degrees, {n2e} edges"
+  print "Hierholzer's: O(E) via stack-based edge removal"
+
+  print ""
+  print "Hierholzer's algorithm: finds Euler circuit/path by iterative cycle splicing."

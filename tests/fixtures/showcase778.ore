@@ -1,0 +1,135 @@
+-- Showcase 778: Articulation Points and Bridges
+
+fn dfs_ap u:Int par:Int disc:List low:List visited:List timer:Int adj0:List adj1:List adj2:List adj3:List adj4:List adj5:List is_ap:List br_from:List br_to:List br_count:List ap_list:List ap_count:List -> Int
+  -- Returns updated timer (simple recursive-style as iteration isn't easily nested in Ore)
+  -- Approximate DFS: mark visited, process neighbors
+  visited[u] = true
+  disc[u] = timer
+  low[u] = timer
+  timer + 1
+
+fn main
+  print "Articulation Points and Bridges:"
+  print ""
+
+  -- Articulation points: vertices whose removal disconnects the graph
+  -- Bridges: edges whose removal disconnects the graph
+  -- Algorithm: DFS-based with discovery time and low-link values
+
+  -- Undirected graph with 6 vertices
+  -- Structure: triangle (0,1,2), bridge (1,3), triangle (3,4,5)
+  n := 6
+
+  print "=== Graph Structure ==="
+  print "V0 - V1 - V2 - V0  (triangle)"
+  print "V1 - V3             (bridge)"
+  print "V3 - V4 - V5 - V3  (triangle)"
+
+  -- Use adjacency matrix for simplicity
+  mut adj := [0,1,1,0,0,0, 1,0,1,1,0,0, 1,1,0,0,0,0, 0,1,0,0,1,1, 0,0,0,1,0,1, 0,0,0,1,1,0]
+  -- adj[i*n+j] = 1 if edge exists
+
+  -- DFS state
+  mut disc    := [-1, -1, -1, -1, -1, -1]
+  mut low     := [-1, -1, -1, -1, -1, -1]
+  mut par     := [-1, -1, -1, -1, -1, -1]
+  mut visited := [false, false, false, false, false, false]
+  mut is_ap   := [false, false, false, false, false, false]
+  mut timer   := 0
+
+  mut br_from  := [-1, -1, -1, -1]
+  mut br_to    := [-1, -1, -1, -1]
+  mut br_count := 0
+  mut ap_count := 0
+
+  print ""
+  print "=== DFS Traversal ==="
+
+  -- Iterative DFS
+  for start in range(0, n)
+    if not visited[start]
+      mut stk   := [start, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+      mut stk_it := [0,    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+      mut stk_ch := [0,     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]
+      mut top := 1
+      visited[start] = true
+      disc[start] = timer
+      low[start] = timer
+      timer = timer + 1
+
+      while top > 0
+        u := stk[top - 1]
+        it := stk_it[top - 1]
+        mut advanced := false
+        mut vi := it
+        while vi < n and not advanced
+          if adj[u * n + vi] == 1
+            v := vi
+            stk_it[top - 1] = vi + 1
+            if not visited[v]
+              visited[v] = true
+              par[v] = u
+              disc[v] = timer
+              low[v] = timer
+              timer = timer + 1
+              stk_ch[top - 1] = stk_ch[top - 1] + 1
+              stk[top] = v
+              stk_it[top] = 0
+              stk_ch[top] = 0
+              top = top + 1
+              advanced = true
+            else if v != par[u]
+              if disc[v] < low[u]
+                low[u] = disc[v]
+          vi = vi + 1
+        if not advanced
+          top = top - 1
+          if top > 0
+            p := stk[top - 1]
+            if low[u] < low[p]
+              low[p] = low[u]
+            -- Articulation point checks
+            pp := par[p]
+            -- Root case: p is root (no parent) with 2+ DFS children
+            if pp == -1
+              if stk_ch[top - 1] > 1 and not is_ap[p]
+                is_ap[p] = true
+                ap_count = ap_count + 1
+                print "  V{p}: articulation point (root, {stk_ch[top - 1]} DFS children)"
+            -- Non-root case: low[u] >= disc[p]
+            else
+              if low[u] >= disc[p] and not is_ap[p]
+                is_ap[p] = true
+                ap_count = ap_count + 1
+                print "  V{p}: articulation point (low[{u}]={low[u]} >= disc[{p}]={disc[p]})"
+            -- Bridge: low[u] > disc[p]
+            if low[u] > disc[p]
+              br_from[br_count] = p
+              br_to[br_count] = u
+              br_count = br_count + 1
+              print "  Edge V{p}-V{u}: bridge (low[{u}]={low[u]} > disc[{p}]={disc[p]})"
+
+  print ""
+  print "=== Discovery and Low-Link Values ==="
+  for v in range(0, n)
+    print "  V{v}: disc={disc[v]}, low={low[v]}, parent={par[v]}"
+
+  print ""
+  print "=== Articulation Points ({ap_count} found) ==="
+  for v in range(0, n)
+    if is_ap[v]
+      print "  V{v}"
+
+  print ""
+  print "=== Bridges ({br_count} found) ==="
+  for i in range(0, br_count)
+    print "  V{br_from[i]} - V{br_to[i]}"
+
+  print ""
+  print "=== Verification ==="
+  print "Removing V1: disconnects triangle-0 from triangle-1 - correct articulation point"
+  print "Removing V3: disconnects V4,V5 from V0,V1,V2 - correct articulation point"
+  print "Edge V1-V3: only connection between two triangles - correct bridge"
+
+  print ""
+  print "Articulation points and bridges: O(V+E) DFS finds single points of failure."

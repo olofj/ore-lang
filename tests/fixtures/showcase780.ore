@@ -1,0 +1,150 @@
+-- Showcase 780: Graph Coloring (Greedy Algorithm)
+
+fn main
+  print "Graph Coloring (Greedy Algorithm):"
+  print ""
+
+  -- Graph coloring: assign colors to vertices so no two adjacent vertices share a color
+  -- Greedy: process vertices in order, assign smallest available color
+  -- Optimal coloring is NP-hard, greedy gives approximation
+  -- Time complexity: O(V^2) with adjacency matrix
+
+  -- Graph 1: Petersen-like graph (7 vertices)
+  -- A well-structured graph to demonstrate coloring
+  n := 7
+
+  -- Adjacency matrix
+  mut adj := [0,1,1,0,0,0,1, 1,0,1,1,0,0,0, 1,1,0,0,1,0,0, 0,1,0,0,1,1,0, 0,0,1,1,0,0,1, 0,0,0,1,0,0,1, 1,0,0,0,1,1,0]
+
+  print "=== Graph Edges ==="
+  for i in range(0, n)
+    mut nbrs := ""
+    for j in range(0, n)
+      if adj[i * n + j] == 1
+        if nbrs == ""
+          nbrs = "V{j}"
+        else
+          nbrs = "{nbrs}, V{j}"
+    print "  V{i}: {nbrs}"
+
+  -- Greedy coloring
+  -- color[v] = assigned color (0 = uncolored, colors start at 1)
+  mut color := [-1, -1, -1, -1, -1, -1, -1]
+  mut max_color := 0
+
+  print ""
+  print "=== Greedy Coloring ==="
+
+  for u in range(0, n)
+    -- Find colors used by neighbors
+    mut used := [false, false, false, false, false, false, false, false]
+    for v in range(0, n)
+      if adj[u * n + v] == 1 and color[v] != -1
+        c := color[v]
+        used[c] = true
+
+    -- Assign smallest unused color
+    mut c := 0
+    mut found := false
+    while not found
+      if not used[c]
+        found = true
+      else
+        c = c + 1
+    color[u] = c
+    if c > max_color
+      max_color = c
+    print "  V{u}: color={c} (neighbors use colors: {used[0]},{used[1]},{used[2]},{used[3]})"
+
+  print ""
+  print "=== Coloring Result ==="
+  for v in range(0, n)
+    print "  V{v}: color {color[v]}"
+
+  print ""
+  num_colors := max_color + 1
+  print "Colors used: {num_colors}"
+
+  -- Verify coloring
+  print ""
+  print "=== Verification ==="
+  mut conflicts := 0
+  for i in range(0, n)
+    for j in range(i + 1, n)
+      if adj[i * n + j] == 1 and color[i] == color[j]
+        conflicts = conflicts + 1
+        print "  CONFLICT: V{i} and V{j} both have color {color[i]}"
+
+  if conflicts == 0
+    print "Valid coloring! No conflicts found."
+  else
+    print "Invalid: {conflicts} conflicts found!"
+
+  -- Group vertices by color
+  print ""
+  print "=== Color Classes ==="
+  for c in range(0, num_colors)
+    mut members := ""
+    for v in range(0, n)
+      if color[v] == c
+        if members == ""
+          members = "V{v}"
+        else
+          members = "{members}, V{v}"
+    print "  Color {c}: {members}"
+
+  -- Graph 2: Complete graph K4 (needs 4 colors)
+  print ""
+  print "=== Graph 2: Complete Graph K4 (needs 4 colors) ==="
+  n2 := 4
+  mut adj2 := [0,1,1,1, 1,0,1,1, 1,1,0,1, 1,1,1,0]
+  mut color2 := [-1, -1, -1, -1]
+  mut max2 := 0
+  for u in range(0, n2)
+    mut used2 := [false, false, false, false, false]
+    for v in range(0, n2)
+      if adj2[u * n2 + v] == 1 and color2[v] != -1
+        c := color2[v]
+        used2[c] = true
+    mut c := 0
+    mut fd := false
+    while not fd
+      if not used2[c]
+        fd = true
+      else
+        c = c + 1
+    color2[u] = c
+    if c > max2
+      max2 = c
+  print "K4 coloring: V0={color2[0]}, V1={color2[1]}, V2={color2[2]}, V3={color2[3]}"
+  print "Colors needed: {max2 + 1} (chromatic number of K4 = 4)"
+
+  -- Bipartite graph (needs only 2 colors)
+  print ""
+  print "=== Graph 3: Bipartite Graph (needs 2 colors) ==="
+  n3 := 6
+  -- K3,3: left=0,1,2 right=3,4,5, every left connects to every right
+  mut adj3 := [0,0,0,1,1,1, 0,0,0,1,1,1, 0,0,0,1,1,1, 1,1,1,0,0,0, 1,1,1,0,0,0, 1,1,1,0,0,0]
+  mut color3 := [-1, -1, -1, -1, -1, -1]
+  mut max3 := 0
+  for u in range(0, n3)
+    mut used3 := [false, false, false]
+    for v in range(0, n3)
+      if adj3[u * n3 + v] == 1 and color3[v] != -1
+        c := color3[v]
+        used3[c] = true
+    mut c := 0
+    mut fd := false
+    while not fd
+      if not used3[c]
+        fd = true
+      else
+        c = c + 1
+    color3[u] = c
+    if c > max3
+      max3 = c
+  print "K3,3 coloring: L=[{color3[0]},{color3[1]},{color3[2]}], R=[{color3[3]},{color3[4]},{color3[5]}]"
+  print "Colors needed: {max3 + 1} (chromatic number of bipartite = 2)"
+
+  print ""
+  print "Greedy graph coloring: simple O(V^2) approximation, optimal for some graph classes."
