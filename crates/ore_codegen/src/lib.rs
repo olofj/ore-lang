@@ -795,6 +795,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_sort_str", void_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_sort_float", void_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_dedup", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_tap", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_map_with_index", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_each_with_index", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_sum_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -2834,6 +2835,34 @@ impl<'ctx> CodeGen<'ctx> {
                     ""
                 ))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+            }
+            "tap" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "tap takes 1 argument".into() });
+                }
+                let elem_kind = self.last_list_elem_kind.clone();
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        let kinds: Vec<ValKind> = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "tap requires a lambda".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let rt = self.module.get_function("ore_list_tap").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "tap"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
             }
             "map_with_index" => {
                 if args.len() != 1 {

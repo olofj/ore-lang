@@ -1212,6 +1212,19 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+/// tap: run a side-effect on the list and return it unchanged. Useful for debugging pipelines.
+#[no_mangle]
+pub extern "C" fn ore_list_tap(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            call_closure(func, env, val);
+        }
+    }
+    list
+}
+
 /// map_with_index: call f(index, element) for each element, collect results
 #[no_mangle]
 pub extern "C" fn ore_list_map_with_index(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {

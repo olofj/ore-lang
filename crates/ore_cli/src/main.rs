@@ -514,6 +514,7 @@ fn map_runtime_functions(
     map_fn!("ore_map_entries", ore_runtime::ore_map_entries);
     map_fn!("ore_map_get_or", ore_runtime::ore_map_get_or);
     map_fn!("ore_str_char_at", ore_runtime::ore_str_char_at);
+    map_fn!("ore_list_tap", ore_runtime::ore_list_tap);
     map_fn!("ore_list_map_with_index", ore_runtime::ore_list_map_with_index);
     map_fn!("ore_list_each_with_index", ore_runtime::ore_list_each_with_index);
     map_fn!("ore_list_to_map", ore_runtime::ore_list_to_map);
