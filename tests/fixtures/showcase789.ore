@@ -1,0 +1,138 @@
+-- Showcase 789: Circuit Breaker Pattern
+
+fn call_service state:Str fail_count:Int threshold:Int succeed:Bool -> Str
+  -- Returns result string: "SUCCESS", "FAILURE", "OPEN"
+  if state == "OPEN"
+    "OPEN"
+  else
+    if succeed
+      "SUCCESS"
+    else
+      "FAILURE"
+
+fn next_state state:Str fail_count:Int threshold:Int success:Bool half_open_success:Bool -> Str
+  if state == "CLOSED"
+    if success
+      "CLOSED"
+    else
+      if fail_count + 1 >= threshold
+        "OPEN"
+      else
+        "CLOSED"
+  else
+    if state == "OPEN"
+      "HALF-OPEN"  -- after timeout
+    else
+      -- HALF-OPEN
+      if half_open_success
+        "CLOSED"
+      else
+        "OPEN"
+
+fn main
+  print "Circuit Breaker Pattern:"
+  print ""
+
+  failure_threshold := 3  -- open after 3 failures
+  recovery_timeout := 5   -- simulate 5 ticks before half-open
+  success_threshold := 2  -- 2 successes in half-open to close
+
+  print "=== Configuration ==="
+  print "  Failure threshold: {failure_threshold}"
+  print "  Recovery timeout: {recovery_timeout} ticks"
+  print "  Success threshold to close: {success_threshold}"
+  print ""
+
+  -- State machine: CLOSED -> OPEN -> HALF-OPEN -> CLOSED or OPEN
+  mut state := "CLOSED"
+  mut fail_count := 0
+  mut success_count := 0
+  mut total_calls := 0
+  mut blocked_calls := 0
+  mut tick := 0
+
+  print "=== Simulation ==="
+  print "  State | Call | Result     | Fail# | State'"
+
+  -- Phase 1: Service working fine (calls 1-3)
+  call_results := [true, true, false, false, false, false, false, false, true, true, true, true, true]
+  n_calls := 13
+
+  for i in range(0, n_calls)
+    tick = tick + 1
+    succeed := call_results[i]
+
+    if state == "OPEN"
+      -- Check if recovery timeout passed
+      if tick == 9
+        state = "HALF-OPEN"
+        print "  --- Recovery timeout: state -> HALF-OPEN ---"
+      else
+        blocked_calls = blocked_calls + 1
+        print "  {state}  | {i + 1}    | OPEN(blocked) | {fail_count}     | {state}"
+
+    if state == "CLOSED"
+      total_calls = total_calls + 1
+      if succeed
+        fail_count = 0
+        print "  {state} | {i + 1}    | SUCCESS    | {fail_count}     | {state}"
+      else
+        fail_count = fail_count + 1
+        if fail_count >= failure_threshold
+          state = "OPEN"
+          print "  CLOSED | {i + 1}    | FAILURE    | {fail_count}     | OPEN (tripped!)"
+        else
+          print "  {state} | {i + 1}    | FAILURE    | {fail_count}     | {state}"
+
+    if state == "HALF-OPEN"
+      total_calls = total_calls + 1
+      if succeed
+        success_count = success_count + 1
+        if success_count >= success_threshold
+          state = "CLOSED"
+          fail_count = 0
+          success_count = 0
+          print "  HALF-OP | {i + 1}   | SUCCESS({success_count}) | 0     | CLOSED (recovered!)"
+        else
+          print "  HALF-OP | {i + 1}   | SUCCESS({success_count}) | {fail_count}     | HALF-OPEN"
+      else
+        state = "OPEN"
+        success_count = 0
+        print "  HALF-OP | {i + 1}   | FAILURE    | {fail_count}     | OPEN (re-tripped)"
+
+  print ""
+
+  -- Summary statistics
+  print "=== Summary ==="
+  print "  Total calls attempted: {n_calls}"
+  print "  Calls executed: {total_calls}"
+  print "  Calls blocked (circuit open): {blocked_calls}"
+  protection_pct := blocked_calls * 100 / n_calls
+  print "  Protection rate: {protection_pct}%"
+  print "  Final state: {state}"
+  print ""
+
+  -- Benefits explanation
+  print "=== Circuit Breaker Benefits ==="
+  print "  1. Fail fast: blocked calls return immediately"
+  print "  2. Prevents cascade: failing service doesn't drag down caller"
+  print "  3. Self-healing: half-open state probes recovery"
+  print "  4. Metrics: failure rate visible in state transitions"
+  print ""
+
+  -- State transitions
+  print "=== State Transitions ==="
+  print "  CLOSED  -> OPEN:      {failure_threshold} consecutive failures"
+  print "  OPEN    -> HALF-OPEN: after {recovery_timeout}-tick timeout"
+  print "  HALF-OPEN -> CLOSED:  {success_threshold} consecutive successes"
+  print "  HALF-OPEN -> OPEN:    any failure"
+  print ""
+
+  print "=== Real-World Usage ==="
+  print "  Netflix Hystrix: circuit breakers for microservices"
+  print "  Resilience4j: Java circuit breaker library"
+  print "  Polly: .NET resilience library"
+  print "  Envoy Proxy: outlier detection (upstream circuit breaking)"
+
+  print ""
+  print "Circuit breaker: protects services from cascade failures with automatic recovery."

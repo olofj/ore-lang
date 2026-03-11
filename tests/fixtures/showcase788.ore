@@ -1,0 +1,137 @@
+-- Showcase 788: Gossip Protocol Simulation
+
+fn spread_round known:List n_nodes:Int fanout:Int -> List
+  -- Each node that knows spreads to 'fanout' random neighbors
+  -- Returns updated known list (1=knows, 0=doesn't)
+  mut result := []
+  for i in range(0, n_nodes)
+    result.push(known[i])
+  -- Each knowing node spreads to next 'fanout' nodes (deterministic)
+  for i in range(0, n_nodes)
+    knows := known[i]
+    if knows == 1
+      for f in range(1, fanout + 1)
+        target := (i + f * 3) * n_nodes / n_nodes + (i + f * 3)
+        t := target - (target / n_nodes) * n_nodes
+        result[t] = 1
+  result
+
+fn count_knowing nodes:List n:Int -> Int
+  mut cnt := 0
+  for i in range(0, n)
+    if nodes[i] == 1
+      cnt = cnt + 1
+  cnt
+
+fn main
+  print "Gossip Protocol Simulation:"
+  print ""
+
+  n_nodes := 10
+  fanout := 2  -- each node tells 2 others per round
+
+  print "=== Configuration ==="
+  print "  Nodes: {n_nodes}"
+  print "  Fanout (gossip factor): {fanout}"
+  print "  Initial infected node: N0"
+  print ""
+
+  -- Initialize: only node 0 knows the information
+  mut known := [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  print "=== Gossip Rounds (Anti-Entropy) ==="
+  print "  Node spreads information to {fanout} random peers per round"
+  print ""
+
+  -- Simulate rounds manually with deterministic spread
+  -- Round 1: N0 knows, tells N3 and N6
+  -- Round 2: N0, N3, N6 each tell 2 more
+  -- etc.
+
+  -- Round 1
+  print "Round 1:"
+  print "  N0 knows -> gossips to N3, N6"
+  known[3] = 1
+  known[6] = 1
+  cnt1 := count_knowing(known, n_nodes)
+  print "  Knowing nodes: {cnt1}/{n_nodes}"
+  s1 := known | map(x => str(x)) | join("")
+  print "  State: [{s1}] (1=knows)"
+  print ""
+
+  -- Round 2
+  print "Round 2:"
+  print "  N0 gossips to N3(already knows), N6(already knows)"
+  print "  N3 gossips to N6(already knows), N9"
+  print "  N6 gossips to N9(will know), N2"
+  known[9] = 1
+  known[2] = 1
+  cnt2 := count_knowing(known, n_nodes)
+  print "  Knowing nodes: {cnt2}/{n_nodes}"
+  s2 := known | map(x => str(x)) | join("")
+  print "  State: [{s2}]"
+  print ""
+
+  -- Round 3
+  print "Round 3:"
+  print "  N0,N2,N3,N6,N9 each gossip to 2 peers"
+  known[1] = 1
+  known[4] = 1
+  known[5] = 1
+  known[7] = 1
+  cnt3 := count_knowing(known, n_nodes)
+  print "  Knowing nodes: {cnt3}/{n_nodes}"
+  s3 := known | map(x => str(x)) | join("")
+  print "  State: [{s3}]"
+  print ""
+
+  -- Round 4
+  print "Round 4:"
+  known[8] = 1
+  cnt4 := count_knowing(known, n_nodes)
+  print "  Knowing nodes: {cnt4}/{n_nodes}"
+  s4 := known | map(x => str(x)) | join("")
+  print "  State: [{s4}]"
+  print ""
+
+  -- Convergence analysis
+  print "=== Convergence Analysis ==="
+  print "  Round | Knowing | Coverage"
+  print "  0     | 1       | 10%"
+  print "  1     | 3       | 30%"
+  print "  2     | 5       | 50%"
+  print "  3     | 9       | 90%"
+  print "  4     | 10      | 100%"
+  print ""
+  print "  Gossip converges in O(log N) rounds"
+  print "  With fanout={fanout} and {n_nodes} nodes: ~4 rounds"
+  expected_rounds := 4  -- ceil(log2(10)) with fanout=2
+  print "  log2({n_nodes}) ~ {expected_rounds} rounds to full coverage"
+  print ""
+
+  -- Failure tolerance
+  print "=== Failure Tolerance ==="
+  print "  Gossip is inherently fault-tolerant:"
+  print "  - Multiple propagation paths (no single point of failure)"
+  print "  - Lost messages retried next round"
+  print "  - Node failures don't stop propagation"
+  print "  With 30% node failure, convergence takes ~1-2 extra rounds"
+  print ""
+
+  -- Applications
+  print "=== Real-World Applications ==="
+  print "  Cassandra: membership and failure detection"
+  print "  Bitcoin: transaction and block propagation"
+  print "  Consul: service health gossip"
+  print "  Dynamo: replica synchronization"
+  print "  SWIM protocol: scalable cluster membership"
+  print ""
+
+  -- Variants
+  print "=== Gossip Variants ==="
+  print "  Push: sender initiates, good for spreading new info"
+  print "  Pull: receiver requests updates, good for convergence"
+  print "  Push-Pull: bidirectional, fastest convergence"
+
+  print ""
+  print "Gossip protocol: epidemic information spreading with O(log N) convergence."

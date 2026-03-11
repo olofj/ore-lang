@@ -1,0 +1,147 @@
+-- Showcase 787: Vector Clock Simulation
+
+fn vc_increment vc:List node:Int n:Int -> List
+  -- Increment the clock for 'node' index
+  mut result := []
+  for i in range(0, n)
+    v := vc[i]
+    if i == node
+      result.push(v + 1)
+    else
+      result.push(v)
+  result
+
+fn vc_merge a:List b:List n:Int -> List
+  -- Element-wise max of two vector clocks
+  mut result := []
+  for i in range(0, n)
+    av := a[i]
+    bv := b[i]
+    if av > bv
+      result.push(av)
+    else
+      result.push(bv)
+  result
+
+fn vc_to_str vc:List n:Int -> Str
+  mut parts := []
+  for i in range(0, n)
+    parts.push(str(vc[i]))
+  parts | join(",")
+
+fn vc_happens_before a:List b:List n:Int -> Bool
+  -- a -> b if all a[i] <= b[i] and at least one a[i] < b[i]
+  mut all_leq := true
+  mut one_lt := false
+  for i in range(0, n)
+    av := a[i]
+    bv := b[i]
+    if av > bv
+      all_leq = false
+    if av < bv
+      one_lt = true
+  all_leq and one_lt
+
+fn main
+  print "Vector Clock Simulation:"
+  print ""
+
+  n_nodes := 3  -- A=0, B=1, C=2
+  print "=== Setup: 3 nodes A, B, C ==="
+  print "  Vector clock format: [A, B, C]"
+  print "  Each node increments its own counter on local event"
+  print "  On message send: include current VC"
+  print "  On message receive: merge VCs then increment own"
+  print ""
+
+  -- Initialize vector clocks
+  mut vc_a := [0, 0, 0]
+  mut vc_b := [0, 0, 0]
+  mut vc_c := [0, 0, 0]
+
+  -- Event 1: A does local event
+  print "=== Events ==="
+  vc_a = vc_increment(vc_a, 0, n_nodes)
+  s := vc_to_str(vc_a, n_nodes)
+  print "  e1: A local event -> VC_A = [{s}]"
+
+  -- Event 2: B does local event
+  vc_b = vc_increment(vc_b, 1, n_nodes)
+  sb := vc_to_str(vc_b, n_nodes)
+  print "  e2: B local event -> VC_B = [{sb}]"
+
+  -- Event 3: A sends message to B
+  vc_a = vc_increment(vc_a, 0, n_nodes)
+  sa := vc_to_str(vc_a, n_nodes)
+  print "  e3: A sends message to B -> VC_A = [{sa}]"
+
+  -- Event 4: B receives from A (merge + increment)
+  vc_b = vc_merge(vc_a, vc_b, n_nodes)
+  vc_b = vc_increment(vc_b, 1, n_nodes)
+  sb2 := vc_to_str(vc_b, n_nodes)
+  print "  e4: B receives from A -> VC_B = [{sb2}]"
+
+  -- Event 5: C does local event
+  vc_c = vc_increment(vc_c, 2, n_nodes)
+  sc := vc_to_str(vc_c, n_nodes)
+  print "  e5: C local event -> VC_C = [{sc}]"
+
+  -- Event 6: B sends message to C
+  vc_b = vc_increment(vc_b, 1, n_nodes)
+  sb3 := vc_to_str(vc_b, n_nodes)
+  print "  e6: B sends to C -> VC_B = [{sb3}]"
+
+  -- Event 7: C receives from B
+  vc_c = vc_merge(vc_c, vc_b, n_nodes)
+  vc_c = vc_increment(vc_c, 2, n_nodes)
+  sc2 := vc_to_str(vc_c, n_nodes)
+  print "  e7: C receives from B -> VC_C = [{sc2}]"
+
+  -- Event 8: A does another local event
+  vc_a = vc_increment(vc_a, 0, n_nodes)
+  sa2 := vc_to_str(vc_a, n_nodes)
+  print "  e8: A local event -> VC_A = [{sa2}]"
+
+  print ""
+
+  -- Causality analysis
+  print "=== Causality Analysis ==="
+  -- VC at e3 (after e3): [2,0,0]
+  -- VC at e4 (after e4): [2,2,0]
+  -- VC at e7: [2,3,2]
+  -- VC at e8: [3,0,0]
+
+  vc_e3 := [2, 0, 0]
+  vc_e4 := [2, 2, 0]
+  vc_e7 := [2, 3, 2]
+  vc_e8 := [3, 0, 0]
+
+  hb_e3_e4 := vc_happens_before(vc_e3, vc_e4, n_nodes)
+  hb_e4_e7 := vc_happens_before(vc_e4, vc_e7, n_nodes)
+  hb_e3_e7 := vc_happens_before(vc_e3, vc_e7, n_nodes)
+  hb_e8_e7 := vc_happens_before(vc_e8, vc_e7, n_nodes)
+  hb_e7_e8 := vc_happens_before(vc_e7, vc_e8, n_nodes)
+
+  print "  e3 happens-before e4: {hb_e3_e4} (A->B message)"
+  print "  e4 happens-before e7: {hb_e4_e7} (B->C message)"
+  print "  e3 happens-before e7: {hb_e3_e7} (transitive causality)"
+  print "  e8 happens-before e7: {hb_e8_e7} (no: A didn't affect C here)"
+  print "  e7 happens-before e8: {hb_e7_e8} (no: C didn't affect A)"
+  print ""
+
+  print "=== Concurrent Events ==="
+  -- e8 and e7 are concurrent (neither happens-before the other)
+  print "  e7 and e8 are concurrent (no causal relationship)"
+  print "  Concurrent = neither event happened-before the other"
+  print "  Cannot determine which happened 'first' without global clock"
+  print ""
+
+  -- Conflict detection example
+  print "=== Conflict Detection (Distributed KV Store) ==="
+  print "  Node A writes x=1 at VC=[1,0,0]"
+  print "  Node B writes x=2 at VC=[0,1,0]"
+  print "  Neither happens-before the other -> conflict!"
+  print "  Resolution: last-write-wins, CRDT merge, or user resolution"
+
+  print ""
+  print "Vector clocks: track causality in distributed systems without a global clock."

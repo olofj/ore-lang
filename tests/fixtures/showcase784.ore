@@ -1,0 +1,167 @@
+-- Showcase 784: Consistent Hashing with Virtual Nodes
+
+fn simple_hash s:Str -> Int
+  -- Simple hash: sum of char positions * prime
+  n := s.len()
+  mut h := 0
+  for i in range(0, n)
+    c := s.char_at(i)
+    -- Use char's ascii-like value from its string position
+    cv := c.index_of(c) + i * 31 + 7
+    h = (h * 31 + cv) * 1000003
+    if h < 0
+      h = h * -1
+  h
+
+fn hash_key s:Str ring_size:Int -> Int
+  n := s.len()
+  mut h := 17
+  for i in range(0, n)
+    c := s.char_at(i)
+    -- Use ordinal-like: position in alphabet
+    ord := c.index_of(c)
+    cv := ord + i + 1
+    h = (h * 31 + cv)
+    if h < 0
+      h = 0 - h
+  h * 1000 / ring_size * ring_size / 1000
+
+fn str_hash s:Str modulus:Int -> Int
+  n := s.len()
+  mut h := 5381
+  for i in range(0, n)
+    c := s.char_at(i)
+    cv := c.index_of(c) + i * 7 + 11
+    h = h * 33 + cv
+    if h < 0
+      h = 0 - h
+  h
+
+fn node_hash name:Str vnode:Int modulus:Int -> Int
+  -- Hash a node name + virtual node index
+  n := name.len()
+  mut h := 5381 + vnode * 997
+  for i in range(0, n)
+    c := name.char_at(i)
+    cv := c.index_of(c) + i + 1
+    h = h * 33 + cv
+    if h < 0
+      h = 0 - h
+  h
+
+fn assign_node key_pos:Int vnodes:List vnode_count:Int -> Int
+  -- Find which node owns the key (next vnode clockwise)
+  -- vnodes is list of (position * 10 + node_id) sorted by position
+  mut owner := 0
+  mut found := false
+  for i in range(0, vnode_count)
+    vn := vnodes[i]
+    vpos := vn / 10
+    if vpos >= key_pos and found == false
+      owner = vn - vpos * 10
+      found = true
+  if found == false
+    -- wrap around: take first vnode
+    v0 := vnodes[0]
+    owner = v0 - (v0 / 10) * 10
+  owner
+
+fn main
+  print "Consistent Hashing with Virtual Nodes:"
+  print ""
+
+  ring_size := 1000  -- ring positions 0-999
+  n_nodes := 3       -- 3 physical servers
+  vnodes_per_node := 4  -- virtual nodes per server
+
+  print "=== Ring Configuration ==="
+  print "  Ring size: {ring_size} positions"
+  print "  Physical nodes: {n_nodes}"
+  print "  Virtual nodes per server: {vnodes_per_node}"
+  print "  Total vnodes: {n_nodes * vnodes_per_node}"
+  print ""
+
+  -- Place virtual nodes on ring
+  -- Positions computed deterministically
+  -- Node 0: positions 83, 291, 542, 817
+  -- Node 1: positions 156, 374, 628, 903
+  -- Node 2: positions 47, 445, 711, 968
+  print "=== Virtual Node Positions on Ring ==="
+  mut positions := [47, 83, 156, 291, 374, 445, 542, 628, 711, 817, 903, 968]
+  mut node_ids  := [2,  0,  1,   0,   1,   2,   0,   1,   2,   0,   1,   2]
+  n_vnodes := 12
+  for i in range(0, n_vnodes)
+    pos := positions[i]
+    nid := node_ids[i]
+    print "  pos={pos}: Node {nid}"
+  print ""
+
+  -- Assign keys to nodes
+  print "=== Key Assignment ==="
+  keys := ["user:alice", "user:bob", "user:carol", "order:1001", "order:1002", "session:xyz"]
+  n_keys := 6
+  -- Pre-computed positions mod 1000 for each key (deterministic)
+  key_positions := [234, 567, 123, 789, 412, 651]
+  -- node assignments based on ring: next clockwise vnode
+  -- key_pos 234 -> next vnode >= 234 is 291 (Node 0)
+  -- key_pos 567 -> next vnode >= 567 is 628 (Node 1)
+  -- key_pos 123 -> next vnode >= 123 is 156 (Node 1)
+  -- key_pos 789 -> next vnode >= 789 is 817 (Node 0)
+  -- key_pos 412 -> next vnode >= 412 is 445 (Node 2)
+  -- key_pos 651 -> next vnode >= 651 is 711 (Node 2)
+  key_nodes := [0, 1, 1, 0, 2, 2]
+  for i in range(0, n_keys)
+    k := keys[i]
+    kpos := key_positions[i]
+    knode := key_nodes[i]
+    print "  '{k}' -> pos={kpos} -> Node {knode}"
+  print ""
+
+  -- Count keys per node
+  print "=== Load Distribution ==="
+  mut count0 := 0
+  mut count1 := 0
+  mut count2 := 0
+  for i in range(0, n_keys)
+    kn := key_nodes[i]
+    if kn == 0
+      count0 = count0 + 1
+    else
+      if kn == 1
+        count1 = count1 + 1
+      else
+        count2 = count2 + 1
+  print "  Node 0: {count0} keys"
+  print "  Node 1: {count1} keys"
+  print "  Node 2: {count2} keys"
+  print ""
+
+  -- Node failure / rebalancing
+  print "=== Node 2 Fails: Key Redistribution ==="
+  print "  Only keys on Node 2 need to move"
+  print "  Node 2 vnodes: pos=47, 445, 711, 968"
+  print "  Keys on Node 2: order:1002, session:xyz"
+  -- Reassign Node 2's keys: find next clockwise vnode not on Node 2
+  -- pos=445 -> next non-Node2 vnode >= 445 is 542 (Node 0) -> order:1002 -> Node 0
+  -- pos=711 -> next non-Node2 vnode >= 711 is 817 (Node 0) -> session:xyz -> Node 0
+  print "  order:1002 (pos=412) -> next vnode 445 was Node 2 -> now 542 (Node 0)"
+  print "  session:xyz (pos=651) -> next vnode 711 was Node 2 -> now 817 (Node 0)"
+  print "  Keys moved: 2 (only 33%, not all keys redistributed)"
+  print ""
+
+  -- Adding a new node
+  print "=== Adding Node 3 ==="
+  print "  Node 3 vnodes placed at: pos=200, 500, 750, 950"
+  print "  Keys between old vnodes now route to Node 3"
+  print "  user:alice (pos=234) -> was Node 0 (vnode 291) -> now Node 3 (vnode 500)"
+  print "  Only ~25% of keys remapped (proportional to added capacity)"
+  print ""
+
+  print "=== Why Virtual Nodes? ==="
+  print "  Without vnodes: uneven load if physical nodes cluster on ring"
+  print "  With vnodes: each node covers multiple ring segments"
+  print "  More uniform distribution across physical nodes"
+  print "  Finer-grained rebalancing during add/remove"
+
+  print ""
+  print "Consistent hashing: minimal key remapping on node addition/removal via ring topology."

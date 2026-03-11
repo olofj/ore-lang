@@ -1,0 +1,109 @@
+-- Showcase 783: LSM Tree (Log-Structured Merge)
+
+fn key_of entry:Str -> Str
+  entry.substr(0, 1)
+
+fn val_of entry:Str -> Str
+  entry.substr(2, entry.len() - 2)
+
+fn lookup level:List target:Str -> Str
+  n := level.count()
+  mut result := "NOT_FOUND"
+  for i in range(0, n)
+    entry := level[i]
+    ek := key_of(entry)
+    if ek == target
+      result = val_of(entry)
+  result
+
+fn merge_count a_count:Int b_count:Int overlap:Int -> Int
+  a_count + b_count - overlap
+
+fn main
+  print "LSM Tree (Log-Structured Merge) Simulation:"
+  print ""
+
+  print "=== LSM Tree Architecture ==="
+  print "  MemTable -> L0 (flush) -> L1 (compact) -> L2 (compact)"
+  print ""
+
+  -- Simulate writes to memtable then flush to L0
+  print "=== Write Batch 1 (to MemTable then flush) ==="
+  writes1 := ["a:1", "b:2", "c:3", "d:4", "e:5"]
+  for i in range(0, 5)
+    print "  Write {writes1[i]}"
+  mut l0_run1 := ["a:1", "b:2", "c:3", "d:4", "e:5"]
+  print "  Flushed to L0 Run1: [a:1, b:2, c:3, d:4, e:5]"
+  print ""
+
+  -- Second batch: some updates
+  print "=== Write Batch 2 ==="
+  writes2 := ["a:10", "b:20", "f:6", "g:7"]
+  for i in range(0, 4)
+    print "  Write {writes2[i]}"
+  mut l0_run2 := ["a:10", "b:20", "f:6", "g:7"]
+  print "  Flushed to L0 Run2: [a:10, b:20, f:6, g:7]"
+  print ""
+
+  -- Read path: newest first
+  print "=== Read Path (newest L0 run first) ==="
+  v_b := lookup(l0_run2, "b")
+  print "  lookup('b') in L0 Run2: {v_b} (found, stop)"
+  v_c := lookup(l0_run2, "c")
+  print "  lookup('c') in L0 Run2: {v_c}"
+  v_c2 := lookup(l0_run1, "c")
+  print "  lookup('c') in L0 Run1: {v_c2} (found)"
+  v_x := lookup(l0_run2, "x")
+  v_x2 := lookup(l0_run1, "x")
+  print "  lookup('x'): Run2={v_x}, Run1={v_x2} (not found)"
+  print ""
+
+  -- Compaction: merge L0 runs into L1 (manual since list-of-Str join is broken)
+  print "=== Compaction: L0 Run1 + L0 Run2 -> L1 ==="
+  -- Manually merge: a:10(b wins), b:20(b wins), c:3, d:4, e:5, f:6, g:7
+  -- a and b have newer values from run2
+  l1_size := merge_count(5, 4, 2)  -- 5 + 4 - 2 overlapping keys (a,b)
+  print "  L1 (merged): [a:10, b:20, c:3, d:4, e:5, f:6, g:7]"
+  print "  L1 size: {l1_size} entries (newer values override older)"
+  mut l1 := ["a:10", "b:20", "c:3", "d:4", "e:5", "f:6", "g:7"]
+  print ""
+
+  -- Third batch with a delete tombstone
+  print "=== Write Batch 3 + Tombstone Delete ==="
+  mut l0_run3 := ["c:DELETED", "h:8"]
+  print "  Flushed L0 Run3: [c:DELETED, h:8]"
+  v_c3 := lookup(l0_run3, "c")
+  print "  lookup('c') -> {v_c3} (tombstone, key deleted)"
+  print ""
+
+  -- Compaction L1 + L0 Run3 -> L2
+  print "=== Compaction L1 + L0 Run3 -> L2 ==="
+  -- merge: c:DELETED replaces c:3, h:8 added
+  -- after tombstone GC: remove c:DELETED
+  l2_pre_size := merge_count(7, 2, 1)  -- 7 + 2 - 1 overlap (c)
+  print "  Pre-GC L2: [a:10, b:20, c:DELETED, d:4, e:5, f:6, g:7, h:8]"
+  print "  Pre-GC size: {l2_pre_size}"
+  l2_final_size := l2_pre_size - 1  -- remove tombstone
+  print "  L2 (tombstones removed): [a:10, b:20, d:4, e:5, f:6, g:7, h:8]"
+  print "  Final L2 size: {l2_final_size} entries"
+  print ""
+
+  -- Lookup in L2 (after compaction)
+  print "=== Lookups After Full Compaction ==="
+  mut l2 := ["a:10", "b:20", "d:4", "e:5", "f:6", "g:7", "h:8"]
+  v_a2 := lookup(l2, "a")
+  v_c4 := lookup(l2, "c")
+  v_h := lookup(l2, "h")
+  print "  lookup('a'): {v_a2}"
+  print "  lookup('c'): {v_c4} (successfully deleted)"
+  print "  lookup('h'): {v_h}"
+  print ""
+
+  print "=== Performance Characteristics ==="
+  print "  Write: O(1) amortized (sequential append)"
+  print "  Read:  O(L * log N) across L levels"
+  print "  Compaction reduces read amplification over time"
+  print "  Used by: RocksDB, LevelDB, Cassandra, HBase"
+
+  print ""
+  print "LSM tree: write-optimized structure, sequential writes, compaction for read efficiency."

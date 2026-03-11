@@ -1,0 +1,122 @@
+-- Showcase 785: Raft Consensus Simulation
+
+fn majority n:Int -> Int
+  n / 2 + 1
+
+fn main
+  print "Raft Consensus Simulation:"
+  print ""
+
+  n_nodes := 5
+  quorum := majority(n_nodes)
+
+  print "=== Cluster: {n_nodes} nodes, quorum={quorum} ==="
+  print "  Nodes: N0(leader), N1, N2, N3, N4"
+  print ""
+
+  -- Phase 1: Leader Election
+  print "=== Phase 1: Leader Election ==="
+  print "  Initial state: all nodes Follower, term=0"
+  print ""
+  print "  N0 election timeout fires:"
+  print "    N0 -> Candidate, increments term to 1"
+  print "    N0 votes for itself (1 vote)"
+  print "    N0 sends RequestVote(term=1) to N1, N2, N3, N4"
+  print ""
+  print "  Responses:"
+
+  mut votes := 1  -- N0 votes for itself
+  mut term := 1
+  node_responses := ["granted", "granted", "granted", "denied"]
+  node_names := ["N1", "N2", "N3", "N4"]
+  for i in range(0, 4)
+    resp := node_responses[i]
+    nm := node_names[i]
+    if resp == "granted"
+      votes = votes + 1
+    print "    {nm}: {resp} (votes so far: {votes})"
+    if votes >= quorum
+      print "    N0 has quorum -> becomes Leader!"
+
+  print ""
+  print "  N0 is now Leader for term={term}"
+  print "  N0 sends heartbeats to all followers"
+  print ""
+
+  -- Phase 2: Log Replication
+  print "=== Phase 2: Log Replication ==="
+  print "  Client sends command: SET x=42"
+  print ""
+
+  -- Leader appends to log
+  print "  Step 1: N0(leader) appends log entry"
+  print "    Log[1]: term=1, cmd=SET x=42, committed=false"
+  print ""
+
+  -- Send AppendEntries to followers
+  print "  Step 2: N0 sends AppendEntries to followers"
+  mut acks := 1  -- leader counts itself
+  follower_acks := [true, true, true, false]  -- N4 is slow/partitioned
+  for i in range(0, 4)
+    nm := node_names[i]
+    ack := follower_acks[i]
+    if ack
+      acks = acks + 1
+      print "    {nm}: ACK (replicated, total acks={acks})"
+    else
+      print "    {nm}: no response (timeout)"
+    if acks >= quorum and acks == quorum
+      print "    Quorum reached! Entry can be committed."
+  print ""
+
+  -- Commit
+  print "  Step 3: N0 commits entry (quorum={quorum} acks received)"
+  print "    Log[1] marked committed=true"
+  print "    N0 applies: x = 42"
+  print "    N0 sends commit notification to followers"
+  print "    N1, N2, N3 apply: x = 42"
+  print ""
+
+  -- Client response
+  print "  Step 4: N0 responds to client: OK (x=42 committed)"
+  print ""
+
+  -- Phase 3: Leader failure and re-election
+  print "=== Phase 3: Leader Failure + Re-election ==="
+  print "  N0 crashes!"
+  print "  N1, N2, N3, N4 stop receiving heartbeats"
+  print ""
+  print "  N2 election timeout fires first:"
+  new_term := term + 1
+  print "    N2 -> Candidate, term={new_term}"
+  print "    N2 requests votes from N1, N3, N4 (N0 is down)"
+  print "    N1: granted (N2's log is up-to-date)"
+  print "    N3: granted"
+  print "    N4: granted"
+  new_votes := 4  -- N2 + N1 + N3 + N4
+  print "    N2 gets {new_votes} votes -> becomes Leader for term={new_term}"
+  print ""
+
+  -- Safety: N4 had stale log
+  print "=== Safety: Log Consistency ==="
+  print "  N4 missed the last commit (was slow)"
+  print "  N2(new leader) sends AppendEntries with missing entries"
+  print "  N4 catches up: applies log[1] = 'SET x=42'"
+  print "  All nodes now have consistent state: x=42"
+  print ""
+
+  -- Log state summary
+  print "=== Final Log State (all nodes) ==="
+  print "  Index | Term | Command   | Committed"
+  print "  1     | 1    | SET x=42  | true"
+  print ""
+
+  -- Raft properties
+  print "=== Raft Guarantees ==="
+  print "  Leader completeness: committed entries never lost"
+  print "  Log matching: same index+term means same command"
+  print "  State machine safety: all nodes apply same commands"
+  print "  Election safety: at most 1 leader per term"
+
+  print ""
+  print "Raft: understandable consensus algorithm with strong leader and log replication."

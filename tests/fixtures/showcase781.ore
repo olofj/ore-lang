@@ -1,0 +1,105 @@
+-- Showcase 781: Database Query Planner Simulation
+
+fn cost_seq_scan rows:Int -> Int
+  rows * 10
+
+fn cost_index_scan rows:Int selectivity:Int -> Int
+  -- selectivity in percent (1-100)
+  1000 + rows * selectivity / 10
+
+fn cost_hash_join left:Int right:Int -> Int
+  left * 10 + right * 2 + 500
+
+fn cost_nested_loop left:Int right:Int selectivity:Int -> Int
+  left * right * selectivity / 100 + left * 5
+
+fn cost_merge_join left:Int right:Int -> Int
+  -- Assumes both sides sorted
+  (left + right) * 12
+
+fn main
+  print "Database Query Planner Simulation:"
+  print ""
+
+  -- Table statistics
+  orders_rows := 10000
+  customers_rows := 1000
+  items_rows := 50000
+
+  print "=== Table Statistics ==="
+  print "  orders:    {orders_rows} rows"
+  print "  customers: {customers_rows} rows"
+  print "  items:     {items_rows} rows"
+  print ""
+
+  -- Query 1: SELECT * FROM orders WHERE customer_id = 42
+  print "=== Query 1: Point lookup on orders ==="
+  print "  SELECT * FROM orders WHERE customer_id = 42"
+  sel1 := 1  -- 1% selectivity
+  c_seq := cost_seq_scan(orders_rows)
+  c_idx := cost_index_scan(orders_rows, sel1)
+  print "  Plan A (seq scan):   cost={c_seq}"
+  print "  Plan B (index scan): cost={c_idx}"
+  if c_idx < c_seq
+    print "  Chosen: Index Scan (faster for selective queries)"
+  else
+    print "  Chosen: Sequential Scan"
+  print ""
+
+  -- Query 2: SELECT * FROM orders (full table)
+  print "=== Query 2: Full table scan ==="
+  print "  SELECT * FROM orders"
+  sel2 := 100  -- 100% selectivity
+  c_seq2 := cost_seq_scan(orders_rows)
+  c_idx2 := cost_index_scan(orders_rows, sel2)
+  print "  Plan A (seq scan):   cost={c_seq2}"
+  print "  Plan B (index scan): cost={c_idx2}"
+  if c_seq2 <= c_idx2
+    print "  Chosen: Sequential Scan (full table, index overhead not worth it)"
+  else
+    print "  Chosen: Index Scan"
+  print ""
+
+  -- Query 3: JOIN orders with customers
+  print "=== Query 3: Join orders x customers ==="
+  print "  SELECT * FROM orders JOIN customers ON orders.cust_id = customers.id"
+  c_hash := cost_hash_join(orders_rows, customers_rows)
+  c_nl   := cost_nested_loop(customers_rows, orders_rows, 10)
+  c_merge := cost_merge_join(orders_rows, customers_rows)
+  print "  Plan A (hash join):        cost={c_hash}"
+  print "  Plan B (nested loop):      cost={c_nl}"
+  print "  Plan C (merge join):       cost={c_merge}"
+  mut best_join := "hash join"
+  mut best_cost := c_hash
+  if c_nl < best_cost
+    best_cost = c_nl
+    best_join = "nested loop"
+  if c_merge < best_cost
+    best_cost = c_merge
+    best_join = "merge join"
+  print "  Chosen: {best_join} (cost={best_cost})"
+  print ""
+
+  -- Query 4: Multi-table join with selectivity
+  print "=== Query 4: Multi-table join ==="
+  print "  SELECT * FROM orders o JOIN customers c JOIN items i"
+  -- First join orders x customers, then join with items
+  step1_rows := orders_rows / 10  -- after filter
+  c_join1 := cost_hash_join(step1_rows, customers_rows)
+  c_join2 := cost_hash_join(step1_rows, items_rows)
+  total := c_join1 + c_join2
+  print "  Step 1 (orders x customers): cost={c_join1}"
+  print "  Step 2 (result x items):     cost={c_join2}"
+  print "  Total cost: {total}"
+  print ""
+
+  -- Query plan comparison summary
+  print "=== Query Plan Insights ==="
+  print "  Index scans win for selective queries (<10% rows)"
+  print "  Seq scans win for full/near-full table access"
+  print "  Hash joins efficient for large unsorted tables"
+  print "  Merge joins win when inputs already sorted"
+  print "  Join order matters: filter early to reduce row counts"
+
+  print ""
+  print "Query planner: cost-based optimizer chooses lowest-cost execution plan."

@@ -1,0 +1,143 @@
+-- Showcase 790: Rate Limiter (Token Bucket + Sliding Window)
+
+fn token_bucket_allow tokens:Int capacity:Int cost:Int -> Bool
+  tokens >= cost
+
+fn token_bucket_refill tokens:Int capacity:Int refill_rate:Int elapsed_ticks:Int -> Int
+  new_tokens := tokens + refill_rate * elapsed_ticks
+  if new_tokens > capacity
+    capacity
+  else
+    new_tokens
+
+fn sliding_window_count requests:List window_size:Int current_tick:Int -> Int
+  -- Count requests within [current_tick - window_size, current_tick]
+  mut cnt := 0
+  n := requests.count()
+  for i in range(0, n)
+    t := requests[i]
+    if t > current_tick - window_size and t <= current_tick
+      cnt = cnt + 1
+  cnt
+
+fn main
+  print "Rate Limiter (Token Bucket + Sliding Window):"
+  print ""
+
+  -- Part 1: Token Bucket
+  print "=== Part 1: Token Bucket Algorithm ==="
+  capacity := 10      -- max tokens
+  refill_rate := 2    -- tokens added per tick
+  cost_per_req := 1   -- tokens consumed per request
+
+  print "  Capacity: {capacity} tokens"
+  print "  Refill rate: {refill_rate} tokens/tick"
+  print "  Cost per request: {cost_per_req} token"
+  print ""
+
+  mut tb_tokens := 10  -- start full
+  mut tb_allowed := 0
+  mut tb_denied := 0
+
+  -- Simulate requests at various ticks
+  -- (tick, num_requests_at_tick)
+  req_ticks := [1, 1, 1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 4, 4, 4, 5, 6, 7, 7, 7]
+  n_reqs := 20
+
+  print "  Tick | Tokens | Request | Result  | Remaining"
+  mut prev_tick := 0
+  for i in range(0, n_reqs)
+    t := req_ticks[i]
+    -- Refill tokens since last tick
+    if t > prev_tick
+      elapsed := t - prev_tick
+      tb_tokens = token_bucket_refill(tb_tokens, capacity, refill_rate, elapsed)
+      prev_tick = t
+
+    allowed := token_bucket_allow(tb_tokens, capacity, cost_per_req)
+    if allowed
+      tb_tokens = tb_tokens - cost_per_req
+      tb_allowed = tb_allowed + 1
+      print "  {t}    | {tb_tokens + cost_per_req}      | req#{i + 1}  | ALLOW   | {tb_tokens}"
+    else
+      tb_denied = tb_denied + 1
+      print "  {t}    | {tb_tokens}      | req#{i + 1}  | DENY    | {tb_tokens}"
+
+  print ""
+  print "  Token Bucket Results:"
+  print "    Allowed: {tb_allowed}/{n_reqs}"
+  print "    Denied:  {tb_denied}/{n_reqs}"
+  print ""
+
+  -- Part 2: Sliding Window Counter
+  print "=== Part 2: Sliding Window Counter ==="
+  window_size := 3   -- 3 ticks
+  rate_limit := 5    -- max 5 requests per window
+
+  print "  Window size: {window_size} ticks"
+  print "  Rate limit: {rate_limit} requests per window"
+  print ""
+
+  -- Track all request timestamps
+  mut sw_requests := []
+  mut sw_allowed := 0
+  mut sw_denied := 0
+
+  print "  Tick | Window Count | Request | Result"
+  for i in range(0, n_reqs)
+    t := req_ticks[i]
+    -- Count requests in current window
+    cnt := sliding_window_count(sw_requests, window_size, t)
+    if cnt < rate_limit
+      sw_requests.push(t)
+      sw_allowed = sw_allowed + 1
+      print "  {t}    | {cnt}            | req#{i + 1}  | ALLOW"
+    else
+      sw_denied = sw_denied + 1
+      print "  {t}    | {cnt}            | req#{i + 1}  | DENY"
+
+  print ""
+  print "  Sliding Window Results:"
+  print "    Allowed: {sw_allowed}/{n_reqs}"
+  print "    Denied:  {sw_denied}/{n_reqs}"
+  print ""
+
+  -- Part 3: Algorithm comparison
+  print "=== Part 3: Algorithm Comparison ==="
+  print "  Token Bucket:"
+  print "    + Allows bursts up to capacity"
+  print "    + Smooth average rate"
+  print "    - Hard to implement in distributed systems"
+  print ""
+  print "  Sliding Window:"
+  print "    + Accurate per-window counting"
+  print "    + Prevents edge bursts"
+  print "    - Memory: stores all timestamps"
+  print ""
+  print "  Fixed Window Counter (simpler):"
+  print "    + Low memory: just a counter + reset time"
+  print "    - Allows 2x burst at window boundary"
+  print ""
+
+  -- Part 4: Distributed rate limiting
+  print "=== Part 4: Distributed Rate Limiting ==="
+  print "  Challenge: multiple servers, shared rate limit"
+  print "  Solution: Redis-backed atomic counter"
+  print "    INCR key; EXPIRE key window_size"
+  print "    If count > limit: deny"
+  print "  Lua script for atomicity:"
+  print "    EVAL: GET, check, INCR in one operation"
+  print ""
+
+  -- Burst example
+  print "=== Burst Handling ==="
+  burst_capacity := 20
+  burst_rate := 5
+  print "  Token bucket with capacity={burst_capacity}, rate={burst_rate}/tick"
+  print "  Tick 0: 20 tokens available"
+  print "  20 burst requests -> all allowed (tokens = 0)"
+  print "  Tick 1: +5 tokens -> 5 requests allowed"
+  print "  Gradual recovery: service continues under burst"
+
+  print ""
+  print "Rate limiter: controls request rate via token bucket (bursts) or sliding window (accuracy)."

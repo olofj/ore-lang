@@ -1,0 +1,139 @@
+-- Showcase 786: Two-Phase Commit Protocol
+
+fn check_unanimous vote_sum:Int n:Int -> Bool
+  -- vote_sum: sum of votes where YES=1, NO=0
+  -- unanimous if sum == n
+  vote_sum == n
+
+fn main
+  print "Two-Phase Commit Protocol (2PC):"
+  print ""
+
+  n_participants := 3
+  print "=== Setup ==="
+  print "  Coordinator: C"
+  print "  Participants: P1, P2, P3"
+  print "  Transaction: transfer $100 from account A to account B"
+  print ""
+
+  -- Scenario 1: Happy path - all commit
+  print "=== Scenario 1: Successful Commit ==="
+  print ""
+  print "  Transaction: BEGIN"
+  print "  P1: debit account A by $100"
+  print "  P2: credit account B by $100"
+  print "  P3: update audit log"
+  print ""
+
+  -- Phase 1: Prepare
+  print "--- Phase 1: PREPARE ---"
+  print "  C -> P1: PREPARE"
+  print "  C -> P2: PREPARE"
+  print "  C -> P3: PREPARE"
+  print ""
+  print "  Each participant:"
+  print "    - Acquires locks on affected rows"
+  print "    - Writes prepare record to WAL"
+  print "    - Holds changes but does NOT commit yet"
+  print ""
+
+  vote_sum1 := 3  -- all YES
+  print "  P1 -> C: VOTE-YES (locks acquired, WAL written)"
+  print "  P2 -> C: VOTE-YES (locks acquired, WAL written)"
+  print "  P3 -> C: VOTE-YES (locks acquired, WAL written)"
+  print ""
+
+  unanimous1 := check_unanimous(vote_sum1, 3)
+  print "  Coordinator: all YES={unanimous1} -> decision = COMMIT"
+  print ""
+
+  -- Phase 2: Commit
+  print "--- Phase 2: COMMIT ---"
+  print "  C writes COMMIT to its WAL (point of no return)"
+  print "  C -> P1: COMMIT"
+  print "  C -> P2: COMMIT"
+  print "  C -> P3: COMMIT"
+  print ""
+  print "  P1: applies changes, releases locks, ACKs"
+  print "  P2: applies changes, releases locks, ACKs"
+  print "  P3: applies changes, releases locks, ACKs"
+  print ""
+  print "  Result: Transaction COMMITTED"
+  print "    Account A: -$100"
+  print "    Account B: +$100"
+  print "    Audit: logged"
+  print ""
+
+  -- Scenario 2: One participant votes NO
+  print "=== Scenario 2: Abort (P2 votes NO) ==="
+  print ""
+  print "--- Phase 1: PREPARE ---"
+  print "  C -> P1, P2, P3: PREPARE"
+  print ""
+  print "  P1 -> C: VOTE-YES"
+  print "  P2 -> C: VOTE-NO (insufficient funds in account A)"
+  print "  P3 -> C: VOTE-YES"
+  print ""
+
+  vote_sum2 := 2  -- P2 voted NO (1 YES + 0 + 1 YES = 2)
+  unanimous2 := check_unanimous(vote_sum2, 3)
+  print "  Coordinator: all YES={unanimous2} -> decision = ABORT"
+  print ""
+
+  print "--- Phase 2: ABORT ---"
+  print "  C -> P1: ABORT"
+  print "  C -> P2: ABORT"
+  print "  C -> P3: ABORT"
+  print ""
+  print "  P1: rolls back changes, releases locks, ACKs"
+  print "  P2: rolls back changes, releases locks, ACKs"
+  print "  P3: rolls back changes, releases locks, ACKs"
+  print ""
+  print "  Result: Transaction ABORTED (no changes applied)"
+  print ""
+
+  -- Scenario 3: Coordinator crashes after prepare
+  print "=== Scenario 3: Coordinator Crash During Phase 2 ==="
+  print ""
+  print "  All participants voted YES"
+  print "  Coordinator wrote COMMIT to WAL"
+  print "  Coordinator crashes before sending COMMIT to participants"
+  print ""
+  print "  Participants are BLOCKED (holding locks, waiting):"
+  print "    Cannot commit without coordinator decision"
+  print "    Cannot abort (coordinator may have committed)"
+  print "    This is the 2PC blocking problem!"
+  print ""
+  print "  Recovery: new coordinator reads WAL"
+  print "    If COMMIT in WAL: send COMMIT to all participants"
+  print "    If PREPARE in WAL: send ABORT to all participants"
+  print "  Coordinator recovers, sends COMMIT -> participants commit"
+  print ""
+
+  -- Scenario 4: Participant crash
+  print "=== Scenario 4: Participant Crash After PREPARE ==="
+  print ""
+  print "  P2 crashes after voting YES"
+  print "  Coordinator still collects votes (YES, -, YES)"
+  print "  Coordinator waits for P2 timeout -> decides ABORT"
+  print "  Or: coordinator retries P2 (it may recover)"
+  print ""
+  print "  P2 recovers: reads its WAL"
+  print "    Sees PREPARE record -> asks coordinator for decision"
+  print "    Coordinator says: COMMIT"
+  print "    P2 applies changes and acknowledges"
+  print ""
+
+  -- Summary
+  print "=== 2PC Properties ==="
+  print "  Atomicity: all commit or none commit"
+  print "  Consistency: transaction either fully applied or rolled back"
+  print "  Blocking: coordinator failure blocks participants"
+  print "  Latency: 2 round trips (prepare + commit)"
+  print "  Used in: distributed databases, XA transactions"
+  print ""
+  print "  Limitation: single coordinator is bottleneck and failure point"
+  print "  Solution: 3PC adds pre-commit phase to avoid blocking"
+
+  print ""
+  print "Two-phase commit: atomic distributed transactions with prepare and commit phases."

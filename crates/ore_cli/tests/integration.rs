@@ -10042,6 +10042,186 @@ fn showcase770_decision_tree() {
 }
 
 #[test]
+fn showcase771_floyd_warshall() {
+    let out = run_ore("showcase771.ore");
+    assert!(out.contains("Floyd-Warshall All-Pairs Shortest Paths:"), "got: {out}");
+    assert!(out.contains("V0 to V2: 50 (via V3->V2: 30+20=50)"), "got: {out}");
+    assert!(out.contains("V0 to V4: 60 (via V3->V2->V4: 30+20+10=60)"), "got: {out}");
+    assert!(out.contains("Floyd-Warshall: O(V^3) dynamic programming for all-pairs shortest paths."), "got: {out}");
+}
+
+#[test]
+fn showcase772_bellman_ford() {
+    let out = run_ore("showcase772.ore");
+    assert!(out.contains("Bellman-Ford Shortest Paths:"), "got: {out}");
+    assert!(out.contains("No negative cycles detected."), "got: {out}");
+    assert!(out.contains("Iteration 1: 6 updates"), "got: {out}");
+    assert!(out.contains("Bellman-Ford: O(V*E) single-source shortest paths with negative edge support."), "got: {out}");
+}
+
+#[test]
+fn showcase773_prims_mst() {
+    let out = run_ore("showcase773.ore");
+    assert!(out.contains("Prim's Minimum Spanning Tree:"), "got: {out}");
+    assert!(out.contains("Total MST weight: 27"), "got: {out}");
+    assert!(out.contains("MST edges: 5"), "got: {out}");
+    assert!(out.contains("Prim's algorithm: greedy MST construction, O(V^2) with adjacency matrix."), "got: {out}");
+}
+
+#[test]
+fn showcase774_kruskal() {
+    let out = run_ore("showcase774.ore");
+    assert!(out.contains("Kruskal's Minimum Spanning Tree with Union-Find:"), "got: {out}");
+    assert!(out.contains("Total MST weight: 38"), "got: {out}");
+    assert!(out.contains("MST edges: 6 (need 6 for 7 vertices)"), "got: {out}");
+    assert!(out.contains("Kruskal's: O(E log E) MST via edge sorting and cycle detection."), "got: {out}");
+}
+
+#[test]
+fn showcase775_ford_fulkerson() {
+    let out = run_ore("showcase775.ore");
+    assert!(out.contains("Network Flow (Ford-Fulkerson):"), "got: {out}");
+    assert!(out.contains("Maximum flow: 23"), "got: {out}");
+    assert!(out.contains("Augmenting paths found: 3"), "got: {out}");
+    assert!(out.contains("Ford-Fulkerson: finds max flow via repeated augmenting paths in residual graph."), "got: {out}");
+}
+
+#[test]
+fn showcase776_bipartite_matching() {
+    let out = run_ore("showcase776.ore");
+    assert!(out.contains("Bipartite Matching:"), "got: {out}");
+    assert!(out.contains("Maximum matching size: 5"), "got: {out}");
+    assert!(out.contains("Unmatched jobs: 0"), "got: {out}");
+    assert!(out.contains("Bipartite matching: O(V*E) via augmenting paths for optimal assignment."), "got: {out}");
+}
+
+#[test]
+fn showcase777_tarjan_scc() {
+    let out = run_ore("showcase777.ore");
+    assert!(out.contains("Tarjan's Strongly Connected Components:"), "got: {out}");
+    assert!(out.contains("Found 3 SCCs:"), "got: {out}");
+    assert!(out.contains("SCC 0: V5, V6"), "got: {out}");
+    assert!(out.contains("Tarjan's algorithm: O(V+E) SCC decomposition using DFS low-link values."), "got: {out}");
+}
+
+#[test]
+fn showcase778_articulation_points() {
+    let out = run_ore("showcase778.ore");
+    assert!(out.contains("Articulation Points and Bridges:"), "got: {out}");
+    assert!(out.contains("Articulation Points (2 found)"), "got: {out}");
+    assert!(out.contains("Bridges (1 found)"), "got: {out}");
+    assert!(out.contains("Articulation points and bridges: O(V+E) DFS finds single points of failure."), "got: {out}");
+}
+
+#[test]
+fn showcase779_euler_path() {
+    let out = run_ore("showcase779.ore");
+    assert!(out.contains("Euler Path and Circuit (Hierholzer's Algorithm):"), "got: {out}");
+    assert!(out.contains("Euler circuit exists (all even degrees)!"), "got: {out}");
+    assert!(out.contains("Edges traversed: 10 (expected 10)"), "got: {out}");
+    assert!(out.contains("Hierholzer's algorithm: finds Euler circuit/path by iterative cycle splicing."), "got: {out}");
+}
+
+#[test]
+fn showcase780_graph_coloring() {
+    let out = run_ore("showcase780.ore");
+    assert!(out.contains("Graph Coloring (Greedy Algorithm):"), "got: {out}");
+    assert!(out.contains("Colors used: 3"), "got: {out}");
+    assert!(out.contains("Valid coloring! No conflicts found."), "got: {out}");
+    assert!(out.contains("Greedy graph coloring: simple O(V^2) approximation, optimal for some graph classes."), "got: {out}");
+}
+
+#[test]
+fn showcase781_query_planner() {
+    let out = run_ore("showcase781.ore");
+    assert!(out.contains("Database Query Planner Simulation:"), "got: {out}");
+    assert!(out.contains("Chosen: Index Scan (faster for selective queries)"), "got: {out}");
+    assert!(out.contains("Chosen: Sequential Scan (full table, index overhead not worth it)"), "got: {out}");
+    assert!(out.contains("Query planner: cost-based optimizer chooses lowest-cost execution plan."), "got: {out}");
+}
+
+#[test]
+fn showcase782_bplus_tree() {
+    let out = run_ore("showcase782.ore");
+    assert!(out.contains("B+ Tree Simulation:"), "got: {out}");
+    assert!(out.contains("Root keys (separators): [10, 17, 30]"), "got: {out}");
+    assert!(out.contains("Result: [7, 10, 12, 17, 20]"), "got: {out}");
+    assert!(out.contains("B+ tree: balanced tree with all data in leaves, ideal for database indexing."), "got: {out}");
+}
+
+#[test]
+fn showcase783_lsm_tree() {
+    let out = run_ore("showcase783.ore");
+    assert!(out.contains("LSM Tree (Log-Structured Merge) Simulation:"), "got: {out}");
+    assert!(out.contains("lookup('b') in L0 Run2: 20 (found, stop)"), "got: {out}");
+    assert!(out.contains("L2 (tombstones removed): [a:10, b:20, d:4, e:5, f:6, g:7, h:8]"), "got: {out}");
+    assert!(out.contains("LSM tree: write-optimized structure, sequential writes, compaction for read efficiency."), "got: {out}");
+}
+
+#[test]
+fn showcase784_consistent_hashing() {
+    let out = run_ore("showcase784.ore");
+    assert!(out.contains("Consistent Hashing with Virtual Nodes:"), "got: {out}");
+    assert!(out.contains("Total vnodes: 12"), "got: {out}");
+    assert!(out.contains("Node 0: 2 keys"), "got: {out}");
+    assert!(out.contains("Consistent hashing: minimal key remapping on node addition/removal via ring topology."), "got: {out}");
+}
+
+#[test]
+fn showcase785_raft_consensus() {
+    let out = run_ore("showcase785.ore");
+    assert!(out.contains("Raft Consensus Simulation:"), "got: {out}");
+    assert!(out.contains("N0 has quorum -> becomes Leader!"), "got: {out}");
+    assert!(out.contains("Quorum reached! Entry can be committed."), "got: {out}");
+    assert!(out.contains("Raft: understandable consensus algorithm with strong leader and log replication."), "got: {out}");
+}
+
+#[test]
+fn showcase786_two_phase_commit() {
+    let out = run_ore("showcase786.ore");
+    assert!(out.contains("Two-Phase Commit Protocol (2PC):"), "got: {out}");
+    assert!(out.contains("Coordinator: all YES=true -> decision = COMMIT"), "got: {out}");
+    assert!(out.contains("Coordinator: all YES=false -> decision = ABORT"), "got: {out}");
+    assert!(out.contains("Two-phase commit: atomic distributed transactions with prepare and commit phases."), "got: {out}");
+}
+
+#[test]
+fn showcase787_vector_clock() {
+    let out = run_ore("showcase787.ore");
+    assert!(out.contains("Vector Clock Simulation:"), "got: {out}");
+    assert!(out.contains("e3 happens-before e7: true (transitive causality)"), "got: {out}");
+    assert!(out.contains("e8 happens-before e7: false (no: A didn't affect C here)"), "got: {out}");
+    assert!(out.contains("Vector clocks: track causality in distributed systems without a global clock."), "got: {out}");
+}
+
+#[test]
+fn showcase788_gossip_protocol() {
+    let out = run_ore("showcase788.ore");
+    assert!(out.contains("Gossip Protocol Simulation:"), "got: {out}");
+    assert!(out.contains("Knowing nodes: 10/10"), "got: {out}");
+    assert!(out.contains("State: [1111111111]"), "got: {out}");
+    assert!(out.contains("Gossip protocol: epidemic information spreading with O(log N) convergence."), "got: {out}");
+}
+
+#[test]
+fn showcase789_circuit_breaker() {
+    let out = run_ore("showcase789.ore");
+    assert!(out.contains("Circuit Breaker Pattern:"), "got: {out}");
+    assert!(out.contains("OPEN (tripped!)"), "got: {out}");
+    assert!(out.contains("CLOSED (recovered!)"), "got: {out}");
+    assert!(out.contains("Circuit breaker: protects services from cascade failures with automatic recovery."), "got: {out}");
+}
+
+#[test]
+fn showcase790_rate_limiter() {
+    let out = run_ore("showcase790.ore");
+    assert!(out.contains("Rate Limiter (Token Bucket + Sliding Window):"), "got: {out}");
+    assert!(out.contains("Allowed: 20/20"), "got: {out}");
+    assert!(out.contains("Sliding Window Results:"), "got: {out}");
+    assert!(out.contains("Rate limiter: controls request rate via token bucket (bursts) or sliding window (accuracy)."), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
