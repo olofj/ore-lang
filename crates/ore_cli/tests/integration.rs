@@ -6003,6 +6003,132 @@ fn showcase450_graph_coloring() {
 }
 
 #[test]
+fn showcase451_physics() {
+    let out = run_ore("showcase451.ore");
+    assert!(out.contains("Simple Physics Engine:"));
+    assert!(out.contains("Projectile Motion"));
+    assert!(out.contains("Momentum conserved!"));
+    assert!(out.contains("Kinetic energy conserved!"));
+    assert!(out.contains("Bouncing Ball"));
+    assert!(out.contains("Bounce 5:"));
+    assert!(out.contains("Physics engine: projectile motion, elastic collisions, bouncing simulation."));
+}
+
+#[test]
+fn showcase452_music_theory() {
+    let out = run_ore("showcase452.ore");
+    assert!(out.contains("Music Theory Engine:"));
+    assert!(out.contains("C Major: C D E F G A B C"));
+    assert!(out.contains("A Minor: A B C D E F G A"));
+    assert!(out.contains("C Major: C E G"));
+    assert!(out.contains("C Dominant 7th: C E G A#"));
+    assert!(out.contains("Circle of Fifths"));
+    assert!(out.contains("C -> G -> D -> A -> E -> B"));
+    assert!(out.contains("I-V-vi-IV: C -> G -> Am -> F"));
+    assert!(out.contains("Music theory: scales, chords, intervals, circle of fifths."));
+}
+
+#[test]
+fn showcase453_calendar() {
+    let out = run_ore("showcase453.ore");
+    assert!(out.contains("Calendar Calculations:"));
+    assert!(out.contains("Moon Landing (1969-7-20): Sunday"));
+    assert!(out.contains("Y2K (2000-1-1): Saturday"));
+    assert!(out.contains("Total: 366 days (leap year)"));
+    assert!(out.contains("Feb: 29 days"));
+    assert!(out.contains("Count: 13"));
+    assert!(out.contains("Calendar: day of week, date differences, leap years, month analysis."));
+}
+
+#[test]
+fn showcase454_color_spaces() {
+    let out = run_ore("showcase454.ore");
+    assert!(out.contains("Color Space Conversions:"));
+    assert!(out.contains("Red: RGB(255, 0, 0) = #FF0000"));
+    assert!(out.contains("White: RGB(255, 255, 255) = #FFFFFF"));
+    assert!(out.contains("Red: HSL(0, 100%, 50%)"));
+    assert!(out.contains("#808080 -> RGB(128, 128, 128) [Gray]"));
+    assert!(out.contains("Grayscale Conversion"));
+    assert!(out.contains("Color spaces: RGB, HSL, hex, blending, grayscale conversion."));
+}
+
+#[test]
+fn showcase455_unit_converter() {
+    let out = run_ore("showcase455.ore");
+    assert!(out.contains("Unit Converter:"));
+    assert!(out.contains("0C = 32F = 273K"));
+    assert!(out.contains("100C = 212F = 373K"));
+    assert!(out.contains("-40C = -40F"));
+    assert!(out.contains("100 km/h = 62 mph"));
+    assert!(out.contains("1 pound = 0.454 kg"));
+    assert!(out.contains("Unit converter: temperature, distance, weight, speed, area."));
+}
+
+#[test]
+fn showcase456_probability() {
+    let out = run_ore("showcase456.ore");
+    assert!(out.contains("Probability Calculations:"));
+    assert!(out.contains("10! = 3628800"));
+    assert!(out.contains("C(5,*): 1 5 10 10 5 1"));
+    assert!(out.contains("Sum 7: 6 ways"));
+    assert!(out.contains("Expected value of 2d6: 7"));
+    assert!(out.contains("Bayes' Theorem"));
+    assert!(out.contains("23 people: ~50.7% chance of shared birthday"));
+    assert!(out.contains("Total 5-card hands: 2598960"));
+    assert!(out.contains("Probability: combinations, dice, Bayes theorem, birthday problem, poker."));
+}
+
+#[test]
+fn showcase457_database() {
+    let out = run_ore("showcase457.ore");
+    assert!(out.contains("Simple Database Engine:"));
+    assert!(out.contains("Total records: 8"));
+    assert!(out.contains("Eng: Alice, Bob, Diana, Grace"));
+    assert!(out.contains("Query: salary > 80000"));
+    assert!(out.contains("AVG(salary) GROUP BY dept"));
+    assert!(out.contains("Eng: avg=$83750 (count=4)"));
+    assert!(out.contains("Binary Search on Salary Index"));
+    assert!(out.contains("Database engine: insert, index, query, binary search, update."));
+}
+
+#[test]
+fn showcase458_text_adventure() {
+    let out = run_ore("showcase458.ore");
+    assert!(out.contains("Text Adventure Game Engine:"));
+    assert!(out.contains("You are in: Entrance Hall"));
+    assert!(out.contains("Picked up: torch"));
+    assert!(out.contains("You go north."));
+    assert!(out.contains("You are now in: Library"));
+    assert!(out.contains("Items collected: 5/5"));
+    assert!(out.contains("Final score: 50"));
+    assert!(out.contains("Text adventure: rooms, items, navigation, inventory, scoring."));
+}
+
+#[test]
+fn showcase459_compression() {
+    let out = run_ore("showcase459.ore");
+    assert!(out.contains("Compression Analysis Engine:"));
+    assert!(out.contains("\"AAABBBCCCCDDAA\" -> \"3A3B4C2D2A\""));
+    assert!(out.contains("\"AAAAAAAAA\" -> \"9A\" (ratio: 22%)"));
+    assert!(out.contains("Frequency Analysis"));
+    assert!(out.contains("Dictionary Compression"));
+    assert!(out.contains("Compression analysis: RLE, frequency, entropy, dictionary methods."));
+}
+
+#[test]
+fn showcase460_differentiation() {
+    let out = run_ore("showcase460.ore");
+    assert!(out.contains("Symbolic Differentiation Engine:"));
+    assert!(out.contains("d/dx [x^n]   = n*x^(n-1) (power rule)"));
+    assert!(out.contains("f'(x) = 6x + 5"));
+    assert!(out.contains("f(1) = 15, f'(1) = 11"));
+    assert!(out.contains("Newton's Method"));
+    assert!(out.contains("Step 4: x = 1.414213"));
+    assert!(out.contains("Both methods agree!"));
+    assert!(out.contains("Symbolic differentiation: polynomial, product, chain, Newton's method."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

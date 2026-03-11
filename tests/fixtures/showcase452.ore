@@ -1,0 +1,149 @@
+-- Showcase 452: Music theory (scales, chords, intervals)
+
+fn note_name n:Int -> Str
+  idx := n % 12
+  if idx == 0
+    return "C"
+  if idx == 1
+    return "C#"
+  if idx == 2
+    return "D"
+  if idx == 3
+    return "D#"
+  if idx == 4
+    return "E"
+  if idx == 5
+    return "F"
+  if idx == 6
+    return "F#"
+  if idx == 7
+    return "G"
+  if idx == 8
+    return "G#"
+  if idx == 9
+    return "A"
+  if idx == 10
+    return "A#"
+  "B"
+
+fn interval_name semitones:Int -> Str
+  if semitones == 0
+    return "Unison"
+  if semitones == 1
+    return "Minor 2nd"
+  if semitones == 2
+    return "Major 2nd"
+  if semitones == 3
+    return "Minor 3rd"
+  if semitones == 4
+    return "Major 3rd"
+  if semitones == 5
+    return "Perfect 4th"
+  if semitones == 6
+    return "Tritone"
+  if semitones == 7
+    return "Perfect 5th"
+  if semitones == 8
+    return "Minor 6th"
+  if semitones == 9
+    return "Major 6th"
+  if semitones == 10
+    return "Minor 7th"
+  if semitones == 11
+    return "Major 7th"
+  "Octave"
+
+fn main
+  print "Music Theory Engine:"
+  print ""
+
+  -- Part 1: Major scale construction
+  print "=== Part 1: Major Scales ==="
+  -- Major scale intervals: W W H W W W H (2 2 1 2 2 2 1)
+  major_steps := [2, 2, 1, 2, 2, 2, 1]
+
+  roots := [0, 2, 7]
+  root_names := ["C", "D", "G"]
+  for ri in range(0, 3)
+    root := roots[ri]
+    mut notes := []
+    mut current := root
+    notes.push(note_name(current))
+    for s in range(0, 7)
+      current = current + major_steps[s]
+      notes.push(note_name(current))
+    print "  {root_names[ri]} Major: {notes | join(" ")}"
+
+  -- Part 2: Minor scale
+  print ""
+  print "=== Part 2: Minor Scales ==="
+  minor_steps := [2, 1, 2, 2, 1, 2, 2]
+  minor_roots := [9, 4, 2]
+  minor_names := ["A", "E", "D"]
+  for ri in range(0, 3)
+    root := minor_roots[ri]
+    mut notes := []
+    mut current := root
+    notes.push(note_name(current))
+    for s in range(0, 7)
+      current = current + minor_steps[s]
+      notes.push(note_name(current))
+    print "  {minor_names[ri]} Minor: {notes | join(" ")}"
+
+  -- Part 3: Chord construction
+  print ""
+  print "=== Part 3: Chord Types ==="
+
+  -- Major triad: root, major 3rd (+4), perfect 5th (+7)
+  -- Minor triad: root, minor 3rd (+3), perfect 5th (+7)
+  -- Diminished: root, minor 3rd (+3), diminished 5th (+6)
+  -- Augmented: root, major 3rd (+4), augmented 5th (+8)
+  -- Dominant 7th: root, +4, +7, +10
+
+  chord_names := ["Major", "Minor", "Diminished", "Augmented", "Dominant 7th"]
+  -- Store chord intervals as flat list, 4 intervals per chord (0 = unused)
+  chord_sizes := [3, 3, 3, 3, 4]
+  c_int := [0, 4, 7, 0, 0, 3, 7, 0, 0, 3, 6, 0, 0, 4, 8, 0, 0, 4, 7, 10]
+
+  for ci in range(0, 5)
+    base := ci * 4
+    sz := chord_sizes[ci]
+    mut chord_notes := []
+    for ni in range(0, sz)
+      chord_notes.push(note_name(c_int[base + ni]))
+    print "  C {chord_names[ci]}: {chord_notes | join(" ")}"
+
+  -- Part 4: Intervals
+  print ""
+  print "=== Part 4: Intervals from C ==="
+  for i in range(0, 13)
+    print "  C to {note_name(i)}: {interval_name(i)} ({i} semitones)"
+
+  -- Part 5: Circle of Fifths
+  print ""
+  print "=== Part 5: Circle of Fifths ==="
+  mut circle := []
+  mut n := 0
+  for i in range(0, 12)
+    circle.push(note_name(n))
+    n = (n + 7) % 12
+  print "  {circle | join(" -> ")}"
+
+  -- Part 6: Chord progression analysis
+  print ""
+  print "=== Part 6: Common Progressions (Key of C) ==="
+  -- I-V-vi-IV in C: C G Am F
+  c_scale := [0, 2, 4, 5, 7, 9, 11]
+  prog_degrees := [1, 5, 6, 4]
+  prog_types := ["", "", "m", ""]
+  prog_names := ["I", "V", "vi", "IV"]
+  mut prog_notes := []
+  for i in range(0, 4)
+    deg := prog_degrees[i] - 1
+    root_note := note_name(c_scale[deg])
+    prog_notes.push("{root_note}{prog_types[i]}")
+  print "  I-V-vi-IV: {prog_notes | join(" -> ")}"
+  print "  (Most popular progression in pop music)"
+
+  print ""
+  print "Music theory: scales, chords, intervals, circle of fifths."

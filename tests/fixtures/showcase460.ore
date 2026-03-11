@@ -1,0 +1,142 @@
+-- Showcase 460: Symbolic differentiation (derivative rules)
+
+-- Represent expressions as encoded strings:
+-- "const:N" = constant N
+-- "var:x" = variable x
+-- "add:L:R" = L + R
+-- "mul:L:R" = L * R
+-- "pow:B:N" = B^N (where N is integer)
+
+-- We'll use a simpler approach: represent expressions as trees via parallel arrays
+-- node_type: 0=const, 1=var, 2=add, 3=mul, 4=pow, 5=sub
+-- node_val: for const = value, for pow = exponent
+-- node_left, node_right: child indices (-1 if none)
+-- node_var: variable name for var nodes
+
+fn main
+  print "Symbolic Differentiation Engine:"
+  print ""
+
+  -- Part 1: Basic derivative rules
+  print "=== Part 1: Derivative Rules ==="
+  print "  d/dx [c]     = 0         (constant rule)"
+  print "  d/dx [x]     = 1         (variable rule)"
+  print "  d/dx [f+g]   = f'+g'     (sum rule)"
+  print "  d/dx [f-g]   = f'-g'     (difference rule)"
+  print "  d/dx [c*f]   = c*f'      (constant multiple)"
+  print "  d/dx [f*g]   = f'*g+f*g' (product rule)"
+  print "  d/dx [x^n]   = n*x^(n-1) (power rule)"
+
+  -- Part 2: Apply rules to specific expressions
+  print ""
+  print "=== Part 2: Polynomial Derivatives ==="
+
+  -- f(x) = 3x^2 + 5x + 7
+  -- f'(x) = 6x + 5
+  print "  f(x) = 3x^2 + 5x + 7"
+  -- Coefficients: [7, 5, 3] (degree 0, 1, 2)
+  coeffs1 := [7, 5, 3]
+  -- Derivative: multiply by power, shift down
+  mut deriv1 := []
+  for i in range(1, 3)
+    deriv1.push(coeffs1[i] * i)
+  print "  f'(x) = {deriv1[1]}x + {deriv1[0]}"
+
+  -- g(x) = x^4 - 2x^3 + 3x^2 - x + 1
+  -- g'(x) = 4x^3 - 6x^2 + 6x - 1
+  print ""
+  print "  g(x) = x^4 - 2x^3 + 3x^2 - x + 1"
+  coeffs2 := [1, -1, 3, -2, 1]
+  mut deriv2 := []
+  for i in range(1, 5)
+    deriv2.push(coeffs2[i] * i)
+  -- deriv2 = [-1, 6, -6, 4]
+  print "  g'(x) = {deriv2[3]}x^3 + ({deriv2[2]})x^2 + {deriv2[1]}x + ({deriv2[0]})"
+
+  -- Second derivative
+  mut deriv2_2 := []
+  for i in range(1, 4)
+    deriv2_2.push(deriv2[i] * i)
+  print "  g''(x) = {deriv2_2[2]}x^2 + ({deriv2_2[1]})x + {deriv2_2[0]}"
+
+  -- Part 3: Evaluate derivatives at specific points
+  print ""
+  print "=== Part 3: Evaluating Derivatives ==="
+  -- f(x) = 3x^2 + 5x + 7, f'(x) = 6x + 5
+  xs := [0, 1, 2, -1, 3]
+  for xi in range(0, 5)
+    x := xs[xi]
+    fx := 3 * x * x + 5 * x + 7
+    fpx := 6 * x + 5
+    print "  f({x}) = {fx}, f'({x}) = {fpx}"
+
+  -- Part 4: Newton's method for root finding
+  print ""
+  print "=== Part 4: Newton's Method ==="
+  -- Find root of f(x) = x^2 - 2 (sqrt(2))
+  -- f'(x) = 2x
+  -- x_new = x - f(x)/f'(x)
+  print "  Finding sqrt(2) via Newton's method on x^2 - 2:"
+  mut xn := 2.0  -- initial guess
+  for i in range(0, 8)
+    fx := xn * xn - 2.0
+    fpx := 2.0 * xn
+    xn = xn - fx / fpx
+    -- Display with precision
+    xn_int := (xn * 1000000.0).to_int()
+    xn_disp := xn_int.to_float() / 1000000.0
+    print "    Step {i + 1}: x = {xn_disp}"
+
+  -- Part 5: Polynomial multiplication and derivative
+  print ""
+  print "=== Part 5: Product Rule Verification ==="
+  -- p(x) = (2x + 1)(x - 3) = 2x^2 - 5x - 3
+  -- By product rule: p'(x) = 2*(x-3) + (2x+1)*1 = 2x-6+2x+1 = 4x-5
+  -- By expanding first: p(x) = 2x^2-5x-3, p'(x) = 4x-5
+  print "  p(x) = (2x+1)(x-3)"
+  print "  Product rule: p'(x) = 2*(x-3) + (2x+1)*1 = 4x - 5"
+  print "  Expand first: p(x) = 2x^2 - 5x - 3, p'(x) = 4x - 5"
+  print "  Both methods agree!"
+
+  -- Verify numerically
+  print "  Verification:"
+  for xi in range(0, 5)
+    x := xs[xi]
+    -- Direct derivative
+    dp := 4 * x - 5
+    -- Numerical derivative: (p(x+h) - p(x)) / h, h=1 (coarse)
+    px := 2 * x * x - 5 * x - 3
+    px1 := 2 * (x + 1) * (x + 1) - 5 * (x + 1) - 3
+    numerical := px1 - px
+    print "    x={x}: p'(x)={dp}, numerical~={numerical}"
+
+  -- Part 6: Chain rule examples
+  print ""
+  print "=== Part 6: Chain Rule ==="
+  print "  d/dx [(2x+1)^3] = 3*(2x+1)^2 * 2 = 6*(2x+1)^2"
+  print "  d/dx [(x^2-1)^4] = 4*(x^2-1)^3 * 2x = 8x*(x^2-1)^3"
+  print "  d/dx [sin(3x)] = cos(3x) * 3 = 3*cos(3x)"
+
+  -- Evaluate chain rule: d/dx [(2x+1)^3] = 6*(2x+1)^2
+  print "  Evaluating d/dx [(2x+1)^3] = 6*(2x+1)^2:"
+  for xi in range(0, 5)
+    x := xs[xi]
+    inner := 2 * x + 1
+    deriv := 6 * inner * inner
+    print "    x={x}: derivative = {deriv}"
+
+  -- Part 7: Higher-order derivatives
+  print ""
+  print "=== Part 7: Higher-Order Derivatives ==="
+  print "  f(x) = x^5"
+  print "  f'(x)   = 5x^4"
+  print "  f''(x)  = 20x^3"
+  print "  f'''(x) = 60x^2"
+  print "  f''''(x) = 120x"
+  print "  f'''''(x) = 120"
+
+  -- Compute factorials / coefficients for x^n
+  print "  General: d^k/dx^k [x^n] = n!/(n-k)! * x^(n-k)"
+
+  print ""
+  print "Symbolic differentiation: polynomial, product, chain, Newton's method."

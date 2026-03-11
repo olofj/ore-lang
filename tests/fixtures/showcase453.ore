@@ -1,0 +1,124 @@
+-- Showcase 453: Calendar calculations (day of week, days between dates)
+
+fn is_leap y:Int -> Int
+  if y % 400 == 0
+    return 1
+  if y % 100 == 0
+    return 0
+  if y % 4 == 0
+    return 1
+  0
+
+fn days_in_month m:Int y:Int -> Int
+  if m == 2
+    return 28 + is_leap(y)
+  if m == 4 or m == 6 or m == 9 or m == 11
+    return 30
+  31
+
+fn day_of_week y:Int m:Int d:Int -> Int
+  -- Zeller's congruence (Gregorian)
+  mut yy := y
+  mut mm := m
+  if mm < 3
+    mm = mm + 12
+    yy = yy - 1
+  k := yy % 100
+  j := yy / 100
+  h := (d + (13 * (mm + 1)) / 5 + k + k / 4 + j / 4 + 5 * j) % 7
+  -- h: 0=Sat, 1=Sun, 2=Mon, ..., 6=Fri
+  -- Convert to 0=Sun, 1=Mon, ..., 6=Sat
+  ((h + 6) % 7)
+
+fn day_name dow:Int -> Str
+  if dow == 0
+    return "Sunday"
+  if dow == 1
+    return "Monday"
+  if dow == 2
+    return "Tuesday"
+  if dow == 3
+    return "Wednesday"
+  if dow == 4
+    return "Thursday"
+  if dow == 5
+    return "Friday"
+  "Saturday"
+
+fn to_julian y:Int m:Int d:Int -> Int
+  -- Days from a reference point (simplified Julian day number)
+  mut total := 0
+  -- Count complete years from year 1
+  yy := y - 1
+  total = 365 * yy + yy / 4 - yy / 100 + yy / 400
+  -- Add days for complete months
+  for i in range(1, m)
+    total = total + days_in_month(i, y)
+  total = total + d
+  total
+
+fn main
+  print "Calendar Calculations:"
+  print ""
+
+  -- Part 1: Day of week for famous dates
+  print "=== Part 1: Day of Week ==="
+  dates_y := [1776, 1969, 2000, 1945, 2024]
+  dates_m := [7, 7, 1, 5, 12]
+  dates_d := [4, 20, 1, 8, 25]
+  labels := ["US Independence", "Moon Landing", "Y2K", "VE Day", "Christmas 2024"]
+
+  for i in range(0, 5)
+    dow := day_of_week(dates_y[i], dates_m[i], dates_d[i])
+    print "  {labels[i]} ({dates_y[i]}-{dates_m[i]}-{dates_d[i]}): {day_name(dow)}"
+
+  -- Part 2: Days between dates
+  print ""
+  print "=== Part 2: Days Between Dates ==="
+  j1 := to_julian(2024, 1, 1)
+  j2 := to_julian(2024, 12, 31)
+  diff := j2 - j1
+  print "  2024-01-01 to 2024-12-31: {diff} days"
+
+  j3 := to_julian(2000, 1, 1)
+  j4 := to_julian(2025, 1, 1)
+  diff2 := j4 - j3
+  print "  2000-01-01 to 2025-01-01: {diff2} days"
+
+  j5 := to_julian(1969, 7, 20)
+  j6 := to_julian(2024, 7, 20)
+  diff3 := j6 - j5
+  print "  Moon landing to 2024 anniversary: {diff3} days"
+
+  -- Part 3: Leap year analysis
+  print ""
+  print "=== Part 3: Leap Years ==="
+  mut leap_count := 0
+  mut leap_years := []
+  for y in range(2000, 2050)
+    if is_leap(y) == 1
+      leap_count = leap_count + 1
+      leap_years.push(str(y))
+  print "  Leap years 2000-2049: {leap_years | join(", ")}"
+  print "  Count: {leap_count}"
+
+  -- Part 4: Days in each month of 2024
+  print ""
+  print "=== Part 4: Month Lengths (2024) ==="
+  month_names := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  mut total_days := 0
+  for m in range(1, 13)
+    d := days_in_month(m, 2024)
+    total_days = total_days + d
+    print "  {month_names[m - 1]}: {d} days"
+  print "  Total: {total_days} days (leap year)"
+
+  -- Part 5: What day does each month start on in 2025?
+  print ""
+  print "=== Part 5: First Day of Each Month (2025) ==="
+  for m in range(1, 13)
+    dow := day_of_week(2025, m, 1)
+    print "  {month_names[m - 1]} 1: {day_name(dow)}"
+
+  print ""
+  print "Calendar: day of week, date differences, leap years, month analysis."

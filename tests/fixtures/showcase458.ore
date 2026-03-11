@@ -1,0 +1,112 @@
+-- Showcase 458: Text adventure game engine (rooms, items, commands)
+
+fn main
+  print "Text Adventure Game Engine:"
+  print ""
+
+  -- Room definitions: name, description
+  room_names := ["Entrance Hall", "Library", "Kitchen", "Garden", "Tower", "Dungeon"]
+  room_descs := ["A grand hall with marble floors.", "Shelves of ancient books line the walls.", "Pots and pans hang from the ceiling.", "A peaceful garden with a fountain.", "A tall tower overlooking the land.", "A dark, damp dungeon."]
+  num_rooms := 6
+
+  -- Room connections: from each room, which rooms can be reached
+  -- Stored as adjacency: conn_from, conn_to, direction
+  cf := [0, 0, 0, 1, 1, 2, 2, 3, 4, 5]
+  ct := [1, 2, 3, 0, 4, 0, 5, 0, 1, 2]
+  cd := ["north", "east", "south", "south", "up", "west", "down", "north", "down", "up"]
+  num_conns := 10
+
+  -- Items: name, description, location (room index, -1 = inventory)
+  item_names := ["rusty key", "ancient book", "golden chalice", "torch", "magic scroll"]
+  item_descs := ["An old rusty key.", "A leather-bound book of spells.", "A chalice made of pure gold.", "A burning torch.", "A scroll with glowing runes."]
+  mut item_locs := [5, 1, 4, 0, 2]
+  num_items := 5
+
+  -- Game state
+  mut current_room := 0
+  mut inventory := []
+  mut score := 0
+
+  -- Simulate a sequence of commands
+  commands := ["look", "take torch", "go north", "look", "take ancient book", "go up", "look", "take golden chalice", "go down", "go south", "go east", "go down", "look", "take rusty key", "inventory", "go up", "go south", "look", "take magic scroll", "score"]
+
+  print "=== Game Start ==="
+  print "You are in: {room_names[current_room]}"
+  print "{room_descs[current_room]}"
+  print ""
+
+  for ci in range(0, commands | count())
+    cmd := commands[ci]
+    print "> {cmd}"
+
+    if cmd == "look"
+      print "  {room_names[current_room]}"
+      print "  {room_descs[current_room]}"
+      -- Show exits
+      mut exit_strs := []
+      for i in range(0, num_conns)
+        if cf[i] == current_room
+          ridx := ct[i]
+          rname := room_names[ridx]
+          dname := cd[i]
+          exit_strs.push(dname + " -> " + rname)
+      print "  Exits: {exit_strs | join(", ")}"
+      -- Show items
+      mut room_items := []
+      for i in range(0, num_items)
+        if item_locs[i] == current_room
+          room_items.push(item_names[i])
+      if room_items | count() > 0
+        print "  Items here: {room_items | join(", ")}"
+      else
+        print "  No items here."
+
+    else if cmd == "inventory"
+      inv_count := inventory | count()
+      if inv_count == 0
+        print "  Your inventory is empty."
+      else
+        print "  You are carrying {inv_count} items."
+      print "  Score: {score}"
+
+    else if cmd == "score"
+      print "  Current score: {score}"
+      print "  Items collected: {inventory | count()}/{num_items}"
+
+    else if cmd | starts_with("take ")
+      item_name := cmd | substr(5, cmd | len() - 5)
+      mut found := false
+      for i in range(0, num_items)
+        if item_names[i] == item_name and item_locs[i] == current_room
+          item_locs[i] = -1
+          inventory.push(item_names[i])
+          score = score + 10
+          print "  Picked up: {item_names[i]}"
+          print "  {item_descs[i]}"
+          found = true
+      if not found
+        print "  No such item here."
+
+    else if cmd | starts_with("go ")
+      direction := cmd | substr(3, cmd | len() - 3)
+      mut moved := false
+      for i in range(0, num_conns)
+        if cf[i] == current_room and cd[i] == direction
+          current_room = ct[i]
+          print "  You go {direction}."
+          print "  You are now in: {room_names[current_room]}"
+          moved = true
+      if not moved
+        print "  You can't go that way."
+
+    print ""
+
+  -- Final summary
+  print "=== Game Summary ==="
+  print "  Rooms visited: explored all connected rooms"
+  print "  Items collected: {inventory | count()}/{num_items}"
+  print "  Final score: {score}"
+  print "  Inventory: {inventory | join(", ")}"
+
+  print ""
+  print "Text adventure: rooms, items, navigation, inventory, scoring."

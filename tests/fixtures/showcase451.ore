@@ -1,0 +1,122 @@
+-- Showcase 451: Simple physics engine (projectile motion, collision)
+
+fn main
+  print "Simple Physics Engine:"
+  print ""
+
+  -- Part 1: Projectile motion (no air resistance)
+  print "=== Part 1: Projectile Motion ==="
+  -- Initial velocity 20 m/s at 45 degrees
+  -- sin(45) = cos(45) ~ 0.7071
+  v0 := 20.0
+  angle_factor := 0.7071
+  vx := v0 * angle_factor
+  vy := v0 * angle_factor
+  g := 9.81
+
+  -- Time of flight = 2 * vy / g
+  t_flight_num := 2.0 * vy * 100.0
+  t_flight_den := g * 100.0
+  t_flight := t_flight_num / t_flight_den
+  print "  Launch velocity: {v0} m/s at 45 degrees"
+  print "  Vx = {vx}, Vy = {vy}"
+
+  -- Simulate trajectory at intervals
+  print "  Trajectory:"
+  dt := 0.25
+  mut t := 0.0
+  mut max_h := 0.0
+  mut steps := 0
+  loop
+    if t > t_flight + 0.01
+      break
+    x := vx * t
+    y := vy * t - 0.5 * g * t * t
+    if y < 0.0
+      y_show := 0.0
+    else
+      y_show := y
+    if y_show > max_h
+      max_h = y_show
+    x_int := (x * 10.0).to_int()
+    y_int := (y_show * 10.0).to_int()
+    x_disp := x_int.to_float() / 10.0
+    y_disp := y_int.to_float() / 10.0
+    t_int := (t * 100.0).to_int()
+    t_disp := t_int.to_float() / 100.0
+    print "    t={t_disp}s: x={x_disp}, y={y_disp}"
+    t = t + dt
+    steps = steps + 1
+    if steps > 20
+      break
+
+  -- Range = v0^2 * sin(2*45) / g = v0^2 / g
+  range_val := v0 * v0 / g
+  range_int := (range_val * 100.0).to_int()
+  range_disp := range_int.to_float() / 100.0
+  print "  Max height: ~{(max_h * 10.0).to_int().to_float() / 10.0} m"
+  print "  Range: {range_disp} m"
+
+  -- Part 2: 1D elastic collision
+  print ""
+  print "=== Part 2: Elastic Collision (1D) ==="
+  m1 := 5.0
+  m2 := 3.0
+  u1 := 4.0
+  u2 := -2.0
+  print "  Ball 1: mass={m1}kg, velocity={u1}m/s"
+  print "  Ball 2: mass={m2}kg, velocity={u2}m/s"
+
+  -- Elastic collision formulas:
+  -- v1 = ((m1-m2)*u1 + 2*m2*u2) / (m1+m2)
+  -- v2 = ((m2-m1)*u2 + 2*m1*u1) / (m1+m2)
+  total_m := m1 + m2
+  v1 := ((m1 - m2) * u1 + 2.0 * m2 * u2) / total_m
+  v2 := ((m2 - m1) * u2 + 2.0 * m1 * u1) / total_m
+
+  v1_int := (v1 * 100.0).to_int()
+  v2_int := (v2 * 100.0).to_int()
+  print "  After collision:"
+  print "    Ball 1 velocity: {v1_int.to_float() / 100.0} m/s"
+  print "    Ball 2 velocity: {v2_int.to_float() / 100.0} m/s"
+
+  -- Verify conservation of momentum
+  p_before := m1 * u1 + m2 * u2
+  p_after := m1 * v1 + m2 * v2
+  pb_int := (p_before * 100.0).to_int()
+  pa_int := (p_after * 100.0).to_int()
+  print "  Momentum before: {pb_int.to_float() / 100.0}"
+  print "  Momentum after: {pa_int.to_float() / 100.0}"
+  if pb_int == pa_int
+    print "  Momentum conserved!"
+
+  -- Verify conservation of kinetic energy
+  ke_before := 0.5 * m1 * u1 * u1 + 0.5 * m2 * u2 * u2
+  ke_after := 0.5 * m1 * v1 * v1 + 0.5 * m2 * v2 * v2
+  keb_int := (ke_before * 100.0).to_int()
+  kea_int := (ke_after * 100.0).to_int()
+  print "  KE before: {keb_int.to_float() / 100.0}"
+  print "  KE after: {kea_int.to_float() / 100.0}"
+  if keb_int == kea_int
+    print "  Kinetic energy conserved!"
+
+  -- Part 3: Free fall with bounce
+  print ""
+  print "=== Part 3: Bouncing Ball ==="
+  mut height := 10.0
+  restitution := 0.7
+  mut bounce := 0
+  print "  Drop height: {height} m, restitution: {restitution}"
+  loop
+    if bounce >= 5
+      break
+    -- v at impact = sqrt(2*g*h), approximate
+    -- New height = restitution^2 * old height
+    height = restitution * restitution * height
+    bounce = bounce + 1
+    h_int := (height * 100.0).to_int()
+    h_disp := h_int.to_float() / 100.0
+    print "  Bounce {bounce}: height = {h_disp} m"
+
+  print ""
+  print "Physics engine: projectile motion, elastic collisions, bouncing simulation."

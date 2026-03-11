@@ -1,0 +1,142 @@
+-- Showcase 459: Compression ratio analysis (RLE, frequency, entropy)
+
+fn main
+  print "Compression Analysis Engine:"
+  print ""
+
+  -- Part 1: Run-Length Encoding
+  print "=== Part 1: Run-Length Encoding (RLE) ==="
+  texts := ["AAABBBCCCCDDAA", "ABCDEFG", "AAAAAAAAA", "AABBCC", "ABABABAB"]
+  for ti in range(0, 5)
+    text := texts[ti]
+    chars := text | chars()
+    n := chars | count()
+    -- RLE encode
+    mut encoded := ""
+    mut i := 0
+    mut encoded_len := 0
+    loop
+      if i >= n
+        break
+      ch := chars[i]
+      mut run := 1
+      loop
+        if i + run >= n
+          break
+        if chars[i + run] == ch
+          run = run + 1
+        else
+          break
+      encoded = encoded + str(run) + ch
+      run_str := str(run)
+      run_str_len := run_str | len()
+      encoded_len = encoded_len + 1 + run_str_len
+      i = i + run
+
+    ratio := encoded_len * 100 / n
+    print "  \"{text}\" -> \"{encoded}\" (ratio: {ratio}%)"
+
+  -- Part 2: Character frequency analysis
+  print ""
+  print "=== Part 2: Frequency Analysis ==="
+  sample := "the quick brown fox jumps over the lazy dog"
+  sample_chars := sample | chars()
+  slen := sample_chars | count()
+
+  -- Count frequency of each letter (a-z)
+  alphabet := "abcdefghijklmnopqrstuvwxyz"
+  alpha_chars := alphabet | chars()
+  mut freqs := []
+  for i in range(0, 26)
+    freqs.push(0)
+
+  mut letter_count := 0
+  for i in range(0, slen)
+    ch := sample_chars[i]
+    for j in range(0, 26)
+      if ch == alpha_chars[j]
+        freqs[j] = freqs[j] + 1
+        letter_count = letter_count + 1
+
+  print "  Text: \"{sample}\""
+  print "  Letter frequencies:"
+  for i in range(0, 26)
+    if freqs[i] > 0
+      pct := freqs[i] * 1000 / letter_count
+      pct_w := pct / 10
+      pct_f := pct % 10
+      -- Build a bar
+      bar_len := freqs[i]
+      mut bar := ""
+      for b in range(0, bar_len)
+        bar = bar + "#"
+      print "    {alpha_chars[i]}: {freqs[i]} ({pct_w}.{pct_f}%) {bar}"
+
+  -- Part 3: Shannon entropy estimation
+  print ""
+  print "=== Part 3: Shannon Entropy Estimate ==="
+  -- Entropy = -sum(p * log2(p)) for each symbol
+  -- We approximate using integer math: H ~ log2(N) - (1/N)*sum(fi * log2(fi))
+  -- Approximate log2 using a lookup table for small values
+  -- log2(n) ~ bits needed to represent n
+  mut entropy_bits := 0
+  for i in range(0, 26)
+    if freqs[i] > 0
+      -- Count bits needed for freq value (approximate log2)
+      mut bits := 0
+      mut v := freqs[i]
+      loop
+        if v <= 0
+          break
+        bits = bits + 1
+        v = v / 2
+      entropy_bits = entropy_bits + freqs[i] * bits
+
+  -- Approximate entropy per character
+  avg_bits := entropy_bits * 10 / letter_count
+  print "  Approximate entropy: {avg_bits / 10}.{avg_bits % 10} bits/char"
+  print "  (Theoretical minimum for English: ~4.2 bits/char)"
+
+  -- Part 4: Dictionary compression simulation
+  print ""
+  print "=== Part 4: Dictionary Compression ==="
+  -- Simple dictionary: replace common words with tokens
+  dict_words := ["the", "quick", "brown", "fox", "jumps", "over", "lazy", "dog"]
+  dict_tokens := ["T", "Q", "B", "F", "J", "V", "L", "D"]
+  num_dict := 8
+
+  words := sample | words()
+  mut compressed := []
+  mut saved := 0
+  for wi in range(0, words | count())
+    w := words[wi]
+    mut replaced := false
+    for di in range(0, num_dict)
+      if w == dict_words[di]
+        compressed.push(dict_tokens[di])
+        wlen := w | len()
+        saved = saved + wlen - 1
+        replaced = true
+    if not replaced
+      compressed.push(w)
+
+  compressed_str := compressed | join(" ")
+  orig_len := sample | len()
+  comp_len := compressed_str | len()
+  print "  Original ({orig_len} chars): \"{sample}\""
+  print "  Compressed ({comp_len} chars): \"{compressed_str}\""
+  print "  Savings: {saved} chars ({saved * 100 / orig_len}%)"
+
+  -- Part 5: Comparison summary
+  print ""
+  print "=== Part 5: Compression Method Comparison ==="
+  print "  Method          | Best For              | Ratio"
+  print "  ----------------|-----------------------|------"
+  print "  RLE             | Repeated characters   | Variable"
+  print "  Dictionary      | Repeated words        | 20-50%"
+  print "  Huffman         | Varied frequencies    | 30-60%"
+  print "  LZ77/LZ78      | Repeated patterns     | 40-70%"
+  print "  Deflate         | General purpose       | 50-80%"
+
+  print ""
+  print "Compression analysis: RLE, frequency, entropy, dictionary methods."

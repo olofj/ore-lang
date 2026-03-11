@@ -1,0 +1,154 @@
+-- Showcase 457: Simple database with indexes (sorted index lookups)
+
+fn main
+  print "Simple Database Engine:"
+  print ""
+
+  -- Database: employee records stored as parallel arrays
+  -- Fields: id, name, age, department, salary
+  mut ids := []
+  mut names := []
+  mut ages := []
+  mut depts := []
+  mut salaries := []
+
+  -- Insert records
+  print "=== Part 1: Inserting Records ==="
+  rec_ids := [1, 2, 3, 4, 5, 6, 7, 8]
+  rec_names := ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Hank"]
+  rec_ages := [30, 25, 35, 28, 32, 40, 27, 45]
+  rec_depts := ["Eng", "Eng", "Sales", "Eng", "Sales", "HR", "Eng", "HR"]
+  rec_salaries := [85000, 72000, 65000, 90000, 78000, 70000, 88000, 75000]
+
+  for i in range(0, 8)
+    ids.push(rec_ids[i])
+    names.push(rec_names[i])
+    ages.push(rec_ages[i])
+    depts.push(rec_depts[i])
+    salaries.push(rec_salaries[i])
+    print "  INSERT: id={rec_ids[i]} name={rec_names[i]} age={rec_ages[i]} dept={rec_depts[i]} salary={rec_salaries[i]}"
+
+  n := ids | count()
+  print "  Total records: {n}"
+
+  -- Part 2: Build sorted index on salary (for range queries)
+  print ""
+  print "=== Part 2: Building Indexes ==="
+  -- Index = sorted array of record positions, sorted by salary
+  mut sal_idx := [0, 1, 2, 3, 4, 5, 6, 7]
+  -- Bubble sort the index by salary
+  for i in range(0, n)
+    for j in range(0, n - 1 - i)
+      if salaries[sal_idx[j]] > salaries[sal_idx[j + 1]]
+        tmp := sal_idx[j]
+        sal_idx[j] = sal_idx[j + 1]
+        sal_idx[j + 1] = tmp
+  print "  Salary index (sorted):"
+  for i in range(0, n)
+    idx := sal_idx[i]
+    print "    {names[idx]}: ${salaries[idx]}"
+
+  -- Build department index (group by)
+  print ""
+  print "  Department index:"
+  dept_list := ["Eng", "Sales", "HR"]
+  for di in range(0, 3)
+    dept := dept_list[di]
+    mut members := []
+    for i in range(0, n)
+      if depts[i] == dept
+        members.push(names[i])
+    print "    {dept}: {members | join(", ")}"
+
+  -- Part 3: Queries
+  print ""
+  print "=== Part 3: Queries ==="
+
+  -- SELECT * WHERE salary > 80000
+  print "  Query: salary > 80000"
+  mut results := []
+  for i in range(0, n)
+    if salaries[i] > 80000
+      results.push("    {names[i]} (${salaries[i]})")
+  for i in range(0, results | count())
+    print results[i]
+
+  -- SELECT * WHERE dept = 'Eng' AND age < 30
+  print ""
+  print "  Query: dept='Eng' AND age < 30"
+  for i in range(0, n)
+    if depts[i] == "Eng" and ages[i] < 30
+      print "    {names[i]} age={ages[i]}"
+
+  -- SELECT dept, AVG(salary) GROUP BY dept
+  print ""
+  print "  Query: AVG(salary) GROUP BY dept"
+  for di in range(0, 3)
+    dept := dept_list[di]
+    mut total := 0
+    mut cnt := 0
+    for i in range(0, n)
+      if depts[i] == dept
+        total = total + salaries[i]
+        cnt = cnt + 1
+    avg := total / cnt
+    print "    {dept}: avg=${avg} (count={cnt})"
+
+  -- SELECT * ORDER BY age DESC LIMIT 3
+  print ""
+  print "  Query: ORDER BY age DESC LIMIT 3"
+  mut age_idx := [0, 1, 2, 3, 4, 5, 6, 7]
+  for i in range(0, n)
+    for j in range(0, n - 1 - i)
+      if ages[age_idx[j]] < ages[age_idx[j + 1]]
+        tmp := age_idx[j]
+        age_idx[j] = age_idx[j + 1]
+        age_idx[j + 1] = tmp
+  for i in range(0, 3)
+    idx := age_idx[i]
+    print "    {names[idx]} age={ages[idx]}"
+
+  -- Part 4: Binary search on sorted salary index
+  print ""
+  print "=== Part 4: Binary Search on Salary Index ==="
+  -- Find first salary >= 75000
+  target := 75000
+  mut lo := 0
+  mut hi := n - 1
+  mut found_pos := n
+  loop
+    if lo > hi
+      break
+    mid := (lo + hi) / 2
+    if salaries[sal_idx[mid]] >= target
+      found_pos = mid
+      hi = mid - 1
+    else
+      lo = mid + 1
+  print "  Searching for salary >= ${target}:"
+  for i in range(found_pos, n)
+    idx := sal_idx[i]
+    print "    {names[idx]}: ${salaries[idx]}"
+
+  -- Part 5: Update and delete
+  print ""
+  print "=== Part 5: Update & Delete ==="
+  -- Update: give Eng department a 10% raise
+  print "  UPDATE salary SET salary = salary * 1.1 WHERE dept='Eng'"
+  for i in range(0, n)
+    if depts[i] == "Eng"
+      old := salaries[i]
+      salaries[i] = salaries[i] * 11 / 10
+      print "    {names[i]}: ${old} -> ${salaries[i]}"
+
+  -- Count after changes
+  mut eng_total := 0
+  mut eng_count := 0
+  for i in range(0, n)
+    if depts[i] == "Eng"
+      eng_total = eng_total + salaries[i]
+      eng_count = eng_count + 1
+  print "  New Eng avg: ${eng_total / eng_count}"
+
+  print ""
+  print "Database engine: insert, index, query, binary search, update."

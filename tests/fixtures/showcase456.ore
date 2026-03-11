@@ -1,0 +1,162 @@
+-- Showcase 456: Probability calculations (combinations, expected value, Bayes)
+
+fn factorial n:Int -> Int
+  if n <= 1
+    return 1
+  mut result := 1
+  for i in range(2, n + 1)
+    result = result * i
+  result
+
+fn comb n:Int k:Int -> Int
+  -- C(n,k) = n! / (k! * (n-k)!)
+  -- Use incremental to avoid overflow
+  if k > n
+    return 0
+  mut kk := k
+  if kk > n - kk
+    kk = n - kk
+  mut result := 1
+  for i in range(0, kk)
+    result = result * (n - i)
+    result = result / (i + 1)
+  result
+
+fn perm n:Int k:Int -> Int
+  -- P(n,k) = n! / (n-k)!
+  mut result := 1
+  for i in range(0, k)
+    result = result * (n - i)
+  result
+
+fn main
+  print "Probability Calculations:"
+  print ""
+
+  -- Part 1: Combinations and Permutations
+  print "=== Part 1: Combinations & Permutations ==="
+  print "  Factorials:"
+  for n in range(0, 11)
+    print "    {n}! = {factorial(n)}"
+
+  print ""
+  print "  Combinations C(n,k):"
+  for n in range(1, 8)
+    mut row := []
+    for k in range(0, n + 1)
+      row.push(str(comb(n, k)))
+    print "    C({n},*): {row | join(" ")}"
+
+  print ""
+  print "  Permutations:"
+  print "    P(5,2) = {perm(5, 2)}"
+  print "    P(10,3) = {perm(10, 3)}"
+  print "    P(8,4) = {perm(8, 4)}"
+
+  -- Part 2: Dice probabilities
+  print ""
+  print "=== Part 2: Dice Probabilities ==="
+  print "  Rolling 2 six-sided dice:"
+  total_outcomes := 36
+  for sum_val in range(2, 13)
+    mut ways := 0
+    for d1 in range(1, 7)
+      d2 := sum_val - d1
+      if d2 >= 1 and d2 <= 6
+        ways = ways + 1
+    pct := ways * 1000 / total_outcomes
+    pct_whole := pct / 10
+    pct_frac := pct % 10
+    print "    Sum {sum_val}: {ways} ways ({pct_whole}.{pct_frac}%)"
+
+  -- Expected value of 2d6
+  mut ev_num := 0
+  for sum_val in range(2, 13)
+    mut ways := 0
+    for d1 in range(1, 7)
+      d2 := sum_val - d1
+      if d2 >= 1 and d2 <= 6
+        ways = ways + 1
+    ev_num = ev_num + sum_val * ways
+  ev := ev_num / total_outcomes
+  print "  Expected value of 2d6: {ev}"
+
+  -- Part 3: Bayes' Theorem
+  print ""
+  print "=== Part 3: Bayes' Theorem ==="
+  -- Medical test example:
+  -- Disease prevalence: 1% (10/1000)
+  -- Test sensitivity (true positive): 95% (950/1000)
+  -- Test specificity (true negative): 90% (900/1000)
+  prevalence := 10  -- per 1000
+  sensitivity := 950  -- per 1000
+  specificity := 900  -- per 1000
+
+  print "  Medical test scenario:"
+  print "    Disease prevalence: 1%"
+  print "    Test sensitivity: 95%"
+  print "    Test specificity: 90%"
+
+  -- P(disease|positive) = P(pos|disease)*P(disease) / P(pos)
+  -- P(pos) = P(pos|disease)*P(disease) + P(pos|no disease)*P(no disease)
+  -- Using per-million arithmetic
+  p_pos_given_disease := sensitivity  -- 950/1000
+  p_disease := prevalence  -- 10/1000
+  p_pos_given_no_disease := 1000 - specificity  -- 100/1000
+  p_no_disease := 1000 - prevalence  -- 990/1000
+
+  -- P(pos) in millionths:
+  p_pos_num := p_pos_given_disease * p_disease + p_pos_given_no_disease * p_no_disease
+  -- P(disease|pos) * 1000 = P(pos|disease)*P(disease)*1000 / P(pos)
+  p_bayes_num := p_pos_given_disease * p_disease * 1000 / p_pos_num
+  p_bayes_pct := p_bayes_num * 100 / 1000
+
+  print "    P(positive test) = {p_pos_num} / 1000000"
+  print "    P(disease | positive test) ~ {p_bayes_pct}%"
+  print "    Even with a positive test, most positives are false!"
+
+  -- Part 4: Birthday problem
+  print ""
+  print "=== Part 4: Birthday Problem ==="
+  -- P(no shared birthday with n people) = 365/365 * 364/365 * ... * (365-n+1)/365
+  -- We compute P(at least one shared) = 1 - P(no shared)
+  -- Use scaled integer: probability * 10000
+  thresholds := [10, 20, 23, 30, 40, 50, 57, 70]
+  for ti in range(0, 8)
+    n := thresholds[ti]
+    -- Compute probability of NO match: prod (365-i)/365 for i=0..n-1
+    -- Use log-free method: track numerator and denominator
+    -- Scale: p * 10000
+    mut p_no_match := 10000
+    for i in range(1, n)
+      p_no_match = p_no_match * (365 - i) / 365
+    p_match := 10000 - p_no_match
+    pct_w := p_match / 100
+    pct_f := (p_match % 100) / 10
+    print "    {n} people: ~{pct_w}.{pct_f}% chance of shared birthday"
+
+  -- Part 5: Poker hands
+  print ""
+  print "=== Part 5: Poker Hand Probabilities ==="
+  total_hands := comb(52, 5)
+  print "  Total 5-card hands: {total_hands}"
+
+  -- Royal flush: 4
+  royal := 4
+  -- Straight flush: 36 (not counting royal)
+  straight_flush := 36
+  -- Four of a kind: 13 * 48
+  four_kind := 13 * 48
+  -- Full house: 13 * C(4,3) * 12 * C(4,2)
+  full_house := 13 * comb(4, 3) * 12 * comb(4, 2)
+  -- Flush: C(13,5)*4 - 40
+  flush := comb(13, 5) * 4 - 40
+
+  print "  Royal Flush: {royal} ({royal * 100000 / total_hands} per 100k)"
+  print "  Straight Flush: {straight_flush} ({straight_flush * 100000 / total_hands} per 100k)"
+  print "  Four of a Kind: {four_kind} ({four_kind * 100000 / total_hands} per 100k)"
+  print "  Full House: {full_house} ({full_house * 100000 / total_hands} per 100k)"
+  print "  Flush: {flush} ({flush * 100000 / total_hands} per 100k)"
+
+  print ""
+  print "Probability: combinations, dice, Bayes theorem, birthday problem, poker."

@@ -1,0 +1,95 @@
+-- Showcase 455: Unit converter (temperature, distance, weight)
+
+fn main
+  print "Unit Converter:"
+  print ""
+
+  -- Part 1: Temperature conversions
+  print "=== Part 1: Temperature ==="
+  temps_c := [0, 20, 37, 100, -40]
+  for i in range(0, 5)
+    c := temps_c[i]
+    -- F = C * 9/5 + 32
+    f := c * 9 / 5 + 32
+    -- K = C + 273
+    k := c + 273
+    print "  {c}C = {f}F = {k}K"
+
+  print ""
+  print "  Notable points:"
+  print "  Water freezes: 0C = 32F = 273K"
+  print "  Water boils: 100C = 212F = 373K"
+  print "  Body temp: 37C = 98F = 310K"
+  print "  Equal point: -40C = -40F"
+
+  -- Part 2: Distance conversions
+  print ""
+  print "=== Part 2: Distance ==="
+  -- Using integer math with scaling
+  -- 1 mile = 1.609 km, we use *1609/1000
+  miles := [1, 5, 10, 26, 100]
+  for i in range(0, 5)
+    m := miles[i]
+    km := m * 1609 / 1000
+    -- 1 mile = 5280 feet
+    ft := m * 5280
+    -- 1 mile = 1760 yards
+    yd := m * 1760
+    print "  {m} mi = {km} km = {ft} ft = {yd} yd"
+
+  print ""
+  -- Metric conversions
+  print "  Metric:"
+  print "  1 km = 1000 m = 100000 cm = 1000000 mm"
+  print "  1 m = 3.28 ft = 39.37 in"
+
+  -- Part 3: Weight conversions
+  print ""
+  print "=== Part 3: Weight ==="
+  -- 1 kg = 2.205 lbs, use *2205/1000
+  kgs := [1, 5, 10, 50, 100]
+  for i in range(0, 5)
+    kg := kgs[i]
+    lbs := kg * 2205 / 1000
+    oz := kg * 2205 * 16 / 1000
+    g := kg * 1000
+    print "  {kg} kg = {lbs} lbs = {oz} oz = {g} g"
+
+  -- Part 4: Speed conversions
+  print ""
+  print "=== Part 4: Speed ==="
+  -- km/h to mph: divide by 1.609
+  speeds_kmh := [10, 30, 50, 100, 120, 200, 300]
+  for i in range(0, 7)
+    kmh := speeds_kmh[i]
+    mph := kmh * 1000 / 1609
+    -- m/s = km/h * 1000 / 3600
+    ms := kmh * 1000 / 3600
+    print "  {kmh} km/h = {mph} mph = {ms} m/s"
+
+  -- Part 5: Area conversions
+  print ""
+  print "=== Part 5: Area ==="
+  -- 1 acre = 4047 sq meters
+  -- 1 hectare = 10000 sq meters
+  acres := [1, 5, 10, 100, 640]
+  for i in range(0, 5)
+    a := acres[i]
+    sqm := a * 4047
+    hectares := a * 4047 / 10000
+    sqft := a * 43560
+    print "  {a} acres = {sqm} m2 = {hectares} hectares = {sqft} ft2"
+
+  -- Part 6: Conversion table
+  print ""
+  print "=== Part 6: Quick Reference ==="
+  print "  1 inch = 2.54 cm"
+  print "  1 foot = 30.48 cm"
+  print "  1 yard = 0.914 m"
+  print "  1 mile = 1.609 km"
+  print "  1 gallon = 3.785 liters"
+  print "  1 pound = 0.454 kg"
+  print "  1 ounce = 28.35 g"
+
+  print ""
+  print "Unit converter: temperature, distance, weight, speed, area."
