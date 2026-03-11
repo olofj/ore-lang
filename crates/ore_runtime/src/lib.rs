@@ -1564,6 +1564,34 @@ pub extern "C" fn ore_list_sum(list: *mut OreList) -> i64 {
     }
 }
 
+/// Average of integers, returned as float.
+#[no_mangle]
+pub extern "C" fn ore_list_average(list: *mut OreList) -> f64 {
+    unsafe {
+        let src = &*list;
+        if src.len == 0 { return 0.0; }
+        let mut total: i64 = 0;
+        for i in 0..src.len as usize {
+            total += *src.data.add(i);
+        }
+        total as f64 / src.len as f64
+    }
+}
+
+/// Average of floats.
+#[no_mangle]
+pub extern "C" fn ore_list_average_float(list: *mut OreList) -> f64 {
+    unsafe {
+        let src = &*list;
+        if src.len == 0 { return 0.0; }
+        let mut total: f64 = 0.0;
+        for i in 0..src.len as usize {
+            total += f64::from_bits(*src.data.add(i) as u64);
+        }
+        total / src.len as f64
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_sum_float(list: *mut OreList) -> f64 {
     unsafe {

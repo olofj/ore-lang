@@ -882,6 +882,7 @@ impl TypeChecker {
             },
             Type::List(elem) => match method {
                 "len" | "sum" | "product" => Type::Int,
+                "average" => Type::Float,
                 "push" => Type::Unit,
                 "get" => *elem.clone(),
                 "contains" | "is_empty" => Type::Bool,

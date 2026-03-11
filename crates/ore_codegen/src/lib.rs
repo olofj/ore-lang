@@ -798,6 +798,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_tap", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_map_with_index", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_each_with_index", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_average", f64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_average_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_sum_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_product_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_min_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3248,6 +3250,14 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "product"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
+            }
+            "average" => {
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                let rt_name = if matches!(elem_kind, ValKind::Float) { "ore_list_average_float" } else { "ore_list_average" };
+                let rt = self.module.get_function(rt_name).unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "avg"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Float))
             }
             "any" | "all" => {
                 if args.len() != 1 {
