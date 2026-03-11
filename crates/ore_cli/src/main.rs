@@ -84,7 +84,12 @@ fn print_error_with_context(error: &str, file: &Path) {
             .and_then(|s| s.trim().parse::<usize>().ok())
     };
 
-    eprintln!("error: {}", error);
+    let use_color = std::io::IsTerminal::is_terminal(&std::io::stderr());
+    if use_color {
+        eprintln!("\x1b[1;31merror:\x1b[0m {}", error);
+    } else {
+        eprintln!("error: {}", error);
+    }
 
     if let Some(line) = line_num {
         if let Ok(source) = std::fs::read_to_string(file) {
@@ -93,8 +98,15 @@ fn print_error_with_context(error: &str, file: &Path) {
             let end = (line + 1).min(lines.len());
             eprintln!();
             for i in start..end {
-                let marker = if i + 1 == line { " --> " } else { "     " };
-                eprintln!("{}{:>4} | {}", marker, i + 1, lines[i]);
+                if i + 1 == line {
+                    if use_color {
+                        eprintln!("\x1b[1;34m --> \x1b[0m{:>4} | {}", i + 1, lines[i]);
+                    } else {
+                        eprintln!(" --> {:>4} | {}", i + 1, lines[i]);
+                    }
+                } else {
+                    eprintln!("     {:>4} | {}", i + 1, lines[i]);
+                }
             }
             eprintln!();
         }
@@ -133,7 +145,11 @@ fn main() {
                 print_error_with_context(&e, &file);
                 std::process::exit(1);
             }
-            eprintln!("ok: {}", file.display());
+            if std::io::IsTerminal::is_terminal(&std::io::stderr()) {
+                eprintln!("\x1b[1;32mok:\x1b[0m {}", file.display());
+            } else {
+                eprintln!("ok: {}", file.display());
+            }
         }
         Commands::Fmt { file, write } => {
             match fmt_file(&file) {
