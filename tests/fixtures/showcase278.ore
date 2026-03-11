@@ -1,0 +1,57 @@
+-- Showcase 278: Levenshtein distance
+
+fn min2 a:Int b:Int -> Int
+  if a < b then a else b
+
+fn min3 a:Int b:Int c:Int -> Int
+  min2(min2(a, b), c)
+
+fn levenshtein a:Str b:Str -> Int
+  m := a.len()
+  n := b.len()
+
+  -- Use flat array: prev_row and curr_row
+  mut prev := []
+  for j in range(0, n + 1)
+    prev.push(j)
+
+  for i in range(1, m + 1)
+    mut curr := [i]
+    for j in range(1, n + 1)
+      cost := if a.substr(i - 1, 1) == b.substr(j - 1, 1) then 0 else 1
+      val := min3(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+      curr.push(val)
+    prev = curr
+  prev[n]
+
+fn main
+  pairs := [
+    "kitten", "sitting",
+    "saturday", "sunday",
+    "hello", "hello",
+    "abc", "xyz",
+    "ore", "more"
+  ]
+
+  print "Levenshtein distances:"
+  pcount := pairs | count()
+  mut i := 0
+  while i < pcount
+    a := pairs[i]
+    b := pairs[i + 1]
+    d := levenshtein(a, b)
+    print "  '{a}' -> '{b}' = {d}"
+    i = i + 2
+
+  -- Closest match
+  print ""
+  target := "hello"
+  words := ["help", "hell", "held", "hero", "jello", "yellow"]
+  mut best_word := ""
+  mut best_dist := 999
+  for w in words
+    d := levenshtein(target, w)
+    if d < best_dist
+      best_dist = d
+      best_word = w
+  print "Closest to '{target}': '{best_word}' (distance {best_dist})"

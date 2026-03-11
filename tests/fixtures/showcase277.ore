@@ -1,0 +1,49 @@
+-- Showcase 277: Number base conversion
+
+fn to_base n:Int base:Int -> Str
+  if n == 0
+    return "0"
+  digits := "0123456789ABCDEF"
+  mut result := ""
+  mut x := n
+  while x > 0
+    d := x % base
+    result = "{digits.substr(d, 1)}{result}"
+    x = x / base
+  result
+
+fn from_base s:Str base:Int -> Int
+  mut result := 0
+  for i in range(0, s.len())
+    ch := s.substr(i, 1)
+    c := ord(ch)
+    mut digit := 0
+    if c >= 48 and c <= 57
+      digit = c - 48
+    else if c >= 65 and c <= 70
+      digit = c - 55
+    else if c >= 97 and c <= 102
+      digit = c - 87
+    result = result * base + digit
+  result
+
+fn main
+  n := 255
+  print "Decimal: {n}"
+  print "Binary:  {to_base(n, 2)}"
+  print "Octal:   {to_base(n, 8)}"
+  print "Hex:     {to_base(n, 16)}"
+
+  print ""
+  print "Conversions:"
+  values := [42, 100, 1024, 65535]
+  for v in values
+    print "  {v} = 0b{to_base(v, 2)} = 0o{to_base(v, 8)} = 0x{to_base(v, 16)}"
+
+  -- Round trip
+  print ""
+  print "Round trips:"
+  hex := to_base(12345, 16)
+  print "  12345 -> hex {hex} -> {from_base(hex, 16)}"
+  bin := to_base(42, 2)
+  print "  42 -> bin {bin} -> {from_base(bin, 2)}"

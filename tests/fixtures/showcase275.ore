@@ -1,0 +1,72 @@
+-- Showcase 275: Set operations
+
+fn set_union a:List b:List -> List
+  mut seen := {}
+  mut result := []
+  for x in a
+    key := "{x}"
+    if not seen.contains(key)
+      seen.set(key, 1)
+      result.push(x)
+  for x in b
+    key := "{x}"
+    if not seen.contains(key)
+      seen.set(key, 1)
+      result.push(x)
+  result
+
+fn set_intersect a:List b:List -> List
+  mut set_b := {}
+  for x in b
+    set_b.set("{x}", 1)
+  mut result := []
+  mut seen := {}
+  for x in a
+    key := "{x}"
+    if set_b.contains(key) and not seen.contains(key)
+      seen.set(key, 1)
+      result.push(x)
+  result
+
+fn set_diff a:List b:List -> List
+  mut set_b := {}
+  for x in b
+    set_b.set("{x}", 1)
+  mut result := []
+  for x in a
+    if not set_b.contains("{x}")
+      result.push(x)
+  result
+
+fn main
+  a := [1, 2, 3, 4, 5, 6]
+  b := [4, 5, 6, 7, 8, 9]
+
+  print "A = {a | join(", ")}"
+  print "B = {b | join(", ")}"
+
+  u := set_union(a, b)
+  print "Union: {u | join(", ")}"
+
+  i := set_intersect(a, b)
+  print "Intersection: {i | join(", ")}"
+
+  d := set_diff(a, b)
+  print "A - B: {d | join(", ")}"
+
+  d2 := set_diff(b, a)
+  print "B - A: {d2 | join(", ")}"
+
+  -- Symmetric difference = (A-B) union (B-A)
+  sym := set_union(d, d2)
+  print "Symmetric diff: {sym | join(", ")}"
+
+  -- Subset check
+  c := [2, 3, 4]
+  diff_ca := set_diff(c, a)
+  ca_count := diff_ca | count()
+  print ""
+  print "{c | join(", ")} subset of A? {ca_count == 0}"
+  diff_ba := set_diff(b, a)
+  ba_count := diff_ba | count()
+  print "{b | join(", ")} subset of A? {ba_count == 0}"

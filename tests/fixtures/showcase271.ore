@@ -1,0 +1,59 @@
+-- Showcase 271: Collatz conjecture
+
+fn collatz_len n:Int -> Int
+  mut x := n
+  mut steps := 0
+  while x != 1
+    if x % 2 == 0
+      x = x / 2
+    else
+      x = x * 3 + 1
+    steps = steps + 1
+  steps
+
+fn collatz_seq n:Int -> List
+  mut result := [n]
+  mut x := n
+  while x != 1
+    if x % 2 == 0
+      x = x / 2
+    else
+      x = x * 3 + 1
+    result.push(x)
+  result
+
+fn main
+  -- Show sequence for 27
+  seq := collatz_seq(27)
+  print "Collatz(27): {seq | count()} steps"
+  print "Max value: {seq | max()}"
+
+  -- Find longest sequence in 1..100
+  mut max_len := 0
+  mut max_n := 0
+  for n in range(1, 101)
+    len := collatz_len(n)
+    if len > max_len
+      max_len = len
+      max_n = n
+
+  print ""
+  print "Longest Collatz sequence (1-100):"
+  print "  n={max_n}, steps={max_len}"
+
+  -- Show top 5 by length
+  print ""
+  print "Top sequences (1-50):"
+  mut lengths := []
+  for n in range(1, 51)
+    lengths.push(collatz_len(n))
+
+  for rank in range(0, 5)
+    mut best := 0
+    mut best_n := 0
+    for i in range(0, lengths | count())
+      if lengths[i] > best
+        best = lengths[i]
+        best_n = i + 1
+    print "  n={best_n}: {best} steps"
+    lengths[best_n - 1] = -1

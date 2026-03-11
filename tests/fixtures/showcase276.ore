@@ -1,0 +1,49 @@
+-- Showcase 276: Queue simulation
+
+fn main
+  -- Simple queue using list
+  mut queue := []
+
+  -- Enqueue
+  print "Enqueue: A, B, C, D, E"
+  names := ["A", "B", "C", "D", "E"]
+  for name in names
+    queue.push(name)
+
+  -- Dequeue (using index tracking)
+  print ""
+  print "Processing queue:"
+  mut front := 0
+  qlen := queue | count()
+  while front < qlen
+    print "  Serving: {queue[front]}"
+    front = front + 1
+
+  -- Priority queue simulation
+  print ""
+  print "Priority queue:"
+  mut pq_vals := []
+  mut pq_pris := []
+
+  -- Insert with priority
+  items := ["Low-task", "High-task", "Med-task", "Critical", "Normal"]
+  pris := [3, 1, 2, 0, 2]
+  for i in range(0, items | count())
+    pq_vals.push(items[i])
+    pq_pris.push(pris[i])
+
+  -- Process by priority (lower number = higher priority)
+  mut processed := 0
+  total := items | count()
+  while processed < total
+    -- Find highest priority
+    mut best_idx := -1
+    mut best_pri := 999
+    for i in range(0, pq_pris | count())
+      if pq_pris[i] >= 0 and pq_pris[i] < best_pri
+        best_pri = pq_pris[i]
+        best_idx = i
+    if best_idx >= 0
+      print "  [{best_pri}] {pq_vals[best_idx]}"
+      pq_pris[best_idx] = -1
+    processed = processed + 1

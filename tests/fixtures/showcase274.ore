@@ -1,0 +1,46 @@
+-- Showcase 274: Caesar cipher variations
+
+fn caesar_encrypt text:Str shift:Int -> Str
+  mut result := ""
+  for i in range(0, text.len())
+    ch := text.substr(i, 1)
+    c := ord(ch)
+    if c >= 65 and c <= 90
+      result = "{result}{chr((c - 65 + shift) % 26 + 65)}"
+    else if c >= 97 and c <= 122
+      result = "{result}{chr((c - 97 + shift) % 26 + 97)}"
+    else
+      result = "{result}{ch}"
+  result
+
+fn caesar_decrypt text:Str shift:Int -> Str
+  caesar_encrypt(text, 26 - shift)
+
+fn main
+  message := "Hello World"
+  print "Original: {message}"
+
+  -- All shifts
+  print ""
+  print "Caesar cipher shifts:"
+  shifts := [1, 3, 13, 25]
+  for s in shifts
+    encrypted := caesar_encrypt(message, s)
+    decrypted := caesar_decrypt(encrypted, s)
+    print "  Shift {s}: {encrypted} -> {decrypted}"
+
+  -- ROT13 (shift 13) is its own inverse
+  print ""
+  rot13 := caesar_encrypt(message, 13)
+  print "ROT13: {rot13}"
+  print "ROT13 again: {caesar_encrypt(rot13, 13)}"
+
+  -- Brute force crack
+  print ""
+  secret := caesar_encrypt("attack at dawn", 7)
+  print "Encrypted: {secret}"
+  print "Brute force:"
+  for s in range(1, 26)
+    attempt := caesar_decrypt(secret, s)
+    if attempt.contains("attack")
+      print "  Shift {s}: {attempt} <-- FOUND!"

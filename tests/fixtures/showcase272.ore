@@ -1,0 +1,51 @@
+-- Showcase 272: Sieve of Eratosthenes
+
+fn main
+  limit := 100
+
+  -- Initialize sieve
+  mut is_prime := []
+  for i in range(0, limit + 1)
+    is_prime.push(1)
+  is_prime[0] = 0
+  is_prime[1] = 0
+
+  -- Sieve
+  for i in range(2, limit + 1)
+    if is_prime[i] == 1
+      mut j := i * i
+      while j <= limit
+        is_prime[j] = 0
+        j = j + i
+
+  -- Collect primes
+  mut primes := []
+  for i in range(2, limit + 1)
+    if is_prime[i] == 1
+      primes.push(i)
+
+  print "Primes up to {limit}:"
+  print primes | join(", ")
+  print "Count: {primes | count()}"
+
+  -- Twin primes
+  print ""
+  print "Twin primes:"
+  mut twins := []
+  pc := primes | count()
+  for i in range(0, pc - 1)
+    if primes[i + 1] - primes[i] == 2
+      twins.push("({primes[i]}, {primes[i + 1]})")
+  print twins | join(", ")
+
+  -- Prime gaps
+  print ""
+  print "Largest prime gap up to {limit}:"
+  mut max_gap := 0
+  mut gap_start := 0
+  for i in range(0, pc - 1)
+    gap := primes[i + 1] - primes[i]
+    if gap > max_gap
+      max_gap = gap
+      gap_start = primes[i]
+  print "  {max_gap} (between {gap_start} and {gap_start + max_gap})"

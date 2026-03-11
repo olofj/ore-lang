@@ -1,0 +1,76 @@
+-- Showcase 280: Polynomial evaluation and operations
+
+fn poly_eval coeffs:List x:Int -> Int
+  -- Horner's method: coeffs[0] + coeffs[1]*x + coeffs[2]*x^2 + ...
+  -- Evaluate from highest degree down
+  n := coeffs | count()
+  mut result := coeffs[n - 1]
+  mut i := n - 2
+  while i >= 0
+    result = result * x + coeffs[i]
+    i = i - 1
+  result
+
+fn poly_to_str coeffs:List -> Str
+  mut result := ""
+  n := coeffs | count()
+  for i in range(0, n)
+    c := coeffs[i]
+    if c != 0
+      if result.len() > 0 and c > 0
+        result = "{result} + "
+      else if result.len() > 0 and c < 0
+        result = "{result} - "
+      if i == 0
+        result = "{result}{c}"
+      else if i == 1
+        ac := if c < 0 and result.len() > 3 then 0 - c else c
+        if ac == 1
+          result = "{result}x"
+        else
+          result = "{result}{ac}x"
+      else
+        ac := if c < 0 and result.len() > 3 then 0 - c else c
+        if ac == 1
+          result = "{result}x^{i}"
+        else
+          result = "{result}{ac}x^{i}"
+  result
+
+fn poly_add a:List b:List -> List
+  mut result := []
+  alen := a | count()
+  blen := b | count()
+  max_len := if alen > blen then alen else blen
+  for i in range(0, max_len)
+    mut val := 0
+    if i < alen
+      val = val + a[i]
+    if i < blen
+      val = val + b[i]
+    result.push(val)
+  result
+
+fn main
+  -- p(x) = 2 + 3x + x^2
+  p := [2, 3, 1]
+  -- q(x) = 1 - x + 2x^2
+  q := [1, -1, 2]
+
+  print "p(x) = {poly_to_str(p)}"
+  print "q(x) = {poly_to_str(q)}"
+
+  print ""
+  print "Evaluations:"
+  for x in range(0, 6)
+    print "  p({x}) = {poly_eval(p, x)}, q({x}) = {poly_eval(q, x)}"
+
+  sum := poly_add(p, q)
+  print ""
+  print "p + q = {poly_to_str(sum)}"
+
+  -- Derivative: p'(x) = 3 + 2x
+  mut deriv := []
+  for i in range(1, p | count())
+    deriv.push(p[i] * i)
+  print "p'(x) = {poly_to_str(deriv)}"

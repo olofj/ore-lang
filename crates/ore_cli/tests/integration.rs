@@ -4065,6 +4065,85 @@ fn showcase270_mini_database() {
 }
 
 #[test]
+fn showcase271_collatz() {
+    let out = run_ore("showcase271.ore");
+    assert!(out.contains("Collatz(27): 112 steps"));
+    assert!(out.contains("n=97, steps=118"));
+}
+
+#[test]
+fn showcase272_sieve() {
+    let out = run_ore("showcase272.ore");
+    assert!(out.contains("Count: 25"));
+    assert!(out.contains("Twin primes:"));
+    assert!(out.contains("(3, 5)"));
+}
+
+#[test]
+fn showcase273_pascal() {
+    let out = run_ore("showcase273.ore");
+    assert!(out.contains("Pascal's Triangle:"));
+    assert!(out.contains("Row 0: sum = 1"));
+    assert!(out.contains("Row 9: sum = 512"));
+}
+
+#[test]
+fn showcase274_caesar() {
+    let out = run_ore("showcase274.ore");
+    assert!(out.contains("Shift 13: Uryyb Jbeyq -> Hello World"));
+    assert!(out.contains("ROT13: Uryyb Jbeyq"));
+    assert!(out.contains("FOUND!"));
+}
+
+#[test]
+fn showcase275_set_ops() {
+    let out = run_ore("showcase275.ore");
+    assert!(out.contains("Union: 1, 2, 3, 4, 5, 6, 7, 8, 9"));
+    assert!(out.contains("Intersection: 4, 5, 6"));
+    assert!(out.contains("subset of A? true"));
+}
+
+#[test]
+fn showcase276_queue() {
+    let out = run_ore("showcase276.ore");
+    assert!(out.contains("Serving: A"));
+    assert!(out.contains("[0] Critical"));
+    assert!(out.contains("[1] High-task"));
+}
+
+#[test]
+fn showcase277_base_conversion() {
+    let out = run_ore("showcase277.ore");
+    assert!(out.contains("Binary:  11111111"));
+    assert!(out.contains("Hex:     FF"));
+    assert!(out.contains("12345 -> hex 3039 -> 12345"));
+}
+
+#[test]
+fn showcase278_levenshtein() {
+    let out = run_ore("showcase278.ore");
+    assert!(out.contains("'kitten' -> 'sitting' = 3"));
+    assert!(out.contains("'hello' -> 'hello' = 0"));
+    assert!(out.contains("Closest to 'hello': 'hell' (distance 1)"));
+}
+
+#[test]
+fn showcase279_spiral() {
+    let out = run_ore("showcase279.ore");
+    assert!(out.contains("Spiral matrix (5x5):"));
+    assert!(out.contains("1"));
+    assert!(out.contains("25"));
+}
+
+#[test]
+fn showcase280_polynomial() {
+    let out = run_ore("showcase280.ore");
+    assert!(out.contains("p(x) = 2 + 3x + x^2"));
+    assert!(out.contains("p + q = 3 + 2x + 3x^2"));
+    assert!(out.contains("p'(x) = 3 + 2x"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

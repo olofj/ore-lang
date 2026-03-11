@@ -1,0 +1,62 @@
+-- Showcase 279: Spiral matrix
+
+fn main
+  n := 5
+  -- Fill n x n matrix in spiral order
+  mut matrix := []
+  for i in range(0, n)
+    mut row := []
+    for j in range(0, n)
+      row.push(0)
+    matrix.push(row)
+
+  mut val := 1
+  mut top := 0
+  mut bottom := n - 1
+  mut left := 0
+  mut right := n - 1
+
+  while val <= n * n
+    -- Right
+    for j in range(left, right + 1)
+      row := matrix[top]
+      row[j] = val
+      val = val + 1
+    top = top + 1
+
+    -- Down
+    for i in range(top, bottom + 1)
+      row := matrix[i]
+      row[right] = val
+      val = val + 1
+    right = right - 1
+
+    -- Left
+    mut j := right
+    while j >= left
+      row := matrix[bottom]
+      row[j] = val
+      val = val + 1
+      j = j - 1
+    bottom = bottom - 1
+
+    -- Up
+    mut i := bottom
+    while i >= top
+      row := matrix[i]
+      row[left] = val
+      val = val + 1
+      i = i - 1
+    left = left + 1
+
+  -- Print matrix
+  print "Spiral matrix ({n}x{n}):"
+  for i in range(0, n)
+    row := matrix[i]
+    mut line := ""
+    for v in row
+      if v < 10
+        line = "{line}  {v}"
+      else
+        line = "{line} {v}"
+    print line
