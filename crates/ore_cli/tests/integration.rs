@@ -753,6 +753,19 @@ fn showcase4() {
 }
 
 #[test]
+fn showcase5() {
+    let out = run_ore("showcase5.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert!(lines[0].contains("\"language\":\"Ore\""));
+    assert_eq!(lines[1], "Int");
+    assert_eq!(lines[2], "Str");
+    assert_eq!(lines[3], "List");
+    assert_eq!(lines[4], "Float");
+    assert_eq!(lines[5], "Bool");
+    assert_eq!(lines[6], "showcase5 ok");
+}
+
+#[test]
 fn maps_typed_values() {
     let out = run_ore("maps/typed_values.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
