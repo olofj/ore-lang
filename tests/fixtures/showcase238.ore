@@ -1,0 +1,49 @@
+-- Showcase 238: Interval and range operations
+
+fn overlaps a_start:Int a_end:Int b_start:Int b_end:Int -> Bool
+  a_start < b_end and b_start < a_end
+
+fn intersection_len a_start:Int a_end:Int b_start:Int b_end:Int -> Int
+  if not overlaps(a_start, a_end, b_start, b_end)
+    return 0
+  start := a_start.max(b_start)
+  end := a_end.min(b_end)
+  end - start
+
+fn main
+  -- Interval overlap tests
+  print "Interval overlaps:"
+  print "  [1,5) & [3,7): {overlaps(1, 5, 3, 7)}"
+  print "  [1,3) & [5,7): {overlaps(1, 3, 5, 7)}"
+  print "  [1,5) & [5,7): {overlaps(1, 5, 5, 7)}"
+  print "  [1,7) & [3,5): {overlaps(1, 7, 3, 5)}"
+
+  -- Intersection lengths
+  print ""
+  print "Intersection lengths:"
+  print "  [1,5) & [3,7): {intersection_len(1, 5, 3, 7)}"
+  print "  [1,3) & [5,7): {intersection_len(1, 3, 5, 7)}"
+  print "  [0,10) & [5,15): {intersection_len(0, 10, 5, 15)}"
+
+  -- Range merge (simplified)
+  print ""
+  print "Merged range coverage:"
+  -- Track which integers are covered
+  mut covered := range(0, 20) | map(n => 0)
+  -- Ranges: [2,5), [4,8), [10,14)
+  for i in range(2, 5)
+    covered[i] = 1
+  for i in range(4, 8)
+    covered[i] = 1
+  for i in range(10, 14)
+    covered[i] = 1
+  
+  total_covered := covered | sum()
+  print "  Total covered: {total_covered} out of 20"
+  mut line := ""
+  for i in range(0, 20)
+    if covered[i] == 1
+      line = "{line}#"
+    else
+      line = "{line}."
+  print "  {line}"

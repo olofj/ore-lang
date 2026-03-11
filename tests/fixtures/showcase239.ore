@@ -1,0 +1,65 @@
+-- Showcase 239: Coordinate and direction enum
+
+type Direction
+  North
+  East
+  South
+  West
+
+fn dir_str d:Direction -> Str
+  match d
+    North -> "N"
+    East -> "E"
+    South -> "S"
+    West -> "W"
+
+fn turn_right d:Direction -> Direction
+  match d
+    North -> East
+    East -> South
+    South -> West
+    West -> North
+
+fn turn_left d:Direction -> Direction
+  match d
+    North -> West
+    West -> South
+    South -> East
+    East -> North
+
+fn dx d:Direction -> Int
+  match d
+    East -> 1
+    West -> -1
+    _ -> 0
+
+fn dy d:Direction -> Int
+  match d
+    North -> -1
+    South -> 1
+    _ -> 0
+
+fn main
+  -- Turtle graphics simulation
+  mut x := 5
+  mut y := 5
+  mut dir := North
+  
+  commands := ["F", "F", "R", "F", "F", "F", "R", "F", "L", "F"]
+  
+  print "Turtle walk:"
+  print "  Start: ({x}, {y}) facing {dir_str(dir)}"
+  
+  for cmd in commands
+    if cmd == "F"
+      x = x + dx(dir)
+      y = y + dy(dir)
+    else if cmd == "R"
+      dir = turn_right(dir)
+    else if cmd == "L"
+      dir = turn_left(dir)
+    print "  {cmd}: ({x}, {y}) facing {dir_str(dir)}"
+  
+  print ""
+  print "Final position: ({x}, {y})"
+  print "Distance from start: {(x - 5).abs() + (y - 5).abs()}"

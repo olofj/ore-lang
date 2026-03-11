@@ -1,0 +1,37 @@
+-- Showcase 237: Puzzle - Towers
+
+fn main
+  -- Build a tower pattern
+  height := 7
+  print "Tower (height {height}):"
+  for i in range(0, height)
+    spaces := " ".repeat(height - i - 1)
+    blocks := "#".repeat(2 * i + 1)
+    print "{spaces}{blocks}"
+
+  -- Zigzag pattern
+  print ""
+  print "Zigzag:"
+  width := 15
+  mut pos := 0
+  mut dir := 1
+  for row in range(0, 7)
+    line := "{" ".repeat(pos)}*"
+    print line
+    pos = pos + dir * 2
+    if pos >= width - 1
+      dir = -1
+    if pos <= 0
+      dir = 1
+
+  -- Checkerboard
+  print ""
+  print "Checkerboard 4x4:"
+  for r in range(0, 4)
+    mut line := ""
+    for c in range(0, 4)
+      if (r + c) % 2 == 0
+        line = "{line}##"
+      else
+        line = "{line}  "
+    print line

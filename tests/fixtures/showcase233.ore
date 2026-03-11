@@ -1,0 +1,46 @@
+-- Showcase 233: Enum as state - traffic light
+
+type Light
+  Red
+  Yellow
+  Green
+
+fn next_light l:Light -> Light
+  match l
+    Red -> Green
+    Green -> Yellow
+    Yellow -> Red
+
+fn light_str l:Light -> Str
+  match l
+    Red -> "RED"
+    Yellow -> "YELLOW"
+    Green -> "GREEN"
+
+fn light_duration l:Light -> Int
+  match l
+    Red -> 30
+    Yellow -> 5
+    Green -> 25
+
+fn main
+  -- Simulate traffic light cycles
+  mut light := Red
+  mut total_time := 0
+  
+  print "Traffic Light Simulation:"
+  for cycle in range(0, 9)
+    duration := light_duration(light)
+    total_time = total_time + duration
+    print "  {light_str(light)} for {duration}s (total: {total_time}s)"
+    light = next_light(light)
+
+  -- Pedestrian crossing logic
+  print ""
+  print "Can pedestrians cross?"
+  lights := [Red, Green, Yellow, Red]
+  for l in lights
+    can_cross := match l
+      Red -> "YES"
+      _ -> "NO"
+    print "  {light_str(l)}: {can_cross}"

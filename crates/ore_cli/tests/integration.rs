@@ -3735,6 +3735,93 @@ fn showcase230_map_operations() {
 }
 
 #[test]
+fn showcase231_type_conversion() {
+    let out = run_ore("showcase231.ore");
+    assert!(out.contains("Int 42 -> Float 42.0"));
+    assert!(out.contains("5.pow(3) = 125"));
+    assert!(out.contains("clamp(15, 0, 10) = 10"));
+    assert!(out.contains("min(3, 7) = 3"));
+}
+
+#[test]
+fn showcase232_string_ops() {
+    let out = run_ore("showcase232.ore");
+    assert!(out.contains("strip_prefix '/home': /user/file.txt"));
+    assert!(out.contains("strip_suffix '.txt': /home/user/file"));
+    assert!(out.contains("index_of 'world'"));
+    assert!(out.contains("slice(0, 5): 'hello'"));
+}
+
+#[test]
+fn showcase233_traffic_light() {
+    let out = run_ore("showcase233.ore");
+    assert!(out.contains("RED for 30s"));
+    assert!(out.contains("GREEN for 25s"));
+    assert!(out.contains("YELLOW for 5s"));
+    assert!(out.contains("RED: YES"));
+    assert!(out.contains("GREEN: NO"));
+}
+
+#[test]
+fn showcase234_heap() {
+    let out = run_ore("showcase234.ore");
+    assert!(out.contains("Max-Heap: 30, 20, 25, 10, 15, 5, 8"));
+    assert!(out.contains("Root (max): 30"));
+}
+
+#[test]
+fn showcase235_functional() {
+    let out = run_ore("showcase235.ore");
+    assert!(out.contains("compose(+1, *2)(5) = 12"));
+    assert!(out.contains("double^5(1) = 32"));
+    assert!(out.contains("Sum of evens (1-10): 30"));
+}
+
+#[test]
+fn showcase236_cards() {
+    let out = run_ore("showcase236.ore");
+    assert!(out.contains("AH (red)"));
+    assert!(out.contains("KS (black)"));
+    assert!(out.contains("95: A"));
+    assert!(out.contains("55: F"));
+}
+
+#[test]
+fn showcase237_patterns() {
+    let out = run_ore("showcase237.ore");
+    assert!(out.contains("#############"));
+    assert!(out.contains("Checkerboard"));
+    assert!(out.contains("##  ##"));
+}
+
+#[test]
+fn showcase238_intervals() {
+    let out = run_ore("showcase238.ore");
+    assert!(out.contains("[1,5) & [3,7): true"));
+    assert!(out.contains("[1,3) & [5,7): false"));
+    assert!(out.contains("Total covered: 10"));
+    assert!(out.contains("..######..####......"));
+}
+
+#[test]
+fn showcase239_turtle() {
+    let out = run_ore("showcase239.ore");
+    assert!(out.contains("Final position: (9, 4)"));
+    assert!(out.contains("Distance from start: 5"));
+}
+
+#[test]
+fn showcase240_pipeline_showcase() {
+    let out = run_ore("showcase240.ore");
+    assert!(out.contains("sum: 210"));
+    assert!(out.contains("fold (*): 120"));
+    assert!(out.contains("take(5): 1, 2, 3, 4, 5"));
+    assert!(out.contains("scan(+): 0, 1, 3, 6, 10, 15"));
+    assert!(out.contains("flat_map: 1, 10, 2, 20, 3, 30"));
+    assert!(out.contains("reverse: 5, 4, 3, 2, 1"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

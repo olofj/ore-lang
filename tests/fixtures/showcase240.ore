@@ -1,0 +1,56 @@
+-- Showcase 240: Showcase of all pipeline operations
+
+fn main
+  data := range(1, 21)
+  
+  print "=== Pipeline Operations Showcase ==="
+  print "Data: {data | join(", ")}"
+  print ""
+
+  -- Filtering
+  print "filter (even): {data | filter(n => n % 2 == 0) | join(", ")}"
+  print "filter (>10): {data | filter(n => n > 10) | join(", ")}"
+
+  -- Mapping
+  print "map (*2): {data | map(n => n * 2) | take(10) | join(", ")}"
+  print "map (^2): {data | map(n => n * n) | take(10) | join(", ")}"
+
+  -- Reduction
+  print ""
+  print "sum: {data | sum()}"
+  print "min: {data | min()}"
+  print "max: {data | max()}"
+  print "count: {data | count()}"
+
+  -- fold
+  print "fold (+): {data | fold(0, (a, b) => a + b)}"
+  print "fold (*): {range(1, 6) | fold(1, (a, b) => a * b)}"
+
+  -- take/skip
+  print ""
+  print "take(5): {data | take(5) | join(", ")}"
+  print "skip(15): {data | skip(15) | join(", ")}"
+  print "take_while(<8): {data | take_while(n => n < 8) | join(", ")}"
+  print "drop_while(<15): {data | drop_while(n => n < 15) | join(", ")}"
+
+  -- scan
+  print ""
+  print "scan(+): {range(1, 6) | scan(0, (a, b) => a + b) | join(", ")}"
+
+  -- any/all
+  print ""
+  print "any(>15): {data | any(n => n > 15)}"
+  print "all(>0): {data | all(n => n > 0)}"
+  print "all(<10): {data | all(n => n < 10)}"
+
+  -- flat_map
+  print ""
+  print "flat_map: {[1,2,3] | flat_map(n => [n, n*10]) | join(", ")}"
+
+  -- reverse
+  print "reverse: {range(1, 6) | reverse() | join(", ")}"
+
+  -- Chained
+  print ""
+  result := range(1, 101) | filter(n => n % 3 == 0) | map(n => n * n) | take(5) | sum()
+  print "Sum of first 5 squares of multiples of 3: {result}"

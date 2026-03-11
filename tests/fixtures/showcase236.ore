@@ -1,0 +1,53 @@
+-- Showcase 236: Comprehensive match expressions
+
+type Suit
+  Hearts
+  Diamonds
+  Clubs
+  Spades
+
+fn suit_symbol s:Suit -> Str
+  match s
+    Hearts -> "H"
+    Diamonds -> "D"
+    Clubs -> "C"
+    Spades -> "S"
+
+fn suit_color s:Suit -> Str
+  match s
+    Hearts -> "red"
+    Diamonds -> "red"
+    Clubs -> "black"
+    Spades -> "black"
+
+fn card_value rank:Int -> Str
+  match rank
+    1 -> "A"
+    11 -> "J"
+    12 -> "Q"
+    13 -> "K"
+    _ -> "{rank}"
+
+fn main
+  -- Card representations
+  suits := [Hearts, Diamonds, Clubs, Spades]
+  print "Deck sample:"
+  for s in suits
+    for rank in [1, 5, 10, 13]
+      print "  {card_value(rank)}{suit_symbol(s)} ({suit_color(s)})"
+
+  -- Match with number ranges (using if chains)
+  print ""
+  print "Grade boundaries:"
+  scores := [95, 85, 75, 65, 55, 45]
+  for score in scores
+    mut grade := "F"
+    if score >= 90
+      grade = "A"
+    else if score >= 80
+      grade = "B"
+    else if score >= 70
+      grade = "C"
+    else if score >= 60
+      grade = "D"
+    print "  {score}: {grade}"

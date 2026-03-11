@@ -1,0 +1,59 @@
+-- Showcase 234: Binary tree operations (flattened)
+
+fn left_child i:Int -> Int
+  2 * i + 1
+
+fn right_child i:Int -> Int
+  2 * i + 2
+
+fn parent i:Int -> Int
+  (i - 1) / 2
+
+fn main
+  -- Binary heap (max-heap) using array
+  -- Insert: [10, 20, 5, 30, 15, 25, 8]
+  mut heap := [10]
+
+  -- Simple insert (bubble up)
+  values := [20, 5, 30, 15, 25, 8]
+  for val in values
+    heap.push(val)
+    -- Bubble up
+    mut idx := (heap | count()) - 1
+    while idx > 0
+      p := parent(idx)
+      if heap[idx] > heap[p]
+        tmp := heap[idx]
+        heap[idx] = heap[p]
+        heap[p] = tmp
+        idx = p
+      else
+        idx = 0  -- break
+
+  print "Max-Heap: {heap | join(", ")}"
+  print "Root (max): {heap[0]}"
+
+  -- Binary search tree check (on sorted array)
+  print ""
+  sorted := [1, 3, 5, 7, 9, 11, 13]
+  print "Sorted array BST:"
+  print "  Root: {sorted[3]}"
+  print "  Left subtree root: {sorted[1]}"
+  print "  Right subtree root: {sorted[5]}"
+
+  -- Level-order traversal of heap
+  print ""
+  print "Heap levels:"
+  mut level_start := 0
+  mut level_size := 1
+  while level_start < (heap | count())
+    mut level := ""
+    for i in range(level_start, level_start + level_size)
+      if i < (heap | count())
+        if level == ""
+          level = "{heap[i]}"
+        else
+          level = "{level} {heap[i]}"
+    print "  {level}"
+    level_start = level_start + level_size
+    level_size = level_size * 2

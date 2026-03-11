@@ -1,0 +1,41 @@
+-- Showcase 235: Functional programming showcase
+
+fn compose f:(Int -> Int) g:(Int -> Int) x:Int -> Int
+  g(f(x))
+
+fn apply_n f:(Int -> Int) n:Int x:Int -> Int
+  mut result := x
+  for i in range(0, n)
+    result = f(result)
+  result
+
+fn main
+  -- Function composition
+  result := compose(n => n + 1, n => n * 2, 5)
+  print "compose(+1, *2)(5) = {result}"
+  
+  result2 := compose(n => n * 2, n => n + 1, 5)
+  print "compose(*2, +1)(5) = {result2}"
+
+  -- Apply N times
+  print ""
+  print "double applied 0-5 times to 1:"
+  for i in range(0, 6)
+    r := apply_n(n => n * 2, i, 1)
+    print "  double^{i}(1) = {r}"
+
+  -- Pipeline as function application
+  print ""
+  data := range(1, 11)
+  
+  sum_evens := data | filter(n => n % 2 == 0) | sum()
+  sum_odds := data | filter(n => n % 2 != 0) | sum()
+  print "Sum of evens (1-10): {sum_evens}"
+  print "Sum of odds (1-10): {sum_odds}"
+  print "Total: {sum_evens + sum_odds}"
+
+  -- Higher-order: map with index
+  print ""
+  words := ["zero", "one", "two", "three", "four"]
+  for i in range(0, words | count())
+    print "  {i}: {words[i]}"
