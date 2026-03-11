@@ -513,6 +513,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_reverse", void_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_contains(ptr, i64) -> i8
         self.module.add_function("ore_list_contains", i8_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        // ore_list_concat(ptr, ptr) -> ptr
+        self.module.add_function("ore_list_concat", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // String utilities
         self.module.add_function("ore_float_to_str", ptr_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_str_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -872,6 +874,15 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let (lhs, lk) = self.compile_expr_with_kind(left, func)?;
                 let (rhs, _rk) = self.compile_expr_with_kind(right, func)?;
+
+                // List concatenation: list + list
+                if lk == ValKind::List && *op == BinOp::Add {
+                    let rt = self.module.get_function("ore_list_concat").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[lhs.into(), rhs.into()], "lcat"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::List));
+                }
+
                 let result = self.compile_binop(*op, lhs, rhs)?;
                 // Determine result kind
                 let result_kind = match op {

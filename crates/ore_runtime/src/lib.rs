@@ -412,6 +412,22 @@ pub extern "C" fn ore_list_reverse(list: *mut OreList) {
 }
 
 #[no_mangle]
+pub extern "C" fn ore_list_concat(a: *mut OreList, b: *mut OreList) -> *mut OreList {
+    unsafe {
+        let a = &*a;
+        let b = &*b;
+        let result = ore_list_new();
+        for i in 0..a.len as usize {
+            ore_list_push(result, *a.data.add(i));
+        }
+        for i in 0..b.len as usize {
+            ore_list_push(result, *b.data.add(i));
+        }
+        result
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn ore_list_contains(list: *mut OreList, value: i64) -> i8 {
     unsafe {
         let list = &*list;
