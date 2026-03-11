@@ -1,0 +1,174 @@
+-- Showcase 473: Chess move validation (piece movement rules)
+
+fn main
+  print "Chess Move Validation:"
+  print ""
+
+  -- Board represented as 8x8 = 64 element array
+  -- Pieces: P=pawn, R=rook, N=knight, B=bishop, Q=queen, K=king
+  -- Lowercase for black, uppercase for white, "." for empty
+
+  -- Part 1: Validate rook moves
+  print "=== Part 1: Rook Moves ==="
+  -- Rook at (3,3) - can move horizontally or vertically
+  rook_r := 3
+  rook_c := 3
+  mut targets := []
+  targets.push("3:5")
+  targets.push("0:3")
+  targets.push("3:3")
+  targets.push("5:6")
+  targets.push("3:7")
+
+  for i in range(0, targets | len)
+    parts := targets[i].split(":")
+    tr := parts[0].parse_int()
+    tc := parts[1].parse_int()
+    -- Rook: same row or same column
+    valid := (tr == rook_r or tc == rook_c) and not (tr == rook_r and tc == rook_c)
+    if valid
+      print "  Rook (3,3) -> ({tr},{tc}): VALID"
+    else
+      print "  Rook (3,3) -> ({tr},{tc}): INVALID"
+
+  -- Part 2: Validate knight moves
+  print ""
+  print "=== Part 2: Knight Moves ==="
+  knight_r := 4
+  knight_c := 4
+  -- Knight moves in L-shape: 2+1 or 1+2
+  mut kt := []
+  kt.push("2:3")
+  kt.push("2:5")
+  kt.push("3:2")
+  kt.push("3:6")
+  kt.push("5:2")
+  kt.push("5:6")
+  kt.push("6:3")
+  kt.push("6:5")
+  kt.push("5:5")
+  kt.push("3:3")
+
+  for i in range(0, kt | len)
+    parts := kt[i].split(":")
+    tr := parts[0].parse_int()
+    tc := parts[1].parse_int()
+    mut dr := tr - knight_r
+    mut dc := tc - knight_c
+    if dr < 0
+      dr = 0 - dr
+    if dc < 0
+      dc = 0 - dc
+    valid := (dr == 2 and dc == 1) or (dr == 1 and dc == 2)
+    if valid
+      print "  Knight (4,4) -> ({tr},{tc}): VALID"
+    else
+      print "  Knight (4,4) -> ({tr},{tc}): INVALID"
+
+  -- Part 3: Validate bishop moves
+  print ""
+  print "=== Part 3: Bishop Moves ==="
+  bishop_r := 3
+  bishop_c := 3
+  mut bt := []
+  bt.push("5:5")
+  bt.push("1:1")
+  bt.push("0:6")
+  bt.push("4:3")
+  bt.push("6:0")
+  bt.push("3:3")
+
+  for i in range(0, bt | len)
+    parts := bt[i].split(":")
+    tr := parts[0].parse_int()
+    tc := parts[1].parse_int()
+    mut dr := tr - bishop_r
+    mut dc := tc - bishop_c
+    if dr < 0
+      dr = 0 - dr
+    if dc < 0
+      dc = 0 - dc
+    valid := dr == dc and dr > 0
+    if valid
+      print "  Bishop (3,3) -> ({tr},{tc}): VALID"
+    else
+      print "  Bishop (3,3) -> ({tr},{tc}): INVALID"
+
+  -- Part 4: King moves
+  print ""
+  print "=== Part 4: King Moves ==="
+  king_r := 4
+  king_c := 4
+  mut king_targets := []
+  king_targets.push("3:3")
+  king_targets.push("3:4")
+  king_targets.push("3:5")
+  king_targets.push("4:3")
+  king_targets.push("4:5")
+  king_targets.push("5:3")
+  king_targets.push("5:4")
+  king_targets.push("5:5")
+  king_targets.push("6:6")
+  king_targets.push("4:4")
+
+  mut valid_count := 0
+  for i in range(0, king_targets | len)
+    parts := king_targets[i].split(":")
+    tr := parts[0].parse_int()
+    tc := parts[1].parse_int()
+    mut dr := tr - king_r
+    mut dc := tc - king_c
+    if dr < 0
+      dr = 0 - dr
+    if dc < 0
+      dc = 0 - dc
+    valid := dr <= 1 and dc <= 1 and (dr + dc) > 0
+    if valid
+      valid_count = valid_count + 1
+      print "  King (4,4) -> ({tr},{tc}): VALID"
+    else
+      print "  King (4,4) -> ({tr},{tc}): INVALID"
+  print "  Valid king moves: {valid_count}"
+
+  -- Part 5: All knight moves from every square
+  print ""
+  print "=== Part 5: Knight Mobility Map ==="
+  -- Count valid knight moves from corners, edges, center
+  positions := ["0:0", "0:3", "3:3", "4:4", "7:7"]
+  pos_names := ["corner(0,0)", "edge(0,3)", "center(3,3)", "center(4,4)", "corner(7,7)"]
+  knight_dr := [2, 2, 1, 1, -2, -2, -1, -1]
+  knight_dc := [1, -1, 2, -2, 1, -1, 2, -2]
+
+  for p in range(0, 5)
+    pp := positions[p].split(":")
+    pr := pp[0].parse_int()
+    pc := pp[1].parse_int()
+    mut count := 0
+    for m in range(0, 8)
+      nr := pr + knight_dr[m]
+      nc := pc + knight_dc[m]
+      if nr >= 0 and nr < 8 and nc >= 0 and nc < 8
+        count = count + 1
+    print "  {pos_names[p]}: {count} moves"
+
+  -- Part 6: Simple game notation
+  print ""
+  print "=== Part 6: Game Notation ==="
+  mut moves := []
+  moves.push("e2-e4")
+  moves.push("e7-e5")
+  moves.push("Nf3")
+  moves.push("Nc6")
+  moves.push("Bb5")
+  moves.push("a6")
+
+  print "  Opening: Ruy Lopez"
+  for i in range(0, moves | len)
+    move_num := i / 2 + 1
+    if i % 2 == 0
+      print "  {move_num}. {moves[i]}"
+    else
+      print "     {moves[i]}"
+
+  print ""
+  print "Chess: rook, knight, bishop, king validation, mobility, notation."

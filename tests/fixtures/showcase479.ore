@@ -1,0 +1,197 @@
+-- Showcase 479: Simple file system simulation (directories, files, paths)
+
+fn main
+  print "File System Simulation:"
+  print ""
+
+  -- Part 1: Create file system structure
+  print "=== Part 1: Create Filesystem ==="
+  -- Represent FS as parallel arrays
+  -- Each entry: name, type ("dir" or "file"), parent_id, size
+  mut fs_names := []
+  mut fs_types := []
+  mut fs_parents := []
+  mut fs_sizes := []
+
+  -- Root directory
+  fs_names.push("/")
+  fs_types.push("dir")
+  fs_parents.push(-1)
+  fs_sizes.push(0)
+
+  -- /home
+  fs_names.push("home")
+  fs_types.push("dir")
+  fs_parents.push(0)
+  fs_sizes.push(0)
+
+  -- /home/user
+  fs_names.push("user")
+  fs_types.push("dir")
+  fs_parents.push(1)
+  fs_sizes.push(0)
+
+  -- /home/user/doc.txt
+  fs_names.push("doc.txt")
+  fs_types.push("file")
+  fs_parents.push(2)
+  fs_sizes.push(1024)
+
+  -- /home/user/photo.jpg
+  fs_names.push("photo.jpg")
+  fs_types.push("file")
+  fs_parents.push(2)
+  fs_sizes.push(5120)
+
+  -- /home/user/notes.md
+  fs_names.push("notes.md")
+  fs_types.push("file")
+  fs_parents.push(2)
+  fs_sizes.push(256)
+
+  -- /etc
+  fs_names.push("etc")
+  fs_types.push("dir")
+  fs_parents.push(0)
+  fs_sizes.push(0)
+
+  -- /etc/config.cfg
+  fs_names.push("config.cfg")
+  fs_types.push("file")
+  fs_parents.push(6)
+  fs_sizes.push(512)
+
+  -- /var
+  fs_names.push("var")
+  fs_types.push("dir")
+  fs_parents.push(0)
+  fs_sizes.push(0)
+
+  -- /var/log
+  fs_names.push("log")
+  fs_types.push("dir")
+  fs_parents.push(8)
+  fs_sizes.push(0)
+
+  -- /var/log/system.log
+  fs_names.push("system.log")
+  fs_types.push("file")
+  fs_parents.push(9)
+  fs_sizes.push(8192)
+
+  -- /var/log/error.log
+  fs_names.push("error.log")
+  fs_types.push("file")
+  fs_parents.push(9)
+  fs_sizes.push(2048)
+
+  num_entries := fs_names | len
+  print "  Created {num_entries} filesystem entries"
+
+  -- Part 2: List directory contents (ls)
+  print ""
+  print "=== Part 2: Directory Listing ==="
+  dirs_to_list := [0, 2, 9]
+  dir_labels := ["/", "/home/user", "/var/log"]
+  for d in range(0, 3)
+    dir_id := dirs_to_list[d]
+    print "  ls {dir_labels[d]}:"
+    for i in range(0, num_entries)
+      if fs_parents[i] == dir_id
+        if fs_types[i] == "dir"
+          print "    d {fs_names[i]}/"
+        else
+          print "    f {fs_names[i]} ({fs_sizes[i]} bytes)"
+
+  -- Part 3: Resolve full paths
+  print ""
+  print "=== Part 3: Full Paths ==="
+  for i in range(0, num_entries)
+    if fs_types[i] == "file"
+      -- Build path by walking up parents
+      mut path := fs_names[i]
+      mut cur := fs_parents[i]
+      while cur > 0
+        path = fs_names[cur] + "/" + path
+        cur = fs_parents[cur]
+      path = "/" + path
+      print "    {path} ({fs_sizes[i]} bytes)"
+
+  -- Part 4: Calculate directory sizes
+  print ""
+  print "=== Part 4: Directory Sizes ==="
+  -- For each directory, sum sizes of all descendant files
+  for i in range(0, num_entries)
+    if fs_types[i] == "dir"
+      mut total := 0
+      mut file_count := 0
+      for j in range(0, num_entries)
+        if fs_types[j] == "file"
+          -- Check if j is a descendant of i
+          mut ancestor := fs_parents[j]
+          mut is_desc := false
+          mut depth := 0
+          while ancestor >= 0 and depth < 10
+            if ancestor == i
+              is_desc = true
+            ancestor = fs_parents[ancestor]
+            depth = depth + 1
+          if is_desc
+            total = total + fs_sizes[j]
+            file_count = file_count + 1
+      if total > 0
+        -- Build path for dir
+        mut dpath := fs_names[i]
+        mut cur := fs_parents[i]
+        while cur > 0
+          dpath = fs_names[cur] + "/" + dpath
+          cur = fs_parents[cur]
+        if i > 0
+          dpath = "/" + dpath
+        print "    {dpath}: {total} bytes ({file_count} files)"
+
+  -- Part 5: Find files by extension
+  print ""
+  print "=== Part 5: Find by Extension ==="
+  extensions := [".txt", ".log", ".cfg", ".md", ".jpg"]
+  for e in range(0, extensions | len)
+    ext := extensions[e]
+    mut found := []
+    for i in range(0, num_entries)
+      if fs_types[i] == "file" and fs_names[i].ends_with(ext)
+        found.push(fs_names[i])
+    if found | len > 0
+      joined := found.join(", ")
+      print "    *{ext}: {joined}"
+
+  -- Part 6: Disk usage summary
+  print ""
+  print "=== Part 6: Disk Usage ==="
+  mut total_size := 0
+  mut total_files := 0
+  mut total_dirs := 0
+  for i in range(0, num_entries)
+    if fs_types[i] == "file"
+      total_files = total_files + 1
+      total_size = total_size + fs_sizes[i]
+    else
+      total_dirs = total_dirs + 1
+
+  print "  Total files: {total_files}"
+  print "  Total directories: {total_dirs}"
+  print "  Total size: {total_size} bytes"
+  avg := total_size / total_files
+  print "  Average file size: {avg} bytes"
+
+  -- Find largest file
+  mut largest_idx := -1
+  mut largest_size := 0
+  for i in range(0, num_entries)
+    if fs_types[i] == "file" and fs_sizes[i] > largest_size
+      largest_size = fs_sizes[i]
+      largest_idx = i
+  if largest_idx >= 0
+    print "  Largest file: {fs_names[largest_idx]} ({largest_size} bytes)"
+
+  print ""
+  print "Filesystem: listing, paths, sizes, search, disk usage."

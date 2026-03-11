@@ -1,0 +1,185 @@
+-- Showcase 480: Battleship game logic
+
+fn main
+  print "Battleship Game Logic:"
+  print ""
+
+  -- Part 1: Set up board (10x10 grid, 0=water, 1=ship, 2=hit, 3=miss)
+  print "=== Part 1: Place Ships ==="
+  -- Board as flat 100-element array
+  mut board := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Ship 1: Carrier (5 cells) at row 1, cols 2-6 (horizontal)
+  for c in range(2, 7)
+    board[1 * 10 + c] = 1
+
+  -- Ship 2: Battleship (4 cells) at row 4, cols 0-3
+  for c in range(0, 4)
+    board[4 * 10 + c] = 1
+
+  -- Ship 3: Destroyer (3 cells) at col 8, rows 5-7 (vertical)
+  for r in range(5, 8)
+    board[r * 10 + 8] = 1
+
+  -- Ship 4: Submarine (3 cells) at row 8, cols 4-6
+  for c in range(4, 7)
+    board[8 * 10 + c] = 1
+
+  -- Ship 5: Patrol (2 cells) at col 0, rows 7-8
+  board[7 * 10 + 0] = 1
+  board[8 * 10 + 0] = 1
+
+  -- Count ship cells
+  mut ship_cells := 0
+  for i in range(0, 100)
+    if board[i] == 1
+      ship_cells = ship_cells + 1
+  print "  Placed 5 ships ({ship_cells} cells total)"
+  ship_names := ["Carrier(5)", "Battleship(4)", "Destroyer(3)", "Submarine(3)", "Patrol(2)"]
+  for i in range(0, 5)
+    print "    {ship_names[i]}"
+
+  -- Part 2: Display board
+  print ""
+  print "=== Part 2: Board State ==="
+  col_labels := "  0 1 2 3 4 5 6 7 8 9"
+  print "  {col_labels}"
+  for r in range(0, 10)
+    mut row_str := str(r)
+    for c in range(0, 10)
+      cell := board[r * 10 + c]
+      if cell == 0
+        row_str = row_str + " ."
+      else if cell == 1
+        row_str = row_str + " S"
+      else if cell == 2
+        row_str = row_str + " X"
+      else
+        row_str = row_str + " o"
+    print "  {row_str}"
+
+  -- Part 3: Fire shots
+  print ""
+  print "=== Part 3: Fire Shots ==="
+  -- Shots as "row:col" pairs
+  mut shots := []
+  shots.push("1:3")
+  shots.push("0:0")
+  shots.push("4:1")
+  shots.push("1:5")
+  shots.push("5:8")
+  shots.push("3:3")
+  shots.push("8:5")
+  shots.push("7:0")
+  shots.push("9:9")
+  shots.push("1:2")
+
+  mut hits := 0
+  mut misses := 0
+  for i in range(0, shots | len)
+    parts := shots[i].split(":")
+    r := parts[0].parse_int()
+    c := parts[1].parse_int()
+    idx := r * 10 + c
+    if board[idx] == 1
+      board[idx] = 2
+      hits = hits + 1
+      print "    Shot ({r},{c}): HIT!"
+    else
+      board[idx] = 3
+      misses = misses + 1
+      print "    Shot ({r},{c}): miss"
+
+  -- Part 4: Check ship status
+  print ""
+  print "=== Part 4: Ship Status ==="
+  -- Check each ship
+  -- Carrier: row 1, cols 2-6
+  mut carrier_hits := 0
+  for c in range(2, 7)
+    if board[1 * 10 + c] == 2
+      carrier_hits = carrier_hits + 1
+  if carrier_hits == 5
+    print "  Carrier: SUNK"
+  else
+    print "  Carrier: {carrier_hits}/5 hits"
+
+  -- Battleship: row 4, cols 0-3
+  mut bb_hits := 0
+  for c in range(0, 4)
+    if board[4 * 10 + c] == 2
+      bb_hits = bb_hits + 1
+  if bb_hits == 4
+    print "  Battleship: SUNK"
+  else
+    print "  Battleship: {bb_hits}/4 hits"
+
+  -- Destroyer: col 8, rows 5-7
+  mut dest_hits := 0
+  for r in range(5, 8)
+    if board[r * 10 + 8] == 2
+      dest_hits = dest_hits + 1
+  if dest_hits == 3
+    print "  Destroyer: SUNK"
+  else
+    print "  Destroyer: {dest_hits}/3 hits"
+
+  -- Submarine: row 8, cols 4-6
+  mut sub_hits := 0
+  for c in range(4, 7)
+    if board[8 * 10 + c] == 2
+      sub_hits = sub_hits + 1
+  if sub_hits == 3
+    print "  Submarine: SUNK"
+  else
+    print "  Submarine: {sub_hits}/3 hits"
+
+  -- Patrol: col 0, rows 7-8
+  mut patrol_hits := 0
+  if board[7 * 10 + 0] == 2
+    patrol_hits = patrol_hits + 1
+  if board[8 * 10 + 0] == 2
+    patrol_hits = patrol_hits + 1
+  if patrol_hits == 2
+    print "  Patrol: SUNK"
+  else
+    print "  Patrol: {patrol_hits}/2 hits"
+
+  -- Part 5: Statistics
+  print ""
+  print "=== Part 5: Game Statistics ==="
+  total_shots := hits + misses
+  print "  Total shots: {total_shots}"
+  print "  Hits: {hits}"
+  print "  Misses: {misses}"
+
+  -- Remaining ship cells
+  mut remaining := 0
+  for i in range(0, 100)
+    if board[i] == 1
+      remaining = remaining + 1
+  print "  Ship cells remaining: {remaining}"
+  print "  Ship cells destroyed: {hits}"
+
+  if remaining == 0
+    print "  GAME OVER - All ships sunk!"
+  else
+    print "  Game continues..."
+
+  -- Part 6: Heat map (shot density by row)
+  print ""
+  print "=== Part 6: Shot Density ==="
+  for r in range(0, 10)
+    mut row_shots := 0
+    for c in range(0, 10)
+      cell := board[r * 10 + c]
+      if cell == 2 or cell == 3
+        row_shots = row_shots + 1
+    if row_shots > 0
+      mut bar := ""
+      for j in range(0, row_shots)
+        bar = bar + "#"
+      print "    Row {r}: {bar} ({row_shots})"
+
+  print ""
+  print "Battleship: placement, firing, ship status, statistics."

@@ -1,0 +1,133 @@
+-- Showcase 475: Matrix eigenvalue estimation (power iteration)
+
+fn main
+  print "Matrix Eigenvalue Estimation:"
+  print ""
+
+  -- Part 1: Matrix-vector multiplication
+  print "=== Part 1: Matrix-Vector Multiply ==="
+  -- 3x3 matrix stored as flat array (row-major)
+  -- Matrix: [[2, 1, 0], [1, 3, 1], [0, 1, 2]]
+  mat := [2, 1, 0, 1, 3, 1, 0, 1, 2]
+  vec := [1, 1, 1]
+  n := 3
+
+  -- Multiply mat * vec
+  mut result := [0, 0, 0]
+  for i in range(0, n)
+    mut s := 0
+    for j in range(0, n)
+      s = s + mat[i * n + j] * vec[j]
+    result[i] = s
+
+  print "  Matrix:"
+  for i in range(0, n)
+    print "    [{mat[i * n]}, {mat[i * n + 1]}, {mat[i * n + 2]}]"
+  print "  Vector: [{vec[0]}, {vec[1]}, {vec[2]}]"
+  print "  Result: [{result[0]}, {result[1]}, {result[2]}]"
+
+  -- Part 2: Power iteration (using integer arithmetic scaled by 1000)
+  print ""
+  print "=== Part 2: Power Iteration ==="
+  -- Start with vector [1000, 1000, 1000] (representing [1.0, 1.0, 1.0] * 1000)
+  mut v := [1000, 1000, 1000]
+
+  for iter in range(0, 8)
+    -- Multiply mat * v
+    mut new_v := [0, 0, 0]
+    for i in range(0, n)
+      mut s := 0
+      for j in range(0, n)
+        s = s + mat[i * n + j] * v[j]
+      new_v[i] = s
+
+    -- Find max component for normalization
+    mut max_val := 0
+    for i in range(0, n)
+      mut val := new_v[i]
+      if val < 0
+        val = 0 - val
+      if val > max_val
+        max_val = val
+
+    -- Eigenvalue estimate = max component / 1000 (since we normalize to 1000)
+    eigenval := max_val / 1000
+
+    -- Normalize: scale so max component is 1000
+    if max_val > 0
+      for i in range(0, n)
+        v[i] = new_v[i] * 1000 / max_val
+
+    print "  Iter {iter + 1}: v=[{v[0]}, {v[1]}, {v[2]}] eigenvalue~{eigenval}"
+
+  -- Part 3: Verify eigenvalue
+  print ""
+  print "=== Part 3: Verification ==="
+  -- The dominant eigenvalue of [[2,1,0],[1,3,1],[0,1,2]] is 4
+  -- Eigenvector should be proportional to [1, 2, 1]
+  print "  Expected dominant eigenvalue: 4"
+  print "  Expected eigenvector direction: [1, 2, 1]"
+  print "  Computed vector: [{v[0]}, {v[1]}, {v[2]}]"
+
+  -- Check Av = lambda*v
+  mut av := [0, 0, 0]
+  for i in range(0, n)
+    mut s := 0
+    for j in range(0, n)
+      s = s + mat[i * n + j] * v[j]
+    av[i] = s
+  mut lv := [0, 0, 0]
+  for i in range(0, n)
+    lv[i] = 4 * v[i]
+  print "  A*v = [{av[0]}, {av[1]}, {av[2]}]"
+  print "  4*v = [{lv[0]}, {lv[1]}, {lv[2]}]"
+
+  -- Part 4: Matrix trace and determinant
+  print ""
+  print "=== Part 4: Matrix Properties ==="
+  -- Trace = sum of diagonal
+  trace := mat[0] + mat[4] + mat[8]
+  print "  Trace: {trace}"
+  -- Sum of eigenvalues = trace
+  print "  (Sum of eigenvalues = trace = {trace})"
+
+  -- Determinant of 3x3 (Sarrus rule)
+  det := mat[0] * (mat[4] * mat[8] - mat[5] * mat[7]) - mat[1] * (mat[3] * mat[8] - mat[5] * mat[6]) + mat[2] * (mat[3] * mat[7] - mat[4] * mat[6])
+  print "  Determinant: {det}"
+  print "  (Product of eigenvalues = determinant = {det})"
+
+  -- Part 5: 2x2 eigenvalue exact solution
+  print ""
+  print "=== Part 5: 2x2 Exact Eigenvalues ==="
+  -- For [[5, 2], [2, 1]]
+  -- char eq: lambda^2 - 6*lambda + 1 = 0
+  -- lambda = (6 +/- sqrt(32)) / 2
+  a2 := 5
+  d2 := 1
+  b2 := 2
+  tr2 := a2 + d2
+  det2 := a2 * d2 - b2 * b2
+  print "  Matrix: [[{a2}, {b2}], [{b2}, {d2}]]"
+  print "  Trace: {tr2}"
+  print "  Determinant: {det2}"
+  disc := tr2 * tr2 - 4 * det2
+  print "  Discriminant: {disc}"
+  print "  Eigenvalues: ({tr2} +/- sqrt({disc})) / 2"
+
+  -- Part 6: Matrix symmetry check
+  print ""
+  print "=== Part 6: Symmetry Check ==="
+  mut symmetric := true
+  for i in range(0, n)
+    for j in range(0, n)
+      if mat[i * n + j] != mat[j * n + i]
+        symmetric = false
+  if symmetric
+    print "  Matrix is symmetric"
+    print "  -> All eigenvalues are real"
+    print "  -> Eigenvectors are orthogonal"
+  else
+    print "  Matrix is not symmetric"
+
+  print ""
+  print "Eigenvalues: power iteration, trace, determinant, symmetry."

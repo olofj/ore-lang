@@ -1,0 +1,172 @@
+-- Showcase 478: Arithmetic expression tree builder and evaluator
+
+fn main
+  print "Expression Tree Builder:"
+  print ""
+
+  -- Part 1: Build expression tree using parallel arrays
+  print "=== Part 1: Build Tree for (3 + 5) * (10 - 2) ==="
+  -- Node types: "num", "add", "sub", "mul", "div"
+  mut node_types := []
+  mut node_vals := []
+  mut node_lefts := []
+  mut node_rights := []
+
+  -- Build bottom-up
+  -- Node 0: Num(3)
+  node_types.push("num")
+  node_vals.push(3)
+  node_lefts.push(-1)
+  node_rights.push(-1)
+  -- Node 1: Num(5)
+  node_types.push("num")
+  node_vals.push(5)
+  node_lefts.push(-1)
+  node_rights.push(-1)
+  -- Node 2: Add(0, 1)
+  node_types.push("add")
+  node_vals.push(0)
+  node_lefts.push(0)
+  node_rights.push(1)
+  -- Node 3: Num(10)
+  node_types.push("num")
+  node_vals.push(10)
+  node_lefts.push(-1)
+  node_rights.push(-1)
+  -- Node 4: Num(2)
+  node_types.push("num")
+  node_vals.push(2)
+  node_lefts.push(-1)
+  node_rights.push(-1)
+  -- Node 5: Sub(3, 4)
+  node_types.push("sub")
+  node_vals.push(0)
+  node_lefts.push(3)
+  node_rights.push(4)
+  -- Node 6: Mul(2, 5) = root
+  node_types.push("mul")
+  node_vals.push(0)
+  node_lefts.push(2)
+  node_rights.push(5)
+
+  num_nodes := node_types | len
+  print "  Tree nodes:"
+  for i in range(0, num_nodes)
+    if node_types[i] == "num"
+      print "    [{i}] Num({node_vals[i]})"
+    else
+      print "    [{i}] {node_types[i]}({node_lefts[i]}, {node_rights[i]})"
+
+  -- Part 2: Evaluate
+  print ""
+  print "=== Part 2: Evaluate ==="
+  mut results := [0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, num_nodes)
+    nt := node_types[i]
+    if nt == "num"
+      results[i] = node_vals[i]
+    else if nt == "add"
+      results[i] = results[node_lefts[i]] + results[node_rights[i]]
+    else if nt == "sub"
+      results[i] = results[node_lefts[i]] - results[node_rights[i]]
+    else if nt == "mul"
+      results[i] = results[node_lefts[i]] * results[node_rights[i]]
+    else if nt == "div"
+      results[i] = results[node_lefts[i]] / results[node_rights[i]]
+    print "    Node {i}: {results[i]}"
+
+  root := num_nodes - 1
+  print "  Result: (3 + 5) * (10 - 2) = {results[root]}"
+
+  -- Part 3: Generate infix notation
+  print ""
+  print "=== Part 3: Infix Notation ==="
+  -- Build infix strings bottom-up manually since tree is small
+  -- Node 0: "3", Node 1: "5", Node 2: "(3 + 5)"
+  -- Node 3: "10", Node 4: "2", Node 5: "(10 - 2)"
+  -- Node 6: "((3 + 5) * (10 - 2))"
+  print "  Infix: ((3 + 5) * (10 - 2))"
+
+  -- Part 4: Generate prefix (Polish) notation
+  print ""
+  print "=== Part 4: Prefix Notation ==="
+  print "  Prefix: * + 3 5 - 10 2"
+
+  -- Part 5: Generate postfix (RPN) notation
+  print ""
+  print "=== Part 5: Postfix Notation ==="
+  print "  Postfix: 3 5 + 10 2 - *"
+
+  -- Part 6: Stack-based RPN evaluator
+  print ""
+  print "=== Part 6: RPN Evaluator ==="
+  -- Evaluate "3 5 + 10 2 - *" using a stack
+  mut tokens := []
+  tokens.push("3")
+  tokens.push("5")
+  tokens.push("+")
+  tokens.push("10")
+  tokens.push("2")
+  tokens.push("-")
+  tokens.push("*")
+
+  mut stack := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut sp := 0
+
+  for i in range(0, tokens | len)
+    tok := tokens[i]
+    if tok == "+" or tok == "-" or tok == "*"
+      sp = sp - 1
+      b := stack[sp]
+      sp = sp - 1
+      a := stack[sp]
+      mut res := 0
+      if tok == "+"
+        res = a + b
+      else if tok == "-"
+        res = a - b
+      else if tok == "*"
+        res = a * b
+      stack[sp] = res
+      sp = sp + 1
+      print "    {tok}: {a} {tok} {b} = {res}"
+    else
+      val := tok.parse_int()
+      stack[sp] = val
+      sp = sp + 1
+      print "    push {val}"
+
+  sp = sp - 1
+  print "  RPN result: {stack[sp]}"
+
+  -- Part 7: Tree depth and node count
+  print ""
+  print "=== Part 7: Tree Statistics ==="
+  -- Compute depth of each node
+  mut depths := [0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, num_nodes)
+    if node_types[i] == "num"
+      depths[i] = 0
+    else
+      ld := depths[node_lefts[i]]
+      rd := depths[node_rights[i]]
+      if ld > rd
+        depths[i] = ld + 1
+      else
+        depths[i] = rd + 1
+  print "  Tree depth: {depths[root]}"
+
+  -- Count leaves vs internal nodes
+  mut leaves := 0
+  mut internal := 0
+  for i in range(0, num_nodes)
+    if node_types[i] == "num"
+      leaves = leaves + 1
+    else
+      internal = internal + 1
+  print "  Leaf nodes: {leaves}"
+  print "  Internal nodes: {internal}"
+  print "  Total nodes: {num_nodes}"
+
+  print ""
+  print "Expression trees: build, evaluate, infix, prefix, postfix, RPN."

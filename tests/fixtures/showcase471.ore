@@ -1,0 +1,114 @@
+-- Showcase 471: Simple packet router simulation
+
+fn main
+  print "Packet Router Simulation:"
+  print ""
+
+  -- Part 1: Define routing table
+  print "=== Part 1: Routing Table ==="
+  -- Routes as "destination:next_hop:metric" strings
+  mut routes := []
+  routes.push("192.168.1.0:eth0:1")
+  routes.push("192.168.2.0:eth1:2")
+  routes.push("10.0.0.0:eth2:3")
+  routes.push("10.0.1.0:eth2:4")
+  routes.push("172.16.0.0:eth3:5")
+
+  print "  Routing table:"
+  for i in range(0, routes | len)
+    parts := routes[i].split(":")
+    print "    {parts[0]} -> {parts[1]} (metric={parts[2]})"
+
+  -- Part 2: Generate packets
+  print ""
+  print "=== Part 2: Packet Queue ==="
+  mut packets := []
+  packets.push("192.168.1.0:80:Hello")
+  packets.push("192.168.2.0:443:SecureData")
+  packets.push("10.0.0.0:8080:APICall")
+  packets.push("172.16.0.0:22:SSHLogin")
+  packets.push("10.0.1.0:53:DNSQuery")
+  packets.push("192.168.3.0:80:Unknown")
+  packets.push("192.168.1.0:443:Response")
+  packets.push("10.0.0.0:80:WebReq")
+
+  print "  Packets in queue: {packets | len}"
+  for i in range(0, packets | len)
+    parts := packets[i].split(":")
+    print "    Pkt {i}: dest={parts[0]} port={parts[1]} data={parts[2]}"
+
+  -- Part 3: Route packets
+  print ""
+  print "=== Part 3: Routing Packets ==="
+  mut routed := 0
+  mut dropped := 0
+  mut iface_counts := [0, 0, 0, 0]
+  iface_names := ["eth0", "eth1", "eth2", "eth3"]
+
+  for p in range(0, packets | len)
+    pkt_parts := packets[p].split(":")
+    pkt_dest := pkt_parts[0]
+    mut found := false
+    for r in range(0, routes | len)
+      rt_parts := routes[r].split(":")
+      if pkt_dest == rt_parts[0] and not found
+        found = true
+        routed = routed + 1
+        print "    Pkt {p} ({pkt_dest}) -> {rt_parts[1]}"
+        -- Count by interface
+        for k in range(0, 4)
+          if iface_names[k] == rt_parts[1]
+            iface_counts[k] = iface_counts[k] + 1
+    if not found
+      dropped = dropped + 1
+      print "    Pkt {p} ({pkt_dest}) -> DROPPED (no route)"
+
+  -- Part 4: Statistics
+  print ""
+  print "=== Part 4: Statistics ==="
+  print "  Routed: {routed}"
+  print "  Dropped: {dropped}"
+  print "  Per-interface:"
+  for i in range(0, 4)
+    if iface_counts[i] > 0
+      print "    {iface_names[i]}: {iface_counts[i]} packets"
+
+  -- Part 5: Load balancing simulation
+  print ""
+  print "=== Part 5: Round-Robin Load Balancing ==="
+  servers := ["server-A", "server-B", "server-C"]
+  mut requests := []
+  requests.push("GET /index")
+  requests.push("POST /api")
+  requests.push("GET /about")
+  requests.push("PUT /data")
+  requests.push("GET /status")
+  requests.push("DELETE /old")
+
+  for i in range(0, requests | len)
+    idx := i % 3
+    print "    {requests[i]} -> {servers[idx]}"
+
+  -- Part 6: Packet priority queue
+  print ""
+  print "=== Part 6: Priority Queue ==="
+  -- priority:data pairs
+  mut pq_prios := [3, 1, 4, 1, 5, 2]
+  mut pq_data := ["low-prio", "critical-1", "background", "critical-2", "idle", "normal"]
+  mut processed := [false, false, false, false, false, false]
+
+  mut order := 0
+  for pass in range(0, 6)
+    mut best_idx := -1
+    mut best_prio := 999
+    for i in range(0, 6)
+      if not processed[i] and pq_prios[i] < best_prio
+        best_prio = pq_prios[i]
+        best_idx = i
+    if best_idx >= 0
+      processed[best_idx] = true
+      order = order + 1
+      print "    #{order}: [{pq_prios[best_idx]}] {pq_data[best_idx]}"
+
+  print ""
+  print "Packet router: routing, load balancing, priority queues."

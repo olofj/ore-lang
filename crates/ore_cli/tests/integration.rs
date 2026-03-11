@@ -6264,6 +6264,155 @@ fn showcase470_etl_pipeline() {
 }
 
 #[test]
+fn showcase471_packet_router() {
+    let out = run_ore("showcase471.ore");
+    assert!(out.contains("Packet Router Simulation:"));
+    assert!(out.contains("192.168.1.0 -> eth0 (metric=1)"));
+    assert!(out.contains("Packets in queue: 8"));
+    assert!(out.contains("Pkt 5 (192.168.3.0) -> DROPPED (no route)"));
+    assert!(out.contains("Routed: 7"));
+    assert!(out.contains("Dropped: 1"));
+    assert!(out.contains("eth2: 3 packets"));
+    assert!(out.contains("GET /index -> server-A"));
+    assert!(out.contains("PUT /data -> server-A"));
+    assert!(out.contains("#1: [1] critical-1"));
+    assert!(out.contains("#6: [5] idle"));
+    assert!(out.contains("Packet router: routing, load balancing, priority queues."));
+}
+
+#[test]
+fn showcase472_finite_automaton() {
+    let out = run_ore("showcase472.ore");
+    assert!(out.contains("Finite Automaton Simulation:"));
+    assert!(out.contains("\"ac\" -> ACCEPT"));
+    assert!(out.contains("\"abbc\" -> ACCEPT"));
+    assert!(out.contains("\"bc\" -> REJECT"));
+    assert!(out.contains("\"abb\" matches (a|b)*abb -> YES"));
+    assert!(out.contains("\"ab\" matches (a|b)*abb -> NO"));
+    assert!(out.contains("\"abababb\" matches (a|b)*abb -> YES"));
+    assert!(out.contains("DFA has 4 states (already minimal)"));
+    assert!(out.contains("'b': S2 -> S3"));
+    assert!(out.contains("Result: ACCEPT"));
+    assert!(out.contains("Finite automata: DFA, NFA simulation, transitions, minimization."));
+}
+
+#[test]
+fn showcase473_chess_moves() {
+    let out = run_ore("showcase473.ore");
+    assert!(out.contains("Chess Move Validation:"));
+    assert!(out.contains("Rook (3,3) -> (3,5): VALID"));
+    assert!(out.contains("Rook (3,3) -> (5,6): INVALID"));
+    assert!(out.contains("Knight (4,4) -> (2,3): VALID"));
+    assert!(out.contains("Knight (4,4) -> (5,5): INVALID"));
+    assert!(out.contains("Bishop (3,3) -> (5,5): VALID"));
+    assert!(out.contains("Bishop (3,3) -> (4,3): INVALID"));
+    assert!(out.contains("Valid king moves: 8"));
+    assert!(out.contains("corner(0,0): 2 moves"));
+    assert!(out.contains("center(3,3): 8 moves"));
+    assert!(out.contains("Opening: Ruy Lopez"));
+    assert!(out.contains("Chess: rook, knight, bishop, king validation, mobility, notation."));
+}
+
+#[test]
+fn showcase474_crossword_solver() {
+    let out = run_ore("showcase474.ore");
+    assert!(out.contains("Crossword Puzzle Solver:"));
+    assert!(out.contains("Row 2, col 0, len 5"));
+    assert!(out.contains("Col 0, row 0, len 5"));
+    assert!(out.contains("Match: CAN"));
+    assert!(out.contains("Match: DANCE"));
+    assert!(out.contains("HELLO: 9"));
+    assert!(out.contains("CANDY: 7"));
+    assert!(out.contains("Across words: CAT, DANCE, DEN"));
+    assert!(out.contains("Crossword: grid layout, word slots, constraints, scoring, fill."));
+}
+
+#[test]
+fn showcase475_eigenvalue_estimation() {
+    let out = run_ore("showcase475.ore");
+    assert!(out.contains("Matrix Eigenvalue Estimation:"));
+    assert!(out.contains("Result: [3, 5, 3]"));
+    assert!(out.contains("eigenvalue~4"));
+    assert!(out.contains("Expected dominant eigenvalue: 4"));
+    assert!(out.contains("A*v = [2000, 4000, 2000]"));
+    assert!(out.contains("Trace: 7"));
+    assert!(out.contains("Determinant: 8"));
+    assert!(out.contains("Matrix is symmetric"));
+    assert!(out.contains("Eigenvalues: power iteration, trace, determinant, symmetry."));
+}
+
+#[test]
+fn showcase476_turing_machine() {
+    let out = run_ore("showcase476.ore");
+    assert!(out.contains("Turing Machine Simulator:"));
+    assert!(out.contains("Output: 0 1 1 1 1 0 0 0"));
+    assert!(out.contains("Output: 2 0 1 0 0 1 2 2"));
+    assert!(out.contains("Ones written: 4"));
+    assert!(out.contains("Steps: 6"));
+    assert!(out.contains("BB(2): 4 ones in 6 steps"));
+    assert!(out.contains("BB(4): 13 ones in 107 steps"));
+    assert!(out.contains("Turing machine: incrementer, inverter, busy beaver, transitions."));
+}
+
+#[test]
+fn showcase477_ecs_pattern() {
+    let out = run_ore("showcase477.ore");
+    assert!(out.contains("Entity Component System:"));
+    assert!(out.contains("Created 6 entities"));
+    assert!(out.contains("Player: Position Health Velocity Damage"));
+    assert!(out.contains("Enemy1: (10,8) -> (9,9)"));
+    assert!(out.contains("Bullet: (6,6) -> (9,6)"));
+    assert!(out.contains("Enemy1 takes 25 dmg: 50 -> 25 HP"));
+    assert!(out.contains("Alive entities: 6/6"));
+    assert!(out.contains("Spawned: Bullet2 at (5,6)"));
+    assert!(out.contains("ECS: entities, components, movement, collision, damage, queries."));
+}
+
+#[test]
+fn showcase478_expression_tree() {
+    let out = run_ore("showcase478.ore");
+    assert!(out.contains("Expression Tree Builder:"));
+    assert!(out.contains("Result: (3 + 5) * (10 - 2) = 64"));
+    assert!(out.contains("Infix: ((3 + 5) * (10 - 2))"));
+    assert!(out.contains("Prefix: * + 3 5 - 10 2"));
+    assert!(out.contains("Postfix: 3 5 + 10 2 - *"));
+    assert!(out.contains("RPN result: 64"));
+    assert!(out.contains("Tree depth: 2"));
+    assert!(out.contains("Leaf nodes: 4"));
+    assert!(out.contains("Expression trees: build, evaluate, infix, prefix, postfix, RPN."));
+}
+
+#[test]
+fn showcase479_filesystem_sim() {
+    let out = run_ore("showcase479.ore");
+    assert!(out.contains("File System Simulation:"));
+    assert!(out.contains("Created 12 filesystem entries"));
+    assert!(out.contains("f doc.txt (1024 bytes)"));
+    assert!(out.contains("/home/user/photo.jpg (5120 bytes)"));
+    assert!(out.contains("/: 17152 bytes (6 files)"));
+    assert!(out.contains("*.log: system.log, error.log"));
+    assert!(out.contains("Total files: 6"));
+    assert!(out.contains("Total size: 17152 bytes"));
+    assert!(out.contains("Largest file: system.log (8192 bytes)"));
+    assert!(out.contains("Filesystem: listing, paths, sizes, search, disk usage."));
+}
+
+#[test]
+fn showcase480_battleship() {
+    let out = run_ore("showcase480.ore");
+    assert!(out.contains("Battleship Game Logic:"));
+    assert!(out.contains("Placed 5 ships (17 cells total)"));
+    assert!(out.contains("Shot (1,3): HIT!"));
+    assert!(out.contains("Shot (0,0): miss"));
+    assert!(out.contains("Carrier: 3/5 hits"));
+    assert!(out.contains("Hits: 7"));
+    assert!(out.contains("Misses: 3"));
+    assert!(out.contains("Ship cells remaining: 10"));
+    assert!(out.contains("Game continues..."));
+    assert!(out.contains("Battleship: placement, firing, ship status, statistics."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
