@@ -656,6 +656,21 @@ pub extern "C" fn ore_list_index_of(list: *mut OreList, value: i64) -> i64 {
     -1
 }
 
+/// index_of for string lists — compares by string value
+#[no_mangle]
+pub extern "C" fn ore_list_index_of_str(list: *mut OreList, value: *mut OreStr) -> i64 {
+    if list.is_null() || value.is_null() { return -1; }
+    let l = unsafe { &*list };
+    let target = unsafe { (*value).as_str() };
+    for i in 0..l.len as usize {
+        let ptr = unsafe { *l.data.add(i) as *mut OreStr };
+        if !ptr.is_null() && unsafe { (*ptr).as_str() } == target {
+            return i as i64;
+        }
+    }
+    -1
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_unique(list: *mut OreList) -> *mut OreList {
     let result = ore_list_new();

@@ -800,6 +800,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_map_with_index", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_each_with_index", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_contains_str", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_index_of_str", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_unique_by", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_unique_str", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_average", f64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3368,9 +3369,15 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "index_of takes 1 argument".into() });
                 }
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let val = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_list_index_of").unwrap();
-                let result = bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lidx"))?;
+                let result = if matches!(elem_kind, ValKind::Str) {
+                    let rt = self.module.get_function("ore_list_index_of_str").unwrap();
+                    bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lidx"))?
+                } else {
+                    let rt = self.module.get_function("ore_list_index_of").unwrap();
+                    bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lidx"))?
+                };
                 let v = self.call_result_to_value(result)?;
                 Ok((v, ValKind::Int))
             }
