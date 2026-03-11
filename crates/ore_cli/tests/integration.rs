@@ -7668,6 +7668,146 @@ fn showcase590_petri_net() {
 }
 
 #[test]
+fn showcase591_mvcc() {
+    let out = run_ore("showcase591.ore");
+    assert!(out.contains("Database MVCC Simulation:"));
+    assert!(out.contains("TXN-10: row 1 updated 100 -> 150 (ver 2)"));
+    assert!(out.contains("TXN-10: COMMITTED"));
+    assert!(out.contains("Row 1: value=100 (historical ver 1)"));
+    assert!(out.contains("Row 3: value=350 (visible)"));
+    assert!(out.contains("CONFLICT: TXN-20 write to row 1 conflicts with TXN-10"));
+    assert!(out.contains("TXN-20: ABORTED (write-write conflict)"));
+    assert!(out.contains("Versions eligible for GC: 2"));
+    assert!(out.contains("TXN-10: committed"));
+    assert!(out.contains("MVCC: versioned rows, snapshot isolation, conflict detection, garbage collection."));
+}
+
+#[test]
+fn showcase592_dataflow() {
+    let out = run_ore("showcase592.ore");
+    assert!(out.contains("Dataflow Analysis:"));
+    assert!(out.contains("entry -> loop_head"));
+    assert!(out.contains("Converged in 2 iterations"));
+    assert!(out.contains("loop_body: reaches [x, y]"));
+    assert!(out.contains("exit: live [x, z]"));
+    assert!(out.contains("Dataflow: reaching definitions, live variables, dead code detection."));
+}
+
+#[test]
+fn showcase593_game_ai() {
+    let out = run_ore("showcase593.ore");
+    assert!(out.contains("Game AI - Minimax with Alpha-Beta Pruning:"));
+    assert!(out.contains("O X ."));
+    assert!(out.contains("No winner yet"));
+    assert!(out.contains("Move 7: WINNING MOVE (score=100)"));
+    assert!(out.contains("Best move: position 7 (score=100)"));
+    assert!(out.contains("Nodes evaluated: 31"));
+    assert!(out.contains("Game AI: minimax search, alpha-beta pruning, position evaluation."));
+}
+
+#[test]
+fn showcase594_distance_vector() {
+    let out = run_ore("showcase594.ore");
+    assert!(out.contains("Distance Vector Routing Protocol:"));
+    assert!(out.contains("A -- B: cost 1"));
+    assert!(out.contains("Iteration 1: 13 updates"));
+    assert!(out.contains("Converged!"));
+    assert!(out.contains("to D: cost=3 via B"));
+    assert!(out.contains("A to D: A -> B -> D (cost=3, hops=2)"));
+    assert!(out.contains("Simulating failure of link A-B"));
+    assert!(out.contains("Distance vector: topology, Bellman-Ford, routing tables, path tracing, link failure."));
+}
+
+#[test]
+fn showcase595_web_crawler() {
+    let out = run_ore("showcase595.ore");
+    assert!(out.contains("Web Crawler Simulation:"));
+    assert!(out.contains("Disallow: /admin"));
+    assert!(out.contains("BLOCKED: https://example.com/admin (matches robots.txt)"));
+    assert!(out.contains("Crawl #1: https://example.com (priority=10)"));
+    assert!(out.contains("NEW: https://example.com/blog/post3"));
+    assert!(out.contains("DUPLICATE: https://example.com/about"));
+    assert!(out.contains("Pages crawled: 7"));
+    assert!(out.contains("Web crawler: URL frontier, robots.txt, priority crawling, link extraction, politeness."));
+}
+
+#[test]
+fn showcase596_probability() {
+    let out = run_ore("showcase596.ore");
+    assert!(out.contains("Probability Distributions:"));
+    assert!(out.contains("0! = 1"));
+    assert!(out.contains("7! = 5040"));
+    assert!(out.contains("1 7 21 35 35 21 7 1"));
+    assert!(out.contains("3    120       2668"));
+    assert!(out.contains("Lambda = n*p = 3"));
+    assert!(out.contains("Most likely value: k=3"));
+    assert!(out.contains("Probability: binomial coefficients, Pascal's triangle, distribution, CDF, Poisson approximation."));
+}
+
+#[test]
+fn showcase597_virtual_memory() {
+    let out = run_ore("showcase597.ore");
+    assert!(out.contains("Virtual Memory - Page Replacement:"));
+    assert!(out.contains("FIFO: 14 faults, 6 hits"));
+    assert!(out.contains("LRU: 10 faults, 10 hits"));
+    assert!(out.contains("Optimal: 8 faults, 12 hits"));
+    assert!(out.contains("Clock: 14 faults, 6 hits"));
+    assert!(out.contains("Working set fits in memory"));
+    assert!(out.contains("Virtual memory: FIFO, LRU, optimal, clock replacement, working set analysis."));
+}
+
+#[test]
+fn showcase598_register_allocation() {
+    let out = run_ore("showcase598.ore");
+    assert!(out.contains("Compiler Register Allocation - Linear Scan:"));
+    assert!(out.contains("a: [0-5] ======......"));
+    assert!(out.contains("Assign a -> R0 (live 0-5)"));
+    assert!(out.contains("SPILL d (no register available)"));
+    assert!(out.contains("Max pressure: 6 (registers: 3)"));
+    assert!(out.contains("Spills: 3"));
+    assert!(out.contains("Total interferences: 23"));
+    assert!(out.contains("Register allocation: linear scan, live intervals, spilling, pressure analysis."));
+}
+
+#[test]
+fn showcase599_dht() {
+    let out = run_ore("showcase599.ore");
+    assert!(out.contains("Distributed Hash Table (DHT):"));
+    assert!(out.contains("Ring size: 64"));
+    assert!(out.contains("Key 35 -> Node 42 (responsible)"));
+    assert!(out.contains("Node 5 fingers:"));
+    assert!(out.contains("Lookup key 35: Node 5 -> Node 30 -> Node 42"));
+    assert!(out.contains("Hops: 2"));
+    assert!(out.contains("Keys redistributed: 1"));
+    assert!(out.contains("DHT: consistent hashing, finger tables, routing, replication, node join."));
+}
+
+#[test]
+fn showcase600_grand_finale() {
+    let out = run_ore("showcase600.ore");
+    assert!(out.contains("=== Showcase 600: The Grand Finale ==="));
+    assert!(out.contains("fibonacci(10) = 55"));
+    assert!(out.contains("factorial(6) = 720"));
+    assert!(out.contains("gcd(48, 18) = 6"));
+    assert!(out.contains("Manhattan distance: 7"));
+    assert!(out.contains("Color: red"));
+    assert!(out.contains("Sum 1..20: 210"));
+    assert!(out.contains("First 5 evens: 2, 4, 6, 8, 10"));
+    assert!(out.contains("Keys: alice, bob, charlie, diana"));
+    assert!(out.contains("Upper: 'HELLO, ORE PROGRAMMING LANGUAGE!'"));
+    assert!(out.contains("Primes < 30: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29"));
+    assert!(out.contains("Fib 0..9: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34"));
+    assert!(out.contains("Sum of multiples of 15 in 1..100: 315"));
+    assert!(out.contains("Capitalized: The Quick Brown Fox Jumps"));
+    assert!(out.contains("Sorted: 1, 2, 3, 4, 5, 6, 7, 8, 9"));
+    assert!(out.contains("Euler totient(12) = 4"));
+    assert!(out.contains("Trace: 15"));
+    assert!(out.contains("Primes via sieve < 30: 10"));
+    assert!(out.contains("Features demonstrated: 18"));
+    assert!(out.contains("Showcase 600: the grand finale of the Ore language!"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

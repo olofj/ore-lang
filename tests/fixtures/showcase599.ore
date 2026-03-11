@@ -1,0 +1,145 @@
+-- Showcase 599: Distributed Hash Table Concepts
+
+fn main
+  print "Distributed Hash Table (DHT):"
+  print ""
+
+  -- Part 1: Node ring setup (Chord-like)
+  print "=== Part 1: DHT Ring ==="
+  ring_size := 64
+  mut node_ids := [5, 12, 20, 30, 42, 55]
+  num_nodes := 6
+
+  print "  Ring size: {ring_size}"
+  print "  Nodes on ring:"
+  for i in range(0, num_nodes)
+    next_idx := (i + 1) % num_nodes
+    print "    Node {node_ids[i]} -> successor: Node {node_ids[next_idx]}"
+
+  -- Part 2: Key-to-node mapping
+  print ""
+  print "=== Part 2: Key Mapping ==="
+  mut keys := [3, 8, 15, 22, 35, 40, 50, 60]
+  num_keys := 8
+
+  mut key_owner := [0, 0, 0, 0, 0, 0, 0, 0]
+
+  for k in range(0, num_keys)
+    key := keys[k]
+    -- Find first node with id >= key (successor)
+    mut owner := 0
+    mut found := 0
+    for n in range(0, num_nodes)
+      if node_ids[n] >= key and found == 0
+        owner = n
+        found = 1
+    -- If no node found (key > max node), wrap to first
+    if found == 0
+      owner = 0
+    key_owner[k] = owner
+    print "  Key {key} -> Node {node_ids[owner]} (responsible)"
+
+  -- Part 3: Finger tables
+  print ""
+  print "=== Part 3: Finger Tables ==="
+  -- For each node, compute finger[i] = successor(node_id + 2^i) for i = 0..5
+  for n in range(0, num_nodes)
+    print "  Node {node_ids[n]} fingers:"
+    mut power := 1
+    for i in range(0, 6)
+      target := (node_ids[n] + power) % ring_size
+      -- Find successor of target
+      mut finger := 0
+      mut ff := 0
+      for m in range(0, num_nodes)
+        if node_ids[m] >= target and ff == 0
+          finger = m
+          ff = 1
+      if ff == 0
+        finger = 0
+      print "    [{i}] start={target} -> Node {node_ids[finger]}"
+      power = power * 2
+
+  -- Part 4: Lookup simulation
+  print ""
+  print "=== Part 4: Lookup Routing ==="
+  -- Simulate lookup of key=35 starting from Node 5
+  lookup_key := 35
+  mut current := 0
+  mut hops := 0
+  mut route := "Node {node_ids[current]}"
+
+  mut lookup_done := 0
+  while lookup_done == 0 and hops < 10
+    -- Check if current node is responsible
+    next_idx := (current + 1) % num_nodes
+    prev_end := node_ids[current]
+    if current == 0
+      -- First node: responsible for keys > last node and <= this node
+      if lookup_key <= node_ids[current] or lookup_key > node_ids[num_nodes - 1]
+        lookup_done = 1
+    else
+      if lookup_key <= node_ids[current] and lookup_key > node_ids[current - 1]
+        lookup_done = 1
+
+    if lookup_done == 0
+      -- Route to closest preceding finger
+      mut best := (current + 1) % num_nodes
+      for n in range(0, num_nodes)
+        if node_ids[n] > node_ids[current] and node_ids[n] < lookup_key
+          best = n
+      current = best
+      hops = hops + 1
+      route = route + " -> Node {node_ids[current]}"
+
+  print "  Lookup key {lookup_key}: {route}"
+  print "  Hops: {hops}"
+
+  -- Part 5: Key redistribution (node join)
+  print ""
+  print "=== Part 5: Node Join ==="
+  new_node := 25
+  print "  New node joining at position {new_node}"
+  -- Find which keys need to move
+  -- New node is responsible for keys in (predecessor, new_node]
+  -- Predecessor of 25 is 20 (node index 2)
+  mut keys_moved := 0
+  for k in range(0, num_keys)
+    key := keys[k]
+    if key > 20 and key <= 25
+      old_owner := key_owner[k]
+      print "  Key {key}: moved from Node {node_ids[old_owner]} to Node {new_node}"
+      keys_moved = keys_moved + 1
+  print "  Keys redistributed: {keys_moved}"
+
+  -- Part 6: Replication
+  print ""
+  print "=== Part 6: Replication ==="
+  replica_factor := 3
+  print "  Replication factor: {replica_factor}"
+  for k in range(0, 3)
+    key := keys[k]
+    owner := key_owner[k]
+    print "  Key {key} replicas:"
+    for r in range(0, replica_factor)
+      rep_node := (owner + r) % num_nodes
+      print "    Replica {r}: Node {node_ids[rep_node]}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Ring size: {ring_size}"
+  print "  Nodes: {num_nodes}"
+  print "  Keys: {num_keys}"
+  print "  Replication factor: {replica_factor}"
+  -- Keys per node
+  mut keys_per_node := [0, 0, 0, 0, 0, 0]
+  for k in range(0, num_keys)
+    o := key_owner[k]
+    keys_per_node[o] = keys_per_node[o] + 1
+  print "  Key distribution:"
+  for n in range(0, num_nodes)
+    print "    Node {node_ids[n]}: {keys_per_node[n]} keys"
+
+  print ""
+  print "DHT: consistent hashing, finger tables, routing, replication, node join."

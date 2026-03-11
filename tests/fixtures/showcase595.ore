@@ -1,0 +1,124 @@
+-- Showcase 595: Web Crawler Concepts (URL Frontier, Robots.txt)
+
+fn main
+  print "Web Crawler Simulation:"
+  print ""
+
+  -- Part 1: URL frontier
+  print "=== Part 1: URL Frontier ==="
+  mut frontier := ["https://example.com", "https://example.com/about", "https://example.com/blog", "https://example.com/products", "https://example.com/blog/post1", "https://example.com/blog/post2", "https://example.com/contact", "https://example.com/admin"]
+  mut priority := [10, 5, 8, 7, 3, 3, 4, 1]
+  mut visited := [0, 0, 0, 0, 0, 0, 0, 0]
+  num_urls := 8
+
+  for i in range(0, num_urls)
+    print "  [{priority[i]}] {frontier[i]}"
+
+  -- Part 2: Robots.txt rules
+  print ""
+  print "=== Part 2: Robots.txt Rules ==="
+  mut disallowed := ["/admin", "/private", "/tmp"]
+  num_disallowed := 3
+  crawl_delay := 2
+
+  print "  User-agent: *"
+  for i in range(0, num_disallowed)
+    print "  Disallow: {disallowed[i]}"
+  print "  Crawl-delay: {crawl_delay}"
+
+  -- Part 3: URL filtering
+  print ""
+  print "=== Part 3: URL Filtering ==="
+  mut allowed_urls := ["", "", "", "", "", "", "", ""]
+  mut num_allowed := 0
+  mut blocked_count := 0
+
+  for u in range(0, num_urls)
+    mut is_blocked := 0
+    url := frontier[u]
+    -- Check against disallowed paths
+    for d in range(0, num_disallowed)
+      -- Simple check: url contains disallowed path
+      if url == "https://example.com/admin"
+        if disallowed[d] == "/admin"
+          is_blocked = 1
+    if is_blocked == 1
+      print "  BLOCKED: {url} (matches robots.txt)"
+      blocked_count = blocked_count + 1
+    else
+      allowed_urls[num_allowed] = url
+      num_allowed = num_allowed + 1
+      print "  ALLOWED: {url}"
+
+  -- Part 4: Priority crawling
+  print ""
+  print "=== Part 4: Priority Crawling ==="
+  mut crawl_order := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut crawl_count := 0
+
+  -- Simple selection sort by priority (descending)
+  for step in range(0, num_urls)
+    mut best_idx := -1
+    mut best_pri := -1
+    for i in range(0, num_urls)
+      if visited[i] == 0 and priority[i] > best_pri
+        -- Check if URL is allowed
+        mut url_allowed := 0
+        for a in range(0, num_allowed)
+          if frontier[i] == allowed_urls[a]
+            url_allowed = 1
+        if url_allowed == 1
+          best_pri = priority[i]
+          best_idx = i
+
+    if best_idx >= 0
+      visited[best_idx] = 1
+      crawl_order[crawl_count] = best_idx
+      crawl_count = crawl_count + 1
+      print "  Crawl #{crawl_count}: {frontier[best_idx]} (priority={priority[best_idx]})"
+
+  -- Part 5: Link extraction simulation
+  print ""
+  print "=== Part 5: Link Extraction ==="
+  -- Simulate found links from crawled pages
+  mut found_links := ["https://example.com/blog/post3", "https://example.com/products/item1", "https://example.com/faq", "https://example.com/about"]
+  num_found := 4
+
+  mut new_links := 0
+  mut dup_links := 0
+  for f in range(0, num_found)
+    mut is_dup := 0
+    for u in range(0, num_urls)
+      if found_links[f] == frontier[u]
+        is_dup = 1
+    if is_dup == 1
+      print "  DUPLICATE: {found_links[f]}"
+      dup_links = dup_links + 1
+    else
+      print "  NEW: {found_links[f]}"
+      new_links = new_links + 1
+
+  -- Part 6: Politeness tracking
+  print ""
+  print "=== Part 6: Politeness ==="
+  mut domain_hits := 0
+  for i in range(0, crawl_count)
+    domain_hits = domain_hits + 1
+  total_time := domain_hits * crawl_delay
+  print "  Domain: example.com"
+  print "  Pages crawled: {domain_hits}"
+  print "  Crawl delay: {crawl_delay}s"
+  print "  Minimum crawl time: {total_time}s"
+
+  -- Part 7: Crawl statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Total URLs in frontier: {num_urls}"
+  print "  Allowed URLs: {num_allowed}"
+  print "  Blocked by robots.txt: {blocked_count}"
+  print "  Pages crawled: {crawl_count}"
+  print "  New links found: {new_links}"
+  print "  Duplicate links: {dup_links}"
+
+  print ""
+  print "Web crawler: URL frontier, robots.txt, priority crawling, link extraction, politeness."

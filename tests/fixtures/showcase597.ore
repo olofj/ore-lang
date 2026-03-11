@@ -1,0 +1,203 @@
+-- Showcase 597: Virtual Memory - Page Replacement Algorithms
+
+fn main
+  print "Virtual Memory - Page Replacement:"
+  print ""
+
+  -- Part 1: Setup
+  print "=== Part 1: Configuration ==="
+  num_frames := 4
+  mut page_refs := [1, 2, 3, 4, 2, 1, 5, 6, 2, 1, 2, 3, 7, 6, 3, 2, 1, 2, 3, 6]
+  num_refs := 20
+  print "  Physical frames: {num_frames}"
+  print "  Reference string length: {num_refs}"
+  mut ref_str := ""
+  for i in range(0, num_refs)
+    if i > 0
+      ref_str = ref_str + " "
+    ref_str = ref_str + "{page_refs[i]}"
+  print "  References: {ref_str}"
+
+  -- Part 2: FIFO page replacement
+  print ""
+  print "=== Part 2: FIFO Algorithm ==="
+  mut fifo_frames := [-1, -1, -1, -1]
+  mut fifo_ptr := 0
+  mut fifo_faults := 0
+  mut fifo_hits := 0
+
+  for i in range(0, num_refs)
+    page := page_refs[i]
+    -- Check if page is in frames
+    mut found := 0
+    for f in range(0, num_frames)
+      if fifo_frames[f] == page
+        found = 1
+    if found == 1
+      fifo_hits = fifo_hits + 1
+      print "  Ref {page}: HIT"
+    else
+      fifo_faults = fifo_faults + 1
+      evicted := fifo_frames[fifo_ptr]
+      fifo_frames[fifo_ptr] = page
+      fifo_ptr = (fifo_ptr + 1) % num_frames
+      if evicted == -1
+        print "  Ref {page}: FAULT (loaded into empty frame)"
+      else
+        print "  Ref {page}: FAULT (evicted page {evicted})"
+
+  print "  FIFO: {fifo_faults} faults, {fifo_hits} hits"
+
+  -- Part 3: LRU page replacement
+  print ""
+  print "=== Part 3: LRU Algorithm ==="
+  mut lru_frames := [-1, -1, -1, -1]
+  mut lru_time := [0, 0, 0, 0]
+  mut lru_faults := 0
+  mut lru_hits := 0
+
+  for i in range(0, num_refs)
+    page := page_refs[i]
+    mut found := 0
+    mut found_idx := -1
+    for f in range(0, num_frames)
+      if lru_frames[f] == page
+        found = 1
+        found_idx = f
+    if found == 1
+      lru_hits = lru_hits + 1
+      lru_time[found_idx] = i
+    else
+      lru_faults = lru_faults + 1
+      -- Find empty frame or LRU frame
+      mut victim := 0
+      mut oldest_time := 999999
+      for f in range(0, num_frames)
+        if lru_frames[f] == -1
+          victim = f
+          oldest_time = -1
+        else if lru_time[f] < oldest_time and oldest_time != -1
+          oldest_time = lru_time[f]
+          victim = f
+      evicted := lru_frames[victim]
+      lru_frames[victim] = page
+      lru_time[victim] = i
+
+  print "  LRU: {lru_faults} faults, {lru_hits} hits"
+
+  -- Part 4: Optimal page replacement
+  print ""
+  print "=== Part 4: Optimal Algorithm ==="
+  mut opt_frames := [-1, -1, -1, -1]
+  mut opt_faults := 0
+  mut opt_hits := 0
+
+  for i in range(0, num_refs)
+    page := page_refs[i]
+    mut found := 0
+    for f in range(0, num_frames)
+      if opt_frames[f] == page
+        found = 1
+    if found == 1
+      opt_hits = opt_hits + 1
+    else
+      opt_faults = opt_faults + 1
+      -- Find empty frame
+      mut has_empty := 0
+      for f in range(0, num_frames)
+        if opt_frames[f] == -1 and has_empty == 0
+          opt_frames[f] = page
+          has_empty = 1
+      if has_empty == 0
+        -- Find page used farthest in future
+        mut victim := 0
+        mut farthest := -1
+        for f in range(0, num_frames)
+          mut next_use := 999
+          for j in range(i + 1, num_refs)
+            if page_refs[j] == opt_frames[f] and next_use == 999
+              next_use = j
+          if next_use > farthest
+            farthest = next_use
+            victim = f
+        opt_frames[victim] = page
+
+  print "  Optimal: {opt_faults} faults, {opt_hits} hits"
+
+  -- Part 5: Clock (second chance) algorithm
+  print ""
+  print "=== Part 5: Clock Algorithm ==="
+  mut clk_frames := [-1, -1, -1, -1]
+  mut clk_ref_bit := [0, 0, 0, 0]
+  mut clk_ptr := 0
+  mut clk_faults := 0
+  mut clk_hits := 0
+
+  for i in range(0, num_refs)
+    page := page_refs[i]
+    mut found := 0
+    for f in range(0, num_frames)
+      if clk_frames[f] == page
+        found = 1
+        clk_ref_bit[f] = 1
+    if found == 1
+      clk_hits = clk_hits + 1
+    else
+      clk_faults = clk_faults + 1
+      -- Find victim using clock
+      mut placed := 0
+      -- First check for empty frame
+      for f in range(0, num_frames)
+        if clk_frames[f] == -1 and placed == 0
+          clk_frames[f] = page
+          clk_ref_bit[f] = 1
+          placed = 1
+      if placed == 0
+        mut spins := 0
+        while placed == 0 and spins < 20
+          if clk_ref_bit[clk_ptr] == 0
+            clk_frames[clk_ptr] = page
+            clk_ref_bit[clk_ptr] = 1
+            clk_ptr = (clk_ptr + 1) % num_frames
+            placed = 1
+          else
+            clk_ref_bit[clk_ptr] = 0
+            clk_ptr = (clk_ptr + 1) % num_frames
+          spins = spins + 1
+
+  print "  Clock: {clk_faults} faults, {clk_hits} hits"
+
+  -- Part 6: Comparison
+  print ""
+  print "=== Part 6: Comparison ==="
+  print "  Algorithm    Faults  Hits  Hit Rate"
+  fifo_rate := fifo_hits * 100 / num_refs
+  lru_rate := lru_hits * 100 / num_refs
+  opt_rate := opt_hits * 100 / num_refs
+  clk_rate := clk_hits * 100 / num_refs
+  print "  FIFO         {fifo_faults}      {fifo_hits}    {fifo_rate}%"
+  print "  LRU          {lru_faults}      {lru_hits}    {lru_rate}%"
+  print "  Optimal      {opt_faults}      {opt_hits}    {opt_rate}%"
+  print "  Clock        {clk_faults}      {clk_hits}    {clk_rate}%"
+
+  -- Part 7: Working set analysis
+  print ""
+  print "=== Part 7: Working Set ==="
+  window := 5
+  mut unique_pages := 0
+  mut seen := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Look at last 'window' references
+  for i in range(num_refs - window, num_refs)
+    p := page_refs[i]
+    if seen[p] == 0
+      seen[p] = 1
+      unique_pages = unique_pages + 1
+  print "  Window size: {window}"
+  print "  Working set size (last {window} refs): {unique_pages}"
+  if unique_pages <= num_frames
+    print "  Working set fits in memory"
+  else
+    print "  Working set exceeds memory - thrashing likely"
+
+  print ""
+  print "Virtual memory: FIFO, LRU, optimal, clock replacement, working set analysis."

@@ -1,0 +1,159 @@
+-- Showcase 594: Network Routing - Distance Vector Protocol
+
+fn main
+  print "Distance Vector Routing Protocol:"
+  print ""
+
+  -- Part 1: Network topology
+  print "=== Part 1: Network Topology ==="
+  mut node_names := ["A", "B", "C", "D", "E"]
+  num_nodes := 5
+  inf := 9999
+
+  -- Adjacency: edge list (from, to, cost)
+  mut edge_from := [0, 0, 1, 1, 2, 2, 3, 3, 4]
+  mut edge_to := [1, 2, 0, 3, 0, 4, 1, 4, 2]
+  mut edge_cost := [1, 4, 1, 2, 4, 3, 2, 1, 3]
+  num_edges := 9
+
+  for e in range(0, num_edges)
+    ef := edge_from[e]
+    et := edge_to[e]
+    print "  {node_names[ef]} -- {node_names[et]}: cost {edge_cost[e]}"
+
+  -- Part 2: Initialize distance tables
+  print ""
+  print "=== Part 2: Initial Distance Tables ==="
+  -- Distance table: dist[i * num_nodes + j] = cost from i to j
+  mut dist := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Next hop table
+  mut next_hop := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+
+  -- Initialize: infinity everywhere, 0 to self
+  for i in range(0, num_nodes)
+    for j in range(0, num_nodes)
+      idx := i * num_nodes + j
+      if i == j
+        dist[idx] = 0
+        next_hop[idx] = i
+      else
+        dist[idx] = inf
+        next_hop[idx] = -1
+
+  -- Add direct edges
+  for e in range(0, num_edges)
+    f := edge_from[e]
+    t := edge_to[e]
+    idx := f * num_nodes + t
+    dist[idx] = edge_cost[e]
+    next_hop[idx] = t
+
+  for i in range(0, num_nodes)
+    mut row := ""
+    for j in range(0, num_nodes)
+      idx := i * num_nodes + j
+      d := dist[idx]
+      if d == inf
+        row = row + " INF"
+      else
+        row = row + " {d}"
+    print "  {node_names[i]}:{row}"
+
+  -- Part 3: Bellman-Ford iterations
+  print ""
+  print "=== Part 3: Distance Vector Updates ==="
+  mut total_updates := 0
+
+  for iteration in range(1, 5)
+    mut updates := 0
+    for i in range(0, num_nodes)
+      -- For each neighbor of i
+      for e in range(0, num_edges)
+        if edge_from[e] == i
+          neighbor := edge_to[e]
+          link_cost := edge_cost[e]
+          -- Check if routing through neighbor is better
+          for dest in range(0, num_nodes)
+            nidx := neighbor * num_nodes + dest
+            iidx := i * num_nodes + dest
+            new_cost := link_cost + dist[nidx]
+            if new_cost < dist[iidx]
+              dist[iidx] = new_cost
+              next_hop[iidx] = neighbor
+              updates = updates + 1
+    total_updates = total_updates + updates
+    print "  Iteration {iteration}: {updates} updates"
+    if updates == 0
+      print "  Converged!"
+
+  -- Part 4: Final routing tables
+  print ""
+  print "=== Part 4: Final Routing Tables ==="
+  for i in range(0, num_nodes)
+    print "  Router {node_names[i]}:"
+    for j in range(0, num_nodes)
+      if i != j
+        idx := i * num_nodes + j
+        nh := next_hop[idx]
+        if nh >= 0
+          print "    to {node_names[j]}: cost={dist[idx]} via {node_names[nh]}"
+
+  -- Part 5: Shortest paths
+  print ""
+  print "=== Part 5: Shortest Paths ==="
+  -- Trace path from A to each destination
+  for dest in range(1, num_nodes)
+    mut path := "A"
+    mut current := 0
+    mut hops := 0
+    while current != dest and hops < 10
+      idx := current * num_nodes + dest
+      nh := next_hop[idx]
+      path = path + " -> {node_names[nh]}"
+      current = nh
+      hops = hops + 1
+    didx := 0 * num_nodes + dest
+    print "  A to {node_names[dest]}: {path} (cost={dist[didx]}, hops={hops})"
+
+  -- Part 6: Link failure simulation
+  print ""
+  print "=== Part 6: Link Failure ==="
+  print "  Simulating failure of link A-B (cost 1 -> INF)"
+  -- Set A->B and B->A to infinity
+  dist[0 * num_nodes + 1] = inf
+  dist[1 * num_nodes + 0] = inf
+
+  -- Re-converge
+  mut fail_updates := 0
+  for iteration in range(1, 5)
+    for i in range(0, num_nodes)
+      for e in range(0, num_edges)
+        if edge_from[e] == i
+          if not (edge_from[e] == 0 and edge_to[e] == 1) and not (edge_from[e] == 1 and edge_to[e] == 0)
+            neighbor := edge_to[e]
+            link_cost := edge_cost[e]
+            for dest in range(0, num_nodes)
+              nidx := neighbor * num_nodes + dest
+              iidx := i * num_nodes + dest
+              new_cost := link_cost + dist[nidx]
+              if new_cost < dist[iidx]
+                dist[iidx] = new_cost
+                next_hop[iidx] = neighbor
+                fail_updates = fail_updates + 1
+
+  a_to_b := dist[0 * num_nodes + 1]
+  print "  New A->B cost: {a_to_b}"
+  nh_ab := next_hop[0 * num_nodes + 1]
+  if nh_ab >= 0
+    print "  New A->B via: {node_names[nh_ab]}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Nodes: {num_nodes}"
+  print "  Edges: {num_edges}"
+  print "  Total route updates: {total_updates}"
+  print "  Post-failure updates: {fail_updates}"
+
+  print ""
+  print "Distance vector: topology, Bellman-Ford, routing tables, path tracing, link failure."

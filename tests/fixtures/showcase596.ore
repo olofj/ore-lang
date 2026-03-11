@@ -1,0 +1,126 @@
+-- Showcase 596: Probability Distributions (Binomial, Poisson Approximation)
+
+fn main
+  print "Probability Distributions:"
+  print ""
+
+  -- Part 1: Factorial and combinations
+  print "=== Part 1: Combinatorics ==="
+  -- Precompute factorials 0! to 12!
+  mut factorials := [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600]
+
+  print "  Factorials:"
+  for i in range(0, 8)
+    print "    {i}! = {factorials[i]}"
+
+  -- Part 2: Binomial coefficients C(n,k)
+  print ""
+  print "=== Part 2: Binomial Coefficients ==="
+  -- Pascal's triangle rows 0..7
+  -- Store as flat array, row i starts at i*(i+1)/2
+  mut pascal := [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Build Pascal's triangle
+  -- Row 0: [1]
+  -- Row 1: [1, 1]
+  -- etc.
+  mut offsets := [0, 1, 3, 6, 10, 15, 21, 28]
+
+  for row in range(1, 8)
+    cur := offsets[row]
+    prev := offsets[row - 1]
+    pascal[cur] = 1
+    pascal[cur + row] = 1
+    for k in range(1, row)
+      pascal[cur + k] = pascal[prev + k - 1] + pascal[prev + k]
+
+  print "  Pascal's Triangle:"
+  for row in range(0, 8)
+    mut line := "   "
+    base := offsets[row]
+    for k in range(0, row + 1)
+      line = line + " {pascal[base + k]}"
+    print "{line}"
+
+  -- Part 3: Binomial distribution B(n=10, p=0.3)
+  print ""
+  print "=== Part 3: Binomial Distribution B(10, 0.3) ==="
+  n := 10
+  -- Compute P(X=k) * 10000 as integer approximation
+  -- P(X=k) = C(n,k) * p^k * (1-p)^(n-k)
+  -- We'll use integer arithmetic: multiply by 10000
+  -- p = 3/10, 1-p = 7/10
+
+  mut binom_probs := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- C(10,k) from Pascal's triangle row 10... use precomputed
+  mut c10 := [1, 10, 45, 120, 210, 252, 210, 120, 45, 10, 1]
+
+  -- Compute 3^k and 7^(10-k) scaled
+  mut pow3 := [1, 3, 9, 27, 81, 243, 729, 2187, 6561, 19683, 59049]
+  mut pow7 := [1, 7, 49, 343, 2401, 16807, 117649, 823543, 5764801, 40353607, 282475249]
+
+  -- 10^10 = denominator
+  -- P(X=k) = C(10,k) * 3^k * 7^(10-k) / 10^10
+  -- Scale by 10000: P*10000 = C(10,k) * 3^k * 7^(10-k) / 10^6
+  print "  k  C(10,k)  P(X=k)*10000"
+  mut mean_check := 0
+  for k in range(0, 11)
+    numer := c10[k] * pow3[k] * pow7[10 - k]
+    prob_scaled := numer / 1000000
+    binom_probs[k] = prob_scaled
+    mean_check = mean_check + k * prob_scaled
+    -- Print histogram bar
+    mut bar := ""
+    mut b := 0
+    while b < prob_scaled / 200
+      bar = bar + "#"
+      b = b + 1
+    print "  {k}    {c10[k]}       {prob_scaled}  {bar}"
+
+  print "  Mean (approx): {mean_check / 10000}"
+
+  -- Part 4: Cumulative distribution
+  print ""
+  print "=== Part 4: CDF ==="
+  mut cdf := 0
+  for k in range(0, 11)
+    cdf = cdf + binom_probs[k]
+    print "  P(X <= {k}) = {cdf} / 10000"
+
+  -- Part 5: Poisson approximation
+  print ""
+  print "=== Part 5: Poisson Approximation ==="
+  -- For large n, small p: Poisson with lambda = n*p = 3
+  -- P(X=k) = e^(-lambda) * lambda^k / k!
+  -- e^(-3) ~= 0.0498, * 10000 = 498
+  -- lambda^k / k! for lambda=3
+  print "  Lambda = n*p = 3"
+  print "  Poisson approximation vs Binomial:"
+
+  mut pois_numer := [1, 3, 9, 27, 81, 243, 729, 2187]
+  -- e^-3 * 10000 = 498
+  e_neg3 := 498
+
+  for k in range(0, 8)
+    pois_prob := e_neg3 * pois_numer[k] / factorials[k]
+    print "  k={k}: Binomial={binom_probs[k]} Poisson~={pois_prob} (x10000)"
+
+  -- Part 6: Variance calculation
+  print ""
+  print "=== Part 6: Variance ==="
+  -- Var(X) = n*p*(1-p) = 10 * 0.3 * 0.7 = 2.1
+  -- In integer: 10 * 3 * 7 / 100 = 210/100 = 2.1
+  var_numer := 10 * 3 * 7
+  print "  Theoretical variance: {var_numer}/100 = 2.1"
+  print "  Theoretical mean: n*p = 3.0"
+  print "  Theoretical std dev: sqrt(2.1) ~ 1.449"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Distribution: Binomial(10, 0.3)"
+  print "  Sample space: 0..10"
+  print "  Most likely value: k=3"
+  print "  Pascal rows computed: 8"
+
+  print ""
+  print "Probability: binomial coefficients, Pascal's triangle, distribution, CDF, Poisson approximation."

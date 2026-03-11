@@ -1,0 +1,290 @@
+-- Showcase 600: The Grand Finale - Every Major Ore Feature in One Program
+
+type Point { x: Int, y: Int }
+
+type Color
+  Red
+  Green
+  Blue
+
+fn fibonacci n:Int -> Int
+  if n <= 1
+    return n
+  return fibonacci(n - 1) + fibonacci(n - 2)
+
+fn factorial n:Int -> Int
+  if n <= 1
+    return 1
+  return n * factorial(n - 1)
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  mut i := 2
+  while i * i <= n
+    if n % i == 0
+      return false
+    i = i + 1
+  return true
+
+fn gcd a:Int b:Int -> Int
+  if b == 0
+    return a
+  return gcd(b, a % b)
+
+impl Point
+  fn manhattan self:Point -> Int
+    mut dx := self.x
+    mut dy := self.y
+    if dx < 0
+      dx = 0 - dx
+    if dy < 0
+      dy = 0 - dy
+    return dx + dy
+
+  fn translate self:Point dx:Int dy:Int -> Point
+    return Point(x: self.x + dx, y: self.y + dy)
+
+fn color_name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+
+fn main
+  print "=== Showcase 600: The Grand Finale ==="
+  print "Every major Ore feature in one program!"
+  print ""
+
+  -- Feature 1: Variables and basic types
+  print "--- Feature 1: Variables & Types ---"
+  name := "Ore"
+  version := 600
+  pi_approx := 355 * 1000 / 113
+  is_awesome := true
+  print "  Language: {name}"
+  print "  Showcase: {version}"
+  print "  Pi*1000 approx: {pi_approx}"
+  print "  Awesome: {is_awesome}"
+
+  -- Feature 2: Mutable variables
+  print ""
+  print "--- Feature 2: Mutability ---"
+  mut counter := 0
+  for i in range(1, 11)
+    counter = counter + i
+  print "  Sum 1..10: {counter}"
+
+  -- Feature 3: Functions and recursion
+  print ""
+  print "--- Feature 3: Functions & Recursion ---"
+  fib10 := fibonacci(10)
+  fact6 := factorial(6)
+  g := gcd(48, 18)
+  print "  fibonacci(10) = {fib10}"
+  print "  factorial(6) = {fact6}"
+  print "  gcd(48, 18) = {g}"
+
+  -- Feature 4: Records and methods
+  print ""
+  print "--- Feature 4: Records & Methods ---"
+  p := Point(x: 3, y: -4)
+  print "  Point: ({p.x}, {p.y})"
+  print "  Manhattan distance: {p.manhattan()}"
+  p2 := p.translate(2, 6)
+  print "  Translated: ({p2.x}, {p2.y})"
+
+  -- Feature 5: Enums and pattern matching
+  print ""
+  print "--- Feature 5: Enums & Match ---"
+  print "  Color: {color_name(Red)}"
+  print "  Color: {color_name(Green)}"
+  print "  Color: {color_name(Blue)}"
+
+  -- Feature 6: Lists and functional methods
+  print ""
+  print "--- Feature 6: Lists & Pipelines ---"
+  nums := range(1, 21)
+  total := nums | sum()
+  print "  Sum 1..20: {total}"
+
+  evens := nums | filter(x => x % 2 == 0) | take(5)
+  print "  First 5 evens: {evens | join(", ")}"
+
+  squares := range(1, 8) | map(x => x * x)
+  print "  Squares 1..7: {squares | join(", ")}"
+
+  -- Feature 7: Map operations
+  print ""
+  print "--- Feature 7: Maps ---"
+  mut scores := {"alice": 95, "bob": 87, "charlie": 92}
+  scores | set("diana", 99)
+  print "  Alice: {scores | get("alice")}"
+  print "  Keys: {scores | keys() | sort() | join(", ")}"
+  print "  Values count: {scores | values() | len()}"
+
+  -- Feature 8: String methods
+  print ""
+  print "--- Feature 8: Strings ---"
+  msg := "  hello, ore programming language!  "
+  print "  Trimmed: '{msg | trim()}'"
+  print "  Upper: '{msg | trim() | to_upper()}'"
+  print "  Words: {msg | trim() | words() | len()}"
+  print "  Contains 'ore': {msg | contains("ore")}"
+
+  -- Feature 9: Control flow
+  print ""
+  print "--- Feature 9: Control Flow ---"
+  x := 42
+  if x > 100
+    print "  {x} is big"
+  else if x > 10
+    print "  {x} is medium"
+  else
+    print "  {x} is small"
+
+  mut n := 1
+  while true
+    if n * n > 100
+      print "  First n where n*n > 100: {n}"
+      break
+    n = n + 1
+
+  mut odd_sum := 0
+  for i in range(1, 20, 2)
+    odd_sum = odd_sum + i
+  print "  Sum of odds 1..19: {odd_sum}"
+
+  -- Feature 10: List comprehensions
+  print ""
+  print "--- Feature 10: Comprehensions ---"
+  primes := [x for x in range(2, 30) if is_prime(x)]
+  print "  Primes < 30: {primes | join(", ")}"
+
+  fib_list := [fibonacci(i) for i in range(0, 10)]
+  print "  Fib 0..9: {fib_list | join(", ")}"
+
+  -- Feature 11: Pipeline chains
+  print ""
+  print "--- Feature 11: Advanced Pipelines ---"
+  result := range(1, 101) | filter(x => x % 3 == 0) | filter(x => x % 5 == 0) | sum()
+  print "  Sum of multiples of 15 in 1..100: {result}"
+
+  words := ["the", "quick", "brown", "fox", "jumps"]
+  sentence := words | map(w => w | capitalize()) | join(" ")
+  print "  Capitalized: {sentence}"
+
+  -- Feature 12: Higher-order list methods
+  print ""
+  print "--- Feature 12: Higher-Order Methods ---"
+  data := [4, 2, 7, 1, 9, 3, 8, 5, 6]
+  print "  Data: {data | join(", ")}"
+  print "  Sorted: {data | sort() | join(", ")}"
+  print "  Reversed: {data | sort() | reverse() | join(", ")}"
+  print "  Min: {data | min()}"
+  print "  Max: {data | max()}"
+  print "  Any > 8: {data | any(x => x > 8)}"
+  print "  All > 0: {data | all(x => x > 0)}"
+  print "  Count even: {data | count(x => x % 2 == 0)}"
+
+  -- Feature 13: String interpolation in complex expressions
+  print ""
+  print "--- Feature 13: String Interpolation ---"
+  for i in range(1, 6)
+    stars := "*" | repeat(i)
+    f := factorial(i)
+    print "  {i}: {stars} ({f}!)"
+
+  -- Feature 14: Nested data processing
+  print ""
+  print "--- Feature 14: Data Processing ---"
+  -- Sieve of Eratosthenes
+  mut sieve := [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  sieve[0] = 0
+  sieve[1] = 0
+  for i in range(2, 30)
+    if sieve[i] == 1
+      mut j := i + i
+      while j < 30
+        sieve[j] = 0
+        j = j + i
+
+  mut sieve_primes := 0
+  for i in range(0, 30)
+    if sieve[i] == 1
+      sieve_primes = sieve_primes + 1
+  print "  Primes via sieve < 30: {sieve_primes}"
+
+  -- Feature 15: Boolean logic
+  print ""
+  print "--- Feature 15: Boolean Logic ---"
+  a := true
+  b := false
+  print "  true and false = {a and b}"
+  print "  true or false = {a or b}"
+  print "  not true = {not a}"
+  print "  (3 > 2) and (5 < 10) = {3 > 2 and 5 < 10}"
+
+  -- Feature 16: Number theory
+  print ""
+  print "--- Feature 16: Number Theory ---"
+  mut phi := 0
+  for i in range(1, 13)
+    if gcd(i, 12) == 1
+      phi = phi + 1
+  print "  Euler totient(12) = {phi}"
+
+  mut div_sum := 0
+  for i in range(1, 13)
+    if 12 % i == 0
+      div_sum = div_sum + i
+  print "  Sum of divisors(12) = {div_sum}"
+
+  -- Feature 17: Matrix operations
+  print ""
+  print "--- Feature 17: Matrix ---"
+  matrix_flat := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  print "  3x3 matrix:"
+  for r in range(0, 3)
+    a := matrix_flat[r * 3]
+    b := matrix_flat[r * 3 + 1]
+    c := matrix_flat[r * 3 + 2]
+    print "    [{a} {b} {c}]"
+
+  trace := matrix_flat[0] + matrix_flat[4] + matrix_flat[8]
+  print "  Trace: {trace}"
+
+  -- Feature 18: Statistics
+  print ""
+  print "--- Feature 18: Statistics ---"
+  dataset := [23, 45, 12, 67, 34, 89, 56, 78, 41, 90]
+  ds_sum := dataset | sum()
+  ds_count := dataset | len()
+  avg_x10 := ds_sum * 10 / ds_count
+  ds_min := dataset | min()
+  ds_max := dataset | max()
+  ds_range := ds_max - ds_min
+  print "  Dataset: {dataset | join(", ")}"
+  print "  Sum: {ds_sum}"
+  print "  Count: {ds_count}"
+  print "  Mean*10: {avg_x10}"
+  print "  Min: {ds_min}"
+  print "  Max: {ds_max}"
+  print "  Range: {ds_range}"
+  sorted_data := dataset | sort()
+  median_low := sorted_data[4]
+  median_high := sorted_data[5]
+  median_avg := (median_low + median_high) * 10 / 2
+  print "  Median (avg of middle two * 10): {median_avg}"
+
+  -- Grand summary
+  print ""
+  print "=== Grand Summary ==="
+  features := 18
+  print "  Features demonstrated: {features}"
+  print "  Records, enums, match, functions, recursion"
+  print "  Lists, maps, pipelines, lambdas, comprehensions"
+  print "  Strings, interpolation, control flow, mutability"
+  print "  Higher-order methods, boolean logic, number theory"
+  print ""
+  print "Showcase 600: the grand finale of the Ore language!"

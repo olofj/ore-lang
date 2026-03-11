@@ -1,0 +1,130 @@
+-- Showcase 591: Database MVCC (Multi-Version Concurrency Control)
+
+fn main
+  print "Database MVCC Simulation:"
+  print ""
+
+  -- Part 1: Version store setup
+  print "=== Part 1: Version Store ==="
+  mut row_ids := [1, 2, 3, 4, 5]
+  mut row_values := [100, 200, 300, 400, 500]
+  mut row_versions := [1, 1, 1, 1, 1]
+  mut row_created_by := [0, 0, 0, 0, 0]
+  num_rows := 5
+
+  -- Version history (old versions)
+  mut hist_row := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut hist_value := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut hist_version := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut hist_txn := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut hist_count := 0
+
+  for i in range(0, num_rows)
+    print "  Row {row_ids[i]}: value={row_values[i]} ver={row_versions[i]}"
+
+  -- Part 2: Transaction simulation
+  print ""
+  print "=== Part 2: Transactions ==="
+  mut txn_ids := [10, 20, 30]
+  mut txn_start_ver := [1, 1, 2]
+  mut txn_status := ["active", "active", "active"]
+  num_txns := 3
+
+  for t in range(0, num_txns)
+    print "  TXN-{txn_ids[t]}: snapshot_ver={txn_start_ver[t]} status={txn_status[t]}"
+
+  -- Part 3: TXN-10 writes row 1 and row 3
+  print ""
+  print "=== Part 3: TXN-10 Writes ==="
+  -- Save old version of row 0 (id=1)
+  hist_row[hist_count] = 0
+  hist_value[hist_count] = row_values[0]
+  hist_version[hist_count] = row_versions[0]
+  hist_txn[hist_count] = row_created_by[0]
+  hist_count = hist_count + 1
+
+  row_values[0] = 150
+  row_versions[0] = 2
+  row_created_by[0] = 10
+  print "  TXN-10: row 1 updated 100 -> 150 (ver 2)"
+
+  -- Save old version of row 2 (id=3)
+  hist_row[hist_count] = 2
+  hist_value[hist_count] = row_values[2]
+  hist_version[hist_count] = row_versions[2]
+  hist_txn[hist_count] = row_created_by[2]
+  hist_count = hist_count + 1
+
+  row_values[2] = 350
+  row_versions[2] = 2
+  row_created_by[2] = 10
+  print "  TXN-10: row 3 updated 300 -> 350 (ver 2)"
+
+  txn_status[0] = "committed"
+  print "  TXN-10: COMMITTED"
+
+  -- Part 4: Snapshot reads by TXN-20 (snapshot ver=1)
+  print ""
+  print "=== Part 4: Snapshot Read (TXN-20, ver=1) ==="
+  for i in range(0, num_rows)
+    if row_versions[i] <= txn_start_ver[1]
+      print "  Row {row_ids[i]}: value={row_values[i]} (current, visible)"
+    else
+      -- Need to find old version
+      mut found := 0
+      for h in range(0, hist_count)
+        if hist_row[h] == i and hist_version[h] <= txn_start_ver[1] and found == 0
+          print "  Row {row_ids[i]}: value={hist_value[h]} (historical ver {hist_version[h]})"
+          found = 1
+      if found == 0
+        print "  Row {row_ids[i]}: value={row_values[i]} (no older version)"
+
+  -- Part 5: TXN-30 reads current state (snapshot ver=2)
+  print ""
+  print "=== Part 5: Current Read (TXN-30, ver=2) ==="
+  for i in range(0, num_rows)
+    if row_versions[i] <= txn_start_ver[2]
+      print "  Row {row_ids[i]}: value={row_values[i]} (visible)"
+
+  -- Part 6: Write-write conflict detection
+  print ""
+  print "=== Part 6: Conflict Detection ==="
+  -- TXN-20 tries to write row 1, but TXN-10 already wrote it
+  mut conflict := 0
+  if row_created_by[0] != 0 and row_created_by[0] != txn_ids[1]
+    if row_versions[0] > txn_start_ver[1]
+      conflict = 1
+      print "  CONFLICT: TXN-20 write to row 1 conflicts with TXN-10"
+      print "  Row 1 was modified at ver {row_versions[0]} > snapshot ver {txn_start_ver[1]}"
+      txn_status[1] = "aborted"
+      print "  TXN-20: ABORTED (write-write conflict)"
+
+  -- Part 7: Garbage collection of old versions
+  print ""
+  print "=== Part 7: Version Garbage Collection ==="
+  -- Find minimum active snapshot version
+  mut min_active_ver := 999
+  for t in range(0, num_txns)
+    if txn_status[t] == "active"
+      if txn_start_ver[t] < min_active_ver
+        min_active_ver = txn_start_ver[t]
+  print "  Minimum active snapshot: ver {min_active_ver}"
+
+  mut gc_count := 0
+  for h in range(0, hist_count)
+    if hist_version[h] < min_active_ver
+      gc_count = gc_count + 1
+  print "  Versions eligible for GC: {gc_count}"
+  print "  Total historical versions: {hist_count}"
+
+  -- Part 8: Final state
+  print ""
+  print "=== Part 8: Final State ==="
+  for i in range(0, num_rows)
+    print "  Row {row_ids[i]}: value={row_values[i]} ver={row_versions[i]} writer=TXN-{row_created_by[i]}"
+
+  for t in range(0, num_txns)
+    print "  TXN-{txn_ids[t]}: {txn_status[t]}"
+
+  print ""
+  print "MVCC: versioned rows, snapshot isolation, conflict detection, garbage collection."

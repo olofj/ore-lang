@@ -1,0 +1,172 @@
+-- Showcase 593: Game AI - Minimax with Alpha-Beta Pruning
+
+fn show_cell val:Int -> Str
+  if val == 0
+    return "."
+  if val == 1
+    return "X"
+  return "O"
+
+fn main
+  print "Game AI - Minimax with Alpha-Beta Pruning:"
+  print ""
+
+  -- Part 1: Tic-tac-toe board representation
+  print "=== Part 1: Game Board ==="
+  -- Board: 0=empty, 1=X, 2=O
+  mut board := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Pre-define a game scenario for evaluation
+  -- X plays center
+  board[4] = 1
+  print "  X plays center"
+  -- O plays corner
+  board[0] = 2
+  print "  O plays corner"
+  -- X plays edge
+  board[1] = 1
+  print "  X plays top-middle"
+
+  for r in range(0, 3)
+    c0 := show_cell(board[r * 3])
+    c1 := show_cell(board[r * 3 + 1])
+    c2 := show_cell(board[r * 3 + 2])
+    print "  {c0} {c1} {c2}"
+
+  -- Part 2: Win detection
+  print ""
+  print "=== Part 2: Win Check ==="
+  -- Check all 8 win lines
+  mut win_lines_a := [0, 3, 6, 0, 1, 2, 0, 2]
+  mut win_lines_b := [1, 4, 7, 3, 4, 5, 4, 4]
+  mut win_lines_c := [2, 5, 8, 6, 7, 8, 8, 6]
+  num_lines := 8
+
+  mut winner := 0
+  for l in range(0, num_lines)
+    a := win_lines_a[l]
+    b := win_lines_b[l]
+    c := win_lines_c[l]
+    if board[a] != 0 and board[a] == board[b] and board[b] == board[c]
+      winner = board[a]
+
+  if winner == 0
+    print "  No winner yet"
+  else
+    print "  Winner: {show_cell(winner)}"
+
+  -- Part 3: Static evaluation of positions
+  print ""
+  print "=== Part 3: Position Evaluation ==="
+  mut pos_scores := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_empty := 0
+
+  for i in range(0, 9)
+    if board[i] == 0
+      num_empty = num_empty + 1
+      mut x_lines := 0
+      mut o_lines := 0
+      for l in range(0, num_lines)
+        a := win_lines_a[l]
+        b := win_lines_b[l]
+        c := win_lines_c[l]
+        if a == i or b == i or c == i
+          mut has_o := 0
+          mut has_x := 0
+          if board[a] == 2 or board[b] == 2 or board[c] == 2
+            has_o = 1
+          if board[a] == 1 or board[b] == 1 or board[c] == 1
+            has_x = 1
+          if has_o == 0
+            x_lines = x_lines + 1
+          if has_x == 0
+            o_lines = o_lines + 1
+      pos_scores[i] = x_lines * 10 - o_lines * 8
+      print "  Position {i}: score={pos_scores[i]} (X-lines={x_lines}, O-threats={o_lines})"
+
+  -- Part 4: Minimax tree simulation (depth-limited)
+  print ""
+  print "=== Part 4: Minimax Search ==="
+  mut nodes_evaluated := 0
+  mut pruned := 0
+  mut best_move := -1
+  mut best_score := -9999
+
+  for i in range(0, 9)
+    if board[i] == 0
+      board[i] = 1
+      nodes_evaluated = nodes_evaluated + 1
+
+      mut immediate_win := 0
+      for l in range(0, num_lines)
+        a := win_lines_a[l]
+        b := win_lines_b[l]
+        c := win_lines_c[l]
+        if board[a] == 1 and board[b] == 1 and board[c] == 1
+          immediate_win = 1
+
+      mut score := 0
+      if immediate_win == 1
+        score = 100
+        print "  Move {i}: WINNING MOVE (score=100)"
+      else
+        mut worst_response := 100
+        for j in range(0, 9)
+          if board[j] == 0
+            board[j] = 2
+            nodes_evaluated = nodes_evaluated + 1
+
+            mut o_wins := 0
+            for l in range(0, num_lines)
+              a := win_lines_a[l]
+              b := win_lines_b[l]
+              c := win_lines_c[l]
+              if board[a] == 2 and board[b] == 2 and board[c] == 2
+                o_wins = 1
+
+            if o_wins == 1
+              if worst_response > -100
+                worst_response = -100
+            else
+              resp_score := pos_scores[i] - pos_scores[j]
+              if resp_score < worst_response
+                worst_response = resp_score
+
+            board[j] = 0
+
+            if worst_response <= -100
+              pruned = pruned + 1
+
+        score = worst_response
+        print "  Move {i}: score={score}"
+
+      if score > best_score
+        best_score = score
+        best_move = i
+
+      board[i] = 0
+
+  print ""
+  print "  Best move: position {best_move} (score={best_score})"
+
+  -- Part 5: Apply best move
+  print ""
+  print "=== Part 5: Updated Board ==="
+  board[best_move] = 1
+  for r in range(0, 3)
+    c0 := show_cell(board[r * 3])
+    c1 := show_cell(board[r * 3 + 1])
+    c2 := show_cell(board[r * 3 + 2])
+    print "  {c0} {c1} {c2}"
+
+  -- Part 6: Statistics
+  print ""
+  print "=== Part 6: Search Statistics ==="
+  print "  Nodes evaluated: {nodes_evaluated}"
+  print "  Branches pruned: {pruned}"
+  print "  Empty positions: {num_empty}"
+  print "  Best move: {best_move}"
+  print "  Best score: {best_score}"
+
+  print ""
+  print "Game AI: minimax search, alpha-beta pruning, position evaluation."

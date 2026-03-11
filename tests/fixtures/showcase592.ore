@@ -1,0 +1,171 @@
+-- Showcase 592: Dataflow Analysis (Reaching Definitions & Live Variables)
+
+fn main
+  print "Dataflow Analysis:"
+  print ""
+
+  -- Part 1: Basic block setup (simple program)
+  print "=== Part 1: Program CFG ==="
+  mut block_names := ["entry", "loop_head", "loop_body", "if_true", "if_false", "merge", "exit"]
+  num_blocks := 7
+
+  -- Edges: successor indices (-1 = none)
+  mut succ1 := [1, 2, 5, 5, 5, 6, -1]
+  mut succ2 := [-1, 6, 3, -1, -1, -1, -1]
+
+  -- Definitions in each block: var index defined (-1 = none)
+  mut def_var1 := [0, -1, 1, 2, 2, -1, -1]
+  mut def_var2 := [1, -1, -1, -1, -1, -1, -1]
+
+  -- Uses in each block: var index used (-1 = none)
+  mut use_var1 := [-1, 0, 0, 1, 0, 2, 0]
+  mut use_var2 := [-1, -1, 1, -1, -1, -1, 2]
+
+  mut var_names := ["x", "y", "z"]
+  num_vars := 3
+
+  for i in range(0, num_blocks)
+    s1 := succ1[i]
+    s2 := succ2[i]
+    if s2 >= 0
+      print "  {block_names[i]} -> {block_names[s1]}, {block_names[s2]}"
+    else if s1 >= 0
+      print "  {block_names[i]} -> {block_names[s1]}"
+    else
+      print "  {block_names[i]} -> (exit)"
+
+  -- Part 2: Reaching definitions (forward analysis)
+  print ""
+  print "=== Part 2: Reaching Definitions ==="
+  -- gen/kill sets per block (simplified: track which blocks define each var)
+  -- reach_in[block][var] = 1 if some definition of var reaches block entry
+  mut reach := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- 7 blocks x 3 vars = 21 entries, index = block * 3 + var
+
+  -- Iterate until convergence
+  mut changed := 1
+  mut iterations := 0
+  while changed == 1
+    changed = 0
+    iterations = iterations + 1
+    for b in range(0, num_blocks)
+      -- Propagate from predecessors
+      for p in range(0, num_blocks)
+        if succ1[p] == b or succ2[p] == b
+          -- Union predecessor's reach_out into our reach_in
+          for v in range(0, num_vars)
+            pidx := p * 3 + v
+            bidx := b * 3 + v
+            -- If predecessor defines v, it reaches us
+            if def_var1[p] == v or def_var2[p] == v
+              if reach[bidx] == 0
+                reach[bidx] = 1
+                changed = 1
+            -- If predecessor has v reaching and doesn't kill it
+            if reach[pidx] == 1
+              if def_var1[p] != v and def_var2[p] != v
+                if reach[bidx] == 0
+                  reach[bidx] = 1
+                  changed = 1
+
+  print "  Converged in {iterations} iterations"
+  for b in range(0, num_blocks)
+    mut reaching := ""
+    mut count := 0
+    for v in range(0, num_vars)
+      idx := b * 3 + v
+      if reach[idx] == 1
+        if count > 0
+          reaching = reaching + ", "
+        reaching = reaching + var_names[v]
+        count = count + 1
+    if count > 0
+      print "  {block_names[b]}: reaches [{reaching}]"
+    else
+      print "  {block_names[b]}: reaches []"
+
+  -- Part 3: Live variable analysis (backward)
+  print ""
+  print "=== Part 3: Live Variables ==="
+  mut live := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  mut lv_changed := 1
+  mut lv_iters := 0
+  while lv_changed == 1
+    lv_changed = 0
+    lv_iters = lv_iters + 1
+    -- Process blocks in reverse
+    for rb in range(0, num_blocks)
+      b := num_blocks - 1 - rb
+      -- For each successor, propagate live vars back
+      for v in range(0, num_vars)
+        bidx := b * 3 + v
+        -- Variable is live if used in this block
+        if use_var1[b] == v or use_var2[b] == v
+          if live[bidx] == 0
+            live[bidx] = 1
+            lv_changed = 1
+        -- Or if live at entry of successor and not defined here
+        s := succ1[b]
+        if s >= 0
+          sidx := s * 3 + v
+          if live[sidx] == 1 and def_var1[b] != v and def_var2[b] != v
+            if live[bidx] == 0
+              live[bidx] = 1
+              lv_changed = 1
+        s2 := succ2[b]
+        if s2 >= 0
+          s2idx := s2 * 3 + v
+          if live[s2idx] == 1 and def_var1[b] != v and def_var2[b] != v
+            if live[bidx] == 0
+              live[bidx] = 1
+              lv_changed = 1
+
+  print "  Converged in {lv_iters} iterations"
+  for b in range(0, num_blocks)
+    mut lv_str := ""
+    mut lv_count := 0
+    for v in range(0, num_vars)
+      idx := b * 3 + v
+      if live[idx] == 1
+        if lv_count > 0
+          lv_str = lv_str + ", "
+        lv_str = lv_str + var_names[v]
+        lv_count = lv_count + 1
+    print "  {block_names[b]}: live [{lv_str}]"
+
+  -- Part 4: Dead code detection
+  print ""
+  print "=== Part 4: Dead Code Detection ==="
+  mut dead_defs := 0
+  for b in range(0, num_blocks)
+    if def_var1[b] >= 0
+      v := def_var1[b]
+      -- Check if defined variable is live at any successor
+      mut is_live := 0
+      s := succ1[b]
+      if s >= 0
+        sidx := s * 3 + v
+        if live[sidx] == 1
+          is_live = 1
+      s2 := succ2[b]
+      if s2 >= 0
+        s2idx := s2 * 3 + v
+        if live[s2idx] == 1
+          is_live = 1
+      if is_live == 0
+        print "  Dead def: {var_names[v]} in {block_names[b]}"
+        dead_defs = dead_defs + 1
+  print "  Total dead definitions: {dead_defs}"
+
+  -- Part 5: Statistics
+  print ""
+  print "=== Part 5: Statistics ==="
+  print "  Blocks: {num_blocks}"
+  print "  Variables: {num_vars}"
+  print "  Reaching def iterations: {iterations}"
+  print "  Live var iterations: {lv_iters}"
+  print "  Dead definitions found: {dead_defs}"
+
+  print ""
+  print "Dataflow: reaching definitions, live variables, dead code detection."

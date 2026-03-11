@@ -1,0 +1,153 @@
+-- Showcase 598: Compiler Register Allocation (Linear Scan)
+
+fn main
+  print "Compiler Register Allocation - Linear Scan:"
+  print ""
+
+  -- Part 1: Live intervals
+  print "=== Part 1: Live Intervals ==="
+  mut var_names := ["a", "b", "c", "d", "e", "f", "g", "h"]
+  mut interval_start := [0, 1, 2, 3, 1, 5, 6, 2]
+  mut interval_end := [5, 8, 6, 9, 4, 7, 10, 3]
+  num_vars := 8
+
+  -- Sort by start time (bubble sort)
+  for pass in range(0, num_vars)
+    for j in range(0, num_vars - 1 - pass)
+      if interval_start[j] > interval_start[j + 1]
+        tmp_s := interval_start[j]
+        interval_start[j] = interval_start[j + 1]
+        interval_start[j + 1] = tmp_s
+        tmp_e := interval_end[j]
+        interval_end[j] = interval_end[j + 1]
+        interval_end[j + 1] = tmp_e
+        tmp_n := var_names[j]
+        var_names[j] = var_names[j + 1]
+        var_names[j + 1] = tmp_n
+
+  for i in range(0, num_vars)
+    mut timeline := ""
+    for t in range(0, 12)
+      if t >= interval_start[i] and t <= interval_end[i]
+        timeline = timeline + "="
+      else
+        timeline = timeline + "."
+    print "  {var_names[i]}: [{interval_start[i]}-{interval_end[i]}] {timeline}"
+
+  -- Part 2: Linear scan allocation
+  print ""
+  print "=== Part 2: Linear Scan Allocation ==="
+  num_regs := 3
+  mut reg_names := ["R0", "R1", "R2"]
+
+  -- Active intervals: which var is in each register (-1 = free)
+  mut reg_var := [-1, -1, -1]
+  mut reg_end := [0, 0, 0]
+
+  -- Assignment result
+  mut var_reg := [-1, -1, -1, -1, -1, -1, -1, -1]
+  mut spilled := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_spills := 0
+
+  for i in range(0, num_vars)
+    -- Expire old intervals
+    for r in range(0, num_regs)
+      if reg_var[r] >= 0 and reg_end[r] < interval_start[i]
+        old_idx := reg_var[r]
+        old_name := var_names[old_idx]
+        print "  Free {reg_names[r]} (was {old_name})"
+        reg_var[r] = -1
+
+    -- Try to find a free register
+    mut assigned := 0
+    for r in range(0, num_regs)
+      if reg_var[r] == -1 and assigned == 0
+        reg_var[r] = i
+        reg_end[r] = interval_end[i]
+        var_reg[i] = r
+        assigned = 1
+        print "  Assign {var_names[i]} -> {reg_names[r]} (live {interval_start[i]}-{interval_end[i]})"
+
+    -- If no free register, spill
+    if assigned == 0
+      -- Find register with farthest end point to spill
+      mut spill_reg := 0
+      mut farthest_end := -1
+      for r in range(0, num_regs)
+        if reg_end[r] > farthest_end
+          farthest_end = reg_end[r]
+          spill_reg = r
+
+      if interval_end[i] < farthest_end
+        -- Spill the one in the register, assign current
+        old_var := reg_var[spill_reg]
+        print "  SPILL {var_names[old_var]} from {reg_names[spill_reg]}, assign {var_names[i]}"
+        spilled[old_var] = 1
+        var_reg[old_var] = -1
+        num_spills = num_spills + 1
+        reg_var[spill_reg] = i
+        reg_end[spill_reg] = interval_end[i]
+        var_reg[i] = spill_reg
+      else
+        -- Spill current
+        print "  SPILL {var_names[i]} (no register available)"
+        spilled[i] = 1
+        num_spills = num_spills + 1
+
+  -- Part 3: Allocation result
+  print ""
+  print "=== Part 3: Allocation Result ==="
+  for i in range(0, num_vars)
+    if spilled[i] == 1
+      print "  {var_names[i]}: SPILLED to stack"
+    else
+      ri := var_reg[i]
+      rn := reg_names[ri]
+      print "  {var_names[i]}: {rn}"
+
+  -- Part 4: Register pressure over time
+  print ""
+  print "=== Part 4: Register Pressure ==="
+  mut max_pressure := 0
+  for t in range(0, 12)
+    mut pressure := 0
+    for i in range(0, num_vars)
+      if t >= interval_start[i] and t <= interval_end[i]
+        pressure = pressure + 1
+    if pressure > max_pressure
+      max_pressure = pressure
+    mut bar := ""
+    mut b := 0
+    while b < pressure
+      bar = bar + "#"
+      b = b + 1
+    print "  t={t}: pressure={pressure} {bar}"
+
+  print "  Max pressure: {max_pressure} (registers: {num_regs})"
+  if max_pressure > num_regs
+    print "  Spilling required: {max_pressure - num_regs} extra variable(s)"
+
+  -- Part 5: Interference graph
+  print ""
+  print "=== Part 5: Interference ==="
+  mut interferences := 0
+  for i in range(0, num_vars)
+    for j in range(i + 1, num_vars)
+      -- Check if intervals overlap
+      if interval_start[i] <= interval_end[j] and interval_start[j] <= interval_end[i]
+        interferences = interferences + 1
+
+  print "  Total interferences: {interferences}"
+  print "  Graph chromatic number estimate: {max_pressure}"
+
+  -- Part 6: Statistics
+  print ""
+  print "=== Part 6: Statistics ==="
+  print "  Variables: {num_vars}"
+  print "  Registers: {num_regs}"
+  print "  Spills: {num_spills}"
+  print "  Max pressure: {max_pressure}"
+  print "  Interferences: {interferences}"
+
+  print ""
+  print "Register allocation: linear scan, live intervals, spilling, pressure analysis."
