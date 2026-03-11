@@ -2975,6 +2975,14 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
+            "words" => {
+                // words() = split on whitespace
+                let rt = self.module.get_function("ore_str_split_whitespace").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "words"))?;
+                let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::Str);
+                Ok((val, ValKind::List))
+            }
             "split" => {
                 if args.is_empty() {
                     // split() with no args = split on whitespace

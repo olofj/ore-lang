@@ -929,3 +929,17 @@ fn lists_destructure() {
         "destructure ok",
     ]);
 }
+
+#[test]
+fn showcase7() {
+    let out = run_ore("showcase7.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "5", "0", "64",    // squares comprehension
+        "6",                // label lengths
+        "60",               // destructuring sum
+        "4", "hello", "ore", // words
+        "819",              // sum of squares of multiples of 3
+        "showcase7 ok",
+    ]);
+}

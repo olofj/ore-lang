@@ -1,0 +1,32 @@
+-- Showcase 7: List comprehensions, destructuring, words
+
+fn main
+  -- List comprehension: squares of even numbers
+  squares := [x * x for x in 0..10 if x % 2 == 0]
+  print squares.len()
+  print squares[0]
+  print squares[4]
+
+  -- Comprehension with transformation
+  labels := ["item_1", "item_2", "item_3"]
+  lengths := [s.len() for s in labels]
+  print lengths[0]
+
+  -- Destructuring
+  coords := [10, 20, 30]
+  [x, y, z] := coords
+  print x + y + z
+
+  -- String words method
+  sentence := "hello world from ore"
+  words := sentence.words()
+  print words.len()
+  print words[0]
+  print words[3]
+
+  -- Combine: comprehension + pipeline
+  result := [x * x for x in 0..20 if x % 3 == 0]
+  total := result.sum()
+  print total
+
+  print "showcase7 ok"
