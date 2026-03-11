@@ -1,0 +1,29 @@
+fn maybe_double x:Int -> Int?
+  if x > 0
+    Some(x * 2)
+  else
+    None
+
+fn main
+  a := maybe_double(5)
+  b := maybe_double(-3)
+
+  match a
+    Some v -> print v
+    None -> print "none"
+
+  match b
+    Some v -> print v
+    None -> print "none"
+
+  -- Optional method call
+  c := a?.abs()
+  d := b?.abs()
+
+  match c
+    Some v -> print v
+    None -> print "none"
+
+  match d
+    Some v -> print v
+    None -> print "none"

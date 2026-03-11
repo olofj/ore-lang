@@ -299,6 +299,10 @@ impl Formatter {
                 for arm in arms {
                     self.indent(level + 1);
                     self.format_pattern(&arm.pattern);
+                    if let Some(guard) = &arm.guard {
+                        self.out.push_str(" if ");
+                        self.format_expr(guard, level + 1);
+                    }
                     self.out.push_str(" -> ");
                     self.format_expr(&arm.body, level + 1);
                     self.out.push('\n');
@@ -406,6 +410,22 @@ impl Formatter {
             Expr::Try(inner) => {
                 self.format_expr(inner, level);
                 self.out.push('?');
+            }
+            Expr::OptionalChain { object, field } => {
+                self.format_expr(object, level);
+                self.out.push_str("?.");
+                self.out.push_str(field);
+            }
+            Expr::OptionalMethodCall { object, method, args } => {
+                self.format_expr(object, level);
+                self.out.push_str("?.");
+                self.out.push_str(method);
+                self.out.push('(');
+                for (i, arg) in args.iter().enumerate() {
+                    if i > 0 { self.out.push_str(", "); }
+                    self.format_expr(arg, level);
+                }
+                self.out.push(')');
             }
         }
     }

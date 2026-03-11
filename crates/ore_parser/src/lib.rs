@@ -382,7 +382,7 @@ impl Parser {
     }
 
     fn parse_type_expr(&mut self) -> Result<TypeExpr, ParseError> {
-        match self.peek().clone() {
+        let base = match self.peek().clone() {
             Token::Ident(name) => {
                 self.advance();
                 // Check for generic type: Name[Type, Type]
@@ -395,9 +395,9 @@ impl Parser {
                         args.push(self.parse_type_expr()?);
                     }
                     self.expect(&Token::RBracket)?;
-                    Ok(TypeExpr::Generic(name, args))
+                    TypeExpr::Generic(name, args)
                 } else {
-                    Ok(TypeExpr::Named(name))
+                    TypeExpr::Named(name)
                 }
             }
             Token::LParen => {
@@ -415,9 +415,16 @@ impl Parser {
                 self.expect(&Token::Arrow)?;
                 let ret = self.parse_type_expr()?;
                 self.expect(&Token::RParen)?;
-                Ok(TypeExpr::Fn { params: types, ret: Box::new(ret) })
+                TypeExpr::Fn { params: types, ret: Box::new(ret) }
             }
-            _ => Err(self.error("expected type name".into())),
+            _ => return Err(self.error("expected type name".into())),
+        };
+        // Check for optional suffix: Type?
+        if self.peek() == &Token::QuestionMark {
+            self.advance();
+            Ok(TypeExpr::Generic("Option".to_string(), vec![base]))
+        } else {
+            Ok(base)
         }
     }
 
@@ -625,11 +632,12 @@ impl Parser {
             }
 
             // Field access / method call (highest precedence postfix)
-            if self.peek() == &Token::Dot {
+            if self.peek() == &Token::Dot || self.peek() == &Token::QuestionDot {
+                let optional = self.peek() == &Token::QuestionDot;
                 if let Some(Token::Ident(_)) = self.tokens.get(self.pos + 1).map(|s| &s.token) {
                     let dot_bp = 15; // Higher than any infix op
                     if dot_bp >= min_bp {
-                        self.advance(); // consume '.'
+                        self.advance(); // consume '.' or '?.'
                         let field = match self.peek().clone() {
                             Token::Ident(f) => { self.advance(); f }
                             _ => unreachable!(),
@@ -654,16 +662,31 @@ impl Parser {
                             }
                             self.skip_whitespace_tokens();
                             self.expect(&Token::RParen)?;
-                            lhs = Expr::MethodCall {
-                                object: Box::new(lhs),
-                                method: field,
-                                args,
-                            };
+                            if optional {
+                                lhs = Expr::OptionalMethodCall {
+                                    object: Box::new(lhs),
+                                    method: field,
+                                    args,
+                                };
+                            } else {
+                                lhs = Expr::MethodCall {
+                                    object: Box::new(lhs),
+                                    method: field,
+                                    args,
+                                };
+                            }
                         } else {
-                            lhs = Expr::FieldAccess {
-                                object: Box::new(lhs),
-                                field,
-                            };
+                            if optional {
+                                lhs = Expr::OptionalChain {
+                                    object: Box::new(lhs),
+                                    field,
+                                };
+                            } else {
+                                lhs = Expr::FieldAccess {
+                                    object: Box::new(lhs),
+                                    field,
+                                };
+                            }
                         }
                         continue;
                     }
@@ -979,9 +1002,15 @@ impl Parser {
                         break;
                     }
                     let pattern = self.parse_pattern()?;
+                    let guard = if self.peek() == &Token::If {
+                        self.advance();
+                        Some(Box::new(self.parse_expr(0)?))
+                    } else {
+                        None
+                    };
                     self.expect(&Token::Arrow)?;
                     let body = self.parse_expr(0)?;
-                    arms.push(MatchArm { pattern, body });
+                    arms.push(MatchArm { pattern, guard, body });
                     self.skip_newlines();
                 }
                 if self.peek() == &Token::Dedent {
@@ -1212,9 +1241,16 @@ impl Parser {
 
     fn parse_match_arm(&mut self) -> Result<MatchArm, ParseError> {
         let pattern = self.parse_pattern()?;
+        // Check for guard: `pattern if condition -> body`
+        let guard = if self.peek() == &Token::If {
+            self.advance();
+            Some(Box::new(self.parse_expr(0)?))
+        } else {
+            None
+        };
         self.expect(&Token::Arrow)?;
         let body = self.parse_expr(0)?;
-        Ok(MatchArm { pattern, body })
+        Ok(MatchArm { pattern, guard, body })
     }
 
     fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {

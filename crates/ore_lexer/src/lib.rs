@@ -58,6 +58,7 @@ pub enum Token {
     Dot,         // .
     DotDot,      // ..
     QuestionMark, // ?
+    QuestionDot,  // ?.
     PlusEq,      // +=
     MinusEq,     // -=
     StarEq,      // *=
@@ -405,7 +406,15 @@ impl<'a> Lexer<'a> {
             b'[' => { self.advance(); self.emit(Token::LBracket, start); }
             b']' => { self.advance(); self.emit(Token::RBracket, start); }
             b',' => { self.advance(); self.emit(Token::Comma, start); }
-            b'?' => { self.advance(); self.emit(Token::QuestionMark, start); }
+            b'?' => {
+                self.advance();
+                if self.peek() == Some(b'.') {
+                    self.advance();
+                    self.emit(Token::QuestionDot, start);
+                } else {
+                    self.emit(Token::QuestionMark, start);
+                }
+            }
             b'|' => { self.advance(); self.emit(Token::Pipe, start); }
             b'-' => {
                 self.advance();

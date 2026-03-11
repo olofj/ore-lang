@@ -448,6 +448,20 @@ fn control_chain_cmp() {
 }
 
 #[test]
+fn control_guard_patterns() {
+    let out = run_ore("control/guard_patterns.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["positive", "zero", "negative"]);
+}
+
+#[test]
+fn control_optional_chain() {
+    let out = run_ore("control/optional_chain.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["10", "none", "10", "none"]);
+}
+
+#[test]
 fn pipelines_comprehensive() {
     let out = run_ore("pipelines/comprehensive.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

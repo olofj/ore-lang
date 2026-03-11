@@ -214,11 +214,21 @@ pub enum Expr {
     ResultErr(Box<Expr>),
     Try(Box<Expr>),
     Sleep(Box<Expr>),
+    OptionalChain {
+        object: Box<Expr>,
+        field: String,
+    },
+    OptionalMethodCall {
+        object: Box<Expr>,
+        method: String,
+        args: Vec<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchArm {
     pub pattern: Pattern,
+    pub guard: Option<Box<Expr>>,
     pub body: Expr,
 }
 

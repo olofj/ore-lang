@@ -1,0 +1,10 @@
+fn classify x:Int -> Str
+  match x
+    0 -> "zero"
+    _ if x > 0 -> "positive"
+    _ -> "negative"
+
+fn main
+  print classify(5)
+  print classify(0)
+  print classify(-3)

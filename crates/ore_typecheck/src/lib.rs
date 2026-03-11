@@ -480,6 +480,9 @@ impl TypeChecker {
                 self.infer_expr(subject, env);
                 let mut result_ty = Type::Any;
                 for arm in arms {
+                    if let Some(guard) = &arm.guard {
+                        self.infer_expr(guard, env);
+                    }
                     let arm_ty = self.infer_expr(&arm.body, env);
                     if result_ty == Type::Any {
                         result_ty = arm_ty;
@@ -607,6 +610,17 @@ impl TypeChecker {
                 Type::Any
             }
             Expr::Sleep(_) => Type::Unit,
+            Expr::OptionalChain { object, .. } => {
+                self.infer_expr(object, env);
+                Type::Option(Box::new(Type::Any))
+            }
+            Expr::OptionalMethodCall { object, args, .. } => {
+                self.infer_expr(object, env);
+                for arg in args {
+                    self.infer_expr(arg, env);
+                }
+                Type::Option(Box::new(Type::Any))
+            }
         }
     }
 
