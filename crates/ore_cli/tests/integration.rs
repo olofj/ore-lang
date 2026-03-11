@@ -511,6 +511,13 @@ fn lists_min_max_count() {
 }
 
 #[test]
+fn lists_indexing() {
+    let out = run_ore("lists/indexing.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["50", "40", "10", "10", "50"]);
+}
+
+#[test]
 fn pipelines_comprehensive() {
     let out = run_ore("pipelines/comprehensive.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

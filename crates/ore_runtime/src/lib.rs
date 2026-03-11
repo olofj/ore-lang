@@ -604,11 +604,12 @@ pub extern "C" fn ore_list_push(list: *mut OreList, value: i64) {
 pub extern "C" fn ore_list_get(list: *mut OreList, index: i64) -> i64 {
     unsafe {
         let list = &*list;
-        if index < 0 || index >= list.len {
+        let idx = if index < 0 { list.len + index } else { index };
+        if idx < 0 || idx >= list.len {
             eprintln!("index out of bounds: {} (len {})", index, list.len);
             std::process::exit(1);
         }
-        *list.data.add(index as usize)
+        *list.data.add(idx as usize)
     }
 }
 

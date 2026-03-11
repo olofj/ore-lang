@@ -2252,6 +2252,20 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
             }
+            "first" => {
+                let rt = self.module.get_function("ore_list_get").unwrap();
+                let zero = self.context.i64_type().const_int(0, false);
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), zero.into()], "first"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "last" => {
+                let rt = self.module.get_function("ore_list_get").unwrap();
+                let neg_one = self.context.i64_type().const_int((-1i64) as u64, true);
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), neg_one.into()], "last"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
             "min" => {
                 let rt = self.module.get_function("ore_list_min").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmin"))?;
