@@ -1,0 +1,43 @@
+-- Showcase 51: Multi-line method chaining and fluent APIs
+
+fn main
+  -- String processing with multi-line chaining
+  sentence := "  the quick brown fox jumps over the lazy dog  "
+  title := sentence
+    .trim()
+    .split(" ")
+    .map(w => w.capitalize())
+    .join(" ")
+  print title
+
+  -- Pipeline with dot chaining
+  stats := [4, 8, 15, 16, 23, 42]
+    .map(n => n * 2)
+    .filter(n => n > 20)
+    .sort()
+  print stats.join(", ")
+
+  -- Chaining on string methods
+  encoded := "Hello, World!"
+    .to_lower()
+    .replace(" ", "_")
+    .replace(",", "")
+    .replace("!", "")
+  print encoded
+
+  -- Complex pipeline combining both styles
+  result := range(1, 21)
+    .filter(n => n % 3 == 0 or n % 5 == 0)
+    .map(n => str(n))
+    .join(" + ")
+  print result
+
+  -- Nested chaining
+  data := "3,1,4,1,5,9,2,6,5,3"
+    .split(",")
+    .map(s => s.parse_int())
+    .unique()
+    .sort()
+    .map(n => str(n))
+    .join(" ")
+  print data

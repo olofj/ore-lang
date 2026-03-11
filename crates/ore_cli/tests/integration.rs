@@ -1748,6 +1748,48 @@ fn showcase50() {
 }
 
 #[test]
+fn showcase51() {
+    let out = run_ore("showcase51.ore");
+    assert!(out.contains("The Quick Brown Fox Jumps Over The Lazy Dog"));
+    assert!(out.contains("30, 32, 46, 84"));
+    assert!(out.contains("hello_world"));
+    assert!(out.contains("1 2 3 4 5 6 9"));
+}
+
+#[test]
+fn showcase52() {
+    let out = run_ore("showcase52.ore");
+    assert!(out.contains("72"));
+    assert!(out.contains("-100"));
+    assert!(out.contains("0, 1, 3, 6, 10, 15"));
+    assert!(out.contains("Evens: 2, 4, 6, 8, 10"));
+    assert!(out.contains("Red: 3"));
+    assert!(out.contains("Blue: 4"));
+}
+
+#[test]
+fn showcase53() {
+    let out = run_ore("showcase53.ore");
+    assert!(out.contains("Palindromes: racecar, level, madam"));
+    assert!(out.contains("Encoded: Uryyb Jbeyq"));
+    assert!(out.contains("Decoded: Hello World"));
+    assert!(out.contains("Header: name,age,city"));
+    assert!(out.contains("Letters: 10, Digits: 3"));
+}
+
+#[test]
+fn div_by_zero() {
+    let path = fixtures_dir().join("errors/div_zero.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["run", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("division by zero"));
+}
+
+#[test]
 fn build_and_run_binary() {
     // Test `ore build` produces a working native binary
     let path = fixtures_dir().join("showcase36.ore");

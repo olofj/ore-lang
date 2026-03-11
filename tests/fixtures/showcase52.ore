@@ -1,0 +1,55 @@
+-- Showcase 52: Functional programming patterns
+
+-- Church-encoded booleans as functions
+fn identity x:Int -> Int
+  x
+
+fn double x:Int -> Int
+  x * 2
+
+fn square x:Int -> Int
+  x * x
+
+fn negate x:Int -> Int
+  0 - x
+
+fn main
+  -- Function composition through pipelines
+  result := 3 | double | square | double
+  print result
+
+  -- Applying list of operations manually
+  mut x := 5
+  x = x | double
+  x = x | square
+  x = x | negate
+  print x
+
+  -- Scan to show running computations
+  running := [1, 2, 3, 4, 5]
+    .scan(0, (acc, n) => acc + n)
+  print running.join(", ")
+
+  -- Partition into groups
+  nums := range(1, 21)
+  [evens, odds] := nums.partition(n => n % 2 == 0)
+  print "Evens: {evens.join(", ")}"
+  print "Odds: {odds.join(", ")}"
+
+  -- Zip two lists together
+  names := ["Alice", "Bob", "Charlie"]
+  scores := [95, 87, 92]
+  pairs := names.zip(scores)
+  print "Pairs: {pairs.len()} entries"
+
+  -- Using window for sliding operations
+  data := [1, 2, 3, 4, 5, 6, 7]
+  windows := data.window(3)
+  print "Windows: {windows.len()}"
+
+  -- Frequencies counting
+  votes := ["red", "blue", "red", "green", "blue", "red", "blue", "blue"]
+  freq := votes.frequencies()
+  print "Red: {freq.get("red")}"
+  print "Blue: {freq.get("blue")}"
+  print "Green: {freq.get("green")}"
