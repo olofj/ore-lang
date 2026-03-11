@@ -416,6 +416,20 @@ pub extern "C" fn ore_file_write(path: *mut OreStr, content: *mut OreStr) -> i8 
     }
 }
 
+// ── Range ──
+
+/// Create a list of integers from start (inclusive) to end (exclusive).
+#[no_mangle]
+pub extern "C" fn ore_range(start: i64, end: i64) -> *mut OreList {
+    let list = ore_list_new();
+    let mut i = start;
+    while i < end {
+        ore_list_push(list, i);
+        i += 1;
+    }
+    list
+}
+
 // ── Lists ──
 //
 // OreList: heap-allocated growable array of i64 values.
@@ -796,6 +810,26 @@ pub extern "C" fn ore_list_join(list: *mut OreList, sep: *mut OreStr) -> *mut Or
         }
         let joined = parts.join(sep_str);
         ore_str_new(joined.as_ptr(), joined.len() as u32)
+    }
+}
+
+/// Flat map: applies func to each element (must return a list), concatenates results.
+#[no_mangle]
+pub extern "C" fn ore_list_flat_map(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            let sub_list = call_closure(func, env, val) as *mut OreList;
+            if !sub_list.is_null() {
+                let sub = &*sub_list;
+                for j in 0..sub.len as usize {
+                    ore_list_push(result, *sub.data.add(j));
+                }
+            }
+        }
+        result
     }
 }
 

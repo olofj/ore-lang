@@ -346,6 +346,8 @@ fn map_runtime_functions(
     map_fn!("ore_list_all", ore_runtime::ore_list_all);
     map_fn!("ore_list_zip", ore_runtime::ore_list_zip);
     map_fn!("ore_list_enumerate", ore_runtime::ore_list_enumerate);
+    map_fn!("ore_list_flat_map", ore_runtime::ore_list_flat_map);
+    map_fn!("ore_range", ore_runtime::ore_range);
     // Maps
     map_fn!("ore_map_new", ore_runtime::ore_map_new);
     map_fn!("ore_map_set", ore_runtime::ore_map_set);

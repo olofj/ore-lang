@@ -423,3 +423,12 @@ fn stdlib_numeric() {
         "42.0", "3", "4.0", "3.0", "3.0", "4.0", "5.0", "4.0", "42",
     ]);
 }
+
+#[test]
+fn stdlib_range() {
+    let out = run_ore("stdlib/range.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "[1, 2, 3, 4, 5]", "55", "[1, 10, 2, 20, 3, 30]",
+    ]);
+}

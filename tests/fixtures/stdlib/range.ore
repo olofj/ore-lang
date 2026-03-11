@@ -1,0 +1,12 @@
+fn main
+  -- range creates a list
+  nums := range(1, 6)
+  print nums
+
+  -- range in pipelines
+  total := range(1, 11) | reduce(0, (acc, x) => acc + x)
+  print total
+
+  -- flat_map
+  result := [1, 2, 3].flat_map(x => [x, x * 10])
+  print result

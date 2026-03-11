@@ -595,6 +595,10 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_zip", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_enumerate(ptr) -> ptr
         self.module.add_function("ore_list_enumerate", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_list_flat_map(ptr, fn_ptr, env_ptr) -> ptr
+        self.module.add_function("ore_list_flat_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_range(i64, i64) -> ptr
+        self.module.add_function("ore_range", ptr_type.fn_type(&[i64_type.into(), i64_type.into()], false), ext);
         // String utilities
         self.module.add_function("ore_float_to_str", ptr_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_str_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -1134,6 +1138,18 @@ impl<'ctx> CodeGen<'ctx> {
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Bool));
                     }
+                    "range" => {
+                        if args.len() != 2 {
+                            return Err(CodeGenError { msg: "range takes 2 arguments (start, end)".into() });
+                        }
+                        let start = self.compile_expr(&args[0], func)?;
+                        let end = self.compile_expr(&args[1], func)?;
+                        let rt = self.module.get_function("ore_range").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[start.into(), end.into()], "range"))?;
+                        let val = self.call_result_to_value(result)?;
+                        self.last_list_elem_kind = Some(ValKind::Int);
+                        return Ok((val, ValKind::List));
+                    }
                     "int" => {
                         if args.len() != 1 {
                             return Err(CodeGenError { msg: "int() takes 1 argument".into() });
@@ -1656,7 +1672,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
-            "map" | "filter" => {
+            "map" | "filter" | "flat_map" => {
                 if args.len() != 1 {
                     return Err(CodeGenError { msg: format!("{} takes exactly 1 argument", method) });
                 }
