@@ -46,6 +46,11 @@ enum Commands {
         /// Path to the .ore file
         file: PathBuf,
     },
+    /// Create a new Ore project
+    New {
+        /// Project name
+        name: String,
+    },
 }
 
 type MainFunc = unsafe extern "C" fn() -> i32;
@@ -132,6 +137,12 @@ fn main() {
         Commands::Test { file } => {
             if let Err(e) = test_file(&file) {
                 print_error_with_context(&e, &file);
+                std::process::exit(1);
+            }
+        }
+        Commands::New { name } => {
+            if let Err(e) = create_project(&name) {
+                eprintln!("error: {}", e);
                 std::process::exit(1);
             }
         }
@@ -249,6 +260,43 @@ fn check_file(path: &Path) -> Result<(), String> {
         return Err(msgs.join("\n"));
     }
 
+    Ok(())
+}
+
+fn create_project(name: &str) -> Result<(), String> {
+    let project_dir = Path::new(name);
+    if project_dir.exists() {
+        return Err(format!("directory '{}' already exists", name));
+    }
+
+    let src_dir = project_dir.join("src");
+    let tests_dir = project_dir.join("tests");
+
+    std::fs::create_dir_all(&src_dir)
+        .map_err(|e| format!("failed to create directory: {}", e))?;
+    std::fs::create_dir_all(&tests_dir)
+        .map_err(|e| format!("failed to create directory: {}", e))?;
+
+    // ore.toml
+    let toml = format!(
+        "[project]\nname = \"{}\"\nversion = \"0.1.0\"\n",
+        name
+    );
+    std::fs::write(project_dir.join("ore.toml"), toml)
+        .map_err(|e| format!("failed to write ore.toml: {}", e))?;
+
+    // src/main.ore
+    let main_ore = "fn main\n  print \"Hello from Ore!\"\n";
+    std::fs::write(src_dir.join("main.ore"), main_ore)
+        .map_err(|e| format!("failed to write main.ore: {}", e))?;
+
+    // tests/main_test.ore
+    let test_ore = "test \"hello works\"\n  assert true\n";
+    std::fs::write(tests_dir.join("main_test.ore"), test_ore)
+        .map_err(|e| format!("failed to write main_test.ore: {}", e))?;
+
+    eprintln!("created project '{}' at {}/", name, name);
+    eprintln!("  ore run {}/src/main.ore", name);
     Ok(())
 }
 
