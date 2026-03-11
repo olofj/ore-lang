@@ -1496,6 +1496,112 @@ impl<'ctx> CodeGen<'ctx> {
             return Ok((str_val.into(), ValKind::Str));
         }
 
+        // Int methods
+        if obj_kind == ValKind::Int {
+            match method {
+                "to_float" => {
+                    let f_val = bld!(self.builder.build_signed_int_to_float(
+                        obj_val.into_int_value(),
+                        self.context.f64_type(),
+                        "i2f"
+                    ))?;
+                    return Ok((f_val.into(), ValKind::Float));
+                }
+                "abs" => {
+                    // Inline: x < 0 ? -x : x
+                    let int_val = obj_val.into_int_value();
+                    let zero = self.context.i64_type().const_zero();
+                    let is_neg = bld!(self.builder.build_int_compare(
+                        inkwell::IntPredicate::SLT, int_val, zero, "is_neg"
+                    ))?;
+                    let neg_val = bld!(self.builder.build_int_neg(int_val, "neg"))?;
+                    let result = bld!(self.builder.build_select(is_neg, neg_val, int_val, "abs"))?;
+                    return Ok((result, ValKind::Int));
+                }
+                _ => return Err(CodeGenError { msg: format!("unknown Int method '{}'", method) }),
+            }
+        }
+
+        // Float methods
+        if obj_kind == ValKind::Float {
+            match method {
+                "to_int" => {
+                    let i_val = bld!(self.builder.build_float_to_signed_int(
+                        obj_val.into_float_value(),
+                        self.context.i64_type(),
+                        "f2i"
+                    ))?;
+                    return Ok((i_val.into(), ValKind::Int));
+                }
+                "round" => {
+                    let round_fn = self.module.get_function("llvm.round.f64").unwrap_or_else(|| {
+                        let f64_type = self.context.f64_type();
+                        self.module.add_function(
+                            "llvm.round.f64",
+                            f64_type.fn_type(&[f64_type.into()], false),
+                            None,
+                        )
+                    });
+                    let result = bld!(self.builder.build_call(round_fn, &[obj_val.into()], "round"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Float));
+                }
+                "floor" => {
+                    let floor_fn = self.module.get_function("llvm.floor.f64").unwrap_or_else(|| {
+                        let f64_type = self.context.f64_type();
+                        self.module.add_function(
+                            "llvm.floor.f64",
+                            f64_type.fn_type(&[f64_type.into()], false),
+                            None,
+                        )
+                    });
+                    let result = bld!(self.builder.build_call(floor_fn, &[obj_val.into()], "floor"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Float));
+                }
+                "ceil" => {
+                    let ceil_fn = self.module.get_function("llvm.ceil.f64").unwrap_or_else(|| {
+                        let f64_type = self.context.f64_type();
+                        self.module.add_function(
+                            "llvm.ceil.f64",
+                            f64_type.fn_type(&[f64_type.into()], false),
+                            None,
+                        )
+                    });
+                    let result = bld!(self.builder.build_call(ceil_fn, &[obj_val.into()], "ceil"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Float));
+                }
+                "abs" => {
+                    let abs_fn = self.module.get_function("llvm.fabs.f64").unwrap_or_else(|| {
+                        let f64_type = self.context.f64_type();
+                        self.module.add_function(
+                            "llvm.fabs.f64",
+                            f64_type.fn_type(&[f64_type.into()], false),
+                            None,
+                        )
+                    });
+                    let result = bld!(self.builder.build_call(abs_fn, &[obj_val.into()], "fabs"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Float));
+                }
+                "sqrt" => {
+                    let sqrt_fn = self.module.get_function("llvm.sqrt.f64").unwrap_or_else(|| {
+                        let f64_type = self.context.f64_type();
+                        self.module.add_function(
+                            "llvm.sqrt.f64",
+                            f64_type.fn_type(&[f64_type.into()], false),
+                            None,
+                        )
+                    });
+                    let result = bld!(self.builder.build_call(sqrt_fn, &[obj_val.into()], "sqrt"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Float));
+                }
+                _ => return Err(CodeGenError { msg: format!("unknown Float method '{}'", method) }),
+            }
+        }
+
         let type_name = match &obj_kind {
             ValKind::Record(name) => name.clone(),
             _ => return Err(CodeGenError { msg: format!("method call on unsupported type: {:?}", obj_kind) }),

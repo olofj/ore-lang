@@ -1,0 +1,24 @@
+fn main
+  -- Int to Float
+  x := 42
+  print x.to_float()
+
+  -- Float to Int (truncates)
+  y := 3.7
+  print y.to_int()
+
+  -- Float rounding
+  print 3.7.round()
+  print 3.2.round()
+
+  -- Floor and ceil
+  print 3.7.floor()
+  print 3.2.ceil()
+
+  -- Float abs and sqrt
+  z := -5.0
+  print z.abs()
+  print 16.0.sqrt()
+
+  -- Int abs
+  print (-42).abs()

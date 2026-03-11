@@ -414,3 +414,12 @@ fn lists_zip_enum() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["true", "false", "true", "false", "3", "3"]);
 }
+
+#[test]
+fn stdlib_numeric() {
+    let out = run_ore("stdlib/numeric.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "42.0", "3", "4.0", "3.0", "3.0", "4.0", "5.0", "4.0", "42",
+    ]);
+}
