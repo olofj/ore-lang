@@ -266,6 +266,24 @@ pub extern "C" fn ore_str_trim(s: *mut OreStr) -> *mut OreStr {
     ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
 }
 
+/// Get a single character at an index. Returns empty string if out of bounds.
+#[no_mangle]
+pub extern "C" fn ore_str_char_at(s: *mut OreStr, idx: i64) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let str_val = unsafe { (*s).as_str() };
+    let i = if idx < 0 {
+        (str_val.len() as i64 + idx) as usize
+    } else {
+        idx as usize
+    };
+    if i < str_val.len() {
+        let ch = &str_val[i..i+1];
+        ore_str_new(ch.as_ptr(), ch.len() as u32)
+    } else {
+        ore_str_new(std::ptr::null(), 0)
+    }
+}
+
 /// Split a string by newlines, returning a list of lines.
 #[no_mangle]
 pub extern "C" fn ore_str_lines(s: *mut OreStr) -> *mut OreList {
@@ -1767,6 +1785,16 @@ pub extern "C" fn ore_map_get(map: *mut OreMap, key: *mut OreStr) -> i64 {
         let map = &*map;
         let key_str = (*key).as_str();
         *map.inner.get(key_str).unwrap_or(&0)
+    }
+}
+
+/// Get a value by key, or return the default if not found.
+#[no_mangle]
+pub extern "C" fn ore_map_get_or(map: *mut OreMap, key: *mut OreStr, default: i64) -> i64 {
+    unsafe {
+        let map = &*map;
+        let key_str = (*key).as_str();
+        *map.inner.get(key_str).unwrap_or(&default)
     }
 }
 

@@ -1173,6 +1173,13 @@ fn maps_entries() {
 }
 
 #[test]
+fn maps_get_or() {
+    let out = run_ore("maps/get_or.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["10", "99", "20"]);
+}
+
+#[test]
 fn math_functions() {
     let out = run_ore("math/functions.ore");
     let lines: Vec<&str> = out.lines().collect();
@@ -1217,4 +1224,20 @@ fn showcase12() {
     assert!(out.contains("date: 2025-03-10"));
     assert!(out.contains("triangle area: 6.0"));
     assert!(out.contains("showcase12 ok"));
+}
+
+#[test]
+fn showcase13() {
+    let out = run_ore("showcase13.ore");
+    assert!(out.contains("sum: 219.3"));
+    assert!(out.contains("min: 19.8"));
+    assert!(out.contains("max: 24.3"));
+    assert!(out.contains("sorted: 19.8, 19.8, 20.7, 21.0, 22.5, 22.5, 22.5, 23.1, 23.1, 24.3"));
+    assert!(out.contains("unique: 19.8, 20.7, 21.0, 22.5, 23.1, 24.3"));
+    assert!(out.contains("hot: 4, warm: 4, cold: 2"));
+    assert!(out.contains("kelvin min: 292.95"));
+    assert!(out.contains("kelvin max: 297.45"));
+    assert!(out.contains("sensors: S1|S2|S3|S4"));
+    assert!(out.contains("log(e^2): 2.0"));
+    assert!(out.contains("showcase13 ok"));
 }

@@ -1,0 +1,5 @@
+fn main
+  m := {"a": 10, "b": 20}
+  print m.get_or("a", 0)
+  print m.get_or("c", 99)
+  print m.get_or("b", 0)

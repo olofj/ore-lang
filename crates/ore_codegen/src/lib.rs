@@ -724,6 +724,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_trim_start", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_trim_end", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_lines", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_char_at", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_str_split", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -787,6 +788,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_map_map_values", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_map_filter", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_map_entries", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_get_or", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_frequencies", ptr_type.fn_type(&[ptr_type.into(), i8_type.into()], false), ext);
         self.module.add_function("ore_list_intersperse", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_sort_str", void_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3627,6 +3629,16 @@ impl<'ctx> CodeGen<'ctx> {
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::List))
             }
+            "char_at" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "char_at takes 1 argument (index)".into() });
+                }
+                let idx = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_str_char_at").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), idx.into()], "charat"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
             "index_of" => {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "index_of takes 1 argument".into() });
@@ -4055,6 +4067,40 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mfilter"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Map))
+            }
+            "get_or" => {
+                if args.len() != 2 {
+                    return Err(CodeGenError { line: None, msg: "get_or takes 2 arguments (key, default)".into() });
+                }
+                let key = self.compile_expr(&args[0], func)?;
+                let (default_val, default_kind) = self.compile_expr_with_kind(&args[1], func)?;
+                let default_i64 = match default_kind {
+                    ValKind::Str | ValKind::List | ValKind::Map => {
+                        bld!(self.builder.build_ptr_to_int(
+                            default_val.into_pointer_value(), self.context.i64_type(), "def2i"
+                        ))?
+                    }
+                    _ => default_val.into_int_value(),
+                };
+                let rt = self.module.get_function("ore_map_get_or").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into(), default_i64.into()], "mgetor"))?;
+                let i64_val = self.call_result_to_value(result)?;
+                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                match &val_kind {
+                    ValKind::Str => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
+                        ))?;
+                        Ok((ptr.into(), ValKind::Str))
+                    }
+                    ValKind::List => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
+                        ))?;
+                        Ok((ptr.into(), ValKind::List))
+                    }
+                    _ => Ok((i64_val, val_kind))
+                }
             }
             "entries" => {
                 let rt = self.module.get_function("ore_map_entries").unwrap();

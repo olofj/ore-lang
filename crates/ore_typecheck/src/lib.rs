@@ -876,7 +876,7 @@ impl TypeChecker {
                 "len" | "to_int" | "count" => Type::Int,
                 "to_float" => Type::Float,
                 "contains" | "starts_with" | "ends_with" | "is_empty" => Type::Bool,
-                "trim" | "trim_start" | "trim_end" | "to_upper" | "to_lower" | "replace" | "substr" | "pad_left" | "pad_right" | "repeat" | "strip_prefix" | "strip_suffix" => Type::Str,
+                "trim" | "trim_start" | "trim_end" | "to_upper" | "to_lower" | "replace" | "substr" | "pad_left" | "pad_right" | "repeat" | "strip_prefix" | "strip_suffix" | "char_at" => Type::Str,
                 "split" | "words" | "lines" => Type::List(Box::new(Type::Str)),
                 _ => Type::Any,
             },
@@ -902,7 +902,7 @@ impl TypeChecker {
             Type::Map(_, v) => match method {
                 "len" => Type::Int,
                 "contains" => Type::Bool,
-                "get" => *v.clone(),
+                "get" | "get_or" => *v.clone(),
                 "keys" => Type::List(Box::new(Type::Str)),
                 "values" => Type::List(Box::new(*v.clone())),
                 "set" | "remove" | "each" => Type::Unit,

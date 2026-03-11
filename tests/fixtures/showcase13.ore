@@ -1,0 +1,61 @@
+-- Showcase 13: Statistical data analysis story
+-- Analyzing sensor temperature readings
+
+fn main
+  -- Raw temperature readings (Celsius) from a sensor array
+  readings := [22.5, 19.8, 23.1, 21.0, 22.5, 24.3, 19.8, 20.7, 23.1, 22.5]
+
+  -- Basic statistics
+  total := readings.sum()
+  lo := readings.min()
+  hi := readings.max()
+  print "sum: {total}"
+  print "min: {lo}"
+  print "max: {hi}"
+
+  -- Sort to see the distribution
+  readings.sort()
+  sorted_str := readings | map(x => "{x}") | join(", ")
+  print "sorted: {sorted_str}"
+
+  -- Deduplicate to find unique values
+  unique := readings.dedup()
+  unique_str := unique | map(x => "{x}") | join(", ")
+  print "unique: {unique_str}"
+
+  -- Frequency of each reading
+  raw := ["hot", "cold", "warm", "hot", "hot", "warm", "cold", "warm", "hot", "warm"]
+  freq := raw.frequencies()
+  print "hot: {freq.get("hot")}, warm: {freq.get("warm")}, cold: {freq.get("cold")}"
+
+  -- Convert Celsius to Kelvin: K = C + 273.15
+  kelvin := readings | map(t => t + 273.15)
+  k_min := kelvin.min()
+  k_max := kelvin.max()
+  print "kelvin min: {k_min}"
+  print "kelvin max: {k_max}"
+
+  -- Compute root-mean-square of deviations from 22.0
+  mean := 22.0
+  deviations := readings | map(t => pow(t - mean, 2.0))
+  rms := sqrt(deviations.sum() / 10.0)
+  print "rms deviation: {rms}"
+
+  -- Format a sensor label list with separator
+  sensors := ["S1", "S2", "S3", "S4"]
+  label := sensors.intersperse("|").join("")
+  print "sensors: {label}"
+
+  -- Trig: model a sinusoidal calibration signal at key angles
+  p := pi()
+  angles := [0.0, p / 6.0, p / 4.0, p / 3.0, p / 2.0]
+  cosines := angles | map(a => cos(a))
+  c_sum := cosines.sum()
+  print "cosine sum: {c_sum}"
+
+  -- Exponential growth model: value after log-scaling
+  base_val := exp(1.0)
+  scaled := log(base_val * base_val)
+  print "log(e^2): {scaled}"
+
+  print "showcase13 ok"
