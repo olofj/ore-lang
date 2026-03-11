@@ -982,3 +982,28 @@ fn showcase8() {
         "showcase8 ok",
     ]);
 }
+
+#[test]
+fn types_bool_methods() {
+    let out = run_ore("types/bool_methods.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "true", "false",
+        "1", "0",
+        "2",
+    ]);
+}
+
+#[test]
+fn types_numeric_methods() {
+    let out = run_ore("types/numeric_methods.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "3.0", "4.0", "4.0",  // floor, ceil, round
+        "2.5",                 // abs
+        "3.0",                 // sqrt
+        "1024.0",              // pow
+        "42",                  // int abs
+        "3.0",                 // to_float
+    ]);
+}

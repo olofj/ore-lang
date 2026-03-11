@@ -2301,6 +2301,21 @@ impl<'ctx> CodeGen<'ctx> {
             return Ok((str_val.into(), ValKind::Str));
         }
 
+        // Bool methods
+        if obj_kind == ValKind::Bool {
+            match method {
+                "to_int" => {
+                    let i_val = bld!(self.builder.build_int_z_extend(
+                        obj_val.into_int_value(),
+                        self.context.i64_type(),
+                        "b2i"
+                    ))?;
+                    return Ok((i_val.into(), ValKind::Int));
+                }
+                _ => {}
+            }
+        }
+
         // Int methods
         if obj_kind == ValKind::Int {
             match method {
@@ -2476,6 +2491,23 @@ impl<'ctx> CodeGen<'ctx> {
                     let cmp = bld!(self.builder.build_float_compare(inkwell::FloatPredicate::OLT, a, b, "flt"))?;
                     let result = bld!(self.builder.build_select(cmp, a, b, "fmin"))?;
                     return Ok((result, ValKind::Float));
+                }
+                "pow" => {
+                    if args.len() != 1 {
+                        return Err(CodeGenError { line: None, msg: "Float.pow() takes 1 argument".into() });
+                    }
+                    let (exp, _) = self.compile_expr_with_kind(&args[0], func)?;
+                    let pow_fn = self.module.get_function("llvm.pow.f64").unwrap_or_else(|| {
+                        let f64_type = self.context.f64_type();
+                        self.module.add_function(
+                            "llvm.pow.f64",
+                            f64_type.fn_type(&[f64_type.into(), f64_type.into()], false),
+                            None,
+                        )
+                    });
+                    let result = bld!(self.builder.build_call(pow_fn, &[obj_val.into(), exp.into()], "fpow"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Float));
                 }
                 "to_str" => {
                     let rt = self.module.get_function("ore_float_to_str").unwrap();

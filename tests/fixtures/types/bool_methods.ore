@@ -1,0 +1,12 @@
+fn main
+  t := true
+  f := false
+
+  print t.to_str()
+  print f.to_str()
+  print t.to_int()
+  print f.to_int()
+
+  -- Bool to_int in arithmetic
+  x := true.to_int() + true.to_int() + false.to_int()
+  print x

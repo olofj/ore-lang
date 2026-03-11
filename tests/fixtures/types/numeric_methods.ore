@@ -1,0 +1,13 @@
+fn main
+  -- Float methods
+  x := 3.7
+  print x.floor().to_str()
+  print x.ceil().to_str()
+  print x.round().to_str()
+  print (-2.5).abs().to_str()
+  print 9.0.sqrt().to_str()
+  print 2.0.pow(10.0).to_str()
+
+  -- Int methods
+  print (-42).abs()
+  print 3.to_float().to_str()

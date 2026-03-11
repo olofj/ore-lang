@@ -900,6 +900,23 @@ impl TypeChecker {
                 "set" | "remove" => Type::Unit,
                 _ => Type::Any,
             },
+            Type::Bool => match method {
+                "to_str" => Type::Str,
+                "to_int" => Type::Int,
+                _ => Type::Any,
+            },
+            Type::Int => match method {
+                "to_str" => Type::Str,
+                "to_float" => Type::Float,
+                "abs" | "pow" => Type::Int,
+                _ => Type::Any,
+            },
+            Type::Float => match method {
+                "to_str" => Type::Str,
+                "to_int" => Type::Int,
+                "abs" | "floor" | "ceil" | "round" | "min" | "max" | "pow" | "sqrt" => Type::Float,
+                _ => Type::Any,
+            },
             _ => {
                 // to_str is available on all types
                 if method == "to_str" {
