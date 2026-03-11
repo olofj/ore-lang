@@ -1,0 +1,44 @@
+-- Showcase 131: Stress test - complex nested expressions
+
+fn fibonacci_recursive n:Int -> Int
+  if n <= 1 then n
+  else fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
+
+fn gcd a:Int b:Int -> Int
+  if b == 0 then a
+  else gcd(b, a % b)
+
+fn main
+  -- Nested pipeline chains
+  result := range(1, 20)
+    | filter(n => gcd(n, 6) > 1)
+    | map(n => n * n)
+    | filter(n => n < 200)
+    | join(", ")
+  print "gcd > 1 with 6, squared < 200: {result}"
+
+  -- List operations
+  evens := [x * 2 for x in range(1, 11)]
+  print "evens: {evens.join(", ")}"
+
+  -- Nested function calls
+  print "fib(12) = {fibonacci_recursive(12)}"
+  print "gcd(48, 36) = {gcd(48, 36)}"
+
+  -- String processing pipeline
+  words := "the quick brown fox jumps over the lazy dog"
+    .split(" ")
+    | filter(w => w.len() >= 4)
+    | map(w => w.capitalize())
+    | join(" ")
+  print words
+
+  -- Map operations
+  inventory := {"sword": 1, "shield": 2, "potion": 5, "arrow": 50}
+  total := inventory.values().sum()
+  print "total items: {total}"
+
+  -- Classification with if/then/else
+  for n in [0, 1, 2, 5, 10, 15]
+    label := if n == 0 then "zero" else if n < 5 then "small" else if n < 10 then "medium" else "large"
+    print "{n}: {label}"

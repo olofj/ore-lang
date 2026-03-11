@@ -2766,6 +2766,17 @@ fn showcase130_file_io_json() {
 }
 
 #[test]
+fn showcase131_stress_test() {
+    let out = run_ore("showcase131.ore");
+    assert!(out.contains("fib(12) = 144"));
+    assert!(out.contains("gcd(48, 36) = 12"));
+    assert!(out.contains("Quick Brown Jumps Over Lazy"));
+    assert!(out.contains("total items: 58"));
+    assert!(out.contains("0: zero"));
+    assert!(out.contains("15: large"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
