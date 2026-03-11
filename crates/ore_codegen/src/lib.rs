@@ -317,10 +317,22 @@ impl<'ctx> CodeGen<'ctx> {
             for method in methods {
                 let mangled_name = format!("{}_{}", type_name, method.name);
                 method_names.push(method.name.clone());
+                // Prepend implicit `self` parameter if not already declared
+                let has_self = method.params.first().map_or(false, |p| p.name == "self");
+                let params = if has_self {
+                    method.params.clone()
+                } else {
+                    let mut p = vec![Param {
+                        name: "self".to_string(),
+                        ty: TypeExpr::Named(type_name.clone()),
+                    }];
+                    p.extend(method.params.clone());
+                    p
+                };
                 let mangled_fn = FnDef {
                     name: mangled_name,
                     type_params: method.type_params.clone(),
-                    params: method.params.clone(),
+                    params,
                     ret_type: method.ret_type.clone(),
                     body: method.body.clone(),
                 };
@@ -348,10 +360,21 @@ impl<'ctx> CodeGen<'ctx> {
             };
             for method in methods {
                 let mangled_name = format!("{}_{}", type_name, method.name);
+                let has_self = method.params.first().map_or(false, |p| p.name == "self");
+                let params = if has_self {
+                    method.params.clone()
+                } else {
+                    let mut p = vec![Param {
+                        name: "self".to_string(),
+                        ty: TypeExpr::Named(type_name.clone()),
+                    }];
+                    p.extend(method.params.clone());
+                    p
+                };
                 let mangled_fn = FnDef {
                     name: mangled_name,
                     type_params: method.type_params.clone(),
-                    params: method.params.clone(),
+                    params,
                     ret_type: method.ret_type.clone(),
                     body: method.body.clone(),
                 };
