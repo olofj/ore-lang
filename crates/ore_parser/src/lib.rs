@@ -1001,7 +1001,16 @@ impl Parser {
                     if self.peek() == &Token::Dedent {
                         break;
                     }
-                    let pattern = self.parse_pattern()?;
+                    let mut pattern = self.parse_pattern()?;
+                    // Check for or-patterns: `pattern | pattern`
+                    if self.peek() == &Token::Pipe {
+                        let mut alternatives = vec![pattern];
+                        while self.peek() == &Token::Pipe {
+                            self.advance();
+                            alternatives.push(self.parse_pattern()?);
+                        }
+                        pattern = Pattern::Or(alternatives);
+                    }
                     let guard = if self.peek() == &Token::If {
                         self.advance();
                         Some(Box::new(self.parse_expr(0)?))
@@ -1240,7 +1249,16 @@ impl Parser {
     }
 
     fn parse_match_arm(&mut self) -> Result<MatchArm, ParseError> {
-        let pattern = self.parse_pattern()?;
+        let mut pattern = self.parse_pattern()?;
+        // Check for or-patterns: `pattern | pattern | pattern`
+        if self.peek() == &Token::Pipe {
+            let mut alternatives = vec![pattern];
+            while self.peek() == &Token::Pipe {
+                self.advance();
+                alternatives.push(self.parse_pattern()?);
+            }
+            pattern = Pattern::Or(alternatives);
+        }
         // Check for guard: `pattern if condition -> body`
         let guard = if self.peek() == &Token::If {
             self.advance();

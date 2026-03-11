@@ -1,0 +1,19 @@
+fn classify x:Int -> Str
+  match x
+    1 | 2 | 3 -> "small"
+    4 | 5 | 6 -> "medium"
+    _ if x > 6 -> "large"
+    _ -> "other"
+
+fn is_vowel c:Str -> Bool
+  match c
+    "a" | "e" | "i" | "o" | "u" -> true
+    _ -> false
+
+fn main
+  print classify(2)
+  print classify(5)
+  print classify(9)
+  print classify(-1)
+  print is_vowel("a")
+  print is_vowel("b")

@@ -454,6 +454,12 @@ impl Formatter {
                 self.out.push_str(s);
                 self.out.push('"');
             }
+            Pattern::Or(alternatives) => {
+                for (i, alt) in alternatives.iter().enumerate() {
+                    if i > 0 { self.out.push_str(" | "); }
+                    self.format_pattern(alt);
+                }
+            }
         }
     }
 }

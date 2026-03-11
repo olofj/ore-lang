@@ -2693,7 +2693,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Check if patterns are literal patterns (Int, String, etc.)
         let has_literal_patterns = arms.iter().any(|arm| matches!(
             &arm.pattern,
-            Pattern::IntLit(_) | Pattern::FloatLit(_) | Pattern::BoolLit(_) | Pattern::StringLit(_)
+            Pattern::IntLit(_) | Pattern::FloatLit(_) | Pattern::BoolLit(_) | Pattern::StringLit(_) | Pattern::Or(_)
         ));
         if has_literal_patterns || matches!(subject_kind, ValKind::Int | ValKind::Float | ValKind::Bool | ValKind::Str) {
             return self.compile_literal_match(subject_val, &subject_kind, arms, func);
@@ -3064,6 +3064,16 @@ impl<'ctx> CodeGen<'ctx> {
                     IntPredicate::NE, i8_val,
                     self.context.i8_type().const_int(0, false), "tobool"
                 ))
+            }
+            Pattern::Or(alternatives) => {
+                // Or pattern: check any alternative matches
+                let first = self.compile_pattern_cmp(subject, _subject_kind, &alternatives[0], _func)?;
+                let mut result = first;
+                for alt in &alternatives[1..] {
+                    let alt_cmp = self.compile_pattern_cmp(subject, _subject_kind, alt, _func)?;
+                    result = bld!(self.builder.build_or(result, alt_cmp, "or_pat"))?;
+                }
+                Ok(result)
             }
             _ => Err(CodeGenError { line: None, msg: "unsupported pattern in literal match".into() }),
         }

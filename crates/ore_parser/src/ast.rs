@@ -243,6 +243,7 @@ pub enum Pattern {
     FloatLit(f64),
     BoolLit(bool),
     StringLit(String),
+    Or(Vec<Pattern>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

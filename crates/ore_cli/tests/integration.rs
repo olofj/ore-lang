@@ -490,6 +490,13 @@ fn stdlib_assert_typeof() {
 }
 
 #[test]
+fn control_or_patterns() {
+    let out = run_ore("control/or_patterns.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["small", "medium", "large", "other", "true", "false"]);
+}
+
+#[test]
 fn pipelines_comprehensive() {
     let out = run_ore("pipelines/comprehensive.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
