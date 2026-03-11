@@ -1,0 +1,86 @@
+-- Showcase 47: Comprehensive enum and record showcase
+-- Demonstrates: enums with data, records, pattern matching, polymorphism
+
+type Shape
+  Circle(radius: Float)
+  Rectangle(width: Float, height: Float)
+  Triangle(base: Float, height: Float)
+
+fn area s:Shape -> Float
+  s :
+    Circle r -> 3.14159265 * r * r
+    Rectangle w h -> w * h
+    Triangle b h -> 0.5 * b * h
+
+fn perimeter s:Shape -> Float
+  s :
+    Circle r -> 2.0 * 3.14159265 * r
+    Rectangle w h -> 2.0 * (w + h)
+    Triangle b h -> b + h + sqrt(b * b + h * h)
+
+fn describe s:Shape -> Str
+  s :
+    Circle r -> "Circle(r={r})"
+    Rectangle w h -> "Rect({w}x{h})"
+    Triangle b h -> "Tri(b={b},h={h})"
+
+type Suit
+  Hearts
+  Diamonds
+  Clubs
+  Spades
+
+fn suit_name s:Suit -> Str
+  s :
+    Hearts -> "Hearts"
+    Diamonds -> "Diamonds"
+    Clubs -> "Clubs"
+    Spades -> "Spades"
+
+fn suit_symbol s:Suit -> Str
+  s :
+    Hearts -> "H"
+    Diamonds -> "D"
+    Clubs -> "C"
+    Spades -> "S"
+
+fn main
+  -- Shape calculations
+  shapes_info := [
+    "Circle r=5: area=" + str(area(Circle(radius: 5.0))),
+    "Rect 3x4: area=" + str(area(Rectangle(width: 3.0, height: 4.0))),
+    "Tri b=6 h=8: area=" + str(area(Triangle(base: 6.0, height: 8.0)))
+  ]
+  for i in 0..shapes_info.len()
+    print shapes_info.get(i)
+
+  -- Shape descriptions
+  print describe(Circle(radius: 2.5))
+  print describe(Rectangle(width: 10.0, height: 5.0))
+
+  -- Perimeters
+  circ_perim := perimeter(Circle(radius: 1.0))
+  rect_perim := perimeter(Rectangle(width: 3.0, height: 4.0))
+  print "Circle perimeter (r=1): {circ_perim}"
+  print "Rect perimeter (3x4): {rect_perim}"
+
+  -- Card suits
+  suits := [Hearts, Diamonds, Clubs, Spades]
+  mut suit_list := []
+  for i in 0..suits.len()
+    s := suits.get(i)
+    suit_list = suit_list + [suit_name(s)]
+  print "Suits: {suit_list.join(", ")}"
+
+  -- FizzBuzz with match
+  mut fb := []
+  for n in 1..16
+    if n % 15 == 0
+      fb = fb + ["FizzBuzz"]
+    else if n % 3 == 0
+      fb = fb + ["Fizz"]
+    else if n % 5 == 0
+      fb = fb + ["Buzz"]
+    else
+      fb = fb + [str(n)]
+  print "FizzBuzz: {fb.join(", ")}"

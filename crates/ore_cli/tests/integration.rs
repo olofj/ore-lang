@@ -1700,6 +1700,23 @@ fn showcase45() {
 }
 
 #[test]
+fn showcase46() {
+    let out = run_ore("showcase46.ore");
+    assert!(out.contains("Palindrome primes < 200: 2, 3, 5, 7, 11, 101, 131, 151, 181, 191"));
+    assert!(out.contains("Sum of halved even squares (1-20): 770"));
+    assert!(out.contains("Deduped: 1, 2, 3, 4, 5"));
+    assert!(out.contains("Evens by step: 0, 2, 4, 6, 8"));
+}
+
+#[test]
+fn showcase47() {
+    let out = run_ore("showcase47.ore");
+    assert!(out.contains("Rect 3x4: area=12"));
+    assert!(out.contains("Suits: Hearts, Diamonds, Clubs, Spades"));
+    assert!(out.contains("FizzBuzz: 1, 2, Fizz, 4, Buzz"));
+}
+
+#[test]
 fn build_and_run_binary() {
     // Test `ore build` produces a working native binary
     let path = fixtures_dir().join("showcase36.ore");
