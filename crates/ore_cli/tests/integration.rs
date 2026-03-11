@@ -7971,6 +7971,140 @@ fn showcase610_quantum_computing() {
 }
 
 #[test]
+fn showcase611_sat_solver() {
+    let out = run_ore("showcase611.ore");
+    assert!(out.contains("SAT Solver (DPLL Algorithm):"));
+    assert!(out.contains("Clause 0: SATISFIED"));
+    assert!(out.contains("Clause 3: SATISFIED"));
+    assert!(out.contains("Result: SATISFIABLE"));
+    assert!(out.contains("Result: UNSATISFIABLE (no assignment works)"));
+    assert!(out.contains("Clause 2 conflict! Backtracking..."));
+    assert!(out.contains("Solution: x1=true, x2=false"));
+    assert!(out.contains("SAT solver: CNF encoding, unit propagation, DPLL backtracking, verification."));
+}
+
+#[test]
+fn showcase612_suffix_array() {
+    let out = run_ore("showcase612.ore");
+    assert!(out.contains("Suffix Array Construction:"));
+    assert!(out.contains("Suffix array: [6, 5, 3, 1, 0, 4, 2]"));
+    assert!(out.contains("SA[0] = 6: $"));
+    assert!(out.contains("SA[4] = 0: banana$"));
+    assert!(out.contains("LCP array: [0, 0, 1, 3, 0, 0, 2]"));
+    assert!(out.contains("Total occurrences: 2"));
+    assert!(out.contains("Longest repeated substring: ana (length 3)"));
+    assert!(out.contains("Distinct substrings: 22"));
+    assert!(out.contains("Suffix array: construction, LCP, pattern search, distinct substrings, longest repeat."));
+}
+
+#[test]
+fn showcase613_van_emde_boas() {
+    let out = run_ore("showcase613.ore");
+    assert!(out.contains("Van Emde Boas Tree Concepts:"));
+    assert!(out.contains("Size: 8, Min: 0, Max: 14"));
+    assert!(out.contains("Member(0): YES"));
+    assert!(out.contains("Member(1): NO"));
+    assert!(out.contains("Successor(0): 2"));
+    assert!(out.contains("Predecessor(3): 2"));
+    assert!(out.contains("Delete 3: size now 7"));
+    assert!(out.contains("After deletions: Min=0, Max=14, Size=6"));
+    assert!(out.contains("Van Emde Boas: clusters, summary, O(log log u) operations, successor, predecessor."));
+}
+
+#[test]
+fn showcase614_garbage_collection() {
+    let out = run_ore("showcase614.ore");
+    assert!(out.contains("Garbage Collection (Copying Collector):"));
+    assert!(out.contains("Total allocated: 8"));
+    assert!(out.contains("Copy obj4 -> to[0]"));
+    assert!(out.contains("Objects copied: 6"));
+    assert!(out.contains("Objects collected: 2"));
+    assert!(out.contains("to[3]: Int(42)"));
+    assert!(out.contains("to[4]: Int(55)"));
+    assert!(out.contains("Before GC: 8/16 slots used"));
+    assert!(out.contains("Freed: 2 slots"));
+    assert!(out.contains("GC copying collector: semispace, root tracing, forwarding, compaction."));
+}
+
+#[test]
+fn showcase615_tarjan_lca() {
+    let out = run_ore("showcase615.ore");
+    assert!(out.contains("Tarjan's Offline LCA:"));
+    assert!(out.contains("LCA(6, 4) = 1"));
+    assert!(out.contains("LCA(7, 8) = 5"));
+    assert!(out.contains("LCA(3, 5) = 0"));
+    assert!(out.contains("Leaf nodes: 4"));
+    assert!(out.contains("Tree height: 3"));
+    assert!(out.contains("Path(6,4): length=3 via LCA=1"));
+    assert!(out.contains("Path(7,8): length=2 via LCA=5"));
+    assert!(out.contains("Tarjan LCA: tree structure, union-find, offline queries, path lengths."));
+}
+
+#[test]
+fn showcase616_decompiler() {
+    let out = run_ore("showcase616.ore");
+    assert!(out.contains("Decompiler Concepts:"));
+    assert!(out.contains("Total basic blocks: 4"));
+    assert!(out.contains("Back edge: 16 -> 4 (loop detected)"));
+    assert!(out.contains("Loops found: 1"));
+    assert!(out.contains("Variable initializations: 2"));
+    assert!(out.contains("Execution result: 120"));
+    assert!(out.contains("Decompiler: bytecode, control flow, loop detection, pattern matching, pseudocode."));
+}
+
+#[test]
+fn showcase617_bipartite_matching() {
+    let out = run_ore("showcase617.ore");
+    assert!(out.contains("Maximal Matching in Bipartite Graphs:"));
+    assert!(out.contains("Greedy matching size: 4"));
+    assert!(out.contains("Maximum matching size: 4"));
+    assert!(out.contains("Matching is valid"));
+    assert!(out.contains("Minimum vertex cover: 4 (by Konig's theorem)"));
+    assert!(out.contains("Maximum independent set: 5"));
+    assert!(out.contains("Total edges: 9"));
+    assert!(out.contains("Bipartite matching: augmenting paths, maximum matching, Konig's theorem."));
+}
+
+#[test]
+fn showcase618_cache_coherence() {
+    let out = run_ore("showcase618.ore");
+    assert!(out.contains("Cache Coherence Protocol (MESI):"));
+    assert!(out.contains("P0 reads addr 0: miss -> Exclusive, data=100"));
+    assert!(out.contains("P0 has Exclusive -> both Shared"));
+    assert!(out.contains("Shared -> Modified, invalidate P1"));
+    assert!(out.contains("P0 Modified -> writeback (150), both Shared"));
+    assert!(out.contains("Modified: 1"));
+    assert!(out.contains("Note: addr 2 dirty in P1 cache (350 vs memory 300)"));
+    assert!(out.contains("MESI protocol: cache states, snooping, invalidation, writeback coherence."));
+}
+
+#[test]
+fn showcase619_persistent_data_structures() {
+    let out = run_ore("showcase619.ore");
+    assert!(out.contains("Persistent Data Structures (Path Copying):"));
+    assert!(out.contains("Version 0: key 5 -> value 50"));
+    assert!(out.contains("Version 1: key 5 -> value 55"));
+    assert!(out.contains("Version 0: key 12 -> NOT FOUND"));
+    assert!(out.contains("Version 2: key 12 -> FOUND"));
+    assert!(out.contains("Nodes saved by sharing: 6"));
+    assert!(out.contains("Version 2: 6 reachable nodes"));
+    assert!(out.contains("Persistent BST: path copying, version history, structural sharing, immutable snapshots."));
+}
+
+#[test]
+fn showcase620_theorem_proving() {
+    let out = run_ore("showcase620.ore");
+    assert!(out.contains("Theorem Proving (Resolution Refutation):"));
+    assert!(out.contains("EMPTY CLAUSE derived!"));
+    assert!(out.contains("Negation is unsatisfiable -> theorem is VALID"));
+    assert!(out.contains("Theorem is VALID"));
+    assert!(out.contains("Claim is NOT VALID"));
+    assert!(out.contains("Step 4: [S] + [~S] -> EMPTY"));
+    assert!(out.contains("Total resolution steps: 9"));
+    assert!(out.contains("Resolution refutation: CNF, complementary literals, empty clause, theorem validity."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

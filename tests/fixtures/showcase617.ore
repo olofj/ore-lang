@@ -1,0 +1,164 @@
+-- Showcase 617: Maximal Matching in Bipartite Graphs
+
+fn main
+  print "Maximal Matching in Bipartite Graphs:"
+  print ""
+
+  -- Bipartite graph: left nodes L={0,1,2,3}, right nodes R={0,1,2,3,4}
+  -- Adjacency matrix: adj[i][j] = 1 if edge from L_i to R_j
+  -- Using Hungarian-style augmenting path algorithm
+
+  -- Part 1: Graph definition
+  print "=== Part 1: Bipartite Graph ==="
+  num_left := 4
+  num_right := 5
+
+  -- Adjacency as flat array: adj[i*num_right + j]
+  mut adj := [0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0]
+  -- L0 -> R1, R2
+  -- L1 -> R0, R3
+  -- L2 -> R1, R2, R4
+  -- L3 -> R0, R3
+
+  for i in range(0, num_left)
+    mut neighbors := ""
+    mut deg := 0
+    for j in range(0, num_right)
+      idx := i * num_right + j
+      if adj[idx] == 1
+        if deg > 0
+          neighbors = neighbors + ", "
+        neighbors = neighbors + "R" + str(j)
+        deg = deg + 1
+    print "  L{i} -> [{neighbors}] (degree {deg})"
+
+  -- Part 2: Greedy matching
+  print ""
+  print "=== Part 2: Greedy Matching ==="
+  mut match_l := [-1, -1, -1, -1]
+  mut match_r := [-1, -1, -1, -1, -1]
+  mut greedy_size := 0
+
+  for i in range(0, num_left)
+    for j in range(0, num_right)
+      idx := i * num_right + j
+      if adj[idx] == 1 and match_l[i] == -1 and match_r[j] == -1
+        match_l[i] = j
+        match_r[j] = i
+        greedy_size = greedy_size + 1
+        print "  Match L{i} <-> R{j}"
+
+  print "  Greedy matching size: {greedy_size}"
+
+  -- Part 3: Augmenting paths (to find maximum matching)
+  print ""
+  print "=== Part 3: Augmenting Paths ==="
+
+  -- Reset matching
+  for i in range(0, num_left)
+    match_l[i] = -1
+  for j in range(0, num_right)
+    match_r[j] = -1
+  mut match_size := 0
+
+  -- For each unmatched left node, try to find augmenting path via BFS/DFS
+  for start in range(0, num_left)
+    -- DFS to find augmenting path
+    mut visited := [0, 0, 0, 0, 0]
+    mut found := false
+
+    -- Try each neighbor of start
+    for j in range(0, num_right)
+      idx := start * num_right + j
+      if adj[idx] == 1 and found == false and visited[j] == 0
+        visited[j] = 1
+        -- If R_j is free, or we can find alternating path from match_r[j]
+        if match_r[j] == -1
+          match_l[start] = j
+          match_r[j] = start
+          found = true
+          match_size = match_size + 1
+          print "  Augmenting path: L{start} -> R{j} (direct)"
+        else
+          -- Try to reassign match_r[j] to another right node
+          other := match_r[j]
+          for k in range(0, num_right)
+            idx2 := other * num_right + k
+            if adj[idx2] == 1 and found == false and visited[k] == 0
+              visited[k] = 1
+              if match_r[k] == -1
+                -- Found augmenting path of length 3
+                match_r[k] = other
+                match_l[other] = k
+                match_r[j] = start
+                match_l[start] = j
+                found = true
+                match_size = match_size + 1
+                print "  Augmenting path: L{start} -> R{j} -> L{other} -> R{k}"
+
+  print "  Maximum matching size: {match_size}"
+
+  -- Part 4: Display matching
+  print ""
+  print "=== Part 4: Maximum Matching ==="
+  for i in range(0, num_left)
+    if match_l[i] != -1
+      print "  L{i} <-> R{match_l[i]}"
+    else
+      print "  L{i} unmatched"
+
+  mut unmatched_r := 0
+  for j in range(0, num_right)
+    if match_r[j] == -1
+      unmatched_r = unmatched_r + 1
+      print "  R{j} unmatched"
+  print "  Unmatched right nodes: {unmatched_r}"
+
+  -- Part 5: Verify matching is valid
+  print ""
+  print "=== Part 5: Verification ==="
+  mut valid := true
+  -- Check each matched pair has an edge
+  for i in range(0, num_left)
+    if match_l[i] != -1
+      j := match_l[i]
+      idx := i * num_right + j
+      if adj[idx] != 1
+        valid = false
+        print "  ERROR: L{i}-R{j} not an edge!"
+      -- Check consistency
+      if match_r[j] != i
+        valid = false
+        print "  ERROR: Inconsistent matching at L{i}-R{j}!"
+
+  if valid
+    print "  Matching is valid"
+
+  -- Part 6: Konig's theorem
+  print ""
+  print "=== Part 6: Konig's Theorem ==="
+  -- Minimum vertex cover = maximum matching in bipartite graphs
+  print "  Maximum matching: {match_size}"
+  print "  Minimum vertex cover: {match_size} (by Konig's theorem)"
+  max_independent := num_left + num_right - match_size
+  print "  Maximum independent set: {max_independent}"
+
+  -- Count total edges
+  mut total_edges := 0
+  for i in range(0, num_left)
+    for j in range(0, num_right)
+      idx := i * num_right + j
+      if adj[idx] == 1
+        total_edges = total_edges + 1
+  print "  Total edges: {total_edges}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Left nodes: {num_left}, Right nodes: {num_right}"
+  print "  Edges: {total_edges}"
+  print "  Maximum matching: {match_size}"
+  print "  Algorithm: augmenting paths"
+
+  print ""
+  print "Bipartite matching: augmenting paths, maximum matching, Konig's theorem."

@@ -1,0 +1,191 @@
+-- Showcase 614: Simple Garbage Collection (Copying Collector)
+
+fn main
+  print "Garbage Collection (Copying Collector):"
+  print ""
+
+  -- Simulate a semi-space copying collector
+  -- Heap: two semispaces of size 16 each
+  -- Objects: tag (0=free, 1=int, 2=pair), value, field1, field2
+  -- Pair objects point to other objects via indices
+
+  -- Part 1: Heap setup
+  print "=== Part 1: Heap Setup ==="
+  heap_size := 16
+  -- From-space: where objects live
+  mut from_tag := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut from_val := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut from_f1 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut from_f2 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Forwarding pointers (-1 = not forwarded)
+  mut forward := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  -- To-space: destination
+  mut to_tag := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut to_val := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut to_f1 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut to_f2 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut alloc_ptr := 0
+
+  print "  From-space size: {heap_size}"
+  print "  To-space size: {heap_size}"
+
+  -- Part 2: Allocate objects
+  print ""
+  print "=== Part 2: Allocate Objects ==="
+  -- Obj 0: Int(42)
+  from_tag[0] = 1
+  from_val[0] = 42
+  alloc_ptr = 1
+  print "  Obj 0: Int(42)"
+
+  -- Obj 1: Int(7)
+  from_tag[1] = 1
+  from_val[1] = 7
+  alloc_ptr = 2
+  print "  Obj 1: Int(7)"
+
+  -- Obj 2: Pair(obj0, obj1) - points to 0 and 1
+  from_tag[2] = 2
+  from_f1[2] = 0
+  from_f2[2] = 1
+  alloc_ptr = 3
+  print "  Obj 2: Pair(obj0, obj1)"
+
+  -- Obj 3: Int(99) - will be garbage (unreachable)
+  from_tag[3] = 1
+  from_val[3] = 99
+  alloc_ptr = 4
+  print "  Obj 3: Int(99) [garbage]"
+
+  -- Obj 4: Pair(obj2, obj0) - nested pair
+  from_tag[4] = 2
+  from_f1[4] = 2
+  from_f2[4] = 0
+  alloc_ptr = 5
+  print "  Obj 4: Pair(obj2, obj0)"
+
+  -- Obj 5: Int(13) - garbage
+  from_tag[5] = 1
+  from_val[5] = 13
+  alloc_ptr = 6
+  print "  Obj 5: Int(13) [garbage]"
+
+  -- Obj 6: Int(55)
+  from_tag[6] = 1
+  from_val[6] = 55
+  alloc_ptr = 7
+  print "  Obj 6: Int(55)"
+
+  -- Obj 7: Pair(obj6, obj1) - reachable
+  from_tag[7] = 2
+  from_f1[7] = 6
+  from_f2[7] = 1
+  alloc_ptr = 8
+  print "  Obj 7: Pair(obj6, obj1)"
+
+  print "  Total allocated: {alloc_ptr}"
+
+  -- Part 3: Define roots
+  print ""
+  print "=== Part 3: Root Set ==="
+  -- Roots: obj4 and obj7
+  mut roots := [4, 7]
+  num_roots := 2
+  print "  Root 0: obj4"
+  print "  Root 1: obj7"
+  print "  Reachable from roots: obj4 -> obj2 -> obj0, obj1; obj4 -> obj0; obj7 -> obj6, obj1"
+  print "  Garbage: obj3, obj5"
+
+  -- Part 4: Copying collection (Cheney's algorithm)
+  print ""
+  print "=== Part 4: Copying Collection ==="
+  mut to_alloc := 0
+  mut scan := 0
+
+  -- Step 1: Copy roots to to-space
+  for r in range(0, num_roots)
+    obj := roots[r]
+    if forward[obj] == -1
+      -- Copy object to to-space
+      to_tag[to_alloc] = from_tag[obj]
+      to_val[to_alloc] = from_val[obj]
+      to_f1[to_alloc] = from_f1[obj]
+      to_f2[to_alloc] = from_f2[obj]
+      forward[obj] = to_alloc
+      print "  Copy obj{obj} -> to[{to_alloc}]"
+      roots[r] = to_alloc
+      to_alloc = to_alloc + 1
+    else
+      roots[r] = forward[obj]
+
+  -- Step 2: Scan to-space and copy referenced objects
+  while scan < to_alloc
+    if to_tag[scan] == 2
+      -- Process pair: copy children if not forwarded
+      child1 := to_f1[scan]
+      child2 := to_f2[scan]
+
+      -- Copy child1
+      if forward[child1] == -1
+        to_tag[to_alloc] = from_tag[child1]
+        to_val[to_alloc] = from_val[child1]
+        to_f1[to_alloc] = from_f1[child1]
+        to_f2[to_alloc] = from_f2[child1]
+        forward[child1] = to_alloc
+        print "  Copy obj{child1} -> to[{to_alloc}]"
+        to_f1[scan] = to_alloc
+        to_alloc = to_alloc + 1
+      else
+        to_f1[scan] = forward[child1]
+
+      -- Copy child2
+      if forward[child2] == -1
+        to_tag[to_alloc] = from_tag[child2]
+        to_val[to_alloc] = from_val[child2]
+        to_f1[to_alloc] = from_f1[child2]
+        to_f2[to_alloc] = from_f2[child2]
+        forward[child2] = to_alloc
+        print "  Copy obj{child2} -> to[{to_alloc}]"
+        to_f2[scan] = to_alloc
+        to_alloc = to_alloc + 1
+      else
+        to_f2[scan] = forward[child2]
+    scan = scan + 1
+
+  print "  Collection complete"
+  print "  Objects copied: {to_alloc}"
+  collected := alloc_ptr - to_alloc
+  print "  Objects collected: {collected}"
+
+  -- Part 5: Verify to-space
+  print ""
+  print "=== Part 5: To-Space Contents ==="
+  for i in range(0, to_alloc)
+    if to_tag[i] == 1
+      print "  to[{i}]: Int({to_val[i]})"
+    else if to_tag[i] == 2
+      print "  to[{i}]: Pair(to[{to_f1[i]}], to[{to_f2[i]}])"
+
+  -- Part 6: Memory utilization
+  print ""
+  print "=== Part 6: Memory Stats ==="
+  before_used := alloc_ptr
+  after_used := to_alloc
+  print "  Before GC: {before_used}/{heap_size} slots used"
+  after_pct := after_used * 100 / heap_size
+  print "  After GC: {after_used}/{heap_size} slots used ({after_pct}%)"
+  freed := before_used - after_used
+  print "  Freed: {freed} slots"
+  print "  Roots preserved: {num_roots}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Algorithm: Cheney's copying collector"
+  print "  Semispace: from-space and to-space"
+  print "  Traversal: breadth-first (scan pointer)"
+  print "  Compaction: automatic (no fragmentation)"
+  print "  Cost: proportional to live objects, not heap size"
+
+  print ""
+  print "GC copying collector: semispace, root tracing, forwarding, compaction."

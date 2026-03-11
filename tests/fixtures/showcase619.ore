@@ -1,0 +1,206 @@
+-- Showcase 619: Persistent Data Structures (Path Copying)
+
+fn main
+  print "Persistent Data Structures (Path Copying):"
+  print ""
+
+  -- Persistent binary search tree using path copying
+  -- Each version of the tree is immutable; modifications create new versions
+  -- Node storage: parallel arrays for left, right, key, value
+  -- Version tracking: root pointer per version
+
+  -- Part 1: Node pool
+  print "=== Part 1: Node Pool ==="
+  pool_size := 40
+  mut node_key := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut node_val := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut node_left := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut node_right := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut next_node := 0
+
+  -- Version roots (-1 = empty tree)
+  mut version_root := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut num_versions := 0
+
+  print "  Pool capacity: {pool_size}"
+  print "  Initial versions: 0"
+
+  -- Part 2: Build initial tree (version 0)
+  print ""
+  print "=== Part 2: Build Version 0 ==="
+  -- Insert keys: 10, 5, 15, 3, 7
+
+  -- Insert 10 (root)
+  node_key[0] = 10
+  node_val[0] = 100
+  next_node = 1
+  version_root[0] = 0
+  num_versions = 1
+  print "  Insert 10 -> root"
+
+  -- Insert 5
+  node_key[1] = 5
+  node_val[1] = 50
+  node_left[0] = 1
+  next_node = 2
+  print "  Insert 5 -> left of 10"
+
+  -- Insert 15
+  node_key[2] = 15
+  node_val[2] = 150
+  node_right[0] = 2
+  next_node = 3
+  print "  Insert 15 -> right of 10"
+
+  -- Insert 3
+  node_key[3] = 3
+  node_val[3] = 30
+  node_left[1] = 3
+  next_node = 4
+  print "  Insert 3 -> left of 5"
+
+  -- Insert 7
+  node_key[4] = 7
+  node_val[4] = 70
+  node_right[1] = 4
+  next_node = 5
+  print "  Insert 7 -> right of 5"
+  print "  Version 0: 5 nodes, root=node0(key=10)"
+
+  -- Part 3: Create version 1 by updating key 5's value (path copy)
+  print ""
+  print "=== Part 3: Version 1 (Update) ==="
+  -- Update node with key=5, value 50->55
+  -- Path: root(10) -> left(5)
+  -- Copy root node and the node being updated
+
+  -- New root (copy of node 0 with updated left pointer)
+  node_key[5] = node_key[0]
+  node_val[5] = node_val[0]
+  node_left[5] = next_node + 1
+  node_right[5] = node_right[0]
+
+  -- New node for key=5 with updated value
+  node_key[6] = 5
+  node_val[6] = 55
+  node_left[6] = node_left[1]
+  node_right[6] = node_right[1]
+
+  next_node = 7
+  version_root[1] = 5
+  num_versions = 2
+  print "  Path copied: root -> left child"
+  print "  New nodes allocated: 2 (nodes 5, 6)"
+  print "  Shared nodes: 3 (nodes 2, 3, 4)"
+  print "  Version 1: key 5 value changed 50 -> 55"
+
+  -- Part 4: Create version 2 by inserting key 12
+  print ""
+  print "=== Part 4: Version 2 (Insert) ==="
+  -- Insert 12: path root(10) -> right(15) -> left(new 12)
+  -- Copy nodes along path from version 1
+
+  -- New root (copy of version 1 root = node 5)
+  node_key[7] = node_key[5]
+  node_val[7] = node_val[5]
+  node_left[7] = node_left[5]
+  node_right[7] = next_node + 1
+
+  -- New copy of node 15
+  node_key[8] = node_key[2]
+  node_val[8] = node_val[2]
+  node_left[8] = next_node + 2
+  node_right[8] = node_right[2]
+
+  -- New node 12
+  node_key[9] = 12
+  node_val[9] = 120
+
+  next_node = 10
+  version_root[2] = 7
+  num_versions = 3
+  print "  Insert key 12 (value 120)"
+  print "  Path copied: root -> right child -> new leaf"
+  print "  New nodes allocated: 3 (nodes 7, 8, 9)"
+  print "  Version 2: added key 12"
+
+  -- Part 5: Query all versions
+  print ""
+  print "=== Part 5: Query Versions ==="
+
+  -- Lookup key 5 in each version
+  for v in range(0, num_versions)
+    mut cur := version_root[v]
+    mut found := false
+    mut found_val := 0
+    while cur != -1 and found == false
+      if node_key[cur] == 5
+        found = true
+        found_val = node_val[cur]
+      else if 5 < node_key[cur]
+        cur = node_left[cur]
+      else
+        cur = node_right[cur]
+    if found
+      print "  Version {v}: key 5 -> value {found_val}"
+
+  -- Lookup key 12 in each version
+  for v in range(0, num_versions)
+    mut cur := version_root[v]
+    mut found := false
+    while cur != -1 and found == false
+      if node_key[cur] == 12
+        found = true
+      else if 12 < node_key[cur]
+        cur = node_left[cur]
+      else
+        cur = node_right[cur]
+    if found
+      print "  Version {v}: key 12 -> FOUND"
+    else
+      print "  Version {v}: key 12 -> NOT FOUND"
+
+  -- Part 6: Memory sharing analysis
+  print ""
+  print "=== Part 6: Memory Analysis ==="
+  print "  Total nodes allocated: {next_node}"
+  -- Without persistence, 3 separate trees would need: 5 + 5 + 6 = 16 nodes
+  without_sharing := 5 + 5 + 6
+  print "  Without sharing: {without_sharing} nodes needed"
+  saved := without_sharing - next_node
+  print "  Nodes saved by sharing: {saved}"
+
+  -- Count reachable nodes per version
+  for v in range(0, num_versions)
+    mut count := 0
+    -- BFS using a simple stack
+    mut stack := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+    mut sp := 0
+    root := version_root[v]
+    if root != -1
+      stack[0] = root
+      sp = 1
+    while sp > 0
+      sp = sp - 1
+      n := stack[sp]
+      count = count + 1
+      if node_left[n] != -1
+        stack[sp] = node_left[n]
+        sp = sp + 1
+      if node_right[n] != -1
+        stack[sp] = node_right[n]
+        sp = sp + 1
+    print "  Version {v}: {count} reachable nodes"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Versions created: {num_versions}"
+  print "  Total nodes: {next_node}"
+  print "  Strategy: path copying"
+  print "  Lookup: O(log n) per version"
+  print "  Update: O(log n) new nodes per version"
+  print "  All previous versions remain accessible"
+
+  print ""
+  print "Persistent BST: path copying, version history, structural sharing, immutable snapshots."

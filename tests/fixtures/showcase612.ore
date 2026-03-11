@@ -1,0 +1,169 @@
+-- Showcase 612: Suffix Array Construction
+
+fn main
+  print "Suffix Array Construction:"
+  print ""
+
+  -- Build suffix array for a string using integer encoding
+  -- Encode: a=1, b=2, c=3, n=14, $=0 (sentinel)
+
+  -- Part 1: Input string
+  print "=== Part 1: Input String ==="
+  -- String: "banana$"
+  mut s := [2, 1, 14, 1, 14, 1, 0]
+  mut chars := ["b", "a", "n", "a", "n", "a", "$"]
+  n := 7
+  print "  String: banana$"
+  print "  Length: {n}"
+  print "  Encoded: [{s[0]}, {s[1]}, {s[2]}, {s[3]}, {s[4]}, {s[5]}, {s[6]}]"
+
+  -- Part 2: Build suffix array with naive O(n^2) comparison sort
+  print ""
+  print "=== Part 2: Suffix Array (Naive) ==="
+  -- Initialize suffix array as [0, 1, 2, ..., n-1]
+  mut sa := [0, 1, 2, 3, 4, 5, 6]
+
+  -- Bubble sort suffixes by lexicographic order
+  for i in range(0, n)
+    for j in range(0, n - 1 - i)
+      -- Compare suffix sa[j] with suffix sa[j+1]
+      mut a_idx := sa[j]
+      mut b_idx := sa[j + 1]
+      mut should_swap := false
+      -- Compare character by character
+      mut k := 0
+      mut decided := false
+      while k < n and decided == false
+        mut a_pos := a_idx + k
+        mut b_pos := b_idx + k
+        if a_pos >= n
+          decided = true
+        else if b_pos >= n
+          should_swap = true
+          decided = true
+        else if s[a_pos] > s[b_pos]
+          should_swap = true
+          decided = true
+        else if s[a_pos] < s[b_pos]
+          decided = true
+        k = k + 1
+      if should_swap
+        tmp := sa[j]
+        sa[j] = sa[j + 1]
+        sa[j + 1] = tmp
+
+  print "  Suffix array: [{sa[0]}, {sa[1]}, {sa[2]}, {sa[3]}, {sa[4]}, {sa[5]}, {sa[6]}]"
+
+  -- Print suffixes in sorted order
+  for i in range(0, n)
+    idx := sa[i]
+    mut suffix := ""
+    for j in range(idx, n)
+      suffix = suffix + chars[j]
+    print "  SA[{i}] = {idx}: {suffix}"
+
+  -- Part 3: LCP array (Longest Common Prefix)
+  print ""
+  print "=== Part 3: LCP Array ==="
+  mut lcp := [0, 0, 0, 0, 0, 0, 0]
+  lcp[0] = 0
+
+  for i in range(1, n)
+    mut a_idx := sa[i - 1]
+    mut b_idx := sa[i]
+    mut common := 0
+    while a_idx + common < n and b_idx + common < n
+      if s[a_idx + common] == s[b_idx + common]
+        common = common + 1
+      else
+        break
+    lcp[i] = common
+
+  print "  LCP array: [{lcp[0]}, {lcp[1]}, {lcp[2]}, {lcp[3]}, {lcp[4]}, {lcp[5]}, {lcp[6]}]"
+
+  -- Part 4: Pattern search using suffix array
+  print ""
+  print "=== Part 4: Pattern Search ==="
+  -- Search for "ana" = [1, 14, 1]
+  mut pat := [1, 14, 1]
+  pat_len := 3
+  print "  Pattern: ana (length {pat_len})"
+
+  mut match_count := 0
+  mut match_positions := [0, 0, 0, 0]
+
+  for i in range(0, n)
+    idx := sa[i]
+    -- Check if pattern matches at this suffix
+    mut matches := true
+    if idx + pat_len > n
+      matches = false
+    else
+      for k in range(0, pat_len)
+        if s[idx + k] != pat[k]
+          matches = false
+    if matches
+      match_positions[match_count] = idx
+      match_count = match_count + 1
+      print "  Found at position {idx}"
+
+  print "  Total occurrences: {match_count}"
+
+  -- Search for "na"
+  mut pat2 := [14, 1]
+  pat2_len := 2
+  print "  Pattern: na (length {pat2_len})"
+  mut match_count2 := 0
+  for i in range(0, n)
+    idx := sa[i]
+    mut matches := true
+    if idx + pat2_len > n
+      matches = false
+    else
+      for k in range(0, pat2_len)
+        if s[idx + k] != pat2[k]
+          matches = false
+    if matches
+      match_count2 = match_count2 + 1
+      print "  Found at position {idx}"
+  print "  Total occurrences: {match_count2}"
+
+  -- Part 5: Number of distinct substrings
+  print ""
+  print "=== Part 5: Distinct Substrings ==="
+  -- Total substrings = n*(n+1)/2, minus LCP sum, minus sentinel substrings
+  total_sub := n * (n + 1) / 2
+  mut lcp_sum := 0
+  for i in range(0, n)
+    lcp_sum = lcp_sum + lcp[i]
+  distinct := total_sub - lcp_sum
+  print "  Total possible substrings: {total_sub}"
+  print "  LCP sum: {lcp_sum}"
+  print "  Distinct substrings: {distinct}"
+
+  -- Part 6: Longest repeated substring
+  print ""
+  print "=== Part 6: Longest Repeated Substring ==="
+  mut max_lcp := 0
+  mut max_lcp_idx := 0
+  for i in range(1, n)
+    if lcp[i] > max_lcp
+      max_lcp = lcp[i]
+      max_lcp_idx = i
+  start := sa[max_lcp_idx]
+  mut lrs := ""
+  for j in range(start, start + max_lcp)
+    lrs = lrs + chars[j]
+  print "  Longest repeated substring: {lrs} (length {max_lcp})"
+  print "  Found at SA index {max_lcp_idx}, position {start}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  String length: {n}"
+  print "  Distinct substrings: {distinct}"
+  print "  Longest repeated: {lrs}"
+  print "  Pattern matches found: ana={match_count}, na={match_count2}"
+
+  print ""
+  print "Suffix array: construction, LCP, pattern search, distinct substrings, longest repeat."

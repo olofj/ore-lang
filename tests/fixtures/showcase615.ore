@@ -1,0 +1,156 @@
+-- Showcase 615: Tarjan's Offline LCA (Lowest Common Ancestor)
+
+fn main
+  print "Tarjan's Offline LCA:"
+  print ""
+
+  -- Tree stored as adjacency list (parent array + children)
+  -- Using Union-Find for offline LCA queries
+
+  -- Part 1: Build tree
+  print "=== Part 1: Tree Structure ==="
+  --         0
+  --        / \
+  --       1   2
+  --      / \   \
+  --     3   4   5
+  --    /       / \
+  --   6       7   8
+  num_nodes := 9
+  mut parent := [-1, 0, 0, 1, 1, 2, 3, 5, 5]
+  mut children_start := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut children_count := [2, 2, 1, 1, 0, 2, 0, 0, 0]
+  -- Children list: node 0->[1,2], 1->[3,4], 2->[5], 3->[6], 5->[7,8]
+  mut child_list := [1, 2, 3, 4, 5, 6, 7, 8]
+  children_start[0] = 0
+  children_start[1] = 2
+  children_start[2] = 4
+  children_start[3] = 5
+  children_start[5] = 6
+
+  mut depth := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  depth[0] = 0
+  depth[1] = 1
+  depth[2] = 1
+  depth[3] = 2
+  depth[4] = 2
+  depth[5] = 2
+  depth[6] = 3
+  depth[7] = 3
+  depth[8] = 3
+
+  for i in range(0, num_nodes)
+    print "  Node {i}: parent={parent[i]}, depth={depth[i]}, children={children_count[i]}"
+
+  -- Part 2: Union-Find for offline LCA
+  print ""
+  print "=== Part 2: Union-Find ==="
+  mut uf_parent := [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  mut ancestor := [0, 1, 2, 3, 4, 5, 6, 7, 8]
+
+  -- Find with path compression
+  -- (Simulated inline since we can't do recursive functions easily)
+
+  -- Part 3: LCA queries
+  print ""
+  print "=== Part 3: LCA Queries (Naive) ==="
+  -- First solve with naive method: walk both nodes up to same depth, then up together
+  mut qa := [6, 7, 3, 6, 4, 7, 1]
+  mut qb := [4, 8, 5, 8, 5, 6, 2]
+  num_queries := 7
+
+  for q in range(0, num_queries)
+    mut a := qa[q]
+    mut b := qb[q]
+    -- Bring to same depth
+    while depth[a] > depth[b]
+      a = parent[a]
+    while depth[b] > depth[a]
+      b = parent[b]
+    -- Walk up together
+    while a != b
+      a = parent[a]
+      b = parent[b]
+    print "  LCA({qa[q]}, {qb[q]}) = {a}"
+
+  -- Part 4: Tarjan's offline algorithm simulation
+  print ""
+  print "=== Part 4: Tarjan's Algorithm ==="
+  -- Process nodes in DFS post-order: 6,3,4,1,7,8,5,2,0
+  mut dfs_order := [6, 3, 4, 1, 7, 8, 5, 2, 0]
+  mut visited := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Reset union-find
+  for i in range(0, num_nodes)
+    uf_parent[i] = i
+    ancestor[i] = i
+
+  -- Process in DFS order
+  for idx in range(0, num_nodes)
+    u := dfs_order[idx]
+    visited[u] = 1
+
+    -- For each query involving u, check if other node is visited
+    for q in range(0, num_queries)
+      mut other := -1
+      if qa[q] == u
+        other = qb[q]
+      else if qb[q] == u
+        other = qa[q]
+
+      if other != -1 and visited[other] == 1
+        -- Find root of other in union-find
+        mut r := other
+        while uf_parent[r] != r
+          r = uf_parent[r]
+        lca := ancestor[r]
+        print "  Query({qa[q]},{qb[q]}): other={other} visited, UF-root ancestor={lca}"
+
+    -- Union with parent (if not root)
+    if parent[u] != -1 and visited[parent[u]] == 1
+      p := parent[u]
+      uf_parent[u] = p
+      ancestor[p] = p
+
+  -- Part 5: Verify consistency
+  print ""
+  print "=== Part 5: Tree Properties ==="
+  -- Count leaves
+  mut leaf_count := 0
+  for i in range(0, num_nodes)
+    if children_count[i] == 0
+      leaf_count = leaf_count + 1
+  print "  Total nodes: {num_nodes}"
+  print "  Leaf nodes: {leaf_count}"
+  internal := num_nodes - leaf_count
+  print "  Internal nodes: {internal}"
+
+  -- Max depth
+  mut max_depth := 0
+  for i in range(0, num_nodes)
+    if depth[i] > max_depth
+      max_depth = depth[i]
+  print "  Tree height: {max_depth}"
+
+  -- Part 6: Path lengths
+  print ""
+  print "=== Part 6: Path Lengths ==="
+  for q in range(0, num_queries)
+    mut a := qa[q]
+    mut b := qb[q]
+    -- Find LCA again
+    mut a2 := a
+    mut b2 := b
+    while depth[a2] > depth[b2]
+      a2 = parent[a2]
+    while depth[b2] > depth[a2]
+      b2 = parent[b2]
+    while a2 != b2
+      a2 = parent[a2]
+      b2 = parent[b2]
+    lca := a2
+    path_len := depth[a] + depth[b] - 2 * depth[lca]
+    print "  Path({qa[q]},{qb[q]}): length={path_len} via LCA={lca}"
+
+  print ""
+  print "Tarjan LCA: tree structure, union-find, offline queries, path lengths."

@@ -1,0 +1,169 @@
+-- Showcase 618: Simple Cache Coherence Protocol (MESI)
+
+fn main
+  print "Cache Coherence Protocol (MESI):"
+  print ""
+
+  -- MESI states: 0=Invalid, 1=Shared, 2=Exclusive, 3=Modified
+  -- Simulate 4 cache lines across 3 processors
+  -- Each processor has 4 cache lines
+
+  -- Part 1: Setup
+  print "=== Part 1: Cache Setup ==="
+  num_procs := 3
+  num_lines := 4
+
+  -- Cache state: state[proc * num_lines + line]
+  -- 0=Invalid for all initially
+  mut state := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Cache data
+  mut data := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Main memory
+  mut memory := [100, 200, 300, 400]
+
+  mut state_names := ["Invalid", "Shared", "Exclusive", "Modified"]
+
+  print "  Processors: {num_procs}"
+  print "  Cache lines per processor: {num_lines}"
+  print "  Memory: [{memory[0]}, {memory[1]}, {memory[2]}, {memory[3]}]"
+
+  -- Part 2: Read operations
+  print ""
+  print "=== Part 2: Read Operations ==="
+
+  -- P0 reads address 0
+  -- No other cache has it -> Exclusive
+  mut addr := 0
+  mut proc := 0
+  idx := proc * num_lines + addr
+  state[idx] = 2
+  data[idx] = memory[addr]
+  print "  P{proc} reads addr {addr}: miss -> Exclusive, data={data[idx]}"
+
+  -- P1 reads address 0
+  -- P0 has it Exclusive -> both become Shared
+  proc = 1
+  idx2 := proc * num_lines + addr
+  -- Snoop: P0 transitions E->S
+  state[0 * num_lines + addr] = 1
+  state[idx2] = 1
+  data[idx2] = memory[addr]
+  print "  P{proc} reads addr {addr}: P0 has Exclusive -> both Shared, data={data[idx2]}"
+
+  -- P2 reads address 1
+  proc = 2
+  addr = 1
+  mut idx3 := proc * num_lines + addr
+  state[idx3] = 2
+  data[idx3] = memory[addr]
+  print "  P{proc} reads addr {addr}: miss -> Exclusive, data={data[idx3]}"
+
+  -- Part 3: Write operations
+  print ""
+  print "=== Part 3: Write Operations ==="
+
+  -- P0 writes 150 to address 0 (currently Shared)
+  proc = 0
+  addr = 0
+  -- Invalidate P1's copy
+  state[1 * num_lines + addr] = 0
+  state[proc * num_lines + addr] = 3
+  data[proc * num_lines + addr] = 150
+  print "  P{proc} writes 150 to addr {addr}: Shared -> Modified, invalidate P1"
+
+  -- P2 writes 250 to address 1 (currently Exclusive)
+  proc = 2
+  addr = 1
+  state[proc * num_lines + addr] = 3
+  data[proc * num_lines + addr] = 250
+  print "  P{proc} writes 250 to addr {addr}: Exclusive -> Modified"
+
+  -- P1 writes 350 to address 2 (currently Invalid everywhere)
+  proc = 1
+  addr = 2
+  state[proc * num_lines + addr] = 3
+  data[proc * num_lines + addr] = 350
+  print "  P{proc} writes 350 to addr {addr}: Invalid -> Modified"
+
+  -- Part 4: Snoop-based coherence
+  print ""
+  print "=== Part 4: Snoop Events ==="
+
+  -- P1 reads address 0 (P0 has it Modified)
+  -- P0 must write back and transition M->S, P1 gets S
+  proc = 1
+  addr = 0
+  p0_data := data[0 * num_lines + addr]
+  memory[addr] = p0_data
+  state[0 * num_lines + addr] = 1
+  state[proc * num_lines + addr] = 1
+  data[proc * num_lines + addr] = p0_data
+  print "  P{proc} reads addr {addr}: P0 Modified -> writeback ({p0_data}), both Shared"
+
+  -- P0 reads address 1 (P2 has it Modified)
+  proc = 0
+  addr = 1
+  p2_data := data[2 * num_lines + addr]
+  memory[addr] = p2_data
+  state[2 * num_lines + addr] = 1
+  state[proc * num_lines + addr] = 1
+  data[proc * num_lines + addr] = p2_data
+  print "  P{proc} reads addr {addr}: P2 Modified -> writeback ({p2_data}), both Shared"
+
+  -- Part 5: Cache state dump
+  print ""
+  print "=== Part 5: Cache State ==="
+  for p in range(0, num_procs)
+    for a in range(0, num_lines)
+      s := state[p * num_lines + a]
+      d := data[p * num_lines + a]
+      mut sname := "Invalid"
+      if s == 1
+        sname = "Shared"
+      else if s == 2
+        sname = "Exclusive"
+      else if s == 3
+        sname = "Modified"
+      if s != 0
+        print "  P{p} line {a}: {sname} data={d}"
+
+  -- Part 6: Transition count
+  print ""
+  print "=== Part 6: Statistics ==="
+  -- Count states across all caches
+  mut inv_count := 0
+  mut shared_count := 0
+  mut excl_count := 0
+  mut mod_count := 0
+  for i in range(0, num_procs * num_lines)
+    if state[i] == 0
+      inv_count = inv_count + 1
+    else if state[i] == 1
+      shared_count = shared_count + 1
+    else if state[i] == 2
+      excl_count = excl_count + 1
+    else if state[i] == 3
+      mod_count = mod_count + 1
+
+  print "  Invalid: {inv_count}"
+  print "  Shared: {shared_count}"
+  print "  Exclusive: {excl_count}"
+  print "  Modified: {mod_count}"
+
+  -- Memory state
+  print "  Memory: [{memory[0]}, {memory[1]}, {memory[2]}, {memory[3]}]"
+  -- P1 has addr 2 as Modified (350) which hasn't been written back
+  print "  Note: addr 2 dirty in P1 cache (350 vs memory {memory[2]})"
+
+  -- Part 7: Protocol summary
+  print ""
+  print "=== Part 7: MESI Transitions ==="
+  print "  Read miss, no sharers: -> Exclusive"
+  print "  Read miss, sharers exist: -> Shared (others stay Shared)"
+  print "  Read miss, other Modified: -> Shared (writeback first)"
+  print "  Write hit Exclusive: -> Modified"
+  print "  Write hit Shared: -> Modified (invalidate others)"
+  print "  Write miss: -> Modified (invalidate/writeback)"
+
+  print ""
+  print "MESI protocol: cache states, snooping, invalidation, writeback coherence."

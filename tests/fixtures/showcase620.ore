@@ -1,0 +1,206 @@
+-- Showcase 620: Simple Theorem Proving (Resolution Refutation)
+
+fn main
+  print "Theorem Proving (Resolution Refutation):"
+  print ""
+
+  -- Resolution refutation: prove a formula is valid by showing its negation is unsatisfiable
+  -- Clauses stored as sets of literals
+  -- Literal encoding: var*2 for positive, var*2+1 for negative
+
+  -- Part 1: Setup
+  print "=== Part 1: Problem Setup ==="
+  -- Prove: ((P -> Q) AND (Q -> R)) -> (P -> R)
+  -- Negate: (P -> Q) AND (Q -> R) AND NOT(P -> R)
+  -- Variables: P=0, Q=1, R=2
+
+  print "  Theorem: ((P -> Q) AND (Q -> R)) -> (P -> R)"
+  print "  Negation in CNF:"
+  print "    C0: [~P, Q]"
+  print "    C1: [~Q, R]"
+  print "    C2: [P]"
+  print "    C3: [~R]"
+
+  -- Clause storage: each clause is a list of literals, up to 4 per clause
+  -- Literal: var*2 = positive, var*2+1 = negative
+  -- P=0, ~P=1, Q=2, ~Q=3, R=4, ~R=5
+  mut clause_lits := [1, 2, -1, -1, 3, 4, -1, -1, 0, -1, -1, -1, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut clause_size := [2, 2, 1, 1, 0, 0, 0, 0, 0, 0]
+  mut num_clauses := 4
+  max_clauses := 10
+
+  -- Part 2: Resolution steps
+  print ""
+  print "=== Part 2: Resolution ==="
+
+  -- Check complementary literals: lit XOR 1 gives complement
+  -- Resolve C0[~P,Q] with C2[P]: ~P(1) and P(0) are complements -> resolvent [Q]
+  print "  Resolve C0[~P,Q] with C2[P]:"
+  print "    ~P and P are complementary"
+  -- Automated check
+  mut resolved := false
+  for i in range(0, clause_size[0])
+    lit_a := clause_lits[0 * 4 + i]
+    for j in range(0, clause_size[2])
+      lit_b := clause_lits[2 * 4 + j]
+      -- Complement check: same variable, different polarity
+      -- var = lit / 2, polarity = lit % 2
+      if lit_a / 2 == lit_b / 2 and lit_a % 2 != lit_b % 2 and resolved == false
+        resolved = true
+        -- Add remaining literals to new clause
+        mut new_size := 0
+        for k in range(0, clause_size[0])
+          if k != i
+            clause_lits[num_clauses * 4 + new_size] = clause_lits[0 * 4 + k]
+            new_size = new_size + 1
+        for k in range(0, clause_size[2])
+          if k != j
+            clause_lits[num_clauses * 4 + new_size] = clause_lits[2 * 4 + k]
+            new_size = new_size + 1
+        clause_size[num_clauses] = new_size
+  c4 := num_clauses
+  num_clauses = num_clauses + 1
+  print "    Resolvent C{c4}: [Q] (size {clause_size[c4]})"
+
+  -- Resolve C4[Q] with C1[~Q,R]
+  print "  Resolve C{c4}[Q] with C1[~Q,R]:"
+  resolved = false
+  for i in range(0, clause_size[c4])
+    lit_a := clause_lits[c4 * 4 + i]
+    for j in range(0, clause_size[1])
+      lit_b := clause_lits[1 * 4 + j]
+      if lit_a / 2 == lit_b / 2 and lit_a % 2 != lit_b % 2 and resolved == false
+        resolved = true
+        mut new_size := 0
+        for k in range(0, clause_size[c4])
+          if k != i
+            clause_lits[num_clauses * 4 + new_size] = clause_lits[c4 * 4 + k]
+            new_size = new_size + 1
+        for k in range(0, clause_size[1])
+          if k != j
+            clause_lits[num_clauses * 4 + new_size] = clause_lits[1 * 4 + k]
+            new_size = new_size + 1
+        clause_size[num_clauses] = new_size
+  c5 := num_clauses
+  num_clauses = num_clauses + 1
+  print "    Resolvent C{c5}: [R] (size {clause_size[c5]})"
+
+  -- Resolve C5[R] with C3[~R]
+  print "  Resolve C{c5}[R] with C3[~R]:"
+  resolved = false
+  for i in range(0, clause_size[c5])
+    lit_a := clause_lits[c5 * 4 + i]
+    for j in range(0, clause_size[3])
+      lit_b := clause_lits[3 * 4 + j]
+      if lit_a / 2 == lit_b / 2 and lit_a % 2 != lit_b % 2 and resolved == false
+        resolved = true
+        mut new_size := 0
+        for k in range(0, clause_size[c5])
+          if k != i
+            clause_lits[num_clauses * 4 + new_size] = clause_lits[c5 * 4 + k]
+            new_size = new_size + 1
+        for k in range(0, clause_size[3])
+          if k != j
+            clause_lits[num_clauses * 4 + new_size] = clause_lits[3 * 4 + k]
+            new_size = new_size + 1
+        clause_size[num_clauses] = new_size
+  c6 := num_clauses
+  num_clauses = num_clauses + 1
+
+  if clause_size[c6] == 0
+    print "    EMPTY CLAUSE derived!"
+    print "  Negation is unsatisfiable -> theorem is VALID"
+  else
+    print "    Resolvent has {clause_size[c6]} literals"
+
+  -- Part 3: Second theorem
+  print ""
+  print "=== Part 3: Second Theorem ==="
+  print "  Theorem: (P OR Q) AND (NOT P OR Q) -> Q"
+  print "  Negation CNF: [P,Q], [~P,Q], [~Q]"
+  -- Resolve [P,Q] with [~P,Q]: cancel P/~P -> [Q,Q] = [Q]
+  print "  Resolve [P,Q] with [~P,Q]: cancel P -> [Q]"
+  -- Resolve [Q] with [~Q]: cancel -> empty
+  print "  Resolve [Q] with [~Q]: cancel Q -> EMPTY"
+  print "  Theorem is VALID"
+
+  -- Part 4: Non-theorem
+  print ""
+  print "=== Part 4: Non-Theorem ==="
+  print "  Claim: P -> Q (not a tautology)"
+  print "  Negation: [P], [~Q]"
+  -- P (var 0) and ~Q (var 1) are different variables -> no resolution
+  mut can_resolve := false
+  -- lit P=0, lit ~Q=3: var(0)=0, var(3)=1, different vars
+  if 0 / 2 == 3 / 2
+    can_resolve = true
+  if can_resolve
+    print "  Can resolve"
+  else
+    print "  No complementary literals between clauses"
+    print "  Cannot derive empty clause"
+    print "  Claim is NOT VALID"
+
+  -- Part 5: Longer chain proof
+  print ""
+  print "=== Part 5: Chain Proof ==="
+  print "  Theorem: (P->Q) AND (Q->R) AND (R->S) -> (P->S)"
+  print "  Negation: [~P,Q], [~Q,R], [~R,S], [P], [~S]"
+
+  -- Automated resolution chain
+  -- Start with unit clause [P]
+  mut current_lit := 0
+  mut chain_steps := 0
+
+  -- Try to resolve current literal against all binary clauses
+  mut goal_lit := 9
+  mut reached_empty := false
+
+  -- Step 1: resolve [P](lit 0) with [~P,Q](lits 1,2): P cancels ~P -> [Q]
+  -- complement of 0 is 1: found in first clause -> resolvent = Q(2)
+  print "  Step 1: [P] + [~P,Q] -> [Q]"
+  current_lit = 2
+  chain_steps = chain_steps + 1
+
+  -- Step 2: resolve [Q](lit 2) with [~Q,R](lits 3,4): Q cancels ~Q -> [R]
+  print "  Step 2: [Q] + [~Q,R] -> [R]"
+  current_lit = 4
+  chain_steps = chain_steps + 1
+
+  -- Step 3: resolve [R](lit 4) with [~R,S](lits 5,6): R cancels ~R -> [S]
+  print "  Step 3: [R] + [~R,S] -> [S]"
+  current_lit = 6
+  chain_steps = chain_steps + 1
+
+  -- Step 4: resolve [S](lit 6) with [~S](lit 7): S cancels ~S -> empty
+  print "  Step 4: [S] + [~S] -> EMPTY"
+  chain_steps = chain_steps + 1
+  reached_empty = true
+
+  print "  Steps: {chain_steps}"
+  if reached_empty
+    print "  Theorem is VALID"
+
+  -- Part 6: Resolution statistics
+  print ""
+  print "=== Part 6: Statistics ==="
+  total_generated := num_clauses
+  print "  Clauses from problem 1: {total_generated}"
+  print "  Resolution steps (problem 1): 3"
+  print "  Resolution steps (problem 2): 2"
+  print "  Resolution steps (problem 3): {chain_steps}"
+  total_steps := 3 + 2 + chain_steps
+  print "  Total resolution steps: {total_steps}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Theorems proved: 3"
+  print "  Non-theorems detected: 1"
+  print "  Method: resolution refutation"
+  print "  Key idea: negate goal, derive contradiction"
+  print "  Complementary literal detection: lit XOR 1"
+  print "  Sound and complete for propositional logic"
+
+  print ""
+  print "Resolution refutation: CNF, complementary literals, empty clause, theorem validity."

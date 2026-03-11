@@ -1,0 +1,180 @@
+-- Showcase 611: Simple SAT Solver (DPLL Algorithm)
+
+fn main
+  print "SAT Solver (DPLL Algorithm):"
+  print ""
+
+  -- Represent CNF formula as arrays
+  -- Each clause is a set of literals; positive = var, negative = NOT var
+  -- Variables: 1, 2, 3 (indices 0, 1, 2)
+  -- Clauses stored as: clause_lits[clause_start..clause_start+clause_len]
+
+  -- Part 1: Define CNF formula
+  print "=== Part 1: CNF Formula ==="
+  -- Formula: (x1 OR x2) AND (NOT x1 OR x3) AND (NOT x2 OR NOT x3) AND (x1 OR x3)
+  -- Literals: positive var_id = positive, negative var_id = negated
+  -- Encode: lit = var_id * 2 + (1 if negated else 0)
+  -- So x1=2, ~x1=3, x2=4, ~x2=5, x3=6, ~x3=7
+
+  num_vars := 3
+  num_clauses := 4
+
+  -- Clause data: flatten all literals
+  mut clause_lits := [2, 4, 3, 6, 5, 7, 2, 6]
+  -- Clause boundaries: start index and length
+  mut clause_start := [0, 2, 4, 6]
+  mut clause_len := [2, 2, 2, 2]
+
+  print "  Variables: {num_vars}"
+  print "  Clauses: {num_clauses}"
+  print "  (x1 OR x2) AND (NOT x1 OR x3) AND (NOT x2 OR NOT x3) AND (x1 OR x3)"
+
+  -- Part 2: Unit propagation
+  print ""
+  print "=== Part 2: Unit Propagation ==="
+  -- Assignment: 0=unset, 1=true, 2=false
+  mut assign := [0, 0, 0, 0]
+  mut prop_count := 0
+
+  -- Check for unit clauses (clauses with one literal)
+  -- Our clauses all have 2 literals, so no unit propagation initially
+  print "  No unit clauses found initially"
+  print "  Propagation count: {prop_count}"
+
+  -- Part 3: DPLL search
+  print ""
+  print "=== Part 3: DPLL Search ==="
+
+  -- Try assignment: x1=true, then check
+  assign[1] = 1
+  print "  Decision: x1 = true"
+
+  -- Evaluate clauses with current assignment
+  -- Clause 0: (x1 OR x2) -> x1=true -> SATISFIED
+  -- Clause 1: (NOT x1 OR x3) -> NOT x1=false, x3=unset -> need x3
+  -- Clause 2: (NOT x2 OR NOT x3) -> both unset
+  -- Clause 3: (x1 OR x3) -> x1=true -> SATISFIED
+
+  -- After x1=true, clause 1 becomes unit: must set x3=true
+  assign[3] = 1
+  prop_count = prop_count + 1
+  print "  Unit propagation: x3 = true (from clause 1)"
+
+  -- Now clause 2: (NOT x2 OR NOT x3) -> NOT x3=false, need NOT x2=true -> x2=false
+  assign[2] = 2
+  prop_count = prop_count + 1
+  print "  Unit propagation: x2 = false (from clause 2)"
+  print "  Propagations: {prop_count}"
+
+  -- Part 4: Verify solution
+  print ""
+  print "=== Part 4: Verify Solution ==="
+  print "  Assignment: x1=true, x2=false, x3=true"
+
+  mut all_sat := true
+  mut satisfied_count := 0
+
+  for c in range(0, num_clauses)
+    mut clause_sat := false
+    s := clause_start[c]
+    l := clause_len[c]
+    for li in range(0, l)
+      lit := clause_lits[s + li]
+      var_id := lit / 2
+      is_neg := lit % 2
+      val := assign[var_id]
+      -- Literal satisfied if: positive and val=true, or negative and val=false
+      if is_neg == 0 and val == 1
+        clause_sat = true
+      if is_neg == 1 and val == 2
+        clause_sat = true
+    if clause_sat
+      satisfied_count = satisfied_count + 1
+      print "  Clause {c}: SATISFIED"
+    else
+      all_sat = false
+      print "  Clause {c}: NOT SATISFIED"
+
+  if all_sat
+    print "  Result: SATISFIABLE"
+  else
+    print "  Result: UNSATISFIABLE"
+
+  -- Part 5: Try an unsatisfiable formula
+  print ""
+  print "=== Part 5: Unsatisfiable Formula ==="
+  -- (x1) AND (NOT x1) - clearly unsat
+  print "  Formula: (x1) AND (NOT x1)"
+
+  -- x1=true -> clause 2 fails; x1=false -> clause 1 fails
+  mut found_sat := false
+  for trial in range(0, 2)
+    mut trial_assign := [0, 0]
+    if trial == 0
+      trial_assign[1] = 1
+    else
+      trial_assign[1] = 2
+    -- Check (x1): lit=2, var=1, neg=0
+    mut c0_ok := false
+    if trial_assign[1] == 1
+      c0_ok = true
+    -- Check (NOT x1): lit=3, var=1, neg=1
+    mut c1_ok := false
+    if trial_assign[1] == 2
+      c1_ok = true
+    if c0_ok and c1_ok
+      found_sat = true
+
+  if found_sat
+    print "  Result: SATISFIABLE"
+  else
+    print "  Result: UNSATISFIABLE (no assignment works)"
+
+  -- Part 6: Backtracking example
+  print ""
+  print "=== Part 6: Backtracking ==="
+  -- Formula: (x1 OR x2) AND (NOT x1 OR NOT x2) AND (x1 OR NOT x2)
+  -- Solutions: x1=true, x2=false
+  print "  Formula: (x1 OR x2) AND (NOT x1 OR NOT x2) AND (x1 OR NOT x2)"
+
+  mut bt_assign := [0, 0, 0]
+  mut bt_decisions := 0
+  mut bt_backtracks := 0
+
+  -- Try x1=false first
+  bt_assign[1] = 2
+  bt_decisions = bt_decisions + 1
+  print "  Try x1=false"
+  -- Clause 0: (x1 OR x2) -> need x2=true
+  bt_assign[2] = 1
+  print "  Propagate x2=true"
+  -- Clause 1: (NOT x1 OR NOT x2) -> NOT x1=true (ok), NOT x2=false -> need NOT x1=true, ok
+  -- Clause 2: (x1 OR NOT x2) -> x1=false, NOT x2=false -> CONFLICT!
+  print "  Clause 2 conflict! Backtracking..."
+  bt_backtracks = bt_backtracks + 1
+
+  -- Backtrack: try x1=true
+  bt_assign[1] = 1
+  bt_assign[2] = 0
+  bt_decisions = bt_decisions + 1
+  print "  Try x1=true"
+  -- Clause 1: (NOT x1 OR NOT x2) -> NOT x1=false, need NOT x2=true -> x2=false
+  bt_assign[2] = 2
+  print "  Propagate x2=false"
+  -- Clause 0: (x1 OR x2) -> x1=true -> ok
+  -- Clause 2: (x1 OR NOT x2) -> x1=true -> ok
+  print "  All clauses satisfied!"
+  print "  Decisions: {bt_decisions}, Backtracks: {bt_backtracks}"
+  print "  Solution: x1=true, x2=false"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Problems solved: 3"
+  print "  SAT: 2, UNSAT: 1"
+  total_props := prop_count
+  print "  Total propagations: {total_props}"
+  print "  Total backtracks: {bt_backtracks}"
+
+  print ""
+  print "SAT solver: CNF encoding, unit propagation, DPLL backtracking, verification."

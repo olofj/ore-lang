@@ -1,0 +1,219 @@
+-- Showcase 613: Van Emde Boas Tree Concepts
+
+fn main
+  print "Van Emde Boas Tree Concepts:"
+  print ""
+
+  -- vEB tree for universe size 16 (u=16, sqrt(u)=4)
+  -- Clusters of size 4, with a summary of size 4
+  -- high(x) = x / 4, low(x) = x % 4, index(h,l) = h*4+l
+
+  -- Part 1: Structure
+  print "=== Part 1: Structure ==="
+  u := 16
+  cluster_size := 4
+  num_clusters := 4
+  print "  Universe size: {u}"
+  print "  Cluster size: {cluster_size}"
+  print "  Number of clusters: {num_clusters}"
+
+  -- Each cluster is a bitvector (using 4 bits stored as array)
+  -- cluster[i][j] = 1 if element i*4+j is present
+  mut c0 := [0, 0, 0, 0]
+  mut c1 := [0, 0, 0, 0]
+  mut c2 := [0, 0, 0, 0]
+  mut c3 := [0, 0, 0, 0]
+  -- Summary: summary[i] = 1 if cluster i is non-empty
+  mut summary := [0, 0, 0, 0]
+  mut min_val := -1
+  mut max_val := -1
+  mut size := 0
+
+  -- Part 2: Insert operations
+  print ""
+  print "=== Part 2: Insert ==="
+  mut to_insert := [2, 3, 7, 11, 14, 5, 0, 9]
+  num_insert := 8
+
+  for idx in range(0, num_insert)
+    x := to_insert[idx]
+    h := x / cluster_size
+    l := x % cluster_size
+    -- Set bit in cluster
+    if h == 0
+      c0[l] = 1
+    else if h == 1
+      c1[l] = 1
+    else if h == 2
+      c2[l] = 1
+    else
+      c3[l] = 1
+    summary[h] = 1
+    if min_val == -1 or x < min_val
+      min_val = x
+    if max_val == -1 or x > max_val
+      max_val = x
+    size = size + 1
+    print "  Insert {x}: high={h}, low={l}"
+
+  print "  Size: {size}, Min: {min_val}, Max: {max_val}"
+
+  -- Part 3: Member queries (O(log log u) in theory)
+  print ""
+  print "=== Part 3: Member Query ==="
+  mut queries := [0, 1, 2, 7, 8, 11, 15]
+  num_queries := 7
+
+  for idx in range(0, num_queries)
+    x := queries[idx]
+    h := x / cluster_size
+    l := x % cluster_size
+    mut present := 0
+    if h == 0
+      present = c0[l]
+    else if h == 1
+      present = c1[l]
+    else if h == 2
+      present = c2[l]
+    else
+      present = c3[l]
+    if present == 1
+      print "  Member({x}): YES"
+    else
+      print "  Member({x}): NO"
+
+  -- Part 4: Successor queries
+  print ""
+  print "=== Part 4: Successor ==="
+  -- Successor(x): find smallest element > x
+  mut succ_queries := [0, 4, 6, 10, 13]
+  num_succ := 5
+
+  for idx in range(0, num_succ)
+    x := succ_queries[idx]
+    mut found := -1
+    -- Scan from x+1 upward (simulating vEB successor)
+    for candidate in range(x + 1, u)
+      if found == -1
+        ch := candidate / cluster_size
+        cl := candidate % cluster_size
+        mut is_member := 0
+        if ch == 0
+          is_member = c0[cl]
+        else if ch == 1
+          is_member = c1[cl]
+        else if ch == 2
+          is_member = c2[cl]
+        else
+          is_member = c3[cl]
+        if is_member == 1
+          found = candidate
+    if found != -1
+      print "  Successor({x}): {found}"
+    else
+      print "  Successor({x}): NONE"
+
+  -- Part 5: Predecessor queries
+  print ""
+  print "=== Part 5: Predecessor ==="
+  mut pred_queries := [3, 8, 12, 15, 1]
+  num_pred := 5
+
+  for idx in range(0, num_pred)
+    x := pred_queries[idx]
+    mut found := -1
+    -- Scan downward from x-1
+    mut candidate := x - 1
+    while candidate >= 0 and found == -1
+      ch := candidate / cluster_size
+      cl := candidate % cluster_size
+      mut is_member := 0
+      if ch == 0
+        is_member = c0[cl]
+      else if ch == 1
+        is_member = c1[cl]
+      else if ch == 2
+        is_member = c2[cl]
+      else
+        is_member = c3[cl]
+      if is_member == 1
+        found = candidate
+      candidate = candidate - 1
+    if found != -1
+      print "  Predecessor({x}): {found}"
+    else
+      print "  Predecessor({x}): NONE"
+
+  -- Part 6: Delete operation
+  print ""
+  print "=== Part 6: Delete ==="
+  mut to_delete := [3, 11]
+  for idx in range(0, 2)
+    x := to_delete[idx]
+    h := x / cluster_size
+    l := x % cluster_size
+    if h == 0
+      c0[l] = 0
+    else if h == 1
+      c1[l] = 0
+    else if h == 2
+      c2[l] = 0
+    else
+      c3[l] = 0
+    -- Check if cluster is now empty -> update summary
+    mut cluster_empty := true
+    if h == 0
+      for k in range(0, 4)
+        if c0[k] == 1
+          cluster_empty = false
+    else if h == 1
+      for k in range(0, 4)
+        if c1[k] == 1
+          cluster_empty = false
+    else if h == 2
+      for k in range(0, 4)
+        if c2[k] == 1
+          cluster_empty = false
+    else
+      for k in range(0, 4)
+        if c3[k] == 1
+          cluster_empty = false
+    if cluster_empty
+      summary[h] = 0
+    size = size - 1
+    print "  Delete {x}: size now {size}"
+
+  -- Recompute min/max
+  min_val = -1
+  max_val = -1
+  for x in range(0, u)
+    h := x / cluster_size
+    l := x % cluster_size
+    mut present := 0
+    if h == 0
+      present = c0[l]
+    else if h == 1
+      present = c1[l]
+    else if h == 2
+      present = c2[l]
+    else
+      present = c3[l]
+    if present == 1
+      if min_val == -1
+        min_val = x
+      max_val = x
+  print "  After deletions: Min={min_val}, Max={max_val}, Size={size}"
+
+  -- Part 7: Complexity
+  print ""
+  print "=== Part 7: Complexity ==="
+  print "  Insert: O(log log u)"
+  print "  Delete: O(log log u)"
+  print "  Member: O(log log u)"
+  print "  Successor: O(log log u)"
+  print "  Predecessor: O(log log u)"
+  print "  Space: O(u)"
+  print "  For u=16: log log 16 = log 4 = 2 steps"
+
+  print ""
+  print "Van Emde Boas: clusters, summary, O(log log u) operations, successor, predecessor."
