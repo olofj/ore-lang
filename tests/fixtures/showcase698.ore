@@ -1,0 +1,95 @@
+-- Showcase 698: Simple Dependent Types
+
+fn main
+  print "Simple Dependent Types:"
+  print ""
+
+  -- Dependent types allow types to depend on values
+  -- e.g., Vec(n, a) is a vector of exactly n elements of type a
+
+  -- Part 1: Length-indexed vectors
+  print "=== Part 1: Length-Indexed Vectors ==="
+  -- Vec(n, Int): a vector with statically known length n
+  mut vec_names := ["empty", "single", "triple", "quad"]
+  mut vec_lengths := [0, 1, 3, 4]
+  mut vec_types := ["Vec(0, Int)", "Vec(1, Int)", "Vec(3, Int)", "Vec(4, Int)"]
+  num_vecs := 4
+  for i in range(0, num_vecs)
+    print "  {vec_names[i]}: {vec_types[i]}"
+
+  -- Part 2: Safe operations via types
+  print ""
+  print "=== Part 2: Type-Safe Operations ==="
+  -- head: Vec(n+1, a) -> a  (only non-empty vectors!)
+  -- tail: Vec(n+1, a) -> Vec(n, a)
+  -- append: Vec(m, a) -> Vec(n, a) -> Vec(m+n, a)
+  -- zip: Vec(n, a) -> Vec(n, b) -> Vec(n, (a, b))
+  mut op_names := ["head", "tail", "append", "zip", "index"]
+  mut op_sigs := ["Vec(n+1, a) -> a", "Vec(n+1, a) -> Vec(n, a)", "Vec(m, a) -> Vec(n, a) -> Vec(m+n, a)", "Vec(n, a) -> Vec(n, b) -> Vec(n, (a,b))", "Vec(n, a) -> Fin(n) -> a"]
+  num_ops := 5
+  for i in range(0, num_ops)
+    print "  {op_names[i]}: {op_sigs[i]}"
+
+  -- Part 3: Finite types (bounded naturals)
+  print ""
+  print "=== Part 3: Finite Types (Fin) ==="
+  -- Fin(n) represents numbers 0..n-1
+  -- Used for safe indexing: index i into Vec(n) requires i: Fin(n)
+  for n in range(1, 6)
+    mut vals := ""
+    for i in range(0, n)
+      if i > 0
+        vals = vals + ", "
+      vals = vals + str(i)
+    print "  Fin({n}) = {vals}"
+
+  -- Part 4: Type-level arithmetic
+  print ""
+  print "=== Part 4: Type-Level Arithmetic ==="
+  -- Types can contain computations on natural numbers
+  mut expr_left := ["Vec(2+3, Int)", "Vec(n, a) ++ Vec(m, a)", "Matrix(2, 3) * Matrix(3, 4)", "replicate(5, x)"]
+  mut expr_right := ["Vec(5, Int)", "Vec(n+m, a)", "Matrix(2, 4)", "Vec(5, typeof(x))"]
+  num_exprs := 4
+  for i in range(0, num_exprs)
+    print "  {expr_left[i]} = {expr_right[i]}"
+
+  -- Part 5: Proofs as programs
+  print ""
+  print "=== Part 5: Proofs as Programs ==="
+  -- In dependent type theory, types are propositions and programs are proofs
+  -- Prove: for all n, length(replicate(n, x)) == n
+  mut proofs := ["refl: a == a", "symm: a == b -> b == a", "trans: a == b -> b == c -> a == c", "cong: a == b -> f(a) == f(b)"]
+  num_proofs := 4
+  for i in range(0, num_proofs)
+    print "  {proofs[i]}"
+  -- Simulate proof of replicate length
+  print "  Proof: length(replicate(n, x)) == n"
+  print "    Base: length(replicate(0, x)) = length([]) = 0"
+  print "    Step: length(replicate(n+1, x)) = 1 + length(replicate(n, x)) = 1 + n = n+1"
+
+  -- Part 6: Dependent pattern matching
+  print ""
+  print "=== Part 6: Dependent Pattern Matching ==="
+  -- When matching on Vec, the type refines
+  mut patterns := ["[] -> length is 0", "x :: xs -> length is n+1", "Fin.zero -> index 0", "Fin.succ(i) -> index i+1"]
+  num_pats := 4
+  for i in range(0, num_pats)
+    print "  match {patterns[i]}"
+  -- Simulate: match on vector to prove non-emptiness
+  test_len := 3
+  if test_len > 0
+    print "  Vec({test_len}): matched as non-empty, head is safe"
+  else
+    print "  Vec({test_len}): matched as empty, no head"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Dependent types: types that depend on values"
+  print "  Eliminates: index-out-of-bounds, empty-list errors"
+  print "  Enables: proofs of program correctness"
+  print "  Type-level computation: arithmetic in types"
+  print "  Used in: Idris, Agda, Coq, Lean, F*"
+
+  print ""
+  print "Dependent types: types parameterized by values enabling compile-time verification of program properties through proofs as programs."

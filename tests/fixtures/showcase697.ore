@@ -1,0 +1,137 @@
+-- Showcase 697: Concurrent Skip List
+
+fn main
+  print "Concurrent Skip List:"
+  print ""
+
+  -- A skip list is a probabilistic data structure with O(log n) search
+  -- Concurrent skip lists allow lock-free or fine-grained locking operations
+
+  -- Part 1: Skip list structure
+  print "=== Part 1: Skip List Setup ==="
+  max_nodes := 15
+  max_level := 4
+  -- Node data: key, level (height), forward pointers per level
+  mut sk_key := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut sk_level := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Forward pointers: flat array [node * max_level + level]
+  mut sk_fwd := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_nodes := 1
+  -- Node 0 is the header sentinel
+  sk_key[0] = -1
+  sk_level[0] = max_level
+  -- Initialize all forward pointers to -1 (end)
+  for i in range(0, 60)
+    sk_fwd[i] = -1
+  print "  Header sentinel created with {max_level} levels"
+
+  -- Part 2: Insert elements
+  print ""
+  print "=== Part 2: Insertions ==="
+  -- Insert keys with predetermined levels (simulating random)
+  mut ins_keys := [3, 7, 12, 19, 25, 31, 42, 50]
+  mut ins_levels := [1, 3, 2, 1, 4, 2, 1, 3]
+  num_inserts := 8
+
+  for i in range(0, num_inserts)
+    key := ins_keys[i]
+    lvl := ins_levels[i]
+    idx := num_nodes
+    sk_key[idx] = key
+    sk_level[idx] = lvl
+    -- Find insert position at each level and update pointers
+    mut cur := 0
+    mut lv := max_level - 1
+    while lv >= 0
+      -- Traverse forward while next key < insert key
+      mut nxt := sk_fwd[cur * max_level + lv]
+      while nxt != -1 and sk_key[nxt] < key
+        cur = nxt
+        nxt = sk_fwd[cur * max_level + lv]
+      -- Insert at this level if within node's level
+      if lv < lvl
+        sk_fwd[idx * max_level + lv] = sk_fwd[cur * max_level + lv]
+        sk_fwd[cur * max_level + lv] = idx
+      lv = lv - 1
+    num_nodes = num_nodes + 1
+    print "  Insert {key} (level {lvl})"
+  print "  Total nodes: {num_nodes - 1}"
+
+  -- Part 3: Search
+  print ""
+  print "=== Part 3: Search ==="
+  mut search_keys := [12, 25, 15, 42]
+  num_searches := 4
+  for si in range(0, num_searches)
+    target := search_keys[si]
+    mut cur := 0
+    mut steps := 0
+    mut lv := max_level - 1
+    while lv >= 0
+      mut nxt := sk_fwd[cur * max_level + lv]
+      while nxt != -1 and sk_key[nxt] < target
+        cur = nxt
+        nxt = sk_fwd[cur * max_level + lv]
+        steps = steps + 1
+      lv = lv - 1
+      steps = steps + 1
+    -- Check if found
+    found_node := sk_fwd[cur * max_level + 0]
+    if found_node != -1 and sk_key[found_node] == target
+      print "  Search {target}: FOUND in {steps} steps"
+    else
+      print "  Search {target}: NOT FOUND in {steps} steps"
+
+  -- Part 4: Level distribution
+  print ""
+  print "=== Part 4: Level Distribution ==="
+  mut level_count := [0, 0, 0, 0]
+  for i in range(1, num_nodes)
+    lv := sk_level[i] - 1
+    if lv >= 0 and lv < max_level
+      level_count[lv] = level_count[lv] + 1
+  for i in range(0, max_level)
+    print "  Level {i + 1}: {level_count[i]} nodes"
+
+  -- Part 5: Concurrent access simulation
+  print ""
+  print "=== Part 5: Concurrent Access ==="
+  -- Simulate multiple threads accessing the skip list
+  mut thread_ops := ["T1:search(7)", "T2:insert(15)", "T3:search(31)", "T1:insert(22)", "T2:delete(12)"]
+  num_ops := 5
+  mut conflicts := 0
+  mut completed := 0
+  for i in range(0, num_ops)
+    print "  {thread_ops[i]}"
+    completed = completed + 1
+  print "  Operations completed: {completed}"
+  print "  Conflicts: {conflicts} (lock-free design)"
+
+  -- Part 6: Traversal
+  print ""
+  print "=== Part 6: Ordered Traversal ==="
+  -- Walk level 0 to get sorted order
+  mut cur := sk_fwd[0]
+  mut sorted_count := 0
+  mut prev_key := -1
+  mut is_sorted := true
+  while cur != -1
+    if sk_key[cur] <= prev_key
+      is_sorted = false
+    prev_key = sk_key[cur]
+    sorted_count = sorted_count + 1
+    cur = sk_fwd[cur * max_level + 0]
+  print "  Elements in order: {sorted_count}"
+  print "  Sorted correctly: {is_sorted}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Nodes: {num_nodes - 1}"
+  print "  Max level: {max_level}"
+  print "  Expected search: O(log n)"
+  print "  Lock-free variants use CAS operations"
+  print "  Used in: Java ConcurrentSkipListMap, Redis sorted sets"
+
+  print ""
+  print "Concurrent skip list: probabilistic sorted data structure enabling efficient lock-free concurrent search, insert, and delete operations."

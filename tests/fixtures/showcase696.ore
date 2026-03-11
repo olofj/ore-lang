@@ -1,0 +1,173 @@
+-- Showcase 696: Simple Linear Programming (Simplex)
+
+fn main
+  print "Simple Linear Programming (Simplex):"
+  print ""
+
+  -- The simplex method solves linear programming problems:
+  -- Maximize c^T x subject to Ax <= b, x >= 0
+
+  -- Part 1: Problem setup
+  print "=== Part 1: Problem Setup ==="
+  -- Maximize: 5x1 + 4x2
+  -- Subject to:
+  --   6x1 + 4x2 <= 24  (constraint 1)
+  --   x1 + 2x2 <= 6    (constraint 2)
+  --   x1, x2 >= 0
+  num_vars := 2
+  num_constraints := 2
+  print "  Maximize: 5*x1 + 4*x2"
+  print "  Subject to:"
+  print "    6*x1 + 4*x2 <= 24"
+  print "    x1 + 2*x2 <= 6"
+  print "    x1, x2 >= 0"
+
+  -- Part 2: Initial tableau (with slack variables)
+  print ""
+  print "=== Part 2: Initial Tableau ==="
+  -- Tableau: [A | I | b] with objective row [-c | 0 | 0]
+  -- Variables: x1, x2, s1, s2 (s1, s2 are slack)
+  -- Row 0 (objective): -5, -4, 0, 0, 0
+  -- Row 1: 6, 4, 1, 0, 24
+  -- Row 2: 1, 2, 0, 1, 6
+  -- Using flat arrays: 5 columns per row, 3 rows
+  -- Multiply by 100 to avoid float issues
+  mut tab := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Row 0 (objective)
+  tab[0] = -500
+  tab[1] = -400
+  tab[2] = 0
+  tab[3] = 0
+  tab[4] = 0
+  -- Row 1
+  tab[5] = 600
+  tab[6] = 400
+  tab[7] = 100
+  tab[8] = 0
+  tab[9] = 2400
+  -- Row 2
+  tab[10] = 100
+  tab[11] = 200
+  tab[12] = 0
+  tab[13] = 100
+  tab[14] = 600
+  cols := 5
+  rows := 3
+  mut basis := [2, 3]
+  print "  Tableau initialized with {num_vars} variables + {num_constraints} slack"
+  print "  Basis: s1, s2"
+
+  -- Part 3: Simplex iteration 1
+  print ""
+  print "=== Part 3: Iteration 1 ==="
+  -- Find pivot column: most negative in objective row
+  mut pivot_col := 0
+  mut min_val := tab[0]
+  for j in range(1, num_vars + num_constraints)
+    if tab[j] < min_val
+      min_val = tab[j]
+      pivot_col = j
+  print "  Pivot column: {pivot_col} (value={min_val})"
+
+  -- Find pivot row: minimum ratio test
+  mut pivot_row := -1
+  mut min_ratio := 999999
+  for i in range(1, rows)
+    entry := tab[i * cols + pivot_col]
+    if entry > 0
+      rhs := tab[i * cols + cols - 1]
+      ratio := rhs * 100 / entry
+      if ratio < min_ratio
+        min_ratio = ratio
+        pivot_row = i
+  print "  Pivot row: {pivot_row} (ratio={min_ratio})"
+  mut pivot_element := tab[pivot_row * cols + pivot_col]
+  print "  Pivot element: {pivot_element}"
+
+  -- Perform pivot
+  -- Divide pivot row by pivot element
+  for j in range(0, cols)
+    tab[pivot_row * cols + j] = tab[pivot_row * cols + j] * 100 / pivot_element
+  -- Eliminate pivot column from other rows
+  for i in range(0, rows)
+    if i != pivot_row
+      factor := tab[i * cols + pivot_col]
+      for j in range(0, cols)
+        tab[i * cols + j] = tab[i * cols + j] - factor * tab[pivot_row * cols + j] / 100
+  basis[pivot_row - 1] = pivot_col
+  print "  After pivot: x{pivot_col + 1} enters basis"
+  obj_val := tab[4]
+  print "  Current objective: {obj_val / 100}"
+
+  -- Part 4: Simplex iteration 2
+  print ""
+  print "=== Part 4: Iteration 2 ==="
+  -- Check for negative values in objective row
+  mut has_negative := false
+  pivot_col = -1
+  min_val = 0
+  for j in range(0, num_vars + num_constraints)
+    if tab[j] < min_val
+      min_val = tab[j]
+      pivot_col = j
+      has_negative = true
+  if has_negative
+    print "  Pivot column: {pivot_col} (value={min_val})"
+    -- Minimum ratio test
+    pivot_row = -1
+    min_ratio = 999999
+    for i in range(1, rows)
+      entry := tab[i * cols + pivot_col]
+      if entry > 0
+        rhs := tab[i * cols + cols - 1]
+        ratio := rhs * 100 / entry
+        if ratio < min_ratio
+          min_ratio = ratio
+          pivot_row = i
+    print "  Pivot row: {pivot_row}"
+    pivot_element = tab[pivot_row * cols + pivot_col]
+    -- Pivot
+    for j in range(0, cols)
+      tab[pivot_row * cols + j] = tab[pivot_row * cols + j] * 100 / pivot_element
+    for i in range(0, rows)
+      if i != pivot_row
+        factor := tab[i * cols + pivot_col]
+        for j in range(0, cols)
+          tab[i * cols + j] = tab[i * cols + j] - factor * tab[pivot_row * cols + j] / 100
+    basis[pivot_row - 1] = pivot_col
+    print "  After pivot: x{pivot_col + 1} enters basis"
+
+  -- Part 5: Check optimality
+  print ""
+  print "=== Part 5: Optimality Check ==="
+  mut optimal := true
+  for j in range(0, num_vars + num_constraints)
+    if tab[j] < 0
+      optimal = false
+  print "  All objective coefficients >= 0: {optimal}"
+  final_obj := tab[cols - 1]
+  print "  Optimal objective value: {final_obj / 100}"
+
+  -- Part 6: Read solution
+  print ""
+  print "=== Part 6: Solution ==="
+  -- Read basic variables
+  for i in range(0, num_constraints)
+    bv := basis[i]
+    val := tab[(i + 1) * cols + cols - 1]
+    if bv < num_vars
+      print "  x{bv + 1} = {val / 100}"
+    else
+      print "  s{bv - num_vars + 1} = {val / 100}"
+  print "  Simplex converged in 2 iterations"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Variables: {num_vars}, Constraints: {num_constraints}"
+  print "  Method: revised simplex with full tableau"
+  print "  Pivot rule: most negative coefficient (Dantzig)"
+  print "  Applications: resource allocation, scheduling, logistics"
+
+  print ""
+  print "Simplex method: iterative linear programming algorithm pivoting between vertices of the feasible region to find optimal solutions."

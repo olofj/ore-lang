@@ -1,0 +1,116 @@
+-- Showcase 694: Simple Abstract Refinement Types
+
+fn main
+  print "Simple Abstract Refinement Types:"
+  print ""
+
+  -- Refinement types augment base types with predicates
+  -- e.g., {x:Int | x > 0} is a positive integer
+
+  -- Part 1: Base types with refinements
+  print "=== Part 1: Refinement Definitions ==="
+  -- Type representations: base_type + predicate
+  -- Base types: 0=Int, 1=Float, 2=Bool, 3=String, 4=List
+  mut type_names := ["Int", "Float", "Bool", "String", "List"]
+  mut ref_base := [0, 0, 0, 4, 0, 1]
+  mut ref_pred := ["x > 0", "x >= 0", "x != 0", "len(x) > 0", "0 <= x <= 255", "x >= 0.0"]
+  mut ref_alias := ["PosInt", "Nat", "NonZero", "NonEmpty", "Byte", "PosFloat"]
+  num_refs := 6
+  for i in range(0, num_refs)
+    rb := ref_base[i]
+    tname := type_names[rb]
+    rpred := ref_pred[i]
+    ralias := ref_alias[i]
+    print "  {ralias} = {tname} where {rpred}"
+
+  -- Part 2: Value checking against refinements
+  print ""
+  print "=== Part 2: Value Checking ==="
+  -- Check values against PosInt (x > 0)
+  mut test_vals := [5, -3, 0, 100, -1, 42]
+  num_vals := 6
+  mut valid_count := 0
+  for i in range(0, num_vals)
+    is_pos := test_vals[i] > 0
+    if is_pos
+      valid_count = valid_count + 1
+    print "  PosInt check {test_vals[i]}: {is_pos}"
+  print "  Valid: {valid_count} of {num_vals}"
+
+  -- Part 3: Subtyping relationships
+  print ""
+  print "=== Part 3: Subtyping ==="
+  -- PosInt <: Nat <: Int
+  -- PosInt <: NonZero <: Int
+  -- Byte <: Nat <: Int
+  mut sub_from := ["PosInt", "PosInt", "Nat", "Byte", "NonZero", "Byte"]
+  mut sub_to := ["Nat", "NonZero", "Int", "Nat", "Int", "Int"]
+  mut sub_valid := [true, true, true, true, true, true]
+  num_subs := 6
+  for i in range(0, num_subs)
+    print "  {sub_from[i]} <: {sub_to[i]} = {sub_valid[i]}"
+
+  -- Part 4: Function signatures with refinements
+  print ""
+  print "=== Part 4: Refined Functions ==="
+  -- div: (Int, NonZero) -> Int -- division never fails
+  -- sqrt: PosFloat -> PosFloat
+  -- head: NonEmpty -> a
+  mut fn_names := ["div", "sqrt", "head", "abs", "clamp"]
+  mut fn_sigs := ["(Int, NonZero) -> Int", "PosFloat -> PosFloat", "NonEmpty -> a", "Int -> Nat", "(Int, Int, Int) -> Int"]
+  num_fns := 5
+  for i in range(0, num_fns)
+    print "  {fn_names[i]}: {fn_sigs[i]}"
+
+  -- Part 5: Refinement inference
+  print ""
+  print "=== Part 5: Refinement Inference ==="
+  -- After certain operations, we can infer refinements
+  -- if x > 0 then ... -- x is PosInt in this branch
+  -- abs(x) -- result is Nat
+  -- len(list) -- result is Nat
+  mut expr_from := ["if x > 0", "abs(x)", "len(list)", "x * x", "x + 1 where x:Nat"]
+  mut expr_inferred := ["x: PosInt", "Nat", "Nat", "Nat", "PosInt"]
+  num_infer := 5
+  for i in range(0, num_infer)
+    print "  {expr_from[i]} => {expr_inferred[i]}"
+
+  -- Part 6: Checking refinement obligations
+  print ""
+  print "=== Part 6: Obligation Checking ==="
+  -- When calling div(a, b), must prove b: NonZero
+  mut obligations := 0
+  mut discharged := 0
+  -- Simulate: call div(10, x) where x = 5
+  obligations = obligations + 1
+  x_val := 5
+  if x_val != 0
+    discharged = discharged + 1
+    print "  div(10, 5): NonZero obligation discharged"
+  -- call div(10, y) where y = 0
+  obligations = obligations + 1
+  y_val := 0
+  if y_val != 0
+    discharged = discharged + 1
+    print "  div(10, 0): NonZero obligation discharged"
+  else
+    print "  div(10, 0): NonZero obligation FAILED"
+  -- call head(list) where list = [1, 2, 3]
+  obligations = obligations + 1
+  list_len := 3
+  if list_len > 0
+    discharged = discharged + 1
+    print "  head([1,2,3]): NonEmpty obligation discharged"
+  print "  Obligations: {obligations}, Discharged: {discharged}, Failed: {obligations - discharged}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Refinement types: {num_refs} defined"
+  print "  Subtype relations: {num_subs}"
+  print "  Refined functions: {num_fns}"
+  print "  Eliminates: null errors, division by zero, empty list access"
+  print "  Used in: Liquid Haskell, F*, Stainless, Dafny"
+
+  print ""
+  print "Refinement types: augmenting base types with logical predicates to statically prevent runtime errors."

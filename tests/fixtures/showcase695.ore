@@ -1,0 +1,183 @@
+-- Showcase 695: Dancing Links (DLX) Concepts
+
+fn main
+  print "Dancing Links (DLX) Concepts:"
+  print ""
+
+  -- Dancing Links is Knuth's technique for efficiently implementing
+  -- Algorithm X to solve exact cover problems
+
+  -- Part 1: Doubly-linked circular list
+  print "=== Part 1: Circular List ==="
+  max_nodes := 20
+  mut lnk_left := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut lnk_right := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut lnk_up := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut lnk_down := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut col_size := [0, 0, 0, 0, 0, 0, 0]
+  -- Set up column headers for a 3x4 exact cover problem
+  -- Columns: A, B, C, D (indices 1-4), header at 0
+  num_cols := 4
+  mut col_names := ["H", "A", "B", "C", "D"]
+  -- Link headers circularly
+  for i in range(0, num_cols + 1)
+    lnk_right[i] = (i + 1) % (num_cols + 1)
+    lnk_left[i] = (i + num_cols) % (num_cols + 1)
+    lnk_up[i] = i
+    lnk_down[i] = i
+  print "  Column headers linked circularly: H <-> A <-> B <-> C <-> D <-> H"
+
+  -- Part 2: Matrix setup (exact cover instance)
+  print ""
+  print "=== Part 2: Matrix Setup ==="
+  -- Rows represent subsets:
+  -- Row 1: {A, B}     -> nodes 5, 6
+  -- Row 2: {B, C, D}  -> nodes 7, 8, 9
+  -- Row 3: {A, C}     -> nodes 10, 11
+  -- Row 4: {D}        -> nodes 12
+  mut node_col := [0, 0, 0, 0, 0, 1, 2, 2, 3, 4, 1, 3, 4]
+  mut node_row := [0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 4]
+  mut next_node := 5
+  -- Row 1: A, B
+  -- Insert node 5 in col A (1)
+  lnk_down[1] = 5
+  lnk_up[5] = 1
+  lnk_down[5] = 1
+  lnk_up[1] = 5
+  col_size[1] = col_size[1] + 1
+  -- Insert node 6 in col B (2)
+  lnk_down[2] = 6
+  lnk_up[6] = 2
+  lnk_down[6] = 2
+  lnk_up[2] = 6
+  col_size[2] = col_size[2] + 1
+  -- Link row 1 nodes
+  lnk_right[5] = 6
+  lnk_left[6] = 5
+  lnk_right[6] = 5
+  lnk_left[5] = 6
+  print "  Row 1: A, B (nodes 5-6)"
+
+  -- Row 2: B, C, D (nodes 7, 8, 9)
+  lnk_down[6] = 7
+  lnk_up[7] = 6
+  lnk_down[7] = 2
+  lnk_up[2] = 7
+  col_size[2] = col_size[2] + 1
+  lnk_down[3] = 8
+  lnk_up[8] = 3
+  lnk_down[8] = 3
+  lnk_up[3] = 8
+  col_size[3] = col_size[3] + 1
+  lnk_down[4] = 9
+  lnk_up[9] = 4
+  lnk_down[9] = 4
+  lnk_up[4] = 9
+  col_size[4] = col_size[4] + 1
+  lnk_right[7] = 8
+  lnk_left[8] = 7
+  lnk_right[8] = 9
+  lnk_left[9] = 8
+  lnk_right[9] = 7
+  lnk_left[7] = 9
+  print "  Row 2: B, C, D (nodes 7-9)"
+
+  -- Row 3: A, C (nodes 10, 11)
+  lnk_down[5] = 10
+  lnk_up[10] = 5
+  lnk_down[10] = 1
+  lnk_up[1] = 10
+  col_size[1] = col_size[1] + 1
+  lnk_down[8] = 11
+  lnk_up[11] = 8
+  lnk_down[11] = 3
+  lnk_up[3] = 11
+  col_size[3] = col_size[3] + 1
+  lnk_right[10] = 11
+  lnk_left[11] = 10
+  lnk_right[11] = 10
+  lnk_left[10] = 11
+  print "  Row 3: A, C (nodes 10-11)"
+
+  -- Row 4: D (node 12)
+  lnk_down[9] = 12
+  lnk_up[12] = 9
+  lnk_down[12] = 4
+  lnk_up[4] = 12
+  col_size[4] = col_size[4] + 1
+  lnk_right[12] = 12
+  lnk_left[12] = 12
+  print "  Row 4: D (node 12)"
+
+  -- Part 3: Column sizes
+  print ""
+  print "=== Part 3: Column Sizes ==="
+  for i in range(1, num_cols + 1)
+    print "  {col_names[i]}: {col_size[i]} nodes"
+
+  -- Part 4: Cover operation
+  print ""
+  print "=== Part 4: Cover Column ==="
+  -- Cover column A (1): remove it from header list
+  -- and remove all rows containing A
+  cover_col := 1
+  print "  Covering column {col_names[cover_col]}"
+  -- Unlink from header
+  lnk_right[lnk_left[cover_col]] = lnk_right[cover_col]
+  lnk_left[lnk_right[cover_col]] = lnk_left[cover_col]
+  print "  Column {col_names[cover_col]} removed from header list"
+  -- Count remaining columns
+  mut remaining := 0
+  mut c := lnk_right[0]
+  while c != 0
+    remaining = remaining + 1
+    c = lnk_right[c]
+  print "  Remaining columns: {remaining}"
+
+  -- Part 5: Uncover operation
+  print ""
+  print "=== Part 5: Uncover Column ==="
+  -- Restore column A
+  lnk_right[lnk_left[cover_col]] = cover_col
+  lnk_left[lnk_right[cover_col]] = cover_col
+  print "  Column {col_names[cover_col]} restored"
+  mut restored := 0
+  c = lnk_right[0]
+  while c != 0
+    restored = restored + 1
+    c = lnk_right[c]
+  print "  Columns after uncover: {restored}"
+
+  -- Part 6: Solve exact cover
+  print ""
+  print "=== Part 6: Exact Cover Solution ==="
+  -- Solution: Row 1 {A,B} + Row 2 {B,C,D}? No, B is in both
+  -- Solution: Row 3 {A,C} + Row 2 {B,C,D}? No, C is in both
+  -- Solution: Row 1 {A,B} + Row 4 {D} doesn't cover C
+  -- The sets: {A,B}, {B,C,D}, {A,C}, {D}
+  -- Exact cover of {A,B,C,D}: Row 3 {A,C} + Row 2 {B,C,D}? No
+  -- Row 1 {A,B} + need {C,D}: no single row has exactly {C,D}
+  -- Actually: check all combos
+  -- {A,B} + {B,C,D} overlap at B
+  -- {A,B} + {A,C} overlap at A
+  -- {A,C} + {B,C,D} overlap at C
+  -- No 2-row solution. Need Row 3 {A,C} + a row with {B} + a row with {D}
+  -- No row with just {B}. So no exact cover exists for this instance.
+  print "  Checking all row combinations..."
+  print "  Row 1 + Row 2: overlap at B - rejected"
+  print "  Row 1 + Row 3: overlap at A - rejected"
+  print "  Row 2 + Row 3: overlap at C - rejected"
+  print "  No exact cover exists for this instance"
+  print "  DLX backtracks efficiently using cover/uncover"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Matrix: 4 rows x {num_cols} columns"
+  print "  Nodes: 13 (including headers)"
+  print "  Cover/uncover: O(1) pointer manipulation"
+  print "  Applications: Sudoku, N-queens, polyomino tiling"
+  print "  Dancing links: backtracking without copying state"
+
+  print ""
+  print "Dancing links: Knuth's elegant technique using doubly-linked lists for efficient exact cover problem solving."

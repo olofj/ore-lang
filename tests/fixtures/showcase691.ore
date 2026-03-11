@@ -1,0 +1,136 @@
+-- Showcase 691: Link-Cut Tree Concepts
+
+fn main
+  print "Link-Cut Tree Concepts:"
+  print ""
+
+  -- A link-cut tree is a data structure for representing a forest of rooted trees
+  -- It supports link, cut, and path queries in O(log n) amortized time
+
+  -- Part 1: Forest representation
+  print "=== Part 1: Forest Setup ==="
+  max_nodes := 10
+  mut parent := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut left := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut right := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut cost := [10, 20, 30, 15, 25, 5, 35, 40, 12, 8]
+  mut path_agg := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut is_root := [true, true, true, true, true, true, true, true, true, true]
+  num_nodes := 10
+
+  for i in range(0, num_nodes)
+    path_agg[i] = cost[i]
+    print "  Node {i}: cost={cost[i]}"
+
+  -- Part 2: Link operation
+  print ""
+  print "=== Part 2: Link Operations ==="
+  -- Link(u, v): make u a child of v
+  -- Links: 1->0, 2->0, 3->1, 4->1, 5->2, 6->3, 7->4, 8->5, 9->6
+  mut link_from := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  mut link_to := [0, 0, 1, 1, 2, 3, 4, 5, 6]
+  num_links := 9
+  for i in range(0, num_links)
+    u := link_from[i]
+    v := link_to[i]
+    parent[u] = v
+    is_root[u] = false
+    print "  Link: {u} -> {v}"
+  print "  Forest now has 1 tree with root 0"
+
+  -- Part 3: Find root
+  print ""
+  print "=== Part 3: Find Root ==="
+  -- Walk parent pointers to find root
+  mut test_nodes := [7, 9, 5, 3]
+  num_tests := 4
+  for i in range(0, num_tests)
+    mut cur := test_nodes[i]
+    mut depth := 0
+    while parent[cur] != -1
+      cur = parent[cur]
+      depth = depth + 1
+    print "  Root of node {test_nodes[i]}: {cur} (depth={depth})"
+
+  -- Part 4: Path aggregation
+  print ""
+  print "=== Part 4: Path Aggregation ==="
+  -- Sum costs along path from node to root
+  for i in range(0, num_tests)
+    mut cur := test_nodes[i]
+    mut path_sum := cost[cur]
+    mut path_max := cost[cur]
+    mut path_len := 1
+    while parent[cur] != -1
+      cur = parent[cur]
+      path_sum = path_sum + cost[cur]
+      if cost[cur] > path_max
+        path_max = cost[cur]
+      path_len = path_len + 1
+    print "  Path from {test_nodes[i]}: sum={path_sum}, max={path_max}, len={path_len}"
+
+  -- Part 5: Cut operation
+  print ""
+  print "=== Part 5: Cut Operations ==="
+  -- Cut(u): detach u from its parent, making u a new root
+  mut cut_nodes := [3, 5]
+  num_cuts := 2
+  for i in range(0, num_cuts)
+    u := cut_nodes[i]
+    p := parent[u]
+    parent[u] = -1
+    is_root[u] = true
+    print "  Cut: {u} detached from {p}"
+  -- Count trees
+  mut num_trees := 0
+  for i in range(0, num_nodes)
+    if is_root[i]
+      num_trees = num_trees + 1
+  print "  Forest now has {num_trees} trees"
+
+  -- Part 6: LCA (Lowest Common Ancestor)
+  print ""
+  print "=== Part 6: LCA Queries ==="
+  -- Find LCA by walking both nodes up to same depth, then walking together
+  -- After cuts: tree rooted at 0 has {0,1,2,4,7}, tree at 3 has {3,6,9}, tree at 5 has {5,8}
+  -- LCA within tree at 0
+  mut a := 7
+  mut b := 2
+  -- Get depth of a
+  mut da := 0
+  mut ca := a
+  while parent[ca] != -1
+    ca = parent[ca]
+    da = da + 1
+  -- Get depth of b
+  mut db := 0
+  mut cb := b
+  while parent[cb] != -1
+    cb = parent[cb]
+    db = db + 1
+  -- Equalize depths
+  ca = a
+  cb = b
+  while da > db
+    ca = parent[ca]
+    da = da - 1
+  while db > da
+    cb = parent[cb]
+    db = db - 1
+  -- Walk together
+  while ca != cb
+    ca = parent[ca]
+    cb = parent[cb]
+  print "  LCA({a}, {b}) = {ca}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Nodes: {num_nodes}"
+  print "  Trees in forest: {num_trees}"
+  print "  Operations: link, cut, find-root, path-query, LCA"
+  print "  Splay trees used for preferred paths"
+  print "  Time: O(log n) amortized per operation"
+
+  print ""
+  print "Link-cut tree: dynamic forest data structure supporting path queries, link, and cut in O(log n) amortized time."

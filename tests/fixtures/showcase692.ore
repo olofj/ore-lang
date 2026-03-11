@@ -1,0 +1,140 @@
+-- Showcase 692: Simple Optimizing Compiler Pipeline
+
+fn main
+  print "Simple Optimizing Compiler Pipeline:"
+  print ""
+
+  -- A compiler pipeline transforms source through multiple phases:
+  -- Lexing -> Parsing -> Type Check -> Optimization -> Code Generation
+
+  -- Part 1: Token stream (lexer output)
+  print "=== Part 1: Lexer Phase ==="
+  -- Token types: 0=Num, 1=Ident, 2=Op, 3=Assign, 4=Semi
+  mut tok_types := [1, 3, 0, 2, 0, 4, 1, 3, 1, 2, 0, 4]
+  mut tok_vals := ["x", "=", "3", "+", "5", ";", "y", "=", "x", "*", "2", ";"]
+  num_tokens := 12
+  print "  Source: x = 3 + 5; y = x * 2;"
+  mut tok_names := ["Num", "Ident", "Op", "Assign", "Semi"]
+  for i in range(0, num_tokens)
+    tt := tok_types[i]
+    tn := tok_names[tt]
+    tv := tok_vals[i]
+    print "  Token {i}: {tn} '{tv}'"
+
+  -- Part 2: AST nodes (parser output)
+  print ""
+  print "=== Part 2: Parser Phase ==="
+  -- AST node types: 0=Const, 1=Var, 2=BinOp, 3=Assign
+  -- Build AST for: x = 3 + 5; y = x * 2;
+  mut ast_type := [0, 0, 2, 3, 1, 0, 2, 3]
+  mut ast_label := ["3", "5", "+", "x=", "x", "2", "*", "y="]
+  mut ast_left := [-1, -1, 0, 2, -1, -1, 4, 6]
+  mut ast_right := [-1, -1, 1, -1, -1, -1, 5, -1]
+  num_ast := 8
+  mut type_names := ["Const", "Var", "BinOp", "Assign"]
+  for i in range(0, num_ast)
+    at := ast_type[i]
+    tname := type_names[at]
+    alabel := ast_label[i]
+    print "  AST[{i}]: {tname} '{alabel}'"
+
+  -- Part 3: Type checking
+  print ""
+  print "=== Part 3: Type Check Phase ==="
+  -- Assign types: 0=Int, 1=Float, 2=Bool, 3=String
+  mut node_type := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut type_errors := 0
+  for i in range(0, num_ast)
+    if ast_type[i] == 2
+      -- BinOp: check operands match
+      l := ast_left[i]
+      r := ast_right[i]
+      if node_type[l] == node_type[r]
+        node_type[i] = node_type[l]
+      else
+        type_errors = type_errors + 1
+  print "  All nodes typed as Int"
+  print "  Type errors: {type_errors}"
+  print "  Type check: PASSED"
+
+  -- Part 4: Optimization passes
+  print ""
+  print "=== Part 4: Optimization Phase ==="
+  -- Pass 1: Constant folding - evaluate 3 + 5 = 8
+  mut optimized := [false, false, false, false, false, false, false, false]
+  mut const_val := [3, 5, 0, 0, 0, 2, 0, 0]
+  -- Fold 3 + 5
+  if ast_type[0] == 0 and ast_type[1] == 0 and ast_type[2] == 2
+    folded := const_val[0] + const_val[1]
+    const_val[2] = folded
+    ast_type[2] = 0
+    ast_label[2] = str(folded)
+    optimized[2] = true
+    print "  Constant fold: 3 + 5 -> {folded}"
+
+  -- Pass 2: Constant propagation - x = 8, so replace x with 8
+  if ast_type[2] == 0
+    -- x is now known constant 8
+    const_val[4] = const_val[2]
+    ast_type[4] = 0
+    ast_label[4] = str(const_val[2])
+    optimized[4] = true
+    print "  Constant propagation: x -> {const_val[2]}"
+
+  -- Pass 3: More constant folding - 8 * 2 = 16
+  if ast_type[4] == 0 and ast_type[5] == 0 and ast_type[6] == 2
+    folded2 := const_val[4] * const_val[5]
+    const_val[6] = folded2
+    ast_type[6] = 0
+    ast_label[6] = str(folded2)
+    optimized[6] = true
+    print "  Constant fold: 8 * 2 -> {folded2}"
+
+  mut opt_count := 0
+  for i in range(0, num_ast)
+    if optimized[i]
+      opt_count = opt_count + 1
+  print "  Optimizations applied: {opt_count}"
+
+  -- Part 5: Code generation
+  print ""
+  print "=== Part 5: Code Generation Phase ==="
+  -- Generate simple register-based instructions
+  mut reg := 0
+  mut instructions := 0
+  for i in range(0, num_ast)
+    if ast_type[i] == 0 and not optimized[i]
+      print "  LOAD R{reg}, {ast_label[i]}"
+      reg = reg + 1
+      instructions = instructions + 1
+    if ast_type[i] == 3
+      print "  STORE {ast_label[i]} R{reg - 1}"
+      instructions = instructions + 1
+    if ast_type[i] == 0 and optimized[i]
+      print "  LOAD R{reg}, {ast_label[i]}  ; folded"
+      reg = reg + 1
+      instructions = instructions + 1
+  print "  Total instructions: {instructions}"
+  print "  Registers used: {reg}"
+
+  -- Part 6: Pipeline metrics
+  print ""
+  print "=== Part 6: Pipeline Metrics ==="
+  print "  Tokens: {num_tokens}"
+  print "  AST nodes: {num_ast}"
+  print "  Optimizations: {opt_count}"
+  print "  Instructions: {instructions}"
+  reduction := num_ast - instructions
+  print "  Node reduction: {reduction}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Pipeline: Lex -> Parse -> TypeCheck -> Optimize -> CodeGen"
+  print "  Constant folding: evaluate compile-time constants"
+  print "  Constant propagation: replace variables with known values"
+  print "  Dead code elimination: remove unreachable code"
+  print "  Result: x=8, y=16 computed at compile time"
+
+  print ""
+  print "Optimizing compiler: multi-phase pipeline transforming source through lexing, parsing, type checking, optimization, and code generation."

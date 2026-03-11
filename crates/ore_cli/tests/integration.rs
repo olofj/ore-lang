@@ -8990,6 +8990,138 @@ fn showcase690_effect_system() {
 }
 
 #[test]
+fn showcase691_link_cut_tree() {
+    let out = run_ore("showcase691.ore");
+    assert!(out.contains("Link-Cut Tree Concepts:"));
+    assert!(out.contains("Link: 1 -> 0"));
+    assert!(out.contains("Forest now has 1 tree with root 0"));
+    assert!(out.contains("Root of node 7: 0 (depth=3)"));
+    assert!(out.contains("Path from 7: sum=95, max=40, len=4"));
+    assert!(out.contains("Cut: 3 detached from 1"));
+    assert!(out.contains("Forest now has 3 trees"));
+    assert!(out.contains("LCA(7, 2) = 0"));
+    assert!(out.contains("Link-cut tree: dynamic forest data structure supporting path queries, link, and cut in O(log n) amortized time."));
+}
+
+#[test]
+fn showcase692_optimizing_compiler() {
+    let out = run_ore("showcase692.ore");
+    assert!(out.contains("Simple Optimizing Compiler Pipeline:"));
+    assert!(out.contains("Token 0: Ident 'x'"));
+    assert!(out.contains("AST[2]: BinOp '+'"));
+    assert!(out.contains("Type check: PASSED"));
+    assert!(out.contains("Constant fold: 3 + 5 -> 8"));
+    assert!(out.contains("Constant propagation: x -> 8"));
+    assert!(out.contains("Constant fold: 8 * 2 -> 16"));
+    assert!(out.contains("Optimizations applied: 3"));
+    assert!(out.contains("Optimizing compiler: multi-phase pipeline transforming source through lexing, parsing, type checking, optimization, and code generation."));
+}
+
+#[test]
+fn showcase693_merkle_tree() {
+    let out = run_ore("showcase693.ore");
+    assert!(out.contains("Merkle Tree:"));
+    assert!(out.contains("Block 0: data=42, hash=6270"));
+    assert!(out.contains("Root = hash(L2[0] + L2[1])"));
+    assert!(out.contains("Proof size: 3 hashes (log2(8) = 3)"));
+    assert!(out.contains("Verified: true"));
+    assert!(out.contains("Root changed: true"));
+    assert!(out.contains("Merkle tree: hash-based tree structure providing efficient and secure verification of data integrity with O(log n) proofs."));
+}
+
+#[test]
+fn showcase694_refinement_types() {
+    let out = run_ore("showcase694.ore");
+    assert!(out.contains("Simple Abstract Refinement Types:"));
+    assert!(out.contains("PosInt = Int where x > 0"));
+    assert!(out.contains("NonEmpty = List where len(x) > 0"));
+    assert!(out.contains("Valid: 3 of 6"));
+    assert!(out.contains("PosInt <: Nat = true"));
+    assert!(out.contains("div(10, 0): NonZero obligation FAILED"));
+    assert!(out.contains("Obligations: 3, Discharged: 2, Failed: 1"));
+    assert!(out.contains("Refinement types: augmenting base types with logical predicates to statically prevent runtime errors."));
+}
+
+#[test]
+fn showcase695_dancing_links() {
+    let out = run_ore("showcase695.ore");
+    assert!(out.contains("Dancing Links (DLX) Concepts:"));
+    assert!(out.contains("Column headers linked circularly: H <-> A <-> B <-> C <-> D <-> H"));
+    assert!(out.contains("Row 1: A, B (nodes 5-6)"));
+    assert!(out.contains("A: 2 nodes"));
+    assert!(out.contains("Column A removed from header list"));
+    assert!(out.contains("Remaining columns: 3"));
+    assert!(out.contains("Column A restored"));
+    assert!(out.contains("No exact cover exists for this instance"));
+    assert!(out.contains("Dancing links: Knuth's elegant technique using doubly-linked lists for efficient exact cover problem solving."));
+}
+
+#[test]
+fn showcase696_simplex() {
+    let out = run_ore("showcase696.ore");
+    assert!(out.contains("Simple Linear Programming (Simplex):"));
+    assert!(out.contains("Maximize: 5*x1 + 4*x2"));
+    assert!(out.contains("Pivot column: 0 (value=-500)"));
+    assert!(out.contains("All objective coefficients >= 0: true"));
+    assert!(out.contains("Simplex converged in 2 iterations"));
+    assert!(out.contains("Simplex method: iterative linear programming algorithm pivoting between vertices of the feasible region to find optimal solutions."));
+}
+
+#[test]
+fn showcase697_concurrent_skip_list() {
+    let out = run_ore("showcase697.ore");
+    assert!(out.contains("Concurrent Skip List:"));
+    assert!(out.contains("Insert 3 (level 1)"));
+    assert!(out.contains("Total nodes: 8"));
+    assert!(out.contains("Search 12: FOUND"));
+    assert!(out.contains("Search 15: NOT FOUND"));
+    assert!(out.contains("Sorted correctly: true"));
+    assert!(out.contains("Conflicts: 0 (lock-free design)"));
+    assert!(out.contains("Concurrent skip list: probabilistic sorted data structure enabling efficient lock-free concurrent search, insert, and delete operations."));
+}
+
+#[test]
+fn showcase698_dependent_types() {
+    let out = run_ore("showcase698.ore");
+    assert!(out.contains("Simple Dependent Types:"));
+    assert!(out.contains("empty: Vec(0, Int)"));
+    assert!(out.contains("head: Vec(n+1, a) -> a"));
+    assert!(out.contains("Fin(3) = 0, 1, 2"));
+    assert!(out.contains("Vec(2+3, Int) = Vec(5, Int)"));
+    assert!(out.contains("refl: a == a"));
+    assert!(out.contains("Vec(3): matched as non-empty, head is safe"));
+    assert!(out.contains("Dependent types: types parameterized by values enabling compile-time verification of program properties through proofs as programs."));
+}
+
+#[test]
+fn showcase699_fusion_tree() {
+    let out = run_ore("showcase699.ore");
+    assert!(out.contains("Fusion Tree Concepts:"));
+    assert!(out.contains("Word size: 64 bits"));
+    assert!(out.contains("Keys per node: 5"));
+    assert!(out.contains("Distinguishing bit positions: 6 found"));
+    assert!(out.contains("Predecessor of 40: 37 (index 2)"));
+    assert!(out.contains("Successor of 40: 48 (index 3)"));
+    assert!(out.contains("Tree height: 7"));
+    assert!(out.contains("Fusion tree: integer data structure using word-level parallelism and bit sketching for O(log_w n) predecessor search."));
+}
+
+#[test]
+fn showcase700_grand_celebration() {
+    let out = run_ore("showcase700.ore");
+    assert!(out.contains("Grand Celebration - Showcase 700:"));
+    assert!(out.contains("Total showcases: 700"));
+    assert!(out.contains("Average: 85"));
+    assert!(out.contains("Excellent (>=90): 4"));
+    assert!(out.contains("First 16 Fibonacci numbers:"));
+    assert!(out.contains("Inserted 7 milestones"));
+    assert!(out.contains("Lookup 700: found=true"));
+    assert!(out.contains("Correctly sorted: true"));
+    assert!(out.contains("700 showcases completed!"));
+    assert!(out.contains("Grand celebration: 700 showcases of computer science concepts implemented in the Ore programming language - a milestone of exploration and learning!"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

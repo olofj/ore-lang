@@ -1,0 +1,163 @@
+-- Showcase 699: Fusion Tree Concepts
+
+fn main
+  print "Fusion Tree Concepts:"
+  print ""
+
+  -- A fusion tree is a data structure achieving O(log_w n) search
+  -- where w is the word size, faster than comparison-based O(log n)
+
+  -- Part 1: Word-level parallelism
+  print "=== Part 1: Word-Level Parallelism ==="
+  word_size := 64
+  -- In a fusion tree node, we pack multiple keys into a single word
+  -- Using sketching to compress keys
+  keys_per_node := 5
+  print "  Word size: {word_size} bits"
+  print "  Keys per node: {keys_per_node}"
+  print "  Bits per sketched key: {word_size / keys_per_node}"
+
+  -- Part 2: Key sketching
+  print ""
+  print "=== Part 2: Key Sketching ==="
+  -- Sketch extracts distinguishing bits from keys
+  -- Given keys, find bit positions where they differ
+  mut keys := [10, 25, 37, 48, 63]
+  num_keys := 5
+  print "  Original keys:"
+  for i in range(0, num_keys)
+    -- Simple binary representation (low bits)
+    mut bits := ""
+    mut k := keys[i]
+    for b in range(0, 6)
+      if k % 2 == 1
+        bits = bits + "1"
+      else
+        bits = bits + "0"
+      k = k / 2
+    print "    key[{i}] = {keys[i]} (bits: {bits})"
+
+  -- Find distinguishing bit positions
+  mut diff_bits := [0, 0, 0, 0, 0, 0]
+  mut num_diff := 0
+  for bit in range(0, 6)
+    mut has_zero := false
+    mut has_one := false
+    for i in range(0, num_keys)
+      mut val := keys[i]
+      -- Extract bit at position
+      mut b := 0
+      while b < bit
+        val = val / 2
+        b = b + 1
+      if val % 2 == 0
+        has_zero = true
+      else
+        has_one = true
+    if has_zero and has_one
+      diff_bits[num_diff] = bit
+      num_diff = num_diff + 1
+  print "  Distinguishing bit positions: {num_diff} found"
+  for i in range(0, num_diff)
+    print "    Bit {diff_bits[i]}"
+
+  -- Part 3: Sketch computation
+  print ""
+  print "=== Part 3: Sketched Keys ==="
+  -- Extract only distinguishing bits for each key
+  mut sketches := [0, 0, 0, 0, 0]
+  for i in range(0, num_keys)
+    mut sketch := 0
+    mut place := 1
+    for d in range(0, num_diff)
+      mut val := keys[i]
+      mut b := 0
+      while b < diff_bits[d]
+        val = val / 2
+        b = b + 1
+      if val % 2 == 1
+        sketch = sketch + place
+      place = place * 2
+    sketches[i] = sketch
+    print "  key {keys[i]} -> sketch {sketches[i]}"
+
+  -- Part 4: Parallel comparison
+  print ""
+  print "=== Part 4: Parallel Comparison ==="
+  -- Pack all sketches into one word (simulated)
+  -- Then compare query sketch against all at once
+  query := 40
+  -- Compute query sketch
+  mut q_sketch := 0
+  mut place := 1
+  for d in range(0, num_diff)
+    mut val := query
+    mut b := 0
+    while b < diff_bits[d]
+      val = val / 2
+      b = b + 1
+    if val % 2 == 1
+      q_sketch = q_sketch + place
+    place = place * 2
+  print "  Query: {query}, sketch: {q_sketch}"
+
+  -- Find predecessor (largest key <= query)
+  mut pred_idx := -1
+  mut pred_key := -1
+  for i in range(0, num_keys)
+    if keys[i] <= query
+      if pred_idx == -1 or keys[i] > pred_key
+        pred_idx = i
+        pred_key = keys[i]
+  print "  Predecessor of {query}: {pred_key} (index {pred_idx})"
+
+  -- Find successor (smallest key >= query)
+  mut succ_idx := -1
+  mut succ_key := 999
+  for i in range(0, num_keys)
+    if keys[i] >= query
+      if succ_idx == -1 or keys[i] < succ_key
+        succ_idx = i
+        succ_key = keys[i]
+  print "  Successor of {query}: {succ_key} (index {succ_idx})"
+
+  -- Part 5: Tree structure
+  print ""
+  print "=== Part 5: B-tree Structure ==="
+  -- Fusion tree is a B-tree with branching factor w^(1/5)
+  -- For w=64: branching ~ 64^0.2 ~ 2.3, so B ~ 2-3
+  -- Height: O(log_B n) = O(log n / log B) = O(log_w n)
+  n := 1000
+  -- Compute approximate height
+  mut height := 0
+  mut capacity := 1
+  branch := 3
+  while capacity < n
+    capacity = capacity * branch
+    height = height + 1
+  print "  n = {n}, branching factor ~ {branch}"
+  print "  Tree height: {height}"
+  print "  Search time: O(log_w n) = O({height})"
+  print "  vs comparison-based O(log n) ~ 10"
+
+  -- Part 6: Complexity comparison
+  print ""
+  print "=== Part 6: Complexity ==="
+  mut ds_names := ["Binary search", "B-tree", "Fusion tree", "van Emde Boas"]
+  mut ds_search := ["O(log n)", "O(log_B n)", "O(log_w n)", "O(log log U)"]
+  mut ds_space := ["O(n)", "O(n)", "O(n)", "O(U)"]
+  num_ds := 4
+  for i in range(0, num_ds)
+    print "  {ds_names[i]}: search={ds_search[i]}, space={ds_space[i]}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Keys stored: {num_keys}"
+  print "  Distinguishing bits: {num_diff}"
+  print "  Sketch compression: 6 bits -> {num_diff} bits"
+  print "  Word parallelism enables sub-logarithmic search"
+  print "  Theoretical breakthrough by Fredman and Willard (1993)"
+
+  print ""
+  print "Fusion tree: integer data structure using word-level parallelism and bit sketching for O(log_w n) predecessor search."
