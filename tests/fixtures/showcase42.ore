@@ -1,0 +1,76 @@
+-- Showcase 42: ROT13 cipher streaming and pipeline composition
+-- Demonstrates: function composition via pipelines, string transformations
+
+fn rot13_char c:Str -> Str
+  code := ord(c)
+  -- Uppercase A-Z
+  if code >= 65 and code <= 90
+    return chr(65 + (code - 65 + 13) % 26)
+  -- Lowercase a-z
+  if code >= 97 and code <= 122
+    return chr(97 + (code - 97 + 13) % 26)
+  c
+
+fn rot13 s:Str -> Str
+  mut result := ""
+  for i in 0..s.len()
+    result = result + rot13_char(s.char_at(i))
+  result
+
+fn caesar_encrypt s:Str shift:Int -> Str
+  mut result := ""
+  for i in 0..s.len()
+    code := ord(s.char_at(i))
+    if code >= 65 and code <= 90
+      result = result + chr(65 + (code - 65 + shift) % 26)
+    else if code >= 97 and code <= 122
+      result = result + chr(97 + (code - 97 + shift) % 26)
+    else
+      result = result + s.char_at(i)
+  result
+
+fn caesar_decrypt s:Str shift:Int -> Str
+  caesar_encrypt(s, 26 - shift)
+
+fn count_letters s:Str -> Int
+  mut count := 0
+  for i in 0..s.len()
+    code := ord(s.char_at(i))
+    if (code >= 65 and code <= 90) or (code >= 97 and code <= 122)
+      count += 1
+  count
+
+fn main
+  -- ROT13 is its own inverse
+  original := "Hello World"
+  encoded := rot13(original)
+  decoded := rot13(encoded)
+  print "Original: {original}"
+  print "ROT13:    {encoded}"
+  print "Decoded:  {decoded}"
+  print "Round-trip OK: {original == decoded}"
+
+  -- Caesar cipher brute force (trying all shifts)
+  secret := caesar_encrypt("ATTACK AT DAWN", 7)
+  print "Encrypted: {secret}"
+
+  -- Try all shifts to find plaintext
+  for shift in 1..26
+    attempt := caesar_decrypt(secret, shift)
+    if attempt.starts_with("ATTACK")
+      print "Found at shift {shift}: {attempt}"
+
+  -- Frequency analysis: count each letter
+  text := "the quick brown fox jumps over the lazy dog"
+  mut freq_str := ""
+  for c_code in 97..123
+    c := chr(c_code)
+    mut count := 0
+    for i in 0..text.len()
+      if text.char_at(i) == c
+        count += 1
+    if count > 0
+      if freq_str.len() > 0
+        freq_str = freq_str + ", "
+      freq_str = freq_str + c + ":" + str(count)
+  print "Letter frequencies: {freq_str}"

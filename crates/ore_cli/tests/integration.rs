@@ -1667,6 +1667,22 @@ fn showcase41() {
 }
 
 #[test]
+fn showcase42() {
+    let out = run_ore("showcase42.ore");
+    assert!(out.contains("ROT13:    Uryyb Jbeyq"));
+    assert!(out.contains("Round-trip OK: true"));
+    assert!(out.contains("Found at shift 7: ATTACK AT DAWN"));
+}
+
+#[test]
+fn showcase43() {
+    let out = run_ore("showcase43.ore");
+    assert!(out.contains("Mandelbrot Set:"));
+    assert!(out.contains("Center (0,0): 100 iterations"));
+    assert!(out.contains("Outside (2,2): 1 iterations"));
+}
+
+#[test]
 fn build_and_run_binary() {
     // Test `ore build` produces a working native binary
     let path = fixtures_dir().join("showcase36.ore");

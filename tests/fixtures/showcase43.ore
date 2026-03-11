@@ -1,0 +1,48 @@
+-- Showcase 43: Mandelbrot set ASCII renderer
+-- Demonstrates: floating-point arithmetic, nested loops, complex algorithms
+
+fn mandelbrot_iter cr:Float ci:Float max_iter:Int -> Int
+  mut zr := 0.0
+  mut zi := 0.0
+  mut i := 0
+  while i < max_iter
+    zr2 := zr * zr
+    zi2 := zi * zi
+    if zr2 + zi2 > 4.0
+      return i
+    zi = 2.0 * zr * zi + ci
+    zr = zr2 - zi2 + cr
+    i += 1
+  max_iter
+
+fn main
+  width := 70
+  height := 25
+  max_iter := 50
+
+  -- Viewport
+  x_min := -2.0
+  x_max := 0.8
+  y_min := -1.2
+  y_max := 1.2
+
+  chars := " .:-=+*#%@"
+
+  print "Mandelbrot Set:"
+  for row in 0..height
+    ci := y_min + (y_max - y_min) * float(row) / float(height)
+    mut line := ""
+    for col in 0..width
+      cr := x_min + (x_max - x_min) * float(col) / float(width)
+      iter := mandelbrot_iter(cr, ci, max_iter)
+      if iter == max_iter
+        line = line + " "
+      else
+        idx := iter % chars.len()
+        line = line + chars.char_at(idx)
+    print line
+
+  -- Also print some specific values
+  print "Center (0,0): {mandelbrot_iter(0.0, 0.0, 100)} iterations"
+  print "Edge (-2,0): {mandelbrot_iter(-2.0, 0.0, 100)} iterations"
+  print "Outside (2,2): {mandelbrot_iter(2.0, 2.0, 100)} iterations"
