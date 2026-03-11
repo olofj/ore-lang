@@ -378,6 +378,32 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
 
+    /// Replace `Self` type references with the actual type name in impl blocks.
+    fn resolve_self_type(ty: &TypeExpr, type_name: &str) -> TypeExpr {
+        match ty {
+            TypeExpr::Named(n) if n == "Self" => TypeExpr::Named(type_name.to_string()),
+            TypeExpr::Generic(n, args) => {
+                let new_name = if n == "Self" { type_name.to_string() } else { n.clone() };
+                let new_args = args.iter().map(|a| Self::resolve_self_type(a, type_name)).collect();
+                TypeExpr::Generic(new_name, new_args)
+            }
+            TypeExpr::Fn { params, ret } => {
+                let new_params = params.iter().map(|p| Self::resolve_self_type(p, type_name)).collect();
+                let new_ret = Box::new(Self::resolve_self_type(ret, type_name));
+                TypeExpr::Fn { params: new_params, ret: new_ret }
+            }
+            _ => ty.clone(),
+        }
+    }
+
+    fn resolve_self_in_params(params: &[Param], type_name: &str) -> Vec<Param> {
+        params.iter().map(|p| Param {
+            name: p.name.clone(),
+            ty: Self::resolve_self_type(&p.ty, type_name),
+            default: p.default.clone(),
+        }).collect()
+    }
+
     /// Generate a helpful "unknown method" error with available methods listed.
     fn unknown_method_error(type_name: &str, method: &str, available: &[&str]) -> CodeGenError {
         let mut msg = format!("unknown {} method '{}'. Available: {}", type_name, method, available.join(", "));
@@ -431,24 +457,27 @@ impl<'ctx> CodeGen<'ctx> {
             for method in methods {
                 let mangled_name = format!("{}_{}", type_name, method.name);
                 method_names.push(method.name.clone());
+                // Resolve Self -> type_name in params and return type
+                let resolved_params = Self::resolve_self_in_params(&method.params, type_name);
+                let resolved_ret = method.ret_type.as_ref().map(|r| Self::resolve_self_type(r, type_name));
                 // Prepend implicit `self` parameter if not already declared
-                let has_self = method.params.first().map_or(false, |p| p.name == "self");
+                let has_self = resolved_params.first().map_or(false, |p| p.name == "self");
                 let params = if has_self {
-                    method.params.clone()
+                    resolved_params
                 } else {
                     let mut p = vec![Param {
                         name: "self".to_string(),
                         ty: TypeExpr::Named(type_name.clone()),
                         default: None,
                     }];
-                    p.extend(method.params.clone());
+                    p.extend(resolved_params);
                     p
                 };
                 let mangled_fn = FnDef {
                     name: mangled_name,
                     type_params: method.type_params.clone(),
                     params,
-                    ret_type: method.ret_type.clone(),
+                    ret_type: resolved_ret,
                     body: method.body.clone(),
                 };
                 self.declare_function(&mangled_fn)?;
@@ -477,23 +506,25 @@ impl<'ctx> CodeGen<'ctx> {
             };
             for method in methods {
                 let mangled_name = format!("{}_{}", type_name, method.name);
-                let has_self = method.params.first().map_or(false, |p| p.name == "self");
+                let resolved_params = Self::resolve_self_in_params(&method.params, type_name);
+                let resolved_ret = method.ret_type.as_ref().map(|r| Self::resolve_self_type(r, type_name));
+                let has_self = resolved_params.first().map_or(false, |p| p.name == "self");
                 let params = if has_self {
-                    method.params.clone()
+                    resolved_params
                 } else {
                     let mut p = vec![Param {
                         name: "self".to_string(),
                         ty: TypeExpr::Named(type_name.clone()),
                         default: None,
                     }];
-                    p.extend(method.params.clone());
+                    p.extend(resolved_params);
                     p
                 };
                 let mangled_fn = FnDef {
                     name: mangled_name,
                     type_params: method.type_params.clone(),
                     params,
-                    ret_type: method.ret_type.clone(),
+                    ret_type: resolved_ret,
                     body: method.body.clone(),
                 };
                 self.compile_function(&mangled_fn)?;
