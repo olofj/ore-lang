@@ -411,7 +411,9 @@ impl TypeChecker {
 
                         // User-defined functions
                         if let Some((params, ret)) = self.functions.get(name).cloned() {
-                            if args.len() != params.len() {
+                            // Allow args.len() == params.len() - 1 for pipeline-style calls
+                            // (the pipe operator prepends the first argument at codegen time)
+                            if args.len() != params.len() && args.len() + 1 != params.len() {
                                 self.err(format!(
                                     "function '{}' expects {} args, got {}",
                                     name, params.len(), args.len()
