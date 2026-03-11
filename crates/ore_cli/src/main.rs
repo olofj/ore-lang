@@ -57,6 +57,11 @@ enum Commands {
         /// Project name
         name: String,
     },
+    /// Evaluate an Ore expression
+    Eval {
+        /// Ore expression to evaluate
+        expr: String,
+    },
 }
 
 type MainFunc = unsafe extern "C" fn() -> i32;
@@ -162,6 +167,22 @@ fn main() {
                 eprintln!("error: {}", e);
                 std::process::exit(1);
             }
+        }
+        Commands::Eval { expr } => {
+            // Wrap expression in fn main + print
+            let source = format!("fn main\n  print {}\n", expr);
+            let tmp = std::env::temp_dir().join("ore_eval.ore");
+            std::fs::write(&tmp, &source).expect("failed to write temp file");
+            if let Err(_) = run_file(&tmp, false) {
+                // Try as statement (no print wrapper)
+                let source2 = format!("fn main\n  {}\n", expr);
+                std::fs::write(&tmp, &source2).expect("failed to write temp file");
+                if let Err(e2) = run_file(&tmp, false) {
+                    eprintln!("error: {}", e2);
+                    std::process::exit(1);
+                }
+            }
+            let _ = std::fs::remove_file(&tmp);
         }
     }
 }
