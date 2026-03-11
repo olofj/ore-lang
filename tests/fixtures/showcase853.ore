@@ -1,0 +1,99 @@
+-- Showcase 853: Reed-Solomon Error Correction Simulation
+
+-- Reed-Solomon codes work over finite fields (Galois fields).
+-- RS(n,k) encodes k symbols into n symbols, correcting up to (n-k)/2 errors.
+-- Simulated here using a simplified GF(256) arithmetic and erasure model.
+
+fn gf_add a:Int b:Int -> Int
+  -- XOR in GF(256)
+  mut result := 0
+  mut bit := 1
+  for i in range(0, 8)
+    a_bit := (a / bit) - (a / (bit * 2)) * 2
+    b_bit := (b / bit) - (b / (bit * 2)) * 2
+    if a_bit != b_bit
+      result = result + bit
+    bit = bit * 2
+  result
+
+fn gf_mul a:Int b:Int -> Int
+  -- Russian peasant multiplication in GF(256) with poly 0x11d
+  mut p := 0
+  mut aa := a
+  mut bb := b
+  for i in range(0, 8)
+    low_b := bb - (bb / 2) * 2
+    if low_b == 1
+      p = gf_add(p, aa)
+    hi_a := aa / 128
+    aa = (aa * 2) - hi_a * 256
+    if hi_a == 1
+      aa = gf_add(aa, 285)
+    bb = bb / 2
+  p
+
+-- RS(7,3): 3 data symbols, 4 parity symbols, can correct 2 errors
+-- Generator polynomial coefficients for 4 parity symbols: simplified demo
+fn rs_encode data:List -> List
+  -- data = [d0, d1, d2], returns [d0,d1,d2,p0,p1,p2,p3]
+  d0 := data[0]
+  d1 := data[1]
+  d2 := data[2]
+  -- Compute parity using vandermonde-like evaluation at points 1..4
+  p0 := gf_add(gf_add(d0, d1), d2)
+  p1 := gf_add(gf_add(gf_mul(d0, 1), gf_mul(d1, 2)), gf_mul(d2, 3))
+  p2 := gf_add(gf_add(gf_mul(d0, 1), gf_mul(d1, 4)), gf_mul(d2, 16))
+  p3 := gf_add(gf_add(gf_mul(d0, 1), gf_mul(d1, 8)), gf_mul(d2, 64))
+  [d0, d1, d2, p0, p1, p2, p3]
+
+fn rs_check codeword:List -> Bool
+  -- Verify parity relations hold
+  d0 := codeword[0]
+  d1 := codeword[1]
+  d2 := codeword[2]
+  p0 := codeword[3]
+  p1 := codeword[4]
+  p2 := codeword[5]
+  p3 := codeword[6]
+  s0 := gf_add(gf_add(gf_add(d0, d1), d2), p0)
+  s1 := gf_add(gf_add(gf_add(gf_mul(d0, 1), gf_mul(d1, 2)), gf_mul(d2, 3)), p1)
+  s0 == 0 and s1 == 0
+
+fn symbols_to_str syms:List -> Str
+  syms.map(s => str(s)).join(", ")
+
+fn main
+  print "Reed-Solomon Error Correction Simulation:"
+  print ""
+
+  print "GF(256) arithmetic:"
+  print "  gf_add(45, 67) = {gf_add(45, 67)}"
+  print "  gf_mul(3, 7) = {gf_mul(3, 7)}"
+  print "  gf_mul(gf_mul(2,2),2) = {gf_mul(gf_mul(2,2),2)}"
+  print ""
+
+  data := [10, 20, 30]
+  print "Data symbols: {symbols_to_str(data)}"
+  codeword := rs_encode(data)
+  print "RS(7,3) codeword: {symbols_to_str(codeword)}"
+  print "Valid codeword: {rs_check(codeword)}"
+  print ""
+
+  print "Erasure simulation (zero out symbol):"
+  mut erased1 := codeword
+  erased1[0] = 0
+  print "  Erased [0]: {symbols_to_str(erased1)}, valid={rs_check(erased1)}"
+  mut erased2 := codeword
+  erased2[1] = 0
+  print "  Erased [1]: {symbols_to_str(erased2)}, valid={rs_check(erased2)}"
+  print ""
+
+  print "Multiple codewords:"
+  words := [[1, 2, 3], [100, 150, 200], [0, 255, 128]]
+  for w in words
+    enc := rs_encode(w)
+    v := rs_check(enc)
+    print "  {symbols_to_str(w)} -> parity: {enc[3]},{enc[4]},{enc[5]},{enc[6]} valid={v}"
+
+  print ""
+  print "Reed-Solomon: RS(n,k) corrects (n-k)/2 errors, widely used in CDs/QR codes"

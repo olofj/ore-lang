@@ -1,0 +1,76 @@
+-- Showcase 855: Shannon Entropy Calculation
+
+-- Shannon entropy H(X) = -sum(p_i * log2(p_i)) measures information content.
+-- Maximum entropy for n symbols = log2(n) bits (uniform distribution).
+-- Joint entropy, conditional entropy, and mutual information demonstrated.
+
+fn log2_approx x:Float -> Float
+  -- log2(x) = log(x) / log(2)
+  log(x) / log(2.0)
+
+fn entropy freqs:List total:Int -> Float
+  -- H(X) = -sum(p * log2(p))
+  mut h := 0.0
+  for f in freqs
+    if f > 0
+      p := f.to_float() / total.to_float()
+      h = h - p * log2_approx(p)
+  h
+
+fn float_round3 x:Float -> Int
+  (x * 1000.0).to_int()
+
+fn main
+  print "Shannon Entropy Calculation:"
+  print ""
+
+  print "Entropy of coin flip (fair):"
+  fair := [500, 500]
+  h_fair := entropy(fair, 1000)
+  print "  P(H)=0.5, P(T)=0.5 => H = {float_round3(h_fair)} milli-bits"
+  print "  (exact: 1000 = 1.000 bits)"
+  print ""
+
+  print "Entropy of biased coin:"
+  biased := [900, 100]
+  h_biased := entropy(biased, 1000)
+  print "  P(H)=0.9, P(T)=0.1 => H = {float_round3(h_biased)} milli-bits"
+  print ""
+
+  print "Entropy of 4-symbol alphabet:"
+  uniform4 := [250, 250, 250, 250]
+  h_u4 := entropy(uniform4, 1000)
+  print "  Uniform [0.25,0.25,0.25,0.25] => H = {float_round3(h_u4)} milli-bits"
+  print "  (exact: 2000 = 2.000 bits = log2(4))"
+  skewed4 := [500, 250, 150, 100]
+  h_s4 := entropy(skewed4, 1000)
+  print "  Skewed [0.5,0.25,0.15,0.1] => H = {float_round3(h_s4)} milli-bits"
+  print ""
+
+  print "English letter frequency entropy (26 letters):"
+  -- Approximate frequencies per 1000 characters
+  eng := [73, 9, 30, 44, 130, 28, 16, 35, 74, 2, 3, 35, 25, 78, 74, 27, 3, 77, 63, 93, 27, 13, 16, 3, 19, 1]
+  total_eng := eng.sum()
+  h_eng := entropy(eng, total_eng)
+  print "  H(English) ~ {float_round3(h_eng)} milli-bits/letter"
+  max_h := log2_approx(26.0)
+  print "  Max possible: {float_round3(max_h)} milli-bits (uniform)"
+  print ""
+
+  print "Redundancy analysis:"
+  max_bits := log2_approx(26.0)
+  redundancy := (max_bits - h_eng) / max_bits * 100.0
+  red_int := redundancy.to_int()
+  print "  Redundancy = {red_int}% (language structure is predictable)"
+  print ""
+
+  print "Source coding theorem:"
+  print "  Minimum average code length >= H(X)"
+  probs := [500, 250, 125, 125]
+  h_src := entropy(probs, 1000)
+  print "  For [0.5,0.25,0.125,0.125]: H = {float_round3(h_src)} milli-bits"
+  print "  Huffman codes: a=0(1bit), b=10(2bit), c=110(3bit), d=111(3bit)"
+  avg_len := (500 * 1 + 250 * 2 + 125 * 3 + 125 * 3)
+  print "  Avg code length = {avg_len} milli-bits/symbol (matches entropy)"
+  print ""
+  print "Shannon entropy: fundamental measure of information and uncertainty"

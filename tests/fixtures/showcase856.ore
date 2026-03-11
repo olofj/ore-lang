@@ -1,0 +1,149 @@
+-- Showcase 856: Huffman Tree with Variable-Length Codes
+
+-- Huffman coding builds an optimal prefix-free code tree.
+-- Symbols with higher frequency get shorter codes.
+-- Implementation uses a sorted list as a priority queue.
+
+-- Node layout: [weight, sym, left, right] flattened in a list
+-- -1 = null (leaf has sym >= 0, internal node has sym = -1)
+
+fn nd_weight nodes:List i:Int -> Int
+  nodes[i * 4]
+
+fn nd_sym nodes:List i:Int -> Int
+  nodes[i * 4 + 1]
+
+fn nd_left nodes:List i:Int -> Int
+  nodes[i * 4 + 2]
+
+fn nd_right nodes:List i:Int -> Int
+  nodes[i * 4 + 3]
+
+fn nd_alloc nodes:List w:Int s:Int l:Int r:Int -> List
+  mut nn := nodes
+  nn.push(w)
+  nn.push(s)
+  nn.push(l)
+  nn.push(r)
+  nn
+
+fn nd_count nodes:List -> Int
+  nodes.len() / 4
+
+-- Build codes by tree traversal (iterative via explicit stack)
+fn huffman_codes nodes:List root:Int -> List
+  -- Returns flat list: [sym0, len0, sym1, len1, ...]
+  -- Use iterative DFS: stack of [node_idx, depth]
+  mut codes := [0]
+  codes = codes.skip(1)
+  mut stack := [root, 0]
+  mut going := true
+  while going and stack.len() >= 2
+    last := stack.len() - 1
+    depth := stack[last]
+    node := stack[last - 1]
+    mut ns := stack
+    ns = ns.take(last - 1)
+    stack = ns
+    l := nd_left(nodes, node)
+    r := nd_right(nodes, node)
+    s := nd_sym(nodes, node)
+    if s >= 0
+      codes.push(s)
+      codes.push(depth)
+    else
+      if l >= 0
+        stack.push(l)
+        stack.push(depth + 1)
+      if r >= 0
+        stack.push(r)
+        stack.push(depth + 1)
+    if stack.len() == 0
+      going = false
+  codes
+
+fn main
+  print "Huffman Tree with Variable-Length Codes:"
+  print ""
+
+  -- Symbols and frequencies
+  syms :=   [65, 66, 67, 68, 69, 70]
+  freqs :=  [45, 13, 12, 16, 9,  5]
+  names := ["A", "B", "C", "D", "E", "F"]
+
+  print "Input frequencies:"
+  for i in range(0, 6)
+    print "  {names[i]}: {freqs[i]}"
+  print ""
+
+  -- Build nodes (leaves first)
+  mut nodes := [0]
+  nodes = nodes.skip(1)
+  for i in range(0, 6)
+    nodes = nd_alloc(nodes, freqs[i], syms[i], -1, -1)
+
+  -- Sort queue by weight (insertion sort on indices)
+  mut queue := [0, 1, 2, 3, 4, 5]
+  mut sorted := true
+  mut pass := 0
+  while pass < 6
+    for i in range(0, queue.len() - 1)
+      wi := nd_weight(nodes, queue[i])
+      wi1 := nd_weight(nodes, queue[i + 1])
+      if wi > wi1
+        tmp := queue[i]
+        queue[i] = queue[i + 1]
+        queue[i + 1] = tmp
+    pass = pass + 1
+
+  -- Build Huffman tree by merging two smallest
+  mut going := true
+  while going and queue.len() > 1
+    n1 := queue[0]
+    n2 := queue[1]
+    w1 := nd_weight(nodes, n1)
+    w2 := nd_weight(nodes, n2)
+    new_node := nd_count(nodes)
+    nodes = nd_alloc(nodes, w1 + w2, -1, n1, n2)
+    mut nq := queue.skip(2)
+    nq.push(new_node)
+    -- Re-sort
+    mut p2 := 0
+    while p2 < nq.len()
+      for i in range(0, nq.len() - 1)
+        wi := nd_weight(nodes, nq[i])
+        wi1 := nd_weight(nodes, nq[i + 1])
+        if wi > wi1
+          tmp2 := nq[i]
+          nq[i] = nq[i + 1]
+          nq[i + 1] = tmp2
+      p2 = p2 + 1
+    queue = nq
+    if queue.len() == 1
+      going = false
+
+  root := queue[0]
+  root_w := nd_weight(nodes, root)
+  print "Tree built: root weight = {root_w} (total frequency)"
+  print ""
+
+  codes := huffman_codes(nodes, root)
+  print "Generated codes (symbol: code_length):"
+  mut avg_num := 0
+  mut avg_den := 0
+  for i in range(0, codes.len() / 2)
+    s := codes[i * 2]
+    l := codes[i * 2 + 1]
+    name_idx := syms.index_of(s)
+    fname := if name_idx >= 0 then names[name_idx] else "?"
+    freq_v := if name_idx >= 0 then freqs[name_idx] else 0
+    avg_num = avg_num + l * freq_v
+    avg_den = avg_den + freq_v
+    print "  {fname}(freq={freq_v}): {l} bits"
+
+  print ""
+  avg_bits := avg_num * 100 / avg_den
+  print "Average code length: {avg_bits / 100}.{avg_bits - (avg_bits / 100) * 100} bits/symbol"
+  print "Fixed 3-bit codes would use: 3.00 bits/symbol"
+  print ""
+  print "Huffman coding: optimal prefix-free code, minimizes expected code length"

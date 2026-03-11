@@ -1,0 +1,98 @@
+-- Showcase 852: CRC Checksum Computation
+
+-- Cyclic Redundancy Check (CRC) uses polynomial division over GF(2).
+-- CRC-8 (poly 0x07), CRC-16 (poly 0x8005), CRC-32 (poly 0x04C11DB7).
+-- Used widely in network protocols and storage.
+
+fn int_pow base:Int exp:Int -> Int
+  mut r := 1
+  for i in range(0, exp)
+    r = r * base
+  r
+
+fn xor_bits a:Int b:Int -> Int
+  -- XOR via bit manipulation (for small values up to 32 bits)
+  mut result := 0
+  mut bit := 1
+  for i in range(0, 32)
+    a_bit := a - (a / (bit * 2)) * (bit * 2)
+    a_bit2 := if a_bit >= bit then 1 else 0
+    b_bit := b - (b / (bit * 2)) * (bit * 2)
+    b_bit2 := if b_bit >= bit then 1 else 0
+    if a_bit2 != b_bit2
+      result = result + bit
+    bit = bit * 2
+  result
+
+fn crc8_byte data:List poly:Int -> Int
+  mut crc := 0
+  for b in data
+    crc = xor_bits(crc, b)
+    for i in range(0, 8)
+      top := crc / 128
+      crc = (crc * 2) - top * 256
+      if top == 1
+        crc = xor_bits(crc, poly)
+  crc
+
+fn crc16_byte data:List poly:Int -> Int
+  mut crc := 0
+  for b in data
+    crc = xor_bits(crc, b * 256)
+    for i in range(0, 8)
+      top := crc / 32768
+      crc = (crc * 2) - top * 65536
+      if top == 1
+        crc = xor_bits(crc, poly)
+  crc
+
+fn bytes_to_str data:List -> Str
+  data.map(b => str(b)).join(", ")
+
+fn main
+  print "CRC Checksum Computation:"
+  print ""
+
+  poly8 := 7
+  poly16 := 32773
+
+  print "CRC-8 (poly=0x07):"
+  msg1 := [72, 101, 108, 108, 111]
+  c1 := crc8_byte(msg1, poly8)
+  print "  'Hello' bytes: {bytes_to_str(msg1)}"
+  print "  CRC-8: {c1}"
+
+  msg2 := [1, 2, 3, 4, 5]
+  c2 := crc8_byte(msg2, poly8)
+  print "  [1,2,3,4,5] CRC-8: {c2}"
+
+  msg3 := [255, 0, 255, 0]
+  c3 := crc8_byte(msg3, poly8)
+  print "  [255,0,255,0] CRC-8: {c3}"
+  print ""
+
+  print "CRC-16 (poly=0x8005 simplified):"
+  c4 := crc16_byte(msg1, poly16)
+  print "  'Hello' CRC-16: {c4}"
+  c5 := crc16_byte(msg2, poly16)
+  print "  [1,2,3,4,5] CRC-16: {c5}"
+  print ""
+
+  print "Error detection demo:"
+  good := [10, 20, 30, 40]
+  crc_good := crc8_byte(good, poly8)
+  print "  Original [10,20,30,40] CRC-8: {crc_good}"
+  bad := [10, 20, 31, 40]
+  crc_bad := crc8_byte(bad, poly8)
+  print "  Corrupted [10,20,31,40] CRC-8: {crc_bad}"
+  if crc_good != crc_bad
+    print "  Error detected! (CRC mismatch)"
+  print ""
+
+  print "CRC append verification:"
+  data_with_crc := [1, 2, 3, 4, crc8_byte([1, 2, 3, 4], poly8)]
+  final_crc := crc8_byte(data_with_crc, poly8)
+  print "  Data+CRC remainder: {final_crc}"
+
+  print ""
+  print "CRC: polynomial division over GF(2), detects burst errors up to poly degree"

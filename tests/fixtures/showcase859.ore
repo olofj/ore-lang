@@ -1,0 +1,124 @@
+-- Showcase 859: LDPC Code Simulation
+
+-- Low-Density Parity-Check (LDPC) codes use sparse parity-check matrices.
+-- Belief propagation (bit-flip) decoding iterates over Tanner graph.
+-- Near Shannon-limit performance. Used in 5G, WiFi (802.11n), DVB-S2.
+-- Simulated with a small (6,3) LDPC code: rate 1/2, 3 parity checks.
+
+fn xor2 a:Int b:Int -> Int
+  (a + b) - (a + b) / 2 * 2
+
+-- Parity check matrix H (3x6):
+-- check0: cols 0,1,3 -> c0 XOR c1 XOR c3 = 0
+-- check1: cols 0,2,4 -> c0 XOR c2 XOR c4 = 0
+-- check2: cols 1,2,5 -> c1 XOR c2 XOR c5 = 0
+
+fn check_parity cw:List -> List
+  s0 := xor2(xor2(cw[0], cw[1]), cw[3])
+  s1 := xor2(xor2(cw[0], cw[2]), cw[4])
+  s2 := xor2(xor2(cw[1], cw[2]), cw[5])
+  [s0, s1, s2]
+
+fn syndrome_zero s:List -> Bool
+  s[0] == 0 and s[1] == 0 and s[2] == 0
+
+fn ldpc_encode data:List -> List
+  d0 := data[0]
+  d1 := data[1]
+  d2 := data[2]
+  p0 := xor2(d0, d1)
+  p1 := xor2(d0, d2)
+  p2 := xor2(d1, d2)
+  [d0, d1, d2, p0, p1, p2]
+
+fn bit_flip_decode c0:Int c1:Int c2:Int c3:Int c4:Int c5:Int max_iter:Int -> List
+  mut b0 := c0
+  mut b1 := c1
+  mut b2 := c2
+  mut b3 := c3
+  mut b4 := c4
+  mut b5 := c5
+  mut it := 0
+  mut done := false
+  while it < max_iter and not done
+    cw := [b0, b1, b2, b3, b4, b5]
+    s := check_parity(cw)
+    if syndrome_zero(s)
+      done = true
+    else
+      f0 := s[0] + s[1]
+      f1 := s[0] + s[2]
+      f2 := s[1] + s[2]
+      f3 := s[0]
+      f4 := s[1]
+      f5 := s[2]
+      mut max_f := -1
+      mut flip_b := -1
+      fails := [f0, f1, f2, f3, f4, f5]
+      for i in range(0, 6)
+        if fails[i] > max_f
+          max_f = fails[i]
+          flip_b = i
+      if flip_b == 0
+        b0 = if b0 == 0 then 1 else 0
+      else if flip_b == 1
+        b1 = if b1 == 0 then 1 else 0
+      else if flip_b == 2
+        b2 = if b2 == 0 then 1 else 0
+      else if flip_b == 3
+        b3 = if b3 == 0 then 1 else 0
+      else if flip_b == 4
+        b4 = if b4 == 0 then 1 else 0
+      else
+        b5 = if b5 == 0 then 1 else 0
+    it = it + 1
+  [b0, b1, b2, b3, b4, b5]
+
+fn bits_to_str bits:List -> Str
+  bits.map(b => str(b)).join("")
+
+fn main
+  print "LDPC Code Simulation:"
+  print ""
+
+  print "Parity-check matrix H (3x6):"
+  print "  check0: [1 1 0 1 0 0] - bits 0,1,3"
+  print "  check1: [1 0 1 0 1 0] - bits 0,2,4"
+  print "  check2: [0 1 1 0 0 1] - bits 1,2,5"
+  print ""
+
+  words := [[1, 0, 1], [1, 1, 0], [0, 0, 0], [1, 1, 1]]
+  print "Encoding data words:"
+  for w in words
+    enc := ldpc_encode(w)
+    s := check_parity(enc)
+    valid := syndrome_zero(s)
+    print "  {bits_to_str(w)} -> {bits_to_str(enc)} syndrome={bits_to_str(s)} valid={valid}"
+  print ""
+
+  codeword := ldpc_encode([1, 0, 1])
+  print "Error correction with bit-flip decoding:"
+  print "  Codeword: {bits_to_str(codeword)}"
+  -- Inject errors at each position using explicit values
+  -- codeword = [1,0,1,1,0,1]
+  corrupted_bits := [[0,0,1,1,0,1], [1,1,1,1,0,1], [1,0,0,1,0,1], [1,0,1,0,0,1], [1,0,1,1,1,1], [1,0,1,1,0,0]]
+  mut correct_count := 0
+  for i in range(0, 6)
+    cv := corrupted_bits[i]
+    decoded := bit_flip_decode(cv[0], cv[1], cv[2], cv[3], cv[4], cv[5], 10)
+    ok := if bits_to_str(decoded) == bits_to_str(codeword) then "corrected" else "failed"
+    if ok == "corrected"
+      correct_count = correct_count + 1
+    print "  Flip bit {i}: {bits_to_str(cv)} -> {bits_to_str(decoded)} [{ok}]"
+  print "  Corrected {correct_count}/6 single-bit errors"
+  print ""
+
+  print "Syndrome analysis:"
+  mut test_cases := [[1,0,1,1,0,1], [0,0,1,1,0,1], [1,0,1,0,0,1]]
+  for tc in test_cases
+    s2 := check_parity(tc)
+    print "  {bits_to_str(tc)}: syndrome={bits_to_str(s2)} ({if syndrome_zero(s2) then "valid" else "error"})"
+  print ""
+
+  print "Tanner graph: {6} variable nodes, {3} check nodes, rate=1/2"
+  print "LDPC codes: near-Shannon-limit, O(n) decoding complexity via belief propagation"

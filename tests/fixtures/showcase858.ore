@@ -1,0 +1,106 @@
+-- Showcase 858: Turbo Code Interleaver
+
+-- Turbo codes achieve near-Shannon-limit performance using two RSC encoders
+-- connected by an interleaver. The interleaver shuffles bits pseudo-randomly
+-- to ensure the two component codes see different bit patterns.
+-- Demonstrated: S-random interleaver design and its spreading properties.
+
+fn int_pow base:Int exp:Int -> Int
+  mut r := 1
+  for i in range(0, exp)
+    r = r * base
+  r
+
+-- S-random interleaver: ensures any two positions within distance S
+-- in original order are at least S apart in interleaved order
+fn s_random_interleaver n:Int s:Int seed:Int -> List
+  mut perm := [0]
+  perm = perm.skip(1)
+  for i in range(0, n)
+    perm.push(i)
+  -- Simple shuffle using LCG
+  mut state := seed
+  for i in range(n - 1, 0, -1)
+    state = (state * 1664525 + 1013904223) - (state * 1664525 + 1013904223) / 2147483648 * 2147483648
+    j := state - (state / (i + 1)) * (i + 1)
+    tmp := perm[i]
+    perm[i] = perm[j]
+    perm[j] = tmp
+  perm
+
+fn check_spreading perm:List s:Int -> Int
+  -- Count pairs within distance s that violate s-random property
+  n := perm.len()
+  mut violations := 0
+  for i in range(0, n)
+    for j in range(i + 1, n)
+      orig_dist := j - i
+      pi := perm[i]
+      pj := perm[j]
+      interleaved_dist := if pi > pj then pi - pj else pj - pi
+      if orig_dist <= s and interleaved_dist < s
+        violations = violations + 1
+  violations
+
+fn apply_interleaver data:List perm:List -> List
+  mut output := [0]
+  output = output.skip(1)
+  for i in range(0, perm.len())
+    output.push(data[perm[i]])
+  output
+
+fn bits_to_str bits:List -> Str
+  bits.map(b => str(b)).join("")
+
+fn main
+  print "Turbo Code Interleaver:"
+  print ""
+
+  n := 16
+  s := 4
+
+  print "S-random interleaver (N={n}, S={s}):"
+  perm1 := s_random_interleaver(n, s, 42)
+  print "  Permutation: {perm1.map(x => str(x)).join(", ")}"
+  v1 := check_spreading(perm1, s)
+  print "  S-random violations (S={s}): {v1}"
+  print ""
+
+  perm2 := s_random_interleaver(n, s, 99)
+  print "  Permutation (seed=99): {perm2.map(x => str(x)).join(", ")}"
+  v2 := check_spreading(perm2, s)
+  print "  S-random violations: {v2}"
+  print ""
+
+  print "Interleaver effect on data:"
+  data := [1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0]
+  print "  Original:     {bits_to_str(data)}"
+  interleaved := apply_interleaver(data, perm1)
+  print "  Interleaved:  {bits_to_str(interleaved)}"
+  print ""
+
+  print "Spreading analysis (positions 0..7):"
+  for i in range(0, 8)
+    pi := perm1[i]
+    print "  pos {i} -> {pi} (distance={if pi > i then pi - i else i - pi})"
+  print ""
+
+  print "Turbo encoder structure:"
+  print "  Input bits ------> RSC encoder 1 --> parity1"
+  print "  Input bits -> [pi] -> RSC encoder 2 --> parity2"
+  print "  Transmitted: [systematic bits, parity1, parity2]"
+  print ""
+
+  print "Interleaver quality metrics:"
+  mut min_dist := n
+  for i in range(0, n - 1)
+    for j in range(i + 1, n)
+      pi := perm1[i]
+      pj := perm1[j]
+      d := if pj > pi then pj - pi else pi - pj
+      if d < min_dist
+        min_dist = d
+  print "  Minimum separation in interleaved order: {min_dist}"
+  print "  Good interleavers maximize minimum separation"
+  print ""
+  print "Turbo codes: achieve within 0.5 dB of Shannon limit, used in 3G/4G/deep-space"

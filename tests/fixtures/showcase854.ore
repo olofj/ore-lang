@@ -1,0 +1,114 @@
+-- Showcase 854: Arithmetic Coding Simulation
+
+-- Arithmetic coding encodes a sequence as a single fraction in [0,1).
+-- More efficient than Huffman when symbol probabilities are fractional.
+-- Uses scaled integer arithmetic to avoid floating-point precision issues.
+
+-- Probability model: symbols 'a','b','c','d' with fixed probabilities
+-- a: 0.5, b: 0.25, c: 0.15, d: 0.10
+-- Represented as cumulative ranges scaled by 1000:
+-- a: [0, 500), b: [500, 750), c: [750, 900), d: [900, 1000)
+
+fn sym_low sym:Int -> Int
+  -- sym: 0=a,1=b,2=c,3=d
+  if sym == 0
+    0
+  else if sym == 1
+    500
+  else if sym == 2
+    750
+  else
+    900
+
+fn sym_high sym:Int -> Int
+  if sym == 0
+    500
+  else if sym == 1
+    750
+  else if sym == 2
+    900
+  else
+    1000
+
+fn sym_name sym:Int -> Str
+  if sym == 0
+    "a"
+  else if sym == 1
+    "b"
+  else if sym == 2
+    "c"
+  else
+    "d"
+
+fn arithmetic_encode symbols:List -> List
+  -- Returns [low*1000, high*1000] scaled by 1000^len for precision
+  -- We track low and high as fractions scaled by 10^6
+  mut low := 0
+  mut high := 1000000
+  for s in symbols
+    range_size := high - low
+    sl := sym_low(s)
+    sh := sym_high(s)
+    new_high := low + range_size * sh / 1000
+    new_low := low + range_size * sl / 1000
+    low = new_low
+    high = new_high
+  [low, high]
+
+fn arithmetic_decode encoded:Int num_symbols:Int -> List
+  -- Decode from a value in [0,1000000)
+  mut val := encoded
+  mut result := [0]
+  result = result.skip(1)
+  for i in range(0, num_symbols)
+    -- Find which symbol range contains val (scaled by 1000)
+    val_scaled := val * 1000 / 1000000
+    sym := if val_scaled < 500 then 0 else if val_scaled < 750 then 1 else if val_scaled < 900 then 2 else 3
+    result.push(sym)
+    sl := sym_low(sym)
+    sh := sym_high(sym)
+    val = (val - sl * 1000) * 1000 / (sh - sl)
+  result
+
+fn syms_to_str syms:List -> Str
+  syms.map(s => sym_name(s)).join("")
+
+fn main
+  print "Arithmetic Coding Simulation:"
+  print ""
+
+  print "Symbol probabilities (scaled /1000):"
+  print "  a: [0,500)   prob=0.50"
+  print "  b: [500,750) prob=0.25"
+  print "  c: [750,900) prob=0.15"
+  print "  d: [900,1000) prob=0.10"
+  print ""
+
+  msg1 := [0, 0, 1]
+  range1 := arithmetic_encode(msg1)
+  mid1 := (range1[0] + range1[1]) / 2
+  print "Encode 'aab': range=[{range1[0]},{range1[1]}], code={mid1}"
+  decoded1 := arithmetic_decode(mid1, 3)
+  print "Decode {mid1}: '{syms_to_str(decoded1)}'"
+  print ""
+
+  msg2 := [0, 1, 2]
+  range2 := arithmetic_encode(msg2)
+  mid2 := (range2[0] + range2[1]) / 2
+  print "Encode 'abc': range=[{range2[0]},{range2[1]}], code={mid2}"
+  decoded2 := arithmetic_decode(mid2, 3)
+  print "Decode {mid2}: '{syms_to_str(decoded2)}'"
+  print ""
+
+  msg3 := [3, 3, 3]
+  range3 := arithmetic_encode(msg3)
+  mid3 := (range3[0] + range3[1]) / 2
+  print "Encode 'ddd': range=[{range3[0]},{range3[1]}], code={mid3}"
+  print ""
+
+  print "Compression ratio comparison:"
+  print "  Fixed-code: 2 bits/symbol for 4 symbols"
+  print "  Arithmetic: approaches entropy H = -sum(p*log2(p))"
+  print "  H = 0.5*1 + 0.25*2 + 0.15*2.74 + 0.10*3.32 = 1.74 bits/symbol"
+  print ""
+  print "Arithmetic coding: asymptotically optimal, approaches entropy limit"

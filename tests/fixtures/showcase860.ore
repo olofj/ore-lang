@@ -1,0 +1,92 @@
+-- Showcase 860: Information Channel Capacity
+
+-- Shannon's channel capacity theorem: C = B * log2(1 + S/N) bits/second.
+-- Demonstrates capacity for various channel types and noise levels.
+-- Also covers binary symmetric channel, erasure channel, and AWGN.
+
+fn log2_approx x:Float -> Float
+  log(x) / log(2.0)
+
+fn float3 x:Float -> Str
+  i := x.to_int()
+  frac := ((x - i.to_float()) * 1000.0).to_int()
+  if frac < 10
+    "{i}.00{frac}"
+  else if frac < 100
+    "{i}.0{frac}"
+  else
+    "{i}.{frac}"
+
+fn awgn_capacity_bps bandwidth:Float snr_db:Float -> Float
+  -- Convert dB to linear: SNR_linear = 10^(SNR_dB/10)
+  snr_linear := exp(snr_db / 10.0 * log(10.0))
+  bandwidth * log2_approx(1.0 + snr_linear)
+
+fn bsc_capacity p:Float -> Float
+  -- Binary Symmetric Channel: C = 1 - H(p) = 1 - (-p*log2(p) - (1-p)*log2(1-p))
+  if p < 0.001 or p > 0.999
+    if p < 0.001 then 1.0 else 0.0
+  else
+    h := -p * log2_approx(p) - (1.0 - p) * log2_approx(1.0 - p)
+    1.0 - h
+
+fn bec_capacity e:Float -> Float
+  -- Binary Erasure Channel: C = 1 - epsilon
+  1.0 - e
+
+fn main
+  print "Information Channel Capacity:"
+  print ""
+
+  print "AWGN Channel: C = B * log2(1 + SNR)"
+  print "  (Bandwidth = 1 MHz)"
+  bw := 1000000.0
+  snr_values := [-5, 0, 5, 10, 20, 30]
+  for snr in snr_values
+    c := awgn_capacity_bps(bw, snr.to_float())
+    c_kbps := (c / 1000.0).to_int()
+    print "  SNR={snr} dB: C = {c_kbps} kbps"
+  print ""
+
+  print "Binary Symmetric Channel: C = 1 - H(p)"
+  print "  (p = crossover probability)"
+  bsc_probs := [0, 5, 10, 20, 30, 50]
+  for p_pct in bsc_probs
+    p := p_pct.to_float() / 100.0
+    c := bsc_capacity(p)
+    c_milli := (c * 1000.0).to_int()
+    print "  p={p_pct}%: C = {c_milli} milli-bits/use"
+  print ""
+
+  print "Binary Erasure Channel: C = 1 - epsilon"
+  print "  (epsilon = erasure probability)"
+  bec_probs := [0, 10, 25, 50, 75, 100]
+  for e_pct in bec_probs
+    e := e_pct.to_float() / 100.0
+    c := bec_capacity(e)
+    c_milli := (c * 1000.0).to_int()
+    print "  e={e_pct}%: C = {c_milli} milli-bits/use"
+  print ""
+
+  print "Bandwidth vs Capacity trade-off (SNR=10 dB):"
+  snr_fixed := 10.0
+  bws := [1, 10, 100, 1000]
+  for bw_khz in bws
+    bw_hz := bw_khz.to_float() * 1000.0
+    c := awgn_capacity_bps(bw_hz, snr_fixed)
+    c_kbps := (c / 1000.0).to_int()
+    print "  B={bw_khz} kHz: C = {c_kbps} kbps"
+  print ""
+
+  print "Capacity limits:"
+  print "  BSC(p=0.5): C = 0 (maximum noise, no information)"
+  print "  BSC(p=0):   C = 1 (perfect channel, 1 bit/use)"
+  print "  BEC(e=0):   C = 1 (no erasures)"
+  print "  BEC(e=1):   C = 0 (all erased)"
+  print ""
+
+  print "Shannon's noisy channel coding theorem:"
+  print "  Reliable communication at rate R < C is always achievable"
+  print "  No code can achieve reliable communication at R > C"
+  print ""
+  print "Channel capacity: fundamental limit on reliable information transmission rate"

@@ -1,0 +1,128 @@
+-- Showcase 857: Convolutional Code Simulation
+
+-- Convolutional codes process a continuous stream of bits through shift registers.
+-- Rate 1/2, constraint length K=3: each input bit produces 2 output bits.
+-- Generator polynomials: G1=111 (7 octal), G2=101 (5 octal).
+-- Used in early satellite communications, now in turbo/LDPC concatenations.
+
+fn xor2 a:Int b:Int -> Int
+  (a + b) - (a + b) / 2 * 2
+
+fn encode_bit s0:Int s1:Int input:Int -> List
+  -- State: [s0, s1], input: 1 bit
+  -- G1 = input XOR s0 XOR s1
+  -- G2 = input XOR s1
+  o1 := xor2(xor2(input, s0), s1)
+  o2 := xor2(input, s1)
+  new_s1 := s0
+  new_s0 := input
+  [o1, o2, new_s0, new_s1]
+
+fn conv_encode bits:List -> List
+  mut s0 := 0
+  mut s1 := 0
+  mut output := [0]
+  output = output.skip(1)
+  for b in bits
+    res := encode_bit(s0, s1, b)
+    output.push(res[0])
+    output.push(res[1])
+    s0 = res[2]
+    s1 = res[3]
+  -- Flush state (send 2 zero bits to return to 0 state)
+  for i in range(0, 2)
+    res2 := encode_bit(s0, s1, 0)
+    output.push(res2[0])
+    output.push(res2[1])
+    s0 = res2[2]
+    s1 = res2[3]
+  output
+
+fn hamming_dist a:List b:List -> Int
+  mut d := 0
+  for i in range(0, a.len())
+    if a[i] != b[i]
+      d = d + 1
+  d
+
+-- Viterbi decoder: 4 states (s0,s1) in {00,01,10,11}
+fn state_idx s0:Int s1:Int -> Int
+  s0 * 2 + s1
+
+fn viterbi_decode received:List num_bits:Int -> List
+  -- path metric per state (lower = better), initial state 0
+  mut pm := [0, 999, 999, 999]
+  -- traceback: store decisions
+  n_steps := num_bits + 2
+  mut tb_pm := [0]
+  tb_pm = tb_pm.skip(1)
+  for step in range(0, n_steps)
+    r0 := received[step * 2]
+    r1 := received[step * 2 + 1]
+    mut new_pm := [999, 999, 999, 999]
+    -- For each state, try input 0 and input 1
+    for prev_s in range(0, 4)
+      prev_s0 := prev_s / 2
+      prev_s1 := prev_s - prev_s0 * 2
+      for inp in range(0, 2)
+        res := encode_bit(prev_s0, prev_s1, inp)
+        next_s0 := res[2]
+        next_s1 := res[3]
+        next_s := state_idx(next_s0, next_s1)
+        branch := if res[0] == r0 then 0 else 1
+        branch2 := branch + (if res[1] == r1 then 0 else 1)
+        cand := pm[prev_s] + branch2
+        if cand < new_pm[next_s]
+          new_pm[next_s] = cand
+    pm = new_pm
+  -- Best final path metric
+  pm[0]
+
+fn bits_to_str bits:List -> Str
+  bits.map(b => str(b)).join("")
+
+fn main
+  print "Convolutional Code Simulation:"
+  print ""
+  print "Rate 1/2, K=3, G1=111 (7), G2=101 (5)"
+  print ""
+
+  msg1 := [1, 0, 1, 1]
+  enc1 := conv_encode(msg1)
+  print "Encode '1011':"
+  print "  Input:  {bits_to_str(msg1)}"
+  print "  Output: {bits_to_str(enc1)}"
+  print "  Rate 1/2: {msg1.len()} bits -> {enc1.len()} bits (with flush)"
+  print ""
+
+  print "State transitions for input '1011' (K=3):"
+  mut s0 := 0
+  mut s1 := 0
+  for b in msg1
+    res := encode_bit(s0, s1, b)
+    print "  state({s0},{s1}) + in={b} -> out=({res[0]},{res[1]}) next_state=({res[2]},{res[3]})"
+    s0 = res[2]
+    s1 = res[3]
+  print ""
+
+  print "Error correction demo (Viterbi decoding):"
+  msg2 := [1, 1, 0, 1]
+  enc2 := conv_encode(msg2)
+  print "  Original: {bits_to_str(msg2)} -> encoded: {bits_to_str(enc2)}"
+  -- Inject 1-bit error
+  mut corrupted := enc2
+  if corrupted[2] == 0
+    corrupted[2] = 1
+  else
+    corrupted[2] = 0
+  print "  Corrupted (flip bit 3): {bits_to_str(corrupted)}"
+  final_metric := viterbi_decode(corrupted, 4)
+  print "  Viterbi final path metric: {final_metric} (0 = perfect, >0 = errors detected)"
+  print ""
+
+  print "Code properties:"
+  print "  Free distance d_free = 5 (minimum Hamming distance between codewords)"
+  print "  Error correction: floor((d_free-1)/2) = 2 bit errors"
+  print "  Coding gain: ~5 dB at BER 1e-5"
+  print ""
+  print "Convolutional codes: memory-based channel coding with Viterbi decoding"

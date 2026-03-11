@@ -1,0 +1,86 @@
+-- Showcase 851: Hamming Code Error Detection and Correction
+
+-- Hamming(7,4) encodes 4 data bits into 7 bits with 3 parity bits.
+-- Can detect up to 2-bit errors and correct 1-bit errors.
+-- Parity bit positions: 1, 2, 4 (1-indexed). Data at positions 3,5,6,7.
+
+fn hamming_encode d:List -> List
+  -- d = [d1, d2, d3, d4] (data bits)
+  -- parity positions (1-indexed): p1=pos1, p2=pos2, p4=pos4
+  d1 := d[0]
+  d2 := d[1]
+  d3 := d[2]
+  d4 := d[3]
+  -- p1 covers positions 1,3,5,7 => p1, d1, d2, d4
+  p1 := (d1 + d2 + d4) - ((d1 + d2 + d4) / 2) * 2
+  -- p2 covers positions 2,3,6,7 => p2, d1, d3, d4
+  p2 := (d1 + d3 + d4) - ((d1 + d3 + d4) / 2) * 2
+  -- p4 covers positions 4,5,6,7 => p4, d2, d3, d4
+  p4 := (d2 + d3 + d4) - ((d2 + d3 + d4) / 2) * 2
+  -- Layout: pos1=p1, pos2=p2, pos3=d1, pos4=p4, pos5=d2, pos6=d3, pos7=d4
+  [p1, p2, d1, p4, d2, d3, d4]
+
+fn hamming_syndrome c:List -> Int
+  -- c = [c1..c7] (received codeword, 0-indexed)
+  s1 := (c[0] + c[2] + c[4] + c[6]) - ((c[0] + c[2] + c[4] + c[6]) / 2) * 2
+  s2 := (c[1] + c[2] + c[5] + c[6]) - ((c[1] + c[2] + c[5] + c[6]) / 2) * 2
+  s4 := (c[3] + c[4] + c[5] + c[6]) - ((c[3] + c[4] + c[5] + c[6]) / 2) * 2
+  s1 + s2 * 2 + s4 * 4
+
+fn hamming_correct c:List syn:Int -> List
+  if syn == 0
+    c
+  else
+    mut fixed := c
+    err_pos := syn - 1
+    if fixed[err_pos] == 0
+      fixed[err_pos] = 1
+    else
+      fixed[err_pos] = 0
+    fixed
+
+fn bits_to_str bits:List -> Str
+  bits.map(b => str(b)).join("")
+
+fn hamming_decode c:List -> List
+  [c[2], c[4], c[5], c[6]]
+
+fn main
+  print "Hamming(7,4) Error Detection and Correction:"
+  print ""
+
+  data := [1, 0, 1, 1]
+  print "Data bits: {bits_to_str(data)}"
+
+  encoded := hamming_encode(data)
+  print "Encoded (7 bits): {bits_to_str(encoded)}"
+  print "  Layout: [p1,p2,d1,p4,d2,d3,d4]"
+  print ""
+
+  syn0 := hamming_syndrome(encoded)
+  print "Syndrome (no error): {syn0}"
+  print ""
+
+  print "Inject single-bit errors:"
+  for i in range(0, 7)
+    mut corrupted := encoded
+    if corrupted[i] == 0
+      corrupted[i] = 1
+    else
+      corrupted[i] = 0
+    syn := hamming_syndrome(corrupted)
+    corrected := hamming_correct(corrupted, syn)
+    decoded := hamming_decode(corrected)
+    ok := if bits_to_str(decoded) == bits_to_str(data) then "OK" else "FAIL"
+    print "  Flip bit {i+1}: syndrome={syn}, corrected={bits_to_str(corrected)}, decode={bits_to_str(decoded)} [{ok}]"
+
+  print ""
+  print "Multiple data words:"
+  words := [[0,0,0,0], [1,1,1,1], [1,0,1,0], [0,1,1,0]]
+  for w in words
+    enc := hamming_encode(w)
+    dec := hamming_decode(enc)
+    print "  {bits_to_str(w)} -> {bits_to_str(enc)} -> {bits_to_str(dec)}"
+
+  print ""
+  print "Hamming(7,4): rate=4/7, detects 2-bit errors, corrects 1-bit errors"
