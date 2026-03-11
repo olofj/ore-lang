@@ -717,6 +717,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_enumerate", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         // ore_list_join_str(ptr, sep) -> ptr
         self.module.add_function("ore_list_join_str", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        // ore_list_join_float(ptr, sep) -> ptr
+        self.module.add_function("ore_list_join_float", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_flat_map(ptr, fn_ptr, env_ptr) -> ptr
         self.module.add_function("ore_list_flat_map", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_count_by(ptr, fn_ptr, env_ptr) -> ptr (map)
@@ -3570,10 +3572,10 @@ impl<'ctx> CodeGen<'ctx> {
                 let sep = self.compile_expr(&args[0], func)?;
                 // Use join_str for string lists, join for int lists
                 let elem_kind = self.last_list_elem_kind.clone();
-                let fn_name = if matches!(elem_kind, Some(ValKind::Str)) {
-                    "ore_list_join_str"
-                } else {
-                    "ore_list_join"
+                let fn_name = match &elem_kind {
+                    Some(ValKind::Str) => "ore_list_join_str",
+                    Some(ValKind::Float) => "ore_list_join_float",
+                    _ => "ore_list_join",
                 };
                 let rt = self.module.get_function(fn_name).unwrap();
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), sep.into()], "join"))?;
@@ -6652,6 +6654,11 @@ impl<'ctx> CodeGen<'ctx> {
                 let alloca = bld!(self.builder.build_alloca(pt, var))?;
                 (alloca, pt.into())
             }
+            ValKind::Float => {
+                let f64_type = self.context.f64_type();
+                let alloca = bld!(self.builder.build_alloca(f64_type, var))?;
+                (alloca, f64_type.into())
+            }
             _ => {
                 let alloca = bld!(self.builder.build_alloca(i64_type, var))?;
                 (alloca, i64_type.into())
@@ -6697,6 +6704,15 @@ impl<'ctx> CodeGen<'ctx> {
                     "i2p"
                 ))?;
                 bld!(self.builder.build_store(elem_alloca, ptr))?;
+            }
+            ValKind::Float => {
+                // List stores f64 bits as i64 — bitcast back to f64
+                let f_val: inkwell::values::BasicValueEnum = bld!(self.builder.build_bit_cast(
+                    raw_val.into_int_value(),
+                    self.context.f64_type(),
+                    "i2f"
+                ))?;
+                bld!(self.builder.build_store(elem_alloca, f_val))?;
             }
             _ => {
                 bld!(self.builder.build_store(elem_alloca, raw_val))?;

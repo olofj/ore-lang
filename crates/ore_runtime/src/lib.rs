@@ -1734,6 +1734,28 @@ pub extern "C" fn ore_list_join_str(list: *mut OreList, sep: *mut OreStr) -> *mu
     }
 }
 
+/// Join list elements where elements are f64 stored as i64 bit patterns.
+#[no_mangle]
+pub extern "C" fn ore_list_join_float(list: *mut OreList, sep: *mut OreStr) -> *mut OreStr {
+    unsafe {
+        let src = &*list;
+        let sep_str = (*sep).as_str();
+        let mut parts: Vec<String> = Vec::new();
+        for i in 0..src.len as usize {
+            let bits = *src.data.add(i);
+            let f = f64::from_bits(bits as u64);
+            let s = if f == f.floor() && !f.is_infinite() && !f.is_nan() {
+                format!("{:.1}", f)
+            } else {
+                f.to_string()
+            };
+            parts.push(s);
+        }
+        let joined = parts.join(sep_str);
+        ore_str_new(joined.as_ptr(), joined.len() as u32)
+    }
+}
+
 /// Take first n elements from a list.
 #[no_mangle]
 pub extern "C" fn ore_list_take(list: *mut OreList, n: i64) -> *mut OreList {
