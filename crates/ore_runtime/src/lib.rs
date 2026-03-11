@@ -376,6 +376,36 @@ pub extern "C" fn ore_str_repeat(s: *mut OreStr, n: i64) -> *mut OreStr {
 }
 
 #[no_mangle]
+pub extern "C" fn ore_str_pad_left(s: *mut OreStr, width: i64, pad_char: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let str_val = unsafe { (*s).as_str() };
+    let pad = if pad_char.is_null() { " " } else { unsafe { (*pad_char).as_str() } };
+    let pad_ch = pad.chars().next().unwrap_or(' ');
+    let width = width.max(0) as usize;
+    if str_val.len() >= width {
+        return ore_str_new(str_val.as_ptr(), str_val.len() as u32);
+    }
+    let padding: String = std::iter::repeat(pad_ch).take(width - str_val.len()).collect();
+    let result = format!("{}{}", padding, str_val);
+    ore_str_new(result.as_ptr(), result.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_pad_right(s: *mut OreStr, width: i64, pad_char: *mut OreStr) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let str_val = unsafe { (*s).as_str() };
+    let pad = if pad_char.is_null() { " " } else { unsafe { (*pad_char).as_str() } };
+    let pad_ch = pad.chars().next().unwrap_or(' ');
+    let width = width.max(0) as usize;
+    if str_val.len() >= width {
+        return ore_str_new(str_val.as_ptr(), str_val.len() as u32);
+    }
+    let padding: String = std::iter::repeat(pad_ch).take(width - str_val.len()).collect();
+    let result = format!("{}{}", str_val, padding);
+    ore_str_new(result.as_ptr(), result.len() as u32)
+}
+
+#[no_mangle]
 pub extern "C" fn ore_str_chars(s: *mut OreStr) -> *mut OreList {
     let list = ore_list_new();
     if s.is_null() { return list; }

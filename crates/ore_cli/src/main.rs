@@ -413,6 +413,8 @@ fn map_runtime_functions(
     map_fn!("ore_str_substr", ore_runtime::ore_str_substr);
     map_fn!("ore_str_chars", ore_runtime::ore_str_chars);
     map_fn!("ore_str_repeat", ore_runtime::ore_str_repeat);
+    map_fn!("ore_str_pad_left", ore_runtime::ore_str_pad_left);
+    map_fn!("ore_str_pad_right", ore_runtime::ore_str_pad_right);
     map_fn!("ore_str_index_of", ore_runtime::ore_str_index_of);
     map_fn!("ore_str_slice", ore_runtime::ore_str_slice);
     map_fn!("ore_assert_fail", ore_runtime::ore_assert_fail);

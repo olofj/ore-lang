@@ -1,0 +1,31 @@
+-- Showcase 9: Data processing pipeline with maps and formatting
+
+fn main
+  -- Score data
+  data := [
+    "Alice:92", "Bob:87", "Charlie:95",
+    "Diana:78", "Eve:91", "Frank:85"
+  ]
+
+  -- Parse into map of name -> score
+  scores := {}
+  data | each(entry =>
+    parts := entry.split(":")
+    name := parts.first()
+    score := parts.last().to_int()
+    scores.set(name, score)
+  )
+
+  -- Filter passing scores (>= 85) and display
+  scores
+  | filter((name, score) => score >= 85)
+  | each((name, score) =>
+    bar := "*".repeat(score / 10)
+    label := name.pad_right(10)
+    print "{label} {score.to_str().pad_left(3)} {bar}"
+  )
+
+  -- Stats
+  vals := scores.values()
+  print "avg: {vals.sum() / vals.len()}"
+  print "showcase9 ok"

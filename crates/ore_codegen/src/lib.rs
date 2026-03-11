@@ -729,6 +729,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_substr", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_str_chars", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_repeat", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_str_pad_left", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_pad_right", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_index_of", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_assert_fail", void_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3300,6 +3302,27 @@ impl<'ctx> CodeGen<'ctx> {
                 let count = self.compile_expr(&args[0], func)?;
                 let rt = self.module.get_function("ore_str_repeat").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), count.into()], "srep"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
+            "pad_left" | "pad_right" => {
+                if args.len() < 1 || args.len() > 2 {
+                    return Err(CodeGenError { line: None, msg: format!("{} takes 1-2 arguments (width, [pad_char])", method) });
+                }
+                let width = self.compile_expr(&args[0], func)?;
+                let pad_char = if args.len() > 1 {
+                    self.compile_expr(&args[1], func)?
+                } else {
+                    // Default pad char: space
+                    let space = " ";
+                    let rt = self.module.get_function("ore_str_new").unwrap();
+                    let space_ptr = bld!(self.builder.build_global_string_ptr(space, "pad_space"))?.as_pointer_value();
+                    let result = bld!(self.builder.build_call(rt, &[space_ptr.into(), self.context.i32_type().const_int(1, false).into()], "spad"))?;
+                    self.call_result_to_value(result)?
+                };
+                let fn_name = if method == "pad_left" { "ore_str_pad_left" } else { "ore_str_pad_right" };
+                let rt = self.module.get_function(fn_name).unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), width.into(), pad_char.into()], "spad"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }

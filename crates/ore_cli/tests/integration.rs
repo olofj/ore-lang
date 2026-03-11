@@ -995,6 +995,27 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn showcase9() {
+    let out = run_ore("showcase9.ore");
+    assert!(out.contains("Alice"));
+    assert!(out.contains("avg: 88"));
+    assert!(out.contains("showcase9 ok"));
+}
+
+#[test]
+fn strings_padding() {
+    let out = run_ore("strings/padding.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "   42",
+        "hi   ",
+        "007",
+        "x...",
+        "hello",
+    ]);
+}
+
+#[test]
 fn maps_functional() {
     let out = run_ore("maps/functional.ore");
     let lines: Vec<&str> = out.lines().collect();

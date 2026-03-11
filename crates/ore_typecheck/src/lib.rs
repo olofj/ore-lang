@@ -872,7 +872,7 @@ impl TypeChecker {
                 "len" | "to_int" => Type::Int,
                 "to_float" => Type::Float,
                 "contains" | "starts_with" | "ends_with" | "is_empty" => Type::Bool,
-                "trim" | "to_upper" | "to_lower" | "replace" | "substr" => Type::Str,
+                "trim" | "to_upper" | "to_lower" | "replace" | "substr" | "pad_left" | "pad_right" | "repeat" => Type::Str,
                 "split" | "words" => Type::List(Box::new(Type::Str)),
                 _ => Type::Any,
             },

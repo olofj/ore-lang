@@ -1,0 +1,11 @@
+fn main
+  -- pad_left with default space
+  print "42".pad_left(5)
+  -- pad_right with default space
+  print "hi".pad_right(5)
+  -- pad_left with custom char
+  print "7".pad_left(3, "0")
+  -- pad_right with custom char
+  print "x".pad_right(4, ".")
+  -- no padding needed (already wide enough)
+  print "hello".pad_left(3)
