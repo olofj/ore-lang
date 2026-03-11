@@ -551,6 +551,57 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+/// Parallel map: applies func to each element in parallel using threads
+#[no_mangle]
+pub extern "C" fn ore_list_par_map(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let len = src.len as usize;
+        if len == 0 {
+            return ore_list_new();
+        }
+        // Collect elements
+        let elements: Vec<i64> = (0..len).map(|i| *src.data.add(i)).collect();
+        // Func and env are both Send because they're raw pointers to immutable data
+        let func_usize = func as usize;
+        let env_usize = env as usize;
+        let handles: Vec<_> = elements.into_iter().map(|val| {
+            std::thread::spawn(move || {
+                let f = func_usize as *const u8;
+                let e = env_usize as *mut u8;
+                call_closure(f, e, val)
+            })
+        }).collect();
+        let result = ore_list_new();
+        for h in handles {
+            ore_list_push(result, h.join().unwrap());
+        }
+        result
+    }
+}
+
+/// Parallel each: applies func to each element in parallel (no return values)
+#[no_mangle]
+pub extern "C" fn ore_list_par_each(list: *mut OreList, func: *const u8, env: *mut u8) {
+    unsafe {
+        let src = &*list;
+        let len = src.len as usize;
+        let elements: Vec<i64> = (0..len).map(|i| *src.data.add(i)).collect();
+        let func_usize = func as usize;
+        let env_usize = env as usize;
+        let handles: Vec<_> = elements.into_iter().map(|val| {
+            std::thread::spawn(move || {
+                let f = func_usize as *const u8;
+                let e = env_usize as *mut u8;
+                call_closure(f, e, val);
+            })
+        }).collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+    }
+}
+
 /// Set a list element by index
 #[no_mangle]
 pub extern "C" fn ore_list_set(list: *mut OreList, index: i64, value: i64) {

@@ -288,6 +288,8 @@ fn run_repl() {
             map_fn!("ore_list_reverse", ore_runtime::ore_list_reverse);
             map_fn!("ore_list_contains", ore_runtime::ore_list_contains);
             map_fn!("ore_list_concat", ore_runtime::ore_list_concat);
+            map_fn!("ore_list_par_map", ore_runtime::ore_list_par_map);
+            map_fn!("ore_list_par_each", ore_runtime::ore_list_par_each);
             map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
             map_fn!("ore_list_find", ore_runtime::ore_list_find);
             map_fn!("ore_list_join", ore_runtime::ore_list_join);
@@ -377,6 +379,8 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
     map_fn!("ore_list_reverse", ore_runtime::ore_list_reverse);
     map_fn!("ore_list_contains", ore_runtime::ore_list_contains);
     map_fn!("ore_list_concat", ore_runtime::ore_list_concat);
+            map_fn!("ore_list_par_map", ore_runtime::ore_list_par_map);
+            map_fn!("ore_list_par_each", ore_runtime::ore_list_par_each);
     map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
     map_fn!("ore_list_find", ore_runtime::ore_list_find);
     map_fn!("ore_list_join", ore_runtime::ore_list_join);
