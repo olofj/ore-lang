@@ -1163,6 +1163,48 @@ pub extern "C" fn ore_list_skip(list: *mut OreList, n: i64) -> *mut OreList {
     }
 }
 
+/// Sliding windows of size n. Returns list of lists.
+#[no_mangle]
+pub extern "C" fn ore_list_window(list: *mut OreList, n: i64) -> *mut OreList {
+    let result = ore_list_new();
+    if n <= 0 { return result; }
+    let n = n as usize;
+    unsafe {
+        let src = &*list;
+        if (src.len as usize) < n { return result; }
+        for i in 0..=(src.len as usize - n) {
+            let window = ore_list_new();
+            for j in 0..n {
+                ore_list_push(window, *src.data.add(i + j));
+            }
+            ore_list_push(result, window as i64);
+        }
+    }
+    result
+}
+
+/// Split list into chunks of size n. Returns list of lists.
+#[no_mangle]
+pub extern "C" fn ore_list_chunks(list: *mut OreList, n: i64) -> *mut OreList {
+    let result = ore_list_new();
+    if n <= 0 { return result; }
+    let n = n as usize;
+    unsafe {
+        let src = &*list;
+        let mut i = 0;
+        while i < src.len as usize {
+            let chunk = ore_list_new();
+            let end = (i + n).min(src.len as usize);
+            for j in i..end {
+                ore_list_push(chunk, *src.data.add(j));
+            }
+            ore_list_push(result, chunk as i64);
+            i += n;
+        }
+    }
+    result
+}
+
 /// Sum all i64 elements in a list.
 #[no_mangle]
 pub extern "C" fn ore_list_sum(list: *mut OreList) -> i64 {

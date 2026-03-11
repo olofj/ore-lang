@@ -995,6 +995,16 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn lists_window_chunks() {
+    let out = run_ore("lists/window_chunks.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "6", "9", "12",   // window(3) sums
+        "2", "2", "1",    // chunks(2) lengths
+    ]);
+}
+
+#[test]
 fn showcase9() {
     let out = run_ore("showcase9.ore");
     assert!(out.contains("Alice"));

@@ -744,6 +744,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_index_of", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_unique", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_flatten", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_window", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_list_chunks", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_str_reverse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_reverse_new", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
@@ -2981,6 +2983,28 @@ impl<'ctx> CodeGen<'ctx> {
                 let rt = self.module.get_function("ore_list_flatten").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lflat"))?;
                 let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
+            "window" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "window takes 1 argument (size)".into() });
+                }
+                let n = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_list_window").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), n.into()], "lwin"))?;
+                let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::List);
+                Ok((val, ValKind::List))
+            }
+            "chunks" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "chunks takes 1 argument (size)".into() });
+                }
+                let n = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_list_chunks").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), n.into()], "lchk"))?;
+                let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::List);
                 Ok((val, ValKind::List))
             }
             "first" => {

@@ -1,0 +1,8 @@
+fn main
+  nums := [1, 2, 3, 4, 5]
+
+  -- sliding windows of size 3
+  nums.window(3) | each(w => print w.sum())
+
+  -- chunks of size 2
+  nums.chunks(2) | each(c => print c.len())
