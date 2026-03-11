@@ -2574,7 +2574,16 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Handle list built-in methods
         if obj_kind == ValKind::List {
-            return self.compile_list_method(obj_val, method, args, func);
+            let result = self.compile_list_method(obj_val, method, args, func)?;
+            // After push, update the variable's element kind tracking
+            if method == "push" {
+                if let Expr::Ident(var_name) = object {
+                    if let Some(ek) = self.last_list_elem_kind.clone() {
+                        self.list_element_kinds.insert(var_name.clone(), ek);
+                    }
+                }
+            }
+            return Ok(result);
         }
 
         // Handle string built-in methods
@@ -2892,9 +2901,11 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "push takes exactly 1 argument".into() });
                 }
-                let arg = self.compile_expr(&args[0], func)?;
+                let (arg, arg_kind) = self.compile_expr_with_kind(&args[0], func)?;
                 let list_push = self.module.get_function("ore_list_push").unwrap();
                 bld!(self.builder.build_call(list_push, &[list_val.into(), arg.into()], ""))?;
+                // Track element kind so join/pop/iteration know the type
+                self.last_list_elem_kind = Some(arg_kind);
                 Ok((list_val, ValKind::List))
             }
             "pop" => {
