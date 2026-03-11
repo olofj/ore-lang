@@ -1513,3 +1513,23 @@ fn showcase26() {
     assert!(out.contains("8: positive even"));
     assert!(out.contains("FizzBuzz: 1, 2, Fizz, 4, Buzz"));
 }
+
+#[test]
+fn showcase27() {
+    let out = run_ore("showcase27.ore");
+    assert!(out.contains("1\t0\t0"));
+    assert!(out.contains("0\t1\t0"));
+    assert!(out.contains("1\t2\t3"));
+    assert!(out.contains("4\t5\t6"));
+    assert!(out.contains("Trace: 15"));
+}
+
+#[test]
+fn showcase28() {
+    let out = run_ore("showcase28.ore");
+    assert!(out.contains("3 + 5 = 8"));
+    assert!(out.contains("10 - 3 = 7"));
+    assert!(out.contains("4 * 7 = 28"));
+    assert!(out.contains("2 + 3 * 4 = 20"));
+    assert!(out.contains("Multiplication table:"));
+}

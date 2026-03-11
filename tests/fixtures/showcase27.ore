@@ -1,0 +1,65 @@
+-- Showcase 27: Matrix operations
+-- Demonstrates: nested lists, index arithmetic, builder patterns
+
+fn matrix_new rows:Int cols:Int -> List
+  mut m := []
+  for i in 0..rows * cols
+    m = m + [0]
+  m
+
+fn matrix_get m:List cols:Int row:Int col:Int -> Int
+  m.get(row * cols + col)
+
+fn matrix_set m:List cols:Int row:Int col:Int val:Int -> List
+  mut result := m
+  result.set(row * cols + col, val)
+  result
+
+fn matrix_mul a:List b:List n:Int -> List
+  mut c := matrix_new(n, n)
+  for i in 0..n
+    for j in 0..n
+      mut sum := 0
+      for k in 0..n
+        sum += matrix_get(a, n, i, k) * matrix_get(b, n, k, j)
+      c.set(i * n + j, sum)
+  c
+
+fn matrix_print m:List n:Int
+  for i in 0..n
+    mut row := ""
+    for j in 0..n
+      if j > 0
+        row = row + "\t"
+      row = row + str(matrix_get(m, n, i, j))
+    print row
+
+fn main
+  -- Create identity matrix
+  n := 3
+  mut identity := matrix_new(n, n)
+  for i in 0..n
+    identity.set(i * n + i, 1)
+  print "Identity:"
+  matrix_print(identity, n)
+
+  -- Create test matrix
+  mut a := matrix_new(n, n)
+  mut val := 1
+  for i in 0..n
+    for j in 0..n
+      a.set(i * n + j, val)
+      val += 1
+  print "Matrix A:"
+  matrix_print(a, n)
+
+  -- Multiply A * Identity = A
+  c := matrix_mul(a, identity, n)
+  print "A * I:"
+  matrix_print(c, n)
+
+  -- Trace (sum of diagonal)
+  mut trace := 0
+  for i in 0..n
+    trace += matrix_get(a, n, i, i)
+  print "Trace: {trace}"
