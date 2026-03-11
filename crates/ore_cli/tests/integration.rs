@@ -1799,6 +1799,20 @@ fn showcase55() {
 }
 
 #[test]
+fn showcase56() {
+    let out = run_ore("showcase56.ore");
+    assert!(out.contains("a, b, x, c, d, e"));
+    assert!(out.contains("Removed: x"));
+    assert!(out.contains("Stack top: 30"));
+    assert!(out.contains("Squares of first 5 multiples of 7: 49, 196, 441, 784, 1225"));
+    assert!(out.contains("Min: 1"));
+    assert!(out.contains("Average: 5.0"));
+    assert!(out.contains("First > 6: 8"));
+    assert!(out.contains("Last: 50"));
+    assert!(out.contains("--------------------"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

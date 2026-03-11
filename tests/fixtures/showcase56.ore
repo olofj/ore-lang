@@ -1,0 +1,52 @@
+-- Showcase 56: List mutation methods and comprehensive operations
+
+fn main
+  -- insert and remove_at
+  mut items := ["a", "b", "c", "d", "e"]
+  items.insert(2, "x")
+  print items.join(", ")
+
+  removed := items.remove_at(2)
+  print "Removed: {removed}"
+  print items.join(", ")
+
+  -- Build a stack using push/pop
+  mut stack := []
+  stack.push(10)
+  stack.push(20)
+  stack.push(30)
+  print "Stack top: {stack.pop()}"
+  print "Stack top: {stack.pop()}"
+  print "Stack size: {stack.len()}"
+
+  -- List operations chain
+  result := range(1, 101)
+    .filter(n => n % 7 == 0)
+    .take(5)
+    .map(n => n * n)
+    .join(", ")
+  print "Squares of first 5 multiples of 7: {result}"
+
+  -- Comprehensive list methods
+  data := [5, 3, 8, 1, 9, 2, 7, 4, 6]
+  print "Min: {data.min()}"
+  print "Max: {data.max()}"
+  print "Sum: {data.sum()}"
+  print "Average: {data.average()}"
+  print "Sorted: {data.sort().join(", ")}"
+
+  -- find and find_index
+  found := data.find(n => n > 6)
+  print "First > 6: {found}"
+  idx := data.find_index(n => n > 6)
+  print "Index of first > 6: {idx}"
+
+  -- Negative indexing
+  xs := [10, 20, 30, 40, 50]
+  print "Last: {xs[-1]}"
+  print "Second to last: {xs[-2]}"
+
+  -- repeat builtin
+  dashes := repeat("-", 20).join("")
+  print dashes
+  print "Done!"
