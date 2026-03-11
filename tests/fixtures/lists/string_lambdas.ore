@@ -1,0 +1,21 @@
+-- Test that string lists pass correct element kinds through all lambda-taking methods
+
+fn main
+  names := ["alice", "bob", "charlie", "dave"]
+
+  -- each with string element
+  names.each(n => print n)
+
+  -- filter with string predicate (length-based)
+  long := names.filter(n => n.len() > 3)
+  long.each(n => print n)
+
+  -- map on string list
+  trimmed := names.map(n => n.trim())
+  trimmed.each(n => print n)
+
+  -- count with string predicate
+  c := names.count(n => n.len() > 3)
+  print c
+
+  print "string_lambdas ok"

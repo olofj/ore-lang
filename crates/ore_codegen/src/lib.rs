@@ -2326,9 +2326,11 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: format!("{} takes exactly 1 argument", method) });
                 }
+                let elem_kind = self.last_list_elem_kind.clone();
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
-                        self.compile_lambda(params, body, func)?
+                        let kinds: Vec<ValKind> = vec![elem_kind.unwrap_or(ValKind::Int)];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
@@ -2357,9 +2359,11 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "each takes exactly 1 argument".into() });
                 }
+                let elem_kind = self.last_list_elem_kind.clone();
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
-                        self.compile_lambda(params, body, func)?
+                        let kinds: Vec<ValKind> = vec![elem_kind.unwrap_or(ValKind::Int)];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
@@ -2430,8 +2434,13 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((list_val, ValKind::List));
                 }
                 // sort(comparator) - sort_by
+                let elem_kind = self.last_list_elem_kind.clone();
                 let lambda_fn = match &args[0] {
-                    Expr::Lambda { params, body } => self.compile_lambda(params, body, func)?,
+                    Expr::Lambda { params, body } => {
+                        let ek = elem_kind.unwrap_or(ValKind::Int);
+                        let kinds: Vec<ValKind> = vec![ek.clone(), ek];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                    }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
                         f
@@ -2476,9 +2485,12 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "reduce takes 2 arguments (init, fn)".into() });
                 }
                 let init_val = self.compile_expr(&args[0], func)?;
+                let elem_kind = self.last_list_elem_kind.clone();
                 let lambda_fn = match &args[1] {
                     Expr::Lambda { params, body } => {
-                        self.compile_lambda(params, body, func)?
+                        // reduce lambda gets (acc, elem) - acc is same type as init, elem is list element
+                        let kinds: Vec<ValKind> = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
@@ -2505,9 +2517,11 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "find takes 1 argument".into() });
                 }
+                let elem_kind = self.last_list_elem_kind.clone();
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
-                        self.compile_lambda(params, body, func)?
+                        let kinds: Vec<ValKind> = vec![elem_kind.unwrap_or(ValKind::Int)];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
@@ -2569,9 +2583,11 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: format!("{} takes 1 argument (predicate)", method) });
                 }
+                let elem_kind = self.last_list_elem_kind.clone();
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
-                        self.compile_lambda(params, body, func)?
+                        let kinds: Vec<ValKind> = vec![elem_kind.unwrap_or(ValKind::Int)];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
@@ -2672,8 +2688,12 @@ impl<'ctx> CodeGen<'ctx> {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "count takes 1 argument (predicate)".into() });
                 }
+                let elem_kind = self.last_list_elem_kind.clone();
                 let lambda_fn = match &args[0] {
-                    Expr::Lambda { params, body } => self.compile_lambda(params, body, func)?,
+                    Expr::Lambda { params, body } => {
+                        let kinds: Vec<ValKind> = vec![elem_kind.unwrap_or(ValKind::Int)];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                    }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
                         f
@@ -5313,6 +5333,16 @@ impl<'ctx> CodeGen<'ctx> {
         body: &Expr,
         _parent_fn: FunctionValue<'ctx>,
     ) -> Result<FunctionValue<'ctx>, CodeGenError> {
+        self.compile_lambda_with_kinds(params, body, _parent_fn, None)
+    }
+
+    fn compile_lambda_with_kinds(
+        &mut self,
+        params: &[String],
+        body: &Expr,
+        _parent_fn: FunctionValue<'ctx>,
+        param_kinds: Option<&[ValKind]>,
+    ) -> Result<FunctionValue<'ctx>, CodeGenError> {
         let name = format!("__lambda_{}", self.lambda_counter);
         self.lambda_counter += 1;
 
@@ -5394,7 +5424,8 @@ impl<'ctx> CodeGen<'ctx> {
             let ty = val.get_type();
             let alloca = bld!(self.builder.build_alloca(ty, param_name))?;
             bld!(self.builder.build_store(alloca, val))?;
-            self.variables.insert(param_name.clone(), (alloca, ty, ValKind::Int, false));
+            let kind = param_kinds.and_then(|k| k.get(i).cloned()).unwrap_or(ValKind::Int);
+            self.variables.insert(param_name.clone(), (alloca, ty, kind, false));
         }
 
         let (result, kind) = self.compile_expr_with_kind(body, lambda_fn)?;

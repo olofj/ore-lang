@@ -730,6 +730,19 @@ fn lists_enumerate() {
 }
 
 #[test]
+fn lists_string_lambdas() {
+    let out = run_ore("lists/string_lambdas.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "alice", "bob", "charlie", "dave",    // each
+        "alice", "charlie", "dave",            // filter (len > 3)
+        "alice", "bob", "charlie", "dave",     // map (trim)
+        "3",                                   // count (len > 3)
+        "string_lambdas ok",
+    ]);
+}
+
+#[test]
 fn maps_merge() {
     let out = run_ore("maps/merge.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
