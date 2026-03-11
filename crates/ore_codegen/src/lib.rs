@@ -648,6 +648,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_chars", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_repeat", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_str_index_of", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_list_slice", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_reduce(ptr, i64, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_reduce", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_find(ptr, fn_ptr, env_ptr, default) -> i64
@@ -1749,6 +1751,11 @@ impl<'ctx> CodeGen<'ctx> {
             return self.compile_map_method(obj_val, method, args, func);
         }
 
+        // Handle Option methods
+        if obj_kind == ValKind::Option {
+            return self.compile_option_method(obj_val, method, args, func);
+        }
+
         // Handle to_str() on primitive types
         if method == "to_str" {
             let str_val = self.value_to_str(obj_val, obj_kind)?;
@@ -2181,6 +2188,17 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
             }
+            "slice" => {
+                if args.len() != 2 {
+                    return Err(CodeGenError { line: None, msg: "slice takes 2 arguments (start, end)".into() });
+                }
+                let start = self.compile_expr(&args[0], func)?;
+                let end = self.compile_expr(&args[1], func)?;
+                let rt = self.module.get_function("ore_list_slice").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), start.into(), end.into()], "lslice"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::List))
+            }
             _ => Err(CodeGenError { line: None, msg: format!("unknown list method '{}'", method) }),
         }
     }
@@ -2323,7 +2341,85 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
+            "slice" => {
+                if args.len() != 2 {
+                    return Err(CodeGenError { line: None, msg: "slice takes 2 arguments (start, end)".into() });
+                }
+                let start = self.compile_expr(&args[0], func)?;
+                let end = self.compile_expr(&args[1], func)?;
+                let rt = self.module.get_function("ore_str_slice").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), start.into(), end.into()], "sslice"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Str))
+            }
             _ => Err(CodeGenError { line: None, msg: format!("unknown string method '{}'", method) }),
+        }
+    }
+
+    fn compile_option_method(
+        &mut self,
+        opt_val: BasicValueEnum<'ctx>,
+        method: &str,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let opt_ty = self.option_type();
+        let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_m"))?;
+        bld!(self.builder.build_store(alloca, opt_val))?;
+
+        let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
+        let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+        let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
+
+        match method {
+            "unwrap_or" => {
+                // Returns inner value if Some, else the provided default
+                if args.is_empty() {
+                    return Err(CodeGenError { line: None, msg: "unwrap_or requires a default argument".into() });
+                }
+                let (default_val, default_kind) = self.compile_expr_with_kind(&args[0], func)?;
+                let is_some = bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
+                ))?;
+                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+
+                let some_bb = self.context.append_basic_block(func, "unwrap_some");
+                let none_bb = self.context.append_basic_block(func, "unwrap_none");
+                let merge_bb = self.context.append_basic_block(func, "unwrap_merge");
+
+                bld!(self.builder.build_conditional_branch(is_some, some_bb, none_bb))?;
+
+                self.builder.position_at_end(some_bb);
+                let some_result = self.coerce_from_i64(inner, &default_kind)?;
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+                self.builder.position_at_end(none_bb);
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+                self.builder.position_at_end(merge_bb);
+                let phi = bld!(self.builder.build_phi(some_result.get_type(), "unwrap_val"))?;
+                phi.add_incoming(&[(&some_result, some_bb), (&default_val, none_bb)]);
+
+                Ok((phi.as_basic_value(), default_kind))
+            }
+            "unwrap" => {
+                // Just return inner value (unsafe - crashes on None in real use, but useful)
+                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "unwrapped"))?;
+                Ok((inner, ValKind::Int))
+            }
+            "is_some" => {
+                let is_some = bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
+                ))?;
+                Ok((is_some.into(), ValKind::Bool))
+            }
+            "is_none" => {
+                let is_none = bld!(self.builder.build_int_compare(
+                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_none"
+                ))?;
+                Ok((is_none.into(), ValKind::Bool))
+            }
+            _ => Err(CodeGenError { line: None, msg: format!("unknown method '{}' on Option", method) }),
         }
     }
 

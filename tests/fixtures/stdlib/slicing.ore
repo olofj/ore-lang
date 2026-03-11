@@ -1,0 +1,10 @@
+fn main
+  -- String slicing
+  s := "hello world"
+  print s.slice(0, 5)
+  print s.slice(6, 11)
+
+  -- List slicing
+  nums := [10, 20, 30, 40, 50]
+  print nums.slice(1, 4)
+  print nums.slice(0, 2)

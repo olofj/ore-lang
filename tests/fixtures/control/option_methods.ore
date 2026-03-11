@@ -1,0 +1,19 @@
+fn find_positive x:Int -> Int?
+  if x > 0
+    Some(x)
+  else
+    None
+
+fn main
+  a := find_positive(42)
+  b := find_positive(-5)
+
+  -- unwrap_or
+  print a.unwrap_or(0)
+  print b.unwrap_or(0)
+
+  -- is_some / is_none
+  print a.is_some()
+  print a.is_none()
+  print b.is_some()
+  print b.is_none()

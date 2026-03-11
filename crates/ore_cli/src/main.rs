@@ -320,6 +320,7 @@ fn map_runtime_functions(
     map_fn!("ore_str_chars", ore_runtime::ore_str_chars);
     map_fn!("ore_str_repeat", ore_runtime::ore_str_repeat);
     map_fn!("ore_str_index_of", ore_runtime::ore_str_index_of);
+    map_fn!("ore_str_slice", ore_runtime::ore_str_slice);
     // Lists
     map_fn!("ore_list_new", ore_runtime::ore_list_new);
     map_fn!("ore_list_push", ore_runtime::ore_list_push);
@@ -344,6 +345,7 @@ fn map_runtime_functions(
     map_fn!("ore_list_find", ore_runtime::ore_list_find);
     map_fn!("ore_list_join", ore_runtime::ore_list_join);
     map_fn!("ore_list_join_str", ore_runtime::ore_list_join_str);
+    map_fn!("ore_list_slice", ore_runtime::ore_list_slice);
     map_fn!("ore_list_any", ore_runtime::ore_list_any);
     map_fn!("ore_list_all", ore_runtime::ore_list_all);
     map_fn!("ore_list_zip", ore_runtime::ore_list_zip);

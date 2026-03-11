@@ -462,6 +462,20 @@ fn control_optional_chain() {
 }
 
 #[test]
+fn stdlib_slicing() {
+    let out = run_ore("stdlib/slicing.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["hello", "world", "[20, 30, 40]", "[10, 20]"]);
+}
+
+#[test]
+fn control_option_methods() {
+    let out = run_ore("control/option_methods.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["42", "0", "true", "false", "false", "true"]);
+}
+
+#[test]
 fn pipelines_comprehensive() {
     let out = run_ore("pipelines/comprehensive.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

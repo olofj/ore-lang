@@ -381,6 +381,35 @@ pub extern "C" fn ore_str_index_of(s: *mut OreStr, needle: *mut OreStr) -> i64 {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn ore_str_slice(s: *mut OreStr, start: i64, end: i64) -> *mut OreStr {
+    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    let str_val = unsafe { (*s).as_str() };
+    let len = str_val.len() as i64;
+    let s_idx = if start < 0 { (len + start).max(0) as usize } else { (start as usize).min(len as usize) };
+    let e_idx = if end < 0 { (len + end).max(0) as usize } else { (end as usize).min(len as usize) };
+    if s_idx >= e_idx {
+        return ore_str_new(std::ptr::null(), 0);
+    }
+    let slice = &str_val[s_idx..e_idx];
+    ore_str_new(slice.as_ptr(), slice.len() as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_slice(list: *mut OreList, start: i64, end: i64) -> *mut OreList {
+    let result = ore_list_new();
+    if list.is_null() { return result; }
+    let l = unsafe { &*list };
+    let len = l.len;
+    let s_idx = if start < 0 { (len + start).max(0) } else { start.min(len) };
+    let e_idx = if end < 0 { (len + end).max(0) } else { end.min(len) };
+    for i in s_idx..e_idx {
+        let val = unsafe { *l.data.offset(i as isize) };
+        ore_list_push(result, val);
+    }
+    result
+}
+
 // ── I/O ──
 
 #[no_mangle]
