@@ -1208,6 +1208,8 @@ fn lists_string_ops() {
         "2", "-1",                // index_of
         "apple, banana, cherry",  // sort
         "2",                      // frequencies
+        "apple",                  // min
+        "cherry",                 // max
         "cat, dog",               // unique_by
     ]);
 }

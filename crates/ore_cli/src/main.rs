@@ -534,6 +534,8 @@ fn map_runtime_functions(
     map_fn!("ore_list_product_float", ore_runtime::ore_list_product_float);
     map_fn!("ore_list_min_float", ore_runtime::ore_list_min_float);
     map_fn!("ore_list_max_float", ore_runtime::ore_list_max_float);
+    map_fn!("ore_list_min_str", ore_runtime::ore_list_min_str);
+    map_fn!("ore_list_max_str", ore_runtime::ore_list_max_str);
     // Math functions
     map_fn!("ore_math_sqrt", ore_runtime::ore_math_sqrt);
     map_fn!("ore_math_sin", ore_runtime::ore_math_sin);

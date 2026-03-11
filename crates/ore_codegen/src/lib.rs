@@ -799,6 +799,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_tap", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_map_with_index", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_each_with_index", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_min_str", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_max_str", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_contains_str", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_index_of_str", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_unique_by", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
@@ -3481,30 +3483,48 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "min" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                if matches!(elem_kind, ValKind::Float) {
-                    let rt = self.module.get_function("ore_list_min_float").unwrap();
-                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lminf"))?;
-                    let val = self.call_result_to_value(result)?;
-                    Ok((val, ValKind::Float))
-                } else {
-                    let rt = self.module.get_function("ore_list_min").unwrap();
-                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmin"))?;
-                    let val = self.call_result_to_value(result)?;
-                    Ok((val, ValKind::Int))
+                match elem_kind {
+                    ValKind::Float => {
+                        let rt = self.module.get_function("ore_list_min_float").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lminf"))?;
+                        let val = self.call_result_to_value(result)?;
+                        Ok((val, ValKind::Float))
+                    }
+                    ValKind::Str => {
+                        let rt = self.module.get_function("ore_list_min_str").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmins"))?;
+                        let val = self.call_result_to_value(result)?;
+                        Ok((val, ValKind::Str))
+                    }
+                    _ => {
+                        let rt = self.module.get_function("ore_list_min").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmin"))?;
+                        let val = self.call_result_to_value(result)?;
+                        Ok((val, ValKind::Int))
+                    }
                 }
             }
             "max" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                if matches!(elem_kind, ValKind::Float) {
-                    let rt = self.module.get_function("ore_list_max_float").unwrap();
-                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmaxf"))?;
-                    let val = self.call_result_to_value(result)?;
-                    Ok((val, ValKind::Float))
-                } else {
-                    let rt = self.module.get_function("ore_list_max").unwrap();
-                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmax"))?;
-                    let val = self.call_result_to_value(result)?;
-                    Ok((val, ValKind::Int))
+                match elem_kind {
+                    ValKind::Float => {
+                        let rt = self.module.get_function("ore_list_max_float").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmaxf"))?;
+                        let val = self.call_result_to_value(result)?;
+                        Ok((val, ValKind::Float))
+                    }
+                    ValKind::Str => {
+                        let rt = self.module.get_function("ore_list_max_str").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmaxs"))?;
+                        let val = self.call_result_to_value(result)?;
+                        Ok((val, ValKind::Str))
+                    }
+                    _ => {
+                        let rt = self.module.get_function("ore_list_max").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmax"))?;
+                        let val = self.call_result_to_value(result)?;
+                        Ok((val, ValKind::Int))
+                    }
                 }
             }
             "count" => {

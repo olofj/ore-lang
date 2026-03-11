@@ -1258,6 +1258,46 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+/// min for string lists (lexicographic comparison)
+#[no_mangle]
+pub extern "C" fn ore_list_min_str(list: *mut OreList) -> *mut OreStr {
+    unsafe {
+        let src = &*list;
+        if src.len == 0 { return ore_str_new(std::ptr::null(), 0); }
+        let mut min_val = *src.data;
+        let mut min_str = (&*(min_val as *mut OreStr)).as_str();
+        for i in 1..src.len as usize {
+            let val = *src.data.add(i);
+            let s = (&*(val as *mut OreStr)).as_str();
+            if s < min_str {
+                min_val = val;
+                min_str = s;
+            }
+        }
+        min_val as *mut OreStr
+    }
+}
+
+/// max for string lists (lexicographic comparison)
+#[no_mangle]
+pub extern "C" fn ore_list_max_str(list: *mut OreList) -> *mut OreStr {
+    unsafe {
+        let src = &*list;
+        if src.len == 0 { return ore_str_new(std::ptr::null(), 0); }
+        let mut max_val = *src.data;
+        let mut max_str = (&*(max_val as *mut OreStr)).as_str();
+        for i in 1..src.len as usize {
+            let val = *src.data.add(i);
+            let s = (&*(val as *mut OreStr)).as_str();
+            if s > max_str {
+                max_val = val;
+                max_str = s;
+            }
+        }
+        max_val as *mut OreStr
+    }
+}
+
 /// unique_by: deduplicate using a key function that returns a string key
 #[no_mangle]
 pub extern "C" fn ore_list_unique_by(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {

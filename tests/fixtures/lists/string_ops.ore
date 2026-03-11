@@ -21,6 +21,10 @@ fn main
   freq := fruits.frequencies()
   print freq.get("apple")
 
+  -- String min/max
+  print fruits.min()
+  print fruits.max()
+
   -- Unique by key
   words := ["cat", "car", "dog", "cup"]
   by_first := words.unique_by(w => w.char_at(0))
