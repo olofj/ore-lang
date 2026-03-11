@@ -2843,6 +2843,19 @@ fn showcase136_functional_patterns() {
 }
 
 #[test]
+fn showcase137_match_guards() {
+    let out = run_ore("showcase137.ore");
+    assert!(out.contains("-5: negative"));
+    assert!(out.contains("0: zero"));
+    assert!(out.contains("3: small"));
+    assert!(out.contains("42: medium"));
+    assert!(out.contains("100: large"));
+    assert!(out.contains("FizzBuzz"));
+    assert!(out.contains("hi: tiny"));
+    assert!(out.contains("greetings: long"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

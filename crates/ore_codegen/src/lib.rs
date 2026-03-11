@@ -5278,10 +5278,27 @@ impl<'ctx> CodeGen<'ctx> {
                 self.context.append_basic_block(func, &format!("lmatch_next_{}", i))
             };
 
+            // Check if pattern is a variable binding (identifier that's not a known variant)
+            let is_var_binding = matches!(&arm.pattern, Pattern::Variant { name, bindings }
+                if bindings.is_empty() && !self.variant_to_enum.contains_key(name));
+
             match &arm.pattern {
-                Pattern::Wildcard => {
+                _ if is_var_binding || matches!(&arm.pattern, Pattern::Wildcard) => {
                     has_wildcard = true;
-                    // Wildcard with guard: check guard, fall through if false
+
+                    // Bind variable if it's a named pattern (not wildcard)
+                    let saved_vars = if let Pattern::Variant { name, .. } = &arm.pattern {
+                        let saved = self.variables.clone();
+                        let ty = self.kind_to_llvm_type(subject_kind);
+                        let alloca = bld!(self.builder.build_alloca(ty, name))?;
+                        bld!(self.builder.build_store(alloca, subject_val))?;
+                        self.variables.insert(name.clone(), (alloca, ty, subject_kind.clone(), false));
+                        Some(saved)
+                    } else {
+                        None
+                    };
+
+                    // Wildcard/variable with guard: check guard, fall through if false
                     if let Some(guard) = &arm.guard {
                         let (guard_val, _) = self.compile_expr_with_kind(guard, func)?;
                         let guard_bool = guard_val.into_int_value();
@@ -5294,6 +5311,12 @@ impl<'ctx> CodeGen<'ctx> {
                     let store_val = self.coerce_to_i64(body_val, &result_kind)?;
                     bld!(self.builder.build_store(result_alloca, store_val))?;
                     bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+                    // Restore variables
+                    if let Some(saved) = saved_vars {
+                        self.variables = saved;
+                    }
+
                     if else_bb != merge_bb {
                         self.builder.position_at_end(else_bb);
                     }

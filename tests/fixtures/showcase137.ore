@@ -1,0 +1,36 @@
+-- Showcase 137: Match with variable guards
+
+fn classify n:Int -> Str
+  match n
+    0 -> "zero"
+    n if n < 0 -> "negative"
+    n if n < 10 -> "small"
+    n if n < 100 -> "medium"
+    _ -> "large"
+
+fn fizzbuzz n:Int -> Str
+  match n % 15
+    0 -> "FizzBuzz"
+    n if n % 3 == 0 -> "Fizz"
+    n if n % 5 == 0 -> "Buzz"
+    _ -> "{n}"
+
+fn main
+  -- Classification with guards
+  for x in [-5, 0, 3, 42, 100]
+    print "{x}: {classify(x)}"
+
+  -- FizzBuzz with match guards
+  print ""
+  for i in range(1, 16)
+    print fizzbuzz(i)
+
+  -- Match on string length
+  print ""
+  words := ["hi", "hello", "greetings", "yo"]
+  for w in words
+    category := match w.len()
+      n if n <= 2 -> "tiny"
+      n if n <= 5 -> "short"
+      _ -> "long"
+    print "{w}: {category}"
