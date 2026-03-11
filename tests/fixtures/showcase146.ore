@@ -1,0 +1,56 @@
+-- Showcase 146: Data pipeline processing
+
+fn main
+  -- Sales data processing
+  sales := [120, 85, 200, 310, 55, 180, 95, 420, 75, 260]
+
+  total := sales | sum()
+  avg := total / sales.len()
+  above_avg := sales | filter(s => s > avg) | count()
+  top3 := sales | sort() | reverse() | take(3) | join(", ")
+
+  print "Sales Analysis:"
+  print "  total: {total}"
+  print "  average: {avg}"
+  print "  above average: {above_avg}"
+  print "  top 3: {top3}"
+
+  -- Text analysis
+  print ""
+  text := "to be or not to be that is the question"
+  words := text.split(" ")
+  unique_words := words | unique() | sort()
+  freqs := words.frequencies()
+
+  print "Text Analysis:"
+  print "  words: {words.len()}"
+  print "  unique: {unique_words.len()}"
+  -- Find most common word (manual approach since closures can't capture maps)
+  mut max_word := ""
+  mut max_count := 0
+  for w in unique_words
+    c := freqs.get(w)
+    if c > max_count
+      max_word = w
+      max_count = c
+  print "  most common: {max_word} ({max_count}x)"
+
+  -- Number sequences
+  print ""
+  evens := range(1, 21) | filter(n => n % 2 == 0) | join(", ")
+  primes_sum := [2, 3, 5, 7, 11, 13, 17, 19] | sum()
+  squares := range(1, 6) | map(n => n * n) | join(", ")
+
+  print "Sequences:"
+  print "  evens: {evens}"
+  print "  prime sum: {primes_sum}"
+  print "  squares: {squares}"
+
+  -- Nested pipeline
+  print ""
+  result := range(1, 101)
+    | filter(n => n % 3 == 0)
+    | filter(n => n % 5 == 0)
+    | map(n => n * n)
+    | sum()
+  print "sum of squares of multiples of 15 (1-100): {result}"

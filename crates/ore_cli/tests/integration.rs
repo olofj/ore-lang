@@ -2942,6 +2942,17 @@ fn showcase145_enum_match_guards() {
 }
 
 #[test]
+fn showcase146_data_pipeline() {
+    let out = run_ore("showcase146.ore");
+    assert!(out.contains("total: 1800"));
+    assert!(out.contains("top 3: 420, 310, 260"));
+    assert!(out.contains("unique: 8"));
+    assert!(out.contains("most common: be (2x)"));
+    assert!(out.contains("prime sum: 77"));
+    assert!(out.contains("sum of squares of multiples of 15 (1-100): 20475"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
