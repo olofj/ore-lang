@@ -1,0 +1,47 @@
+-- Showcase 55: Dot chaining, closures, and advanced pipelines
+
+fn main
+  -- Complex dot chain with string processing
+  result := "Hello World, This Is Ore!"
+    .to_lower()
+    .split(" ")
+    .filter(w => len(w) > 2)
+    .map(w => w.capitalize())
+    .reverse()
+    .join(" -> ")
+  print result
+
+  -- Closure captures in map chains
+  threshold := 50
+  multiplier := 3
+  data := range(1, 11)
+    .map(n => n * multiplier)
+    .filter(n => n > threshold)
+  print data.join(", ")
+
+  -- Scan to show running averages
+  values := [10, 20, 30, 40, 50]
+  running_sum := values.scan(0, (acc, v) => acc + v)
+  print "Running sums: {running_sum.join(", ")}"
+
+  -- Chained transformations
+  csv_data := "Alice:95,Bob:87,Charlie:92,Diana:78"
+  names := csv_data
+    .split(",")
+    .map(entry => entry.split(":").first())
+    .sort()
+    .join(", ")
+  print "Names: {names}"
+
+  -- Numeric operations with pipelines
+  factorial := range(1, 11)
+    .reduce((a, b) => a * b)
+  print "10! = {factorial}"
+
+  -- Using repeat with pipeline
+  bar := repeat("*", 10).join("")
+  print "[{bar}]"
+
+  -- Division safety
+  safe := 100 / 3
+  print "100/3 = {safe}"
