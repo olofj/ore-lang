@@ -373,3 +373,10 @@ fn enum_display() {
         "Blue",
     ]);
 }
+
+#[test]
+fn stdlib_split_iter() {
+    let out = run_ore("stdlib/split_iter.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["hello", "world", "ore", "[hello, world, ore]"]);
+}

@@ -1786,6 +1786,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let rt = self.module.get_function("ore_str_split").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), delim.into()], "ssplit"))?;
                 let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::List))
             }
             "to_int" => {
@@ -1944,12 +1945,15 @@ impl<'ctx> CodeGen<'ctx> {
                 let rt = self.module.get_function("ore_map_keys").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mkeys"))?;
                 let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::List))
             }
             "values" => {
                 let rt = self.module.get_function("ore_map_values").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mvalues"))?;
                 let val = self.call_result_to_value(result)?;
+                // Map values are stored as i64
+                self.last_list_elem_kind = Some(ValKind::Int);
                 Ok((val, ValKind::List))
             }
             _ => Err(CodeGenError { msg: format!("unknown map method '{}'", method) }),

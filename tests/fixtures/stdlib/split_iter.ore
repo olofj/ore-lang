@@ -1,0 +1,5 @@
+fn main
+  parts := "hello,world,ore".split(",")
+  for p in parts
+    print p
+  print parts
