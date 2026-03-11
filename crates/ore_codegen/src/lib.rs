@@ -278,6 +278,8 @@ pub struct CodeGen<'ctx> {
     generic_fns: HashMap<String, FnDef>,
     /// Default parameter expressions per function (name -> vec of Option<Expr>)
     fn_defaults: HashMap<String, Vec<Option<Expr>>>,
+    /// Tracks element kind for functions returning List[T]
+    fn_return_list_elem_kind: HashMap<String, ValKind>,
     /// Test function names in order, for `ore test`
     pub test_names: Vec<String>,
 }
@@ -333,6 +335,7 @@ impl<'ctx> CodeGen<'ctx> {
             current_line: 0,
             generic_fns: HashMap::new(),
             fn_defaults: HashMap::new(),
+            fn_return_list_elem_kind: HashMap::new(),
             test_names: Vec::new(),
         }
     }
@@ -1046,6 +1049,16 @@ impl<'ctx> CodeGen<'ctx> {
 
         let func = self.module.add_function(&fndef.name, fn_type, None);
         self.functions.insert(fndef.name.clone(), (func, ret_kind));
+
+        // Track element kind for functions returning List[T] or Map[K, V]
+        if let Some(ret_ty) = &fndef.ret_type {
+            if let TypeExpr::Generic(base, args) = ret_ty {
+                if base == "List" && !args.is_empty() {
+                    let elem_kind = self.type_expr_to_kind(&args[0]);
+                    self.fn_return_list_elem_kind.insert(fndef.name.clone(), elem_kind);
+                }
+            }
+        }
 
         // Store default parameter expressions if any exist
         let defaults: Vec<Option<Expr>> = fndef.params.iter().map(|p| p.default.clone()).collect();
@@ -2241,6 +2254,12 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
                     let val = self.call_result_to_value(result)?;
+                    // Propagate list element kind from function return type annotation
+                    if ret_kind == ValKind::List {
+                        if let Some(ek) = self.fn_return_list_elem_kind.get(&name) {
+                            self.last_list_elem_kind = Some(ek.clone());
+                        }
+                    }
                     Ok((val, ret_kind))
                 } else {
                     // Check if it's a variable holding a function pointer (closure)

@@ -45,18 +45,6 @@ fn main
   -- Word wrap
   print ""
   text := "The quick brown fox jumps over the lazy dog and then runs away into the forest"
-  words := text.split(" ")
-  mut lines := []
-  mut current := ""
-  for word in words
-    if current.len() == 0
-      current = word
-    else if current.len() + 1 + word.len() <= 30
-      current = "{current} {word}"
-    else
-      lines.push(current)
-      current = word
-  if current.len() > 0
-    lines.push(current)
-  for line in lines
+  wrapped := word_wrap(text, 30)
+  for line in wrapped
     print "| {line}"
