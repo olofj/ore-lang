@@ -3970,8 +3970,15 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             "count" => {
+                // count() with no args returns list length, count(pred) counts matching
+                if args.is_empty() {
+                    let rt = self.rt("ore_list_len")?;
+                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "count"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Int));
+                }
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "count takes 1 argument (predicate)".into() });
+                    return Err(CodeGenError { line: Some(self.current_line), msg: "count takes 0 or 1 arguments".into() });
                 }
                 let elem_kind = self.last_list_elem_kind.clone();
                 let lambda_fn = match &args[0] {
