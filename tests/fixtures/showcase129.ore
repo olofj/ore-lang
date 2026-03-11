@@ -1,0 +1,53 @@
+-- Showcase 129: All Ore types in one showcase
+
+type Direction
+  North
+  South
+  East
+  West
+
+fn direction_name d:Direction -> Str
+  match d
+    North -> "N"
+    South -> "S"
+    East -> "E"
+    West -> "W"
+
+fn main
+  -- Enum values
+  dirs := [North, South, East, West]
+  for d in dirs
+    print direction_name(d)
+
+  -- All basic types
+  print ""
+  print "Int: {42}"
+  print "Float: {3.14}"
+  print "Bool: {true}"
+  print "Str: {"hello"}"
+  print "List: {[1, 2, 3].join(", ")}"
+  print "Map: {{"a": 1, "b": 2}.keys().sort().join(", ")}"
+  print "Option: {Some(99) | else 0}"
+  print "Result: {Ok(42) | else 0}"
+
+  -- Pipeline chains
+  print ""
+  result := range(1, 21)
+    | filter(n => n % 3 == 0)
+    | map(n => n * n)
+    | join(", ")
+  print "Multiples of 3 squared: {result}"
+
+  -- String operations
+  print ""
+  msg := "Hello, World!"
+  print "upper: {msg.to_upper()}"
+  print "reversed: {msg.reverse()}"
+  print "words: {msg.split(" ").len()}"
+  print "contains 'World': {msg.contains("World")}"
+
+  -- Math
+  print ""
+  print "pi: {pi()}"
+  print "sqrt(2): {sqrt(2.0)}"
+  print "2^10: {2.pow(10)}"

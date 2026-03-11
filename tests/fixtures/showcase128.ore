@@ -1,0 +1,39 @@
+-- Showcase 128: Builder pattern with impl blocks
+
+type Config { host: Str, port: Int, debug: Bool, timeout: Int }
+
+fn default_config -> Config
+  Config(host: "localhost", port: 8080, debug: false, timeout: 30)
+
+impl Config
+  fn with_host self:Self host:Str -> Self
+    Config(host: host, port: self.port, debug: self.debug, timeout: self.timeout)
+
+  fn with_port self:Self port:Int -> Self
+    Config(host: self.host, port: port, debug: self.debug, timeout: self.timeout)
+
+  fn with_debug self:Self debug:Bool -> Self
+    Config(host: self.host, port: self.port, debug: debug, timeout: self.timeout)
+
+  fn with_timeout self:Self timeout:Int -> Self
+    Config(host: self.host, port: self.port, debug: self.debug, timeout: timeout)
+
+  fn display self:Self -> Str
+    "Config(host={self.host}, port={self.port}, debug={self.debug}, timeout={self.timeout}s)"
+
+fn main
+  -- Builder pattern
+  cfg := default_config()
+    .with_host("example.com")
+    .with_port(443)
+    .with_debug(true)
+    .with_timeout(60)
+  print cfg.display()
+
+  -- Default config
+  default := default_config()
+  print default.display()
+
+  -- Partial override
+  local := default_config().with_debug(true)
+  print local.display()

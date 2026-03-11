@@ -2734,6 +2734,38 @@ fn showcase127_result_methods() {
 }
 
 #[test]
+fn showcase128_builder_pattern() {
+    let out = run_ore("showcase128.ore");
+    assert!(out.contains("host=example.com"));
+    assert!(out.contains("port=443"));
+    assert!(out.contains("debug=true"));
+    assert!(out.contains("timeout=60s"));
+    assert!(out.contains("host=localhost"));
+}
+
+#[test]
+fn showcase129_all_types() {
+    let out = run_ore("showcase129.ore");
+    assert!(out.contains("Int: 42"));
+    assert!(out.contains("Float: 3.14"));
+    assert!(out.contains("Bool: true"));
+    assert!(out.contains("Option: 99"));
+    assert!(out.contains("Result: 42"));
+    assert!(out.contains("Multiples of 3 squared: 9, 36, 81"));
+    assert!(out.contains("2^10: 1024"));
+}
+
+#[test]
+fn showcase130_file_io_json() {
+    let out = run_ore("showcase130.ore");
+    assert!(out.contains("file written: true"));
+    assert!(out.contains("Hello from Ore!"));
+    assert!(out.contains("lines: 3"));
+    assert!(out.contains("after append: 4 lines"));
+    assert!(out.contains("parsed keys: awesome, name, version"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

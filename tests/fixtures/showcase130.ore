@@ -1,0 +1,31 @@
+-- Showcase 130: File I/O and JSON
+
+fn main
+  -- Write a file
+  file_write("/tmp/ore_test_output.txt", "Hello from Ore!\nLine 2\nLine 3")
+  print "file written: {file_exists("/tmp/ore_test_output.txt")}"
+
+  -- Read it back
+  content := file_read("/tmp/ore_test_output.txt")
+  print "content: {content}"
+
+  -- Read as lines
+  lines := file_read_lines("/tmp/ore_test_output.txt")
+  print "lines: {lines.len()}"
+  for line in lines
+    print "  > {line}"
+
+  -- Append
+  file_append("/tmp/ore_test_output.txt", "\nLine 4")
+  updated := file_read_lines("/tmp/ore_test_output.txt")
+  print "after append: {updated.len()} lines"
+
+  -- JSON stringify
+  data := {"name": "Ore", "version": "0.1", "awesome": "true"}
+  json := json_stringify(data)
+  print ""
+  print "json: {json}"
+
+  -- JSON parse and keys
+  parsed := json_parse(json)
+  print "parsed keys: {parsed.keys().sort().join(", ")}"
