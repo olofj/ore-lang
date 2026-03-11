@@ -748,6 +748,13 @@ pub extern "C" fn ore_spawn(func: extern "C" fn()) {
     THREADS.lock().unwrap().push(handle);
 }
 
+/// Spawn a function that takes a single i64 argument (used for passing channels, etc.)
+#[no_mangle]
+pub extern "C" fn ore_spawn_with_arg(func: extern "C" fn(i64), arg: i64) {
+    let handle = std::thread::spawn(move || func(arg));
+    THREADS.lock().unwrap().push(handle);
+}
+
 #[no_mangle]
 pub extern "C" fn ore_thread_join_all() {
     let mut threads = THREADS.lock().unwrap();
@@ -759,4 +766,35 @@ pub extern "C" fn ore_thread_join_all() {
 #[no_mangle]
 pub extern "C" fn ore_sleep(ms: i64) {
     std::thread::sleep(std::time::Duration::from_millis(ms as u64));
+}
+
+// ── Channels ──
+
+use std::sync::mpsc;
+
+pub struct OreChannel {
+    sender: mpsc::Sender<i64>,
+    receiver: Mutex<mpsc::Receiver<i64>>,
+}
+
+#[no_mangle]
+pub extern "C" fn ore_channel_new() -> *mut OreChannel {
+    let (tx, rx) = mpsc::channel();
+    let ch = Box::new(OreChannel {
+        sender: tx,
+        receiver: Mutex::new(rx),
+    });
+    Box::into_raw(ch)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_channel_send(ch: *mut OreChannel, val: i64) {
+    let ch = unsafe { &*ch };
+    ch.sender.send(val).unwrap();
+}
+
+#[no_mangle]
+pub extern "C" fn ore_channel_recv(ch: *mut OreChannel) -> i64 {
+    let ch = unsafe { &*ch };
+    ch.receiver.lock().unwrap().recv().unwrap()
 }

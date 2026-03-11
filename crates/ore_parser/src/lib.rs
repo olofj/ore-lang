@@ -1024,6 +1024,9 @@ impl Parser {
     }
 
     /// Try to parse lambda inside parens. Already consumed '('.
+    /// Supports two forms:
+    ///   (a, b => body)   — FatArrow inside parens
+    ///   (a, b) => body   — FatArrow after closing paren
     /// Returns None if it doesn't look like a lambda (caller should backtrack).
     fn try_parse_lambda(&mut self) -> Result<Option<Expr>, ParseError> {
         let saved = self.pos;
@@ -1057,6 +1060,21 @@ impl Parser {
                     }
                 }
                 Token::FatArrow => break,
+                Token::RParen => {
+                    // Check for (params) => body form
+                    self.advance(); // consume ')'
+                    if self.peek() == &Token::FatArrow {
+                        self.advance(); // consume '=>'
+                        let body = self.parse_expr(0)?;
+                        return Ok(Some(Expr::Lambda {
+                            params,
+                            body: Box::new(body),
+                        }));
+                    }
+                    // Not a lambda, backtrack
+                    self.pos = saved;
+                    return Ok(None);
+                }
                 _ => {
                     self.pos = saved;
                     return Ok(None);
@@ -1064,7 +1082,7 @@ impl Parser {
             }
         }
 
-        // Consume '=>'
+        // Consume '=>' (for the (params => body) form)
         self.expect(&Token::FatArrow)?;
         let body = self.parse_expr(0)?;
         self.expect(&Token::RParen)?;
