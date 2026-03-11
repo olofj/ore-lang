@@ -1,0 +1,159 @@
+-- Showcase 554: Simple Music Sequencer
+
+fn main
+  print "Simple Music Sequencer:"
+  print ""
+
+  -- Part 1: Note representation
+  print "=== Part 1: Note System ==="
+  mut note_names := ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+  num_notes := 12
+
+  -- MIDI note numbers (middle C = 60)
+  -- Frequency approximation: we store freq*100 for integer math
+  -- C4=262, D4=294, E4=330, F4=349, G4=392, A4=440, B4=494
+  mut note_freqs := [262, 277, 294, 311, 330, 349, 370, 392, 415, 440, 466, 494]
+
+  print "  Note frequencies (Hz):"
+  for i in range(0, num_notes)
+    print "    {note_names[i]}4: {note_freqs[i]} Hz"
+
+  -- Part 2: Simple melody
+  print ""
+  print "=== Part 2: Melody ==="
+  -- Twinkle Twinkle Little Star: C C G G A A G
+  mut melody_notes := [0, 0, 7, 7, 9, 9, 7]
+  mut melody_durs := [4, 4, 4, 4, 4, 4, 8]
+  melody_len := 7
+  tempo := 120
+
+  print "  Tempo: {tempo} BPM"
+  print "  Melody (Twinkle Twinkle):"
+  mut total_beats := 0
+  for i in range(0, melody_len)
+    n := melody_notes[i]
+    d := melody_durs[i]
+    total_beats = total_beats + d
+    nn := note_names[n]
+    nf := note_freqs[n]
+    print "    {nn}4 duration={d} freq={nf}Hz"
+  print "  Total beats: {total_beats}"
+
+  -- Part 3: Chord construction
+  print ""
+  print "=== Part 3: Chords ==="
+  -- Major chord: root + 4 semitones + 7 semitones
+  -- Minor chord: root + 3 semitones + 7 semitones
+
+  -- C major: C E G
+  c_root := 0
+  c_third := 4
+  c_fifth := 7
+  print "  C major: {note_names[c_root]} {note_names[c_third]} {note_names[c_fifth]}"
+  print "    Frequencies: {note_freqs[c_root]}, {note_freqs[c_third]}, {note_freqs[c_fifth]}"
+
+  -- A minor: A C E
+  a_root := 9
+  a_third := 0
+  a_fifth := 4
+  print "  A minor: {note_names[a_root]} {note_names[a_third]} {note_names[a_fifth]}"
+
+  -- G major: G B D
+  g_root := 7
+  g_third := 11
+  g_fifth := 2
+  print "  G major: {note_names[g_root]} {note_names[g_third]} {note_names[g_fifth]}"
+
+  -- Part 4: Drum pattern
+  print ""
+  print "=== Part 4: Drum Pattern ==="
+  -- 16-step pattern
+  -- K = kick, S = snare, H = hihat, . = rest
+  mut kick :=  [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
+  mut snare := [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
+  mut hihat := [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
+  steps := 16
+
+  mut kick_str := ""
+  mut snare_str := ""
+  mut hihat_str := ""
+  for i in range(0, steps)
+    if kick[i] == 1
+      kick_str = kick_str + "X"
+    else
+      kick_str = kick_str + "."
+    if snare[i] == 1
+      snare_str = snare_str + "X"
+    else
+      snare_str = snare_str + "."
+    if hihat[i] == 1
+      hihat_str = hihat_str + "X"
+    else
+      hihat_str = hihat_str + "."
+
+  print "  16-step drum pattern:"
+  print "    Kick:  {kick_str}"
+  print "    Snare: {snare_str}"
+  print "    HiHat: {hihat_str}"
+
+  mut kick_hits := 0
+  mut snare_hits := 0
+  mut hihat_hits := 0
+  for i in range(0, steps)
+    kick_hits = kick_hits + kick[i]
+    snare_hits = snare_hits + snare[i]
+    hihat_hits = hihat_hits + hihat[i]
+  print "  Hits: kick={kick_hits}, snare={snare_hits}, hihat={hihat_hits}"
+
+  -- Part 5: Scale generation
+  print ""
+  print "=== Part 5: Scales ==="
+  -- Major scale intervals: W W H W W W H (2 2 1 2 2 2 1)
+  mut major_intervals := [2, 2, 1, 2, 2, 2, 1]
+  mut scale := [0, 0, 0, 0, 0, 0, 0, 0]
+  scale[0] = 0
+  for i in range(0, 7)
+    scale[i + 1] = (scale[i] + major_intervals[i]) % 12
+
+  mut scale_str := ""
+  for i in range(0, 8)
+    if i > 0
+      scale_str = scale_str + " "
+    si := scale[i]
+    scale_str = scale_str + note_names[si]
+  print "  C major scale: {scale_str}"
+
+  -- Minor scale: W H W W H W W (2 1 2 2 1 2 2)
+  mut minor_intervals := [2, 1, 2, 2, 1, 2, 2]
+  mut minor_scale := [0, 0, 0, 0, 0, 0, 0, 0]
+  minor_scale[0] = 9
+  for i in range(0, 7)
+    minor_scale[i + 1] = (minor_scale[i] + minor_intervals[i]) % 12
+
+  mut minor_str := ""
+  for i in range(0, 8)
+    if i > 0
+      minor_str = minor_str + " "
+    msi := minor_scale[i]
+    minor_str = minor_str + note_names[msi]
+  print "  A minor scale: {minor_str}"
+
+  -- Part 6: Song structure
+  print ""
+  print "=== Part 6: Song Structure ==="
+  mut sections := ["Intro", "Verse", "Chorus", "Verse", "Chorus", "Bridge", "Chorus", "Outro"]
+  mut section_bars := [4, 8, 8, 8, 8, 4, 8, 4]
+  num_sections := 8
+  mut total_bars := 0
+  for i in range(0, num_sections)
+    total_bars = total_bars + section_bars[i]
+
+  print "  Song structure:"
+  for i in range(0, num_sections)
+    print "    {sections[i]}: {section_bars[i]} bars"
+  print "  Total bars: {total_bars}"
+  duration_secs := total_bars * 4 * 60 / tempo
+  print "  Duration at {tempo} BPM: {duration_secs} seconds"
+
+  print ""
+  print "Music sequencer: notes, melody, chords, drums, scales, song structure."

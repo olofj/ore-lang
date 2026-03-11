@@ -1,0 +1,123 @@
+-- Showcase 553: Quine and Self-Referential Programs
+
+fn main
+  print "Quine and Self-Referential Programs:"
+  print ""
+
+  -- Part 1: Simple quine concept
+  print "=== Part 1: Quine Concept ==="
+  -- A quine prints its own source code
+  -- We simulate a simple quine structure
+  data := "HELLO"
+  print "  A quine is a program that prints its own source code"
+  print "  Data part: {data}"
+  print "  Code part: uses data to reconstruct itself"
+  print "  Output equals source: self-referential"
+
+  -- Part 2: Fixed point theory
+  print ""
+  print "=== Part 2: Fixed Points ==="
+  -- f(x) = x is a fixed point
+  -- A quine is a fixed point of the eval function
+  mut values := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  mut fixed_points := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut fp_count := 0
+
+  -- f(x) = (x * x) % 10: find fixed points
+  for x in range(0, 10)
+    fx := (x * x) % 10
+    if fx == x
+      fixed_points[fp_count] = x
+      fp_count = fp_count + 1
+
+  print "  f(x) = (x*x) mod 10"
+  print "  Fixed points (f(x) = x):"
+  for i in range(0, fp_count)
+    x := fixed_points[i]
+    print "    f({x}) = {x}"
+  print "  Total fixed points: {fp_count}"
+
+  -- Part 3: Kleene recursion theorem
+  print ""
+  print "=== Part 3: Recursion Theorem ==="
+  print "  Kleene's recursion theorem guarantees:"
+  print "  For any computable f, there exists n such that"
+  print "  program n computes the same function as f(n)"
+  print "  This is why quines must exist!"
+
+  -- Demonstrate self-application
+  -- g(x) = x applied to x (simplified)
+  mut self_app := [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+  print ""
+  print "  Self-application g(x) = x * x:"
+  for i in range(0, 5)
+    print "    g({i}) = {self_app[i]}"
+
+  -- Part 4: Intine (program that prints its inverse)
+  print ""
+  print "=== Part 4: Program Transformations ==="
+  -- ROT13: a simple self-inverse cipher
+  mut alpha := ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
+  mut message := [7, 4, 11, 11, 14]
+  msg_len := 5
+
+  -- Encode with ROT13
+  mut encoded := [0, 0, 0, 0, 0]
+  for i in range(0, msg_len)
+    encoded[i] = (message[i] + 13) % 26
+
+  -- Decode (apply ROT13 again)
+  mut decoded := [0, 0, 0, 0, 0]
+  for i in range(0, msg_len)
+    decoded[i] = (encoded[i] + 13) % 26
+
+  mut orig_str := ""
+  mut enc_str := ""
+  mut dec_str := ""
+  for i in range(0, msg_len)
+    mi := message[i]
+    ei := encoded[i]
+    di := decoded[i]
+    orig_str = orig_str + alpha[mi]
+    enc_str = enc_str + alpha[ei]
+    dec_str = dec_str + alpha[di]
+
+  print "  ROT13 (self-inverse cipher):"
+  print "    Original: {orig_str}"
+  print "    Encoded:  {enc_str}"
+  print "    Decoded:  {dec_str}"
+  if orig_str == dec_str
+    print "    Self-inverse: YES (ROT13(ROT13(x)) = x)"
+
+  -- Part 5: Diagonal argument
+  print ""
+  print "=== Part 5: Diagonal Argument ==="
+  -- Cantor's diagonal: construct something not in a list
+  mut rows := [1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0]
+  -- 5x5 grid, diagonal elements at 0,6,12,18,24
+  mut diagonal := [0, 0, 0, 0, 0]
+  for i in range(0, 5)
+    diagonal[i] = rows[i * 5 + i]
+
+  -- Flip the diagonal
+  mut anti_diag := [0, 0, 0, 0, 0]
+  for i in range(0, 5)
+    if diagonal[i] == 0
+      anti_diag[i] = 1
+    else
+      anti_diag[i] = 0
+
+  print "  Diagonal:      {diagonal | join("")}"
+  print "  Anti-diagonal: {anti_diag | join("")}"
+  print "  Anti-diagonal differs from every row"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Quine: self-reproducing program"
+  print "  Fixed points found: {fp_count}"
+  print "  ROT13 verified: self-inverse"
+  print "  Diagonal argument: constructive proof"
+
+  print ""
+  print "Quines: self-reference, fixed points, recursion theorem, self-inverse, diagonal."

@@ -1,0 +1,170 @@
+-- Showcase 560: Grand Algorithm Showcase
+
+fn main
+  print "Grand Algorithm Showcase:"
+  print ""
+
+  -- Part 1: Binary Search
+  print "=== Part 1: Binary Search ==="
+  mut arr := [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]
+  target := 23
+  mut lo := 0
+  mut hi := 9
+  mut found_idx := -1
+  mut steps := 0
+
+  for iter in range(0, 20)
+    if lo <= hi and found_idx == -1
+      mid := (lo + hi) / 2
+      steps = steps + 1
+      if arr[mid] == target
+        found_idx = mid
+      else if arr[mid] < target
+        lo = mid + 1
+      else
+        hi = mid - 1
+
+  print "  Array: {arr | join(", ")}"
+  print "  Target: {target}"
+  print "  Found at index: {found_idx} in {steps} steps"
+
+  -- Part 2: Insertion Sort
+  print ""
+  print "=== Part 2: Insertion Sort ==="
+  mut data := [64, 34, 25, 12, 22, 11, 90, 45]
+  n := 8
+  print "  Before: {data | join(", ")}"
+
+  for i in range(1, n)
+    key := data[i]
+    mut j := i - 1
+    mut done := false
+    for k in range(0, i)
+      if not done and j >= 0 and data[j] > key
+        data[j + 1] = data[j]
+        j = j - 1
+      else
+        done = true
+    data[j + 1] = key
+
+  print "  After:  {data | join(", ")}"
+
+  -- Part 3: Euclidean GCD
+  print ""
+  print "=== Part 3: Euclidean GCD ==="
+  mut pairs_a := [48, 100, 252, 17, 144]
+  mut pairs_b := [18, 75, 105, 13, 89]
+  num_pairs := 5
+
+  print "  GCD calculations:"
+  for i in range(0, num_pairs)
+    mut a := pairs_a[i]
+    mut b := pairs_b[i]
+    orig_a := a
+    orig_b := b
+    for step in range(0, 30)
+      if b > 0
+        tmp := b
+        b = a % b
+        a = tmp
+    print "    gcd({orig_a}, {orig_b}) = {a}"
+
+  -- Part 4: Sieve of Eratosthenes
+  print ""
+  print "=== Part 4: Sieve of Eratosthenes ==="
+  limit := 50
+  mut is_prime := [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+  for i in range(2, 8)
+    if is_prime[i] == 1
+      mut j := i * i
+      for k in range(0, 50)
+        if j <= limit
+          is_prime[j] = 0
+          j = j + i
+
+  mut primes := []
+  for i in range(2, limit + 1)
+    if is_prime[i] == 1
+      primes | push(i)
+
+  print "  Primes up to {limit}: {primes | join(", ")}"
+  print "  Count: {primes | count()}"
+
+  -- Part 5: Fibonacci with memoization
+  print ""
+  print "=== Part 5: Fibonacci ==="
+  mut fib := [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(2, 21)
+    fib[i] = fib[i - 1] + fib[i - 2]
+
+  print "  Fibonacci sequence (first 15):"
+  mut fib_str := ""
+  for i in range(0, 15)
+    if i > 0
+      fib_str = fib_str + ", "
+    fib_str = fib_str + str(fib[i])
+  print "    {fib_str}"
+  print "  F(20) = {fib[20]}"
+
+  -- Part 6: Two Sum (hash map approach)
+  print ""
+  print "=== Part 6: Two Sum ==="
+  mut nums := [2, 7, 11, 15, 3, 6]
+  sum_target := 9
+  print "  Array: {nums | join(", ")}"
+  print "  Target sum: {sum_target}"
+
+  mut found_i := -1
+  mut found_j := -1
+  for i in range(0, 6)
+    for j in range(0, 6)
+      if i != j and found_i == -1
+        if nums[i] + nums[j] == sum_target
+          found_i = i
+          found_j = j
+
+  if found_i >= 0
+    print "  Found: nums[{found_i}] + nums[{found_j}] = {nums[found_i]} + {nums[found_j]} = {sum_target}"
+
+  -- Part 7: Run-Length Encoding
+  print ""
+  print "=== Part 7: Run-Length Encoding ==="
+  mut rle_input := ["A", "A", "A", "B", "B", "C", "C", "C", "C", "A"]
+  rle_len := 10
+  print "  Input: {rle_input | join("")}"
+
+  mut rle_chars := ["", "", "", "", "", "", "", "", "", ""]
+  mut rle_counts := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut rle_idx := 0
+  rle_chars[0] = rle_input[0]
+  rle_counts[0] = 1
+
+  for i in range(1, rle_len)
+    if rle_input[i] == rle_chars[rle_idx]
+      rle_counts[rle_idx] = rle_counts[rle_idx] + 1
+    else
+      rle_idx = rle_idx + 1
+      rle_chars[rle_idx] = rle_input[i]
+      rle_counts[rle_idx] = 1
+
+  mut rle_result := ""
+  for i in range(0, rle_idx + 1)
+    rle_result = rle_result + str(rle_counts[i]) + rle_chars[i]
+  print "  Encoded: {rle_result}"
+  print "  Compression: {rle_len} -> {(rle_idx + 1) * 2} chars"
+
+  -- Part 8: Summary
+  print ""
+  print "=== Part 8: Summary ==="
+  print "  Algorithms demonstrated: 7"
+  print "  Binary search: O(log n)"
+  print "  Insertion sort: O(n^2)"
+  print "  GCD: O(log min(a,b))"
+  print "  Sieve: O(n log log n)"
+  print "  Fibonacci: O(n)"
+  print "  Two Sum: O(n^2)"
+  print "  RLE: O(n)"
+
+  print ""
+  print "Grand showcase: binary search, sorting, GCD, primes, Fibonacci, two sum, RLE."

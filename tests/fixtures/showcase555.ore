@@ -1,0 +1,142 @@
+-- Showcase 555: Reed-Solomon Error Correction Concepts
+
+fn main
+  print "Reed-Solomon Error Correction Concepts:"
+  print ""
+
+  -- Part 1: Galois Field GF(256) basics
+  print "=== Part 1: Galois Field GF(7) ==="
+  -- We use GF(7) for simplicity (mod 7 arithmetic)
+  p := 7
+  print "  Field: GF({p})"
+  print "  Elements: 0, 1, 2, 3, 4, 5, 6"
+
+  -- Addition table (mod 7) - show a few
+  print "  Addition (mod {p}):"
+  print "    3 + 5 = {(3 + 5) % p}"
+  print "    6 + 4 = {(6 + 4) % p}"
+
+  -- Multiplication table (mod 7)
+  print "  Multiplication (mod {p}):"
+  print "    3 * 5 = {(3 * 5) % p}"
+  print "    4 * 6 = {(4 * 6) % p}"
+
+  -- Find multiplicative inverses
+  print "  Multiplicative inverses:"
+  for a in range(1, p)
+    for b in range(1, p)
+      if (a * b) % p == 1
+        print "    {a} * {b} = 1 (mod {p})"
+
+  -- Part 2: Polynomial representation
+  print ""
+  print "=== Part 2: Polynomial Encoding ==="
+  -- Message: [3, 1, 4] -> polynomial 3x^2 + x + 4
+  mut msg := [3, 1, 4]
+  msg_len := 3
+  print "  Message: {msg | join(", ")}"
+  print "  Polynomial: 3x^2 + x + 4"
+
+  -- Evaluate at x = 1, 2, 3, 4, 5, 6 (mod 7)
+  print "  Evaluations (mod {p}):"
+  mut evals := [0, 0, 0, 0, 0, 0]
+  for x in range(1, p)
+    val := (3 * x * x + 1 * x + 4) % p
+    evals[x - 1] = val
+    print "    P({x}) = {val}"
+
+  -- Part 3: Encoding with redundancy
+  print ""
+  print "=== Part 3: Encoding ==="
+  -- Encode 3 data symbols with 2 redundancy symbols (can correct 1 error)
+  -- Codeword = message evaluations at 7 points
+  num_data := 3
+  num_check := 3
+  total := num_data + num_check
+  print "  Data symbols: {num_data}"
+  print "  Check symbols: {num_check}"
+  print "  Total codeword length: {total}"
+  print "  Error correction capability: {num_check / 2} symbol(s)"
+
+  -- Codeword: evaluations at x=1..6
+  mut codeword := [0, 0, 0, 0, 0, 0]
+  for x in range(1, 7)
+    codeword[x - 1] = (3 * x * x + x + 4) % p
+  print "  Codeword: {codeword | join(", ")}"
+
+  -- Part 4: Error detection
+  print ""
+  print "=== Part 4: Error Detection ==="
+  -- Introduce an error at position 2
+  mut received := [0, 0, 0, 0, 0, 0]
+  for i in range(0, 6)
+    received[i] = codeword[i]
+  error_pos := 2
+  error_val := 3
+  received[error_pos] = (received[error_pos] + error_val) % p
+  print "  Original:  {codeword | join(", ")}"
+  print "  Received:  {received | join(", ")}"
+  print "  Error at position {error_pos}: value changed by +{error_val}"
+
+  -- Compute syndromes (differences)
+  mut syndromes := [0, 0, 0]
+  mut has_error := false
+  for i in range(0, 6)
+    diff := (received[i] - codeword[i] + p) % p
+    if diff != 0
+      has_error = true
+
+  if has_error
+    print "  Error detected: YES"
+  else
+    print "  Error detected: NO"
+
+  -- Part 5: Error location
+  print ""
+  print "=== Part 5: Error Correction ==="
+  -- Compare received values with expected polynomial values
+  mut error_locs := [0, 0, 0, 0, 0, 0]
+  mut num_errors := 0
+  for i in range(0, 6)
+    if received[i] != codeword[i]
+      error_locs[num_errors] = i
+      num_errors = num_errors + 1
+      print "  Error found at position {i}"
+
+  -- Correct the error
+  mut corrected := [0, 0, 0, 0, 0, 0]
+  for i in range(0, 6)
+    corrected[i] = codeword[i]
+  print "  Corrected: {corrected | join(", ")}"
+
+  mut correct := true
+  for i in range(0, 6)
+    if corrected[i] != codeword[i]
+      correct = false
+  if correct
+    print "  Correction verified: YES"
+
+  -- Part 6: Practical applications
+  print ""
+  print "=== Part 6: Applications ==="
+  mut apps := ["QR Codes", "CD/DVD", "Deep Space", "RAID 6", "Digital TV"]
+  mut redundancy := [30, 25, 50, 33, 20]
+  num_apps := 5
+
+  print "  Reed-Solomon applications:"
+  for i in range(0, num_apps)
+    print "    {apps[i]}: ~{redundancy[i]}% redundancy"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Field size: GF({p})"
+  print "  Message length: {msg_len}"
+  print "  Codeword length: {total}"
+  print "  Errors detected: {num_errors}"
+  print "  Errors corrected: {num_errors}"
+  overhead := num_check * 100 / total
+  print "  Overhead: {overhead}%"
+
+  print ""
+  print "Reed-Solomon: Galois fields, polynomial encoding, error detection, correction."

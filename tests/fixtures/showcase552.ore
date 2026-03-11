@@ -1,0 +1,106 @@
+-- Showcase 552: Simple Git Concepts
+
+fn main
+  print "Simple Git Concepts:"
+  print ""
+
+  -- Part 1: Commit graph
+  print "=== Part 1: Commit Graph ==="
+  mut commit_hashes := ["a1b2c3", "d4e5f6", "g7h8i9", "j0k1l2", "m3n4o5"]
+  mut commit_msgs := ["Initial commit", "Add readme", "Add feature X", "Fix bug in X", "Add tests"]
+  mut commit_parents := [-1, 0, 1, 2, 3]
+  num_commits := 5
+
+  print "  Commit history (main):"
+  for i in range(0, num_commits)
+    idx := num_commits - 1 - i
+    par := commit_parents[idx]
+    if par == -1
+      print "    {commit_hashes[idx]} {commit_msgs[idx]} (root)"
+    else
+      print "    {commit_hashes[idx]} {commit_msgs[idx]} (parent: {commit_hashes[par]})"
+
+  -- Part 2: Branching
+  print ""
+  print "=== Part 2: Branching ==="
+  mut branch_names := ["main", "feature-y", "bugfix-z"]
+  mut branch_heads := [4, 2, 3]
+  num_branches := 3
+
+  print "  Branches:"
+  for i in range(0, num_branches)
+    head := branch_heads[i]
+    print "    {branch_names[i]} -> {commit_hashes[head]} ({commit_msgs[head]})"
+
+  -- Simulate new commit on feature-y branch
+  new_hash := "p6q7r8"
+  new_msg := "Implement feature Y"
+  print ""
+  print "  New commit on feature-y:"
+  print "    {new_hash} {new_msg} (parent: {commit_hashes[2]})"
+
+  -- Part 3: Merge
+  print ""
+  print "=== Part 3: Merge ==="
+  -- Merge feature-y into main
+  -- Find common ancestor
+  -- feature-y head parent chain: commit 2 -> 1 -> 0
+  -- main head parent chain: commit 4 -> 3 -> 2 -> 1 -> 0
+  -- Common ancestor: commit 2
+  ancestor := 2
+  print "  Merging feature-y into main"
+  print "  Common ancestor: {commit_hashes[ancestor]} ({commit_msgs[ancestor]})"
+  print "  Merge commit: x9y0z1 Merge feature-y into main"
+
+  -- Part 4: Diff simulation
+  print ""
+  print "=== Part 4: Diff ==="
+  mut file_before := ["fn main():", "  print hello", "  return 0"]
+  mut file_after := ["fn main():", "  print hello", "  print world", "  return 0"]
+
+  print "  --- a/main.ore"
+  print "  +++ b/main.ore"
+  print "   fn main():"
+  print "     print hello"
+  print "  +  print world"
+  print "     return 0"
+
+  -- Count changes
+  additions := 1
+  deletions := 0
+  print "  Stats: +{additions} -{deletions}"
+
+  -- Part 5: Rebase simulation
+  print ""
+  print "=== Part 5: Rebase ==="
+  -- Rebase feature-y (commit at idx 2) onto main (commit at idx 4)
+  print "  Before rebase:"
+  print "    main:      a1b2c3 -> d4e5f6 -> g7h8i9 -> j0k1l2 -> m3n4o5"
+  print "    feature-y: a1b2c3 -> d4e5f6 -> g7h8i9 -> p6q7r8"
+  print ""
+  print "  After rebase:"
+  print "    main:      a1b2c3 -> d4e5f6 -> g7h8i9 -> j0k1l2 -> m3n4o5"
+  print "    feature-y: ... -> m3n4o5 -> p6q7r8' (rebased)"
+
+  -- Part 6: Staging area
+  print ""
+  print "=== Part 6: Staging Area ==="
+  mut files := ["main.ore", "utils.ore", "test.ore", "readme.txt"]
+  mut statuses := ["modified", "new", "modified", "untracked"]
+  mut staged := [true, true, false, false]
+  num_files := 4
+
+  mut staged_count := 0
+  mut unstaged_count := 0
+  for i in range(0, num_files)
+    if staged[i]
+      staged_count = staged_count + 1
+      print "  Staged:   {files[i]} ({statuses[i]})"
+    else
+      unstaged_count = unstaged_count + 1
+      print "  Unstaged: {files[i]} ({statuses[i]})"
+
+  print "  Total: {staged_count} staged, {unstaged_count} unstaged"
+
+  print ""
+  print "Git concepts: commit graph, branching, merge, diff, rebase, staging."

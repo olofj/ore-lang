@@ -1,0 +1,128 @@
+-- Showcase 551: Wavelet Transform Concepts
+
+fn main
+  print "Wavelet Transform Concepts:"
+  print ""
+
+  -- Part 1: Haar wavelet basics
+  print "=== Part 1: Haar Wavelet Transform ==="
+  -- Signal: [6, 4, 8, 2, 3, 5, 7, 1]
+  mut signal := [6, 4, 8, 2, 3, 5, 7, 1]
+  sig_len := 8
+  print "  Original signal: {signal | join(", ")}"
+
+  -- Level 1: pairwise average and difference
+  -- Averages: (6+4)/2=5, (8+2)/2=5, (3+5)/2=4, (7+1)/2=4
+  -- Details: (6-4)/2=1, (8-2)/2=3, (3-5)/2=-1, (7-1)/2=3
+  mut avg1 := [5, 5, 4, 4]
+  mut det1 := [1, 3, -1, 3]
+  print "  Level 1 averages: {avg1 | join(", ")}"
+  print "  Level 1 details: {det1 | join(", ")}"
+
+  -- Level 2: pairwise on averages
+  -- Averages: (5+5)/2=5, (4+4)/2=4
+  -- Details: (5-5)/2=0, (4-4)/2=0
+  mut avg2 := [5, 4]
+  mut det2 := [0, 0]
+  print "  Level 2 averages: {avg2 | join(", ")}"
+  print "  Level 2 details: {det2 | join(", ")}"
+
+  -- Level 3: final
+  avg3 := (5 + 4) / 2
+  det3 := (5 - 4) / 2
+  print "  Level 3 average: {avg3}"
+  print "  Level 3 detail: {det3}"
+
+  -- Part 2: Wavelet coefficients
+  print ""
+  print "=== Part 2: Wavelet Coefficients ==="
+  -- Full decomposition: [avg3, det3, det2..., det1...]
+  mut coeffs := [4, 0, 0, 0, 1, 3, -1, 3]
+  print "  Coefficients: {coeffs | join(", ")}"
+
+  -- Count non-zero coefficients
+  mut nonzero := 0
+  for c in coeffs
+    if c != 0
+      nonzero = nonzero + 1
+  print "  Non-zero coefficients: {nonzero}/{sig_len}"
+  print "  Sparsity: {(sig_len - nonzero) * 100 / sig_len}%"
+
+  -- Part 3: Inverse transform (reconstruction)
+  print ""
+  print "=== Part 3: Inverse Transform ==="
+  -- Reconstruct from level 3 back to original
+  -- Level 3 -> 2: avg+det=4+0=4, avg-det=4-0=4 -> wait, use proper Haar
+  -- Actually: a=avg3, d=det3 -> [a+d, a-d] = [4+0, 4-0] = [4, 4]
+  -- But we had [5, 4], so let's use integer Haar properly
+  -- With integer division: avg3=4, det3=0
+  -- Reconstruct: first = avg3 + det3 = 4, second = avg3 - det3 = 4
+  -- There's rounding loss. Let's show the lossless path instead.
+
+  -- Reconstruct level 1 from avg1 and det1
+  mut recon := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 4)
+    recon[i * 2] = avg1[i] + det1[i]
+    recon[i * 2 + 1] = avg1[i] - det1[i]
+  print "  Reconstructed from L1: {recon | join(", ")}"
+
+  mut match_count := 0
+  for i in range(0, sig_len)
+    if recon[i] == signal[i]
+      match_count = match_count + 1
+  print "  Match: {match_count}/{sig_len} values correct"
+
+  -- Part 4: Thresholding (compression)
+  print ""
+  print "=== Part 4: Thresholding ==="
+  threshold := 1
+  mut thresholded := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut kept := 0
+  for i in range(0, sig_len)
+    c := coeffs[i]
+    mut abs_c := c
+    if abs_c < 0
+      abs_c = 0 - abs_c
+    if abs_c > threshold
+      thresholded[i] = c
+      kept = kept + 1
+  print "  Threshold: {threshold}"
+  print "  Kept coefficients: {kept}/{sig_len}"
+  print "  Thresholded: {thresholded | join(", ")}"
+
+  -- Part 5: Energy analysis
+  print ""
+  print "=== Part 5: Energy Analysis ==="
+  -- Energy = sum of squares
+  mut sig_energy := 0
+  for s in signal
+    sig_energy = sig_energy + s * s
+  print "  Signal energy: {sig_energy}"
+
+  mut coeff_energy := 0
+  for c in coeffs
+    coeff_energy = coeff_energy + c * c
+  print "  Coefficient energy: {coeff_energy}"
+
+  -- Energy in detail coefficients by level
+  mut energy_l1 := 0
+  for i in range(4, 8)
+    energy_l1 = energy_l1 + coeffs[i] * coeffs[i]
+  print "  Detail energy L1: {energy_l1}"
+
+  mut energy_l2 := 0
+  for i in range(2, 4)
+    energy_l2 = energy_l2 + coeffs[i] * coeffs[i]
+  print "  Detail energy L2: {energy_l2}"
+
+  -- Part 6: Multi-resolution analysis
+  print ""
+  print "=== Part 6: Multi-Resolution ==="
+  -- Show signal at different resolutions
+  print "  Full resolution (8): {signal | join(", ")}"
+  print "  Half resolution (4): {avg1 | join(", ")}"
+  print "  Quarter resolution (2): {avg2 | join(", ")}"
+  print "  Single value (1): {avg3}"
+
+  print ""
+  print "Wavelet transform: Haar decomposition, coefficients, reconstruction, thresholding, energy."

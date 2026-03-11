@@ -1,0 +1,121 @@
+-- Showcase 557: Huffman Adaptive Coding
+
+fn main
+  print "Huffman Adaptive Coding:"
+  print ""
+
+  -- Part 1: Character frequency analysis
+  print "=== Part 1: Frequency Analysis ==="
+  mut chars := ["a", "b", "c", "d", "e", "f"]
+  mut freqs := [45, 13, 12, 16, 9, 5]
+  num_chars := 6
+  mut total_chars := 0
+  for f in freqs
+    total_chars = total_chars + f
+
+  print "  Character frequencies:"
+  for i in range(0, num_chars)
+    pct := freqs[i] * 100 / total_chars
+    print "    '{chars[i]}': {freqs[i]} ({pct}%)"
+  print "  Total characters: {total_chars}"
+
+  -- Part 2: Build Huffman tree (simulated step by step)
+  print ""
+  print "=== Part 2: Tree Construction ==="
+  -- Sort by frequency: f(5) e(9) c(12) b(13) d(16) a(45)
+  -- Step 1: merge f(5)+e(9) = fe(14)
+  print "  Step 1: Merge f(5) + e(9) -> fe(14)"
+  -- Step 2: merge c(12)+b(13) = cb(25)
+  print "  Step 2: Merge c(12) + b(13) -> cb(25)"
+  -- Step 3: merge fe(14)+d(16) = fed(30)
+  print "  Step 3: Merge fe(14) + d(16) -> fed(30)"
+  -- Step 4: merge cb(25)+fed(30) = cbfed(55)
+  print "  Step 4: Merge cb(25) + fed(30) -> cbfed(55)"
+  -- Step 5: merge a(45)+cbfed(55) = root(100)
+  print "  Step 5: Merge a(45) + cbfed(55) -> root(100)"
+  print "  Tree complete! Root weight: {total_chars}"
+
+  -- Part 3: Assign codes
+  print ""
+  print "=== Part 3: Huffman Codes ==="
+  mut codes := ["0", "100", "101", "110", "1110", "1111"]
+  mut code_lens := [1, 3, 3, 3, 4, 4]
+
+  print "  Code assignments:"
+  for i in range(0, num_chars)
+    print "    '{chars[i]}': {codes[i]} ({code_lens[i]} bits)"
+
+  -- Part 4: Encode a message
+  print ""
+  print "=== Part 4: Encoding ==="
+  -- Encode "abcdef"
+  mut msg := [0, 1, 2, 3, 4, 5]
+  msg_len := 6
+  print "  Message: abcdef"
+
+  mut encoded := ""
+  mut total_bits := 0
+  for i in range(0, msg_len)
+    idx := msg[i]
+    encoded = encoded + codes[idx]
+    total_bits = total_bits + code_lens[idx]
+  print "  Encoded: {encoded}"
+  print "  Total bits: {total_bits}"
+
+  fixed_bits := msg_len * 3
+  print "  Fixed-length would need: {fixed_bits} bits"
+  savings := (fixed_bits - total_bits) * 100 / fixed_bits
+  print "  Savings: {savings}%"
+
+  -- Part 5: Weighted encoding
+  print ""
+  print "=== Part 5: Weighted Analysis ==="
+  -- Total bits for entire text using Huffman
+  mut huffman_bits := 0
+  for i in range(0, num_chars)
+    huffman_bits = huffman_bits + freqs[i] * code_lens[i]
+  fixed_total := total_chars * 3
+  print "  Huffman total bits: {huffman_bits}"
+  print "  Fixed-length bits: {fixed_total}"
+  print "  Compression ratio: {huffman_bits * 100 / fixed_total}%"
+
+  -- Average bits per symbol
+  avg_bits_x100 := huffman_bits * 100 / total_chars
+  print "  Average bits/symbol: {avg_bits_x100 / 100}.{avg_bits_x100 % 100}"
+
+  -- Part 6: Adaptive coding simulation
+  print ""
+  print "=== Part 6: Adaptive Coding ==="
+  -- Start with equal frequencies, update as we see characters
+  mut adaptive_freqs := [1, 1, 1, 1, 1, 1]
+  mut stream := [0, 0, 1, 0, 2, 0, 3, 0, 0, 0]
+  stream_len := 10
+
+  print "  Processing stream of {stream_len} symbols:"
+  for i in range(0, stream_len)
+    sym := stream[i]
+    adaptive_freqs[sym] = adaptive_freqs[sym] + 1
+    if i == 4 or i == 9
+      mut freq_str := ""
+      for j in range(0, num_chars)
+        if j > 0
+          freq_str = freq_str + ","
+        freq_str = freq_str + str(adaptive_freqs[j])
+      print "    After symbol {i + 1}: freqs=[{freq_str}]"
+
+  -- Final adaptive frequencies
+  print "  Final adaptive frequencies:"
+  for i in range(0, num_chars)
+    print "    '{chars[i]}': {adaptive_freqs[i]}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Alphabet size: {num_chars}"
+  print "  Huffman bits: {huffman_bits}"
+  print "  Fixed bits: {fixed_total}"
+  print "  Compression: {huffman_bits * 100 / fixed_total}%"
+  print "  Stream length: {stream_len}"
+
+  print ""
+  print "Huffman coding: frequency analysis, tree construction, encoding, adaptive coding."

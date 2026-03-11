@@ -1,0 +1,175 @@
+-- Showcase 559: Automata Theory Toolkit
+
+fn main
+  print "Automata Theory Toolkit:"
+  print ""
+
+  -- Part 1: DFA (Deterministic Finite Automaton)
+  print "=== Part 1: DFA ==="
+  -- DFA that accepts strings ending in "01"
+  -- States: 0(start), 1(saw 0), 2(accept: saw 01)
+  -- Alphabet: 0, 1
+  num_states := 3
+  -- Transition table: [state][input] -> next_state
+  -- State 0: on '0'->1, on '1'->0
+  -- State 1: on '0'->1, on '1'->2
+  -- State 2: on '0'->1, on '1'->0
+  mut trans_on0 := [1, 1, 1]
+  mut trans_on1 := [0, 2, 0]
+  accept_state := 2
+
+  print "  DFA: accepts strings ending in 01"
+  print "  States: {num_states}, Accept: q{accept_state}"
+  print "  Transitions:"
+  for s in range(0, num_states)
+    print "    q{s}: 0->q{trans_on0[s]}, 1->q{trans_on1[s]}"
+
+  -- Test strings
+  mut test_strs := ["101", "100", "001", "110", "1101"]
+  mut test_inputs := [1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1]
+  mut test_lens := [3, 3, 3, 3, 4]
+  mut test_starts := [0, 3, 6, 9, 12]
+  num_tests := 5
+
+  print "  Test results:"
+  for t in range(0, num_tests)
+    mut st := 0
+    start := test_starts[t]
+    tlen := test_lens[t]
+    for i in range(0, tlen)
+      inp := test_inputs[start + i]
+      if inp == 0
+        st = trans_on0[st]
+      else
+        st = trans_on1[st]
+    mut result := "REJECT"
+    if st == accept_state
+      result = "ACCEPT"
+    print "    {test_strs[t]}: {result} (final state: q{st})"
+
+  -- Part 2: NFA simulation
+  print ""
+  print "=== Part 2: NFA ==="
+  -- NFA that accepts strings containing "ab"
+  -- States: 0(start), 1(saw a), 2(accept: saw ab)
+  -- NFA allows multiple transitions
+  print "  NFA: accepts strings containing 'ab'"
+  print "  States: 3, Accept: q2"
+  print "  q0: a->q0 or q1, b->q0"
+  print "  q1: b->q2"
+  print "  q2: a->q2, b->q2"
+
+  -- Test "aab" manually
+  -- Start: {q0}
+  -- Read 'a': from q0 -> {q0,q1}
+  -- Read 'a': from q0 -> {q0,q1}, from q1 -> {} => {q0,q1}
+  -- Read 'b': from q0 -> {q0}, from q1 -> {q2} => {q0,q2}
+  print "  Simulating 'aab':"
+  print "    Start: (q0)"
+  print "    Read 'a': (q0,q1)"
+  print "    Read 'a': (q0,q1)"
+  print "    Read 'b': (q0,q2)"
+  print "    Result: ACCEPT (q2 in final states)"
+
+  -- Part 3: Regular expressions to DFA
+  print ""
+  print "=== Part 3: Regex to DFA ==="
+  print "  Regex: (a|b)*ab"
+  print "  Meaning: any string of a's and b's ending in ab"
+  print "  NFA states: 4"
+  print "  After subset construction: 3 DFA states"
+  print "  After minimization: 3 states (already minimal)"
+
+  -- Part 4: Pushdown Automaton
+  print ""
+  print "=== Part 4: Pushdown Automaton ==="
+  -- PDA for balanced parentheses
+  print "  PDA: balanced parentheses"
+  print "  Stack alphabet: Z, ("
+
+  mut pda_inputs := ["(())", "(()", "()()", ")(", "((()))"]
+  mut pda_stacks := [0, 0, 0, 0, 0]
+  mut pda_lens := [4, 3, 4, 2, 6]
+  -- Encoded: '(' = 1, ')' = 0
+  -- Encoded: '(' = 1, ')' = 0
+  -- (())  = 1,1,0,0
+  -- (()   = 1,1,0
+  -- ()()  = 1,0,1,0
+  -- )(    = 0,1
+  -- ((())) = 1,1,1,0,0,0
+  mut pda_data := [1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0]
+  mut pda_starts := [0, 4, 7, 11, 13]
+  num_pda := 5
+
+  print "  Test balanced parentheses:"
+  for t in range(0, num_pda)
+    mut stack := 0
+    mut valid := true
+    start := pda_starts[t]
+    plen := pda_lens[t]
+    for i in range(0, plen)
+      sym := pda_data[start + i]
+      if sym == 1
+        stack = stack + 1
+      else
+        stack = stack - 1
+      if stack < 0
+        valid = false
+    if stack != 0
+      valid = false
+    mut res := "REJECT"
+    if valid
+      res = "ACCEPT"
+    print "    {pda_inputs[t]}: {res}"
+
+  -- Part 5: Turing Machine simulation
+  print ""
+  print "=== Part 5: Turing Machine ==="
+  -- Simple TM: increment binary number
+  -- Tape: 1 0 1 1 (= 11 in decimal)
+  -- Move right to end, then increment from right
+  mut tape := [1, 0, 1, 1, 0, 0, 0, 0]
+  tape_len := 4
+  print "  Turing Machine: binary increment"
+  mut binary_str := ""
+  for i in range(0, tape_len)
+    binary_str = binary_str + str(tape[i])
+  -- Binary 1011 = 8+0+2+1 = 11
+  bin_val := 1 * 8 + 0 * 4 + 1 * 2 + 1
+  print "  Input tape: {binary_str} (={bin_val})"
+
+  -- Increment: start from right, flip 1->0 until we find a 0, then flip to 1
+  mut pos := tape_len - 1
+  mut carry := true
+  for step in range(0, tape_len)
+    if carry and pos >= 0
+      if tape[pos] == 1
+        tape[pos] = 0
+        pos = pos - 1
+      else
+        tape[pos] = 1
+        carry = false
+
+  mut result_str := ""
+  for i in range(0, tape_len)
+    result_str = result_str + str(tape[i])
+  new_val := tape[0] * 8 + tape[1] * 4 + tape[2] * 2 + tape[3]
+  print "  Output tape: {result_str} (={new_val})"
+  print "  Increment: {bin_val} -> {new_val}"
+
+  -- Part 6: Chomsky hierarchy
+  print ""
+  print "=== Part 6: Chomsky Hierarchy ==="
+  mut levels := ["Type 3", "Type 2", "Type 1", "Type 0"]
+  mut names := ["Regular", "Context-Free", "Context-Sensitive", "Unrestricted"]
+  mut machines := ["DFA/NFA", "PDA", "LBA", "Turing Machine"]
+  mut examples := ["a*b", "a^n b^n", "a^n b^n c^n", "Halting problem"]
+
+  print "  Chomsky Hierarchy:"
+  for i in range(0, 4)
+    print "    {levels[i]} - {names[i]}"
+    print "      Machine: {machines[i]}"
+    print "      Example: {examples[i]}"
+
+  print ""
+  print "Automata: DFA, NFA, PDA, Turing machine, Chomsky hierarchy."

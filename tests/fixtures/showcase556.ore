@@ -1,0 +1,106 @@
+-- Showcase 556: Simple Packet Filter / Firewall
+
+fn main
+  print "Simple Packet Filter / Firewall:"
+  print ""
+
+  -- Part 1: Packet structure
+  print "=== Part 1: Packet Structure ==="
+  mut pkt_src_ip := ["192.168.1.10", "10.0.0.5", "172.16.0.1", "192.168.1.20", "8.8.8.8", "192.168.1.10", "10.0.0.99"]
+  mut pkt_dst_ip := ["8.8.8.8", "192.168.1.10", "192.168.1.10", "10.0.0.5", "192.168.1.10", "172.16.0.1", "192.168.1.10"]
+  mut pkt_dst_port := [443, 80, 22, 25, 53, 8080, 22]
+  mut pkt_proto := ["TCP", "TCP", "TCP", "TCP", "UDP", "TCP", "TCP"]
+  num_packets := 7
+
+  print "  Incoming packets:"
+  for i in range(0, num_packets)
+    print "    [{i}] {pkt_src_ip[i]} -> {pkt_dst_ip[i]}:{pkt_dst_port[i]} ({pkt_proto[i]})"
+
+  -- Part 2: Firewall rules
+  print ""
+  print "=== Part 2: Firewall Rules ==="
+  mut rule_action := ["ALLOW", "ALLOW", "DENY", "ALLOW", "DENY"]
+  mut rule_port := [80, 443, 25, 53, 22]
+  mut rule_proto := ["TCP", "TCP", "TCP", "UDP", "TCP"]
+  mut rule_desc := ["HTTP", "HTTPS", "SMTP blocked", "DNS", "SSH blocked"]
+  num_rules := 5
+
+  print "  Rules (evaluated in order):"
+  for i in range(0, num_rules)
+    print "    Rule {i + 1}: {rule_action[i]} {rule_proto[i]} port {rule_port[i]} ({rule_desc[i]})"
+  print "    Default: DENY all"
+
+  -- Part 3: Apply rules to packets
+  print ""
+  print "=== Part 3: Filtering ==="
+  mut pkt_result := ["DENY", "DENY", "DENY", "DENY", "DENY", "DENY", "DENY"]
+  mut pkt_rule := [-1, -1, -1, -1, -1, -1, -1]
+
+  for p in range(0, num_packets)
+    mut matched := false
+    for r in range(0, num_rules)
+      if not matched
+        if pkt_dst_port[p] == rule_port[r]
+          if pkt_proto[p] == rule_proto[r]
+            pkt_result[p] = rule_action[r]
+            pkt_rule[p] = r
+            matched = true
+
+  print "  Results:"
+  mut allowed := 0
+  mut denied := 0
+  for i in range(0, num_packets)
+    if pkt_result[i] == "ALLOW"
+      allowed = allowed + 1
+    else
+      denied = denied + 1
+    if pkt_rule[i] >= 0
+      r := pkt_rule[i]
+      print "    [{i}] {pkt_result[i]} (rule {r + 1}: {rule_desc[r]})"
+    else
+      print "    [{i}] {pkt_result[i]} (default deny)"
+
+  print "  Allowed: {allowed}, Denied: {denied}"
+
+  -- Part 4: Connection tracking
+  print ""
+  print "=== Part 4: Connection Tracking ==="
+  mut conn_src := ["192.168.1.10", "8.8.8.8"]
+  mut conn_dst := ["8.8.8.8", "192.168.1.10"]
+  mut conn_port := [443, 443]
+  mut conn_state := ["ESTABLISHED", "ESTABLISHED"]
+  num_conns := 2
+
+  print "  Active connections:"
+  for i in range(0, num_conns)
+    print "    {conn_src[i]} -> {conn_dst[i]}:{conn_port[i]} [{conn_state[i]}]"
+
+  -- Part 5: Rate limiting
+  print ""
+  print "=== Part 5: Rate Limiting ==="
+  max_rate := 10
+  mut ip_counts := [3, 1, 1, 1, 1]
+  mut ip_addrs := ["192.168.1.10", "10.0.0.5", "172.16.0.1", "192.168.1.20", "8.8.8.8"]
+  num_ips := 5
+
+  print "  Packets per source IP (limit: {max_rate}):"
+  mut rate_limited := 0
+  for i in range(0, num_ips)
+    status := "OK"
+    if ip_counts[i] > max_rate
+      rate_limited = rate_limited + 1
+    print "    {ip_addrs[i]}: {ip_counts[i]} packets ({status})"
+
+  -- Part 6: Logging
+  print ""
+  print "=== Part 6: Firewall Log ==="
+  mut log_count := 0
+  for i in range(0, num_packets)
+    if pkt_result[i] == "DENY"
+      log_count = log_count + 1
+      print "  BLOCKED: {pkt_src_ip[i]} -> {pkt_dst_ip[i]}:{pkt_dst_port[i]} ({pkt_proto[i]})"
+  print "  Total blocked: {log_count}"
+  print "  Block rate: {log_count * 100 / num_packets}%"
+
+  print ""
+  print "Packet filter: rules, filtering, connection tracking, rate limiting, logging."

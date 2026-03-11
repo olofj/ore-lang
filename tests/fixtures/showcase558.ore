@@ -1,0 +1,144 @@
+-- Showcase 558: Simple Operating System Scheduler
+
+fn main
+  print "Simple Operating System Scheduler:"
+  print ""
+
+  -- Part 1: Process table
+  print "=== Part 1: Process Table ==="
+  mut pid := [1, 2, 3, 4, 5]
+  mut pname := ["init", "shell", "editor", "compiler", "browser"]
+  mut priority := [0, 5, 3, 7, 4]
+  mut burst := [2, 8, 4, 6, 10]
+  mut arrival := [0, 1, 2, 3, 4]
+  mut state := ["READY", "READY", "READY", "READY", "READY"]
+  num_procs := 5
+
+  print "  Processes:"
+  for i in range(0, num_procs)
+    print "    PID={pid[i]} {pname[i]} priority={priority[i]} burst={burst[i]} arrival={arrival[i]}"
+
+  -- Part 2: FCFS (First Come First Served)
+  print ""
+  print "=== Part 2: FCFS Scheduling ==="
+  mut fcfs_wait := [0, 0, 0, 0, 0]
+  mut fcfs_finish := [0, 0, 0, 0, 0]
+  mut current_time := 0
+
+  for i in range(0, num_procs)
+    if current_time < arrival[i]
+      current_time = arrival[i]
+    fcfs_wait[i] = current_time - arrival[i]
+    current_time = current_time + burst[i]
+    fcfs_finish[i] = current_time
+
+  print "  FCFS execution order:"
+  mut total_wait := 0
+  for i in range(0, num_procs)
+    total_wait = total_wait + fcfs_wait[i]
+    print "    {pname[i]}: wait={fcfs_wait[i]}, finish={fcfs_finish[i]}"
+  avg_wait := total_wait / num_procs
+  print "  Average wait time: {avg_wait}"
+
+  -- Part 3: SJF (Shortest Job First) - non-preemptive
+  print ""
+  print "=== Part 3: SJF Scheduling ==="
+  -- Sort by burst time: init(2) editor(4) compiler(6) shell(8) browser(10)
+  mut sjf_order := [0, 2, 3, 1, 4]
+  mut sjf_wait := [0, 0, 0, 0, 0]
+  mut sjf_finish := [0, 0, 0, 0, 0]
+  current_time = 0
+
+  print "  SJF execution order:"
+  mut sjf_total_wait := 0
+  for i in range(0, num_procs)
+    idx := sjf_order[i]
+    if current_time < arrival[idx]
+      current_time = arrival[idx]
+    sjf_wait[i] = current_time - arrival[idx]
+    current_time = current_time + burst[idx]
+    sjf_finish[i] = current_time
+    sjf_total_wait = sjf_total_wait + sjf_wait[i]
+    print "    {pname[idx]}: wait={sjf_wait[i]}, finish={sjf_finish[i]}"
+  sjf_avg := sjf_total_wait / num_procs
+  print "  Average wait time: {sjf_avg}"
+
+  -- Part 4: Round Robin
+  print ""
+  print "=== Part 4: Round Robin ==="
+  quantum := 3
+  print "  Time quantum: {quantum}"
+
+  mut remaining := [2, 8, 4, 6, 10]
+  mut rr_time := 0
+  mut completed := 0
+  mut rr_finish := [0, 0, 0, 0, 0]
+  mut schedule := ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+  mut sched_idx := 0
+
+  -- Simulate round robin
+  for round in range(0, 15)
+    if completed < num_procs
+      for i in range(0, num_procs)
+        if remaining[i] > 0 and completed < num_procs
+          if remaining[i] <= quantum
+            rr_time = rr_time + remaining[i]
+            remaining[i] = 0
+            rr_finish[i] = rr_time
+            completed = completed + 1
+          else
+            rr_time = rr_time + quantum
+            remaining[i] = remaining[i] - quantum
+
+  print "  Round Robin results:"
+  mut rr_total_wait := 0
+  for i in range(0, num_procs)
+    w := rr_finish[i] - arrival[i] - burst[i]
+    rr_total_wait = rr_total_wait + w
+    print "    {pname[i]}: finish={rr_finish[i]}, turnaround={rr_finish[i] - arrival[i]}"
+  rr_avg := rr_total_wait / num_procs
+  print "  Average wait time: {rr_avg}"
+
+  -- Part 5: Priority scheduling
+  print ""
+  print "=== Part 5: Priority Scheduling ==="
+  -- Sort by priority (lower = higher priority): init(0) editor(3) browser(4) shell(5) compiler(7)
+  mut pri_order := [0, 2, 4, 1, 3]
+  print "  Priority order (lower = higher priority):"
+  current_time = 0
+  mut pri_total := 0
+  for i in range(0, num_procs)
+    idx := pri_order[i]
+    if current_time < arrival[idx]
+      current_time = arrival[idx]
+    w := current_time - arrival[idx]
+    pri_total = pri_total + w
+    current_time = current_time + burst[idx]
+    print "    {pname[idx]} (pri={priority[idx]}): wait={w}, finish={current_time}"
+  pri_avg := pri_total / num_procs
+  print "  Average wait time: {pri_avg}"
+
+  -- Part 6: Comparison
+  print ""
+  print "=== Part 6: Comparison ==="
+  print "  Algorithm comparison (avg wait time):"
+  print "    FCFS:     {avg_wait}"
+  print "    SJF:      {sjf_avg}"
+  print "    RR(q={quantum}):  {rr_avg}"
+  print "    Priority: {pri_avg}"
+
+  mut best := "FCFS"
+  mut best_val := avg_wait
+  if sjf_avg < best_val
+    best = "SJF"
+    best_val = sjf_avg
+  if rr_avg < best_val
+    best = "RR"
+    best_val = rr_avg
+  if pri_avg < best_val
+    best = "Priority"
+    best_val = pri_avg
+  print "  Best for this workload: {best} (avg wait = {best_val})"
+
+  print ""
+  print "OS scheduler: FCFS, SJF, Round Robin, Priority scheduling, comparison."

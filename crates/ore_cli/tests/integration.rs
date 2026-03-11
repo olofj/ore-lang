@@ -7176,6 +7176,127 @@ fn showcase550_ray_marching() {
 }
 
 #[test]
+fn showcase551_wavelet_transform() {
+    let out = run_ore("showcase551.ore");
+    assert!(out.contains("Wavelet Transform Concepts:"));
+    assert!(out.contains("Level 1 averages: 5, 5, 4, 4"));
+    assert!(out.contains("Level 1 details: 1, 3, -1, 3"));
+    assert!(out.contains("Reconstructed from L1: 6, 4, 8, 2, 3, 5, 7, 1"));
+    assert!(out.contains("Match: 8/8 values correct"));
+    assert!(out.contains("Signal energy: 204"));
+    assert!(out.contains("Wavelet transform: Haar decomposition, coefficients, reconstruction, thresholding, energy."));
+}
+
+#[test]
+fn showcase552_git_concepts() {
+    let out = run_ore("showcase552.ore");
+    assert!(out.contains("Simple Git Concepts:"));
+    assert!(out.contains("a1b2c3 Initial commit (root)"));
+    assert!(out.contains("main -> m3n4o5 (Add tests)"));
+    assert!(out.contains("Common ancestor: g7h8i9 (Add feature X)"));
+    assert!(out.contains("Stats: +1 -0"));
+    assert!(out.contains("Total: 2 staged, 2 unstaged"));
+    assert!(out.contains("Git concepts: commit graph, branching, merge, diff, rebase, staging."));
+}
+
+#[test]
+fn showcase553_quine_self_referential() {
+    let out = run_ore("showcase553.ore");
+    assert!(out.contains("Quine and Self-Referential Programs:"));
+    assert!(out.contains("Total fixed points: 4"));
+    assert!(out.contains("Original: hello"));
+    assert!(out.contains("Encoded:  uryyb"));
+    assert!(out.contains("Self-inverse: YES (ROT13(ROT13(x)) = x)"));
+    assert!(out.contains("Anti-diagonal: 01101"));
+    assert!(out.contains("Quines: self-reference, fixed points, recursion theorem, self-inverse, diagonal."));
+}
+
+#[test]
+fn showcase554_music_sequencer() {
+    let out = run_ore("showcase554.ore");
+    assert!(out.contains("Simple Music Sequencer:"));
+    assert!(out.contains("A4: 440 Hz"));
+    assert!(out.contains("Total beats: 32"));
+    assert!(out.contains("C major: C E G"));
+    assert!(out.contains("Kick:  X...X...X...X..."));
+    assert!(out.contains("C major scale: C D E F G A B C"));
+    assert!(out.contains("Total bars: 52"));
+    assert!(out.contains("Music sequencer: notes, melody, chords, drums, scales, song structure."));
+}
+
+#[test]
+fn showcase555_reed_solomon() {
+    let out = run_ore("showcase555.ore");
+    assert!(out.contains("Reed-Solomon Error Correction Concepts:"));
+    assert!(out.contains("3 * 5 = 1 (mod 7)"));
+    assert!(out.contains("Codeword: 1, 4, 6, 0, 0, 6"));
+    assert!(out.contains("Error detected: YES"));
+    assert!(out.contains("Correction verified: YES"));
+    assert!(out.contains("Overhead: 50%"));
+    assert!(out.contains("Reed-Solomon: Galois fields, polynomial encoding, error detection, correction."));
+}
+
+#[test]
+fn showcase556_packet_filter() {
+    let out = run_ore("showcase556.ore");
+    assert!(out.contains("Simple Packet Filter / Firewall:"));
+    assert!(out.contains("Rule 1: ALLOW TCP port 80 (HTTP)"));
+    assert!(out.contains("Allowed: 3, Denied: 4"));
+    assert!(out.contains("BLOCKED: 172.16.0.1 -> 192.168.1.10:22 (TCP)"));
+    assert!(out.contains("Block rate: 57%"));
+    assert!(out.contains("Packet filter: rules, filtering, connection tracking, rate limiting, logging."));
+}
+
+#[test]
+fn showcase557_huffman_adaptive() {
+    let out = run_ore("showcase557.ore");
+    assert!(out.contains("Huffman Adaptive Coding:"));
+    assert!(out.contains("Total characters: 100"));
+    assert!(out.contains("Tree complete! Root weight: 100"));
+    assert!(out.contains("Huffman total bits: 224"));
+    assert!(out.contains("Compression ratio: 74%"));
+    assert!(out.contains("Average bits/symbol: 2.24"));
+    assert!(out.contains("Huffman coding: frequency analysis, tree construction, encoding, adaptive coding."));
+}
+
+#[test]
+fn showcase558_os_scheduler() {
+    let out = run_ore("showcase558.ore");
+    assert!(out.contains("Simple Operating System Scheduler:"));
+    assert!(out.contains("PID=1 init priority=0 burst=2 arrival=0"));
+    assert!(out.contains("Average wait time: 7"));
+    assert!(out.contains("Time quantum: 3"));
+    assert!(out.contains("Best for this workload: SJF (avg wait = 6)"));
+    assert!(out.contains("OS scheduler: FCFS, SJF, Round Robin, Priority scheduling, comparison."));
+}
+
+#[test]
+fn showcase559_automata_theory() {
+    let out = run_ore("showcase559.ore");
+    assert!(out.contains("Automata Theory Toolkit:"));
+    assert!(out.contains("101: ACCEPT (final state: q2)"));
+    assert!(out.contains("100: REJECT (final state: q1)"));
+    assert!(out.contains("((())): ACCEPT"));
+    assert!(out.contains("Output tape: 1100 (=12)"));
+    assert!(out.contains("Increment: 11 -> 12"));
+    assert!(out.contains("Automata: DFA, NFA, PDA, Turing machine, Chomsky hierarchy."));
+}
+
+#[test]
+fn showcase560_grand_algorithm() {
+    let out = run_ore("showcase560.ore");
+    assert!(out.contains("Grand Algorithm Showcase:"));
+    assert!(out.contains("Found at index: 5 in 3 steps"));
+    assert!(out.contains("After:  11, 12, 22, 25, 34, 45, 64, 90"));
+    assert!(out.contains("gcd(48, 18) = 6"));
+    assert!(out.contains("Count: 15"));
+    assert!(out.contains("F(20) = 6765"));
+    assert!(out.contains("Found: nums[0] + nums[1] = 2 + 7 = 9"));
+    assert!(out.contains("Encoded: 3A2B4C1A"));
+    assert!(out.contains("Grand showcase: binary search, sorting, GCD, primes, Fibonacci, two sum, RLE."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
