@@ -1,0 +1,138 @@
+-- Showcase 634: Sparse Table (Range Minimum Query)
+
+fn main
+  print "Sparse Table (RMQ):"
+  print ""
+
+  -- Sparse table: O(n log n) preprocessing, O(1) range minimum queries
+
+  -- Part 1: Input array
+  print "=== Part 1: Input Array ==="
+  mut arr := [5, 2, 4, 7, 1, 3, 8, 6]
+  n := 8
+
+  for i in range(0, n)
+    print "  arr[{i}] = {arr[i]}"
+
+  -- Part 2: Compute log table
+  print ""
+  print "=== Part 2: Log Table ==="
+  mut log_table := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- log_table[i] = floor(log2(i))
+  log_table[1] = 0
+  for i in range(2, n + 1)
+    log_table[i] = log_table[i / 2] + 1
+
+  for i in range(1, n + 1)
+    print "  log2({i}) = {log_table[i]}"
+
+  -- Part 3: Build sparse table
+  -- sparse[k][i] = minimum of arr[i..i+2^k-1]
+  -- We simulate with flat arrays for each level
+  print ""
+  print "=== Part 3: Build Sparse Table ==="
+
+  -- Level 0: just arr values
+  mut st0 := [5, 2, 4, 7, 1, 3, 8, 6]
+  print "  Level 0 (length 1):"
+  for i in range(0, n)
+    print "    st[0][{i}] = {st0[i]}"
+
+  -- Level 1: min of pairs (length 2)
+  mut st1 := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, n - 1)
+    if st0[i] < st0[i + 1]
+      st1[i] = st0[i]
+    else
+      st1[i] = st0[i + 1]
+
+  print "  Level 1 (length 2):"
+  for i in range(0, n - 1)
+    print "    st[1][{i}] = {st1[i]}"
+
+  -- Level 2: min of quads (length 4)
+  mut st2 := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, n - 3)
+    if st1[i] < st1[i + 2]
+      st2[i] = st1[i]
+    else
+      st2[i] = st1[i + 2]
+
+  print "  Level 2 (length 4):"
+  for i in range(0, n - 3)
+    print "    st[2][{i}] = {st2[i]}"
+
+  -- Level 3: min of octets (length 8)
+  mut st3 := [0, 0, 0, 0, 0, 0, 0, 0]
+  if st2[0] < st2[4]
+    st3[0] = st2[0]
+  else
+    st3[0] = st2[4]
+
+  print "  Level 3 (length 8):"
+  print "    st[3][0] = {st3[0]}"
+
+  -- Part 4: Answer RMQ queries
+  print ""
+  print "=== Part 4: Range Minimum Queries ==="
+  -- Query: min of arr[l..r]
+  -- Use: k = log2(r-l+1), answer = min(st[k][l], st[k][r-2^k+1])
+
+  -- Query [0, 7]: full array
+  print "  RMQ(0, 7) = {st3[0]} (full array)"
+
+  -- Query [0, 3]: k=1, min(st1[0], st1[2]) = min(2, 4) = 2
+  mut q1 := st1[0]
+  if st1[2] < q1
+    q1 = st1[2]
+  print "  RMQ(0, 3) = {q1}"
+
+  -- Query [1, 4]: k=1, min(st1[1], st1[3]) = min(2, 1) = 1
+  mut q2 := st1[1]
+  if st1[3] < q2
+    q2 = st1[3]
+  print "  RMQ(1, 4) = {q2}"
+
+  -- Query [2, 5]: k=1, min(st1[2], st1[4]) = min(4, 1) = 1
+  mut q3 := st1[2]
+  if st1[4] < q3
+    q3 = st1[4]
+  print "  RMQ(2, 5) = {q3}"
+
+  -- Query [5, 7]: k=1, min(st1[5], st1[6]) = min(3, 6) = 3
+  mut q4 := st1[5]
+  if st1[6] < q4
+    q4 = st1[6]
+  print "  RMQ(5, 7) = {q4}"
+
+  -- Query [3, 3]: single element
+  print "  RMQ(3, 3) = {arr[3]} (single element)"
+
+  -- Part 5: Verify queries with brute force
+  print ""
+  print "=== Part 5: Verification ==="
+  -- Verify RMQ(0,7)
+  mut mn := arr[0]
+  for i in range(1, 8)
+    if arr[i] < mn
+      mn = arr[i]
+  print "  Brute force min(0,7) = {mn}, sparse table = {st3[0]}, match = {mn == st3[0]}"
+
+  -- Verify RMQ(1,4)
+  mut mn2 := arr[1]
+  for i in range(2, 5)
+    if arr[i] < mn2
+      mn2 = arr[i]
+  print "  Brute force min(1,4) = {mn2}, sparse table = {q2}, match = {mn2 == q2}"
+
+  -- Part 6: Complexity
+  print ""
+  print "=== Part 6: Complexity ==="
+  print "  Space: O(n log n)"
+  print "  Build time: O(n log n)"
+  print "  Query time: O(1)"
+  print "  Levels built: {log_table[n] + 1}"
+  print "  Total entries: about {n * (log_table[n] + 1)}"
+
+  print ""
+  print "Sparse table: O(1) range minimum queries, log-level preprocessing, idempotent overlap."

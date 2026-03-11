@@ -1,0 +1,169 @@
+-- Showcase 640: Fenwick Tree (Binary Indexed Tree)
+
+fn main
+  print "Fenwick Tree (BIT):"
+  print ""
+
+  -- Fenwick tree: O(log n) point update and prefix sum queries
+
+  -- Part 1: Input array
+  print "=== Part 1: Input Array ==="
+  mut arr := [3, 2, -1, 6, 5, 4, -3, 3, 7, 2]
+  n := 10
+
+  for i in range(0, n)
+    print "  arr[{i}] = {arr[i]}"
+
+  -- Part 2: Build Fenwick tree
+  print ""
+  print "=== Part 2: Build Fenwick Tree ==="
+  -- BIT is 1-indexed, bit[i] stores sum of a specific range
+  -- bit[i] covers arr[i - lowbit(i) + 1 .. i]
+  mut bit := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Insert each element
+  for i in range(0, n)
+    -- Update: add arr[i] to all responsible positions
+    mut j := i + 1
+    while j <= n
+      bit[j] = bit[j] + arr[i]
+      -- j += lowbit(j): add last set bit
+      -- Simulate lowbit with manual computation
+      -- lowbit(j) = j AND (-j), but we can compute step by step
+      mut lowbit := 1
+      mut tmp := j
+      while tmp % 2 == 0
+        lowbit = lowbit * 2
+        tmp = tmp / 2
+      j = j + lowbit
+
+  print "  BIT array (1-indexed):"
+  for i in range(1, n + 1)
+    print "    bit[{i}] = {bit[i]}"
+
+  -- Part 3: Prefix sum queries
+  print ""
+  print "=== Part 3: Prefix Sum Queries ==="
+
+  -- Query: sum of arr[0..idx]
+  -- Traverse down removing last set bit
+  for qi in range(0, n)
+    mut s := 0
+    mut j := qi + 1
+    while j > 0
+      s = s + bit[j]
+      -- j -= lowbit(j)
+      mut lowbit := 1
+      mut tmp := j
+      while tmp % 2 == 0
+        lowbit = lowbit * 2
+        tmp = tmp / 2
+      j = j - lowbit
+
+    -- Verify with brute force
+    mut bf := 0
+    for k in range(0, qi + 1)
+      bf = bf + arr[k]
+
+    mut match_str := "OK"
+    if s != bf
+      match_str = "MISMATCH"
+    print "  prefix_sum(0..{qi}) = {s} (brute force: {bf}) {match_str}"
+
+  -- Part 4: Range sum queries
+  print ""
+  print "=== Part 4: Range Sum Queries ==="
+  -- sum(l..r) = prefix_sum(r) - prefix_sum(l-1)
+
+  -- Helper: compute prefix sum for index qi (0-based)
+  mut queries_l := [2, 0, 3, 5]
+  mut queries_r := [5, 9, 7, 8]
+  num_queries := 4
+
+  for q in range(0, num_queries)
+    l := queries_l[q]
+    r := queries_r[q]
+
+    -- prefix_sum(r)
+    mut sum_r := 0
+    mut j := r + 1
+    while j > 0
+      sum_r = sum_r + bit[j]
+      mut lowbit := 1
+      mut tmp := j
+      while tmp % 2 == 0
+        lowbit = lowbit * 2
+        tmp = tmp / 2
+      j = j - lowbit
+
+    -- prefix_sum(l-1)
+    mut sum_l := 0
+    if l > 0
+      j = l
+      while j > 0
+        sum_l = sum_l + bit[j]
+        mut lowbit := 1
+        mut tmp := j
+        while tmp % 2 == 0
+          lowbit = lowbit * 2
+          tmp = tmp / 2
+        j = j - lowbit
+
+    range_sum := sum_r - sum_l
+
+    -- Brute force verify
+    mut bf := 0
+    for k in range(l, r + 1)
+      bf = bf + arr[k]
+
+    print "  sum({l}..{r}) = {range_sum} (verify: {bf})"
+
+  -- Part 5: Point update
+  print ""
+  print "=== Part 5: Point Update ==="
+  -- Update arr[3] by adding 4
+  upd_idx := 3
+  upd_delta := 4
+  print "  Update arr[{upd_idx}] += {upd_delta} (was {arr[upd_idx]}, now {arr[upd_idx] + upd_delta})"
+  arr[upd_idx] = arr[upd_idx] + upd_delta
+
+  mut j := upd_idx + 1
+  while j <= n
+    bit[j] = bit[j] + upd_delta
+    mut lowbit := 1
+    mut tmp := j
+    while tmp % 2 == 0
+      lowbit = lowbit * 2
+      tmp = tmp / 2
+    j = j + lowbit
+
+  -- Verify prefix sums after update
+  mut total := 0
+  for i in range(0, n)
+    total = total + arr[i]
+  -- Query prefix sum of full array
+  mut bit_total := 0
+  j = n
+  while j > 0
+    bit_total = bit_total + bit[j]
+    mut lowbit := 1
+    mut tmp := j
+    while tmp % 2 == 0
+      lowbit = lowbit * 2
+      tmp = tmp / 2
+    j = j - lowbit
+
+  print "  After update - total sum: brute={total}, BIT={bit_total}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Array size: {n}"
+  print "  Point update: O(log n)"
+  print "  Prefix query: O(log n)"
+  print "  Range query: O(log n)"
+  print "  Space: O(n)"
+  print "  Total array sum: {total}"
+
+  print ""
+  print "Fenwick tree: binary indexed tree, prefix sums, point updates, range queries, O(log n)."

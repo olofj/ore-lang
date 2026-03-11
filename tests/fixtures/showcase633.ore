@@ -1,0 +1,140 @@
+-- Showcase 633: Simple Verifier for Programs
+
+fn main
+  print "Simple Program Verifier:"
+  print ""
+
+  -- Verify simple properties of programs using assertions and invariants
+
+  -- Part 1: Variable range analysis
+  print "=== Part 1: Range Analysis ==="
+  -- Track min/max possible values for variables
+  mut var_names := ["x", "y", "z", "i"]
+  mut var_min := [0, -10, 1, 0]
+  mut var_max := [100, 10, 50, 99]
+  num_vars := 4
+
+  for i in range(0, num_vars)
+    print "  {var_names[i]}: [{var_min[i]}, {var_max[i]}]"
+
+  -- Verify: is x + y always >= -10?
+  sum_min := var_min[0] + var_min[1]
+  sum_max := var_max[0] + var_max[1]
+  print "  x + y range: [{sum_min}, {sum_max}]"
+  if sum_min >= -10
+    print "  VERIFIED: x + y >= -10"
+  else
+    print "  FAILED: x + y might be < -10"
+
+  -- Part 2: Loop invariant checking
+  print ""
+  print "=== Part 2: Loop Invariant ==="
+  -- Simulate: for i in 0..10: sum += i
+  -- Invariant: sum == i*(i-1)/2
+  mut sum := 0
+  mut invariant_holds := true
+  for i in range(0, 11)
+    expected := i * (i - 1) / 2
+    if sum != expected
+      print "  INVARIANT BROKEN at i={i}: sum={sum}, expected={expected}"
+      invariant_holds = false
+    sum = sum + i
+
+  if invariant_holds
+    print "  Loop invariant verified for all iterations"
+    print "  Final sum: {sum}"
+
+  -- Part 3: Array bounds checking
+  print ""
+  print "=== Part 3: Bounds Checking ==="
+  arr_size := 10
+  mut accesses := [0, 3, 5, 9, 7, 2, 8, 1]
+  num_accesses := 8
+  mut safe := 0
+  mut unsafe_count := 0
+
+  for i in range(0, num_accesses)
+    idx := accesses[i]
+    if idx >= 0 and idx < arr_size
+      safe = safe + 1
+      print "  arr[{idx}]: safe"
+    else
+      unsafe_count = unsafe_count + 1
+      print "  arr[{idx}]: OUT OF BOUNDS"
+
+  print "  Safe: {safe}, Unsafe: {unsafe_count}"
+
+  -- Part 4: Type state verification
+  print ""
+  print "=== Part 4: Type State Verification ==="
+  -- File operations: must open before read/write, must close after use
+  mut ops := ["open", "read", "write", "read", "close"]
+  num_file_ops := 5
+  mut file_open := false
+  mut violations := 0
+
+  for i in range(0, num_file_ops)
+    op := ops[i]
+    if op == "open"
+      if file_open
+        print "  ERROR: double open"
+        violations = violations + 1
+      else
+        file_open = true
+        print "  open: OK (state -> opened)"
+    else if op == "close"
+      if not file_open
+        print "  ERROR: close without open"
+        violations = violations + 1
+      else
+        file_open = false
+        print "  close: OK (state -> closed)"
+    else
+      if not file_open
+        print "  ERROR: {op} on closed file"
+        violations = violations + 1
+      else
+        print "  {op}: OK (file is open)"
+
+  if file_open
+    print "  WARNING: file not closed at end"
+  print "  Violations: {violations}"
+
+  -- Part 5: Assertion checking
+  print ""
+  print "=== Part 5: Assertion Checking ==="
+  mut assertions := ["x > 0", "y < 100", "z != 0", "i >= 0", "sum > 0"]
+  mut assert_results := [true, true, true, true, true]
+  num_asserts := 5
+
+  -- Evaluate against known ranges
+  -- x in [0,100] -> x > 0? Not always (x could be 0)
+  assert_results[0] = false
+  -- y in [-10,10] -> y < 100? Always
+  -- z in [1,50] -> z != 0? Always
+  -- i in [0,99] -> i >= 0? Always
+  -- sum = 55 -> sum > 0? Yes
+
+  mut passed := 0
+  mut failed := 0
+  for i in range(0, num_asserts)
+    if assert_results[i]
+      print "  PASS: {assertions[i]}"
+      passed = passed + 1
+    else
+      print "  FAIL: {assertions[i]} (counterexample possible)"
+      failed = failed + 1
+
+  print "  Passed: {passed}, Failed: {failed}"
+
+  -- Part 6: Verification summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Range analysis: {num_vars} variables tracked"
+  print "  Loop invariants: verified"
+  print "  Bounds checks: {safe}/{num_accesses} safe"
+  print "  Type state: {violations} violations"
+  print "  Assertions: {passed}/{num_asserts} proved"
+
+  print ""
+  print "Program verifier: range analysis, loop invariants, bounds checking, type state, assertions."

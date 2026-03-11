@@ -1,0 +1,96 @@
+-- Showcase 631: Simple Escape Analysis
+
+fn main
+  print "Escape Analysis:"
+  print ""
+
+  -- Simulate escape analysis: determine if a variable's lifetime
+  -- exceeds its defining scope (escapes) or stays local (no escape)
+
+  -- Part 1: Variable definitions
+  print "=== Part 1: Variable Definitions ==="
+  mut var_names := ["x", "y", "z", "w", "v", "tmp", "result", "ptr"]
+  mut var_scope := [0, 0, 1, 1, 2, 2, 0, 1]
+  mut var_used_in := [0, 1, 1, 2, 2, 2, 0, 0]
+  num_vars := 8
+
+  for i in range(0, num_vars)
+    print "  var '{var_names[i]}': defined in scope {var_scope[i]}, used in scope {var_used_in[i]}"
+
+  -- Part 2: Detect escaping variables
+  print ""
+  print "=== Part 2: Escape Detection ==="
+  mut escapes := 0
+  mut local_only := 0
+
+  for i in range(0, num_vars)
+    if var_used_in[i] < var_scope[i]
+      print "  '{var_names[i]}': ESCAPES (used in outer scope {var_used_in[i]})"
+      escapes = escapes + 1
+    else
+      print "  '{var_names[i]}': local (no escape)"
+      local_only = local_only + 1
+
+  print "  Escaping: {escapes}, Local: {local_only}"
+
+  -- Part 3: Allocation decision
+  print ""
+  print "=== Part 3: Allocation Decision ==="
+  for i in range(0, num_vars)
+    if var_used_in[i] < var_scope[i]
+      print "  '{var_names[i]}' -> HEAP allocation (escapes scope)"
+    else
+      print "  '{var_names[i]}' -> STACK allocation (local)"
+
+  -- Part 4: Function call analysis
+  print ""
+  print "=== Part 4: Function Return Analysis ==="
+  mut fn_names := ["make_pair", "compute", "get_ref", "helper", "transform"]
+  mut fn_returns_local := [true, false, true, false, true]
+  num_fns := 5
+
+  for i in range(0, num_fns)
+    if fn_returns_local[i]
+      print "  {fn_names[i]}(): returns local data -> heap promote"
+    else
+      print "  {fn_names[i]}(): returns value -> stack OK"
+
+  -- Part 5: Closure capture analysis
+  print ""
+  print "=== Part 5: Closure Capture Analysis ==="
+  mut captured_vars := ["counter", "message", "data", "flag"]
+  mut capture_kind := ["ref", "copy", "ref", "copy"]
+  num_captured := 4
+
+  for i in range(0, num_captured)
+    if capture_kind[i] == "ref"
+      print "  '{captured_vars[i]}' captured by reference -> must heap allocate"
+    else
+      print "  '{captured_vars[i]}' captured by copy -> stack OK"
+
+  -- Part 6: Optimization summary
+  print ""
+  print "=== Part 6: Optimization Summary ==="
+  mut heap_count := 0
+  mut stack_count := 0
+  for i in range(0, num_vars)
+    if var_used_in[i] < var_scope[i]
+      heap_count = heap_count + 1
+    else
+      stack_count = stack_count + 1
+
+  mut ref_captures := 0
+  for i in range(0, num_captured)
+    if capture_kind[i] == "ref"
+      ref_captures = ref_captures + 1
+
+  total_heap := heap_count + ref_captures
+  print "  Stack allocations: {stack_count}"
+  print "  Heap allocations (escaping): {heap_count}"
+  print "  Heap allocations (captures): {ref_captures}"
+  print "  Total heap: {total_heap}"
+  savings := stack_count * 100 / num_vars
+  print "  Stack optimization rate: {savings}%"
+
+  print ""
+  print "Escape analysis: scope tracking, allocation decisions, closure captures, heap vs stack."

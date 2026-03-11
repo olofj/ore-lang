@@ -1,0 +1,114 @@
+-- Showcase 635: Simple Garbage Collection Tri-Color Marking
+
+fn main
+  print "GC Tri-Color Marking:"
+  print ""
+
+  -- Simulate tri-color mark-and-sweep garbage collection
+  -- White: unvisited, Gray: to-process, Black: processed
+
+  -- Part 1: Object graph
+  print "=== Part 1: Object Graph ==="
+  num_objects := 10
+  mut obj_names := ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+
+  -- Adjacency as flat edge list: from_idx, to_idx pairs
+  mut edge_from := [0, 0, 1, 1, 2, 3, 4, 6, 7, 7]
+  mut edge_to := [1, 2, 3, 4, 5, 5, 5, 8, 8, 9]
+  num_edges := 10
+
+  for i in range(0, num_edges)
+    fi := edge_from[i]
+    ti := edge_to[i]
+    print "  {obj_names[fi]} -> {obj_names[ti]}"
+
+  -- Part 2: Root set
+  print ""
+  print "=== Part 2: Root Set ==="
+  mut roots := [0, 6]
+  num_roots := 2
+  for i in range(0, num_roots)
+    ri := roots[i]
+    print "  Root: {obj_names[ri]}"
+
+  -- Part 3: Tri-color marking
+  print ""
+  print "=== Part 3: Marking Phase ==="
+  -- 0=white, 1=gray, 2=black
+  mut color := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Initialize: roots are gray
+  for i in range(0, num_roots)
+    ri := roots[i]
+    color[ri] = 1
+    print "  Mark root {obj_names[ri]} gray"
+
+  -- Process gray objects iteratively
+  mut iteration := 0
+  mut has_gray := true
+
+  while has_gray
+    has_gray = false
+    iteration = iteration + 1
+    print ""
+    print "  --- Iteration {iteration} ---"
+
+    -- Find a gray object
+    for obj in range(0, num_objects)
+      if color[obj] == 1
+        -- Mark all white children gray
+        for e in range(0, num_edges)
+          if edge_from[e] == obj
+            child := edge_to[e]
+            if color[child] == 0
+              color[child] = 1
+              print "  {obj_names[obj]} -> {obj_names[child]}: mark gray"
+
+        -- Mark this object black
+        color[obj] = 2
+        print "  {obj_names[obj]}: mark black"
+
+    -- Check if any gray remains
+    for obj in range(0, num_objects)
+      if color[obj] == 1
+        has_gray = true
+
+  -- Part 4: Results
+  print ""
+  print "=== Part 4: Marking Results ==="
+  mut white_count := 0
+  mut black_count := 0
+
+  for i in range(0, num_objects)
+    mut col_name := "WHITE (garbage)"
+    if color[i] == 2
+      col_name = "BLACK (reachable)"
+      black_count = black_count + 1
+    else
+      white_count = white_count + 1
+    print "  {obj_names[i]}: {col_name}"
+
+  -- Part 5: Sweep phase
+  print ""
+  print "=== Part 5: Sweep Phase ==="
+  mut freed := 0
+  for i in range(0, num_objects)
+    if color[i] == 0
+      print "  Free {obj_names[i]}"
+      freed = freed + 1
+
+  print "  Freed {freed} objects"
+  print "  Retained {black_count} objects"
+
+  -- Part 6: Memory stats
+  print ""
+  print "=== Part 6: Statistics ==="
+  print "  Total objects: {num_objects}"
+  print "  Reachable: {black_count}"
+  print "  Garbage: {white_count}"
+  print "  Collection iterations: {iteration}"
+  reclaim_pct := white_count * 100 / num_objects
+  print "  Reclaimed: {reclaim_pct}%"
+
+  print ""
+  print "Tri-color GC: root tracing, gray worklist, mark-and-sweep, unreachable detection."

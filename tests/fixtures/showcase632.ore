@@ -1,0 +1,144 @@
+-- Showcase 632: Fibonacci Heap Concepts
+
+fn main
+  print "Fibonacci Heap Concepts:"
+  print ""
+
+  -- Simulate a Fibonacci heap using arrays
+  -- Key operations: insert, find-min, decrease-key (conceptual)
+
+  -- Part 1: Root list (collection of trees)
+  print "=== Part 1: Initial Root List ==="
+  mut keys := [10, 3, 15, 7, 22, 1, 18]
+  mut degrees := [0, 1, 0, 2, 0, 0, 1]
+  mut marked := [false, false, false, false, false, false, false]
+  num_nodes := 7
+
+  -- Find minimum
+  mut min_idx := 0
+  for i in range(1, num_nodes)
+    if keys[i] < keys[min_idx]
+      min_idx = i
+
+  for i in range(0, num_nodes)
+    mut star := " "
+    if i == min_idx
+      star = "*"
+    mut mk := " "
+    if marked[i]
+      mk = "M"
+    print "  {star} key={keys[i]}, degree={degrees[i]} {mk}"
+
+  print "  Min: {keys[min_idx]}"
+
+  -- Part 2: Insert operation
+  print ""
+  print "=== Part 2: Insert Operation ==="
+  mut new_keys := [5, 12, 0, 25]
+  num_inserts := 4
+
+  for i in range(0, num_inserts)
+    print "  Insert key={new_keys[i]}"
+    if new_keys[i] < keys[min_idx]
+      print "    New minimum! (was {keys[min_idx]}, now {new_keys[i]})"
+      min_idx = 0
+
+  -- Simulate full heap after inserts
+  mut heap_keys := [10, 3, 15, 7, 22, 1, 18, 5, 12, 0, 25]
+  heap_size := 11
+
+  mut heap_min := 0
+  for i in range(1, heap_size)
+    if heap_keys[i] < heap_keys[heap_min]
+      heap_min = i
+  print "  Heap size: {heap_size}, Min: {heap_keys[heap_min]}"
+
+  -- Part 3: Extract-min (consolidation)
+  print ""
+  print "=== Part 3: Extract-Min ==="
+  print "  Removing min: {heap_keys[heap_min]}"
+
+  -- Consolidation: merge trees of same degree
+  -- Simulate by grouping by degree
+  mut deg_count := [0, 0, 0, 0, 0]
+  for i in range(0, num_nodes)
+    d := degrees[i]
+    if d < 5
+      deg_count[d] = deg_count[d] + 1
+
+  print "  Degree distribution before consolidation:"
+  for d in range(0, 5)
+    if deg_count[d] > 0
+      print "    degree {d}: {deg_count[d]} trees"
+
+  -- After consolidation, merge pairs of same degree
+  mut merges := 0
+  for d in range(0, 5)
+    while deg_count[d] > 1
+      deg_count[d] = deg_count[d] - 2
+      if d + 1 < 5
+        deg_count[d + 1] = deg_count[d + 1] + 1
+      merges = merges + 1
+
+  print "  Merges performed: {merges}"
+  print "  After consolidation:"
+  for d in range(0, 5)
+    if deg_count[d] > 0
+      print "    degree {d}: {deg_count[d]} tree(s)"
+
+  -- Part 4: Decrease-key
+  print ""
+  print "=== Part 4: Decrease-Key ==="
+  mut dk_targets := [4, 2, 6]
+  mut dk_new_vals := [2, 8, 3]
+  num_dk := 3
+
+  for i in range(0, num_dk)
+    idx := dk_targets[i]
+    old := keys[idx]
+    nw := dk_new_vals[i]
+    print "  Decrease key[{idx}]: {old} -> {nw}"
+    if nw < old
+      keys[idx] = nw
+      print "    Cut from parent, add to root list"
+      if marked[idx]
+        print "    Was marked -> cascading cut!"
+        marked[idx] = false
+    else
+      print "    No decrease needed"
+
+  -- Part 5: Amortized costs
+  print ""
+  print "=== Part 5: Amortized Analysis ==="
+  mut ops := ["insert", "find-min", "merge", "extract-min", "decrease-key", "delete"]
+  mut costs := ["O(1)", "O(1)", "O(1)", "O(log n)", "O(1)", "O(log n)"]
+  num_ops := 6
+
+  for i in range(0, num_ops)
+    print "  {ops[i]}: {costs[i]} amortized"
+
+  -- Part 6: Priority queue simulation
+  print ""
+  print "=== Part 6: Priority Queue Simulation ==="
+  mut pq := [15, 8, 22, 3, 10, 45, 1]
+  pq_size := 7
+
+  -- Extract mins in order
+  mut extracted := 0
+  mut used := [false, false, false, false, false, false, false]
+
+  while extracted < 4
+    mut mi := -1
+    mut mv := 999999
+    for i in range(0, pq_size)
+      if not used[i]
+        if pq[i] < mv
+          mv = pq[i]
+          mi = i
+    if mi >= 0
+      used[mi] = true
+      extracted = extracted + 1
+      print "  Extract #{extracted}: {mv}"
+
+  print ""
+  print "Fibonacci heap: lazy merging, O(1) insert and decrease-key, consolidation on extract-min."

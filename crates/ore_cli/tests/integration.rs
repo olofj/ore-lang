@@ -8227,6 +8227,134 @@ fn showcase630_symbolic_regression() {
 }
 
 #[test]
+fn showcase631_escape_analysis() {
+    let out = run_ore("showcase631.ore");
+    assert!(out.contains("Escape Analysis:"));
+    assert!(out.contains("'ptr': ESCAPES (used in outer scope 0)"));
+    assert!(out.contains("Escaping: 1, Local: 7"));
+    assert!(out.contains("'ptr' -> HEAP allocation (escapes scope)"));
+    assert!(out.contains("'counter' captured by reference -> must heap allocate"));
+    assert!(out.contains("Stack optimization rate: 87%"));
+    assert!(out.contains("Escape analysis: scope tracking, allocation decisions, closure captures, heap vs stack."));
+}
+
+#[test]
+fn showcase632_fibonacci_heap() {
+    let out = run_ore("showcase632.ore");
+    assert!(out.contains("Fibonacci Heap Concepts:"));
+    assert!(out.contains("Min: 1"));
+    assert!(out.contains("Heap size: 11, Min: 0"));
+    assert!(out.contains("Merges performed: 5"));
+    assert!(out.contains("decrease-key: O(1) amortized"));
+    assert!(out.contains("Extract #1: 1"));
+    assert!(out.contains("Extract #4: 10"));
+    assert!(out.contains("Fibonacci heap: lazy merging, O(1) insert and decrease-key, consolidation on extract-min."));
+}
+
+#[test]
+fn showcase633_program_verifier() {
+    let out = run_ore("showcase633.ore");
+    assert!(out.contains("Simple Program Verifier:"));
+    assert!(out.contains("VERIFIED: x + y >= -10"));
+    assert!(out.contains("Loop invariant verified for all iterations"));
+    assert!(out.contains("Final sum: 55"));
+    assert!(out.contains("Safe: 8, Unsafe: 0"));
+    assert!(out.contains("Violations: 0"));
+    assert!(out.contains("FAIL: x > 0 (counterexample possible)"));
+    assert!(out.contains("Passed: 4, Failed: 1"));
+    assert!(out.contains("Program verifier: range analysis, loop invariants, bounds checking, type state, assertions."));
+}
+
+#[test]
+fn showcase634_sparse_table() {
+    let out = run_ore("showcase634.ore");
+    assert!(out.contains("Sparse Table (RMQ):"));
+    assert!(out.contains("RMQ(0, 7) = 1 (full array)"));
+    assert!(out.contains("RMQ(0, 3) = 2"));
+    assert!(out.contains("RMQ(1, 4) = 1"));
+    assert!(out.contains("RMQ(5, 7) = 3"));
+    assert!(out.contains("Brute force min(0,7) = 1, sparse table = 1, match = true"));
+    assert!(out.contains("Levels built: 4"));
+    assert!(out.contains("Sparse table: O(1) range minimum queries, log-level preprocessing, idempotent overlap."));
+}
+
+#[test]
+fn showcase635_gc_tricolor() {
+    let out = run_ore("showcase635.ore");
+    assert!(out.contains("GC Tri-Color Marking:"));
+    assert!(out.contains("Mark root A gray"));
+    assert!(out.contains("Mark root G gray"));
+    assert!(out.contains("A: BLACK (reachable)"));
+    assert!(out.contains("H: WHITE (garbage)"));
+    assert!(out.contains("J: WHITE (garbage)"));
+    assert!(out.contains("Free H"));
+    assert!(out.contains("Freed 2 objects"));
+    assert!(out.contains("Retained 8 objects"));
+    assert!(out.contains("Reclaimed: 20%"));
+    assert!(out.contains("Tri-color GC: root tracing, gray worklist, mark-and-sweep, unreachable detection."));
+}
+
+#[test]
+fn showcase636_cartesian_tree() {
+    let out = run_ore("showcase636.ore");
+    assert!(out.contains("Cartesian Tree:"));
+    assert!(out.contains("Root: arr[3] = 1"));
+    assert!(out.contains("Min-heap property: VERIFIED"));
+    assert!(out.contains("BST property: VERIFIED (in-order = 0..8)"));
+    assert!(out.contains("RMQ(0,8) = arr[3] = 1 (root = global min)"));
+    assert!(out.contains("Cartesian tree: min-heap by value, BST by index, stack-based O(n) construction."));
+}
+
+#[test]
+fn showcase637_program_slicing() {
+    let out = run_ore("showcase637.ore");
+    assert!(out.contains("Program Slicing:"));
+    assert!(out.contains("Tracing dependency on 'v'"));
+    assert!(out.contains("Include [5] v := z * w"));
+    assert!(out.contains("Slice size: 7/7 statements"));
+    assert!(out.contains("Forward slice size: 5/7 statements"));
+    assert!(out.contains("Dead statements: 0"));
+    assert!(out.contains("Program slicing: backward and forward slicing, dependency tracking, dead code detection."));
+}
+
+#[test]
+fn showcase638_heavy_light_decomposition() {
+    let out = run_ore("showcase638.ore");
+    assert!(out.contains("Heavy-Light Decomposition:"));
+    assert!(out.contains("Node 0: heavy child = 1"));
+    assert!(out.contains("Edge 0-1: heavy"));
+    assert!(out.contains("Total chains: 4"));
+    assert!(out.contains("LCA(6, 8) = 0"));
+    assert!(out.contains("Heavy edges: 5"));
+    assert!(out.contains("Light edges: 3"));
+    assert!(out.contains("HLD: heavy chains, light edges, O(log n) path queries, subtree decomposition."));
+}
+
+#[test]
+fn showcase639_abstract_machine() {
+    let out = run_ore("showcase639.ore");
+    assert!(out.contains("Simple Abstract Machine:"));
+    assert!(out.contains("PUSH 3  -> stack top: 3"));
+    assert!(out.contains("MUL        -> 3 * 4 = 12"));
+    assert!(out.contains("Result: 17, Steps: 7"));
+    assert!(out.contains("5! = 120, Steps: 11"));
+    assert!(out.contains("Stack machine sum(1..10) = 55"));
+    assert!(out.contains("Abstract machine: stack-based VM, instruction decoding, arithmetic operations, program execution."));
+}
+
+#[test]
+fn showcase640_fenwick_tree() {
+    let out = run_ore("showcase640.ore");
+    assert!(out.contains("Fenwick Tree (BIT):"));
+    assert!(out.contains("prefix_sum(0..0) = 3 (brute force: 3) OK"));
+    assert!(out.contains("prefix_sum(0..9) = 28 (brute force: 28) OK"));
+    assert!(out.contains("sum(2..5) = 14 (verify: 14)"));
+    assert!(out.contains("sum(0..9) = 28 (verify: 28)"));
+    assert!(out.contains("After update - total sum: brute=32, BIT=32"));
+    assert!(out.contains("Fenwick tree: binary indexed tree, prefix sums, point updates, range queries, O(log n)."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

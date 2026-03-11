@@ -1,0 +1,125 @@
+-- Showcase 637: Simple Program Slicing
+
+fn main
+  print "Program Slicing:"
+  print ""
+
+  -- Program slicing: extract the subset of statements that affect
+  -- a given variable at a given point (backward slice)
+
+  -- Part 1: Program representation
+  print "=== Part 1: Program Statements ==="
+  mut stmts := ["x := 1", "y := 2", "z := x + y", "w := 5", "x := x + 1", "v := z * w", "print v"]
+  mut stmt_defs := ["x", "y", "z", "w", "x", "v", ""]
+  -- Uses encoded: each stmt's used variables
+  -- stmt 0: none, stmt 1: none, stmt 2: x,y, stmt 3: none, stmt 4: x, stmt 5: z,w, stmt 6: v
+  mut uses_var0 := ["", "", "x", "", "x", "z", "v"]
+  mut uses_var1 := ["", "", "y", "", "", "w", ""]
+  num_stmts := 7
+
+  for i in range(0, num_stmts)
+    print "  [{i}] {stmts[i]}"
+
+  -- Part 2: Backward slice from "print v" (stmt 6, var "v")
+  print ""
+  print "=== Part 2: Backward Slice for 'v' at stmt 6 ==="
+
+  -- Worklist algorithm: start with target variable
+  mut in_slice := [false, false, false, false, false, false, false]
+  mut worklist_vars := ["v", "", "", "", "", "", ""]
+  mut wl_size := 1
+  in_slice[6] = true
+
+  mut iteration := 0
+  while wl_size > 0
+    iteration = iteration + 1
+    -- Pop from worklist
+    wl_size = wl_size - 1
+    target_var := worklist_vars[wl_size]
+    print "  Tracing dependency on '{target_var}'"
+
+    -- Find last definition of target_var before current point
+    -- Scan backwards
+    for j in range(0, num_stmts)
+      si := num_stmts - 1 - j
+      if stmt_defs[si] == target_var
+        if not in_slice[si]
+          in_slice[si] = true
+          print "    Include [{si}] {stmts[si]}"
+          -- Add used variables to worklist
+          if uses_var0[si] != ""
+            worklist_vars[wl_size] = uses_var0[si]
+            wl_size = wl_size + 1
+          if uses_var1[si] != ""
+            worklist_vars[wl_size] = uses_var1[si]
+            wl_size = wl_size + 1
+
+  -- Part 3: Slice result
+  print ""
+  print "=== Part 3: Slice Result ==="
+  mut slice_size := 0
+  for i in range(0, num_stmts)
+    if in_slice[i]
+      print "  [{i}] {stmts[i]}"
+      slice_size = slice_size + 1
+
+  print "  Slice size: {slice_size}/{num_stmts} statements"
+
+  -- Part 4: Forward slice from "x := 1" (stmt 0)
+  print ""
+  print "=== Part 4: Forward Slice from 'x := 1' ==="
+  mut fwd_slice := [false, false, false, false, false, false, false]
+  fwd_slice[0] = true
+  mut affected_vars := ["x", "", "", "", "", ""]
+  mut av_size := 1
+
+  -- Propagate forward
+  for i in range(1, num_stmts)
+    mut depends := false
+    -- Check if this statement uses any affected variable
+    for a in range(0, av_size)
+      if uses_var0[i] == affected_vars[a] or uses_var1[i] == affected_vars[a]
+        depends = true
+
+    if depends
+      fwd_slice[i] = true
+      if stmt_defs[i] != ""
+        affected_vars[av_size] = stmt_defs[i]
+        av_size = av_size + 1
+
+  mut fwd_size := 0
+  for i in range(0, num_stmts)
+    if fwd_slice[i]
+      print "  [{i}] {stmts[i]}"
+      fwd_size = fwd_size + 1
+
+  print "  Forward slice size: {fwd_size}/{num_stmts} statements"
+
+  -- Part 5: Dead code detection
+  print ""
+  print "=== Part 5: Dead Code Detection ==="
+  -- Statements not in any backward slice from outputs
+  mut live := [false, false, false, false, false, false, false]
+  for i in range(0, num_stmts)
+    if in_slice[i]
+      live[i] = true
+
+  mut dead_count := 0
+  for i in range(0, num_stmts)
+    if not live[i]
+      print "  DEAD: [{i}] {stmts[i]}"
+      dead_count = dead_count + 1
+
+  print "  Dead statements: {dead_count}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Total statements: {num_stmts}"
+  print "  Backward slice size: {slice_size}"
+  print "  Forward slice size: {fwd_size}"
+  print "  Dead code: {dead_count}"
+  print "  Slice iterations: {iteration}"
+
+  print ""
+  print "Program slicing: backward and forward slicing, dependency tracking, dead code detection."

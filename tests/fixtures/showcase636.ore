@@ -1,0 +1,146 @@
+-- Showcase 636: Cartesian Tree
+
+fn main
+  print "Cartesian Tree:"
+  print ""
+
+  -- A Cartesian tree satisfies: BST by index, min-heap by value
+  -- Build from array using stack-based O(n) algorithm
+
+  -- Part 1: Input array
+  print "=== Part 1: Input Array ==="
+  mut arr := [3, 2, 6, 1, 9, 5, 7, 4, 8]
+  n := 9
+
+  for i in range(0, n)
+    print "  arr[{i}] = {arr[i]}"
+
+  -- Part 2: Build Cartesian tree
+  print ""
+  print "=== Part 2: Build Cartesian Tree ==="
+  -- parent[i], left[i], right[i] for each node
+  mut parent := [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut left := [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut right := [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+
+  -- Stack-based construction
+  mut stack := [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut stack_top := -1
+
+  for i in range(0, n)
+    mut last_popped := -1
+
+    -- Pop elements larger than current
+    while stack_top >= 0 and arr[stack[stack_top]] > arr[i]
+      last_popped = stack[stack_top]
+      stack_top = stack_top - 1
+
+    if last_popped != -1
+      -- Last popped becomes left child of i
+      left[i] = last_popped
+      parent[last_popped] = i
+      print "  {arr[i]} (idx {i}): left child = {arr[last_popped]} (idx {last_popped})"
+
+    if stack_top >= 0
+      -- Current becomes right child of stack top
+      right[stack[stack_top]] = i
+      parent[i] = stack[stack_top]
+      print "  {arr[i]} (idx {i}): parent = {arr[stack[stack_top]]} (idx {stack[stack_top]})"
+
+    -- Push current to stack
+    stack_top = stack_top + 1
+    stack[stack_top] = i
+
+  -- Find root (node with no parent)
+  mut root := -1
+  for i in range(0, n)
+    if parent[i] == -1
+      root = i
+  print "  Root: arr[{root}] = {arr[root]}"
+
+  -- Part 3: Tree structure
+  print ""
+  print "=== Part 3: Tree Structure ==="
+  for i in range(0, n)
+    mut l_str := "none"
+    mut r_str := "none"
+    mut p_str := "root"
+    if left[i] >= 0
+      l_str = str(arr[left[i]])
+    if right[i] >= 0
+      r_str = str(arr[right[i]])
+    if parent[i] >= 0
+      p_str = str(arr[parent[i]])
+    print "  node {arr[i]}: parent={p_str}, left={l_str}, right={r_str}"
+
+  -- Part 4: Verify heap property
+  print ""
+  print "=== Part 4: Verify Min-Heap Property ==="
+  mut heap_ok := true
+  for i in range(0, n)
+    if left[i] >= 0
+      if arr[i] > arr[left[i]]
+        print "  VIOLATION: {arr[i]} > left child {arr[left[i]]}"
+        heap_ok = false
+    if right[i] >= 0
+      if arr[i] > arr[right[i]]
+        print "  VIOLATION: {arr[i]} > right child {arr[right[i]]}"
+        heap_ok = false
+
+  if heap_ok
+    print "  Min-heap property: VERIFIED"
+
+  -- Part 5: Verify BST property (in-order = original array)
+  print ""
+  print "=== Part 5: Verify BST Property ==="
+  -- In-order traversal should give original indices 0,1,2,...
+  -- Simulate in-order using iterative approach
+  mut inorder := [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut visit_stack := [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut vs_top := -1
+  mut current := root
+  mut io_idx := 0
+
+  while current >= 0 or vs_top >= 0
+    while current >= 0
+      vs_top = vs_top + 1
+      visit_stack[vs_top] = current
+      current = left[current]
+    current = visit_stack[vs_top]
+    vs_top = vs_top - 1
+    inorder[io_idx] = current
+    io_idx = io_idx + 1
+    current = right[current]
+
+  mut bst_ok := true
+  for i in range(0, n)
+    if inorder[i] != i
+      bst_ok = false
+      print "  VIOLATION at position {i}: got index {inorder[i]}"
+
+  if bst_ok
+    print "  BST property: VERIFIED (in-order = 0..{n - 1})"
+
+  -- Part 6: RMQ via Cartesian tree
+  print ""
+  print "=== Part 6: RMQ via LCA ==="
+  print "  Cartesian tree enables RMQ via LCA queries"
+  print "  RMQ(0,8) = arr[{root}] = {arr[root]} (root = global min)"
+
+  -- Find LCA of indices 0 and 2 for RMQ(0,2)
+  -- Trace up from both nodes
+  mut depth := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, n)
+    mut d := 0
+    mut cur := i
+    while parent[cur] >= 0
+      d = d + 1
+      cur = parent[cur]
+    depth[i] = d
+
+  print "  Tree depth of each node:"
+  for i in range(0, n)
+    print "    node {arr[i]} (idx {i}): depth {depth[i]}"
+
+  print ""
+  print "Cartesian tree: min-heap by value, BST by index, stack-based O(n) construction."

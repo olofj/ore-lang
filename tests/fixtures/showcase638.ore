@@ -1,0 +1,162 @@
+-- Showcase 638: Heavy-Light Decomposition Concepts
+
+fn main
+  print "Heavy-Light Decomposition:"
+  print ""
+
+  -- HLD decomposes a tree into chains for efficient path queries
+  -- Heavy edge: to child with largest subtree
+  -- Light edge: all other edges
+
+  -- Part 1: Tree structure (parent representation)
+  print "=== Part 1: Tree Structure ==="
+  --       0
+  --      / \
+  --     1   2
+  --    /|    \
+  --   3 4     5
+  --   |      / \
+  --   6     7   8
+  num_nodes := 9
+  mut parent := [-1, 0, 0, 1, 1, 2, 3, 5, 5]
+  mut children_count := [2, 2, 1, 1, 0, 2, 0, 0, 0]
+
+  for i in range(0, num_nodes)
+    if parent[i] == -1
+      print "  Node {i}: root"
+    else
+      print "  Node {i}: parent={parent[i]}"
+
+  -- Part 2: Compute subtree sizes (bottom-up)
+  print ""
+  print "=== Part 2: Subtree Sizes ==="
+  mut subtree_size := [1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+  -- Process in reverse order (leaves first)
+  for j in range(0, num_nodes)
+    i := num_nodes - 1 - j
+    if parent[i] >= 0
+      subtree_size[parent[i]] = subtree_size[parent[i]] + subtree_size[i]
+
+  for i in range(0, num_nodes)
+    print "  Node {i}: subtree size = {subtree_size[i]}"
+
+  -- Part 3: Identify heavy edges
+  print ""
+  print "=== Part 3: Heavy/Light Edges ==="
+  -- Heavy child: child with largest subtree
+  mut heavy_child := [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+
+  -- For each node, find child with largest subtree
+  for c in range(1, num_nodes)
+    p := parent[c]
+    if heavy_child[p] == -1 or subtree_size[c] > subtree_size[heavy_child[p]]
+      heavy_child[p] = c
+
+  for i in range(0, num_nodes)
+    if heavy_child[i] >= 0
+      print "  Node {i}: heavy child = {heavy_child[i]}"
+    else
+      print "  Node {i}: leaf"
+
+  -- Classify edges
+  mut edge_type := ["", "", "", "", "", "", "", "", ""]
+  for c in range(1, num_nodes)
+    p := parent[c]
+    if heavy_child[p] == c
+      edge_type[c] = "heavy"
+    else
+      edge_type[c] = "light"
+    print "  Edge {p}-{c}: {edge_type[c]}"
+
+  -- Part 4: Build chains
+  print ""
+  print "=== Part 4: Heavy Chains ==="
+  mut chain_head := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Each node's chain head: follow heavy edges up
+  for i in range(0, num_nodes)
+    chain_head[i] = i
+
+  -- Assign chain heads: root starts its own chain
+  -- A heavy child inherits parent's chain head
+  -- A light child starts a new chain
+  chain_head[0] = 0
+  for i in range(1, num_nodes)
+    p := parent[i]
+    if heavy_child[p] == i
+      chain_head[i] = chain_head[p]
+    else
+      chain_head[i] = i
+
+  -- Count distinct chains
+  mut chain_ids := [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+  mut num_chains := 0
+  for i in range(0, num_nodes)
+    if chain_head[i] == i
+      chain_ids[i] = num_chains
+      num_chains = num_chains + 1
+
+  -- Assign chain IDs
+  for i in range(0, num_nodes)
+    if chain_ids[chain_head[i]] >= 0
+      chain_ids[i] = chain_ids[chain_head[i]]
+
+  for i in range(0, num_nodes)
+    print "  Node {i}: chain head = {chain_head[i]}, chain #{chain_ids[i]}"
+
+  print "  Total chains: {num_chains}"
+
+  -- Part 5: Compute node depths
+  print ""
+  print "=== Part 5: Node Depths ==="
+  mut depth := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(1, num_nodes)
+    depth[i] = depth[parent[i]] + 1
+
+  for i in range(0, num_nodes)
+    print "  Node {i}: depth = {depth[i]}"
+
+  -- Part 6: Path query simulation
+  print ""
+  print "=== Part 6: Path Query (LCA) ==="
+  -- Find LCA of node 6 and node 8
+  mut u := 6
+  mut v := 8
+  print "  Finding LCA of {u} and {v}"
+
+  -- Move up to same depth
+  while depth[u] > depth[v]
+    u = parent[u]
+    print "    Move u up to {u}"
+
+  while depth[v] > depth[u]
+    v = parent[v]
+    print "    Move v up to {v}"
+
+  -- Move both up until they meet
+  while u != v
+    u = parent[u]
+    v = parent[v]
+    print "    Move both up: u={u}, v={v}"
+
+  print "  LCA(6, 8) = {u}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  mut heavy_count := 0
+  mut light_count := 0
+  for i in range(1, num_nodes)
+    if edge_type[i] == "heavy"
+      heavy_count = heavy_count + 1
+    else
+      light_count = light_count + 1
+
+  print "  Nodes: {num_nodes}"
+  print "  Heavy edges: {heavy_count}"
+  print "  Light edges: {light_count}"
+  print "  Chains: {num_chains}"
+  print "  Max chain hops for any path: O(log n)"
+
+  print ""
+  print "HLD: heavy chains, light edges, O(log n) path queries, subtree decomposition."
