@@ -1,0 +1,117 @@
+-- Showcase 572: Kalman Filter Concepts (1D State Estimation)
+
+fn main
+  print "Kalman Filter (1D State Estimation):"
+  print ""
+
+  -- Part 1: Initial state
+  print "=== Part 1: Initial State ==="
+  mut estimate := 0
+  mut est_error := 1000
+  process_noise := 1
+  measurement_noise := 50
+  print "  Initial estimate: {estimate}"
+  print "  Initial uncertainty: {est_error}"
+  print "  Process noise (Q): {process_noise}"
+  print "  Measurement noise (R): {measurement_noise}"
+
+  -- Part 2: Measurements (simulated position sensor)
+  print ""
+  print "=== Part 2: Measurements ==="
+  mut measurements := [48, 52, 47, 55, 50, 49, 53, 51, 46, 52]
+  num_measurements := 10
+  print "  Sensor readings:"
+  for i in range(0, num_measurements)
+    print "    t={i}: measured = {measurements[i]}"
+
+  -- Part 3: Kalman filter iterations (integer approximation)
+  print ""
+  print "=== Part 3: Filter Iterations ==="
+  -- Using scaled integer arithmetic (x100 for precision)
+  mut est_x100 := 0
+  mut err_x100 := 100000
+  q_x100 := 100
+  r_x100 := 5000
+
+  mut estimates := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut gains := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  for i in range(0, num_measurements)
+    -- Predict step
+    pred_err := err_x100 + q_x100
+
+    -- Update step: gain = pred_err / (pred_err + R)
+    -- Gain as percentage (0-100)
+    gain_pct := pred_err * 100 / (pred_err + r_x100)
+    gains[i] = gain_pct
+
+    -- New estimate: est + gain * (measurement - est)
+    meas_x100 := measurements[i] * 100
+    innovation := meas_x100 - est_x100
+    est_x100 = est_x100 + gain_pct * innovation / 100
+
+    -- New error: (1 - gain) * pred_err
+    err_x100 = (100 - gain_pct) * pred_err / 100
+
+    estimates[i] = est_x100 / 100
+    print "  t={i}: gain={gain_pct}%, estimate={estimates[i]}, error={err_x100 / 100}"
+
+  -- Part 4: Convergence analysis
+  print ""
+  print "=== Part 4: Convergence ==="
+  print "  Gain progression:"
+  print "    Initial gain: {gains[0]}%"
+  print "    Final gain: {gains[9]}%"
+  if gains[0] > gains[9]
+    print "    Trend: decreasing (filter converging)"
+
+  -- Part 5: Estimate vs measurement comparison
+  print ""
+  print "=== Part 5: Smoothing Effect ==="
+  mut meas_range := 0
+  mut est_range := 0
+  mut meas_min := 999
+  mut meas_max := 0
+  mut est_min := 999
+  mut est_max := 0
+
+  for i in range(0, num_measurements)
+    if measurements[i] < meas_min
+      meas_min = measurements[i]
+    if measurements[i] > meas_max
+      meas_max = measurements[i]
+    if estimates[i] < est_min
+      est_min = estimates[i]
+    if estimates[i] > est_max
+      est_max = estimates[i]
+
+  meas_range = meas_max - meas_min
+  est_range = est_max - est_min
+  print "  Measurement range: {meas_min} to {meas_max} (spread: {meas_range})"
+  print "  Estimate range: {est_min} to {est_max} (spread: {est_range})"
+  if est_range < meas_range
+    print "  Filter reduces noise spread"
+
+  -- Part 6: Prediction mode
+  print ""
+  print "=== Part 6: Prediction ==="
+  last_est := estimates[9]
+  print "  Last estimate: {last_est}"
+  print "  Predicted next: {last_est} (constant velocity model)"
+  print "  Prediction uncertainty grows without measurements"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  mut sum_meas := 0
+  for i in range(0, num_measurements)
+    sum_meas = sum_meas + measurements[i]
+  avg_meas := sum_meas / num_measurements
+  print "  Measurements processed: {num_measurements}"
+  print "  Average measurement: {avg_meas}"
+  print "  Final estimate: {last_est}"
+  print "  Final uncertainty: {err_x100 / 100}"
+  print "  Convergence: achieved"
+
+  print ""
+  print "Kalman filter: predict-update cycle, gain convergence, noise reduction, state estimation."

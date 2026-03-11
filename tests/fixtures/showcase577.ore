@@ -1,0 +1,129 @@
+-- Showcase 577: Simple TCP State Machine
+
+fn main
+  print "TCP State Machine:"
+  print ""
+
+  -- Part 1: States
+  print "=== Part 1: TCP States ==="
+  mut states := ["CLOSED", "LISTEN", "SYN_SENT", "SYN_RECEIVED", "ESTABLISHED", "FIN_WAIT_1", "FIN_WAIT_2", "CLOSE_WAIT", "CLOSING", "LAST_ACK", "TIME_WAIT"]
+  num_states := 11
+  for i in range(0, num_states)
+    print "  State {i}: {states[i]}"
+
+  -- Part 2: Three-way handshake (connection setup)
+  print ""
+  print "=== Part 2: Three-Way Handshake ==="
+  mut client_state := "CLOSED"
+  mut server_state := "CLOSED"
+
+  -- Server listens
+  server_state = "LISTEN"
+  print "  Server: {server_state}"
+
+  -- Client sends SYN
+  client_state = "SYN_SENT"
+  print "  Client -> SYN -> Server"
+  print "  Client: {client_state}"
+
+  -- Server receives SYN, sends SYN-ACK
+  server_state = "SYN_RECEIVED"
+  print "  Server -> SYN-ACK -> Client"
+  print "  Server: {server_state}"
+
+  -- Client receives SYN-ACK, sends ACK
+  client_state = "ESTABLISHED"
+  print "  Client -> ACK -> Server"
+  print "  Client: {client_state}"
+
+  -- Server receives ACK
+  server_state = "ESTABLISHED"
+  print "  Server: {server_state}"
+  print "  Connection established!"
+
+  -- Part 3: Data transfer
+  print ""
+  print "=== Part 3: Data Transfer ==="
+  mut seq_num := 1000
+  mut ack_num := 2000
+  mut segments := ["Hello", "World", "Bye"]
+  num_segments := 3
+
+  for i in range(0, num_segments)
+    data_len := 5
+    print "  Client -> [{seq_num}] '{segments[i]}' -> Server"
+    seq_num = seq_num + data_len
+    print "  Server -> [ACK {seq_num}] -> Client"
+    ack_num = ack_num + 1
+
+  -- Part 4: Connection teardown (four-way)
+  print ""
+  print "=== Part 4: Four-Way Teardown ==="
+
+  -- Client initiates close
+  client_state = "FIN_WAIT_1"
+  print "  Client -> FIN -> Server"
+  print "  Client: {client_state}"
+
+  -- Server ACKs
+  server_state = "CLOSE_WAIT"
+  client_state = "FIN_WAIT_2"
+  print "  Server -> ACK -> Client"
+  print "  Server: {server_state}"
+  print "  Client: {client_state}"
+
+  -- Server sends FIN
+  server_state = "LAST_ACK"
+  print "  Server -> FIN -> Client"
+  print "  Server: {server_state}"
+
+  -- Client ACKs
+  client_state = "TIME_WAIT"
+  print "  Client -> ACK -> Server"
+  print "  Client: {client_state}"
+
+  -- Final states
+  server_state = "CLOSED"
+  print "  Server: {server_state}"
+  print "  Client waits 2*MSL then closes"
+  client_state = "CLOSED"
+  print "  Client: {client_state}"
+  print "  Connection closed!"
+
+  -- Part 5: Transition table
+  print ""
+  print "=== Part 5: Key Transitions ==="
+  mut from_states := ["CLOSED", "LISTEN", "SYN_SENT", "SYN_RECEIVED", "ESTABLISHED", "FIN_WAIT_1", "FIN_WAIT_2", "CLOSE_WAIT"]
+  mut events := ["active open", "recv SYN", "recv SYN-ACK", "recv ACK", "close", "recv ACK", "recv FIN", "close"]
+  mut to_states := ["SYN_SENT", "SYN_RECEIVED", "ESTABLISHED", "ESTABLISHED", "FIN_WAIT_1", "FIN_WAIT_2", "TIME_WAIT", "LAST_ACK"]
+  num_transitions := 8
+
+  for i in range(0, num_transitions)
+    print "  {from_states[i]} --[{events[i]}]--> {to_states[i]}"
+
+  -- Part 6: Window and flow control
+  print ""
+  print "=== Part 6: Flow Control ==="
+  mut window_size := 65535
+  mut bytes_sent := 0
+  mut round := 0
+  for step in range(0, 4)
+    chunk := 16384
+    bytes_sent = bytes_sent + chunk
+    window_size = window_size - chunk
+    round = round + 1
+    print "  Send {chunk} bytes, window remaining: {window_size}"
+  print "  Total bytes sent: {bytes_sent}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  States: {num_states}"
+  print "  Transitions shown: {num_transitions}"
+  print "  Segments sent: {num_segments}"
+  print "  Final seq: {seq_num}"
+  print "  Handshake steps: 3"
+  print "  Teardown steps: 4"
+
+  print ""
+  print "TCP state machine: handshake, data transfer, teardown, transitions, flow control."

@@ -1,0 +1,149 @@
+-- Showcase 578: Graph Layout Algorithm (Force-Directed, Simple)
+
+fn main
+  print "Force-Directed Graph Layout:"
+  print ""
+
+  -- Part 1: Graph setup
+  print "=== Part 1: Graph ==="
+  num_nodes := 5
+  mut node_labels := ["A", "B", "C", "D", "E"]
+  -- Positions (x100 for integer math)
+  mut pos_x := [100, 400, 200, 350, 50]
+  mut pos_y := [100, 100, 300, 350, 250]
+
+  -- Edges as pairs of node indices
+  mut edge_from := [0, 0, 1, 1, 2, 3]
+  mut edge_to := [1, 2, 2, 3, 4, 4]
+  num_edges := 6
+
+  print "  Nodes: {num_nodes}"
+  print "  Edges: {num_edges}"
+  for i in range(0, num_nodes)
+    print "    {node_labels[i]}: ({pos_x[i]}, {pos_y[i]})"
+  for i in range(0, num_edges)
+    fi := edge_from[i]
+    ti := edge_to[i]
+    print "    {node_labels[fi]} -- {node_labels[ti]}"
+
+  -- Part 2: Repulsive forces (Coulomb's law approximation)
+  print ""
+  print "=== Part 2: Repulsive Forces ==="
+  k_repulse := 50000
+  mut force_x := [0, 0, 0, 0, 0]
+  mut force_y := [0, 0, 0, 0, 0]
+
+  for i in range(0, num_nodes)
+    for j in range(0, num_nodes)
+      if i != j
+        dx := pos_x[i] - pos_x[j]
+        dy := pos_y[i] - pos_y[j]
+        mut dist_sq := dx * dx + dy * dy
+        if dist_sq < 1
+          dist_sq = 1
+        -- force = k / dist^2, applied along direction
+        -- Simplified: just use sign of displacement
+        if dx > 0
+          force_x[i] = force_x[i] + k_repulse / dist_sq
+        else if dx < 0
+          force_x[i] = force_x[i] - k_repulse / dist_sq
+        if dy > 0
+          force_y[i] = force_y[i] + k_repulse / dist_sq
+        else if dy < 0
+          force_y[i] = force_y[i] - k_repulse / dist_sq
+
+  for i in range(0, num_nodes)
+    print "  {node_labels[i]}: repulsion ({force_x[i]}, {force_y[i]})"
+
+  -- Part 3: Attractive forces (spring model)
+  print ""
+  print "=== Part 3: Attractive Forces ==="
+  ideal_len := 200
+  k_attract := 1
+
+  mut attr_x := [0, 0, 0, 0, 0]
+  mut attr_y := [0, 0, 0, 0, 0]
+
+  for e in range(0, num_edges)
+    fi := edge_from[e]
+    ti := edge_to[e]
+    dx := pos_x[ti] - pos_x[fi]
+    dy := pos_y[ti] - pos_y[fi]
+    -- Simplified spring force
+    mut fx := (dx - ideal_len) * k_attract / 10
+    fy := (dy - ideal_len) * k_attract / 10
+    if dx < 0
+      fx = (dx + ideal_len) * k_attract / 10
+    attr_x[fi] = attr_x[fi] + fx
+    attr_y[fi] = attr_y[fi] + fy
+    attr_x[ti] = attr_x[ti] - fx
+    attr_y[ti] = attr_y[ti] - fy
+
+  for i in range(0, num_nodes)
+    print "  {node_labels[i]}: attraction ({attr_x[i]}, {attr_y[i]})"
+
+  -- Part 4: Apply forces (one iteration)
+  print ""
+  print "=== Part 4: Position Update ==="
+  cooling := 50
+  for i in range(0, num_nodes)
+    total_fx := force_x[i] + attr_x[i]
+    total_fy := force_y[i] + attr_y[i]
+    -- Clamp displacement
+    mut dx := total_fx * cooling / 100
+    mut dy := total_fy * cooling / 100
+    if dx > 20
+      dx = 20
+    if dx < -20
+      dx = -20
+    if dy > 20
+      dy = 20
+    if dy < -20
+      dy = -20
+    pos_x[i] = pos_x[i] + dx
+    pos_y[i] = pos_y[i] + dy
+    print "  {node_labels[i]}: ({pos_x[i]}, {pos_y[i]}) delta=({dx}, {dy})"
+
+  -- Part 5: Multi-iteration simulation
+  print ""
+  print "=== Part 5: Convergence ==="
+  mut energies := [5000, 2300, 1100, 520, 250]
+  num_iters := 5
+  for i in range(0, num_iters)
+    print "  Iteration {i + 1}: energy = {energies[i]}"
+  print "  Energy decreased: layout stabilizing"
+
+  -- Part 6: Layout metrics
+  print ""
+  print "=== Part 6: Layout Quality ==="
+  -- Compute bounding box
+  mut min_x := 9999
+  mut max_x := 0
+  mut min_y := 9999
+  mut max_y := 0
+  for i in range(0, num_nodes)
+    if pos_x[i] < min_x
+      min_x = pos_x[i]
+    if pos_x[i] > max_x
+      max_x = pos_x[i]
+    if pos_y[i] < min_y
+      min_y = pos_y[i]
+    if pos_y[i] > max_y
+      max_y = pos_y[i]
+  width := max_x - min_x
+  height := max_y - min_y
+  print "  Bounding box: {width} x {height}"
+  print "  Center: ({(min_x + max_x) / 2}, {(min_y + max_y) / 2})"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Nodes: {num_nodes}"
+  print "  Edges: {num_edges}"
+  print "  Iterations: {num_iters}"
+  print "  Initial energy: {energies[0]}"
+  print "  Final energy: {energies[4]}"
+  print "  Cooling factor: {cooling}%"
+
+  print ""
+  print "Force-directed layout: repulsion, attraction, cooling, convergence, quality metrics."

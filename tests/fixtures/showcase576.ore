@@ -1,0 +1,92 @@
+-- Showcase 576: Evolutionary Strategies (ES Optimization)
+
+fn main
+  print "Evolutionary Strategies Optimization:"
+  print ""
+
+  -- Part 1: Problem setup - minimize f(x) = (x-42)^2
+  print "=== Part 1: Problem Setup ==="
+  target := 42
+  pop_size := 6
+  print "  Objective: minimize f(x) = (x - {target})^2"
+  print "  Population size: {pop_size}"
+  print "  Initial range: [0, 100]"
+
+  -- Part 2: Initial population
+  print ""
+  print "=== Part 2: Initial Population ==="
+  mut pop := [10, 30, 55, 70, 25, 80]
+  mut fitness := [0, 0, 0, 0, 0, 0]
+
+  for i in range(0, pop_size)
+    diff := pop[i] - target
+    fitness[i] = diff * diff
+    print "  Individual {i}: x={pop[i]}, f(x)={fitness[i]}"
+
+  -- Part 3: Selection (tournament)
+  print ""
+  print "=== Part 3: Tournament Selection ==="
+  -- Pick best from pairs
+  mut selected := [0, 0, 0, 0, 0, 0]
+  mut num_selected := 0
+
+  -- Tournament: compare adjacent pairs
+  for i in range(0, pop_size - 1)
+    if fitness[i] <= fitness[i + 1]
+      selected[num_selected] = pop[i]
+      print "  Tournament {i} vs {i + 1}: {pop[i]} wins (f={fitness[i]})"
+    else
+      selected[num_selected] = pop[i + 1]
+      print "  Tournament {i} vs {i + 1}: {pop[i + 1]} wins (f={fitness[i + 1]})"
+    num_selected = num_selected + 1
+
+  -- Part 4: Mutation
+  print ""
+  print "=== Part 4: Mutation ==="
+  mut mutations := [3, -2, 5, -4, 1]
+  mut next_gen := [0, 0, 0, 0, 0, 0]
+  for i in range(0, num_selected)
+    next_gen[i] = selected[i] + mutations[i]
+    print "  {selected[i]} + ({mutations[i]}) = {next_gen[i]}"
+  -- Keep best from previous gen
+  mut best_idx := 0
+  mut best_fit := fitness[0]
+  for i in range(1, pop_size)
+    if fitness[i] < best_fit
+      best_fit = fitness[i]
+      best_idx = i
+  next_gen[num_selected] = pop[best_idx]
+  print "  Elite carry: {pop[best_idx]} (f={best_fit})"
+
+  -- Part 5: Multi-generation evolution
+  print ""
+  print "=== Part 5: Evolution ==="
+  -- Simulate 5 generations converging toward 42
+  mut gen_bests := [30, 35, 38, 40, 42]
+  mut gen_fits := [144, 49, 16, 4, 0]
+  num_gens := 5
+  for g in range(0, num_gens)
+    print "  Gen {g + 1}: best x={gen_bests[g]}, f(x)={gen_fits[g]}"
+  print "  Converged to optimal: x={gen_bests[4]}"
+
+  -- Part 6: Sigma adaptation
+  print ""
+  print "=== Part 6: Step Size Adaptation ==="
+  mut sigmas := [20, 15, 10, 6, 3]
+  for g in range(0, num_gens)
+    print "  Gen {g + 1}: sigma={sigmas[g]}"
+  print "  Step size decreases as population converges"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Target: {target}"
+  print "  Found: {gen_bests[4]}"
+  print "  Generations: {num_gens}"
+  print "  Final fitness: {gen_fits[4]}"
+  print "  Population size: {pop_size}"
+  print "  Selection: tournament"
+  print "  Mutation: Gaussian (adaptive sigma)"
+
+  print ""
+  print "Evolutionary strategies: population, tournament selection, mutation, elite carry, sigma adaptation."

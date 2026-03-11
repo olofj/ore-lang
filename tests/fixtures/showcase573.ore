@@ -1,0 +1,130 @@
+-- Showcase 573: Simple Load Balancer (Round Robin, Weighted, Least Connections)
+
+fn main
+  print "Load Balancer Simulation:"
+  print ""
+
+  -- Part 1: Server setup
+  print "=== Part 1: Server Pool ==="
+  num_servers := 4
+  mut server_names := ["srv-a", "srv-b", "srv-c", "srv-d"]
+  mut server_weights := [3, 2, 4, 1]
+  mut server_conns := [0, 0, 0, 0]
+  mut server_healthy := [1, 1, 1, 1]
+  mut server_capacity := [100, 80, 120, 60]
+
+  for i in range(0, num_servers)
+    print "  {server_names[i]}: weight={server_weights[i]}, capacity={server_capacity[i]}"
+
+  -- Part 2: Round robin
+  print ""
+  print "=== Part 2: Round Robin ==="
+  num_requests := 8
+  mut rr_index := 0
+  mut rr_counts := [0, 0, 0, 0]
+
+  for r in range(0, num_requests)
+    target := rr_index % num_servers
+    rr_counts[target] = rr_counts[target] + 1
+    print "  Request {r + 1} -> {server_names[target]}"
+    rr_index = rr_index + 1
+
+  print "  Distribution:"
+  for i in range(0, num_servers)
+    print "    {server_names[i]}: {rr_counts[i]} requests"
+
+  -- Part 3: Weighted round robin
+  print ""
+  print "=== Part 3: Weighted Round Robin ==="
+  -- Total weight = 3+2+4+1 = 10
+  mut total_weight := 0
+  for i in range(0, num_servers)
+    total_weight = total_weight + server_weights[i]
+  print "  Total weight: {total_weight}"
+
+  mut wrr_counts := [0, 0, 0, 0]
+  num_wrr_requests := 10
+
+  -- Distribute proportionally
+  mut wrr_pos := 0
+  mut current_server := 0
+  mut current_count := 0
+
+  for r in range(0, num_wrr_requests)
+    -- Find server for this slot
+    mut slot := r % total_weight
+    mut cumulative := 0
+    mut target := 0
+    for i in range(0, num_servers)
+      cumulative = cumulative + server_weights[i]
+      if slot < cumulative and target == 0
+        target = i + 1
+    target = target - 1
+    wrr_counts[target] = wrr_counts[target] + 1
+    print "  Request {r + 1} -> {server_names[target]} (weight: {server_weights[target]})"
+
+  print "  Distribution:"
+  for i in range(0, num_servers)
+    print "    {server_names[i]}: {wrr_counts[i]} requests (weight: {server_weights[i]})"
+
+  -- Part 4: Least connections
+  print ""
+  print "=== Part 4: Least Connections ==="
+  mut lc_conns := [5, 2, 8, 1]
+  mut lc_counts := [0, 0, 0, 0]
+  num_lc := 6
+
+  print "  Initial connections: [{lc_conns[0]}, {lc_conns[1]}, {lc_conns[2]}, {lc_conns[3]}]"
+  for r in range(0, num_lc)
+    -- Find server with least connections
+    mut min_conn := 99999
+    mut target := 0
+    for i in range(0, num_servers)
+      if lc_conns[i] < min_conn and server_healthy[i] == 1
+        min_conn = lc_conns[i]
+        target = i
+    lc_conns[target] = lc_conns[target] + 1
+    lc_counts[target] = lc_counts[target] + 1
+    print "  Request {r + 1} -> {server_names[target]} (conns: {lc_conns[target]})"
+
+  print "  Final connections: [{lc_conns[0]}, {lc_conns[1]}, {lc_conns[2]}, {lc_conns[3]}]"
+
+  -- Part 5: Health checking
+  print ""
+  print "=== Part 5: Health Checks ==="
+  -- Simulate srv-b going down
+  server_healthy[1] = 0
+  print "  srv-b: UNHEALTHY (removed from pool)"
+  mut healthy_count := 0
+  for i in range(0, num_servers)
+    if server_healthy[i] == 1
+      print "  {server_names[i]}: HEALTHY"
+      healthy_count = healthy_count + 1
+  print "  Active servers: {healthy_count}/{num_servers}"
+
+  -- Part 6: Connection draining
+  print ""
+  print "=== Part 6: Connection Draining ==="
+  drain_conns := lc_conns[1]
+  print "  Draining srv-b: {drain_conns} active connections"
+  mut drain_steps := 0
+  mut remaining := drain_conns
+  for step in range(0, drain_conns)
+    remaining = remaining - 1
+    drain_steps = drain_steps + 1
+    print "  Step {drain_steps}: {remaining} connections remaining"
+  print "  srv-b fully drained"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Algorithms tested: 3"
+  print "    1. Round Robin"
+  print "    2. Weighted Round Robin"
+  print "    3. Least Connections"
+  print "  Total servers: {num_servers}"
+  print "  Healthy servers: {healthy_count}"
+  print "  Total weight: {total_weight}"
+
+  print ""
+  print "Load balancer: round robin, weighted, least connections, health checks, draining."

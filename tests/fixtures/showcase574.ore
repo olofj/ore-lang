@@ -1,0 +1,132 @@
+-- Showcase 574: B+ Tree Concepts (Leaf/Internal Nodes, Range Queries)
+
+fn main
+  print "B+ Tree Concepts:"
+  print ""
+
+  -- Part 1: Tree configuration
+  print "=== Part 1: Tree Setup ==="
+  order := 4
+  max_keys := order - 1
+  min_keys := order / 2
+  print "  Order: {order}"
+  print "  Max keys per node: {max_keys}"
+  print "  Min keys per node: {min_keys}"
+
+  -- Part 2: Building a B+ tree by insertion
+  print ""
+  print "=== Part 2: Insertions ==="
+  mut keys := [10, 20, 5, 15, 25, 30, 35, 3, 8, 12]
+  num_keys := 10
+
+  -- Simulate sorted leaf contents
+  mut leaf1 := [3, 5, 8]
+  mut leaf2 := [10, 12, 15]
+  mut leaf3 := [20, 25, 30]
+  mut leaf4 := [35, 0, 0]
+  leaf4_count := 1
+
+  for i in range(0, num_keys)
+    print "  Insert key: {keys[i]}"
+
+  -- Part 3: Tree structure after insertions
+  print ""
+  print "=== Part 3: Tree Structure ==="
+  print "  Internal node (root): [10, 20, 35]"
+  print "  Leaf nodes:"
+  print "    L0: [3, 5, 8] -> L1"
+  print "    L1: [10, 12, 15] -> L2"
+  print "    L2: [20, 25, 30] -> L3"
+  print "    L3: [35] -> null"
+  print "  Height: 2"
+  print "  Leaf nodes: 4"
+
+  -- Part 4: Point query
+  print ""
+  print "=== Part 4: Point Query ==="
+  mut search_keys := [12, 25, 7, 99]
+  num_searches := 4
+
+  for s in range(0, num_searches)
+    target := search_keys[s]
+    mut found := 0
+
+    -- Search in leaf1
+    for i in range(0, 3)
+      if leaf1[i] == target
+        found = 1
+    -- Search in leaf2
+    for i in range(0, 3)
+      if leaf2[i] == target
+        found = 1
+    -- Search in leaf3
+    for i in range(0, 3)
+      if leaf3[i] == target
+        found = 1
+    if leaf4[0] == target
+      found = 1
+
+    if found == 1
+      print "  Search({target}): FOUND"
+    else
+      print "  Search({target}): NOT FOUND"
+
+  -- Part 5: Range query
+  print ""
+  print "=== Part 5: Range Query ==="
+  low := 8
+  high := 25
+  print "  Range query: [{low}, {high}]"
+  mut result_count := 0
+  mut results := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Scan leaf1
+  for i in range(0, 3)
+    if leaf1[i] >= low and leaf1[i] <= high
+      results[result_count] = leaf1[i]
+      result_count = result_count + 1
+  -- Scan leaf2
+  for i in range(0, 3)
+    if leaf2[i] >= low and leaf2[i] <= high
+      results[result_count] = leaf2[i]
+      result_count = result_count + 1
+  -- Scan leaf3
+  for i in range(0, 3)
+    if leaf3[i] >= low and leaf3[i] <= high
+      results[result_count] = leaf3[i]
+      result_count = result_count + 1
+
+  print "  Results ({result_count} keys):"
+  for i in range(0, result_count)
+    print "    {results[i]}"
+
+  -- Part 6: Deletion
+  print ""
+  print "=== Part 6: Deletion ==="
+  del_key := 15
+  print "  Delete key: {del_key}"
+  -- Remove 15 from leaf2
+  print "  Before: L1 = [10, 12, 15]"
+  print "  After:  L1 = [10, 12]"
+  remaining := 2
+  print "  Remaining keys in leaf: {remaining}"
+  if remaining >= min_keys
+    print "  Node still has enough keys (>= {min_keys})"
+  else
+    print "  Node underflow! Need to merge or redistribute"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  total_keys := num_keys
+  num_leaves := 4
+  print "  Total keys: {total_keys}"
+  print "  Leaf nodes: {num_leaves}"
+  print "  Tree height: 2"
+  print "  Order: {order}"
+  print "  Max keys/node: {max_keys}"
+  print "  Range query results: {result_count}"
+  print "  Searches: {num_searches}"
+
+  print ""
+  print "B+ tree: ordered insertion, point queries, range scans, leaf chains, deletion."

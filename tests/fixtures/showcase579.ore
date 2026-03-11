@@ -1,0 +1,117 @@
+-- Showcase 579: Simple File Compression Pipeline
+
+fn main
+  print "File Compression Pipeline:"
+  print ""
+
+  -- Part 1: Run-length encoding (RLE)
+  print "=== Part 1: Run-Length Encoding ==="
+  mut input_chars := ["A", "A", "A", "B", "B", "C", "C", "C", "C", "A", "D", "D"]
+  input_len := 12
+
+  print "  Input: AAABBCCCCADD"
+  print "  Length: {input_len}"
+
+  -- RLE encoding
+  mut rle_chars := ["A", "B", "C", "A", "D"]
+  mut rle_counts := [3, 2, 4, 1, 2]
+  num_runs := 5
+
+  mut rle_size := 0
+  print "  RLE encoded:"
+  for i in range(0, num_runs)
+    print "    {rle_chars[i]}x{rle_counts[i]}"
+    rle_size = rle_size + 2
+  print "  Encoded size: {rle_size} (from {input_len})"
+
+  -- Part 2: Frequency analysis (for Huffman)
+  print ""
+  print "=== Part 2: Frequency Analysis ==="
+  mut symbols := ["A", "B", "C", "D"]
+  mut freqs := [4, 2, 4, 2]
+  num_symbols := 4
+  mut total_chars := 0
+  for i in range(0, num_symbols)
+    total_chars = total_chars + freqs[i]
+
+  for i in range(0, num_symbols)
+    pct := freqs[i] * 100 / total_chars
+    print "  '{symbols[i]}': count={freqs[i]}, freq={pct}%"
+
+  -- Part 3: Huffman code assignment (pre-computed)
+  print ""
+  print "=== Part 3: Huffman Codes ==="
+  mut codes := ["0", "10", "11", "110"]
+  mut code_lens := [1, 2, 2, 3]
+
+  for i in range(0, num_symbols)
+    print "  '{symbols[i]}': code={codes[i]}, bits={code_lens[i]}"
+
+  -- Calculate compressed size in bits
+  mut total_bits := 0
+  for i in range(0, num_symbols)
+    total_bits = total_bits + freqs[i] * code_lens[i]
+  print "  Total bits: {total_bits}"
+  print "  Original bits (8 per char): {total_chars * 8}"
+  savings := 100 - total_bits * 100 / (total_chars * 8)
+  print "  Savings: {savings}%"
+
+  -- Part 4: LZ77-style sliding window
+  print ""
+  print "=== Part 4: LZ77 Compression ==="
+  -- Input: "ABCABCABC"
+  print "  Input: ABCABCABC (length 9)"
+  mut lz_types := ["literal", "literal", "literal", "match", "match"]
+  mut lz_values := ["A", "B", "C", "(3,3)", "(3,6)"]
+  mut lz_sizes := [1, 1, 1, 2, 2]
+  num_tokens := 5
+
+  mut lz_total := 0
+  for i in range(0, num_tokens)
+    lz_total = lz_total + lz_sizes[i]
+    print "  {lz_types[i]}: {lz_values[i]} ({lz_sizes[i]} bytes)"
+  print "  Compressed: {lz_total} bytes (from 9)"
+
+  -- Part 5: Dictionary-based compression
+  print ""
+  print "=== Part 5: Dictionary Compression ==="
+  mut dict_entries := ["the", "and", "for", "with", "that"]
+  mut dict_codes := [1, 2, 3, 4, 5]
+  num_dict := 5
+
+  print "  Dictionary:"
+  for i in range(0, num_dict)
+    print "    {dict_codes[i]} -> '{dict_entries[i]}'"
+
+  -- Compress "the cat and the dog"
+  print "  Input: 'the cat and the dog'"
+  print "  Output: [1] cat [2] [1] dog"
+  print "  Saved: 4 bytes (replaced 2 words)"
+
+  -- Part 6: Compression pipeline
+  print ""
+  print "=== Part 6: Pipeline ==="
+  mut stages := ["RLE", "LZ77", "Huffman"]
+  mut stage_ratios := [83, 77, 81]
+  num_stages := 3
+
+  mut pipeline_size := 1000
+  print "  Original size: {pipeline_size} bytes"
+  for i in range(0, num_stages)
+    pipeline_size = pipeline_size * stage_ratios[i] / 100
+    print "  After {stages[i]}: {pipeline_size} bytes ({stage_ratios[i]}% ratio)"
+  print "  Final compression ratio: {pipeline_size * 100 / 1000}%"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Algorithms: RLE, LZ77, Huffman, Dictionary"
+  print "  RLE runs: {num_runs}"
+  print "  Huffman symbols: {num_symbols}"
+  print "  Huffman bits: {total_bits}"
+  print "  LZ77 tokens: {num_tokens}"
+  print "  Dictionary entries: {num_dict}"
+  print "  Pipeline final: {pipeline_size} bytes"
+
+  print ""
+  print "Compression pipeline: RLE, frequency analysis, Huffman coding, LZ77, dictionary, chaining."

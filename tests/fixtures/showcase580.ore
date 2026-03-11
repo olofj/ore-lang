@@ -1,0 +1,153 @@
+-- Showcase 580: Numerical Integration (Trapezoidal, Simpson's, Monte Carlo)
+
+fn main
+  print "Numerical Integration:"
+  print ""
+
+  -- Part 1: Function setup - integrate f(x) = x^2 from 0 to 10
+  print "=== Part 1: Problem Setup ==="
+  a := 0
+  b := 10
+  -- Exact integral of x^2 from 0 to 10 = 10^3/3 = 333.33... ~ 333
+  exact := 333
+  print "  Function: f(x) = x^2"
+  print "  Interval: [{a}, {b}]"
+  print "  Exact value: ~{exact}"
+
+  -- Part 2: Trapezoidal rule
+  print ""
+  print "=== Part 2: Trapezoidal Rule ==="
+  -- T = h/2 * [f(a) + 2*f(x1) + 2*f(x2) + ... + f(b)]
+
+  -- n=2, h=5
+  n := 2
+  h := 5
+  mut sum_val := a * a + b * b
+  for i in range(1, n)
+    xi := a + i * h
+    sum_val = sum_val + 2 * xi * xi
+  result := sum_val * h / 2
+  print "  n={n}, h={h}: T={result}, error={result - exact}"
+
+  -- n=5, h=2
+  n2 := 5
+  h2 := 2
+  sum_val = a * a + b * b
+  for i in range(1, n2)
+    xi := a + i * h2
+    sum_val = sum_val + 2 * xi * xi
+  result2 := sum_val * h2 / 2
+  print "  n={n2}, h={h2}: T={result2}, error={result2 - exact}"
+
+  -- n=10, h=1
+  n3 := 10
+  h3 := 1
+  sum_val = a * a + b * b
+  for i in range(1, n3)
+    xi := a + i * h3
+    sum_val = sum_val + 2 * xi * xi
+  result3 := sum_val * h3 / 2
+  print "  n={n3}, h={h3}: T={result3}, error={result3 - exact}"
+
+  -- Part 3: Simpson's rule
+  print ""
+  print "=== Part 3: Simpson's Rule ==="
+  -- S = h/3 * [f(a) + 4*f(x1) + 2*f(x2) + 4*f(x3) + ... + f(b)]
+
+  -- n=4, h=2 (must be even for Simpson's; using combined h/3 = 2/3... use scaled)
+  -- For n=10, h=1: S = 1/3 * [0 + 4*1 + 2*4 + 4*9 + 2*16 + 4*25 + 2*36 + 4*49 + 2*64 + 4*81 + 100]
+  -- = 1/3 * [0 + 4 + 8 + 36 + 32 + 100 + 72 + 196 + 128 + 324 + 100] = 1/3 * 1000 = 333
+  sum_val = a * a + b * b
+  for i in range(1, n3)
+    xi := a + i * h3
+    if i % 2 == 1
+      sum_val = sum_val + 4 * xi * xi
+    else
+      sum_val = sum_val + 2 * xi * xi
+  simp_result := sum_val * h3 / 3
+  print "  n={n3}, h={h3}: S={simp_result}, error={simp_result - exact}"
+
+  -- n=4, h=2 (scaled: sum*h/3)
+  sum_val = a * a + b * b
+  for i in range(1, 4)
+    xi := a + i * h2
+    if i % 2 == 1
+      sum_val = sum_val + 4 * xi * xi
+    else
+      sum_val = sum_val + 2 * xi * xi
+  simp4 := sum_val * h2 / 3
+  print "  n=4, h={h2}: S={simp4}, error={simp4 - exact}"
+
+  -- Part 4: Rectangle (midpoint) rule
+  print ""
+  print "=== Part 4: Midpoint Rule ==="
+  -- n=5, h=2: midpoints at 1,3,5,7,9
+  sum_val = 0
+  for i in range(0, n2)
+    xmid := a + i * h2 + 1
+    sum_val = sum_val + xmid * xmid
+  mid5 := sum_val * h2
+  print "  n={n2}, h={h2}: M={mid5}, error={mid5 - exact}"
+
+  -- n=10, h=1: midpoints need half-int, approximate with x values
+  -- Use left rectangles instead for n=10
+  sum_val = 0
+  for i in range(0, n3)
+    xi := a + i * h3
+    sum_val = sum_val + xi * xi
+  left10 := sum_val * h3
+  print "  n={n3}, h={h3} (left): L={left10}, error={left10 - exact}"
+
+  -- Right rectangles
+  sum_val = 0
+  for i in range(1, n3 + 1)
+    xi := a + i * h3
+    sum_val = sum_val + xi * xi
+  right10 := sum_val * h3
+  print "  n={n3}, h={h3} (right): R={right10}, error={right10 - exact}"
+
+  avg_lr := (left10 + right10) / 2
+  print "  Average (left+right)/2: {avg_lr}, error={avg_lr - exact}"
+
+  -- Part 5: Monte Carlo integration
+  print ""
+  print "=== Part 5: Monte Carlo ==="
+  -- Approximate using deterministic "random" points
+  mut mc_points := [1, 3, 7, 9, 2, 5, 8, 4, 6, 0]
+  num_mc := 10
+  mut mc_sum := 0
+  for i in range(0, num_mc)
+    x := mc_points[i]
+    fx := x * x
+    mc_sum = mc_sum + fx
+  mc_avg := mc_sum / num_mc
+  mc_result := mc_avg * (b - a)
+  mc_error := mc_result - exact
+  print "  Points: {num_mc}"
+  print "  Sum f(xi): {mc_sum}"
+  print "  Average: {mc_avg}"
+  print "  Integral estimate: {mc_result}"
+  print "  Error: {mc_error}"
+
+  -- Part 6: Convergence comparison
+  print ""
+  print "=== Part 6: Convergence ==="
+  print "  n=2:  Trapezoidal error = {result - exact}"
+  print "  n=5:  Trapezoidal error = {result2 - exact}"
+  print "  n=10: Trapezoidal error = {result3 - exact}"
+  print "  n=10: Simpson's error = {simp_result - exact}"
+  print "  Simpson's achieves zero error for polynomials up to degree 3"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Methods: 4 (trapezoidal, Simpson's, midpoint, Monte Carlo)"
+  print "  Best trapezoidal (n=10): {result3}"
+  print "  Best Simpson's (n=10): {simp_result}"
+  print "  Monte Carlo ({num_mc} points): {mc_result}"
+  print "  Left Riemann (n=10): {left10}"
+  print "  Right Riemann (n=10): {right10}"
+  print "  Exact: ~{exact}"
+
+  print ""
+  print "Numerical integration: trapezoidal, Simpson's, midpoint, Monte Carlo, convergence."

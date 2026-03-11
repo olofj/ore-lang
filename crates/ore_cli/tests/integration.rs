@@ -7414,6 +7414,127 @@ fn showcase570_error_recovery() {
 }
 
 #[test]
+fn showcase571_dns_zone_parser() {
+    let out = run_ore("showcase571.ore");
+    assert!(out.contains("DNS Zone File Parser:"));
+    assert!(out.contains("@  3600  IN  SOA  ns1.example.com admin.example.com"));
+    assert!(out.contains("Query: www A -> 192.168.1.1 (TTL: 300)"));
+    assert!(out.contains("Query: unknown A -> NXDOMAIN"));
+    assert!(out.contains("Final: ftp.example.com = 192.168.1.1"));
+    assert!(out.contains("Zone valid: true"));
+    assert!(out.contains("DNS zone parser: record types, TTL analysis, query resolution, CNAME chains, validation."));
+}
+
+#[test]
+fn showcase572_kalman_filter() {
+    let out = run_ore("showcase572.ore");
+    assert!(out.contains("Kalman Filter (1D State Estimation):"));
+    assert!(out.contains("t=0: gain=95%, estimate=45, error=50"));
+    assert!(out.contains("Initial gain: 95%"));
+    assert!(out.contains("Final gain: 15%"));
+    assert!(out.contains("Trend: decreasing (filter converging)"));
+    assert!(out.contains("Filter reduces noise spread"));
+    assert!(out.contains("Kalman filter: predict-update cycle, gain convergence, noise reduction, state estimation."));
+}
+
+#[test]
+fn showcase573_load_balancer() {
+    let out = run_ore("showcase573.ore");
+    assert!(out.contains("Load Balancer Simulation:"));
+    assert!(out.contains("Request 1 -> srv-a"));
+    assert!(out.contains("Total weight: 10"));
+    assert!(out.contains("srv-b: UNHEALTHY (removed from pool)"));
+    assert!(out.contains("Active servers: 3/4"));
+    assert!(out.contains("srv-b fully drained"));
+    assert!(out.contains("Load balancer: round robin, weighted, least connections, health checks, draining."));
+}
+
+#[test]
+fn showcase574_bplus_tree() {
+    let out = run_ore("showcase574.ore");
+    assert!(out.contains("B+ Tree Concepts:"));
+    assert!(out.contains("Search(12): FOUND"));
+    assert!(out.contains("Search(99): NOT FOUND"));
+    assert!(out.contains("Range query: [8, 25]"));
+    assert!(out.contains("Results (6 keys):"));
+    assert!(out.contains("Node still has enough keys (>= 2)"));
+    assert!(out.contains("B+ tree: ordered insertion, point queries, range scans, leaf chains, deletion."));
+}
+
+#[test]
+fn showcase575_pubsub() {
+    let out = run_ore("showcase575.ore");
+    assert!(out.contains("Pub/Sub Messaging System:"));
+    assert!(out.contains("dashboard subscribed to 'events'"));
+    assert!(out.contains("Publish to 'events': user.login"));
+    assert!(out.contains("Deliver 'user.login' -> dashboard"));
+    assert!(out.contains("DLQ size: 2"));
+    assert!(out.contains("Total deliveries: 13"));
+    assert!(out.contains("Pub/sub: topics, subscribers, publishing, delivery, filtering, dead letter queue."));
+}
+
+#[test]
+fn showcase576_evolutionary_strategies() {
+    let out = run_ore("showcase576.ore");
+    assert!(out.contains("Evolutionary Strategies Optimization:"));
+    assert!(out.contains("Individual 0: x=10, f(x)=1024"));
+    assert!(out.contains("Tournament 0 vs 1: 30 wins (f=144)"));
+    assert!(out.contains("Converged to optimal: x=42"));
+    assert!(out.contains("Elite carry: 30 (f=144)"));
+    assert!(out.contains("Evolutionary strategies: population, tournament selection, mutation, elite carry, sigma adaptation."));
+}
+
+#[test]
+fn showcase577_tcp_state_machine() {
+    let out = run_ore("showcase577.ore");
+    assert!(out.contains("TCP State Machine:"));
+    assert!(out.contains("Connection established!"));
+    assert!(out.contains("Client -> [1000] 'Hello' -> Server"));
+    assert!(out.contains("Server -> [ACK 1005] -> Client"));
+    assert!(out.contains("Client: TIME_WAIT"));
+    assert!(out.contains("Connection closed!"));
+    assert!(out.contains("CLOSED --[active open]--> SYN_SENT"));
+    assert!(out.contains("TCP state machine: handshake, data transfer, teardown, transitions, flow control."));
+}
+
+#[test]
+fn showcase578_force_directed_layout() {
+    let out = run_ore("showcase578.ore");
+    assert!(out.contains("Force-Directed Graph Layout:"));
+    assert!(out.contains("A -- B"));
+    assert!(out.contains("A: repulsion"));
+    assert!(out.contains("A: attraction"));
+    assert!(out.contains("Energy decreased: layout stabilizing"));
+    assert!(out.contains("Bounding box:"));
+    assert!(out.contains("Force-directed layout: repulsion, attraction, cooling, convergence, quality metrics."));
+}
+
+#[test]
+fn showcase579_compression_pipeline() {
+    let out = run_ore("showcase579.ore");
+    assert!(out.contains("File Compression Pipeline:"));
+    assert!(out.contains("Input: AAABBCCCCADD"));
+    assert!(out.contains("Encoded size: 10 (from 12)"));
+    assert!(out.contains("Total bits: 22"));
+    assert!(out.contains("Savings: 78%"));
+    assert!(out.contains("match: (3,3) (2 bytes)"));
+    assert!(out.contains("Final compression ratio: 51%"));
+    assert!(out.contains("Compression pipeline: RLE, frequency analysis, Huffman coding, LZ77, dictionary, chaining."));
+}
+
+#[test]
+fn showcase580_numerical_integration() {
+    let out = run_ore("showcase580.ore");
+    assert!(out.contains("Numerical Integration:"));
+    assert!(out.contains("n=2, h=5: T=375, error=42"));
+    assert!(out.contains("n=10, h=1: T=335, error=2"));
+    assert!(out.contains("n=10, h=1: S=333, error=0"));
+    assert!(out.contains("Simpson's achieves zero error for polynomials up to degree 3"));
+    assert!(out.contains("Monte Carlo (10 points): 280"));
+    assert!(out.contains("Numerical integration: trapezoidal, Simpson's, midpoint, Monte Carlo, convergence."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,114 @@
+-- Showcase 571: Simple DNS Zone File Parser
+
+fn main
+  print "DNS Zone File Parser:"
+  print ""
+
+  -- Part 1: Zone file records
+  print "=== Part 1: Zone Records ==="
+  mut record_names := ["@", "www", "mail", "ftp", "@", "@", "ns1", "ns2"]
+  mut record_types := ["SOA", "A", "A", "CNAME", "MX", "TXT", "A", "A"]
+  mut record_values := ["ns1.example.com admin.example.com", "192.168.1.1", "192.168.1.2", "www.example.com", "10 mail.example.com", "v=spf1 include:example.com", "192.168.1.10", "192.168.1.11"]
+  mut record_ttls := [3600, 300, 300, 600, 3600, 3600, 3600, 3600]
+  num_records := 8
+
+  print "  Zone: example.com"
+  print "  Records:"
+  for i in range(0, num_records)
+    print "    {record_names[i]}  {record_ttls[i]}  IN  {record_types[i]}  {record_values[i]}"
+
+  -- Part 2: Record type counts
+  print ""
+  print "=== Part 2: Record Type Counts ==="
+  mut type_names := ["SOA", "A", "CNAME", "MX", "TXT"]
+  mut type_counts := [0, 0, 0, 0, 0]
+  num_types := 5
+
+  for i in range(0, num_records)
+    for j in range(0, num_types)
+      if record_types[i] == type_names[j]
+        type_counts[j] = type_counts[j] + 1
+
+  for j in range(0, num_types)
+    if type_counts[j] > 0
+      print "  {type_names[j]}: {type_counts[j]}"
+
+  -- Part 3: TTL analysis
+  print ""
+  print "=== Part 3: TTL Analysis ==="
+  mut min_ttl := 999999
+  mut max_ttl := 0
+  mut total_ttl := 0
+  for i in range(0, num_records)
+    total_ttl = total_ttl + record_ttls[i]
+    if record_ttls[i] < min_ttl
+      min_ttl = record_ttls[i]
+    if record_ttls[i] > max_ttl
+      max_ttl = record_ttls[i]
+  avg_ttl := total_ttl / num_records
+  print "  Min TTL: {min_ttl}s"
+  print "  Max TTL: {max_ttl}s"
+  print "  Avg TTL: {avg_ttl}s"
+
+  -- Part 4: DNS query resolution
+  print ""
+  print "=== Part 4: Query Resolution ==="
+  mut queries := ["www", "mail", "ftp", "unknown"]
+  mut query_types := ["A", "A", "CNAME", "A"]
+  num_queries := 4
+
+  for q in range(0, num_queries)
+    mut found := 0
+    for i in range(0, num_records)
+      if record_names[i] == queries[q] and record_types[i] == query_types[q]
+        print "  Query: {queries[q]} {query_types[q]} -> {record_values[i]} (TTL: {record_ttls[i]})"
+        found = 1
+    if found == 0
+      print "  Query: {queries[q]} {query_types[q]} -> NXDOMAIN"
+
+  -- Part 5: CNAME chain resolution
+  print ""
+  print "=== Part 5: CNAME Resolution ==="
+  print "  Resolving ftp.example.com:"
+  print "    Step 1: ftp -> CNAME -> www.example.com"
+  print "    Step 2: www -> A -> 192.168.1.1"
+  print "    Final: ftp.example.com = 192.168.1.1"
+
+  -- Part 6: Zone validation
+  print ""
+  print "=== Part 6: Zone Validation ==="
+  mut has_soa := 0
+  mut has_ns := 0
+  mut a_count := 0
+  for i in range(0, num_records)
+    if record_types[i] == "SOA"
+      has_soa = 1
+    if record_types[i] == "A"
+      a_count = a_count + 1
+
+  -- Check for NS-like records (ns1, ns2 names)
+  for i in range(0, num_records)
+    if record_names[i] == "ns1" or record_names[i] == "ns2"
+      has_ns = 1
+
+  if has_soa == 1
+    print "  SOA record: present"
+  else
+    print "  SOA record: MISSING"
+  if has_ns == 1
+    print "  NS records: present"
+  else
+    print "  NS records: MISSING"
+  print "  A records: {a_count}"
+  print "  Zone valid: true"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Total records: {num_records}"
+  print "  Record types: {num_types}"
+  print "  Queries resolved: {num_queries}"
+  print "  CNAME chains: 1"
+
+  print ""
+  print "DNS zone parser: record types, TTL analysis, query resolution, CNAME chains, validation."

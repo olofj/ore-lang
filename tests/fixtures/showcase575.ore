@@ -1,0 +1,87 @@
+-- Showcase 575: Simple Pub/Sub Messaging System
+
+fn main
+  print "Pub/Sub Messaging System:"
+  print ""
+
+  -- Part 1: Topic setup
+  print "=== Part 1: Topics ==="
+  num_topics := 4
+  mut topic_names := ["events", "logs", "alerts", "metrics"]
+  mut topic_msg_count := [0, 0, 0, 0]
+  for i in range(0, num_topics)
+    print "  Topic created: {topic_names[i]}"
+
+  -- Part 2: Subscribers
+  print ""
+  print "=== Part 2: Subscribers ==="
+  num_subs := 6
+  mut sub_names := ["dashboard", "logger", "alerter", "monitor", "archiver", "printer"]
+  -- Each subscriber's topic index
+  mut sub_topics := [0, 1, 2, 3, 0, 1]
+  for i in range(0, num_subs)
+    idx := sub_topics[i]
+    print "  {sub_names[i]} subscribed to '{topic_names[idx]}'"
+
+  -- Part 3: Publishing messages
+  print ""
+  print "=== Part 3: Publishing ==="
+  mut msg_topics := [0, 1, 2, 0, 3, 1, 2, 0]
+  mut msg_payloads := ["user.login", "info: started", "cpu high", "user.logout", "cpu=85", "debug: ok", "disk full", "user.click"]
+  num_msgs := 8
+
+  for m in range(0, num_msgs)
+    tidx := msg_topics[m]
+    topic_msg_count[tidx] = topic_msg_count[tidx] + 1
+    print "  Publish to '{topic_names[tidx]}': {msg_payloads[m]}"
+
+  -- Part 4: Message delivery
+  print ""
+  print "=== Part 4: Delivery ==="
+  mut total_deliveries := 0
+  for m in range(0, num_msgs)
+    tidx := msg_topics[m]
+    mut delivered := 0
+    for s in range(0, num_subs)
+      if sub_topics[s] == tidx
+        delivered = delivered + 1
+        total_deliveries = total_deliveries + 1
+        print "  Deliver '{msg_payloads[m]}' -> {sub_names[s]}"
+    print "    ({delivered} subscriber(s))"
+
+  -- Part 5: Message filtering
+  print ""
+  print "=== Part 5: Filtering ==="
+  print "  Filter: alerts with 'cpu' prefix"
+  mut filtered := 0
+  for m in range(0, num_msgs)
+    tidx := msg_topics[m]
+    if topic_names[tidx] == "alerts"
+      print "    Alert: {msg_payloads[m]}"
+      filtered = filtered + 1
+  print "  Matching alerts: {filtered}"
+
+  -- Part 6: Dead letter queue
+  print ""
+  print "=== Part 6: Dead Letter Queue ==="
+  mut dlq := ["timeout: msg-3", "rejected: msg-7"]
+  dlq_count := 2
+  print "  Failed deliveries:"
+  for i in range(0, dlq_count)
+    print "    DLQ: {dlq[i]}"
+  print "  DLQ size: {dlq_count}"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Topics: {num_topics}"
+  print "  Subscribers: {num_subs}"
+  print "  Messages published: {num_msgs}"
+  print "  Total deliveries: {total_deliveries}"
+  print "  Dead letters: {dlq_count}"
+  print "  Messages per topic:"
+  for i in range(0, num_topics)
+    print "    {topic_names[i]}: {topic_msg_count[i]}"
+
+  print ""
+  print "Pub/sub: topics, subscribers, publishing, delivery, filtering, dead letter queue."
