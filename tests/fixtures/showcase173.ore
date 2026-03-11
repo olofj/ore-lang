@@ -1,0 +1,37 @@
+-- Showcase 173: JSON-like data manipulation
+
+fn main
+  -- Nested map access
+  mut config := {}
+  config.set("name", "MyApp")
+  config.set("version", "1.0")
+  config.set("debug", "true")
+  config.set("port", "8080")
+
+  for key in config.keys()
+    print "{key}: {config[key]}"
+
+  -- CSV parsing and processing
+  print ""
+  lines := ["Alice,95,A", "Bob,82,B", "Carol,74,C", "Dave,63,D"]
+  mut total := 0
+  for line in lines
+    parts := line.split(",")
+    name := parts[0]
+    score := parts[1].to_int()
+    grade := parts[2]
+    total = total + score
+    print "{name}: score={score} grade={grade}"
+  print "average: {total / 4}"
+
+  -- Key-value pairs processing
+  print ""
+  pairs := ["x=10", "y=20", "z=30"]
+  mut sum := 0
+  for pair in pairs
+    parts := pair.split("=")
+    key := parts[0]
+    val := parts[1].to_int()
+    sum = sum + val
+    print "{key} -> {val}"
+  print "total: {sum}"

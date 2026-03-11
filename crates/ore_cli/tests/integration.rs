@@ -3209,6 +3209,25 @@ fn showcase172_multiline_if_then_else() {
 }
 
 #[test]
+fn showcase173_config_and_csv() {
+    let out = run_ore("showcase173.ore");
+    assert!(out.contains("name: MyApp"));
+    assert!(out.contains("port: 8080"));
+    assert!(out.contains("Alice: score=95 grade=A"));
+    assert!(out.contains("average: 78"));
+    assert!(out.contains("total: 60"));
+}
+
+#[test]
+fn showcase174_game_of_life() {
+    let out = run_ore("showcase174.ore");
+    assert!(out.contains("..#.."));
+    assert!(out.contains(".###."));
+    assert!(out.contains("live cells gen 0: 3"));
+    assert!(out.contains("live cells gen 1: 3"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

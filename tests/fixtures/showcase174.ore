@@ -1,0 +1,72 @@
+-- Showcase 174: Conway's Game of Life (small grid)
+
+fn count_neighbors grid:List[Int] r:Int c:Int rows:Int cols:Int -> Int
+  mut count := 0
+  for dr in [-1, 0, 1]
+    for dc in [-1, 0, 1]
+      if dr != 0 or dc != 0
+        nr := r + dr
+        nc := c + dc
+        if nr >= 0 and nr < rows and nc >= 0 and nc < cols
+          if grid[nr * cols + nc] == 1
+            count = count + 1
+  count
+
+fn step grid:List[Int] rows:Int cols:Int -> List[Int]
+  mut next := []
+  for r in range(0, rows)
+    for c in range(0, cols)
+      n := count_neighbors(grid, r, c, rows, cols)
+      alive := grid[r * cols + c]
+      if alive == 1
+        if n == 2 or n == 3
+          next.push(1)
+        else
+          next.push(0)
+      else
+        if n == 3
+          next.push(1)
+        else
+          next.push(0)
+  next
+
+fn display grid:List[Int] rows:Int cols:Int
+  for r in range(0, rows)
+    mut line := ""
+    for c in range(0, cols)
+      if grid[r * cols + c] == 1
+        line = line + "#"
+      else
+        line = line + "."
+    print line
+
+fn main
+  -- Blinker pattern (period 2)
+  rows := 5
+  cols := 5
+  grid := [
+    0, 0, 0, 0, 0,
+    0, 0, 1, 0, 0,
+    0, 0, 1, 0, 0,
+    0, 0, 1, 0, 0,
+    0, 0, 0, 0, 0
+  ]
+
+  print "Generation 0:"
+  display(grid, rows, cols)
+
+  g1 := step(grid, rows, cols)
+  print ""
+  print "Generation 1:"
+  display(g1, rows, cols)
+
+  g2 := step(g1, rows, cols)
+  print ""
+  print "Generation 2:"
+  display(g2, rows, cols)
+
+  -- Count live cells
+  print ""
+  print "live cells gen 0: {grid | filter(c => c == 1) | count()}"
+  print "live cells gen 1: {g1 | filter(c => c == 1) | count()}"
+  print "live cells gen 2: {g2 | filter(c => c == 1) | count()}"

@@ -2689,7 +2689,16 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Handle map built-in methods
         if obj_kind == ValKind::Map {
-            return self.compile_map_method(obj_val, method, args, func);
+            let result = self.compile_map_method(obj_val, method, args, func)?;
+            // After set, update the variable's value kind tracking
+            if method == "set" {
+                if let Expr::Ident(var_name) = object {
+                    if let Some(vk) = self.last_map_val_kind.clone() {
+                        self.map_value_kinds.insert(var_name.clone(), vk);
+                    }
+                }
+            }
+            return Ok(result);
         }
 
         // Handle Option methods
@@ -4690,6 +4699,8 @@ impl<'ctx> CodeGen<'ctx> {
                 };
                 let rt = self.rt("ore_map_set")?;
                 bld!(self.builder.build_call(rt, &[map_val.into(), key.into(), i64_val.into()], ""))?;
+                // Track value kind for later retrieval
+                self.last_map_val_kind = Some(val_kind);
                 Ok((map_val, ValKind::Map))
             }
             "get" => {
