@@ -995,6 +995,17 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn lists_range_step() {
+    let out = run_ore("lists/range_step.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "0 2 4 6 8",
+        "10 8 6 4 2",
+        "1 4 7 10 13 16 19",
+    ]);
+}
+
+#[test]
 fn lists_min_max_by() {
     let out = run_ore("lists/min_max_by.ore");
     let lines: Vec<&str> = out.lines().collect();

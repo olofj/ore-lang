@@ -467,6 +467,7 @@ fn map_runtime_functions(
     map_fn!("ore_list_count_by", ore_runtime::ore_list_count_by);
     map_fn!("ore_list_group_by", ore_runtime::ore_list_group_by);
     map_fn!("ore_range", ore_runtime::ore_range);
+    map_fn!("ore_range_step", ore_runtime::ore_range_step);
     map_fn!("ore_list_take", ore_runtime::ore_list_take);
     map_fn!("ore_list_skip", ore_runtime::ore_list_skip);
     map_fn!("ore_list_sum", ore_runtime::ore_list_sum);

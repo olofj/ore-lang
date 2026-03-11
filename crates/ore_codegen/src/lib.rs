@@ -703,6 +703,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_group_by", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_range(i64, i64) -> ptr
         self.module.add_function("ore_range", ptr_type.fn_type(&[i64_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_range_step", ptr_type.fn_type(&[i64_type.into(), i64_type.into(), i64_type.into()], false), ext);
         // ore_list_take(ptr, i64) -> ptr
         self.module.add_function("ore_list_take", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_skip(ptr, i64) -> ptr
@@ -1683,13 +1684,19 @@ impl<'ctx> CodeGen<'ctx> {
                         return Ok((val, ValKind::Str));
                     }
                     "range" => {
-                        if args.len() != 2 {
-                            return Err(CodeGenError { line: None, msg: "range takes 2 arguments (start, end)".into() });
+                        if args.len() < 2 || args.len() > 3 {
+                            return Err(CodeGenError { line: None, msg: "range takes 2-3 arguments (start, end, [step])".into() });
                         }
                         let start = self.compile_expr(&args[0], func)?;
                         let end = self.compile_expr(&args[1], func)?;
-                        let rt = self.module.get_function("ore_range").unwrap();
-                        let result = bld!(self.builder.build_call(rt, &[start.into(), end.into()], "range"))?;
+                        let result = if args.len() == 3 {
+                            let step = self.compile_expr(&args[2], func)?;
+                            let rt = self.module.get_function("ore_range_step").unwrap();
+                            bld!(self.builder.build_call(rt, &[start.into(), end.into(), step.into()], "range"))?
+                        } else {
+                            let rt = self.module.get_function("ore_range").unwrap();
+                            bld!(self.builder.build_call(rt, &[start.into(), end.into()], "range"))?
+                        };
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Int);
                         return Ok((val, ValKind::List));

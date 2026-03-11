@@ -673,6 +673,26 @@ pub extern "C" fn ore_range(start: i64, end: i64) -> *mut OreList {
     list
 }
 
+/// Create a list of integers from start to end with a step.
+#[no_mangle]
+pub extern "C" fn ore_range_step(start: i64, end: i64, step: i64) -> *mut OreList {
+    let list = ore_list_new();
+    if step == 0 { return list; }
+    let mut i = start;
+    if step > 0 {
+        while i < end {
+            ore_list_push(list, i);
+            i += step;
+        }
+    } else {
+        while i > end {
+            ore_list_push(list, i);
+            i += step;
+        }
+    }
+    list
+}
+
 // ── Lists ──
 //
 // OreList: heap-allocated growable array of i64 values.
