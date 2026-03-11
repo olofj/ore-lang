@@ -707,6 +707,20 @@ impl TypeChecker {
                 Type::List(Box::new(elem_ty))
             }
 
+            Expr::ListComp { expr, var, iterable, cond } => {
+                let iter_ty = self.infer_expr(iterable, env);
+                let elem_ty = match &iter_ty {
+                    Type::List(t) => (**t).clone(),
+                    _ => Type::Int, // range produces Int
+                };
+                env.insert(var.clone(), elem_ty, false);
+                if let Some(c) = cond {
+                    self.infer_expr(c, env);
+                }
+                let result_ty = self.infer_expr(expr, env);
+                Type::List(Box::new(result_ty))
+            }
+
             Expr::MapLit(entries) => {
                 let mut key_ty = Type::Any;
                 let mut val_ty = Type::Any;

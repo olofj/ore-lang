@@ -219,6 +219,12 @@ pub enum Expr {
         args: Vec<Expr>,
     },
     ListLit(Vec<Expr>),
+    ListComp {
+        expr: Box<Expr>,
+        var: String,
+        iterable: Box<Expr>,
+        cond: Option<Box<Expr>>,
+    },
     MapLit(Vec<(Expr, Expr)>),
     Index {
         object: Box<Expr>,

@@ -396,6 +396,19 @@ impl Formatter {
                 }
                 self.out.push(']');
             }
+            Expr::ListComp { expr, var, iterable, cond } => {
+                self.out.push('[');
+                self.format_expr(expr, level);
+                self.out.push_str(" for ");
+                self.out.push_str(var);
+                self.out.push_str(" in ");
+                self.format_expr(iterable, level);
+                if let Some(c) = cond {
+                    self.out.push_str(" if ");
+                    self.format_expr(c, level);
+                }
+                self.out.push(']');
+            }
             Expr::MapLit(entries) => {
                 self.out.push('{');
                 for (i, (k, v)) in entries.iter().enumerate() {

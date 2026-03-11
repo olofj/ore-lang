@@ -105,6 +105,15 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
                 collect_free_vars(e, bound, free, seen);
             }
         }
+        Expr::ListComp { expr, var, iterable, cond } => {
+            collect_free_vars(iterable, bound, free, seen);
+            let mut inner_bound = bound.clone();
+            inner_bound.insert(var.clone());
+            collect_free_vars(expr, &inner_bound, free, seen);
+            if let Some(c) = cond {
+                collect_free_vars(c, &inner_bound, free, seen);
+            }
+        }
         Expr::MapLit(entries) => {
             for (k, v) in entries {
                 collect_free_vars(k, bound, free, seen);
@@ -959,7 +968,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 // Could be Str, List, Map — check the expression
                                 match expr {
                                     Expr::StringLit(_) | Expr::StringInterp(_) => ValKind::Str,
-                                    Expr::ListLit(_) => ValKind::List,
+                                    Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List,
                                     Expr::MapLit(_) => ValKind::Map,
                                     _ => ValKind::Str, // Best guess for pointer values
                                 }
@@ -1844,6 +1853,9 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::ListLit(elements) => {
                 self.compile_list_lit(elements, func)
+            }
+            Expr::ListComp { expr, var, iterable, cond } => {
+                self.compile_list_comp(expr, var, iterable, cond.as_deref(), func)
             }
             Expr::MapLit(entries) => {
                 self.compile_map_lit(entries, func)
@@ -4042,6 +4054,200 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Store element kind for later extraction
         self.last_list_elem_kind = Some(elem_kind);
+
+        Ok((list_ptr.into(), ValKind::List))
+    }
+
+    fn compile_list_comp(
+        &mut self,
+        expr: &Expr,
+        var: &str,
+        iterable: &Expr,
+        cond: Option<&Expr>,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let i64_type = self.context.i64_type();
+        let list_new = self.module.get_function("ore_list_new").unwrap();
+        let list_push = self.module.get_function("ore_list_push").unwrap();
+
+        // Create output list
+        let list_result = bld!(self.builder.build_call(list_new, &[], "comp_list"))?;
+        let list_ptr = self.call_result_to_value(list_result)?.into_pointer_value();
+
+        // Check if iterable is a range (__range call)
+        let is_range = matches!(iterable, Expr::Call { func: f, .. } if matches!(f.as_ref(), Expr::Ident(n) if n == "__range"));
+
+        if is_range {
+            // Range-based comprehension
+            let (start_val, end_val) = if let Expr::Call { args, .. } = iterable {
+                let s = self.compile_expr(&args[0], func)?.into_int_value();
+                let e = self.compile_expr(&args[1], func)?.into_int_value();
+                (s, e)
+            } else {
+                unreachable!()
+            };
+
+            // Loop variable
+            let var_alloca = bld!(self.builder.build_alloca(i64_type, var))?;
+            bld!(self.builder.build_store(var_alloca, start_val))?;
+            self.variables.insert(var.to_string(), (var_alloca, i64_type.into(), ValKind::Int, false));
+
+            let cond_bb = self.context.append_basic_block(func, "comp_cond");
+            let body_bb = self.context.append_basic_block(func, "comp_body");
+            let inc_bb = self.context.append_basic_block(func, "comp_inc");
+            let end_bb = self.context.append_basic_block(func, "comp_end");
+
+            bld!(self.builder.build_unconditional_branch(cond_bb))?;
+
+            // Condition: var < end
+            self.builder.position_at_end(cond_bb);
+            let cur = bld!(self.builder.build_load(i64_type, var_alloca, "cur"))?.into_int_value();
+            let cmp = bld!(self.builder.build_int_compare(IntPredicate::SLT, cur, end_val, "comp_cmp"))?;
+            bld!(self.builder.build_conditional_branch(cmp, body_bb, end_bb))?;
+
+            // Body
+            self.builder.position_at_end(body_bb);
+            let push_bb = if let Some(c) = cond {
+                let filter_bb = self.context.append_basic_block(func, "comp_filter");
+                let (cond_val, _) = self.compile_expr_with_kind(c, func)?;
+                let bool_val = if cond_val.is_int_value() && cond_val.into_int_value().get_type().get_bit_width() > 1 {
+                    bld!(self.builder.build_int_compare(IntPredicate::NE, cond_val.into_int_value(), i64_type.const_int(0, false), "tobool"))?
+                } else {
+                    cond_val.into_int_value()
+                };
+                bld!(self.builder.build_conditional_branch(bool_val, filter_bb, inc_bb))?;
+                self.builder.position_at_end(filter_bb);
+                filter_bb
+            } else {
+                body_bb
+            };
+
+            let (val, kind) = self.compile_expr_with_kind(expr, func)?;
+            let push_val = match &kind {
+                ValKind::Str => {
+                    let i64_val = bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), i64_type, "p2i"))?;
+                    i64_val.into()
+                }
+                ValKind::Float => {
+                    bld!(self.builder.build_bit_cast(val, i64_type, "f2i"))?
+                }
+                ValKind::Bool => {
+                    let i64_val = bld!(self.builder.build_int_z_extend(val.into_int_value(), i64_type, "b2i"))?;
+                    i64_val.into()
+                }
+                _ => val,
+            };
+            bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
+
+            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                bld!(self.builder.build_unconditional_branch(inc_bb))?;
+            }
+
+            // Increment
+            self.builder.position_at_end(inc_bb);
+            let cur = bld!(self.builder.build_load(i64_type, var_alloca, "cur"))?.into_int_value();
+            let next = bld!(self.builder.build_int_add(cur, i64_type.const_int(1, false), "inc"))?;
+            bld!(self.builder.build_store(var_alloca, next))?;
+            bld!(self.builder.build_unconditional_branch(cond_bb))?;
+
+            self.builder.position_at_end(end_bb);
+            let _ = push_bb; // suppress unused warning
+            self.last_list_elem_kind = Some(kind);
+        } else {
+            // List-based comprehension
+            let list_src = self.compile_expr(iterable, func)?.into_pointer_value();
+            let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+
+            let list_len_fn = self.module.get_function("ore_list_len").unwrap();
+            let len_result = bld!(self.builder.build_call(list_len_fn, &[list_src.into()], "len"))?;
+            let len_val = self.call_result_to_value(len_result)?.into_int_value();
+
+            let idx_alloca = bld!(self.builder.build_alloca(i64_type, "comp_idx"))?;
+            bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
+
+            // Element variable
+            let (var_alloca, var_ty): (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>) = match &elem_kind {
+                ValKind::Str => {
+                    let pt = self.context.ptr_type(inkwell::AddressSpace::default());
+                    (bld!(self.builder.build_alloca(pt, var))?, pt.into())
+                }
+                _ => (bld!(self.builder.build_alloca(i64_type, var))?, i64_type.into()),
+            };
+            self.variables.insert(var.to_string(), (var_alloca, var_ty, elem_kind.clone(), false));
+
+            let cond_bb = self.context.append_basic_block(func, "comp_cond");
+            let body_bb = self.context.append_basic_block(func, "comp_body");
+            let inc_bb = self.context.append_basic_block(func, "comp_inc");
+            let end_bb = self.context.append_basic_block(func, "comp_end");
+
+            bld!(self.builder.build_unconditional_branch(cond_bb))?;
+
+            self.builder.position_at_end(cond_bb);
+            let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+            let cmp = bld!(self.builder.build_int_compare(IntPredicate::SLT, idx, len_val, "comp_cmp"))?;
+            bld!(self.builder.build_conditional_branch(cmp, body_bb, end_bb))?;
+
+            self.builder.position_at_end(body_bb);
+            let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+            let list_get_fn = self.module.get_function("ore_list_get").unwrap();
+            let elem_result = bld!(self.builder.build_call(list_get_fn, &[list_src.into(), idx.into()], "elem"))?;
+            let raw_val = self.call_result_to_value(elem_result)?;
+
+            match &elem_kind {
+                ValKind::Str => {
+                    let ptr = bld!(self.builder.build_int_to_ptr(
+                        raw_val.into_int_value(),
+                        self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
+                    ))?;
+                    bld!(self.builder.build_store(var_alloca, ptr))?;
+                }
+                _ => {
+                    bld!(self.builder.build_store(var_alloca, raw_val))?;
+                }
+            }
+
+            if let Some(c) = cond {
+                let filter_bb = self.context.append_basic_block(func, "comp_filter");
+                let (cond_val, _) = self.compile_expr_with_kind(c, func)?;
+                let bool_val = if cond_val.is_int_value() && cond_val.into_int_value().get_type().get_bit_width() > 1 {
+                    bld!(self.builder.build_int_compare(IntPredicate::NE, cond_val.into_int_value(), i64_type.const_int(0, false), "tobool"))?
+                } else {
+                    cond_val.into_int_value()
+                };
+                bld!(self.builder.build_conditional_branch(bool_val, filter_bb, inc_bb))?;
+                self.builder.position_at_end(filter_bb);
+            }
+
+            let (val, kind) = self.compile_expr_with_kind(expr, func)?;
+            let push_val = match &kind {
+                ValKind::Str => {
+                    let i64_val = bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), i64_type, "p2i"))?;
+                    i64_val.into()
+                }
+                ValKind::Float => {
+                    bld!(self.builder.build_bit_cast(val, i64_type, "f2i"))?
+                }
+                ValKind::Bool => {
+                    let i64_val = bld!(self.builder.build_int_z_extend(val.into_int_value(), i64_type, "b2i"))?;
+                    i64_val.into()
+                }
+                _ => val,
+            };
+            bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
+
+            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                bld!(self.builder.build_unconditional_branch(inc_bb))?;
+            }
+
+            self.builder.position_at_end(inc_bb);
+            let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+            let next = bld!(self.builder.build_int_add(idx, i64_type.const_int(1, false), "inc"))?;
+            bld!(self.builder.build_store(idx_alloca, next))?;
+            bld!(self.builder.build_unconditional_branch(cond_bb))?;
+
+            self.builder.position_at_end(end_bb);
+            self.last_list_elem_kind = Some(kind);
+        }
 
         Ok((list_ptr.into(), ValKind::List))
     }

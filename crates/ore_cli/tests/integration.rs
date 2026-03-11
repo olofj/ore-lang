@@ -903,3 +903,17 @@ fn lists_string_compare() {
         "string_compare ok",
     ]);
 }
+
+#[test]
+fn lists_comprehension() {
+    let out = run_ore("lists/comprehension.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "5", "0", "16",       // squares: len, [0], [4]
+        "5", "0", "8",        // evens: len, [0], [4]
+        "5", "10", "90",      // big_odds: len, [0], [4]
+        "5", "2", "10",       // doubled: len, [0], [4]
+        "2", "4",             // big: len, [0]
+        "comprehension ok",
+    ]);
+}

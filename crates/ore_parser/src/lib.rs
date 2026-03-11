@@ -942,6 +942,50 @@ impl Parser {
                 if self.peek() != &Token::RBracket {
                     elements.push(self.parse_expr(0)?);
                     self.skip_whitespace_tokens();
+                    // Check for list comprehension: [expr for var in iterable if cond]
+                    if self.peek() == &Token::For {
+                        let comp_expr = elements.pop().unwrap();
+                        self.advance(); // consume 'for'
+                        self.skip_whitespace_tokens();
+                        let var = match self.peek().clone() {
+                            Token::Ident(name) => { self.advance(); name }
+                            _ => return Err(self.error("expected variable name after 'for' in list comprehension".to_string())),
+                        };
+                        self.skip_whitespace_tokens();
+                        self.expect(&Token::In)?;
+                        self.skip_whitespace_tokens();
+                        // Parse iterable: handle range (start..end) or expression
+                        let iter_start = self.parse_expr(3)?; // higher precedence to stop at ..
+                        self.skip_whitespace_tokens();
+                        let iterable = if self.peek() == &Token::DotDot {
+                            self.advance();
+                            let iter_end = self.parse_expr(3)?;
+                            // Represent range as BinOp with a special marker —
+                            // we'll use a Call to a synthetic "range" function
+                            Expr::Call {
+                                func: Box::new(Expr::Ident("__range".to_string())),
+                                args: vec![iter_start, iter_end],
+                            }
+                        } else {
+                            iter_start
+                        };
+                        self.skip_whitespace_tokens();
+                        let cond = if self.peek() == &Token::If {
+                            self.advance(); // consume 'if'
+                            self.skip_whitespace_tokens();
+                            Some(Box::new(self.parse_expr(0)?))
+                        } else {
+                            None
+                        };
+                        self.skip_whitespace_tokens();
+                        self.expect(&Token::RBracket)?;
+                        return Ok(Expr::ListComp {
+                            expr: Box::new(comp_expr),
+                            var,
+                            iterable: Box::new(iterable),
+                            cond,
+                        });
+                    }
                     while self.peek() == &Token::Comma {
                         self.advance();
                         self.skip_whitespace_tokens();
