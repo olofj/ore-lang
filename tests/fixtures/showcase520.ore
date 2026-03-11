@@ -1,0 +1,122 @@
+-- Showcase 520: Neural Network Backpropagation Concepts
+
+fn main
+  print "Neural Network Backpropagation:"
+  print ""
+
+  -- Part 1: Network architecture
+  print "=== Part 1: Network Architecture ==="
+  mut layer_sizes := [3, 4, 2]
+  num_layers := 3
+  print "  Layers: {num_layers}"
+  mut layer_names := ["Input", "Hidden", "Output"]
+  for i in range(0, num_layers)
+    print "  {layer_names[i]} layer: {layer_sizes[i]} neurons"
+
+  total_weights := layer_sizes[0] * layer_sizes[1] + layer_sizes[1] * layer_sizes[2]
+  total_biases := layer_sizes[1] + layer_sizes[2]
+  print "  Total weights: {total_weights}"
+  print "  Total biases: {total_biases}"
+  print "  Total parameters: {total_weights + total_biases}"
+
+  -- Part 2: Forward pass (integer simulation, scaled by 100)
+  print ""
+  print "=== Part 2: Forward Pass ==="
+  -- Input values (scaled by 100)
+  mut inputs := [100, 50, 75]
+  print "  Inputs: [{inputs[0]}, {inputs[1]}, {inputs[2]}] (x100)"
+
+  -- Weights from input to hidden (3x4 = 12 weights, scaled by 100)
+  mut w1 := [10, 20, -15, 30, 25, -10, 20, 15, -20, 30, 10, -5]
+  -- Biases for hidden layer
+  mut b1 := [5, -10, 15, 0]
+
+  -- Compute hidden layer activations
+  mut hidden := [0, 0, 0, 0]
+  for h in range(0, 4)
+    mut sum := b1[h] * 100
+    for inp in range(0, 3)
+      sum = sum + inputs[inp] * w1[inp * 4 + h]
+    -- Simplify: divide by 100 to keep scale
+    hidden[h] = sum / 100
+    -- ReLU activation (max(0, x))
+    if hidden[h] < 0
+      hidden[h] = 0
+  print "  Hidden (after ReLU): [{hidden[0]}, {hidden[1]}, {hidden[2]}, {hidden[3]}]"
+
+  -- Weights from hidden to output (4x2 = 8 weights)
+  mut w2 := [15, -20, 10, 25, -10, 15, 20, -5]
+  mut b2 := [10, -5]
+
+  -- Compute output
+  mut outputs := [0, 0]
+  for o in range(0, 2)
+    mut sum := b2[o] * 100
+    for h in range(0, 4)
+      sum = sum + hidden[h] * w2[h * 2 + o]
+    outputs[o] = sum / 100
+  print "  Outputs: [{outputs[0]}, {outputs[1]}]"
+
+  -- Part 3: Loss calculation
+  print ""
+  print "=== Part 3: Loss Calculation ==="
+  mut targets := [100, 0]
+  print "  Targets: [{targets[0]}, {targets[1]}]"
+  mut total_loss := 0
+  for o in range(0, 2)
+    diff := outputs[o] - targets[o]
+    loss := diff * diff
+    total_loss = total_loss + loss
+    print "  Output {o}: predicted={outputs[o]}, target={targets[o]}, error={diff}, loss={loss}"
+  print "  Total loss (MSE): {total_loss}"
+
+  -- Part 4: Gradient computation (backprop)
+  print ""
+  print "=== Part 4: Backpropagation ==="
+  -- Output gradients: dL/dout = 2 * (out - target)
+  mut grad_out := [0, 0]
+  for o in range(0, 2)
+    grad_out[o] = 2 * (outputs[o] - targets[o])
+    print "  dL/dout{o} = {grad_out[o]}"
+
+  -- Gradients for w2 weights: dL/dw = hidden * grad_out
+  print "  Weight gradients (hidden->output):"
+  for h in range(0, 4)
+    for o in range(0, 2)
+      grad_w := hidden[h] * grad_out[o] / 100
+      print "    dL/dw2[{h}][{o}] = {grad_w}"
+
+  -- Part 5: Weight update
+  print ""
+  print "=== Part 5: Weight Update ==="
+  learning_rate := 1
+  print "  Learning rate: {learning_rate} (x100 scale)"
+  print "  Updating output weights:"
+  for h in range(0, 4)
+    for o in range(0, 2)
+      grad_w := hidden[h] * grad_out[o] / 100
+      old_w := w2[h * 2 + o]
+      new_w := old_w - learning_rate * grad_w / 100
+      w2[h * 2 + o] = new_w
+      if h < 2
+        print "    w2[{h}][{o}]: {old_w} -> {new_w}"
+
+  -- Part 6: Training epochs summary
+  print ""
+  print "=== Part 6: Training Summary ==="
+  -- Simulate loss decreasing over epochs
+  mut epoch_losses := [10000, 7500, 5200, 3100, 1800, 950, 420, 180, 65, 20]
+  for e in range(0, 10)
+    mut bar := ""
+    bar_len := epoch_losses[e] / 500
+    for i in range(0, bar_len)
+      bar = bar + "#"
+    print "  Epoch {e + 1}: loss={epoch_losses[e]} {bar}"
+
+  initial := epoch_losses[0]
+  final := epoch_losses[9]
+  reduction := (initial - final) * 100 / initial
+  print "  Loss reduction: {reduction}%"
+
+  print ""
+  print "Neural network: forward pass, loss, backpropagation, weight update, training."

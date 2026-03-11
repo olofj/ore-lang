@@ -1,0 +1,103 @@
+-- Showcase 513: Simple SQL Query Parser and Executor
+
+fn main
+  print "SQL Query Parser and Executor:"
+  print ""
+
+  -- Part 1: Define a table
+  print "=== Part 1: Table Definition ==="
+  mut col_names := ["id", "name", "age", "dept", "salary"]
+  num_cols := 5
+  num_rows := 6
+
+  -- Row data (flattened: 6 rows x 5 cols)
+  mut data_id := [1, 2, 3, 4, 5, 6]
+  mut data_name := ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank"]
+  mut data_age := [30, 25, 35, 28, 32, 40]
+  mut data_dept := ["eng", "sales", "eng", "sales", "eng", "ops"]
+  mut data_salary := [90, 55, 85, 60, 95, 70]
+
+  print "  Table 'employees' ({num_rows} rows, {num_cols} cols)"
+  print "  Columns: {col_names | join(", ")}"
+  print "  ---"
+  for i in range(0, num_rows)
+    print "  | {data_id[i]} | {data_name[i]} | {data_age[i]} | {data_dept[i]} | {data_salary[i]} |"
+
+  -- Part 2: SELECT with WHERE
+  print ""
+  print "=== Part 2: SELECT WHERE ==="
+  print "  Query: SELECT name, salary FROM employees WHERE dept = 'eng'"
+  mut result_count := 0
+  for i in range(0, num_rows)
+    if data_dept[i] == "eng"
+      print "    {data_name[i]}: {data_salary[i]}"
+      result_count = result_count + 1
+  print "  Rows returned: {result_count}"
+
+  -- Part 3: ORDER BY
+  print ""
+  print "=== Part 3: ORDER BY ==="
+  print "  Query: SELECT name, salary FROM employees ORDER BY salary DESC"
+  -- Copy for sorting
+  mut sort_names := ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank"]
+  mut sort_sal := [90, 55, 85, 60, 95, 70]
+  -- Bubble sort descending
+  for i in range(0, num_rows)
+    for j in range(0, num_rows - 1 - i)
+      if sort_sal[j] < sort_sal[j + 1]
+        mut ts := sort_sal[j]
+        sort_sal[j] = sort_sal[j + 1]
+        sort_sal[j + 1] = ts
+        mut tn := sort_names[j]
+        sort_names[j] = sort_names[j + 1]
+        sort_names[j + 1] = tn
+  for i in range(0, num_rows)
+    print "    {sort_names[i]}: {sort_sal[i]}"
+
+  -- Part 4: GROUP BY with aggregation
+  print ""
+  print "=== Part 4: GROUP BY ==="
+  print "  Query: SELECT dept, COUNT(*), AVG(salary) FROM employees GROUP BY dept"
+  mut dept_list := ["eng", "sales", "ops"]
+  for d in range(0, 3)
+    dept := dept_list[d]
+    mut cnt := 0
+    mut total := 0
+    for i in range(0, num_rows)
+      if data_dept[i] == dept
+        cnt = cnt + 1
+        total = total + data_salary[i]
+    avg := total / cnt
+    print "    {dept}: count={cnt}, avg_salary={avg}"
+
+  -- Part 5: JOIN simulation
+  print ""
+  print "=== Part 5: JOIN ==="
+  print "  Query: SELECT e.name, d.location FROM employees e JOIN departments d ON e.dept = d.name"
+  mut dept_keys := ["eng", "sales", "ops"]
+  mut dept_locs := ["Building A", "Building B", "Building C"]
+  for i in range(0, num_rows)
+    mut loc := "Unknown"
+    for d in range(0, 3)
+      if data_dept[i] == dept_keys[d]
+        loc = dept_locs[d]
+    print "    {data_name[i]} -> {loc}"
+
+  -- Part 6: Subquery simulation
+  print ""
+  print "=== Part 6: Subquery ==="
+  print "  Query: SELECT name FROM employees WHERE salary > (SELECT AVG(salary) FROM employees)"
+  mut total_sal := 0
+  for i in range(0, num_rows)
+    total_sal = total_sal + data_salary[i]
+  avg_sal := total_sal / num_rows
+  print "  Subquery result: avg_salary = {avg_sal}"
+  mut above_avg := 0
+  for i in range(0, num_rows)
+    if data_salary[i] > avg_sal
+      print "    {data_name[i]} (salary={data_salary[i]})"
+      above_avg = above_avg + 1
+  print "  Rows above average: {above_avg}"
+
+  print ""
+  print "SQL executor: select, where, order by, group by, join, subquery."

@@ -1,0 +1,118 @@
+-- Showcase 515: Elevator Simulation
+
+fn main
+  print "Elevator Simulation:"
+  print ""
+
+  -- Part 1: Building setup
+  print "=== Part 1: Building Setup ==="
+  num_floors := 10
+  num_elevators := 2
+  print "  Building: {num_floors} floors, {num_elevators} elevators"
+
+  -- Elevator state: current floor, direction (1=up, -1=down, 0=idle)
+  mut elev_floor := [1, 5]
+  mut elev_dir := [0, 0]
+  mut elev_names := ["ElevA", "ElevB"]
+  for i in range(0, num_elevators)
+    print "  {elev_names[i]}: floor {elev_floor[i]}, idle"
+
+  -- Part 2: Request queue
+  print ""
+  print "=== Part 2: Processing Requests ==="
+  mut req_from := [3, 7, 1, 9, 5, 2, 8, 4]
+  mut req_to := [8, 2, 6, 1, 10, 7, 3, 9]
+  num_requests := 8
+
+  mut total_travel := 0
+  mut total_wait := 0
+
+  for r in range(0, num_requests)
+    from := req_from[r]
+    to := req_to[r]
+
+    -- Find nearest idle or same-direction elevator
+    mut best_elev := 0
+    mut best_dist := 999
+    for e in range(0, num_elevators)
+      mut dist := elev_floor[e] - from
+      if dist < 0
+        dist = 0 - dist
+      if dist < best_dist
+        best_dist = dist
+        best_elev = e
+
+    -- Move elevator to pickup
+    elev_floor[best_elev] = from
+    total_wait = total_wait + best_dist
+
+    -- Move to destination
+    mut travel := to - from
+    if travel < 0
+      travel = 0 - travel
+    elev_floor[best_elev] = to
+    total_travel = total_travel + travel
+
+    if to > from
+      elev_dir[best_elev] = 1
+    else
+      elev_dir[best_elev] = -1
+
+    mut dir_str := "up"
+    if to < from
+      dir_str = "down"
+    print "  Req {r + 1}: floor {from}->{to} ({dir_str}), {elev_names[best_elev]} pickup dist={best_dist}, travel={travel}"
+
+  -- Part 3: Statistics
+  print ""
+  print "=== Part 3: Statistics ==="
+  print "  Total requests: {num_requests}"
+  print "  Total pickup distance: {total_wait} floors"
+  print "  Total travel distance: {total_travel} floors"
+  avg_wait := total_wait / num_requests
+  avg_travel := total_travel / num_requests
+  print "  Avg pickup distance: {avg_wait} floors"
+  print "  Avg travel distance: {avg_travel} floors"
+
+  -- Part 4: Peak hour simulation
+  print ""
+  print "=== Part 4: Peak Hour (Morning Rush) ==="
+  -- Everyone going from floor 1 to various floors
+  mut rush_dest := [3, 5, 7, 9, 4, 8, 6, 10, 2, 5]
+  mut elev_a_floor := 1
+  mut elev_b_floor := 1
+  mut a_trips := 0
+  mut b_trips := 0
+
+  for i in range(0, 10)
+    dest := rush_dest[i]
+    -- Alternate between elevators
+    if i % 2 == 0
+      mut travel := dest - elev_a_floor
+      if travel < 0
+        travel = 0 - travel
+      elev_a_floor = dest
+      a_trips = a_trips + 1
+      print "  Person {i + 1}: floor 1->{dest}, ElevA (travel={travel})"
+    else
+      mut travel := dest - elev_b_floor
+      if travel < 0
+        travel = 0 - travel
+      elev_b_floor = dest
+      b_trips = b_trips + 1
+      print "  Person {i + 1}: floor 1->{dest}, ElevB (travel={travel})"
+
+  print "  ElevA: {a_trips} trips, final floor {elev_a_floor}"
+  print "  ElevB: {b_trips} trips, final floor {elev_b_floor}"
+
+  -- Part 5: Energy consumption
+  print ""
+  print "=== Part 5: Energy Report ==="
+  -- 10 units per floor traveled
+  energy := total_travel * 10
+  print "  Energy per floor: 10 units"
+  print "  Total energy: {energy} units"
+  print "  Efficiency: {energy / num_requests} units per request"
+
+  print ""
+  print "Elevator simulation: dispatch, statistics, peak hour, energy tracking."

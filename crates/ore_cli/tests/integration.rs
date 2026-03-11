@@ -6733,6 +6733,118 @@ fn showcase510_compiler_backend() {
 }
 
 #[test]
+fn showcase511_movie_recommendation() {
+    let out = run_ore("showcase511.ore");
+    assert!(out.contains("Movie Recommendation Engine:"));
+    assert!(out.contains("Alice <-> Eve: similarity = 32"));
+    assert!(out.contains("Most similar user: Eve (score: 32)"));
+    assert!(out.contains("Recommend: Casablanca (rated 3 by Eve)"));
+    assert!(out.contains("Recommendation engine: ratings, similarity, collaborative filtering, popularity."));
+}
+
+#[test]
+fn showcase512_weather_forecast() {
+    let out = run_ore("showcase512.ore");
+    assert!(out.contains("Weather Forecast Model:"));
+    assert!(out.contains("Average: 72F, Min: 68F, Max: 77F"));
+    assert!(out.contains("Forecast day 15: 74F"));
+    assert!(out.contains("Trend: stable"));
+    assert!(out.contains("Total anomalies: 3 of 14 days"));
+    assert!(out.contains("Weather forecast: historical data, moving average, trend detection, conditions."));
+}
+
+#[test]
+fn showcase513_sql_query() {
+    let out = run_ore("showcase513.ore");
+    assert!(out.contains("SQL Query Parser and Executor:"));
+    assert!(out.contains("Rows returned: 3"));
+    assert!(out.contains("Eve: 95"));
+    assert!(out.contains("eng: count=3, avg_salary=90"));
+    assert!(out.contains("Alice -> Building A"));
+    assert!(out.contains("Rows above average: 3"));
+    assert!(out.contains("SQL executor: select, where, order by, group by, join, subquery."));
+}
+
+#[test]
+fn showcase514_peg_solitaire() {
+    let out = run_ore("showcase514.ore");
+    assert!(out.contains("Conway's Soldiers (Peg Solitaire):"));
+    assert!(out.contains("Pegs: 32, Empty: 1"));
+    assert!(out.contains("Total valid moves: 4"));
+    assert!(out.contains("Move 1: (1,3) -> (3,3) via down. Pegs left: 31"));
+    assert!(out.contains("Remaining pegs: 26"));
+    assert!(out.contains("Peg solitaire: board setup, move validation, jump execution, scoring."));
+}
+
+#[test]
+fn showcase515_elevator() {
+    let out = run_ore("showcase515.ore");
+    assert!(out.contains("Elevator Simulation:"));
+    assert!(out.contains("Building: 10 floors, 2 elevators"));
+    assert!(out.contains("Total requests: 8"));
+    assert!(out.contains("Total travel distance: 43 floors"));
+    assert!(out.contains("ElevA: 5 trips, final floor 2"));
+    assert!(out.contains("Elevator simulation: dispatch, statistics, peak hour, energy tracking."));
+}
+
+#[test]
+fn showcase516_cellular_growth() {
+    let out = run_ore("showcase516.ore");
+    assert!(out.contains("Cellular Growth Simulation:"));
+    assert!(out.contains("Alive cells: 5"));
+    assert!(out.contains("Gen 1: 5 alive cells"));
+    assert!(out.contains("Gen 4: 5 alive cells"));
+    assert!(out.contains("Top-Left: 5 cells"));
+    assert!(out.contains("Cellular growth: Game of Life, evolution, population tracking, density analysis."));
+}
+
+#[test]
+fn showcase517_debugger() {
+    let out = run_ore("showcase517.ore");
+    assert!(out.contains("Simple Debugger Simulation:"));
+    assert!(out.contains("Total breakpoints: 3"));
+    assert!(out.contains("Step 3: z := x + y [BREAKPOINT HIT]"));
+    assert!(out.contains("z = 30"));
+    assert!(out.contains("result = 55"));
+    assert!(out.contains("Stack depth: 4"));
+    assert!(out.contains("Debugger: breakpoints, step execution, variable inspection, call stack, watchpoints."));
+}
+
+#[test]
+fn showcase518_recipe_scaling() {
+    let out = run_ore("showcase518.ore");
+    assert!(out.contains("Recipe Ingredient Scaling:"));
+    assert!(out.contains("flour: 200 -> 500 g"));
+    assert!(out.contains("Total: 1510 cal (377 cal per serving)"));
+    assert!(out.contains("300ml milk = 5/4 cups"));
+    assert!(out.contains("Oven: 350F = 176C"));
+    assert!(out.contains("Recipe scaling: ingredients, scale up/down, shopping list, nutrition, conversions."));
+}
+
+#[test]
+fn showcase519_version_control() {
+    let out = run_ore("showcase519.ore");
+    assert!(out.contains("Simple Version Control:"));
+    assert!(out.contains("Changes detected: 2"));
+    assert!(out.contains("a1b2c3 | alice | Initial commit (3 files)"));
+    assert!(out.contains("Merge conflicts resolved: 1"));
+    assert!(out.contains("Total file changes: 15"));
+    assert!(out.contains("Version control: diff, commits, branching, merge, blame, statistics."));
+}
+
+#[test]
+fn showcase520_neural_network() {
+    let out = run_ore("showcase520.ore");
+    assert!(out.contains("Neural Network Backpropagation:"));
+    assert!(out.contains("Total parameters: 26"));
+    assert!(out.contains("Hidden (after ReLU): [12, 27, 17, 33]"));
+    assert!(out.contains("Total loss (MSE): 6561"));
+    assert!(out.contains("dL/dout0 = -162"));
+    assert!(out.contains("Loss reduction: 99%"));
+    assert!(out.contains("Neural network: forward pass, loss, backpropagation, weight update, training."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,107 @@
+-- Showcase 518: Recipe Ingredient Scaling
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  if x < 0
+    x = 0 - x
+  if y < 0
+    y = 0 - y
+  while y > 0
+    mut temp := y
+    y = x % y
+    x = temp
+  return x
+
+fn main
+  print "Recipe Ingredient Scaling:"
+  print ""
+
+  -- Part 1: Define recipes
+  print "=== Part 1: Recipe Database ==="
+  -- Pancakes (serves 4)
+  mut r1_name := "Pancakes"
+  mut r1_serves := 4
+  mut r1_ing := ["flour", "sugar", "milk", "eggs", "butter"]
+  mut r1_amt := [200, 30, 300, 2, 50]
+  mut r1_unit := ["g", "g", "ml", "pcs", "g"]
+
+  print "  {r1_name} (serves {r1_serves}):"
+  for i in range(0, 5)
+    print "    {r1_ing[i]}: {r1_amt[i]} {r1_unit[i]}"
+
+  -- Pasta sauce (serves 6)
+  mut r2_name := "Pasta Sauce"
+  mut r2_serves := 6
+  mut r2_ing := ["tomatoes", "onion", "garlic", "olive oil", "basil"]
+  mut r2_amt := [600, 2, 4, 30, 10]
+  mut r2_unit := ["g", "pcs", "cloves", "ml", "g"]
+
+  print ""
+  print "  {r2_name} (serves {r2_serves}):"
+  for i in range(0, 5)
+    print "    {r2_ing[i]}: {r2_amt[i]} {r2_unit[i]}"
+
+  -- Part 2: Scale recipe up
+  print ""
+  print "=== Part 2: Scale Up (Pancakes for 10) ==="
+  target := 10
+  print "  Scaling from {r1_serves} to {target} servings"
+  for i in range(0, 5)
+    scaled := r1_amt[i] * target / r1_serves
+    print "    {r1_ing[i]}: {r1_amt[i]} -> {scaled} {r1_unit[i]}"
+
+  -- Part 3: Scale recipe down
+  print ""
+  print "=== Part 3: Scale Down (Pasta Sauce for 2) ==="
+  target2 := 2
+  print "  Scaling from {r2_serves} to {target2} servings"
+  for i in range(0, 5)
+    scaled := r2_amt[i] * target2 / r2_serves
+    print "    {r2_ing[i]}: {r2_amt[i]} -> {scaled} {r2_unit[i]}"
+
+  -- Part 4: Shopping list merger
+  print ""
+  print "=== Part 4: Shopping List ==="
+  -- Combine ingredients for both recipes (at original serving sizes)
+  mut shop_items := ["flour", "sugar", "milk", "eggs", "butter", "tomatoes", "onion", "garlic", "olive oil", "basil"]
+  mut shop_amts := [200, 30, 300, 2, 50, 600, 2, 4, 30, 10]
+  mut shop_units := ["g", "g", "ml", "pcs", "g", "g", "pcs", "cloves", "ml", "g"]
+  print "  Combined shopping list:"
+  for i in range(0, 10)
+    print "    {shop_items[i]}: {shop_amts[i]} {shop_units[i]}"
+
+  -- Part 5: Nutritional estimation
+  print ""
+  print "=== Part 5: Nutrition Estimate (Pancakes) ==="
+  -- Approximate calories per ingredient amount
+  mut cal_per := [3, 4, 1, 70, 7]
+  -- cal_per is per unit of amt (per gram or per piece)
+  mut total_cal := 0
+  for i in range(0, 5)
+    cal := r1_amt[i] * cal_per[i]
+    total_cal = total_cal + cal
+    print "    {r1_ing[i]}: {cal} cal"
+  per_serving := total_cal / r1_serves
+  print "  Total: {total_cal} cal ({per_serving} cal per serving)"
+
+  -- Part 6: Unit conversion
+  print ""
+  print "=== Part 6: Unit Conversions ==="
+  -- Convert grams to cups (approx: 1 cup = 125g for flour, 200g for sugar)
+  flour_cups_num := 200 * 8
+  flour_cups_den := 125
+  g := gcd(flour_cups_num, flour_cups_den)
+  print "  200g flour = {flour_cups_num / g}/{flour_cups_den / g} cups"
+  -- ml to cups (1 cup = 240ml)
+  milk_cups_num := 300
+  milk_cups_den := 240
+  g2 := gcd(milk_cups_num, milk_cups_den)
+  print "  300ml milk = {milk_cups_num / g2}/{milk_cups_den / g2} cups"
+  -- Fahrenheit to Celsius: 350F -> C
+  f := 350
+  c := (f - 32) * 5 / 9
+  print "  Oven: {f}F = {c}C"
+
+  print ""
+  print "Recipe scaling: ingredients, scale up/down, shopping list, nutrition, conversions."

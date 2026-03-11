@@ -1,0 +1,141 @@
+-- Showcase 519: Simple Version Control (Diff, Patch, Merge)
+
+fn main
+  print "Simple Version Control:"
+  print ""
+
+  -- Part 1: File versions
+  print "=== Part 1: File Versions ==="
+  mut v1_lines := ["hello world", "foo bar", "goodbye", "the end"]
+  mut v2_lines := ["hello world", "foo baz", "new line", "goodbye", "the end"]
+
+  print "  Version 1 ({v1_lines | len} lines):"
+  for i in range(0, 4)
+    print "    {i + 1}: {v1_lines[i]}"
+  print "  Version 2 ({v2_lines | len} lines):"
+  for i in range(0, 5)
+    print "    {i + 1}: {v2_lines[i]}"
+
+  -- Part 2: Line-by-line diff
+  print ""
+  print "=== Part 2: Diff ==="
+  -- Simple LCS-style diff: match lines, detect insertions/deletions/changes
+  mut i := 0
+  mut j := 0
+  mut changes := 0
+  while i < 4 and j < 5
+    if v1_lines[i] == v2_lines[j]
+      print "    {v1_lines[i]}"
+      i = i + 1
+      j = j + 1
+    else
+      -- Check if v2 has an insertion (v1[i] matches v2[j+1])
+      mut is_insert := false
+      if j + 1 < 5
+        if v1_lines[i] == v2_lines[j + 1]
+          is_insert = true
+      if is_insert
+        print "  + {v2_lines[j]}"
+        changes = changes + 1
+        j = j + 1
+      else
+        -- Check if v1 has a deletion (v1[i+1] matches v2[j])
+        mut is_delete := false
+        if i + 1 < 4
+          if v1_lines[i + 1] == v2_lines[j]
+            is_delete = true
+        if is_delete
+          print "  - {v1_lines[i]}"
+          changes = changes + 1
+          i = i + 1
+        else
+          -- Modification
+          print "  - {v1_lines[i]}"
+          print "  + {v2_lines[j]}"
+          changes = changes + 1
+          i = i + 1
+          j = j + 1
+  -- Remaining lines
+  while i < 4
+    print "  - {v1_lines[i]}"
+    changes = changes + 1
+    i = i + 1
+  while j < 5
+    print "  + {v2_lines[j]}"
+    changes = changes + 1
+    j = j + 1
+  print "  Changes detected: {changes}"
+
+  -- Part 3: Commit history
+  print ""
+  print "=== Part 3: Commit History ==="
+  mut commit_ids := ["a1b2c3", "d4e5f6", "g7h8i9", "j0k1l2", "m3n4o5"]
+  mut commit_msgs := ["Initial commit", "Fix typo in readme", "Add new feature", "Refactor utils", "Update tests"]
+  mut commit_authors := ["alice", "bob", "alice", "carol", "bob"]
+  mut commit_files := [3, 1, 5, 2, 4]
+
+  for i in range(0, 5)
+    print "  {commit_ids[i]} | {commit_authors[i]} | {commit_msgs[i]} ({commit_files[i]} files)"
+
+  -- Part 4: Branch and merge
+  print ""
+  print "=== Part 4: Branch and Merge ==="
+  mut main_lines := ["alpha", "beta", "gamma"]
+  mut branch_lines := ["alpha", "beta-modified", "gamma", "delta"]
+
+  print "  Main branch: {main_lines | join(", ")}"
+  print "  Feature branch: {branch_lines | join(", ")}"
+
+  -- Merge: take branch changes
+  mut merged := ["", "", "", ""]
+  mut merge_len := 0
+  mut mi := 0
+  mut bi := 0
+  mut conflicts := 0
+  while mi < 3 and bi < 4
+    if main_lines[mi] == branch_lines[bi]
+      merged[merge_len] = main_lines[mi]
+      merge_len = merge_len + 1
+      mi = mi + 1
+      bi = bi + 1
+    else
+      -- Conflict: prefer branch
+      merged[merge_len] = branch_lines[bi]
+      merge_len = merge_len + 1
+      conflicts = conflicts + 1
+      mi = mi + 1
+      bi = bi + 1
+  while bi < 4
+    merged[merge_len] = branch_lines[bi]
+    merge_len = merge_len + 1
+    bi = bi + 1
+
+  print "  Merged result:"
+  for i in range(0, merge_len)
+    print "    {merged[i]}"
+  print "  Merge conflicts resolved: {conflicts}"
+
+  -- Part 5: Blame (which commit last changed each line)
+  print ""
+  print "=== Part 5: Blame ==="
+  mut blame_lines := ["hello world", "foo baz", "new line", "goodbye", "the end"]
+  mut blame_commits := ["a1b2c3", "d4e5f6", "g7h8i9", "a1b2c3", "a1b2c3"]
+  mut blame_authors := ["alice", "bob", "alice", "alice", "alice"]
+  for i in range(0, 5)
+    print "  {blame_commits[i]} ({blame_authors[i]}): {blame_lines[i]}"
+
+  -- Part 6: Statistics
+  print ""
+  print "=== Part 6: Stats ==="
+  mut total_files := 0
+  for i in range(0, 5)
+    total_files = total_files + commit_files[i]
+  print "  Total commits: 5"
+  print "  Total file changes: {total_files}"
+  -- Count unique authors
+  mut unique_authors := ["alice", "bob", "carol"]
+  print "  Unique authors: {unique_authors | len}"
+  print "  Avg files per commit: {total_files / 5}"
+
+  print ""
+  print "Version control: diff, commits, branching, merge, blame, statistics."

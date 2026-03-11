@@ -1,0 +1,114 @@
+-- Showcase 514: Conway's Soldiers (Peg Solitaire Variant)
+
+fn main
+  print "Conway's Soldiers (Peg Solitaire):"
+  print ""
+
+  -- Part 1: Board setup - 7x7 cross-shaped board
+  print "=== Part 1: Board Setup ==="
+  -- Board: 1=peg, 0=empty, -1=invalid
+  -- Classic English peg solitaire cross shape
+  -- Row 0-6, Col 0-6
+  mut board := [-1, -1, 1, 1, 1, -1, -1, -1, -1, 1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, 1, 1, -1, -1, -1, -1, 1, 1, 1, -1, -1]
+
+  mut peg_count := 0
+  for r in range(0, 7)
+    mut row_str := ""
+    for c in range(0, 7)
+      val := board[r * 7 + c]
+      if val == -1
+        row_str = row_str + " "
+      else if val == 1
+        row_str = row_str + "O"
+        peg_count = peg_count + 1
+      else
+        row_str = row_str + "."
+    print "  {row_str}"
+  print "  Pegs: {peg_count}, Empty: 1"
+
+  -- Part 2: Find valid moves
+  print ""
+  print "=== Part 2: Valid Moves ==="
+  -- Directions: right, left, down, up (dc, dr pairs)
+  mut dr := [0, 0, 1, -1]
+  mut dc := [1, -1, 0, 0]
+  mut dir_names := ["right", "left", "down", "up"]
+
+  mut move_count := 0
+  for r in range(0, 7)
+    for c in range(0, 7)
+      if board[r * 7 + c] == 1
+        for d in range(0, 4)
+          mr := r + dr[d]
+          mc := c + dc[d]
+          jr := r + dr[d] * 2
+          jc := c + dc[d] * 2
+          if jr >= 0 and jr < 7 and jc >= 0 and jc < 7
+            if board[mr * 7 + mc] == 1 and board[jr * 7 + jc] == 0
+              if move_count < 5
+                print "  ({r},{c}) jump {dir_names[d]} over ({mr},{mc}) to ({jr},{jc})"
+              move_count = move_count + 1
+  print "  Total valid moves: {move_count}"
+
+  -- Part 3: Execute a sequence of moves
+  print ""
+  print "=== Part 3: Move Sequence ==="
+  -- Pre-planned sequence of 6 valid moves
+  mut mf_r := [1, 4, 6, 3, 3, 3]
+  mut mf_c := [3, 3, 3, 5, 2, 0]
+  mut mf_d := [2, 3, 3, 1, 0, 0]
+  num_moves := 6
+
+  for i in range(0, num_moves)
+    fr := mf_r[i]
+    fc := mf_c[i]
+    d := mf_d[i]
+    mr := fr + dr[d]
+    mc := fc + dc[d]
+    jr := fr + dr[d] * 2
+    jc := fc + dc[d] * 2
+
+    if board[fr * 7 + fc] == 1 and board[mr * 7 + mc] == 1 and board[jr * 7 + jc] == 0
+      board[fr * 7 + fc] = 0
+      board[mr * 7 + mc] = 0
+      board[jr * 7 + jc] = 1
+      peg_count = peg_count - 1
+      print "  Move {i + 1}: ({fr},{fc}) -> ({jr},{jc}) via {dir_names[d]}. Pegs left: {peg_count}"
+    else
+      print "  Move {i + 1}: ({fr},{fc}) {dir_names[d]} - INVALID"
+
+  -- Part 4: Show board after moves
+  print ""
+  print "=== Part 4: Board After Moves ==="
+  mut final_pegs := 0
+  for r in range(0, 7)
+    mut row_str := ""
+    for c in range(0, 7)
+      val := board[r * 7 + c]
+      if val == -1
+        row_str = row_str + " "
+      else if val == 1
+        row_str = row_str + "O"
+        final_pegs = final_pegs + 1
+      else
+        row_str = row_str + "."
+    print "  {row_str}"
+  print "  Remaining pegs: {final_pegs}"
+
+  -- Part 5: Score evaluation
+  print ""
+  print "=== Part 5: Score ==="
+  removed := 32 - final_pegs
+  print "  Pegs removed: {removed}"
+  print "  Pegs remaining: {final_pegs}"
+  if final_pegs == 1
+    print "  Rating: PERFECT!"
+  else if final_pegs <= 5
+    print "  Rating: Excellent"
+  else if final_pegs <= 10
+    print "  Rating: Good"
+  else
+    print "  Rating: Keep trying"
+
+  print ""
+  print "Peg solitaire: board setup, move validation, jump execution, scoring."

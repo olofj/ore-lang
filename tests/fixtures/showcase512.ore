@@ -1,0 +1,101 @@
+-- Showcase 512: Weather Forecast Model (Simple Prediction)
+
+fn main
+  print "Weather Forecast Model:"
+  print ""
+
+  -- Part 1: Historical temperature data (daily highs for 2 weeks)
+  print "=== Part 1: Historical Data ==="
+  mut temps := [72, 75, 71, 68, 74, 76, 73, 70, 69, 72, 75, 77, 74, 71]
+  mut days := ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+  mut total := 0
+  mut min_t := 999
+  mut max_t := 0
+  for i in range(0, 14)
+    total = total + temps[i]
+    if temps[i] < min_t
+      min_t = temps[i]
+    if temps[i] > max_t
+      max_t = temps[i]
+  avg := total / 14
+  print "  Days recorded: 14"
+  print "  Average: {avg}F, Min: {min_t}F, Max: {max_t}F"
+
+  -- Part 2: Moving average forecast (3-day window)
+  print ""
+  print "=== Part 2: Moving Average (3-day) ==="
+  for i in range(2, 14)
+    ma := (temps[i] + temps[i - 1] + temps[i - 2]) / 3
+    print "  Day {i + 1} ({days[i]}): actual={temps[i]}F, 3-day avg={ma}F"
+
+  -- Forecast next 3 days using last 3 days
+  last3_avg := (temps[11] + temps[12] + temps[13]) / 3
+  print "  Forecast day 15: {last3_avg}F"
+  print "  Forecast day 16: {last3_avg}F"
+
+  -- Part 3: Trend detection
+  print ""
+  print "=== Part 3: Trend Detection ==="
+  mut rising := 0
+  mut falling := 0
+  mut steady := 0
+  for i in range(1, 14)
+    diff := temps[i] - temps[i - 1]
+    if diff > 1
+      rising = rising + 1
+    else if diff < -1
+      falling = falling + 1
+    else
+      steady = steady + 1
+  print "  Rising days: {rising}"
+  print "  Falling days: {falling}"
+  print "  Steady days: {steady}"
+
+  -- Overall trend from first week to second week
+  mut week1 := 0
+  mut week2 := 0
+  for i in range(0, 7)
+    week1 = week1 + temps[i]
+  for i in range(7, 14)
+    week2 = week2 + temps[i]
+  w1_avg := week1 / 7
+  w2_avg := week2 / 7
+  print "  Week 1 avg: {w1_avg}F, Week 2 avg: {w2_avg}F"
+  if w2_avg > w1_avg
+    print "  Trend: warming"
+  else if w2_avg < w1_avg
+    print "  Trend: cooling"
+  else
+    print "  Trend: stable"
+
+  -- Part 4: Weather condition mapping
+  print ""
+  print "=== Part 4: Conditions ==="
+  mut humidity := [45, 60, 55, 80, 40, 35, 50, 75, 85, 65, 42, 38, 70, 55]
+  for i in range(0, 14)
+    mut cond := "Clear"
+    if humidity[i] > 75
+      cond = "Rainy"
+    else if humidity[i] > 55
+      cond = "Cloudy"
+    else if humidity[i] > 40
+      cond = "Partly Cloudy"
+    if i < 7
+      print "  {days[i]}: {temps[i]}F, humidity {humidity[i]}% -> {cond}"
+
+  -- Part 5: Temperature anomaly detection
+  print ""
+  print "=== Part 5: Anomaly Detection ==="
+  mut anomalies := 0
+  for i in range(0, 14)
+    mut diff := temps[i] - avg
+    if diff < 0
+      diff = 0 - diff
+    if diff > 3
+      print "  Day {i + 1} ({days[i]}): {temps[i]}F (deviation: {temps[i] - avg}F from avg {avg}F)"
+      anomalies = anomalies + 1
+  print "  Total anomalies: {anomalies} of 14 days"
+
+  print ""
+  print "Weather forecast: historical data, moving average, trend detection, conditions."

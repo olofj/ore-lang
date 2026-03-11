@@ -1,0 +1,118 @@
+-- Showcase 517: Simple Debugger (Breakpoints, Step, Inspect)
+
+fn main
+  print "Simple Debugger Simulation:"
+  print ""
+
+  -- Part 1: Program listing
+  print "=== Part 1: Program Listing ==="
+  mut lines := ["x := 10", "y := 20", "z := x + y", "if z > 25", "  print z", "w := z * 2", "result := w - 5", "print result"]
+  num_lines := 8
+  for i in range(0, num_lines)
+    print "  {i + 1}: {lines[i]}"
+
+  -- Part 2: Set breakpoints
+  print ""
+  print "=== Part 2: Breakpoints ==="
+  mut breakpoints := [false, false, true, false, false, true, false, true]
+  mut bp_count := 0
+  for i in range(0, num_lines)
+    if breakpoints[i]
+      bp_count = bp_count + 1
+      print "  Breakpoint set at line {i + 1}: {lines[i]}"
+  print "  Total breakpoints: {bp_count}"
+
+  -- Part 3: Step execution with variable tracking
+  print ""
+  print "=== Part 3: Step Execution ==="
+  mut var_names := ["x", "y", "z", "w", "result"]
+  mut var_vals := [0, 0, 0, 0, 0]
+  mut var_set := [false, false, false, false, false]
+  mut pc := 0
+
+  -- Execute line by line
+  -- Line 1: x := 10
+  var_vals[0] = 10
+  var_set[0] = true
+  pc = 0
+  print "  Step 1: {lines[0]}"
+  print "    x = 10"
+
+  -- Line 2: y := 20
+  var_vals[1] = 20
+  var_set[1] = true
+  pc = 1
+  print "  Step 2: {lines[1]}"
+  print "    y = 20"
+
+  -- Line 3: z := x + y (BREAKPOINT)
+  pc = 2
+  print "  Step 3: {lines[2]} [BREAKPOINT HIT]"
+  var_vals[2] = var_vals[0] + var_vals[1]
+  var_set[2] = true
+  -- Show all variables at breakpoint
+  print "    --- Variable Inspection ---"
+  for v in range(0, 5)
+    if var_set[v]
+      print "    {var_names[v]} = {var_vals[v]}"
+
+  -- Line 4-5: if z > 25 / print z
+  pc = 3
+  print "  Step 4: {lines[3]}"
+  if var_vals[2] > 25
+    print "    Condition: true (z={var_vals[2]} > 25)"
+    pc = 4
+    print "  Step 5: {lines[4]}"
+    print "    Output: {var_vals[2]}"
+
+  -- Line 6: w := z * 2 (BREAKPOINT)
+  pc = 5
+  print "  Step 6: {lines[5]} [BREAKPOINT HIT]"
+  var_vals[3] = var_vals[2] * 2
+  var_set[3] = true
+  print "    --- Variable Inspection ---"
+  for v in range(0, 5)
+    if var_set[v]
+      print "    {var_names[v]} = {var_vals[v]}"
+
+  -- Line 7: result := w - 5
+  pc = 6
+  print "  Step 7: {lines[6]}"
+  var_vals[4] = var_vals[3] - 5
+  var_set[4] = true
+  print "    result = {var_vals[4]}"
+
+  -- Line 8: print result (BREAKPOINT)
+  pc = 7
+  print "  Step 8: {lines[7]} [BREAKPOINT HIT]"
+  print "    Output: {var_vals[4]}"
+
+  -- Part 4: Call stack simulation
+  print ""
+  print "=== Part 4: Call Stack ==="
+  mut stack_funcs := ["main", "calculate", "add", "validate"]
+  mut stack_lines := [1, 15, 22, 30]
+  mut stack_depth := 4
+  print "  Current call stack:"
+  for i in range(0, stack_depth)
+    mut indent := ""
+    for j in range(0, i)
+      indent = indent + "  "
+    print "    {indent}{stack_funcs[i]}() at line {stack_lines[i]}"
+  print "  Stack depth: {stack_depth}"
+
+  -- Part 5: Watchpoints
+  print ""
+  print "=== Part 5: Watchpoints ==="
+  mut watch_var := "z"
+  mut watch_history := [0, 0, 30, 30, 30, 30, 30, 30]
+  print "  Watching variable: {watch_var}"
+  mut changes := 0
+  for i in range(1, num_lines)
+    if watch_history[i] != watch_history[i - 1]
+      changes = changes + 1
+      print "  Step {i + 1}: {watch_var} changed from {watch_history[i - 1]} to {watch_history[i]}"
+  print "  Total changes to {watch_var}: {changes}"
+
+  print ""
+  print "Debugger: breakpoints, step execution, variable inspection, call stack, watchpoints."
