@@ -414,8 +414,12 @@ fn map_runtime_functions(
     map_fn!("ore_map_print_str", ore_runtime::ore_map_print_str);
     // Concurrency
     map_fn!("ore_spawn", ore_runtime::ore_spawn);
+    map_fn!("ore_spawn_with_arg", ore_runtime::ore_spawn_with_arg);
     map_fn!("ore_thread_join_all", ore_runtime::ore_thread_join_all);
     map_fn!("ore_sleep", ore_runtime::ore_sleep);
+    map_fn!("ore_channel_new", ore_runtime::ore_channel_new);
+    map_fn!("ore_channel_send", ore_runtime::ore_channel_send);
+    map_fn!("ore_channel_recv", ore_runtime::ore_channel_recv);
     // I/O
     map_fn!("ore_readln", ore_runtime::ore_readln);
     map_fn!("ore_file_read", ore_runtime::ore_file_read);

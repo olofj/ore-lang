@@ -1,0 +1,12 @@
+-- Test channels: basic send/recv between threads
+fn producer ch:Channel
+  ch.send(42)
+  ch.send(100)
+
+fn main
+  ch := channel()
+  spawn producer(ch)
+  val1 := ch.recv()
+  val2 := ch.recv()
+  print val1
+  print val2

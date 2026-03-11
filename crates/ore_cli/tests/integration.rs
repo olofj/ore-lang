@@ -544,6 +544,14 @@ fn showcase2() {
 }
 
 #[test]
+#[test]
+fn concurrency_channels() {
+    let out = run_ore("concurrency/channels.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["42", "100"]);
+}
+
+#[test]
 fn generics_monomorphize() {
     let out = run_ore("generics/monomorphize.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

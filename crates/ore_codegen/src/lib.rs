@@ -183,6 +183,7 @@ pub enum ValKind {
     Result,
     List,
     Map,
+    Channel,
 }
 
 struct RecordInfo<'ctx> {
@@ -336,6 +337,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Result => 8,
             ValKind::List => 9,
             ValKind::Map => 10,
+            ValKind::Channel => 11,
         }
     }
 
@@ -574,6 +576,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_bool_to_str", ptr_type.fn_type(&[i8_type.into()], false), ext);
         // ore_spawn(ptr) — takes a function pointer
         self.module.add_function("ore_spawn", void_type.fn_type(&[ptr_type.into()], false), ext);
+        // ore_spawn_with_arg(ptr, i64) — takes a function pointer and one i64 arg
+        self.module.add_function("ore_spawn_with_arg", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_thread_join_all()
         self.module.add_function("ore_thread_join_all", void_type.fn_type(&[], false), ext);
         // ore_sleep(i64)
@@ -693,6 +697,10 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_file_write", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_dynamic_to_str(i64, i8) -> ptr — dynamic dispatch for Result/Option payload to string
         self.module.add_function("ore_dynamic_to_str", ptr_type.fn_type(&[i64_type.into(), i8_type.into()], false), ext);
+        // Channels
+        self.module.add_function("ore_channel_new", ptr_type.fn_type(&[], false), ext);
+        self.module.add_function("ore_channel_send", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_channel_recv", i64_type.fn_type(&[ptr_type.into()], false), ext);
     }
 
     fn type_expr_to_kind(&self, ty: &TypeExpr) -> ValKind {
@@ -706,6 +714,7 @@ impl<'ctx> CodeGen<'ctx> {
                 "Result" => ValKind::Result,
                 "List" => ValKind::List,
                 "Map" => ValKind::Map,
+                "Channel" => ValKind::Channel,
                 other => {
                     if self.records.contains_key(other) {
                         ValKind::Record(other.to_string())
@@ -750,7 +759,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option => self.option_type().into(),
             ValKind::Result => self.result_type().into(),
-            ValKind::List | ValKind::Map => self.ptr_type().into(),
+            ValKind::List | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
         }
     }
 
@@ -765,7 +774,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option => self.option_type().into(),
             ValKind::Result => self.result_type().into(),
-            ValKind::List | ValKind::Map => self.ptr_type().into(),
+            ValKind::List | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
         }
     }
 
@@ -970,20 +979,29 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(None)
             }
             Stmt::Spawn(expr) => {
-                // spawn only works with zero-argument function calls
                 match expr {
-                    Expr::Call { func: callee, args } if args.is_empty() => {
+                    Expr::Call { func: callee, args } => {
                         let name = match callee.as_ref() {
                             Expr::Ident(n) => n.clone(),
                             _ => return Err(CodeGenError { line: None, msg: "spawn requires a named function call".into() }),
                         };
                         let (target_fn, _) = self.resolve_function(&name)?;
                         let fn_ptr = target_fn.as_global_value().as_pointer_value();
-                        let ore_spawn = self.module.get_function("ore_spawn").unwrap();
-                        bld!(self.builder.build_call(ore_spawn, &[fn_ptr.into()], ""))?;
+
+                        if args.is_empty() {
+                            let ore_spawn = self.module.get_function("ore_spawn").unwrap();
+                            bld!(self.builder.build_call(ore_spawn, &[fn_ptr.into()], ""))?;
+                        } else if args.len() == 1 {
+                            let arg_val = self.compile_expr(&args[0], func)?;
+                            let i64_val = self.value_to_i64(arg_val)?;
+                            let ore_spawn = self.module.get_function("ore_spawn_with_arg").unwrap();
+                            bld!(self.builder.build_call(ore_spawn, &[fn_ptr.into(), i64_val.into()], ""))?;
+                        } else {
+                            return Err(CodeGenError { line: None, msg: "spawn supports at most 1 argument".into() });
+                        }
                         Ok(None)
                     }
-                    _ => Err(CodeGenError { line: None, msg: "spawn requires a zero-argument function call".into() }),
+                    _ => Err(CodeGenError { line: None, msg: "spawn requires a function call".into() }),
                 }
             }
         }
@@ -1191,6 +1209,12 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_select(cmp, a, b, "max"))?;
                         return Ok((result, ValKind::Int));
                     }
+                    "channel" => {
+                        let rt = self.module.get_function("ore_channel_new").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[], "ch"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Channel));
+                    }
                     "readln" => {
                         let rt = self.module.get_function("ore_readln").unwrap();
                         let result = bld!(self.builder.build_call(rt, &[], "readln"))?;
@@ -1351,6 +1375,7 @@ impl<'ctx> CodeGen<'ctx> {
                             ValKind::Void => "Void",
                             ValKind::Record(ref n) => n.as_str(),
                             ValKind::Enum(ref n) => n.as_str(),
+                            ValKind::Channel => "Channel",
                         };
                         let str_val = self.compile_string_literal(type_name)?;
                         return Ok((str_val.into(), ValKind::Str));
@@ -1834,6 +1859,11 @@ impl<'ctx> CodeGen<'ctx> {
         // Handle Option methods
         if obj_kind == ValKind::Option {
             return self.compile_option_method(obj_val, method, args, func);
+        }
+
+        // Handle Channel methods
+        if obj_kind == ValKind::Channel {
+            return self.compile_channel_method(obj_val, method, args, func);
         }
 
         // Handle to_str() on primitive types
@@ -2764,6 +2794,34 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::List))
             }
             _ => Err(CodeGenError { line: None, msg: format!("unknown map method '{}'", method) }),
+        }
+    }
+
+    fn compile_channel_method(
+        &mut self,
+        ch_val: BasicValueEnum<'ctx>,
+        method: &str,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        match method {
+            "send" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "channel.send() takes 1 argument".into() });
+                }
+                let val = self.compile_expr(&args[0], func)?;
+                let i64_val = self.value_to_i64(val)?;
+                let rt = self.module.get_function("ore_channel_send").unwrap();
+                bld!(self.builder.build_call(rt, &[ch_val.into(), i64_val.into()], ""))?;
+                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+            }
+            "recv" => {
+                let rt = self.module.get_function("ore_channel_recv").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[ch_val.into()], "recv"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            _ => Err(CodeGenError { line: None, msg: format!("unknown channel method '{}'", method) }),
         }
     }
 
@@ -4063,6 +4121,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Result => TypeExpr::Named("Result".to_string()),
             ValKind::List => TypeExpr::Named("List".to_string()),
             ValKind::Map => TypeExpr::Named("Map".to_string()),
+            ValKind::Channel => TypeExpr::Named("Channel".to_string()),
         }
     }
 
@@ -4083,6 +4142,7 @@ impl<'ctx> CodeGen<'ctx> {
                 ValKind::Result => name.push_str("Result"),
                 ValKind::List => name.push_str("List"),
                 ValKind::Map => name.push_str("Map"),
+                ValKind::Channel => name.push_str("Channel"),
             }
         }
         name
