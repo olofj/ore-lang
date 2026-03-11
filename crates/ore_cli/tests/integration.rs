@@ -260,6 +260,18 @@ fn testing_assert_eq() {
 }
 
 #[test]
+fn testing_comprehensive() {
+    let path = fixtures_dir().join("testing/comprehensive.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore");
+    assert!(output.status.success(), "comprehensive tests should pass");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("11 passed"), "expected 11 passed, got: {}", stderr);
+}
+
+#[test]
 fn stdlib_file_io() {
     let out = run_ore("stdlib/file_io.ore");
     assert_eq!(out.trim(), "hello from ore");
