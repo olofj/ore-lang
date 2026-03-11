@@ -1,0 +1,102 @@
+-- Showcase 945: Central Limit Theorem Demonstration
+-- Shows that sample means of any distribution approach a normal distribution.
+-- Uses a deterministic pseudo-random number generator (LCG) for reproducibility.
+
+fn round3 v:Float -> Float
+  r := (v * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+-- LCG pseudo-random: returns value in [0, 1)
+fn lcg_next seed:Int -> Int
+  (seed * 1664525 + 1013904223) % 2147483647
+
+fn lcg_float seed:Int -> Float
+  seed.to_float() / 2147483647.0
+
+-- Draw from uniform [0, 1) and return (value, new_seed)
+-- We'll use a simple iterative approach
+
+fn main
+  print "Central Limit Theorem Demonstration"
+  print "===================================="
+  print ""
+  print "Population: Uniform distribution on [0, 1)"
+  print "Population mean: 0.5, Population variance: 1/12 ~ 0.0833"
+  print ""
+
+  -- Generate sample means for various sample sizes
+  -- Using LCG with fixed seed for determinism
+  -- n_samples sample means per sample size
+  n_samples := 200
+
+  -- Sample size n=1: mean should be ~0.5, std ~ sqrt(1/12) ~ 0.289
+  -- Sample size n=10: mean should be ~0.5, std ~ sqrt(1/120) ~ 0.091
+  -- Sample size n=30: mean should be ~0.5, std ~ 0.053
+
+  mut seed := 42
+
+  -- Generate n_samples means for n=1
+  mut sum1 := 0.0
+  mut sum1sq := 0.0
+  for s in range(0, n_samples)
+    seed = lcg_next(seed)
+    v := lcg_float(seed)
+    sum1 = sum1 + v
+    sum1sq = sum1sq + v * v
+  mean1 := sum1 / n_samples.to_float()
+  var1 := sum1sq / n_samples.to_float() - mean1 * mean1
+  std1 := sqrt(var1)
+
+  print "Sample size n=1 ({n_samples} samples):"
+  print "  Sample mean of means: {round3(mean1)}"
+  print "  Std of means: {round3(std1)}"
+  print "  Expected std: 0.289"
+
+  -- Generate n_samples means for n=10
+  mut sum10 := 0.0
+  mut sum10sq := 0.0
+  for s in range(0, n_samples)
+    mut batch := 0.0
+    for k in range(0, 10)
+      seed = lcg_next(seed)
+      v := lcg_float(seed)
+      batch = batch + v
+    xbar := batch / 10.0
+    sum10 = sum10 + xbar
+    sum10sq = sum10sq + xbar * xbar
+  mean10 := sum10 / n_samples.to_float()
+  var10 := sum10sq / n_samples.to_float() - mean10 * mean10
+  std10 := sqrt(var10)
+
+  print ""
+  print "Sample size n=10 ({n_samples} samples):"
+  print "  Sample mean of means: {round3(mean10)}"
+  print "  Std of means: {round3(std10)}"
+  print "  Expected std: 0.091"
+
+  -- Generate n_samples means for n=30
+  mut sum30 := 0.0
+  mut sum30sq := 0.0
+  for s in range(0, n_samples)
+    mut batch30 := 0.0
+    for k in range(0, 30)
+      seed = lcg_next(seed)
+      v := lcg_float(seed)
+      batch30 = batch30 + v
+    xbar30 := batch30 / 30.0
+    sum30 = sum30 + xbar30
+    sum30sq = sum30sq + xbar30 * xbar30
+  mean30 := sum30 / n_samples.to_float()
+  var30 := sum30sq / n_samples.to_float() - mean30 * mean30
+  std30 := sqrt(var30)
+
+  print ""
+  print "Sample size n=30 ({n_samples} samples):"
+  print "  Sample mean of means: {round3(mean30)}"
+  print "  Std of means: {round3(std30)}"
+  print "  Expected std: 0.053"
+
+  print ""
+  print "CLT: as n increases, distribution of sample means"
+  print "     approaches Normal(mu, sigma/sqrt(n))"
+  print "     regardless of the original distribution shape."

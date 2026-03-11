@@ -11436,6 +11436,167 @@ fn showcase_930() {
 }
 
 #[test]
+fn showcase_931() {
+    let out = run_ore("showcase931.ore");
+    assert!(out.contains("Tower of Hanoi (Iterative)"), "got: {out}");
+    assert!(out.contains("Total moves: 7 (optimal for 3 disks: 7)"), "got: {out}");
+    assert!(out.contains("Final state: all 3 disks successfully moved to peg C"), "got: {out}");
+}
+
+#[test]
+fn showcase_932() {
+    let out = run_ore("showcase932.ore");
+    assert!(out.contains("Magic Square Generator (Siamese Method)"), "got: {out}");
+    assert!(out.contains("magic constant = 15"), "got: {out}");
+    assert!(out.contains("5x5 Main diagonal sum: 65 (expected 65)"), "got: {out}");
+}
+
+#[test]
+fn showcase_933() {
+    let out = run_ore("showcase933.ore");
+    assert!(out.contains("Sudoku Validator"), "got: {out}");
+    assert!(out.contains("Result: VALID Sudoku solution!"), "got: {out}");
+    assert!(out.contains("Invalid grid row 0: INVALID (duplicate detected, as expected)"), "got: {out}");
+}
+
+#[test]
+fn showcase_934() {
+    let out = run_ore("showcase934.ore");
+    assert!(out.contains("Eight Queens Problem"), "got: {out}");
+    assert!(out.contains("Total solutions: 92"), "got: {out}");
+    assert!(out.contains("8-queens has exactly 92 solutions"), "got: {out}");
+}
+
+#[test]
+fn showcase_935() {
+    let out = run_ore("showcase935.ore");
+    assert!(out.contains("Knight's Tour (Warnsdorff's Heuristic)"), "got: {out}");
+    assert!(out.contains("Squares visited: 36 / 36"), "got: {out}");
+    assert!(out.contains("Complete knight's tour found!"), "got: {out}");
+}
+
+#[test]
+fn showcase_936() {
+    let out = run_ore("showcase936.ore");
+    assert!(out.contains("Maze Solver (Breadth-First Search)"), "got: {out}");
+    assert!(out.contains("Shortest path found! Length: 14 steps"), "got: {out}");
+    assert!(out.contains("BFS guarantees the shortest path in unweighted graphs"), "got: {out}");
+}
+
+#[test]
+fn showcase_937() {
+    let out = run_ore("showcase937.ore");
+    assert!(out.contains("Cryptarithmetic Solver: TWO + TWO = FOUR"), "got: {out}");
+    assert!(out.contains("Total solutions: 7"), "got: {out}");
+    assert!(out.contains("Correct!"), "got: {out}");
+}
+
+#[test]
+fn showcase_938() {
+    let out = run_ore("showcase938.ore");
+    assert!(out.contains("Water Pouring Puzzle (BFS)"), "got: {out}");
+    assert!(out.contains("Target 4L achieved in jug B!"), "got: {out}");
+    assert!(out.contains("Target 6L found in jug B after 8 steps"), "got: {out}");
+}
+
+#[test]
+fn showcase_939() {
+    let out = run_ore("showcase939.ore");
+    assert!(out.contains("Monty Hall Problem Simulation"), "got: {out}");
+    assert!(out.contains("Simulation confirms: switching doubles your winning chances!"), "got: {out}");
+    assert!(out.contains("Monty Hall paradox: counterintuitive but mathematically proven"), "got: {out}");
+}
+
+#[test]
+fn showcase_940() {
+    let out = run_ore("showcase940.ore");
+    assert!(out.contains("Josephus Problem"), "got: {out}");
+    assert!(out.contains("Survivor: person 7"), "got: {out}");
+    assert!(out.contains("Josephus problem: classic combinatorics / survivor counting puzzle"), "got: {out}");
+}
+
+#[test]
+fn showcase_941() {
+    let out = run_ore("showcase941.ore");
+    assert!(out.contains("Descriptive Statistics"), "got: {out}");
+    assert!(out.contains("Mean: 5.47"), "got: {out}");
+    assert!(out.contains("Mode: 8"), "got: {out}");
+    assert!(out.contains("Std Dev: 2.16"), "got: {out}");
+}
+
+#[test]
+fn showcase_942() {
+    let out = run_ore("showcase942.ore");
+    assert!(out.contains("Linear Regression (Least Squares)"), "got: {out}");
+    assert!(out.contains("Slope (b): 4.297"), "got: {out}");
+    assert!(out.contains("R-squared: 0.996"), "got: {out}");
+}
+
+#[test]
+fn showcase_943() {
+    let out = run_ore("showcase943.ore");
+    assert!(out.contains("Chi-Squared Test"), "got: {out}");
+    assert!(out.contains("Chi-squared statistic: 2.8"), "got: {out}");
+    assert!(out.contains("FAIL TO REJECT null hypothesis (dice appears fair)"), "got: {out}");
+}
+
+#[test]
+fn showcase_944() {
+    let out = run_ore("showcase944.ore");
+    assert!(out.contains("Bayesian Inference: Coin Bias"), "got: {out}");
+    assert!(out.contains("MAP estimate: p = 0.7"), "got: {out}");
+    assert!(out.contains("Total observations: 10/15 heads"), "got: {out}");
+}
+
+#[test]
+fn showcase_945() {
+    let out = run_ore("showcase945.ore");
+    assert!(out.contains("Central Limit Theorem Demonstration"), "got: {out}");
+    assert!(out.contains("Sample size n=10"), "got: {out}");
+    assert!(out.contains("Expected std: 0.091"), "got: {out}");
+}
+
+#[test]
+fn showcase_946() {
+    let out = run_ore("showcase946.ore");
+    assert!(out.contains("Birthday Problem"), "got: {out}");
+    assert!(out.contains("P(n=23) = 0.5073"), "got: {out}");
+    assert!(out.contains("Group size for P > 0.99"), "got: {out}");
+}
+
+#[test]
+fn showcase_947() {
+    let out = run_ore("showcase947.ore");
+    assert!(out.contains("Markov Chain Steady State"), "got: {out}");
+    assert!(out.contains("P(Sunny)  = 0.4565"), "got: {out}");
+    assert!(out.contains("Verification (pi * T should equal pi)"), "got: {out}");
+}
+
+#[test]
+fn showcase_948() {
+    let out = run_ore("showcase948.ore");
+    assert!(out.contains("Queuing Theory: M/M/1 Queue"), "got: {out}");
+    assert!(out.contains("Traffic intensity (rho): 0.6667"), "got: {out}");
+    assert!(out.contains("M/M/1 formulas assume rho < 1 (stable system)"), "got: {out}");
+}
+
+#[test]
+fn showcase_949() {
+    let out = run_ore("showcase949.ore");
+    assert!(out.contains("Monte Carlo Pi Estimation"), "got: {out}");
+    assert!(out.contains("True pi: 3.141593"), "got: {out}");
+    assert!(out.contains("n=100000:"), "got: {out}");
+}
+
+#[test]
+fn showcase_950() {
+    let out = run_ore("showcase950.ore");
+    assert!(out.contains("Bootstrap Confidence Interval"), "got: {out}");
+    assert!(out.contains("Observed mean: 325.3 ms"), "got: {out}");
+    assert!(out.contains("Bootstrap captures sampling variability without normality assumption"), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

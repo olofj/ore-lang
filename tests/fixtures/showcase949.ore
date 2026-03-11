@@ -1,0 +1,105 @@
+-- Showcase 949: Monte Carlo Pi Estimation (Deterministic Seed)
+-- Estimates pi by sampling random points in a unit square and
+-- counting how many fall inside the unit circle.
+-- Uses a deterministic LCG for reproducibility.
+
+fn round6 v:Float -> Float
+  r := (v * 1000000.0 + 0.5).to_int()
+  r.to_float() / 1000000.0
+
+fn round4 v:Float -> Float
+  r := (v * 10000.0 + 0.5).to_int()
+  r.to_float() / 10000.0
+
+fn lcg seed:Int -> Int
+  (seed * 1664525 + 1013904223) % 2147483647
+
+fn lcg_f seed:Int -> Float
+  seed.to_float() / 2147483647.0
+
+fn estimate_pi n:Int seed_in:Int -> Float
+  mut seed := seed_in
+  mut inside := 0
+  for i in range(0, n)
+    seed = lcg(seed)
+    x := lcg_f(seed)
+    seed = lcg(seed)
+    y := lcg_f(seed)
+    if x * x + y * y < 1.0
+      inside = inside + 1
+  4.0 * inside.to_float() / n.to_float()
+
+fn main
+  print "Monte Carlo Pi Estimation"
+  print "========================="
+  print ""
+  print "Method: Sample (x,y) uniformly in [0,1)^2"
+  print "        Count points with x^2 + y^2 < 1"
+  print "        pi ~ 4 * (inside / total)"
+  print ""
+
+  true_pi := pi()
+  print "True pi: {round6(true_pi)}"
+  print ""
+
+  -- Estimates with increasing sample sizes
+  print "Sample size  Estimate    Error"
+  print "-----------  ----------  ------"
+
+  mut seed := 777
+
+  n100 := 100
+  est100 := estimate_pi(n100, seed)
+  seed = lcg(seed + n100 * 2)
+  err100 := est100 - true_pi
+  e100s := str(round6(err100))
+  print "100          {round6(est100)}  {e100s}"
+
+  n1k := 1000
+  est1k := estimate_pi(n1k, seed)
+  seed = lcg(seed + n1k * 2)
+  err1k := est1k - true_pi
+  e1ks := str(round6(err1k))
+  print "1000         {round6(est1k)}  {e1ks}"
+
+  n10k := 10000
+  est10k := estimate_pi(n10k, seed)
+  seed = lcg(seed + n10k * 2)
+  err10k := est10k - true_pi
+  e10ks := str(round6(err10k))
+  print "10000        {round6(est10k)}  {e10ks}"
+
+  n100k := 100000
+  est100k := estimate_pi(n100k, seed)
+  err100k := est100k - true_pi
+  e100ks := str(round6(err100k))
+  print "100000       {round6(est100k)}  {e100ks}"
+
+  print ""
+  print "Expected convergence: O(1/sqrt(n))"
+  print "std error ~ 1/sqrt(n): for n=10000 -> ~0.01"
+
+  -- Show convergence rate
+  print ""
+  print "Absolute errors:"
+  ae100 := est100 - true_pi
+  ae1k := est1k - true_pi
+  ae10k := est10k - true_pi
+  ae100k := est100k - true_pi
+  -- Use abs method on float
+  mut abs100 := ae100
+  if ae100 < 0.0
+    abs100 = 0.0 - ae100
+  mut abs1k := ae1k
+  if ae1k < 0.0
+    abs1k = 0.0 - ae1k
+  mut abs10k := ae10k
+  if ae10k < 0.0
+    abs10k = 0.0 - ae10k
+  mut abs100k := ae100k
+  if ae100k < 0.0
+    abs100k = 0.0 - ae100k
+  print "  n=100:    {round4(abs100)}"
+  print "  n=1000:   {round4(abs1k)}"
+  print "  n=10000:  {round4(abs10k)}"
+  print "  n=100000: {round4(abs100k)}"

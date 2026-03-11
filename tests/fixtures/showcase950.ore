@@ -1,0 +1,112 @@
+-- Showcase 950: Bootstrap Confidence Interval
+-- Estimates a 95% confidence interval for the mean of a dataset
+-- using the bootstrap resampling method with a deterministic seed.
+
+fn round4 v:Float -> Float
+  r := (v * 10000.0 + 0.5).to_int()
+  r.to_float() / 10000.0
+
+fn round2 v:Float -> Float
+  r := (v * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+fn lcg seed:Int -> Int
+  (seed * 1664525 + 1013904223) % 2147483647
+
+fn sample_mean data:List n:Int -> Float
+  mut s := 0
+  for i in range(0, n)
+    s = s + data[i]
+  s.to_float() / n.to_float()
+
+fn main
+  print "Bootstrap Confidence Interval"
+  print "============================="
+  print ""
+
+  -- Original dataset: reaction times in milliseconds
+  mut data := [243, 251, 275, 291, 347, 354, 380, 388, 420, 441]
+  data.push(198)
+  data.push(312)
+  data.push(367)
+  data.push(290)
+  data.push(248)
+  data.push(415)
+  data.push(303)
+  data.push(328)
+  data.push(260)
+  data.push(395)
+  n := 20
+
+  -- Compute observed mean
+  obs_mean := sample_mean(data, n)
+  print "Dataset: reaction times (ms), n={n}"
+  print "Observed mean: {round2(obs_mean)} ms"
+
+  -- Bootstrap: draw n_boot resamples of size n with replacement
+  n_boot := 2000
+  print "Bootstrap resamples: {n_boot}"
+  print ""
+
+  -- Store bootstrap means as integers (approximate percentiles)
+  n_stored := 100
+  mut boot_means := [0]
+  for fill in range(1, n_stored)
+    boot_means.push(0)
+  stride := n_boot / n_stored
+
+  mut seed := 31415
+  mut b_idx := 0
+  mut sum_all := 0.0
+  mut sum_sq_all := 0.0
+
+  for b in range(0, n_boot)
+    -- Draw a resample of size n
+    mut bsum := 0
+    for i in range(0, n)
+      seed = lcg(seed)
+      idx := seed % n
+      bsum = bsum + data[idx]
+    bmean := bsum.to_float() / n.to_float()
+    sum_all = sum_all + bmean
+    sum_sq_all = sum_sq_all + bmean * bmean
+    -- Store every stride-th mean as integer * 100
+    remainder := b % stride
+    if remainder == 0 and b_idx < n_stored
+      boot_means[b_idx] = bsum / n  -- integer mean
+      b_idx = b_idx + 1
+
+  -- Compute bootstrap distribution stats
+  boot_grand_mean := sum_all / n_boot.to_float()
+  boot_var := sum_sq_all / n_boot.to_float() - boot_grand_mean * boot_grand_mean
+  boot_se := sqrt(boot_var)
+
+  print "Bootstrap distribution:"
+  print "  Grand mean: {round2(boot_grand_mean)} ms"
+  print "  Std error: {round2(boot_se)} ms"
+
+  -- Sort the stored samples to find approximate percentiles
+  sorted_means := boot_means.sort()
+  p025 := sorted_means[2]   -- ~2.5th percentile of 100
+  p975 := sorted_means[97]  -- ~97.5th percentile of 100
+
+  print ""
+  print "95% Bootstrap Confidence Interval (percentile method):"
+  print "  Lower (2.5%): {p025} ms"
+  print "  Upper (97.5%): {p975} ms"
+
+  -- Normal approximation CI for comparison
+  -- 1.96 * SE
+  se_196 := 1.96 * boot_se
+  ci_lo := obs_mean - se_196
+  ci_hi := obs_mean + se_196
+  print ""
+  print "Normal approximation 95% CI:"
+  print "  [{round2(ci_lo)}, {round2(ci_hi)}] ms"
+
+  print ""
+  print "Interpretation:"
+  print "  We are ~95% confident the true mean reaction time"
+  true_mean_str := str(round2(obs_mean))
+  print "  lies near {true_mean_str} ms (observed mean)"
+  print "  Bootstrap captures sampling variability without normality assumption"

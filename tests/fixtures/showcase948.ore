@@ -1,0 +1,94 @@
+-- Showcase 948: Queuing Theory (M/M/1)
+-- Analyzes an M/M/1 queue: Poisson arrivals, exponential service,
+-- single server. Computes key performance metrics.
+
+fn round4 v:Float -> Float
+  r := (v * 10000.0 + 0.5).to_int()
+  r.to_float() / 10000.0
+
+fn round2 v:Float -> Float
+  r := (v * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+fn mm1_rho lam:Float mu:Float -> Float
+  -- Traffic intensity rho = lambda / mu (must be < 1 for stability)
+  lam / mu
+
+fn mm1_Lq lam:Float mu:Float -> Float
+  -- Mean queue length (waiting, not including server)
+  rho := lam / mu
+  rho * rho / (1.0 - rho)
+
+fn mm1_L lam:Float mu:Float -> Float
+  -- Mean number in system (queue + server)
+  rho := lam / mu
+  rho / (1.0 - rho)
+
+fn mm1_Wq lam:Float mu:Float -> Float
+  -- Mean waiting time in queue (Little's law: Wq = Lq / lambda)
+  rho := lam / mu
+  rho / (mu * (1.0 - rho))
+
+fn mm1_W lam:Float mu:Float -> Float
+  -- Mean time in system (Little's law: W = L / lambda)
+  rho := lam / mu
+  1.0 / (mu * (1.0 - rho))
+
+fn mm1_p0 lam:Float mu:Float -> Float
+  -- Probability server is idle
+  1.0 - lam / mu
+
+fn main
+  print "Queuing Theory: M/M/1 Queue"
+  print "==========================="
+  print ""
+
+  -- Scenario 1: Coffee shop
+  -- Arrival rate: 20 customers/hour, Service rate: 30 customers/hour
+  lam1 := 20.0
+  mu1 := 30.0
+  rho1 := mm1_rho(lam1, mu1)
+  print "Scenario 1: Coffee Shop"
+  print "  Arrival rate (lambda): {lam1} customers/hour"
+  print "  Service rate (mu): {mu1} customers/hour"
+  print "  Traffic intensity (rho): {round4(rho1)}"
+  print "  Server utilization: {round2(rho1 * 100.0)}%"
+  print "  P(server idle): {round4(mm1_p0(lam1, mu1))}"
+  print "  Mean queue length (Lq): {round4(mm1_Lq(lam1, mu1))} customers"
+  print "  Mean system length (L): {round4(mm1_L(lam1, mu1))} customers"
+  print "  Mean waiting time (Wq): {round4(mm1_Wq(lam1, mu1) * 60.0)} minutes"
+  print "  Mean system time (W): {round4(mm1_W(lam1, mu1) * 60.0)} minutes"
+
+  print ""
+
+  -- Scenario 2: Near capacity
+  lam2 := 27.0
+  mu2 := 30.0
+  rho2 := mm1_rho(lam2, mu2)
+  print "Scenario 2: Near Capacity"
+  print "  Arrival rate (lambda): {lam2} customers/hour"
+  print "  Service rate (mu): {mu2} customers/hour"
+  print "  Traffic intensity (rho): {round4(rho2)}"
+  print "  Server utilization: {round2(rho2 * 100.0)}%"
+  print "  Mean queue length (Lq): {round4(mm1_Lq(lam2, mu2))} customers"
+  print "  Mean waiting time (Wq): {round4(mm1_Wq(lam2, mu2) * 60.0)} minutes"
+
+  print ""
+
+  -- Sensitivity analysis: varying load
+  print "Sensitivity: rho vs waiting time (service rate = 10/hr)"
+  mu_s := 10.0
+  print "  rho   Lq      Wq(min)"
+  rhos := [5, 6, 7, 8, 9]
+  for i in range(0, 5)
+    lam_i := rhos[i].to_float()
+    rho_i := mm1_rho(lam_i, mu_s)
+    lq_i := mm1_Lq(lam_i, mu_s)
+    wq_i := mm1_Wq(lam_i, mu_s) * 60.0
+    rho_str := str(round4(rho_i)).pad_right(6, " ")
+    lq_str := str(round4(lq_i)).pad_right(8, " ")
+    print "  {rho_str}{lq_str}{round2(wq_i)}"
+
+  print ""
+  print "Key insight: as rho -> 1, queue length grows without bound"
+  print "M/M/1 formulas assume rho < 1 (stable system)"

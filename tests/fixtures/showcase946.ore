@@ -1,0 +1,90 @@
+-- Showcase 946: Birthday Problem Probability
+-- Computes the probability that in a group of n people,
+-- at least two share a birthday. Uses exact formula and
+-- also verifies with a simple Monte Carlo simulation.
+
+fn round4 v:Float -> Float
+  r := (v * 10000.0 + 0.5).to_int()
+  r.to_float() / 10000.0
+
+fn birthday_prob n:Int -> Float
+  -- P(at least 2 share) = 1 - P(all different)
+  -- P(all different) = 365/365 * 364/365 * ... * (365-n+1)/365
+  if n > 365
+    1.0
+  else
+    mut p_all_diff := 1.0
+    for i in range(0, n)
+      factor := (365 - i).to_float() / 365.0
+      p_all_diff = p_all_diff * factor
+    1.0 - p_all_diff
+
+-- LCG for Monte Carlo simulation
+fn lcg seed:Int -> Int
+  (seed * 1664525 + 1013904223) % 2147483647
+
+fn main
+  print "Birthday Problem"
+  print "================"
+  print ""
+  print "P(at least 2 share a birthday in group of n):"
+  print ""
+  print "  n   Exact prob"
+  print "  --  ----------"
+
+  -- Key values
+  sizes := [5, 10, 15, 20, 23, 30, 40, 50, 60, 70]
+  for i in range(0, 10)
+    n := sizes[i]
+    p := birthday_prob(n)
+    ps := str(round4(p)).pad_right(10, " ")
+    ns := str(n).pad_right(4, " ")
+    print "  {ns}{ps}"
+
+  print ""
+  print "The famous threshold: P > 0.5 at n = 23"
+  p23 := birthday_prob(23)
+  print "  P(n=23) = {round4(p23)}"
+  p22 := birthday_prob(22)
+  print "  P(n=22) = {round4(p22)}"
+
+  -- Monte Carlo verification for n=23 using exact collision check
+  print ""
+  print "Monte Carlo verification for n=23 (5000 trials):"
+  mut seed := 12345
+  n_trials := 5000
+  n_group := 23
+  mut matches := 0
+
+  for t in range(0, n_trials)
+    -- Generate 23 birthdays, store in a 23-element list
+    mut days := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for p in range(0, n_group)
+      seed = lcg(seed)
+      days[p] = seed % 365
+    -- Check for any pair collision
+    mut found := false
+    for a in range(0, n_group)
+      for b in range(a + 1, n_group)
+        da := days[a]
+        db := days[b]
+        if da == db
+          found = true
+    if found
+      matches = matches + 1
+
+  mc_prob := matches.to_float() / n_trials.to_float()
+  print "  Monte Carlo P(n=23) ~ {round4(mc_prob)}"
+  print "  Exact P(n=23) = {round4(p23)}"
+
+  print ""
+  print "Group size for P > 0.99:"
+  mut n_99 := 1
+  mut p_cur := 0.0
+  mut found_99 := false
+  for n in range(1, 100)
+    p_cur = birthday_prob(n)
+    if p_cur > 0.99 and not found_99
+      n_99 = n
+      found_99 = true
+  print "  n = {n_99} (P = {round4(birthday_prob(n_99))})"

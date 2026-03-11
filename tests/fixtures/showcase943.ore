@@ -1,0 +1,77 @@
+-- Showcase 943: Chi-Squared Test
+-- Tests whether observed frequencies match expected frequencies.
+-- Uses a dice-roll example, coin-flip, and grade distribution.
+
+fn round3 v:Float -> Float
+  r := (v * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+fn chi_squared obs:List exp:List n_cats:Int -> Float
+  -- sum of (O - E)^2 / E  (obs and exp are Int lists * 10, scale not needed since ratio)
+  mut chi2 := 0.0
+  for i in range(0, n_cats)
+    o := obs[i].to_float()
+    e := exp[i].to_float()
+    diff := o - e
+    chi2 = chi2 + diff * diff / e
+  chi2
+
+fn main
+  print "Chi-Squared Test"
+  print "================"
+  print ""
+
+  -- Fair dice: roll 60 times, each face expected 10 times
+  print "Dice Roll Test (60 rolls, 6 faces):"
+  print "Null hypothesis: dice is fair"
+  -- Use integers (observed counts)
+  obs_dice := [8, 11, 9, 13, 7, 12]
+  exp_dice := [10, 10, 10, 10, 10, 10]
+  chi2_dice := chi_squared(obs_dice, exp_dice, 6)
+  df_dice := 5
+  print "Observed: [8, 11, 9, 13, 7, 12]"
+  print "Expected: [10, 10, 10, 10, 10, 10]"
+  print "Chi-squared statistic: {round3(chi2_dice)}"
+  print "Degrees of freedom: {df_dice}"
+  crit_dice := 11.07
+  print "Critical value (alpha=0.05): {crit_dice}"
+  if chi2_dice > crit_dice
+    print "Result: REJECT null hypothesis"
+  else
+    print "Result: FAIL TO REJECT null hypothesis (dice appears fair)"
+
+  print ""
+  print "Coin Flip Test (100 flips):"
+  print "Null hypothesis: coin is fair"
+  obs_coin := [45, 55]
+  exp_coin := [50, 50]
+  chi2_coin := chi_squared(obs_coin, exp_coin, 2)
+  df_coin := 1
+  print "Observed: [45 heads, 55 tails]"
+  print "Expected: [50, 50]"
+  print "Chi-squared statistic: {round3(chi2_coin)}"
+  print "Degrees of freedom: {df_coin}"
+  crit_coin := 3.841
+  print "Critical value (alpha=0.05): {crit_coin}"
+  if chi2_coin > crit_coin
+    print "Result: REJECT null hypothesis (coin is biased)"
+  else
+    print "Result: FAIL TO REJECT null hypothesis (coin appears fair)"
+
+  print ""
+  print "Grade Distribution Test:"
+  obs_grades := [25, 35, 20, 15, 5]
+  exp_grades := [20, 40, 25, 10, 5]
+  chi2_grades := chi_squared(obs_grades, exp_grades, 5)
+  df_grades := 4
+  print "Grades: [A, B, C, D, F]"
+  print "Observed: [25, 35, 20, 15, 5]"
+  print "Expected: [20, 40, 25, 10, 5]"
+  print "Chi-squared statistic: {round3(chi2_grades)}"
+  print "Degrees of freedom: {df_grades}"
+  crit_grades := 9.488
+  print "Critical value (alpha=0.05): {crit_grades}"
+  if chi2_grades > crit_grades
+    print "Result: REJECT null hypothesis (distribution differs)"
+  else
+    print "Result: FAIL TO REJECT null hypothesis"

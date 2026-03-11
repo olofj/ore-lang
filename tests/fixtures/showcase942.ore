@@ -1,0 +1,68 @@
+-- Showcase 942: Linear Regression (Least Squares)
+-- Fits a line y = a + b*x to data using ordinary least squares.
+-- Reports slope, intercept, R-squared, and predictions.
+
+fn round3 v:Float -> Float
+  r := (v * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+fn main
+  print "Linear Regression (Least Squares)"
+  print "=================================="
+
+  -- Hours studied vs exam score
+  xs := [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+  ys := [52.0, 55.0, 61.0, 65.0, 69.0, 72.0, 79.0, 82.0, 86.0, 90.0]
+  n := 10
+
+  -- Compute means
+  mut sx := 0.0
+  mut sy := 0.0
+  for i in range(0, n)
+    sx = sx + xs[i]
+    sy = sy + ys[i]
+  mx := sx / 10.0
+  my := sy / 10.0
+
+  -- Compute slope and intercept
+  mut num := 0.0
+  mut den := 0.0
+  for i in range(0, n)
+    dx := xs[i] - mx
+    dy := ys[i] - my
+    num = num + dx * dy
+    den = den + dx * dx
+  slope := num / den
+  intercept := my - slope * mx
+
+  print "x-mean: {round3(mx)}, y-mean: {round3(my)}"
+  print "Slope (b): {round3(slope)}"
+  print "Intercept (a): {round3(intercept)}"
+
+  -- R-squared
+  mut ss_res := 0.0
+  mut ss_tot := 0.0
+  for i in range(0, n)
+    pred := intercept + slope * xs[i]
+    ss_res = ss_res + (ys[i] - pred) * (ys[i] - pred)
+    ss_tot = ss_tot + (ys[i] - my) * (ys[i] - my)
+  r2 := 1.0 - ss_res / ss_tot
+  print "R-squared: {round3(r2)}"
+
+  print ""
+  print "Predictions:"
+  p3 := intercept + slope * 3.0
+  p7 := intercept + slope * 7.0
+  p11 := intercept + slope * 11.0
+  print "  x=3  -> {round3(p3)}"
+  print "  x=7  -> {round3(p7)}"
+  print "  x=11 -> {round3(p11)}"
+
+  print ""
+  print "Residuals (first 5):"
+  for i in range(0, 5)
+    xi := xs[i]
+    yi := ys[i]
+    pred := intercept + slope * xi
+    res := yi - pred
+    print "  x={xi} actual={yi} pred={round3(pred)} resid={round3(res)}"

@@ -1,0 +1,78 @@
+-- Showcase 941: Descriptive Statistics
+-- Computes mean, median, mode, variance, and standard deviation
+-- over a fixed dataset using list operations.
+
+fn round2 v:Float -> Float
+  r := (v * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+fn compute_mean data:List -> Float
+  n := data.count()
+  mut s := 0.0
+  for i in range(0, n)
+    s = s + data[i].to_float()
+  s / n.to_float()
+
+fn compute_median_sorted sorted:List -> Float
+  n := sorted.count()
+  half := n / 2
+  rem := n % 2
+  if rem == 0
+    a := sorted[half - 1].to_float()
+    b := sorted[half].to_float()
+    (a + b) / 2.0
+  else
+    sorted[half].to_float()
+
+fn compute_variance data:List m:Float -> Float
+  n := data.count()
+  mut s := 0.0
+  for i in range(0, n)
+    d := data[i].to_float() - m
+    s = s + d * d
+  s / n.to_float()
+
+fn compute_mode data:List -> Int
+  -- find value with highest frequency by brute force
+  n := data.count()
+  mut best_val := data[0]
+  mut best_cnt := 0
+  for i in range(0, n)
+    v := data[i]
+    mut cnt := 0
+    for j in range(0, n)
+      if data[j] == v
+        cnt = cnt + 1
+    if cnt > best_cnt
+      best_cnt = cnt
+      best_val = v
+  best_val
+
+fn main
+  print "Descriptive Statistics"
+  print "======================"
+  data := [4, 8, 6, 5, 3, 2, 8, 9, 2, 5, 8, 7, 4, 6, 5]
+  n := data.count()
+  print "Count: {n}"
+
+  m := compute_mean(data)
+  print "Mean: {round2(m)}"
+
+  sorted := data.sort()
+  med := compute_median_sorted(sorted)
+  print "Median: {med}"
+
+  mo := compute_mode(data)
+  print "Mode: {mo}"
+
+  v := compute_variance(data, m)
+  print "Variance: {round2(v)}"
+
+  sd := sqrt(v)
+  print "Std Dev: {round2(sd)}"
+
+  mn := data.min()
+  mx := data.max()
+  print "Min: {mn}, Max: {mx}"
+  rng := mx - mn
+  print "Range: {rng}"
