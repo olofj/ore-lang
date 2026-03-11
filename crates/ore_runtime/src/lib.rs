@@ -949,6 +949,45 @@ pub extern "C" fn ore_list_pop(list: *mut OreList) -> i64 {
     }
 }
 
+/// Insert a value at the given index, shifting elements right.
+#[no_mangle]
+pub extern "C" fn ore_list_insert(list: *mut OreList, index: i64, value: i64) {
+    unsafe {
+        let list_ref = &mut *list;
+        let idx = if index < 0 { (list_ref.len + index).max(0) } else { index.min(list_ref.len) } as usize;
+        // Ensure capacity
+        ore_list_push(list, 0); // grow if needed
+        let list_ref = &mut *list;
+        let len = list_ref.len as usize;
+        // Shift elements right
+        if idx < len - 1 {
+            std::ptr::copy(list_ref.data.add(idx), list_ref.data.add(idx + 1), len - 1 - idx);
+        }
+        *list_ref.data.add(idx) = value;
+    }
+}
+
+/// Remove element at the given index, shifting elements left. Returns the removed element.
+#[no_mangle]
+pub extern "C" fn ore_list_remove_at(list: *mut OreList, index: i64) -> i64 {
+    unsafe {
+        let list_ref = &mut *list;
+        let idx = if index < 0 { list_ref.len + index } else { index };
+        if idx < 0 || idx >= list_ref.len {
+            eprintln!("index out of bounds: {} (len {})", index, list_ref.len);
+            std::process::exit(1);
+        }
+        let idx = idx as usize;
+        let removed = *list_ref.data.add(idx);
+        let len = list_ref.len as usize;
+        if idx < len - 1 {
+            std::ptr::copy(list_ref.data.add(idx + 1), list_ref.data.add(idx), len - 1 - idx);
+        }
+        list_ref.len -= 1;
+        removed
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_get(list: *mut OreList, index: i64) -> i64 {
     unsafe {
