@@ -722,6 +722,7 @@ impl<'ctx> CodeGen<'ctx> {
         // ore_range(i64, i64) -> ptr
         self.module.add_function("ore_range", ptr_type.fn_type(&[i64_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_range_step", ptr_type.fn_type(&[i64_type.into(), i64_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_list_repeat", ptr_type.fn_type(&[i64_type.into(), i64_type.into()], false), ext);
         // ore_list_take(ptr, i64) -> ptr
         self.module.add_function("ore_list_take", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_skip(ptr, i64) -> ptr
@@ -1902,6 +1903,19 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[map_val.into()], "json_stringify"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
+                    }
+                    "repeat" => {
+                        if args.len() != 2 {
+                            return Err(CodeGenError { line: None, msg: "repeat takes 2 arguments (value, count)".into() });
+                        }
+                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                        let val_i64 = self.value_to_i64(val)?;
+                        let count = self.compile_expr(&args[1], func)?;
+                        let rt = self.module.get_function("ore_list_repeat").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[val_i64.into(), count.into()], "repeat"))?;
+                        let list_val = self.call_result_to_value(result)?;
+                        self.last_list_elem_kind = Some(kind);
+                        return Ok((list_val, ValKind::List));
                     }
                     "range" => {
                         if args.len() < 2 || args.len() > 3 {

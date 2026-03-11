@@ -883,6 +883,16 @@ pub extern "C" fn ore_range_step(start: i64, end: i64, step: i64) -> *mut OreLis
     list
 }
 
+/// Create a list by repeating a value N times.
+#[no_mangle]
+pub extern "C" fn ore_list_repeat(value: i64, count: i64) -> *mut OreList {
+    let list = ore_list_new();
+    for _ in 0..count {
+        ore_list_push(list, value);
+    }
+    list
+}
+
 // ── Lists ──
 //
 // OreList: heap-allocated growable array of i64 values.
