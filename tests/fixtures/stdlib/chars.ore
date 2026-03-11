@@ -1,0 +1,8 @@
+fn main
+  s := "hello"
+  cs := s.chars()
+  print cs
+  for c in cs
+    print c
+  print "hello world".index_of("world")
+  print "hello world".index_of("xyz")

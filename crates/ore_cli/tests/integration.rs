@@ -387,3 +387,10 @@ fn mutation_compound() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["15", "12", "48", "8", "2"]);
 }
+
+#[test]
+fn stdlib_chars() {
+    let out = run_ore("stdlib/chars.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["[h, e, l, l, o]", "h", "e", "l", "l", "o", "6", "-1"]);
+}

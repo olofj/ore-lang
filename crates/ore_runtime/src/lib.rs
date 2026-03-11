@@ -348,6 +348,31 @@ pub extern "C" fn ore_str_substr(s: *mut OreStr, start: i64, len: i64) -> *mut O
     ore_str_new(sub.as_ptr(), sub.len() as u32)
 }
 
+#[no_mangle]
+pub extern "C" fn ore_str_chars(s: *mut OreStr) -> *mut OreList {
+    let list = ore_list_new();
+    if s.is_null() { return list; }
+    let str_val = unsafe { (*s).as_str() };
+    for ch in str_val.chars() {
+        let mut buf = [0u8; 4];
+        let ch_str = ch.encode_utf8(&mut buf);
+        let ore_ch = ore_str_new(ch_str.as_ptr(), ch_str.len() as u32);
+        ore_list_push(list, ore_ch as i64);
+    }
+    list
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_index_of(s: *mut OreStr, needle: *mut OreStr) -> i64 {
+    if s.is_null() || needle.is_null() { return -1; }
+    let haystack = unsafe { (*s).as_str() };
+    let needle_str = unsafe { (*needle).as_str() };
+    match haystack.find(needle_str) {
+        Some(pos) => pos as i64,
+        None => -1,
+    }
+}
+
 // ── I/O ──
 
 #[no_mangle]

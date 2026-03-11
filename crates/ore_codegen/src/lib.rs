@@ -604,6 +604,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_to_upper", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_lower", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_substr", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_str_chars", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_index_of", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_reduce(ptr, i64, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_reduce", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_find(ptr, fn_ptr, env_ptr, default) -> i64
@@ -1862,6 +1864,23 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), start.into(), len.into()], "ssub"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
+            }
+            "chars" => {
+                let rt = self.module.get_function("ore_str_chars").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "schars"))?;
+                let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::Str);
+                Ok((val, ValKind::List))
+            }
+            "index_of" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { msg: "index_of takes 1 argument".into() });
+                }
+                let needle = self.compile_expr(&args[0], func)?;
+                let rt = self.module.get_function("ore_str_index_of").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "sidx"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
             }
             _ => Err(CodeGenError { msg: format!("unknown string method '{}'", method) }),
         }
