@@ -1,0 +1,85 @@
+-- Showcase 250: Grand finale - All features combined
+
+type Animal
+  Dog(name: Str)
+  Cat(name: Str)
+  Fish(name: Str)
+
+fn animal_name a:Animal -> Str
+  match a
+    Dog n -> n
+    Cat n -> n
+    Fish n -> n
+
+fn animal_sound a:Animal -> Str
+  match a
+    Dog _ -> "Woof!"
+    Cat _ -> "Meow!"
+    Fish _ -> "..."
+
+fn animal_type a:Animal -> Str
+  match a
+    Dog _ -> "dog"
+    Cat _ -> "cat"
+    Fish _ -> "fish"
+
+type Stats { count:Int, types:Int }
+
+fn main
+  print "=== Ore Language Showcase #250 ==="
+  print ""
+
+  -- Enums with data
+  pets := [
+    Dog(name: "Rex"),
+    Cat(name: "Whiskers"),
+    Dog(name: "Buddy"),
+    Fish(name: "Nemo"),
+    Cat(name: "Luna")
+  ]
+
+  print "Pets:"
+  for pet in pets
+    print "  {animal_name(pet)} the {animal_type(pet)} says {animal_sound(pet)}"
+
+  -- Pipeline magic
+  print ""
+  numbers := range(1, 51)
+  sum_sq_even := numbers
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | sum()
+  print "Sum of squares of evens (1-50): {sum_sq_even}"
+
+  -- Map counting
+  print ""
+  mut type_count := {}
+  for pet in pets
+    t := animal_type(pet)
+    current := type_count.get_or(t, 0)
+    type_count.set(t, current + 1)
+  print "Pet type counts:"
+  for t in type_count.keys()
+    print "  {t}: {type_count[t]}"
+
+  -- Record
+  stats := Stats(count: pets | count(), types: type_count.len())
+  print ""
+  print "Total pets: {stats.count}"
+  print "Unique types: {stats.types}"
+
+  -- String processing
+  print ""
+  message := "ore language showcase two hundred fifty"
+  words := message.split(" ")
+  mut title := ""
+  for word in words
+    cap := "{word.substr(0, 1).to_upper()}{word.substr(1, word.len() - 1)}"
+    if title == ""
+      title = cap
+    else
+      title = "{title} {cap}"
+  print "Title: {title}"
+
+  print ""
+  print "=== Showcase Complete ==="

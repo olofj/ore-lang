@@ -1,0 +1,41 @@
+-- Showcase 248: Matrix trace and identity
+
+fn main
+  -- Identity matrix
+  print "4x4 Identity matrix:"
+  for r in range(0, 4)
+    mut row := ""
+    for c in range(0, 4)
+      mut val := 0
+      if r == c
+        val = 1
+      if row == ""
+        row = "{val}"
+      else
+        row = "{row} {val}"
+    print "  {row}"
+
+  -- Matrix power (2x2)
+  print ""
+  -- Matrix [[1,1],[1,0]] raised to power n gives Fibonacci
+  -- Using flat representation: [a,b,c,d] for [[a,b],[c,d]]
+  mut m := [1, 1, 1, 0]
+  print "Fibonacci via matrix power:"
+  print "  F(1) = 1"
+  for n in range(2, 11)
+    -- Multiply m by [[1,1],[1,0]]
+    a := m[0] * 1 + m[1] * 1
+    b := m[0] * 1 + m[1] * 0
+    c := m[2] * 1 + m[3] * 1
+    d := m[2] * 1 + m[3] * 0
+    m = [a, b, c, d]
+    print "  F({n}) = {m[0]}"
+
+  -- Dot product
+  print ""
+  v1 := [1, 2, 3, 4, 5]
+  v2 := [5, 4, 3, 2, 1]
+  mut dot := 0
+  for i in range(0, 5)
+    dot = dot + v1[i] * v2[i]
+  print "Dot product [1,2,3,4,5].[5,4,3,2,1] = {dot}"

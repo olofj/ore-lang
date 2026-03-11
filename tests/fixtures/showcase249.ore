@@ -1,0 +1,36 @@
+-- Showcase 249: Game - Number guessing simulation
+
+fn main
+  -- Simulate binary search guessing game
+  target := 73
+  mut lo := 1
+  mut hi := 100
+  mut guesses := 0
+  
+  print "Guessing game - target: {target}"
+  while lo <= hi
+    mid := (lo + hi) / 2
+    guesses = guesses + 1
+    if mid == target
+      print "  Guess {guesses}: {mid} - Correct!"
+      lo = hi + 1  -- break
+    else if mid < target
+      print "  Guess {guesses}: {mid} - Too low"
+      lo = mid + 1
+    else
+      print "  Guess {guesses}: {mid} - Too high"
+      hi = mid - 1
+  print "Found in {guesses} guesses"
+
+  -- Mastermind scoring
+  print ""
+  print "Mastermind scoring:"
+  secret := [1, 2, 3, 4]
+  guesses_list := [[1, 1, 1, 1], [1, 2, 1, 1], [1, 2, 3, 1], [1, 2, 3, 4]]
+  
+  for guess in guesses_list
+    mut bulls := 0
+    for i in range(0, 4)
+      if guess[i] == secret[i]
+        bulls = bulls + 1
+    print "  Guess {guess | join("")}: {bulls} bulls"

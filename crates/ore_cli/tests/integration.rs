@@ -3822,6 +3822,84 @@ fn showcase240_pipeline_showcase() {
 }
 
 #[test]
+fn showcase241_cipher() {
+    let out = run_ore("showcase241.ore");
+    assert!(out.contains("'hello' -> 'uryyb' -> 'hello'"));
+    assert!(out.contains("'world' -> 'jbeyq' -> 'world'"));
+}
+
+#[test]
+fn showcase242_bases() {
+    let out = run_ore("showcase242.ore");
+    assert!(out.contains("255"));
+    assert!(out.contains("11111111"));
+    assert!(out.contains("ff"));
+}
+
+#[test]
+fn showcase243_brainfuck() {
+    let out = run_ore("showcase243.ore");
+    assert!(out.contains("Cell 0 after 10 increments: 10"));
+    assert!(out.contains("Cell 1 after loop: 70"));
+    assert!(out.contains("Cell 1 final: 72"));
+}
+
+#[test]
+fn showcase244_patterns() {
+    let out = run_ore("showcase244.ore");
+    assert!(out.contains("Sierpinski Triangle"));
+    assert!(out.contains("10! = 3628800"));
+}
+
+#[test]
+fn showcase245_events() {
+    let out = run_ore("showcase245.ore");
+    assert!(out.contains("Click(100, 200)"));
+    assert!(out.contains("Key 'a' pressed"));
+    assert!(out.contains("resized to 1024x768"));
+    assert!(out.contains("Clicks: 2, KeyPresses: 2, Resizes: 2"));
+}
+
+#[test]
+fn showcase246_scheduler() {
+    let out = run_ore("showcase246.ore");
+    assert!(out.contains("Task B ran for 2 [DONE]"));
+    assert!(out.contains("All tasks completed at t=12"));
+}
+
+#[test]
+fn showcase247_financial() {
+    let out = run_ore("showcase247.ore");
+    assert!(out.contains("Year 10: 1628"));
+    assert!(out.contains("Months to pay off: 57"));
+}
+
+#[test]
+fn showcase248_matrix() {
+    let out = run_ore("showcase248.ore");
+    assert!(out.contains("1 0 0 0"));
+    assert!(out.contains("F(10) = 89"));
+    assert!(out.contains("Dot product"));
+}
+
+#[test]
+fn showcase249_guessing() {
+    let out = run_ore("showcase249.ore");
+    assert!(out.contains("Guess 6: 73 - Correct!"));
+    assert!(out.contains("Found in 6 guesses"));
+    assert!(out.contains("Guess 1234: 4 bulls"));
+}
+
+#[test]
+fn showcase250_grand_finale() {
+    let out = run_ore("showcase250.ore");
+    assert!(out.contains("=== Ore Language Showcase #250 ==="));
+    assert!(out.contains("Rex the dog says Woof!"));
+    assert!(out.contains("Sum of squares of evens (1-50): 22100"));
+    assert!(out.contains("=== Showcase Complete ==="));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

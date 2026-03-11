@@ -1,0 +1,59 @@
+-- Showcase 241: Cipher and hashing patterns
+
+fn simple_hash s:Str -> Int
+  mut hash := 0
+  for ch in s.chars()
+    hash = hash * 31 + ch.len()
+  hash.abs()
+
+fn rot13_char ch:Str -> Str
+  -- Simple substitution for lowercase letters
+  match ch
+    "a" -> "n"
+    "b" -> "o"
+    "c" -> "p"
+    "d" -> "q"
+    "e" -> "r"
+    "f" -> "s"
+    "g" -> "t"
+    "h" -> "u"
+    "i" -> "v"
+    "j" -> "w"
+    "k" -> "x"
+    "l" -> "y"
+    "m" -> "z"
+    "n" -> "a"
+    "o" -> "b"
+    "p" -> "c"
+    "q" -> "d"
+    "r" -> "e"
+    "s" -> "f"
+    "t" -> "g"
+    "u" -> "h"
+    "v" -> "i"
+    "w" -> "j"
+    "x" -> "k"
+    "y" -> "l"
+    "z" -> "m"
+    _ -> ch
+
+fn rot13 s:Str -> Str
+  mut result := ""
+  for ch in s.chars()
+    result = "{result}{rot13_char(ch)}"
+  result
+
+fn main
+  -- Simple hash
+  words := ["hello", "world", "ore", "language"]
+  print "Simple hash values:"
+  for w in words
+    print "  hash('{w}') = {simple_hash(w)}"
+
+  -- ROT13
+  print ""
+  messages := ["hello", "world", "ore"]
+  for msg in messages
+    encoded := rot13(msg)
+    decoded := rot13(encoded)
+    print "  '{msg}' -> '{encoded}' -> '{decoded}'"

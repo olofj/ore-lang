@@ -1,0 +1,38 @@
+-- Showcase 242: Numeric conversions and bases
+
+fn to_base n:Int base:Int -> Str
+  if n == 0
+    return "0"
+  digits := "0123456789abcdef"
+  mut result := ""
+  mut val := n
+  while val > 0
+    remainder := val % base
+    result = "{digits.char_at(remainder)}{result}"
+    val = val / base
+  result
+
+fn main
+  -- Convert to different bases
+  numbers := [10, 42, 100, 255, 1000]
+  
+  print "Number base conversions:"
+  print "  Dec   | Bin        | Oct  | Hex"
+  print "  ------+------------+------+----"
+  for n in numbers
+    bin := to_base(n, 2).pad_left(10, " ")
+    oct := to_base(n, 8).pad_left(4, " ")
+    hex := to_base(n, 16).pad_left(3, " ")
+    dec := "{n}".pad_left(5, " ")
+    print "  {dec} | {bin} | {oct} | {hex}"
+
+  -- Sum of digits in different bases
+  print ""
+  print "Digit sums:"
+  for n in [123, 456, 789]
+    mut sum_dec := 0
+    mut val := n
+    while val > 0
+      sum_dec = sum_dec + val % 10
+      val = val / 10
+    print "  {n}: decimal digit sum = {sum_dec}, binary 1s = {to_base(n, 2).len()}"

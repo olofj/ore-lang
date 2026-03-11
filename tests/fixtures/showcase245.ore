@@ -1,0 +1,49 @@
+-- Showcase 245: Event system simulation
+
+type Event
+  Click(x: Int, y: Int)
+  KeyPress(key: Str)
+  Resize(w: Int, h: Int)
+
+fn event_str e:Event -> Str
+  match e
+    Click x y -> "Click({x}, {y})"
+    KeyPress k -> "KeyPress('{k}')"
+    Resize w h -> "Resize({w}x{h})"
+
+fn handle_event e:Event -> Str
+  match e
+    Click x y -> "Clicked at ({x}, {y})"
+    KeyPress k -> "Key '{k}' pressed"
+    Resize w h -> "Window resized to {w}x{h}"
+
+fn main
+  events := [
+    Click(x: 100, y: 200),
+    KeyPress(key: "a"),
+    Resize(w: 800, h: 600),
+    Click(x: 50, y: 75),
+    KeyPress(key: "Enter"),
+    Resize(w: 1024, h: 768)
+  ]
+
+  print "Event Log:"
+  mut event_num := 1
+  for e in events
+    print "  #{event_num}: {event_str(e)} -> {handle_event(e)}"
+    event_num = event_num + 1
+
+  -- Count by type
+  print ""
+  mut clicks := 0
+  mut keys := 0
+  mut resizes := 0
+  for e in events
+    s := event_str(e)
+    if s.starts_with("Click")
+      clicks = clicks + 1
+    else if s.starts_with("Key")
+      keys = keys + 1
+    else
+      resizes = resizes + 1
+  print "Clicks: {clicks}, KeyPresses: {keys}, Resizes: {resizes}"

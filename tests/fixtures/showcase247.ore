@@ -1,0 +1,40 @@
+-- Showcase 247: Financial calculations
+
+fn compound_interest principal:Int rate:Int years:Int -> Int
+  -- rate is in basis points (100 = 1%)
+  mut amount := principal * 10000  -- scale up for precision
+  for y in range(0, years)
+    amount = amount + amount * rate / 10000
+  amount / 10000
+
+fn main
+  -- Compound interest
+  print "Compound Interest (1000 at 5% for 10 years):"
+  for year in range(0, 11)
+    amount := compound_interest(1000, 500, year)
+    print "  Year {year}: {amount}"
+
+  -- Loan amortization (simplified)
+  print ""
+  principal := 10000
+  annual_rate := 500  -- 5% in basis points
+  monthly_payment := 200
+  
+  print "Loan Amortization:"
+  print "  Principal: {principal}"
+  print "  Monthly payment: {monthly_payment}"
+  
+  mut balance := principal
+  mut month := 0
+  mut total_paid := 0
+  while balance > 0 and month < 100
+    interest := balance * annual_rate / 120000
+    mut principal_part := monthly_payment - interest
+    if principal_part > balance
+      principal_part = balance
+    balance = balance - principal_part
+    total_paid = total_paid + principal_part + interest
+    month = month + 1
+  print "  Months to pay off: {month}"
+  print "  Total paid: {total_paid}"
+  print "  Total interest: {total_paid - 10000}"

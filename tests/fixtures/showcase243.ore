@@ -1,0 +1,42 @@
+-- Showcase 243: Mini interpreter - Brainfuck subset
+
+fn main
+  -- Simulate a simple Brainfuck-like program
+  -- Using an array of cells and a pointer
+  mut cells := range(0, 30) | map(n => 0)
+  mut ptr := 0
+  
+  -- Program: +++++ +++++ [> +++++ ++ <-] > ++.
+  -- This computes 10 * 7 + 2 = 72 (ASCII 'H')
+  
+  -- Step 1: Set cell 0 to 10
+  for i in range(0, 10)
+    cells[ptr] = cells[ptr] + 1
+  print "Cell 0 after 10 increments: {cells[0]}"
+  
+  -- Step 2: Loop: transfer 10*7 to cell 1
+  ptr = 0
+  while cells[ptr] > 0
+    cells[ptr] = cells[ptr] - 1
+    ptr = ptr + 1
+    for j in range(0, 7)
+      cells[ptr] = cells[ptr] + 1
+    ptr = ptr - 1
+  
+  print "Cell 0 after loop: {cells[0]}"
+  print "Cell 1 after loop: {cells[1]}"
+  
+  -- Step 3: Add 2 to cell 1
+  ptr = 1
+  cells[ptr] = cells[ptr] + 2
+  print "Cell 1 final: {cells[1]} (ASCII H = 72)"
+  
+  -- Compute "Hi" (72, 105)
+  print ""
+  print "Computing message:"
+  -- H = 72
+  print "  H = {72}"
+  -- i = 105 = 72 + 33
+  print "  i = {72 + 33}"
+  -- ! = 33
+  print "  ! = {33}"

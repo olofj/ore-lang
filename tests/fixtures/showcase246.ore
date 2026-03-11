@@ -1,0 +1,34 @@
+-- Showcase 246: Scheduler simulation
+
+fn main
+  -- Round-robin scheduler
+  tasks := ["A", "B", "C", "D"]
+  durations := [4, 2, 5, 1]
+  quantum := 2
+
+  mut remaining := []
+  for d in durations
+    remaining.push(d)
+
+  print "Round-Robin Scheduler (quantum={quantum}):"
+  mut time := 0
+  mut round := 0
+  mut all_done := false
+  
+  while not all_done
+    all_done = true
+    for i in range(0, 4)
+      if remaining[i] > 0
+        all_done = false
+        run_time := remaining[i].min(quantum)
+        remaining[i] = remaining[i] - run_time
+        time = time + run_time
+        mut status := "running"
+        if remaining[i] == 0
+          status = "DONE"
+        print "  t={time}: Task {tasks[i]} ran for {run_time} [{status}]"
+    round = round + 1
+
+  print ""
+  print "All tasks completed at t={time}"
+  print "Total rounds: {round}"

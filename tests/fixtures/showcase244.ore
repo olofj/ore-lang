@@ -1,0 +1,50 @@
+-- Showcase 244: Recursive pattern generation
+
+fn sierpinski_line row:Int -> Str
+  mut result := ""
+  for col in range(0, row + 1)
+    -- Use Pascal's triangle mod 2
+    mut val := 1
+    for i in range(0, col)
+      val = val * (row - i) / (i + 1)
+    if val % 2 == 1
+      result = "{result}*"
+    else
+      result = "{result} "
+  result
+
+fn main
+  -- Sierpinski triangle approximation
+  print "Sierpinski Triangle (8 rows):"
+  for row in range(0, 8)
+    padding := " ".repeat(8 - row)
+    print "{padding}{sierpinski_line(row)}"
+
+  -- Number patterns
+  print ""
+  print "Number diamond:"
+  for i in range(1, 6)
+    spaces := " ".repeat(5 - i)
+    mut nums := ""
+    for j in range(1, i + 1)
+      nums = "{nums}{j}"
+    -- Mirror
+    for j in range(i - 1, 0)
+      nums = "{nums}{j}"
+    print "{spaces}{nums}"
+  for i in range(4, 0)
+    spaces := " ".repeat(5 - i)
+    mut nums := ""
+    for j in range(1, i + 1)
+      nums = "{nums}{j}"
+    for j in range(i - 1, 0)
+      nums = "{nums}{j}"
+    print "{spaces}{nums}"
+
+  -- Factorial triangle
+  print ""
+  print "Factorial values:"
+  mut fact := 1
+  for n in range(1, 11)
+    fact = fact * n
+    print "  {n}! = {fact}"
