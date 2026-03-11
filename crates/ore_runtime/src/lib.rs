@@ -1212,6 +1212,18 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
     }
 }
 
+/// each_with_index: call f(index, element) for each element
+#[no_mangle]
+pub extern "C" fn ore_list_each_with_index(list: *mut OreList, func: *const u8, env: *mut u8) {
+    unsafe {
+        let src = &*list;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            call_closure2(func, env, i as i64, val);
+        }
+    }
+}
+
 /// Parallel map: applies func to each element in parallel using threads
 #[no_mangle]
 pub extern "C" fn ore_list_par_map(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {

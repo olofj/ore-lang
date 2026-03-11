@@ -1199,6 +1199,13 @@ fn math_functions() {
 }
 
 #[test]
+fn lists_each_with_index() {
+    let out = run_ore("lists/each_with_index.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["0: Alice", "1: Bob", "2: Charlie"]);
+}
+
+#[test]
 fn lists_float_ops() {
     let out = run_ore("lists/float_ops.ore");
     let lines: Vec<&str> = out.lines().collect();

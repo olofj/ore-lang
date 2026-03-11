@@ -1,0 +1,3 @@
+fn main
+  names := ["Alice", "Bob", "Charlie"]
+  names.each_with_index((i, name) => print "{i}: {name}")
