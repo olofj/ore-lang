@@ -1,0 +1,50 @@
+-- Showcase 54: Integer-keyed maps and comprehensive data structures
+
+fn main
+  -- Integer-keyed map (histogram of dice rolls)
+  mut hist := {}
+  rolls := [3, 5, 2, 3, 6, 1, 3, 4, 5, 2, 6, 3, 1, 4, 5]
+  for r in rolls
+    count := hist.get_or(r, 0)
+    hist.set(r, count + 1)
+  print "1: {hist.get(1)}, 3: {hist.get(3)}, 5: {hist.get(5)}"
+
+  -- Map as a cache/memoization
+  mut fib_cache := {"0": 0, "1": 1}
+  for i in 2..20
+    key := str(i)
+    prev1 := str(i - 1)
+    prev2 := str(i - 2)
+    fib_cache.set(key, fib_cache.get(prev1) + fib_cache.get(prev2))
+  print "fib(19) = {fib_cache.get("19")}"
+
+  -- Group by age using map of comma-separated strings
+  mut groups := {"25": "", "30": "", "35": ""}
+  names := ["Alice", "Bob", "Charlie", "Diana", "Eve"]
+  ages := [25, 30, 25, 30, 35]
+  for i in 0..5
+    age_key := str(ages[i])
+    existing := groups.get(age_key)
+    if existing == ""
+      groups.set(age_key, names[i])
+    else
+      groups.set(age_key, "{existing}, {names[i]}")
+  print "Age 25: {groups.get("25")}"
+  print "Age 30: {groups.get("30")}"
+
+  -- Frequency analysis with map
+  text := "the quick brown fox jumps over the lazy dog the fox"
+  freq := text.words().frequencies()
+  print "the: {freq.get("the")}"
+  print "fox: {freq.get("fox")}"
+
+  -- List of maps via pipeline
+  data := ["a:1", "b:2", "c:3"]
+  keys := data
+    .map(s => s.split(":").first())
+    .join(", ")
+  vals := data
+    .map(s => s.split(":").last())
+    .join(", ")
+  print "Keys: {keys}"
+  print "Values: {vals}"

@@ -1778,6 +1778,17 @@ fn showcase53() {
 }
 
 #[test]
+fn showcase54() {
+    let out = run_ore("showcase54.ore");
+    assert!(out.contains("1: 2, 3: 4, 5: 3"));
+    assert!(out.contains("fib(19) = 4181"));
+    assert!(out.contains("Age 25: Alice, Charlie"));
+    assert!(out.contains("Age 30: Bob, Diana"));
+    assert!(out.contains("the: 3"));
+    assert!(out.contains("Keys: a, b, c"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
