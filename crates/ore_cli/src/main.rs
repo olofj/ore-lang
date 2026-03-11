@@ -41,6 +41,11 @@ enum Commands {
     },
     /// Start an interactive REPL
     Repl,
+    /// Run tests defined in an Ore source file
+    Test {
+        /// Path to the .ore file
+        file: PathBuf,
+    },
 }
 
 type MainFunc = unsafe extern "C" fn() -> i32;
@@ -123,6 +128,12 @@ fn main() {
         }
         Commands::Repl => {
             run_repl();
+        }
+        Commands::Test { file } => {
+            if let Err(e) = test_file(&file) {
+                print_error_with_context(&e, &file);
+                std::process::exit(1);
+            }
         }
     }
 }
@@ -432,6 +443,8 @@ fn map_runtime_functions(
     map_fn!("ore_readln", ore_runtime::ore_readln);
     map_fn!("ore_file_read", ore_runtime::ore_file_read);
     map_fn!("ore_file_write", ore_runtime::ore_file_write);
+    // Assert
+    map_fn!("ore_assert", ore_runtime::ore_assert);
 }
 
 fn run_file(path: &std::path::Path) -> Result<(), String> {
@@ -451,6 +464,58 @@ fn run_file(path: &std::path::Path) -> Result<(), String> {
         main_fn.call();
     }
 
+    Ok(())
+}
+
+fn test_file(path: &Path) -> Result<(), String> {
+    let context = Context::create();
+    let codegen = compile_source(path, &context)?;
+
+    let test_names = codegen.test_names.clone();
+    if test_names.is_empty() {
+        eprintln!("no tests found in {}", path.display());
+        return Ok(());
+    }
+
+    let ee = codegen.module
+        .create_jit_execution_engine(inkwell::OptimizationLevel::None)
+        .map_err(|e| format!("JIT error: {}", e))?;
+
+    map_runtime_functions(&ee, &codegen.module);
+
+    // Enable test mode so asserts set a flag instead of exiting
+    ore_runtime::ore_assert_set_test_mode(true);
+
+    let mut passed = 0;
+    let mut failed = 0;
+
+    type TestFunc = unsafe extern "C" fn();
+
+    for (i, name) in test_names.iter().enumerate() {
+        let fn_name = format!("ore_test_{}", i);
+        // Reset assertion flag before each test
+        ore_runtime::ore_assert_check_and_reset();
+        unsafe {
+            let test_fn: JitFunction<TestFunc> = ee
+                .get_function(&fn_name)
+                .expect("test function not found");
+            test_fn.call();
+        }
+        if ore_runtime::ore_assert_check_and_reset() {
+            eprintln!("  FAIL: {}", name);
+            failed += 1;
+        } else {
+            eprintln!("  PASS: {}", name);
+            passed += 1;
+        }
+    }
+
+    ore_runtime::ore_assert_set_test_mode(false);
+
+    eprintln!("\n{} passed, {} failed, {} total", passed, failed, passed + failed);
+    if failed > 0 {
+        return Err(format!("{} test(s) failed", failed));
+    }
     Ok(())
 }
 

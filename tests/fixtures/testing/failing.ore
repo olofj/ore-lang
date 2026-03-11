@@ -1,0 +1,2 @@
+test "this should fail"
+  assert 1 == 2, "one is not two"

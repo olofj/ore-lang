@@ -1394,3 +1394,38 @@ pub extern "C" fn ore_str_parse_float(s: *mut OreStr) -> f64 {
     let text = ore_str.as_str();
     text.trim().parse::<f64>().unwrap_or(0.0)
 }
+
+// ── Assert ──
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// When true, ore_assert sets a flag instead of calling process::exit (used by `ore test`)
+static ASSERT_TEST_MODE: AtomicBool = AtomicBool::new(false);
+/// Set to true when an assertion fails in test mode
+static ASSERT_FAILED: AtomicBool = AtomicBool::new(false);
+
+/// Enable/disable test mode for assertions
+pub fn ore_assert_set_test_mode(enabled: bool) {
+    ASSERT_TEST_MODE.store(enabled, Ordering::SeqCst);
+}
+
+/// Check and reset the assertion failure flag
+pub fn ore_assert_check_and_reset() -> bool {
+    ASSERT_FAILED.swap(false, Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub extern "C" fn ore_assert(cond: i8, msg: *const u8, line: i64) {
+    if cond == 0 {
+        let message = unsafe { std::ffi::CStr::from_ptr(msg as *const i8) };
+        let msg_str = message.to_str().unwrap_or("(invalid utf8)");
+        let full_msg = format!("assertion failed at line {}: {}", line, msg_str);
+        if ASSERT_TEST_MODE.load(Ordering::SeqCst) {
+            eprintln!("    {}", full_msg);
+            ASSERT_FAILED.store(true, Ordering::SeqCst);
+        } else {
+            eprintln!("{}", full_msg);
+            std::process::exit(1);
+        }
+    }
+}

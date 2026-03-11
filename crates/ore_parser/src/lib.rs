@@ -106,6 +106,7 @@ impl Parser {
             Token::Impl => self.parse_impl_block(),
             Token::Trait => self.parse_trait_def(),
             Token::Use => self.parse_use(),
+            Token::Test => self.parse_test_def(),
             _ => Err(self.error(format!("expected item, got {:?}", self.peek()))),
         }
     }
@@ -124,6 +125,17 @@ impl Parser {
             }
             _ => Err(self.error("expected string path or module name after use".into())),
         }
+    }
+
+    fn parse_test_def(&mut self) -> Result<Item, ParseError> {
+        self.expect(&Token::Test)?;
+        let name = match self.peek().clone() {
+            Token::StringLit(s) => { self.advance(); s }
+            _ => return Err(self.error("expected string literal after 'test'".into())),
+        };
+        self.skip_newlines();
+        let body = self.parse_block()?;
+        Ok(Item::TestDef { name, body })
     }
 
     fn parse_impl_block(&mut self) -> Result<Item, ParseError> {
@@ -547,6 +559,20 @@ impl Parser {
                 self.advance();
                 let expr = self.parse_expr(0)?;
                 Ok(Stmt::Spawn(expr))
+            }
+            Token::Assert => {
+                self.advance();
+                let cond = self.parse_expr(0)?;
+                let message = if self.peek() == &Token::Comma {
+                    self.advance();
+                    match self.peek().clone() {
+                        Token::StringLit(s) => { self.advance(); Some(s) }
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+                Ok(Stmt::Expr(Expr::Assert { cond: Box::new(cond), message }))
             }
             Token::Mut => {
                 self.advance();

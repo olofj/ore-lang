@@ -1,8 +1,8 @@
 fn main
   -- assert passes
-  assert(true)
-  assert(1 + 1 == 2)
-  assert(5 > 3, "math works")
+  assert true
+  assert 1 + 1 == 2
+  assert 5 > 3, "math works"
 
   -- typeof
   print typeof(42)

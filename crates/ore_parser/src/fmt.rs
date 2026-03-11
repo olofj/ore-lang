@@ -101,6 +101,11 @@ impl Formatter {
                     self.format_fn_def(m, level + 1);
                 }
             }
+            Item::TestDef { name, body } => {
+                self.indent(level);
+                self.out.push_str(&format!("test \"{}\"\n", name));
+                self.format_block(body, level + 1);
+            }
         }
     }
 
@@ -443,6 +448,13 @@ impl Formatter {
                     self.format_expr(arg, level);
                 }
                 self.out.push(')');
+            }
+            Expr::Assert { cond, message } => {
+                self.out.push_str("assert ");
+                self.format_expr(cond, level);
+                if let Some(msg) = message {
+                    self.out.push_str(&format!(", \"{}\"", msg));
+                }
             }
         }
     }

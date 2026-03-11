@@ -21,6 +21,10 @@ pub enum Item {
     Use {
         path: String,
     },
+    TestDef {
+        name: String,
+        body: Block,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -235,6 +239,10 @@ pub enum Expr {
         object: Box<Expr>,
         method: String,
         args: Vec<Expr>,
+    },
+    Assert {
+        cond: Box<Expr>,
+        message: Option<String>,
     },
 }
 

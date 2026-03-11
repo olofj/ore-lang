@@ -209,6 +209,37 @@ fn traits_wrong_signature() {
 }
 
 #[test]
+fn testing_assert_in_main() {
+    let out = run_ore("testing/assert_in_main.ore");
+    assert_eq!(out.trim(), "all assertions passed");
+}
+
+#[test]
+fn testing_ore_test() {
+    // Test `ore test` subcommand
+    let path = fixtures_dir().join("testing/basic.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore");
+    assert!(output.status.success(), "ore test should pass");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("3 passed"), "expected 3 passed, got: {}", stderr);
+}
+
+#[test]
+fn testing_ore_test_failure() {
+    let path = fixtures_dir().join("testing/failing.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore");
+    assert!(!output.status.success(), "ore test should fail");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("1 failed"), "expected 1 failed, got: {}", stderr);
+}
+
+#[test]
 fn stdlib_file_io() {
     let out = run_ore("stdlib/file_io.ore");
     assert_eq!(out.trim(), "hello from ore");

@@ -176,7 +176,7 @@ impl TypeChecker {
                         .collect();
                     self.traits.insert(td.name.clone(), TraitInfo { methods });
                 }
-                Item::ImplBlock { .. } | Item::ImplTrait { .. } | Item::Use { .. } => {}
+                Item::ImplBlock { .. } | Item::ImplTrait { .. } | Item::Use { .. } | Item::TestDef { .. } => {}
             }
         }
     }
@@ -185,6 +185,10 @@ impl TypeChecker {
         for item in &program.items {
             match item {
                 Item::FnDef(fndef) => self.check_fn(fndef),
+                Item::TestDef { body, .. } => {
+                    let mut env = Env::new();
+                    self.check_block(body, &mut env, &Type::Unit);
+                }
                 Item::ImplBlock { methods, .. } => {
                     for m in methods {
                         self.check_fn(m);
@@ -701,6 +705,13 @@ impl TypeChecker {
                     self.infer_expr(arg, env);
                 }
                 Type::Option(Box::new(Type::Any))
+            }
+            Expr::Assert { cond, .. } => {
+                let ct = self.infer_expr(cond, env);
+                if ct != Type::Bool && ct != Type::Any {
+                    self.err(format!("assert condition must be Bool, got {}", ct));
+                }
+                Type::Unit
             }
         }
     }

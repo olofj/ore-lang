@@ -124,6 +124,9 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
                 collect_free_vars(arg, bound, free, seen);
             }
         }
+        Expr::Assert { cond, .. } => {
+            collect_free_vars(cond, bound, free, seen);
+        }
         // Literals and constants have no free variables
         Expr::IntLit(_) | Expr::FloatLit(_) | Expr::BoolLit(_) | Expr::StringLit(_)
         | Expr::Break | Expr::OptionNone => {}
@@ -258,6 +261,8 @@ pub struct CodeGen<'ctx> {
     current_line: usize,
     /// Generic function definitions (not yet monomorphized)
     generic_fns: HashMap<String, FnDef>,
+    /// Test function names in order, for `ore test`
+    pub test_names: Vec<String>,
 }
 
 #[derive(Debug, Default)]
@@ -309,6 +314,7 @@ impl<'ctx> CodeGen<'ctx> {
             last_map_val_kind: None,
             current_line: 0,
             generic_fns: HashMap::new(),
+            test_names: Vec::new(),
         }
     }
 
@@ -454,6 +460,25 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
+        // Compile test definitions as void functions
+        let mut test_idx = 0;
+        for item in &program.items {
+            if let Item::TestDef { name, body } = item {
+                let fn_name = format!("ore_test_{}", test_idx);
+                self.test_names.push(name.clone());
+                let test_fn = FnDef {
+                    name: fn_name,
+                    type_params: vec![],
+                    params: vec![],
+                    ret_type: None,
+                    body: body.clone(),
+                };
+                self.declare_function(&test_fn)?;
+                self.compile_function(&test_fn)?;
+                test_idx += 1;
+            }
+        }
+
         Ok(())
     }
 
@@ -593,6 +618,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_thread_join_all", void_type.fn_type(&[], false), ext);
         // ore_sleep(i64)
         self.module.add_function("ore_sleep", void_type.fn_type(&[i64_type.into()], false), ext);
+        // ore_assert(i1, *const u8, i64) — assert with message and line
+        self.module.add_function("ore_assert", void_type.fn_type(&[i8_type.into(), ptr_type.into(), i64_type.into()], false), ext);
         // List operations
         // ore_list_new() -> ptr
         self.module.add_function("ore_list_new", ptr_type.fn_type(&[], false), ext);
@@ -1247,6 +1274,29 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.compile_expr(inner, func)?;
                 let ore_sleep = self.module.get_function("ore_sleep").unwrap();
                 bld!(self.builder.build_call(ore_sleep, &[val.into()], ""))?;
+                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+            }
+            Expr::Assert { cond, message } => {
+                let cond_val = self.compile_expr(cond, func)?;
+                let ore_assert = self.module.get_function("ore_assert").unwrap();
+                let msg_str = message.as_deref().unwrap_or("assertion failed");
+                // Build a global C string for the message
+                let msg_bytes: Vec<u8> = msg_str.bytes().chain(std::iter::once(0)).collect();
+                let i8_type = self.context.i8_type();
+                let arr_type = i8_type.array_type(msg_bytes.len() as u32);
+                let global_name = format!("assert_msg_{}", self.current_line);
+                let global = self.module.add_global(arr_type, None, &global_name);
+                global.set_initializer(&i8_type.const_array(
+                    &msg_bytes.iter().map(|&b| i8_type.const_int(b as u64, false)).collect::<Vec<_>>(),
+                ));
+                global.set_constant(true);
+                let msg_ptr = bld!(self.builder.build_pointer_cast(
+                    global.as_pointer_value(),
+                    self.ptr_type(),
+                    "assert_msg_ptr"
+                ))?;
+                let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
+                bld!(self.builder.build_call(ore_assert, &[cond_val.into(), msg_ptr.into(), line_val.into()], ""))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
             Expr::Call { func: callee, args } => {
