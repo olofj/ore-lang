@@ -266,6 +266,19 @@ pub extern "C" fn ore_str_trim(s: *mut OreStr) -> *mut OreStr {
     ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
 }
 
+/// Split a string by newlines, returning a list of lines.
+#[no_mangle]
+pub extern "C" fn ore_str_lines(s: *mut OreStr) -> *mut OreList {
+    let result = ore_list_new();
+    if s.is_null() { return result; }
+    let str_val = unsafe { (*s).as_str() };
+    for line in str_val.lines() {
+        let line_str = ore_str_new(line.as_ptr(), line.len() as u32);
+        ore_list_push(result, line_str as i64);
+    }
+    result
+}
+
 #[no_mangle]
 pub extern "C" fn ore_str_trim_start(s: *mut OreStr) -> *mut OreStr {
     if s.is_null() { return ore_str_new(std::ptr::null(), 0); }

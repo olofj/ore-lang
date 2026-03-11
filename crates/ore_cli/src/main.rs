@@ -404,6 +404,7 @@ fn map_runtime_functions(
     map_fn!("ore_str_trim", ore_runtime::ore_str_trim);
     map_fn!("ore_str_trim_start", ore_runtime::ore_str_trim_start);
     map_fn!("ore_str_trim_end", ore_runtime::ore_str_trim_end);
+    map_fn!("ore_str_lines", ore_runtime::ore_str_lines);
     map_fn!("ore_str_split", ore_runtime::ore_str_split);
     map_fn!("ore_str_to_int", ore_runtime::ore_str_to_int);
     map_fn!("ore_str_to_float", ore_runtime::ore_str_to_float);

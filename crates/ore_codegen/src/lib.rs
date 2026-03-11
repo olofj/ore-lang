@@ -723,6 +723,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_trim", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_trim_start", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_trim_end", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_lines", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_split", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3342,9 +3343,15 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Str))
             }
             "words" => {
-                // words() = split on whitespace
                 let rt = self.module.get_function("ore_str_split_whitespace").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "words"))?;
+                let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::Str);
+                Ok((val, ValKind::List))
+            }
+            "lines" => {
+                let rt = self.module.get_function("ore_str_lines").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "lines"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::List))

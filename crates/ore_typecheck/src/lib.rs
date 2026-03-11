@@ -874,7 +874,7 @@ impl TypeChecker {
                 "to_float" => Type::Float,
                 "contains" | "starts_with" | "ends_with" | "is_empty" => Type::Bool,
                 "trim" | "trim_start" | "trim_end" | "to_upper" | "to_lower" | "replace" | "substr" | "pad_left" | "pad_right" | "repeat" | "strip_prefix" | "strip_suffix" => Type::Str,
-                "split" | "words" => Type::List(Box::new(Type::Str)),
+                "split" | "words" | "lines" => Type::List(Box::new(Type::Str)),
                 _ => Type::Any,
             },
             Type::List(elem) => match method {
