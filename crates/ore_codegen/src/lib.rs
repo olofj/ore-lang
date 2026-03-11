@@ -4052,7 +4052,18 @@ impl<'ctx> CodeGen<'ctx> {
                 ))?;
                 let val = self.call_result_to_value(result)?;
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                Ok((val, elem_kind))
+                // If the element is a pointer type, convert i64 -> ptr
+                match elem_kind {
+                    ValKind::Str | ValKind::List | ValKind::Map => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            val.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()),
+                            "i2p"
+                        ))?;
+                        Ok((ptr.into(), elem_kind))
+                    }
+                    _ => Ok((val, elem_kind))
+                }
             }
             ValKind::Map => {
                 let map_get = self.module.get_function("ore_map_get").unwrap();
@@ -4068,7 +4079,18 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     ValKind::Int
                 };
-                Ok((val, val_kind))
+                // If the value is a pointer type (Str, List, Map), convert i64 -> ptr
+                match val_kind {
+                    ValKind::Str | ValKind::List | ValKind::Map => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            val.into_int_value(),
+                            self.context.ptr_type(inkwell::AddressSpace::default()),
+                            "i2p"
+                        ))?;
+                        Ok((ptr.into(), val_kind))
+                    }
+                    _ => Ok((val, val_kind))
+                }
             }
             _ => Err(CodeGenError { line: None, msg: "indexing only supported on lists and maps".into() }),
         }

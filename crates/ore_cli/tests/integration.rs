@@ -768,6 +768,17 @@ fn showcase4() {
 }
 
 #[test]
+fn showcase6() {
+    let out = run_ore("showcase6.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines[0], "Even numbers: 5");
+    assert_eq!(lines[1], "Sum of evens: 30");
+    assert_eq!(lines[2], "Server: localhost:8080");
+    assert_eq!(lines[3], "Environment: production");
+    assert!(lines.last().unwrap().contains("showcase6 ok"));
+}
+
+#[test]
 fn showcase5() {
     let out = run_ore("showcase5.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

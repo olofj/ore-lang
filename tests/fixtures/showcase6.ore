@@ -1,0 +1,46 @@
+-- Showcase 6: Real-world patterns — data processing, JSON, environment
+
+fn main
+  -- Pipeline-based data processing
+  evens := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    | filter(n => n % 2 == 0)
+  print "Even numbers: {evens.len()}"
+  print "Sum of evens: {evens.sum()}"
+
+  -- String map operations
+  config := {"host": "localhost", "port": "8080", "env": "production"}
+  print "Server: {config["host"]}:{config["port"]}"
+  print "Environment: {config["env"]}"
+
+  -- Environment variables
+  env_set("ORE_APP", "showcase6")
+  app := env_get("ORE_APP")
+  print "App: {app}"
+
+  -- JSON round-trip preserves types
+  data := json_parse("\{\"name\":\"Ore\",\"version\":1,\"active\":true}")
+  json := json_stringify(data)
+  print json
+
+  -- Time and random
+  t := time_now()
+  assert t > 1700000000
+  r := rand_int(1, 100)
+  assert r >= 1
+  assert r <= 100
+
+  -- Type introspection
+  print type_of(42)
+  print type_of("hello")
+  print type_of([1, 2])
+  print type_of(true)
+
+  -- Reduce
+  factorial := [1, 2, 3, 4, 5].reduce(1, (acc, n) => acc * n)
+  print "5! = {factorial}"
+
+  -- String list processing
+  words := ["hello", "world", "ore"]
+  words.each(w => print w)
+
+  print "showcase6 ok"
