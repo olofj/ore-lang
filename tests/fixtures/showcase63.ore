@@ -1,0 +1,72 @@
+-- Showcase 63: Testing framework demonstration
+
+fn fibonacci n:Int -> Int
+  if n < 2
+    n
+  else
+    fibonacci(n - 1) + fibonacci(n - 2)
+
+fn is_even n:Int -> Bool
+  n % 2 == 0
+
+fn reverse_list xs:List[Int] -> List[Int]
+  mut result := []
+  mut i := xs.len() - 1
+  while i >= 0
+    result.push(xs[i])
+    i = i - 1
+  result
+
+test "fibonacci base cases"
+  assert_eq(fibonacci(0), 0)
+  assert_eq(fibonacci(1), 1)
+
+test "fibonacci recursive"
+  assert_eq(fibonacci(10), 55)
+  assert_eq(fibonacci(7), 13)
+
+test "is_even"
+  assert(is_even(0))
+  assert(is_even(2))
+  assert(is_even(100))
+  assert(not is_even(1))
+  assert(not is_even(99))
+
+test "list operations"
+  xs := [1, 2, 3, 4, 5]
+  assert_eq(xs.len(), 5)
+  assert_eq(xs.sum(), 15)
+  assert_eq(xs.min(), 1)
+  assert_eq(xs.max(), 5)
+
+test "reverse list"
+  xs := [1, 2, 3]
+  rev := reverse_list(xs)
+  assert_eq(rev[0], 3)
+  assert_eq(rev[1], 2)
+  assert_eq(rev[2], 1)
+
+test "string operations"
+  s := "Hello World"
+  assert_eq(s.len(), 11)
+  assert(s.starts_with("Hello"))
+  assert(s.ends_with("World"))
+  assert(s.contains("lo Wo"))
+
+test "map operations"
+  m := {"a": 1, "b": 2, "c": 3}
+  assert_eq(m.len(), 3)
+  assert_eq(m.get("a"), 1)
+  assert(m.contains("b"))
+  assert(not m.contains("d"))
+
+test "arithmetic"
+  assert_eq(2 + 3, 5)
+  assert_eq(10 - 7, 3)
+  assert_eq(4 * 5, 20)
+  assert_eq(15 / 3, 5)
+  assert_eq(17 % 5, 2)
+  assert_ne(1, 2)
+
+fn main
+  print "Tests defined in this file should be run with: ore test showcase63.ore"

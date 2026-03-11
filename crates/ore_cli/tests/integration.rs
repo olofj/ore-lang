@@ -1908,6 +1908,24 @@ fn showcase62() {
 }
 
 #[test]
+fn showcase63_run() {
+    let out = run_ore("showcase63.ore");
+    assert!(out.contains("Tests defined in this file should be run with"));
+}
+
+#[test]
+fn showcase63_test() {
+    let path = fixtures_dir().join("showcase63.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore");
+    assert!(output.status.success(), "ore test failed: {}", String::from_utf8_lossy(&output.stderr));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("8 passed, 0 failed, 8 total"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
