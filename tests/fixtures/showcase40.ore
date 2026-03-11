@@ -1,0 +1,77 @@
+-- Showcase 40: Sieve of Eratosthenes with timing
+-- Demonstrates: performance, mutable arrays, nested loops
+
+fn sieve limit:Int -> List[Int]
+  -- Create boolean array (1 = prime candidate)
+  mut is_prime := [0]
+  is_prime = []
+  for i in 0..limit
+    if i < 2
+      is_prime = is_prime + [0]
+    else
+      is_prime = is_prime + [1]
+
+  -- Sieve
+  mut i := 2
+  while i * i < limit
+    if is_prime.get(i) == 1
+      mut j := i * i
+      while j < limit
+        is_prime.set(j, 0)
+        j += i
+    i += 1
+
+  -- Collect primes
+  mut primes := [0]
+  primes = []
+  for i in 0..limit
+    if is_prime.get(i) == 1
+      primes = primes + [i]
+  primes
+
+fn main
+  -- Small sieve
+  primes := sieve(100)
+  print "Primes up to 100: {primes.join(", ")}"
+  print "Count: {primes.len()}"
+
+  -- Sum of primes up to 100
+  sum := primes.reduce((a, b) => a + b)
+  print "Sum: {sum}"
+
+  -- Larger sieve
+  primes1000 := sieve(1000)
+  print "Primes up to 1000: {primes1000.len()} primes"
+  print "Largest: {primes1000.last()}"
+
+  -- Twin primes (primes that differ by 2)
+  mut twins := 0
+  for i in 0..primes1000.len() - 1
+    if primes1000.get(i + 1) - primes1000.get(i) == 2
+      twins += 1
+  print "Twin prime pairs up to 1000: {twins}"
+
+  -- Goldbach check: every even number > 2 is sum of two primes
+  primes200 := sieve(200)
+  mut goldbach_ok := true
+  for n in 0..49
+    even := (n + 2) * 2
+    mut found := false
+    for j in 0..primes200.len()
+      p := primes200.get(j)
+      if p >= even
+        break
+      remainder := even - p
+      -- Check if remainder is prime
+      for k in 0..primes200.len()
+        if primes200.get(k) == remainder
+          found = true
+          break
+      if found
+        break
+    if not found
+      goldbach_ok = false
+  if goldbach_ok
+    print "Goldbach verified for even numbers 4-100"
+  else
+    print "Goldbach FAILED"

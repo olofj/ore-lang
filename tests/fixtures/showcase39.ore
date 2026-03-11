@@ -1,0 +1,77 @@
+-- Showcase 39: Brainfuck interpreter
+-- Demonstrates: string processing, mutable state, complex control flow
+
+fn bf_run program:Str -> Str
+  -- Memory tape (256 cells)
+  tape_size := 256
+  mut tape := [0]
+  tape = []
+  for i in 0..tape_size
+    tape = tape + [0]
+
+  mut ptr := 0
+  mut pc := 0
+  mut output := ""
+
+  while pc < program.len()
+    cmd := program.char_at(pc)
+
+    if cmd == ">"
+      ptr += 1
+      if ptr >= tape_size
+        ptr = 0
+    else if cmd == "<"
+      ptr -= 1
+      if ptr < 0
+        ptr = tape_size - 1
+    else if cmd == "+"
+      val := (tape.get(ptr) + 1) % 256
+      tape.set(ptr, val)
+    else if cmd == "-"
+      val := (tape.get(ptr) - 1 + 256) % 256
+      tape.set(ptr, val)
+    else if cmd == "."
+      output = output + chr(tape.get(ptr))
+    else if cmd == "["
+      if tape.get(ptr) == 0
+        -- Jump forward to matching ]
+        mut depth := 1
+        while depth > 0
+          pc += 1
+          c := program.char_at(pc)
+          if c == "["
+            depth += 1
+          else if c == "]"
+            depth -= 1
+    else if cmd == "]"
+      if tape.get(ptr) != 0
+        -- Jump back to matching [
+        mut depth := 1
+        while depth > 0
+          pc -= 1
+          c := program.char_at(pc)
+          if c == "]"
+            depth += 1
+          else if c == "["
+            depth -= 1
+
+    pc += 1
+
+  output
+
+fn main
+  -- "Hello World!" in Brainfuck
+  hello_bf := "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+  result := bf_run(hello_bf)
+  print "BF output: {result}"
+
+  -- Simple: print 'A' (ASCII 65)
+  a_bf := "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++."
+  a_result := bf_run(a_bf)
+  print "A program: {a_result}"
+
+  -- Add two numbers: 3 + 5 = 8, output as ASCII '8' (56)
+  -- Set cell 0 to 3, cell 1 to 5, add them, add 48 for ASCII
+  add_bf := "+++>+++++[<+>-]<++++++++++++++++++++++++++++++++++++++++++++++++."
+  add_result := bf_run(add_bf)
+  print "3+5={add_result}"

@@ -1632,6 +1632,32 @@ fn showcase37() {
 }
 
 #[test]
+fn showcase38() {
+    let out = run_ore("showcase38.ore");
+    assert!(out.contains("Conway's Game of Life - Glider"));
+    assert!(out.contains("Generation 0 (5 alive):"));
+    assert!(out.contains("Generation 4 (5 alive):"));
+}
+
+#[test]
+fn showcase39() {
+    let out = run_ore("showcase39.ore");
+    assert!(out.contains("BF output: Hello World!"));
+    assert!(out.contains("A program: A"));
+    assert!(out.contains("3+5=8"));
+}
+
+#[test]
+fn showcase40() {
+    let out = run_ore("showcase40.ore");
+    assert!(out.contains("Count: 25"));
+    assert!(out.contains("Sum: 1060"));
+    assert!(out.contains("168 primes"));
+    assert!(out.contains("Twin prime pairs up to 1000: 35"));
+    assert!(out.contains("Goldbach verified"));
+}
+
+#[test]
 fn build_and_run_binary() {
     // Test `ore build` produces a working native binary
     let path = fixtures_dir().join("showcase36.ore");

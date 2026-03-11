@@ -1,0 +1,78 @@
+-- Showcase 38: Conway's Game of Life (bounded grid)
+-- Demonstrates: nested loops, 2D grid as flat list, complex logic
+
+fn make_grid rows:Int cols:Int -> List[Int]
+  mut grid := [0]
+  grid = []
+  for i in 0..rows * cols
+    grid = grid + [0]
+  grid
+
+fn set_cell grid:List[Int] cols:Int row:Int col:Int -> List[Int]
+  grid.set(row * cols + col, 1)
+  grid
+
+fn get_cell grid:List[Int] cols:Int row:Int col:Int -> Int
+  if row < 0 or col < 0
+    return 0
+  if row >= grid.len() / cols or col >= cols
+    return 0
+  grid.get(row * cols + col)
+
+fn count_neighbors grid:List[Int] rows:Int cols:Int row:Int col:Int -> Int
+  mut count := 0
+  for dr in -1..2
+    for dc in -1..2
+      if dr != 0 or dc != 0
+        count += get_cell(grid, cols, row + dr, col + dc)
+  count
+
+fn step grid:List[Int] rows:Int cols:Int -> List[Int]
+  mut next := make_grid(rows, cols)
+  for r in 0..rows
+    for c in 0..cols
+      n := count_neighbors(grid, rows, cols, r, c)
+      cell := get_cell(grid, cols, r, c)
+      if cell == 1 and (n == 2 or n == 3)
+        next = set_cell(next, cols, r, c)
+      else if cell == 0 and n == 3
+        next = set_cell(next, cols, r, c)
+  next
+
+fn print_grid grid:List[Int] rows:Int cols:Int
+  for r in 0..rows
+    mut line := ""
+    for c in 0..cols
+      if get_cell(grid, cols, r, c) == 1
+        line = line + "#"
+      else
+        line = line + "."
+    print line
+
+fn count_alive grid:List[Int] -> Int
+  mut count := 0
+  for i in 0..grid.len()
+    count += grid.get(i)
+  count
+
+fn main
+  rows := 10
+  cols := 20
+
+  -- Create a glider
+  mut grid := make_grid(rows, cols)
+  grid = set_cell(grid, cols, 1, 2)
+  grid = set_cell(grid, cols, 2, 3)
+  grid = set_cell(grid, cols, 3, 1)
+  grid = set_cell(grid, cols, 3, 2)
+  grid = set_cell(grid, cols, 3, 3)
+
+  print "Conway's Game of Life - Glider"
+  print "Generation 0 ({count_alive(grid)} alive):"
+  print_grid(grid, rows, cols)
+
+  -- Run 4 generations
+  for gen in 1..5
+    grid = step(grid, rows, cols)
+    print "Generation {gen} ({count_alive(grid)} alive):"
+    print_grid(grid, rows, cols)
