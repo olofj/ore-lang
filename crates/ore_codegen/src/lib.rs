@@ -1159,6 +1159,15 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((ptr.into(), ValKind::Int)) // Kind is approximate; lambdas are function pointers
             }
             Expr::Ident(name) => {
+                // Check if it's a zero-arg enum variant (e.g., `Red` instead of `Red()`)
+                if !self.variables.contains_key(name) && self.variant_to_enum.contains_key(name) {
+                    let construct = Expr::RecordConstruct {
+                        type_name: name.clone(),
+                        fields: vec![],
+                    };
+                    return self.compile_expr_with_kind(&construct, func);
+                }
+
                 let (ptr, ty, kind, _) = self.variables.get(name).ok_or_else(|| CodeGenError {
                     line: None, msg: format!("undefined variable '{}'", name),
                 })?;
