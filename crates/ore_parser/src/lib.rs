@@ -743,7 +743,7 @@ impl Parser {
         loop {
             // Try operator (?) - highest precedence postfix
             if self.peek() == &Token::QuestionMark {
-                let try_bp = 16;
+                let try_bp = 20;
                 if try_bp >= min_bp {
                     self.advance(); // consume '?'
                     lhs = Expr::Try(Box::new(lhs));
@@ -753,7 +753,7 @@ impl Parser {
 
             // Indexing: expr[expr]
             if self.peek() == &Token::LBracket {
-                let idx_bp = 15;
+                let idx_bp = 19;
                 if idx_bp >= min_bp {
                     self.advance(); // consume '['
                     let index = self.parse_expr(0)?;
@@ -770,7 +770,7 @@ impl Parser {
             if self.peek() == &Token::Dot || self.peek() == &Token::QuestionDot {
                 let optional = self.peek() == &Token::QuestionDot;
                 if let Some(Token::Ident(_)) = self.tokens.get(self.pos + 1).map(|s| &s.token) {
-                    let dot_bp = 15; // Higher than any infix op
+                    let dot_bp = 19; // Higher than any infix op
                     if dot_bp >= min_bp {
                         self.advance(); // consume '.' or '?.'
                         let field = match self.peek().clone() {
@@ -870,13 +870,13 @@ impl Parser {
                     // Check for `| else default` syntax: Option/Result fallback
                     if let Some(next) = self.tokens.get(self.pos + 1) {
                         if matches!(&next.token, Token::Else) {
-                            let l_bp = 1u8;
+                            let l_bp = 9u8; // same as pipe l_bp
                             if l_bp < min_bp {
                                 break;
                             }
                             self.advance(); // consume `|`
                             self.advance(); // consume `else`
-                            let default_expr = self.parse_expr(2)?;
+                            let default_expr = self.parse_expr(10)?; // don't consume pipe on RHS
                             lhs = Expr::MethodCall {
                                 object: Box::new(lhs),
                                 method: "unwrap_or".to_string(),
@@ -1698,17 +1698,17 @@ impl Parser {
     }
 }
 
-const PREFIX_BP: u8 = 13;
+const PREFIX_BP: u8 = 17;
 
 fn infix_binding_power(op: BinOp) -> (u8, u8) {
     match op {
-        BinOp::Pipe => (1, 2),
         BinOp::Or => (3, 4),
         BinOp::And => (5, 6),
         BinOp::Eq | BinOp::NotEq => (7, 8),
         BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq => (7, 8),
-        BinOp::Add | BinOp::Sub => (9, 10),
-        BinOp::Mul | BinOp::Div | BinOp::Mod => (11, 12),
+        BinOp::Pipe => (9, 20),
+        BinOp::Add | BinOp::Sub => (11, 12),
+        BinOp::Mul | BinOp::Div | BinOp::Mod => (13, 14),
     }
 }
 
