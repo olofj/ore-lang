@@ -1,0 +1,11 @@
+fn main
+  nums := [1, 2, 3, 4, 5]
+  print nums.product()
+  print nums.is_empty()
+
+  empty := []
+  print empty.is_empty()
+
+  s := "hello"
+  print s.is_empty()
+  print "".is_empty()

@@ -750,6 +750,48 @@ pub extern "C" fn ore_list_sort_by(
     }
 }
 
+/// Sort list in-place by a key function that returns an i64.
+/// The key function is called once per element to compute a sort key.
+#[no_mangle]
+pub extern "C" fn ore_list_sort_by_key(
+    list: *mut OreList,
+    key_fn: extern "C" fn(i64, *mut u8) -> i64,
+    env_ptr: *mut u8,
+) {
+    unsafe {
+        let list = &mut *list;
+        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        // Compute keys once, then sort by them (Schwartzian transform)
+        let mut keyed: Vec<(i64, i64)> = slice.iter().map(|&elem| (key_fn(elem, env_ptr), elem)).collect();
+        keyed.sort_by_key(|&(k, _)| k);
+        for (i, (_, elem)) in keyed.into_iter().enumerate() {
+            slice[i] = elem;
+        }
+    }
+}
+
+/// Sort list in-place by a string key function.
+#[no_mangle]
+pub extern "C" fn ore_list_sort_by_key_str(
+    list: *mut OreList,
+    key_fn: extern "C" fn(i64, *mut u8) -> *mut OreStr,
+    env_ptr: *mut u8,
+) {
+    unsafe {
+        let list = &mut *list;
+        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
+        let mut keyed: Vec<(String, i64)> = slice.iter().map(|&elem| {
+            let key_str = key_fn(elem, env_ptr);
+            let s = if !key_str.is_null() { (*key_str).as_str().to_string() } else { String::new() };
+            (s, elem)
+        }).collect();
+        keyed.sort_by(|a, b| a.0.cmp(&b.0));
+        for (i, (_, elem)) in keyed.into_iter().enumerate() {
+            slice[i] = elem;
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_reverse(list: *mut OreList) {
     unsafe {
@@ -1099,6 +1141,19 @@ pub extern "C" fn ore_list_sum(list: *mut OreList) -> i64 {
         let mut total: i64 = 0;
         for i in 0..src.len as usize {
             total += *src.data.add(i);
+        }
+        total
+    }
+}
+
+/// Product of all i64 elements in a list.
+#[no_mangle]
+pub extern "C" fn ore_list_product(list: *mut OreList) -> i64 {
+    unsafe {
+        let src = &*list;
+        let mut total: i64 = 1;
+        for i in 0..src.len as usize {
+            total *= *src.data.add(i);
         }
         total
     }

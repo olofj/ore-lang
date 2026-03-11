@@ -709,6 +709,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_skip", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         // ore_list_sum(ptr) -> i64
         self.module.add_function("ore_list_sum", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_product", i64_type.fn_type(&[ptr_type.into()], false), ext);
         // String utilities
         self.module.add_function("ore_float_to_str", ptr_type.fn_type(&[f64_type.into()], false), ext);
         self.module.add_function("ore_str_len", i64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -736,6 +737,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_max", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_count", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_sort_by", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_sort_by_key", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_sort_by_key_str", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_index_of", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_unique", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_flatten", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -2554,6 +2557,18 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
+            "is_empty" => {
+                let list_len = self.module.get_function("ore_list_len").unwrap();
+                let result = bld!(self.builder.build_call(list_len, &[list_val.into()], "len"))?;
+                let len_val = self.call_result_to_value(result)?.into_int_value();
+                let is_zero = bld!(self.builder.build_int_compare(
+                    inkwell::IntPredicate::EQ,
+                    len_val,
+                    self.context.i64_type().const_zero(),
+                    "is_empty"
+                ))?;
+                Ok((is_zero.into(), ValKind::Bool))
+            }
             "push" => {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: "push takes exactly 1 argument".into() });
@@ -2718,6 +2733,35 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
                 Ok((list_val, ValKind::List))
             }
+            "sort_by" => {
+                // sort_by(key_fn) - sort by a key extracted from each element
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "sort_by takes 1 argument (key function)".into() });
+                }
+                let elem_kind = self.last_list_elem_kind.clone();
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        let ek = elem_kind.clone().unwrap_or(ValKind::Int);
+                        self.compile_lambda_with_kinds(params, body, func, Some(&[ek]))?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "sort_by requires a key function".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                // Determine which runtime to use based on key return type
+                let rt = self.module.get_function("ore_list_sort_by_key").unwrap();
+                bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
+                Ok((list_val, ValKind::List))
+            }
             "reverse" => {
                 let rt = self.module.get_function("ore_list_reverse").unwrap();
                 bld!(self.builder.build_call(rt, &[list_val.into()], ""))?;
@@ -2846,6 +2890,12 @@ impl<'ctx> CodeGen<'ctx> {
             "sum" => {
                 let rt = self.module.get_function("ore_list_sum").unwrap();
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sum"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Int))
+            }
+            "product" => {
+                let rt = self.module.get_function("ore_list_product").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "product"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
@@ -3058,6 +3108,18 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slen"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
+            }
+            "is_empty" => {
+                let rt = self.module.get_function("ore_str_len").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slen"))?;
+                let len_val = self.call_result_to_value(result)?.into_int_value();
+                let is_zero = bld!(self.builder.build_int_compare(
+                    inkwell::IntPredicate::EQ,
+                    len_val,
+                    self.context.i64_type().const_zero(),
+                    "is_empty"
+                ))?;
+                Ok((is_zero.into(), ValKind::Bool))
             }
             "contains" => {
                 if args.len() != 1 {

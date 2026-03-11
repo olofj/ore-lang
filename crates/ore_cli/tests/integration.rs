@@ -995,6 +995,26 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn lists_product_is_empty() {
+    let out = run_ore("lists/product_is_empty.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "120", "false", "true",  // list product, is_empty
+        "false", "true",         // string is_empty
+    ]);
+}
+
+#[test]
+fn lists_sort_by() {
+    let out = run_ore("lists/sort_by.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "9 6 5 4 3 2 1 1",
+        "1 3 5 8 9",
+    ]);
+}
+
+#[test]
 fn types_numeric_methods() {
     let out = run_ore("types/numeric_methods.ore");
     let lines: Vec<&str> = out.lines().collect();

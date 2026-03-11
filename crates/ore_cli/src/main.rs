@@ -423,6 +423,8 @@ fn map_runtime_functions(
     map_fn!("ore_list_max", ore_runtime::ore_list_max);
     map_fn!("ore_list_count", ore_runtime::ore_list_count);
     map_fn!("ore_list_sort_by", ore_runtime::ore_list_sort_by);
+    map_fn!("ore_list_sort_by_key", ore_runtime::ore_list_sort_by_key);
+    map_fn!("ore_list_sort_by_key_str", ore_runtime::ore_list_sort_by_key_str);
     map_fn!("ore_list_index_of", ore_runtime::ore_list_index_of);
     map_fn!("ore_list_unique", ore_runtime::ore_list_unique);
     map_fn!("ore_list_flatten", ore_runtime::ore_list_flatten);
@@ -462,6 +464,7 @@ fn map_runtime_functions(
     map_fn!("ore_list_take", ore_runtime::ore_list_take);
     map_fn!("ore_list_skip", ore_runtime::ore_list_skip);
     map_fn!("ore_list_sum", ore_runtime::ore_list_sum);
+    map_fn!("ore_list_product", ore_runtime::ore_list_product);
     // Maps
     map_fn!("ore_map_new", ore_runtime::ore_map_new);
     map_fn!("ore_map_set", ore_runtime::ore_map_set);
