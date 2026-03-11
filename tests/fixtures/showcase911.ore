@@ -1,0 +1,106 @@
+-- Showcase 911: Moving Average Filter
+-- Demonstrates simple moving average (SMA) and exponential moving average (EMA)
+-- for smoothing noisy signal data.
+
+fn fmt2 v:Float -> Str
+  mut s := str(v)
+  if s.len() > 5
+    s = s.substr(0, 5)
+  s
+
+fn main
+  print "Moving Average Filter"
+  print "====================="
+
+  -- Noisy signal: sine wave approximation with noise
+  mut signal := []
+  signal.push(1.0)
+  signal.push(3.0)
+  signal.push(2.0)
+  signal.push(5.0)
+  signal.push(4.0)
+  signal.push(7.0)
+  signal.push(6.0)
+  signal.push(9.0)
+  signal.push(8.0)
+  signal.push(10.0)
+  signal.push(9.0)
+  signal.push(7.0)
+  signal.push(8.0)
+  signal.push(5.0)
+  signal.push(6.0)
+  n := signal | count()
+
+  print "Original signal ({n} samples):"
+  mut orig_str := ""
+  for i in range(0, n)
+    v := signal[i]
+    mut vs := str(v)
+    if vs.len() > 4
+      vs = vs.substr(0, 4)
+    orig_str = orig_str + vs + " "
+  print orig_str
+
+  -- Simple Moving Average with window=3
+  print ""
+  print "SMA(window=3):"
+  mut sma3_str := ""
+  for i in range(0, n)
+    mut actual_start := i - 2
+    if actual_start < 0
+      actual_start = 0
+    mut sum := 0.0
+    mut cnt := 0
+    for j in range(actual_start, i + 1)
+      v := signal[j]
+      sum = sum + v
+      cnt = cnt + 1
+    avg := sum / cnt.to_float()
+    sma3_str = sma3_str + fmt2(avg) + " "
+  print sma3_str
+
+  -- Simple Moving Average with window=5
+  print ""
+  print "SMA(window=5):"
+  mut sma5_str := ""
+  mut sma5_last := 0.0
+  for i in range(0, n)
+    mut actual_start := i - 4
+    if actual_start < 0
+      actual_start = 0
+    mut sum := 0.0
+    mut cnt := 0
+    for j in range(actual_start, i + 1)
+      v := signal[j]
+      sum = sum + v
+      cnt = cnt + 1
+    avg := sum / cnt.to_float()
+    sma5_str = sma5_str + fmt2(avg) + " "
+    if i == n - 1
+      sma5_last = avg
+  print sma5_str
+
+  -- Exponential Moving Average (alpha=0.3)
+  print ""
+  print "EMA(alpha=0.3):"
+  mut ema_str := ""
+  mut ema_prev := signal[0]
+  alpha := 0.3
+  for i in range(0, n)
+    v := signal[i]
+    mut ema := 0.0
+    if i == 0
+      ema = v
+    else
+      ema = alpha * v + (1.0 - alpha) * ema_prev
+    ema_prev = ema
+    ema_str = ema_str + fmt2(ema) + " "
+  print ema_str
+
+  -- Summary stats
+  total := signal | sum()
+  orig_mean := total / n.to_float()
+  print ""
+  print "Signal mean: {fmt2(orig_mean)}"
+  print "SMA(5) last: {fmt2(sma5_last)}"
+  print "Moving average filter complete"

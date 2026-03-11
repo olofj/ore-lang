@@ -1,0 +1,86 @@
+-- Showcase 914: FIR Filter Design
+-- Designs FIR filters using the windowed sinc method.
+-- Demonstrates low-pass and high-pass filter coefficient generation.
+
+fn fmt5 v:Float -> Str
+  mut s := str(v)
+  if s.len() > 7
+    s = s.substr(0, 7)
+  s
+
+fn sinc x:Float -> Float
+  if x == 0.0
+    1.0
+  else
+    pi_x := 3.14159265 * x
+    sin(pi_x) / pi_x
+
+fn main
+  print "FIR Filter Design (Windowed Sinc)"
+  print "=================================="
+
+  -- Filter parameters
+  cutoff := 0.2       -- normalized cutoff frequency (0 to 0.5)
+  order := 11         -- filter order (must be odd for Type I)
+  m := (order - 1) / 2  -- half-length
+
+  print "Low-pass FIR filter:"
+  print "  Order: {order}"
+  print "  Normalized cutoff: {str(cutoff)}"
+  print ""
+
+  -- Compute sinc filter coefficients with Hamming window
+  print "Coefficients (with Hamming window):"
+  mut coeffs := []
+  for i in range(0, order)
+    n := i - m
+    -- Sinc component
+    h_sinc := 2.0 * cutoff * sinc(2.0 * cutoff * n.to_float())
+    -- Hamming window: 0.54 - 0.46*cos(2*pi*i/(N-1))
+    phase := 2.0 * 3.14159265 * i.to_float() / (order - 1).to_float()
+    w := 0.54 - 0.46 * cos(phase)
+    h := h_sinc * w
+    coeffs.push(h)
+
+  mut coeff_sum := 0.0
+  for i in range(0, order)
+    c := coeffs[i]
+    coeff_sum = coeff_sum + c
+    istr := str(i).pad_right(3, " ")
+    cstr := fmt5(c).pad_right(10, " ")
+    print "  h[{istr}] = {cstr}"
+
+  print ""
+  print "Sum of coefficients (DC gain): {fmt5(coeff_sum)}"
+
+  -- Frequency response at a few points
+  print ""
+  print "Frequency response:"
+  print "  Freq   |H(f)|"
+  print "  -----  ------"
+  mut freqs := []
+  freqs.push(0.0)
+  freqs.push(0.1)
+  freqs.push(0.2)
+  freqs.push(0.3)
+  freqs.push(0.4)
+  freqs.push(0.5)
+  for fi in range(0, 6)
+    freq := freqs[fi]
+    -- H(f) = sum h[n] * e^(-j2pi*f*n), magnitude
+    mut re := 0.0
+    mut im := 0.0
+    for i in range(0, order)
+      n := i - m
+      phase := 2.0 * 3.14159265 * freq * n.to_float()
+      c := coeffs[i]
+      re = re + c * cos(phase)
+      im = im + c * sin(phase)
+    mag := sqrt(re * re + im * im)
+    fstr := fmt5(freq).pad_right(7, " ")
+    mstr := fmt5(mag)
+    print "  {fstr}  {mstr}"
+
+  print ""
+  print "Filter passes low frequencies, attenuates above cutoff=0.2"
+  print "FIR filter design complete"

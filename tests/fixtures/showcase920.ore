@@ -1,0 +1,116 @@
+-- Showcase 920: Delta-Sigma Modulation
+-- Implements a first-order delta-sigma modulator that converts an analog
+-- signal into a high-rate 1-bit bitstream. Used in audio ADCs and DACs.
+
+fn fmt4 v:Float -> Str
+  mut s := str(v)
+  if s.len() > 6
+    s = s.substr(0, 6)
+  s
+
+fn main
+  print "Delta-Sigma Modulation"
+  print "======================"
+
+  -- Modulator parameters
+  n_bits := 40         -- output bitstream length
+  oversample := 8      -- oversampling ratio
+
+  print "First-order delta-sigma modulator"
+  print "Bitstream length: {n_bits}"
+  print "Oversampling ratio: {oversample}"
+  print ""
+
+  -- Input: slow sine wave (one cycle over all samples)
+  pi2 := 2.0 * 3.14159265
+  n_cycles := 1
+  mut input_sig := []
+  for i in range(0, n_bits)
+    v := sin(pi2 * n_cycles.to_float() * i.to_float() / n_bits.to_float()) * 0.8
+    input_sig.push(v)
+
+  -- First-order delta-sigma modulator
+  -- integrator accumulates error, comparator outputs +1 or -1
+  mut integrator := 0.0
+  mut bitstream := []
+  mut quantized := []
+
+  print "=== Modulator Output ==="
+  print "Sample  Input    Integr   Bit  Decoded"
+  print "------  -----    ------   ---  -------"
+
+  for i in range(0, n_bits)
+    input := input_sig[i]
+
+    -- Quantize: if integrator >= 0 output +1, else -1
+    mut bit := 1.0
+    if integrator < 0.0
+      bit = -1.0
+
+    -- Update integrator: accumulate error
+    integrator = integrator + input - bit
+
+    bitstream.push(bit)
+
+    -- Decimation: decode by averaging over oversample window
+    mut decoded := 0.0
+    if i >= oversample - 1
+      mut window_sum := 0.0
+      for j in range(i - oversample + 1, i + 1)
+        b := bitstream[j]
+        window_sum = window_sum + b
+      decoded = window_sum / oversample.to_float()
+
+    if i < 16
+      bit_char := if bit > 0.0 then "1" else "0"
+      istr := str(i).pad_right(7, " ")
+      instr := fmt4(input).pad_right(8, " ")
+      igstr := fmt4(integrator).pad_right(8, " ")
+      dstr := fmt4(decoded)
+      print "{istr} {instr} {igstr} {bit_char}    {dstr}"
+
+  print "..."
+
+  -- Analyze the bitstream
+  mut ones := 0
+  mut zeros := 0
+  for i in range(0, n_bits)
+    b := bitstream[i]
+    if b > 0.0
+      ones = ones + 1
+    else
+      zeros = zeros + 1
+
+  print ""
+  print "=== Bitstream Analysis ==="
+  bit_str_display := ""
+  mut bs := ""
+  for i in range(0, n_bits)
+    b := bitstream[i]
+    if b > 0.0
+      bs = bs + "1"
+    else
+      bs = bs + "0"
+  print "Bitstream: {bs}"
+  print "Ones:  {ones} ({str(ones * 100 / n_bits)}%)"
+  print "Zeros: {zeros} ({str(zeros * 100 / n_bits)}%)"
+
+  -- Verify reconstruction: decode full signal by averaging
+  print ""
+  print "=== Signal Reconstruction ==="
+  print "Input vs Decoded (every 8 samples):"
+  for i in range(oversample - 1, n_bits, oversample)
+    input := input_sig[i]
+    mut window_sum := 0.0
+    for j in range(i - oversample + 1, i + 1)
+      b := bitstream[j]
+      window_sum = window_sum + b
+    decoded := window_sum / oversample.to_float()
+    istr := str(i).pad_right(3, " ")
+    instr := fmt4(input).pad_right(9, " ")
+    dstr := fmt4(decoded)
+    print "  [{istr}] input={instr} decoded={dstr}"
+
+  print ""
+  print "Noise shaping pushes quantization noise to high frequencies"
+  print "Delta-sigma modulation complete"

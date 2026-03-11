@@ -1,0 +1,101 @@
+-- Showcase 916: Cross-Correlation
+-- Computes cross-correlation between two signals to measure similarity
+-- and find the time delay between a reference and shifted signal.
+
+fn fmt4 v:Float -> Str
+  mut s := str(v)
+  if s.len() > 6
+    s = s.substr(0, 6)
+  s
+
+fn main
+  print "Cross-Correlation"
+  print "================="
+
+  -- Reference signal: pulse
+  mut ref_sig := []
+  ref_sig.push(0.0)
+  ref_sig.push(0.0)
+  ref_sig.push(1.0)
+  ref_sig.push(2.0)
+  ref_sig.push(3.0)
+  ref_sig.push(2.0)
+  ref_sig.push(1.0)
+  ref_sig.push(0.0)
+  ref_sig.push(0.0)
+  ref_sig.push(0.0)
+  ref_sig.push(0.0)
+  ref_sig.push(0.0)
+
+  -- Delayed copy (shifted by 4 samples) plus noise
+  mut delayed := []
+  delayed.push(0.0)
+  delayed.push(0.0)
+  delayed.push(0.0)
+  delayed.push(0.0)
+  delayed.push(0.0)
+  delayed.push(0.0)
+  delayed.push(1.0)
+  delayed.push(2.0)
+  delayed.push(3.0)
+  delayed.push(2.0)
+  delayed.push(1.0)
+  delayed.push(0.0)
+
+  n := ref_sig | count()
+  print "Reference signal ({n} samples):"
+  mut rs := ""
+  for i in range(0, n)
+    v := ref_sig[i]
+    rs = rs + fmt4(v) + " "
+  print rs
+
+  print ""
+  print "Delayed signal (shifted by 4 samples):"
+  mut ds := ""
+  for i in range(0, n)
+    v := delayed[i]
+    ds = ds + fmt4(v) + " "
+  print ds
+
+  -- Cross-correlation: Rxy(lag) = sum(x[i] * y[i+lag]) for valid i
+  print ""
+  print "Cross-correlation:"
+  print "Lag   Rxy(lag)  Bar"
+  print "---   --------  ---"
+
+  mut max_r := 0.0
+  mut max_lag := 0
+  for lag in range(-(n - 1), n)
+    mut acc := 0.0
+    for i in range(0, n)
+      j := i + lag
+      if j >= 0 and j < n
+        xi := ref_sig[i]
+        yj := delayed[j]
+        acc = acc + xi * yj
+    if acc > max_r
+      max_r = acc
+      max_lag = lag
+
+  -- Print lags around zero
+  for lag in range(-2, n - 1)
+    mut acc := 0.0
+    for i in range(0, n)
+      j := i + lag
+      if j >= 0 and j < n
+        xi := ref_sig[i]
+        yj := delayed[j]
+        acc = acc + xi * yj
+    mut bar := ""
+    bar_len := (acc / 2.0).to_int()
+    bar = "#".repeat(bar_len)
+    lagstr := str(lag).pad_right(5, " ")
+    rstr := fmt4(acc).pad_right(9, " ")
+    print "{lagstr} {rstr} {bar}"
+
+  print ""
+  print "Peak cross-correlation at lag {max_lag}"
+  print "Detected time delay: {max_lag} samples"
+  print "Max Rxy = {fmt4(max_r)}"
+  print "Cross-correlation analysis complete"

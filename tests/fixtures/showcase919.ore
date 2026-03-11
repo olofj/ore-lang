@@ -1,0 +1,126 @@
+-- Showcase 919: Goertzel Algorithm (Single-Frequency DFT)
+-- Efficiently computes the DFT at a single frequency bin.
+-- Used in DTMF tone detection and frequency-specific analysis.
+
+fn fmt4 v:Float -> Str
+  mut s := str(v)
+  if s.len() > 7
+    s = s.substr(0, 7)
+  s
+
+fn main
+  print "Goertzel Algorithm (Single-Frequency DFT)"
+  print "==========================================="
+
+  -- Generate a test signal: sum of 440 Hz and 880 Hz tones
+  n := 64
+  sample_rate := 8000.0   -- 8 kHz
+  f1 := 440.0             -- note A4
+  f2 := 880.0             -- note A5 (octave above)
+  pi2 := 2.0 * 3.14159265
+
+  print "Signal: 440 Hz + 880 Hz at {str(sample_rate)} Hz sample rate"
+  print "N = {n} samples"
+  print ""
+
+  mut signal := []
+  for i in range(0, n)
+    t := i.to_float() / sample_rate
+    v := sin(pi2 * f1 * t) + sin(pi2 * f2 * t)
+    signal.push(v)
+
+  -- Show first few samples
+  print "First 8 samples:"
+  mut ss := ""
+  for i in range(0, 8)
+    v := signal[i]
+    ss = ss + fmt4(v) + " "
+  print ss
+
+  -- Goertzel algorithm inline for each target frequency
+  print ""
+  print "Goertzel magnitude at target frequencies:"
+  print "Frequency  Magnitude  Present?"
+  print "---------  ---------  -------"
+
+  mut freqs := []
+  freqs.push(220.0)
+  freqs.push(440.0)
+  freqs.push(660.0)
+  freqs.push(880.0)
+  freqs.push(1000.0)
+  freqs.push(1320.0)
+  freqs.push(1760.0)
+
+  for fi in range(0, 7)
+    freq := freqs[fi]
+    k := (freq / sample_rate * n.to_float() + 0.5).to_int()
+    omega := 2.0 * 3.14159265 * k.to_float() / n.to_float()
+    coeff := 2.0 * cos(omega)
+    mut s1 := 0.0
+    mut s2 := 0.0
+    for i in range(0, n)
+      v := signal[i]
+      s0 := v + coeff * s1 - s2
+      s2 = s1
+      s1 = s0
+    mag_sq := s1 * s1 + s2 * s2 - coeff * s1 * s2
+    mag := sqrt(mag_sq)
+    present := mag > 4.0
+    fstr := str(freq).pad_right(10, " ")
+    mstr := fmt4(mag).pad_right(10, " ")
+    pstr := if present then "YES ***" else "no"
+    print "{fstr} {mstr} {pstr}"
+
+  -- DTMF tone detection example
+  print ""
+  print "=== DTMF Tone Detection ==="
+  print "Generating digit 5 (770 Hz + 1336 Hz)..."
+
+  mut dtmf := []
+  for i in range(0, n)
+    t := i.to_float() / sample_rate
+    v := sin(pi2 * 770.0 * t) + sin(pi2 * 1336.0 * t)
+    dtmf.push(v)
+
+  mut dtmf_freqs := []
+  dtmf_freqs.push(697.0)
+  dtmf_freqs.push(770.0)
+  dtmf_freqs.push(852.0)
+  dtmf_freqs.push(941.0)
+  dtmf_freqs.push(1209.0)
+  dtmf_freqs.push(1336.0)
+  dtmf_freqs.push(1477.0)
+
+  mut row_freq := 0.0
+  mut col_freq := 0.0
+  mut row_mag := 0.0
+  mut col_mag := 0.0
+
+  for fi in range(0, 7)
+    freq := dtmf_freqs[fi]
+    k := (freq / sample_rate * n.to_float() + 0.5).to_int()
+    omega := 2.0 * 3.14159265 * k.to_float() / n.to_float()
+    coeff := 2.0 * cos(omega)
+    mut s1 := 0.0
+    mut s2 := 0.0
+    for i in range(0, n)
+      v := dtmf[i]
+      s0 := v + coeff * s1 - s2
+      s2 = s1
+      s1 = s0
+    mag_sq := s1 * s1 + s2 * s2 - coeff * s1 * s2
+    mag := sqrt(mag_sq)
+    if mag > 3.0
+      if freq < 1000.0
+        if mag > row_mag
+          row_mag = mag
+          row_freq = freq
+      else
+        if mag > col_mag
+          col_mag = mag
+          col_freq = freq
+
+  print "Detected row freq: {str(row_freq)} Hz (mag={fmt4(row_mag)})"
+  print "Detected col freq: {str(col_freq)} Hz (mag={fmt4(col_mag)})"
+  print "Goertzel algorithm complete"

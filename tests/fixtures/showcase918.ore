@@ -1,0 +1,100 @@
+-- Showcase 918: Hamming Window Function
+-- Demonstrates the Hamming window and other window functions (rectangular,
+-- Hann, Blackman) used in spectral analysis to reduce spectral leakage.
+
+fn fmt5 v:Float -> Str
+  mut s := str(v)
+  if s.len() > 7
+    s = s.substr(0, 7)
+  s
+
+fn main
+  print "Hamming Window Function"
+  print "======================="
+
+  n := 16  -- window length
+  pi := 3.14159265
+
+  print "Window functions for N={n} samples:"
+  print ""
+  print "Sample  Rect    Hann    Hamming  Blackman"
+  print "------  ----    ----    -------  --------"
+
+  mut hamming_vals := []
+  mut hann_vals := []
+
+  for i in range(0, n)
+    -- Rectangular window
+    w_rect := 1.0
+
+    -- Hann window: 0.5 * (1 - cos(2*pi*n/(N-1)))
+    phase := 2.0 * pi * i.to_float() / (n - 1).to_float()
+    w_hann := 0.5 * (1.0 - cos(phase))
+
+    -- Hamming window: 0.54 - 0.46 * cos(2*pi*n/(N-1))
+    w_hamming := 0.54 - 0.46 * cos(phase)
+
+    -- Blackman window: 0.42 - 0.5*cos(2pi*n/(N-1)) + 0.08*cos(4pi*n/(N-1))
+    phase2 := 4.0 * pi * i.to_float() / (n - 1).to_float()
+    w_blackman := 0.42 - 0.5 * cos(phase) + 0.08 * cos(phase2)
+
+    hamming_vals.push(w_hamming)
+    hann_vals.push(w_hann)
+
+    istr := str(i).pad_right(7, " ")
+    rstr := fmt5(w_rect).pad_right(7, " ")
+    hnstr := fmt5(w_hann).pad_right(7, " ")
+    hmstr := fmt5(w_hamming).pad_right(8, " ")
+    bstr := fmt5(w_blackman)
+    print "{istr} {rstr} {hnstr} {hmstr} {bstr}"
+
+  -- Window properties
+  print ""
+  print "=== Window Properties ==="
+
+  -- Coherent gain (mean value)
+  mut hamming_sum := 0.0
+  mut hann_sum := 0.0
+  for i in range(0, n)
+    hv := hamming_vals[i]
+    hnv := hann_vals[i]
+    hamming_sum = hamming_sum + hv
+    hann_sum = hann_sum + hnv
+  hamming_cg := hamming_sum / n.to_float()
+  hann_cg := hann_sum / n.to_float()
+
+  print "Coherent gain (mean):"
+  print "  Rectangular: 1.0"
+  print "  Hann:       {fmt5(hann_cg)}"
+  print "  Hamming:    {fmt5(hamming_cg)}"
+
+  -- ENBW (Equivalent Noise Bandwidth) approximations
+  print ""
+  print "Approximate ENBW (normalized bins):"
+  print "  Rectangular: 1.00"
+  print "  Hann:        1.50"
+  print "  Hamming:     1.36"
+  print "  Blackman:    1.73"
+
+  -- Side-lobe levels
+  print ""
+  print "Peak side-lobe attenuation:"
+  print "  Rectangular: -13 dB"
+  print "  Hann:        -31 dB"
+  print "  Hamming:     -41 dB"
+  print "  Blackman:    -57 dB"
+
+  -- Visualize Hamming window shape
+  print ""
+  print "Hamming window shape:"
+  for i in range(0, n)
+    v := hamming_vals[i]
+    bar_len := (v * 20.0).to_int()
+    bar := "#".repeat(bar_len)
+    istr := str(i).pad_right(3, " ")
+    vstr := fmt5(v).pad_right(8, " ")
+    print "  [{istr}] {vstr} {bar}"
+
+  print ""
+  print "Hamming window reduces spectral leakage vs rectangular"
+  print "Window function analysis complete"

@@ -1,0 +1,95 @@
+-- Showcase 913: Autocorrelation Function
+-- Computes the autocorrelation of a signal to find repeating patterns
+-- and estimate the period of periodic signals.
+
+fn fmt4 v:Float -> Str
+  mut s := str(v)
+  if s.len() > 6
+    s = s.substr(0, 6)
+  s
+
+fn main
+  print "Autocorrelation Function"
+  print "========================"
+
+  -- Periodic signal: approximate square wave with period 4
+  mut signal := []
+  signal.push(1.0)
+  signal.push(1.0)
+  signal.push(-1.0)
+  signal.push(-1.0)
+  signal.push(1.0)
+  signal.push(1.0)
+  signal.push(-1.0)
+  signal.push(-1.0)
+  signal.push(1.0)
+  signal.push(1.0)
+  signal.push(-1.0)
+  signal.push(-1.0)
+  n := signal | count()
+
+  print "Input signal (period=4 square wave, {n} samples):"
+  mut ss := ""
+  for i in range(0, n)
+    v := signal[i]
+    mut vs := str(v)
+    if vs.len() > 3
+      vs = vs.substr(0, 3)
+    ss = ss + vs + "  "
+  print ss
+
+  -- Compute mean
+  mut total := 0.0
+  for i in range(0, n)
+    v := signal[i]
+    total = total + v
+  mean := total / n.to_float()
+
+  -- Autocorrelation R(lag) = sum((x[i]-mean)*(x[i+lag]-mean)) / n
+  print ""
+  print "Autocorrelation (lags 0 to {n - 1}):"
+  print "Lag  R(lag)   Bar"
+  print "---  ------   ---"
+
+  -- Normalize by R(0)
+  mut r0 := 0.0
+  for i in range(0, n)
+    v := signal[i]
+    d := v - mean
+    r0 = r0 + d * d
+  r0 = r0 / n.to_float()
+
+  mut max_lag := 0
+  mut max_r := 0.0
+  for lag in range(0, n)
+    mut acc := 0.0
+    mut cnt := 0
+    for i in range(0, n - lag)
+      vi := signal[i]
+      vj := signal[i + lag]
+      di := vi - mean
+      dj := vj - mean
+      acc = acc + di * dj
+      cnt = cnt + 1
+    r_norm := acc / (cnt.to_float() * r0)
+    mut bar := ""
+    mut bar_len := 0
+    if r_norm > 0.0
+      bar_len = (r_norm * 10.0).to_int()
+    else
+      bar_len = (r_norm * 10.0 * -1.0).to_int()
+    bar = "#".repeat(bar_len)
+    lagstr := str(lag).pad_right(4, " ")
+    rstr := fmt4(r_norm).pad_right(8, " ")
+    if r_norm > 0.0
+      print "{lagstr} {rstr} +{bar}"
+    else
+      print "{lagstr} {rstr} -{bar}"
+    if lag > 0 and r_norm > max_r
+      max_r = r_norm
+      max_lag = lag
+
+  print ""
+  print "Peak autocorrelation at lag {max_lag} => detected period: {max_lag}"
+  print "R(0) = {fmt4(r0)} (signal variance)"
+  print "Autocorrelation analysis complete"

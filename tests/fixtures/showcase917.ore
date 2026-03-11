@@ -1,0 +1,86 @@
+-- Showcase 917: Digital Phase-Locked Loop (PLL)
+-- Simulates a first-order digital PLL that tracks the phase and frequency
+-- of an incoming signal. Uses a phase detector and loop filter.
+
+fn fmt4 v:Float -> Str
+  mut s := str(v)
+  if s.len() > 7
+    s = s.substr(0, 7)
+  s
+
+fn main
+  print "Digital Phase-Locked Loop (PLL)"
+  print "================================"
+
+  -- PLL parameters
+  f_target := 0.1       -- target normalized frequency (cycles/sample)
+  f_init := 0.08        -- VCO initial frequency (slightly off)
+  kp := 0.15            -- proportional gain
+  ki := 0.01            -- integral gain (loop filter)
+  n_samples := 40       -- simulation length
+
+  print "Target frequency: {str(f_target)} cycles/sample"
+  print "Initial VCO freq: {str(f_init)} cycles/sample"
+  print "Kp={str(kp)}, Ki={str(ki)}"
+  print ""
+
+  -- State variables
+  mut vco_freq := f_init
+  mut vco_phase := 0.0
+  mut integrator := 0.0
+  mut input_phase := 0.0
+
+  print "Sample  Input_ph  VCO_ph    Phase_err  VCO_freq"
+  print "------  --------  ------    ---------  --------"
+
+  pi2 := 2.0 * 3.14159265
+
+  for i in range(0, n_samples)
+    -- Input signal phase
+    input_phase = pi2 * f_target * i.to_float()
+
+    -- Phase detector: compute error (difference modulo 2pi)
+    phase_err := input_phase - vco_phase
+    -- Wrap to [-pi, pi]
+    mut wrapped_err := phase_err
+    while wrapped_err > 3.14159265
+      wrapped_err = wrapped_err - pi2
+    while wrapped_err < -3.14159265
+      wrapped_err = wrapped_err + pi2
+
+    -- Loop filter: PI controller
+    integrator = integrator + ki * wrapped_err
+    correction := kp * wrapped_err + integrator
+
+    -- Update VCO
+    vco_freq = f_init + correction
+    vco_phase = vco_phase + pi2 * vco_freq
+
+    -- Print every 5 samples
+    if i == 0 or i == 5 or i == 10 or i == 20 or i == 30 or i == 39
+      istr := str(i).pad_right(7, " ")
+      ipstr := fmt4(input_phase).pad_right(9, " ")
+      vpstr := fmt4(vco_phase).pad_right(9, " ")
+      estr := fmt4(wrapped_err).pad_right(10, " ")
+      fstr := fmt4(vco_freq)
+      print "{istr} {ipstr} {vpstr} {estr} {fstr}"
+
+  -- Final state
+  mut final_err := input_phase - vco_phase
+  while final_err > 3.14159265
+    final_err = final_err - pi2
+  while final_err < -3.14159265
+    final_err = final_err + pi2
+
+  print ""
+  print "=== PLL Convergence ==="
+  print "Final VCO frequency: {fmt4(vco_freq)}"
+  print "Target frequency:    {str(f_target)}"
+  print "Final phase error:   {fmt4(final_err)} rad"
+  freq_err := (vco_freq - f_target).abs()
+  locked := freq_err < 0.001
+  if locked
+    print "Status: LOCKED (freq error < 0.001)"
+  else
+    print "Status: tracking..."
+  print "Digital PLL simulation complete"

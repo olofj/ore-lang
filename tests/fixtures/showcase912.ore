@@ -1,0 +1,107 @@
+-- Showcase 912: Discrete Convolution
+-- Implements 1D discrete convolution of two finite sequences.
+-- Demonstrates linear convolution and cross-correlation.
+
+fn fmt3 v:Float -> Str
+  mut s := str(v)
+  if s.len() > 6
+    s = s.substr(0, 6)
+  s
+
+fn main
+  print "Discrete Convolution"
+  print "===================="
+
+  -- Signal x and kernel h
+  mut x := []
+  x.push(1.0)
+  x.push(2.0)
+  x.push(3.0)
+  x.push(4.0)
+  x.push(3.0)
+  x.push(2.0)
+  x.push(1.0)
+
+  -- Box (averaging) kernel
+  mut h_box := []
+  h_box.push(0.333)
+  h_box.push(0.333)
+  h_box.push(0.333)
+
+  -- Edge-detection kernel
+  mut h_edge := []
+  h_edge.push(-1.0)
+  h_edge.push(0.0)
+  h_edge.push(1.0)
+
+  nx := x | count()
+  nh := h_box | count()
+  -- Output length for full linear convolution: nx + nh - 1
+  ny := nx + nh - 1
+
+  print "Input signal x ({nx} samples):"
+  mut xs := ""
+  for i in range(0, nx)
+    v := x[i]
+    xs = xs + fmt3(v) + " "
+  print xs
+
+  -- Convolution with box kernel
+  print ""
+  print "Box kernel (smoothing):"
+  mut hbs := ""
+  for i in range(0, nh)
+    v := h_box[i]
+    hbs = hbs + fmt3(v) + " "
+  print hbs
+
+  print "Convolution output ({ny} samples):"
+  mut y_box := ""
+  for i in range(0, ny)
+    mut acc := 0.0
+    for j in range(0, nh)
+      xi := i - j
+      if xi >= 0 and xi < nx
+        xv := x[xi]
+        hv := h_box[j]
+        acc = acc + xv * hv
+    y_box = y_box + fmt3(acc) + " "
+  print y_box
+
+  -- Convolution with edge kernel
+  print ""
+  print "Edge-detection kernel:"
+  mut yes := ""
+  for i in range(0, ny)
+    mut acc := 0.0
+    for j in range(0, nh)
+      xi := i - j
+      if xi >= 0 and xi < nx
+        xv := x[xi]
+        hv := h_edge[j]
+        acc = acc + xv * hv
+    yes = yes + fmt3(acc) + " "
+  print yes
+
+  -- Impulse response: convolution of signal with delta
+  print ""
+  print "=== Convolution Properties ==="
+  -- Convolution with unit impulse should return signal
+  mut h_imp := []
+  h_imp.push(1.0)
+  h_imp.push(0.0)
+  h_imp.push(0.0)
+  print "Convolving with delayed unit impulse [1,0,0]:"
+  mut y_imp := ""
+  for i in range(0, nx + 2)
+    mut acc := 0.0
+    for j in range(0, 3)
+      xi := i - j
+      if xi >= 0 and xi < nx
+        xv := x[xi]
+        hv := h_imp[j]
+        acc = acc + xv * hv
+    y_imp = y_imp + fmt3(acc) + " "
+  print y_imp
+  print "Result matches original signal (identity convolution)"
+  print "Discrete convolution complete"
