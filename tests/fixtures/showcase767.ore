@@ -1,0 +1,139 @@
+-- Showcase 767: Particle Swarm Optimization
+
+fn lcg seed:Int -> Int
+  (seed * 1664525 + 1013904223) % 2147483647
+
+fn objective x:Int y:Int -> Int
+  -- Minimize: (x-10)^2 + (y-20)^2
+  -- Global minimum at (10, 20) with value 0
+  dx := x - 10
+  dy := y - 20
+  dx * dx + dy * dy
+
+fn main
+  print "Particle Swarm Optimization:"
+  print ""
+
+  -- PSO: particles explore search space
+  -- Each particle has position and velocity
+  -- Attracted to personal best and global best
+  -- Update: v = w*v + c1*r1*(pbest-x) + c2*r2*(gbest-x)
+  --         x = x + v
+
+  print "=== Problem ==="
+  print "Minimize f(x,y) = (x-10)^2 + (y-20)^2"
+  print "Global minimum: f(10,20) = 0"
+  print "Search space: [-50, 50] x [-50, 50]"
+  print ""
+
+  -- 6 particles
+  n_particles := 6
+  mut px := [40, -30, 20, -10, 0, 45]
+  mut py := [-40, 30, -20, 10, 45, -5]
+  mut vx := [0, 0, 0, 0, 0, 0]
+  mut vy := [0, 0, 0, 0, 0, 0]
+
+  -- Personal bests
+  mut pbx := [40, -30, 20, -10, 0, 45]
+  mut pby := [-40, 30, -20, 10, 45, -5]
+  mut pbf := [0, 0, 0, 0, 0, 0]
+  for i in range(0, n_particles)
+    pbf[i] = objective(px[i], py[i])
+
+  -- Global best
+  mut gbx := 0
+  mut gby := 0
+  mut gbf := 999999
+  for i in range(0, n_particles)
+    f := objective(px[i], py[i])
+    if f < gbf
+      gbf = f
+      gbx = px[i]
+      gby = py[i]
+
+  print "=== Initial Particles ==="
+  for i in range(0, n_particles)
+    f := objective(px[i], py[i])
+    print "  P{i}: ({px[i]},{py[i]}) f={f}"
+  print "  Global best: ({gbx},{gby}) f={gbf}"
+
+  -- PSO parameters (integer scaled by 10)
+  -- w=0.7, c1=1.5, c2=1.5 -> use integer approximation
+  mut seed := 77
+  mut iteration := 0
+
+  while iteration < 20
+    for i in range(0, n_particles)
+      -- Update velocity with inertia + cognitive + social
+      -- Simplified: integer arithmetic, w=7/10, c1=c2=3/2
+      seed = lcg(seed)
+      r1 := (seed % 10) + 1
+      seed = lcg(seed)
+      r2 := (seed % 10) + 1
+
+      -- v = 7*v/10 + 3*r1*(pbest-x)/20 + 3*r2*(gbest-x)/20
+      new_vx := 7 * vx[i] / 10 + 3 * r1 * (pbx[i] - px[i]) / 20 + 3 * r2 * (gbx - px[i]) / 20
+      new_vy := 7 * vy[i] / 10 + 3 * r1 * (pby[i] - py[i]) / 20 + 3 * r2 * (gby - py[i]) / 20
+
+      -- Clamp velocity to [-10, 10]
+      mut cvx := new_vx
+      mut cvy := new_vy
+      if cvx > 10
+        cvx = 10
+      if cvx < -10
+        cvx = -10
+      if cvy > 10
+        cvy = 10
+      if cvy < -10
+        cvy = -10
+      vx[i] = cvx
+      vy[i] = cvy
+
+      -- Update position
+      mut nx := px[i] + vx[i]
+      mut ny := py[i] + vy[i]
+      -- Clamp to search space
+      if nx > 50
+        nx = 50
+      if nx < -50
+        nx = -50
+      if ny > 50
+        ny = 50
+      if ny < -50
+        ny = -50
+      px[i] = nx
+      py[i] = ny
+
+      -- Update personal best
+      f := objective(px[i], py[i])
+      if f < pbf[i]
+        pbf[i] = f
+        pbx[i] = px[i]
+        pby[i] = py[i]
+
+      -- Update global best
+      if f < gbf
+        gbf = f
+        gbx = px[i]
+        gby = py[i]
+
+    if iteration % 4 == 3
+      print "  Iter {iteration + 1}: gbest=({gbx},{gby}) f={gbf}"
+    iteration = iteration + 1
+
+  print ""
+  print "=== Final Result ==="
+  print "Global best position: ({gbx},{gby})"
+  print "Global best fitness: {gbf}"
+  print "Target: (10,20) with f=0"
+
+  print ""
+  print "=== PSO Parameters ==="
+  print "Inertia weight w=0.7: balances exploration/exploitation"
+  print "Cognitive c1=1.5: attraction to personal best"
+  print "Social c2=1.5: attraction to global best"
+  print "Particles: {n_particles}"
+  print "Iterations: 20"
+
+  print ""
+  print "Particle swarm optimization: collective intelligence finds global minimum."

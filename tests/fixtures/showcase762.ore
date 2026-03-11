@@ -1,0 +1,114 @@
+-- Showcase 762: Minimax with Alpha-Beta Pruning
+
+fn get_leaf idx:Int -> Int
+  -- Leaf values at positions 0-7
+  mut leaves := [3, 5, 2, 9, 1, 7, 4, 6]
+  leaves[idx]
+
+fn minimax node:Int depth:Int is_max:Bool -> Int
+  -- Minimax without pruning
+  -- Leaves are at depth 0, nodes index from 0
+  -- Internal node i has children 2*i+1 and 2*i+2
+  -- Leaves: nodes 7-14 (but we map to 0-7)
+  if depth == 0
+    get_leaf(node)
+  else if is_max
+    left := minimax(node * 2, depth - 1, false)
+    right := minimax(node * 2 + 1, depth - 1, false)
+    if left > right
+      left
+    else
+      right
+  else
+    left := minimax(node * 2, depth - 1, true)
+    right := minimax(node * 2 + 1, depth - 1, true)
+    if left < right
+      left
+    else
+      right
+
+fn minimax_ab node:Int depth:Int alpha:Int beta:Int is_max:Bool -> Int
+  -- Minimax with alpha-beta pruning
+  if depth == 0
+    get_leaf(node)
+  else if is_max
+    mut best := -9999
+    left := minimax_ab(node * 2, depth - 1, alpha, beta, false)
+    if left > best
+      best = left
+    mut a := alpha
+    if best > a
+      a = best
+    if a < beta
+      right := minimax_ab(node * 2 + 1, depth - 1, a, beta, false)
+      if right > best
+        best = right
+    best
+  else
+    mut best := 9999
+    left := minimax_ab(node * 2, depth - 1, alpha, beta, true)
+    if left < best
+      best = left
+    mut b := beta
+    if best < b
+      b = best
+    if alpha < b
+      right := minimax_ab(node * 2 + 1, depth - 1, alpha, b, true)
+      if right < best
+        best = right
+    best
+
+fn main
+  print "Minimax with Alpha-Beta Pruning:"
+  print ""
+
+  -- Game tree: depth 3, branching 2 => 8 leaves
+  -- Leaf values: [3, 5, 2, 9, 1, 7, 4, 6]
+  -- Tree structure (0-indexed nodes, depth-first):
+  --   Root node 0 (MAX), depth=3
+  --   Children: 1 (MIN,d=2), 2 (MIN,d=2) ... but we pass offset
+  print "Game tree (depth=3, branching=2):"
+  print "Leaf values: [3, 5, 2, 9, 1, 7, 4, 6]"
+  print ""
+
+  -- We start at node=0, depth=3, children are node*2 and node*2+1
+  -- At depth 0, node maps directly to leaf array: 0-7
+  print "=== Plain Minimax ==="
+  result_plain := minimax(0, 3, true)
+  print "Minimax result (MAX starts): {result_plain}"
+
+  -- Show intermediate values manually
+  -- Depth 2 (MIN nodes): min(3,5)=3, min(2,9)=2, min(1,7)=1, min(4,6)=4
+  mm0 := minimax(0, 1, false)
+  mm1 := minimax(1, 1, false)
+  mm2 := minimax(2, 1, false)
+  mm3 := minimax(3, 1, false)
+  print "MIN nodes: [{mm0}, {mm1}, {mm2}, {mm3}]"
+  -- Depth 1 (MAX nodes): max(3,2)=3, max(1,4)=4
+  mx0 := minimax(0, 2, true)
+  mx1 := minimax(1, 2, true)
+  print "MAX nodes: [{mx0}, {mx1}]"
+  print "MIN root: min({mx0},{mx1}) = {result_plain}"
+
+  print ""
+  print "=== Alpha-Beta Pruning ==="
+  result_ab := minimax_ab(0, 3, -9999, 9999, true)
+  print "Alpha-beta result (MAX starts): {result_ab}"
+  same := result_ab == result_plain
+  print "Same result as plain minimax: {same}"
+
+  print ""
+  print "=== Pruning Analysis ==="
+  print "Alpha-beta cuts branches where alpha >= beta"
+  print "Best case: O(b^(d/2)) - effectively doubles search depth"
+  print "With depth=3 and branching=2: up to 4 nodes pruned"
+
+  print ""
+  print "=== Complexity ==="
+  print "Minimax: O(b^d) nodes evaluated"
+  print "Alpha-beta best: O(b^(d/2))"
+  print "Alpha-beta worst: O(b^d)"
+  print "With b=35 (chess), d=6: 1.8B vs 42M nodes"
+
+  print ""
+  print "Minimax with alpha-beta pruning: same result, fewer evaluations."

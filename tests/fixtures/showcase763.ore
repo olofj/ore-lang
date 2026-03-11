@@ -1,0 +1,92 @@
+-- Showcase 763: Monte Carlo Simulation (Pi Estimation)
+
+fn lcg_next seed:Int -> Int
+  -- Linear congruential generator for deterministic pseudo-random numbers
+  (seed * 1664525 + 1013904223) % 2147483647
+
+fn to_unit seed:Int -> Float
+  -- Convert LCG seed to float in [0,1)
+  s := seed % 1000000
+  mut v := s
+  if v < 0
+    v = 0 - v
+  v.to_float() / 1000000.0
+
+fn estimate_pi samples:Int seed_init:Int -> Float
+  -- Monte Carlo pi estimation: sample random points in unit square
+  -- Count points inside unit circle: x^2 + y^2 <= 1
+  -- pi/4 = inside/total => pi = 4 * inside/total
+  mut inside := 0
+  mut seed := seed_init
+  for i in range(0, samples)
+    seed = lcg_next(seed)
+    x := to_unit(seed)
+    seed = lcg_next(seed)
+    y := to_unit(seed)
+    dist := x * x + y * y
+    if dist < 1.0 or dist == 1.0
+      inside = inside + 1
+  ratio := inside.to_float() / samples.to_float()
+  ratio * 4.0
+
+fn main
+  print "Monte Carlo Simulation: Pi Estimation"
+  print ""
+
+  -- Estimate pi by random sampling
+  -- Key insight: area of circle / area of square = pi/4
+  -- So pi ~ 4 * (points_in_circle / total_points)
+
+  print "=== Algorithm ==="
+  print "Sample random (x,y) in [0,1)x[0,1)"
+  print "Point is inside unit circle if x^2+y^2 <= 1"
+  print "pi/4 = P(inside) => pi = 4 * inside/total"
+  print ""
+
+  print "=== Convergence with Sample Size ==="
+  mut sizes := [10, 100, 500, 1000, 5000, 10000]
+  mut seeds := [42, 42, 42, 42, 42, 42]
+  real_pi := 3.14159265358979
+  for i in range(0, 6)
+    n := sizes[i]
+    est := estimate_pi(n, seeds[i])
+    err := est - real_pi
+    mut err_abs := err
+    if err_abs < 0.0
+      err_abs = 0.0 - err_abs
+    print "  n={n}: pi ~ {est}, |error|={err_abs}"
+
+  print ""
+  print "=== Multiple Seeds (n=1000) ==="
+  mut seeds2 := [7, 13, 31, 99, 137]
+  for i in range(0, 5)
+    est := estimate_pi(1000, seeds2[i])
+    print "  seed={seeds2[i]}: pi ~ {est}"
+
+  print ""
+  print "=== Statistics (n=1000, 5 runs) ==="
+  mut estimates := [0.0, 0.0, 0.0, 0.0, 0.0]
+  mut ss := [7, 13, 31, 99, 137]
+  mut sum := 0.0
+  for i in range(0, 5)
+    e := estimate_pi(1000, ss[i])
+    estimates[i] = e
+    sum = sum + e
+  mean := sum / 5.0
+  print "  Mean estimate: {mean}"
+  print "  True pi: {real_pi}"
+  err2 := mean - real_pi
+  mut err2_abs := err2
+  if err2_abs < 0.0
+    err2_abs = 0.0 - err2_abs
+  print "  Mean |error|: {err2_abs}"
+
+  print ""
+  print "=== Convergence Rate ==="
+  print "Monte Carlo convergence: O(1/sqrt(N))"
+  print "For 1 decimal place: ~100 samples"
+  print "For 2 decimal places: ~10,000 samples"
+  print "For 3 decimal places: ~1,000,000 samples"
+
+  print ""
+  print "Monte Carlo: probabilistic simulation converges to pi with more samples."

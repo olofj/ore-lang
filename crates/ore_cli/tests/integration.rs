@@ -9837,6 +9837,211 @@ fn showcase750_fast_exponentiation() {
 }
 
 #[test]
+fn showcase751_rabin_karp() {
+    let out = run_ore("showcase751.ore");
+    assert!(out.contains("Rabin-Karp String Matching:"), "got: {out}");
+    assert!(out.contains("Pattern: 'fox' -> found at index: 16"), "got: {out}");
+    assert!(out.contains("Pattern: 'cat' -> not found: -1"), "got: {out}");
+    assert!(out.contains("Text: 'abababab', pattern: 'ab' -> count: 4"), "got: {out}");
+    assert!(out.contains("'cde' in 'abcdef': index 2"), "got: {out}");
+    assert!(out.contains("Rabin-Karp: rolling hash enables O(n+m) average-case substring search."), "got: {out}");
+}
+
+#[test]
+fn showcase752_kmp_string_matching() {
+    let out = run_ore("showcase752.ore");
+    assert!(out.contains("KMP String Matching:"), "got: {out}");
+    assert!(out.contains("Failure: [0, 0, 1, 2, 0]"), "got: {out}");
+    assert!(out.contains("Pattern: 'aaabx' -> index: 9"), "got: {out}");
+    assert!(out.contains("'iss' in 'mississippi' -> count: 2"), "got: {out}");
+    assert!(out.contains("KMP: linear O(n+m) time with failure function enabling zero backtracking."), "got: {out}");
+}
+
+#[test]
+fn showcase753_edit_distance() {
+    let out = run_ore("showcase753.ore");
+    assert!(out.contains("Edit Distance (Levenshtein):"), "got: {out}");
+    assert!(out.contains("kitten -> sitting: 3 operations"), "got: {out}");
+    assert!(out.contains("intention -> execution: 5 operations"), "got: {out}");
+    assert!(out.contains("'abc' -> 'abc': 0"), "got: {out}");
+    assert!(out.contains("Levenshtein distance: minimum single-character edits to transform one string into another."), "got: {out}");
+}
+
+#[test]
+fn showcase754_lcs() {
+    let out = run_ore("showcase754.ore");
+    assert!(out.contains("Longest Common Subsequence:"), "got: {out}");
+    assert!(out.contains("LCS('ABCBDAB', 'BDCAB') = 'BDAB' (length 4)"), "got: {out}");
+    assert!(out.contains("LCS('sunday', 'saturday') = 5"), "got: {out}");
+    assert!(out.contains("Common subsequence: 'AGAG' (length 4)"), "got: {out}");
+    assert!(out.contains("LCS: finds the longest sequence of characters common to two strings (non-contiguous)."), "got: {out}");
+}
+
+#[test]
+fn showcase755_prefix_function() {
+    let out = run_ore("showcase755.ore");
+    assert!(out.contains("KMP Prefix (Failure) Function:"), "got: {out}");
+    assert!(out.contains("pi = [0, 1, 0, 1, 2, 3, 4, 5, 6]"), "got: {out}");
+    assert!(out.contains("period('abcabcabc') = 3"), "got: {out}");
+    assert!(out.contains("'iss' in 'mississippi': 2 times"), "got: {out}");
+    assert!(out.contains("Prefix function: encodes all prefix-suffix overlaps, enabling O(n) pattern matching."), "got: {out}");
+}
+
+#[test]
+fn showcase756_z_algorithm() {
+    let out = run_ore("showcase756.ore");
+    assert!(out.contains("Z-Algorithm for String Matching:"), "got: {out}");
+    assert!(out.contains("z = [6, 1, 0, 0, 2, 1]"), "got: {out}");
+    assert!(out.contains("'abc' in 'abcabcabcabc': [0, 3, 6, 9]"), "got: {out}");
+    assert!(out.contains("'abababab': period = 2"), "got: {out}");
+    assert!(out.contains("Z-algorithm: linear time string analysis via prefix-match lengths at each position."), "got: {out}");
+}
+
+#[test]
+fn showcase757_manachers() {
+    let out = run_ore("showcase757.ore");
+    assert!(out.contains("Manacher's Algorithm (Palindromes):"), "got: {out}");
+    assert!(out.contains("'racecar' -> 'racecar'"), "got: {out}");
+    assert!(out.contains("'hello': not a palindrome"), "got: {out}");
+    assert!(out.contains("'aaa' palindromes: 6"), "got: {out}");
+    assert!(out.contains("Manacher's: O(n) algorithm finding all palindromic substrings simultaneously."), "got: {out}");
+}
+
+#[test]
+fn showcase758_burrows_wheeler() {
+    let out = run_ore("showcase758.ore");
+    assert!(out.contains("Burrows-Wheeler Transform:"), "got: {out}");
+    assert!(out.contains("BWT('banana') = 'annb$aa'"), "got: {out}");
+    assert!(out.contains("-> decode -> 'banana'"), "got: {out}");
+    assert!(out.contains("-> decode -> 'abracadabra'"), "got: {out}");
+    assert!(out.contains("Burrows-Wheeler: reversible transform grouping repeated chars for compression."), "got: {out}");
+}
+
+#[test]
+fn showcase759_rle() {
+    let out = run_ore("showcase759.ore");
+    assert!(out.contains("Run-Length Encoding (RLE):"), "got: {out}");
+    assert!(out.contains("'aaabbc' -> '3a2b1c'"), "got: {out}");
+    assert!(out.contains("'10a' -> 'aaaaaaaaaa'"), "got: {out}");
+    assert!(out.contains("'aaaaaaaaaa' (10 chars) -> '10a' (3 chars): 30%"), "got: {out}");
+    assert!(out.contains("Run-length encoding: lossless compression that replaces consecutive identical chars with count+char."), "got: {out}");
+}
+
+#[test]
+fn showcase760_lempel_ziv() {
+    let out = run_ore("showcase760.ore");
+    assert!(out.contains("Lempel-Ziv Compression Simulation:"), "got: {out}");
+    assert!(out.contains("Token count: 4"), "got: {out}");
+    assert!(out.contains("'aaaa': 4 chars, LZ77=2 tokens, LZ78=3 tokens"), "got: {out}");
+    assert!(out.contains("LZ77: basis for DEFLATE (gzip, PNG, zlib)"), "got: {out}");
+    assert!(out.contains("Lempel-Ziv: dictionary-based compression algorithms achieving near-optimal compression ratios."), "got: {out}");
+}
+
+#[test]
+fn showcase761_astar_pathfinding() {
+    let out = run_ore("showcase761.ore");
+    assert!(out.contains("A* Pathfinding Algorithm:"), "got: {out}");
+    assert!(out.contains("Step 0: (0,0) g=0 h=8 f=8"), "got: {out}");
+    assert!(out.contains("Step 8: (4,4) g=8 h=0 f=8"), "got: {out}");
+    assert!(out.contains("(0,0) -> (0,1) -> (0,2) -> (0,3) -> (1,3) -> (2,3) -> (3,3) -> (3,4) -> (4,4)"), "got: {out}");
+    assert!(out.contains("Path length: 8 steps"), "got: {out}");
+    assert!(out.contains("A* finds optimal path using f=g+h to guide search efficiently."), "got: {out}");
+}
+
+#[test]
+fn showcase762_minimax_alphabeta() {
+    let out = run_ore("showcase762.ore");
+    assert!(out.contains("Minimax with Alpha-Beta Pruning:"), "got: {out}");
+    assert!(out.contains("Leaf values: [3, 5, 2, 9, 1, 7, 4, 6]"), "got: {out}");
+    assert!(out.contains("Minimax result (MAX starts): 6"), "got: {out}");
+    assert!(out.contains("Alpha-beta result (MAX starts): 6"), "got: {out}");
+    assert!(out.contains("Same result as plain minimax: true"), "got: {out}");
+    assert!(out.contains("Minimax with alpha-beta pruning: same result, fewer evaluations."), "got: {out}");
+}
+
+#[test]
+fn showcase763_monte_carlo_pi() {
+    let out = run_ore("showcase763.ore");
+    assert!(out.contains("Monte Carlo Simulation: Pi Estimation"), "got: {out}");
+    assert!(out.contains("n=10: pi ~ 3.2"), "got: {out}");
+    assert!(out.contains("n=10000: pi ~ 3.138"), "got: {out}");
+    assert!(out.contains("Mean estimate: 3.1784"), "got: {out}");
+    assert!(out.contains("Monte Carlo: probabilistic simulation converges to pi with more samples."), "got: {out}");
+}
+
+#[test]
+fn showcase764_simulated_annealing() {
+    let out = run_ore("showcase764.ore");
+    assert!(out.contains("Simulated Annealing:"), "got: {out}");
+    assert!(out.contains("Final x=42, cost=0 (target: x=42, cost=0)"), "got: {out}");
+    assert!(out.contains("Best (x,y)=(3,7), cost=0 (target: (3,7), cost=0)"), "got: {out}");
+    assert!(out.contains("Simulated annealing: probabilistic optimization inspired by metal cooling."), "got: {out}");
+}
+
+#[test]
+fn showcase765_genetic_algorithm() {
+    let out = run_ore("showcase765.ore");
+    assert!(out.contains("Genetic Algorithm (Simple):"), "got: {out}");
+    assert!(out.contains("Fitness: -(x-50)^2 + 2500  (maximized at x=50)"), "got: {out}");
+    assert!(out.contains("Individual 6: x=45, fitness=2475"), "got: {out}");
+    assert!(out.contains("x=50: fitness=2500"), "got: {out}");
+    assert!(out.contains("Genetic algorithm: evolves population toward optimal solution."), "got: {out}");
+}
+
+#[test]
+fn showcase766_ant_colony_optimization() {
+    let out = run_ore("showcase766.ore");
+    assert!(out.contains("Ant Colony Optimization Simulation:"), "got: {out}");
+    assert!(out.contains("City 0: (0, 0)"), "got: {out}");
+    assert!(out.contains("Distance matrix:"), "got: {out}");
+    assert!(out.contains("Best tour length found: 32"), "got: {out}");
+    assert!(out.contains("Ant colony optimization: emergent collective intelligence finds good paths."), "got: {out}");
+}
+
+#[test]
+fn showcase767_particle_swarm() {
+    let out = run_ore("showcase767.ore");
+    assert!(out.contains("Particle Swarm Optimization:"), "got: {out}");
+    assert!(out.contains("Global minimum: f(10,20) = 0"), "got: {out}");
+    assert!(out.contains("P3: (-10,10) f=500"), "got: {out}");
+    assert!(out.contains("Global best position: (10,20)"), "got: {out}");
+    assert!(out.contains("Global best fitness: 0"), "got: {out}");
+    assert!(out.contains("Particle swarm optimization: collective intelligence finds global minimum."), "got: {out}");
+}
+
+#[test]
+fn showcase768_perceptron() {
+    let out = run_ore("showcase768.ore");
+    assert!(out.contains("Neural Network: Single Perceptron"), "got: {out}");
+    assert!(out.contains("Epoch 2: errors=0, w=(2,2), b=-2"), "got: {out}");
+    assert!(out.contains("w0=2, w1=2, bias=-2"), "got: {out}");
+    assert!(out.contains("(1, 1) -> predicted=1, target=1, correct=true"), "got: {out}");
+    assert!(out.contains("OR gate learned in 2 epochs: w=(2,2), b=2"), "got: {out}");
+    assert!(out.contains("Single perceptron: fundamental unit of neural networks, learns linear boundaries."), "got: {out}");
+}
+
+#[test]
+fn showcase769_kmeans() {
+    let out = run_ore("showcase769.ore");
+    assert!(out.contains("K-Means Clustering:"), "got: {out}");
+    assert!(out.contains("Cluster 0 centroid: (5, 4)"), "got: {out}");
+    assert!(out.contains("Cluster 1 centroid: (20, 4)"), "got: {out}");
+    assert!(out.contains("Cluster 2 centroid: (12, 18)"), "got: {out}");
+    assert!(out.contains("Cluster 0: P0, P1, P2, P3, P4"), "got: {out}");
+    assert!(out.contains("K-means clustering: partitions data into k groups by minimizing intra-cluster distance."), "got: {out}");
+}
+
+#[test]
+fn showcase770_decision_tree() {
+    let out = run_ore("showcase770.ore");
+    assert!(out.contains("Decision Tree (Simple):"), "got: {out}");
+    assert!(out.contains("Best split: petal_length < 3, gain=24"), "got: {out}");
+    assert!(out.contains("Accuracy: 10/10 = 100%"), "got: {out}");
+    assert!(out.contains("2/5 class-1: gini=24/50"), "got: {out}");
+    assert!(out.contains("Decision tree: recursive binary splits minimize impurity for classification."), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

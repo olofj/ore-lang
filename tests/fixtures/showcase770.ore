@@ -1,0 +1,132 @@
+-- Showcase 770: Decision Tree (Simple)
+
+fn count_ones arr:List n:Int -> Int
+  -- Count how many elements in first n are 1
+  mut c := 0
+  for i in range(0, n)
+    if arr[i] == 1
+      c = c + 1
+  c
+
+fn gini_impurity ones:Int total:Int -> Int
+  -- Gini impurity * 100 for integer math
+  -- G = 1 - p0^2 - p1^2, scaled to 0-50
+  if total == 0
+    0
+  else
+    p1 := ones * 100 / total
+    p0 := 100 - p1
+    -- G = 1 - (p0/100)^2 - (p1/100)^2
+    -- Scaled: 10000 - p0^2 - p1^2
+    g := 10000 - p0 * p0 - p1 * p1
+    g / 200  -- Normalize to 0-50
+
+fn main
+  print "Decision Tree (Simple):"
+  print ""
+
+  -- Decision tree: classify based on feature thresholds
+  -- Build tree by finding splits that minimize impurity
+
+  -- Dataset: classify iris-like flowers
+  -- Features: petal_length (0-10), petal_width (0-5)
+  -- Labels: 0=setosa, 1=versicolor
+  -- 10 samples
+
+  mut petal_len  := [1, 2, 1, 2, 6, 7, 5, 6, 3, 7]
+  mut petal_wid  := [1, 1, 2, 2, 3, 3, 4, 2, 2, 4]
+  mut labels     := [0, 0, 0, 0, 1, 1, 1, 1, 1, 1]
+  n_samples := 10
+
+  print "=== Dataset (10 samples) ==="
+  print "  petal_len  petal_wid  label"
+  for i in range(0, n_samples)
+    print "  {petal_len[i]}          {petal_wid[i]}          {labels[i]}"
+
+  -- Compute initial impurity (all samples)
+  total_ones := count_ones(labels, n_samples)
+  total_zeros := n_samples - total_ones
+  root_gini := gini_impurity(total_ones, n_samples)
+  print ""
+  print "=== Root Node ==="
+  print "Total samples: {n_samples} (class 0: {total_zeros}, class 1: {total_ones})"
+  print "Root Gini impurity: {root_gini}/50"
+
+  -- Find best split on petal_length
+  print ""
+  print "=== Finding Best Split on petal_length ==="
+  mut thresholds := [2, 3, 4, 5, 6]
+  mut best_thresh := 0
+  mut best_gain := 0
+
+  for t in range(0, 5)
+    thresh := thresholds[t]
+    mut left_ones := 0
+    mut left_n := 0
+    mut right_ones := 0
+    mut right_n := 0
+
+    for i in range(0, n_samples)
+      if petal_len[i] < thresh
+        left_n = left_n + 1
+        if labels[i] == 1
+          left_ones = left_ones + 1
+      else
+        right_n = right_n + 1
+        if labels[i] == 1
+          right_ones = right_ones + 1
+
+    left_g := gini_impurity(left_ones, left_n)
+    right_g := gini_impurity(right_ones, right_n)
+
+    -- Weighted gini
+    weighted := (left_n * left_g + right_n * right_g) / n_samples
+    gain := root_gini - weighted
+
+    print "  thresh={thresh}: left({left_n},ones={left_ones}) g={left_g}, right({right_n},ones={right_ones}) g={right_g}, gain={gain}"
+
+    if gain > best_gain
+      best_gain = gain
+      best_thresh = thresh
+
+  print "  Best split: petal_length < {best_thresh}, gain={best_gain}"
+
+  -- Build tree: root split on petal_length < best_thresh
+  print ""
+  print "=== Decision Tree Structure ==="
+  print "Root: petal_length < {best_thresh}?"
+  print "  YES -> predict class 0 (setosa)"
+  print "  NO  -> check petal_width < 3?"
+  print "    YES -> predict class 1 (versicolor)"
+  print "    NO  -> predict class 1 (versicolor)"
+
+  -- Predict using simple tree
+  print ""
+  print "=== Predictions ==="
+  mut correct := 0
+  for i in range(0, n_samples)
+    mut pred := 0
+    if petal_len[i] < best_thresh
+      pred = 0
+    else
+      pred = 1
+    ok := pred == labels[i]
+    if ok
+      correct = correct + 1
+    print "  P{i}: len={petal_len[i]}, wid={petal_wid[i]} -> pred={pred}, actual={labels[i]}, ok={ok}"
+
+  accuracy := correct * 100 / n_samples
+  print ""
+  print "Accuracy: {correct}/{n_samples} = {accuracy}%"
+
+  print ""
+  print "=== Gini Impurity Examples ==="
+  print "Pure node (all same class): gini=0"
+  print "50-50 split: gini=50/50 (max impurity)"
+  mut test_ones := [0, 1, 2, 3, 4, 5]
+  for i in range(0, 6)
+    g := gini_impurity(test_ones[i], 5)
+    print "  {test_ones[i]}/5 class-1: gini={g}/50"
+
+  print ""
+  print "Decision tree: recursive binary splits minimize impurity for classification."

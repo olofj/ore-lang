@@ -1,0 +1,139 @@
+-- Showcase 764: Simulated Annealing
+
+fn lcg seed:Int -> Int
+  (seed * 1664525 + 1013904223) % 2147483647
+
+fn abs_int x:Int -> Int
+  if x < 0
+    0 - x
+  else
+    x
+
+fn cost x:Int -> Int
+  -- Objective function: minimize |x - 42|
+  -- Global minimum at x=42
+  abs_int(x - 42)
+
+fn cost2 x:Int y:Int -> Int
+  -- 2D function: minimize (x-3)^2 + (y-7)^2
+  dx := x - 3
+  dy := y - 7
+  dx * dx + dy * dy
+
+fn main
+  print "Simulated Annealing:"
+  print ""
+
+  -- Simulated annealing: probabilistic optimization
+  -- Accept worse solutions with probability exp(-delta/T)
+  -- Temperature decreases over time (cooling schedule)
+  -- Escapes local minima unlike pure hill climbing
+
+  print "=== Algorithm ==="
+  print "Start at random solution, set T=high"
+  print "Repeat: perturb solution, compute delta_cost"
+  print "  If delta < 0: always accept (improvement)"
+  print "  If delta >= 0: accept with prob exp(-delta/T)"
+  print "Decrease T by cooling factor each iteration"
+  print ""
+
+  print "=== 1D Minimization: minimize |x - 42| ==="
+  -- Run simulated annealing
+  mut x := 0
+  mut best_x := 0
+  mut best_cost := cost(0)
+  mut seed := 12345
+  -- Temperature schedule
+  mut temp := 100
+  mut iter := 0
+
+  while temp > 1 and iter < 200
+    -- Generate neighbor: x +/- 1..5
+    seed = lcg(seed)
+    step := (seed % 5) + 1
+    seed = lcg(seed)
+    direction := seed % 2
+    mut nx := x + step
+    if direction == 1
+      nx = x - step
+
+    cur_cost := cost(x)
+    new_cost := cost(nx)
+    delta := new_cost - cur_cost
+
+    if delta < 0
+      -- Always accept improvement
+      x = nx
+      if new_cost < best_cost
+        best_cost = new_cost
+        best_x = nx
+    else
+      -- Accept worse with probability based on temp
+      -- Simulate exp(-delta/T): accept if delta < temp/4
+      threshold := temp / 4
+      if delta < threshold
+        x = nx
+
+    -- Cool down every 10 iterations
+    if iter % 10 == 9
+      temp = temp * 4 / 5
+
+    iter = iter + 1
+
+  print "Final x={best_x}, cost={best_cost} (target: x=42, cost=0)"
+  print "Total iterations: {iter}"
+
+  print ""
+  print "=== Temperature Schedule ==="
+  mut t := 100
+  for i in range(0, 8)
+    print "  After {(i+1)*10} iters: T={t}"
+    t = t * 4 / 5
+
+  print ""
+  print "=== 2D Minimization: minimize (x-3)^2 + (y-7)^2 ==="
+  mut x2 := 0
+  mut y2 := 0
+  mut best_x2 := 0
+  mut best_y2 := 0
+  mut best_cost2 := cost2(0, 0)
+  mut seed2 := 99
+  mut temp2 := 200
+  mut iter2 := 0
+
+  while temp2 > 1 and iter2 < 500
+    seed2 = lcg(seed2)
+    dx := (seed2 % 5) - 2
+    seed2 = lcg(seed2)
+    dy := (seed2 % 5) - 2
+    nx2 := x2 + dx
+    ny2 := y2 + dy
+    cur_c := cost2(x2, y2)
+    new_c := cost2(nx2, ny2)
+    delta2 := new_c - cur_c
+    if delta2 < 0
+      x2 = nx2
+      y2 = ny2
+      if new_c < best_cost2
+        best_cost2 = new_c
+        best_x2 = nx2
+        best_y2 = ny2
+    else
+      if delta2 < temp2 / 10
+        x2 = nx2
+        y2 = ny2
+    if iter2 % 20 == 19
+      temp2 = temp2 * 3 / 4
+    iter2 = iter2 + 1
+
+  print "Best (x,y)=({best_x2},{best_y2}), cost={best_cost2} (target: (3,7), cost=0)"
+
+  print ""
+  print "=== Key Properties ==="
+  print "Cooling schedule determines convergence speed vs quality"
+  print "High T: explores widely (random walk)"
+  print "Low T: exploits locally (hill climbing)"
+  print "Guarantees global optimum with slow enough cooling"
+
+  print ""
+  print "Simulated annealing: probabilistic optimization inspired by metal cooling."

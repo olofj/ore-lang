@@ -1,0 +1,150 @@
+-- Showcase 765: Genetic Algorithm (Simple)
+
+fn lcg seed:Int -> Int
+  (seed * 1664525 + 1013904223) % 2147483647
+
+fn fitness x:Int -> Int
+  -- Maximize: -(x-50)^2 + 2500 (peak at x=50, max=2500)
+  -- All values positive so fitness > 0
+  dx := x - 50
+  2500 - dx * dx
+
+fn crossover a:Int b:Int seed:Int -> Int
+  -- Single point crossover on 7-bit integers (0-127)
+  -- Pick random split point, combine bits
+  point := seed % 7
+  -- Mask: bits 0..point from a, rest from b
+  mut mask := 0
+  mut bit := 1
+  for i in range(0, point + 1)
+    mask = mask + bit
+    bit = bit * 2
+  (a % (mask + 1)) + (b - b % (mask + 1))
+
+fn mutate x:Int seed:Int rate:Int -> Int
+  -- Flip a random bit with probability rate/100
+  if seed % 100 < rate
+    bit_pos := seed % 7
+    mut flip := 1
+    for i in range(0, bit_pos)
+      flip = flip * 2
+    -- XOR-like: toggle bit
+    bit_val := (x / flip) % 2
+    if bit_val == 0
+      x + flip
+    else
+      x - flip
+  else
+    x
+
+fn main
+  print "Genetic Algorithm (Simple):"
+  print ""
+
+  -- Genetic algorithm: evolve population to maximize fitness
+  -- Chromosome: integer 0-100, fitness = -(x-50)^2 + 2500
+
+  print "=== Problem Setup ==="
+  print "Chromosome: integer in [0, 100]"
+  print "Fitness: -(x-50)^2 + 2500  (maximized at x=50)"
+  print "Operations: selection, crossover, mutation"
+  print ""
+
+  -- Population of 8 individuals
+  pop_size := 8
+  mut pop := [10, 90, 30, 70, 5, 95, 45, 55]
+
+  print "=== Generation 0 (Initial) ==="
+  mut best_fit := 0
+  mut best_x := 0
+  for i in range(0, pop_size)
+    x := pop[i]
+    f := fitness(x)
+    print "  Individual {i}: x={x}, fitness={f}"
+    if f > best_fit
+      best_fit = f
+      best_x = x
+  print "  Best: x={best_x}, fitness={best_fit}"
+
+  -- Evolve for several generations
+  mut seed := 42
+  mut gen := 1
+
+  while gen < 6
+    -- Selection: tournament (pick best of random pairs)
+    mut new_pop := [0, 0, 0, 0, 0, 0, 0, 0]
+    for i in range(0, pop_size)
+      seed = lcg(seed)
+      a := pop[seed % pop_size]
+      seed = lcg(seed)
+      b := pop[seed % pop_size]
+      if fitness(a) > fitness(b)
+        new_pop[i] = a
+      else
+        new_pop[i] = b
+
+    -- Crossover: pair adjacent individuals
+    mut crossed := [0, 0, 0, 0, 0, 0, 0, 0]
+    for i in range(0, pop_size / 2)
+      seed = lcg(seed)
+      pa := new_pop[i * 2]
+      pb := new_pop[i * 2 + 1]
+      child_a := crossover(pa, pb, seed)
+      child_b := crossover(pb, pa, seed)
+      -- Clamp to [0, 100]
+      mut ca := child_a
+      mut cb := child_b
+      if ca < 0
+        ca = 0
+      if ca > 100
+        ca = 100
+      if cb < 0
+        cb = 0
+      if cb > 100
+        cb = 100
+      crossed[i * 2] = ca
+      crossed[i * 2 + 1] = cb
+
+    -- Mutation: 20% rate
+    for i in range(0, pop_size)
+      seed = lcg(seed)
+      mut mv := mutate(crossed[i], seed, 20)
+      if mv < 0
+        mv = 0
+      if mv > 100
+        mv = 100
+      pop[i] = mv
+
+    -- Find best
+    mut gf := 0
+    mut gx := 0
+    for i in range(0, pop_size)
+      f := fitness(pop[i])
+      if f > gf
+        gf = f
+        gx = pop[i]
+    print "Generation {gen}: best x={gx}, fitness={gf}"
+    gen = gen + 1
+
+  print ""
+  print "=== Final Population ==="
+  mut final_best := 0
+  mut final_x := 0
+  for i in range(0, pop_size)
+    f := fitness(pop[i])
+    if f > final_best
+      final_best = f
+      final_x = pop[i]
+  print "Best individual: x={final_x}, fitness={final_best}"
+  print "Optimal: x=50, fitness=2500"
+
+  print ""
+  print "=== Fitness Landscape ==="
+  mut xs := [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+  for i in range(0, 11)
+    x := xs[i]
+    f := fitness(x)
+    print "  x={x}: fitness={f}"
+
+  print ""
+  print "Genetic algorithm: evolves population toward optimal solution."

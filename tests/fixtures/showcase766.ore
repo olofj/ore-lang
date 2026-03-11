@@ -1,0 +1,149 @@
+-- Showcase 766: Ant Colony Optimization Simulation
+
+fn lcg seed:Int -> Int
+  (seed * 1664525 + 1013904223) % 2147483647
+
+fn dist ax:Int ay:Int bx:Int by:Int -> Int
+  -- Manhattan distance between two points
+  mut dx := ax - bx
+  mut dy := ay - by
+  if dx < 0
+    dx = 0 - dx
+  if dy < 0
+    dy = 0 - dy
+  dx + dy
+
+fn main
+  print "Ant Colony Optimization Simulation:"
+  print ""
+
+  -- ACO: find shortest path in a graph using pheromone trails
+  -- Ants deposit pheromone on good paths, evaporation reduces bad paths
+  -- Problem: TSP on 5 cities
+
+  -- Cities (x, y)
+  mut cx := [0, 4, 8, 6, 2]
+  mut cy := [0, 5, 1, 8, 3]
+  n_cities := 5
+
+  print "=== Problem: 5-City TSP ==="
+  print "Cities:"
+  for i in range(0, n_cities)
+    print "  City {i}: ({cx[i]}, {cy[i]})"
+  print ""
+
+  -- Distance matrix (stored as flat array, 5x5)
+  mut dists := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, n_cities)
+    for j in range(0, n_cities)
+      d := dist(cx[i], cy[i], cx[j], cy[j])
+      dists[i * n_cities + j] = d
+
+  print "Distance matrix:"
+  for i in range(0, n_cities)
+    d0 := dists[i * 5]
+    d1 := dists[i * 5 + 1]
+    d2 := dists[i * 5 + 2]
+    d3 := dists[i * 5 + 3]
+    d4 := dists[i * 5 + 4]
+    print "  City {i}: [{d0}, {d1}, {d2}, {d3}, {d4}]"
+
+  -- Pheromone matrix (scaled x100 for int arithmetic)
+  -- Start with uniform pheromone = 10
+  mut phero := [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+
+  print ""
+  print "=== ACO Simulation (5 ants, 4 iterations) ==="
+
+  mut seed := 17
+  mut iteration := 0
+  mut global_best := 999999
+  mut best_start := 0
+
+  while iteration < 4
+    -- Each ant constructs a tour
+    mut iter_best := 999999
+    mut iter_best_tour := [0, 1, 2, 3, 4]
+
+    for ant in range(0, 5)
+      -- Construct tour greedily weighted by pheromone/distance
+      seed = lcg(seed)
+      start := seed % n_cities
+      mut visited := [false, false, false, false, false]
+      mut tour := [0, 0, 0, 0, 0]
+      tour[0] = start
+      visited[start] = true
+
+      for step in range(1, n_cities)
+        cur := tour[step - 1]
+        -- Find next city: best pheromone/distance ratio among unvisited
+        mut best_next := -1
+        mut best_score := 0
+        for j in range(0, n_cities)
+          if not visited[j]
+            d := dists[cur * n_cities + j]
+            p := phero[cur * n_cities + j]
+            mut score := p * 10
+            if d > 0
+              score = p * 100 / d
+            if best_next < 0 or score > best_score
+              best_score = score
+              best_next = j
+        tour[step] = best_next
+        visited[best_next] = true
+
+      -- Calculate tour length
+      mut tour_len := 0
+      for k in range(0, n_cities - 1)
+        tour_len = tour_len + dists[tour[k] * n_cities + tour[k + 1]]
+      -- Add return to start
+      tour_len = tour_len + dists[tour[n_cities - 1] * n_cities + tour[0]]
+
+      if tour_len < iter_best
+        iter_best = tour_len
+        for k in range(0, n_cities)
+          iter_best_tour[k] = tour[k]
+
+    -- Evaporate pheromone (reduce by 20%)
+    for i in range(0, n_cities * n_cities)
+      phero[i] = phero[i] * 4 / 5
+
+    -- Deposit pheromone on best tour (proportional to 1/length)
+    deposit := 1000 / iter_best
+    for k in range(0, n_cities - 1)
+      a := iter_best_tour[k]
+      b := iter_best_tour[k + 1]
+      phero[a * n_cities + b] = phero[a * n_cities + b] + deposit
+      phero[b * n_cities + a] = phero[b * n_cities + a] + deposit
+    -- Return edge
+    a0 := iter_best_tour[0]
+    an := iter_best_tour[n_cities - 1]
+    phero[an * n_cities + a0] = phero[an * n_cities + a0] + deposit
+    phero[a0 * n_cities + an] = phero[a0 * n_cities + an] + deposit
+
+    t0 := iter_best_tour[0]
+    t1 := iter_best_tour[1]
+    t2 := iter_best_tour[2]
+    t3 := iter_best_tour[3]
+    t4 := iter_best_tour[4]
+    print "  Iter {iteration + 1}: best tour={t0}-{t1}-{t2}-{t3}-{t4}, length={iter_best}"
+
+    if iter_best < global_best
+      global_best = iter_best
+      best_start = iter_best_tour[0]
+
+    iteration = iteration + 1
+
+  print ""
+  print "=== Result ==="
+  print "Best tour length found: {global_best}"
+
+  print ""
+  print "=== ACO Principles ==="
+  print "Pheromone deposit: proportional to 1/tour_length"
+  print "Pheromone evaporation: prevents stagnation"
+  print "Exploration vs exploitation balance"
+  print "Converges to near-optimal solutions"
+
+  print ""
+  print "Ant colony optimization: emergent collective intelligence finds good paths."

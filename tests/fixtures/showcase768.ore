@@ -1,0 +1,123 @@
+-- Showcase 768: Neural Network (Single Perceptron)
+
+fn sign x:Int -> Int
+  -- Step activation function
+  if x >= 0
+    1
+  else
+    -1
+
+fn dot_product w0:Int w1:Int x0:Int x1:Int bias:Int -> Int
+  -- Compute weighted sum + bias
+  w0 * x0 + w1 * x1 + bias
+
+fn perceptron_predict w0:Int w1:Int bias:Int x0:Int x1:Int -> Int
+  -- Predict output: sign(w.x + b)
+  s := dot_product(w0, w1, x0, x1, bias)
+  sign(s)
+
+fn main
+  print "Neural Network: Single Perceptron"
+  print ""
+
+  -- Perceptron: simplest neural network
+  -- Single neuron: y = sign(w1*x1 + w2*x2 + b)
+  -- Learns linear decision boundary via perceptron learning rule
+  -- Update: w = w + lr * (target - prediction) * x
+
+  print "=== Perceptron Architecture ==="
+  print "Inputs: x1, x2"
+  print "Weights: w1, w2, bias b"
+  print "Output: y = sign(w1*x1 + w2*x2 + b)"
+  print "Learning rule: w += lr*(target-pred)*x"
+  print ""
+
+  -- Task: Learn AND gate
+  -- Training data: (x1, x2, target)
+  -- AND: output 1 only when both inputs are 1
+  mut x0s := [-1, -1, 1, 1]
+  mut x1s := [-1, 1, -1, 1]
+  mut targets := [-1, -1, -1, 1]
+  n_samples := 4
+
+  print "=== Task: Learn AND Gate ==="
+  print "Training data (using +1/-1 encoding):"
+  for i in range(0, n_samples)
+    print "  ({x0s[i]}, {x1s[i]}) -> {targets[i]}"
+  print ""
+
+  -- Initialize weights to 0
+  mut w0 := 0
+  mut w1 := 0
+  mut b := 0
+  lr := 1  -- Learning rate
+
+  print "=== Training (max 20 epochs) ==="
+  mut epoch := 0
+  mut converged := false
+
+  while epoch < 20 and not converged
+    mut errors := 0
+    for i in range(0, n_samples)
+      pred := perceptron_predict(w0, w1, b, x0s[i], x1s[i])
+      delta := targets[i] - pred
+      if delta != 0
+        errors = errors + 1
+        -- Weight update
+        w0 = w0 + lr * delta * x0s[i]
+        w1 = w1 + lr * delta * x1s[i]
+        b = b + lr * delta
+    if errors == 0
+      converged = true
+    if epoch < 5 or epoch % 5 == 4 or converged
+      print "  Epoch {epoch + 1}: errors={errors}, w=({w0},{w1}), b={b}"
+    epoch = epoch + 1
+
+  print ""
+  print "=== Final Weights ==="
+  print "w0={w0}, w1={w1}, bias={b}"
+
+  print ""
+  print "=== Testing AND Gate ==="
+  for i in range(0, n_samples)
+    pred := perceptron_predict(w0, w1, b, x0s[i], x1s[i])
+    correct := pred == targets[i]
+    print "  ({x0s[i]}, {x1s[i]}) -> predicted={pred}, target={targets[i]}, correct={correct}"
+
+  -- Also test OR gate
+  print ""
+  print "=== Training OR Gate ==="
+  mut or_targets := [-1, 1, 1, 1]
+  mut ow0 := 0
+  mut ow1 := 0
+  mut ob := 0
+  mut oepoch := 0
+  mut oconv := false
+
+  while oepoch < 20 and not oconv
+    mut oerr := 0
+    for i in range(0, n_samples)
+      pred := perceptron_predict(ow0, ow1, ob, x0s[i], x1s[i])
+      delta := or_targets[i] - pred
+      if delta != 0
+        oerr = oerr + 1
+        ow0 = ow0 + lr * delta * x0s[i]
+        ow1 = ow1 + lr * delta * x1s[i]
+        ob = ob + lr * delta
+    if oerr == 0
+      oconv = true
+    oepoch = oepoch + 1
+
+  print "OR gate learned in {oepoch} epochs: w=({ow0},{ow1}), b={ob}"
+  for i in range(0, n_samples)
+    pred := perceptron_predict(ow0, ow1, ob, x0s[i], x1s[i])
+    print "  ({x0s[i]}, {x1s[i]}) -> {pred} (target {or_targets[i]})"
+
+  print ""
+  print "=== Perceptron Limitations ==="
+  print "Can only learn linearly separable functions"
+  print "AND and OR: linearly separable (perceptron works)"
+  print "XOR: NOT linearly separable (requires multi-layer network)"
+
+  print ""
+  print "Single perceptron: fundamental unit of neural networks, learns linear boundaries."

@@ -1,0 +1,125 @@
+-- Showcase 769: K-Means Clustering
+
+fn sq_dist ax:Int ay:Int bx:Int by:Int -> Int
+  -- Squared Euclidean distance
+  dx := ax - bx
+  dy := ay - by
+  dx * dx + dy * dy
+
+fn assign_cluster cx0:Int cy0:Int cx1:Int cy1:Int cx2:Int cy2:Int px:Int py:Int -> Int
+  -- Assign point to nearest centroid (k=3)
+  d0 := sq_dist(px, py, cx0, cy0)
+  d1 := sq_dist(px, py, cx1, cy1)
+  d2 := sq_dist(px, py, cx2, cy2)
+  if d0 < d1 and d0 < d2
+    0
+  else if d1 < d2
+    1
+  else
+    2
+
+fn main
+  print "K-Means Clustering:"
+  print ""
+
+  -- K-means: partition n points into k clusters
+  -- Algorithm: initialize centroids, assign points, update centroids, repeat
+
+  -- Dataset: 12 points in 3 natural clusters
+  -- Cluster A: around (5, 5)
+  -- Cluster B: around (20, 5)
+  -- Cluster C: around (12, 18)
+  mut px := [4, 6, 5, 7, 3, 19, 21, 20, 18, 22, 11, 13]
+  mut py := [4, 6, 3, 5, 6, 4, 6, 5, 3, 5, 17, 19]
+  n_points := 12
+
+  print "=== Dataset (12 points, 3 natural clusters) ==="
+  print "Points:"
+  for i in range(0, n_points)
+    print "  P{i}: ({px[i]}, {py[i]})"
+
+  -- Initial centroids (k=3)
+  -- Start with points 0, 5, 10
+  mut cx := [4, 19, 11]
+  mut cy := [4, 4, 17]
+  k := 3
+
+  print ""
+  print "Initial centroids:"
+  for i in range(0, k)
+    print "  C{i}: ({cx[i]}, {cy[i]})"
+
+  -- K-means iterations
+  mut iteration := 0
+  mut changed := true
+
+  print ""
+  print "=== K-Means Iterations ==="
+
+  while iteration < 10 and changed
+    -- Assignment step
+    mut assignments := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for i in range(0, n_points)
+      a := assign_cluster(cx[0], cy[0], cx[1], cy[1], cx[2], cy[2], px[i], py[i])
+      assignments[i] = a
+
+    -- Update step: compute new centroids
+    mut sum_x := [0, 0, 0]
+    mut sum_y := [0, 0, 0]
+    mut counts := [0, 0, 0]
+    for i in range(0, n_points)
+      c := assignments[i]
+      sum_x[c] = sum_x[c] + px[i]
+      sum_y[c] = sum_y[c] + py[i]
+      counts[c] = counts[c] + 1
+
+    -- Check for convergence and update centroids
+    changed = false
+    for c in range(0, k)
+      if counts[c] > 0
+        new_cx := sum_x[c] / counts[c]
+        new_cy := sum_y[c] / counts[c]
+        if new_cx != cx[c] or new_cy != cy[c]
+          changed = true
+        cx[c] = new_cx
+        cy[c] = new_cy
+
+    -- Print iteration info
+    a0 := assignments[0]
+    a5 := assignments[5]
+    a10 := assignments[10]
+    print "  Iter {iteration + 1}: C0=({cx[0]},{cy[0]}) C1=({cx[1]},{cy[1]}) C2=({cx[2]},{cy[2]})"
+    print "    P0->C{a0}, P5->C{a5}, P10->C{a10}, counts=[{counts[0]},{counts[1]},{counts[2]}]"
+
+    iteration = iteration + 1
+
+  print ""
+  print "=== Final Clusters ==="
+  for c in range(0, k)
+    print "  Cluster {c} centroid: ({cx[c]}, {cy[c]})"
+  print ""
+  mut final_assignments := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, n_points)
+    a := assign_cluster(cx[0], cy[0], cx[1], cy[1], cx[2], cy[2], px[i], py[i])
+    final_assignments[i] = a
+  for c in range(0, k)
+    mut members := ""
+    for i in range(0, n_points)
+      if final_assignments[i] == c
+        if members == ""
+          members = "P{i}"
+        else
+          members = "{members}, P{i}"
+    print "  Cluster {c}: {members}"
+
+  print ""
+  print "=== Algorithm Summary ==="
+  print "1. Initialize k centroids"
+  print "2. Assign each point to nearest centroid"
+  print "3. Recompute centroids as cluster means"
+  print "4. Repeat until convergence"
+  print "Complexity: O(n*k*iterations)"
+  print "Converged in {iteration} iterations"
+
+  print ""
+  print "K-means clustering: partitions data into k groups by minimizing intra-cluster distance."
