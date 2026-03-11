@@ -299,6 +299,26 @@ pub extern "C" fn ore_str_char_at(s: *mut OreStr, idx: i64) -> *mut OreStr {
     }
 }
 
+/// Get the ASCII/Unicode codepoint of the first character of a string.
+#[no_mangle]
+pub extern "C" fn ore_ord(s: *mut OreStr) -> i64 {
+    if s.is_null() { return 0; }
+    let str_val = unsafe { (*s).as_str() };
+    str_val.chars().next().map_or(0, |c| c as i64)
+}
+
+/// Create a single-character string from a codepoint.
+#[no_mangle]
+pub extern "C" fn ore_chr(code: i64) -> *mut OreStr {
+    if let Some(c) = char::from_u32(code as u32) {
+        let mut buf = [0u8; 4];
+        let s = c.encode_utf8(&mut buf);
+        ore_str_new(s.as_ptr(), s.len() as u32)
+    } else {
+        ore_str_new(std::ptr::null(), 0)
+    }
+}
+
 /// Split a string by newlines, returning a list of lines.
 #[no_mangle]
 pub extern "C" fn ore_str_lines(s: *mut OreStr) -> *mut OreList {

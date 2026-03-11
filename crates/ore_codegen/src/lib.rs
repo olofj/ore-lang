@@ -736,6 +736,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_trim_end", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_lines", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_char_at", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        self.module.add_function("ore_ord", i64_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_chr", ptr_type.fn_type(&[i64_type.into()], false), ext);
         self.module.add_function("ore_str_capitalize", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_split", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_str_to_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
@@ -1712,6 +1714,78 @@ impl<'ctx> CodeGen<'ctx> {
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
                     }
+                    "str" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "str takes 1 argument".into() });
+                        }
+                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                        let str_val = self.value_to_str(val, kind)?;
+                        return Ok((str_val.into(), ValKind::Str));
+                    }
+                    "int" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "int takes 1 argument".into() });
+                        }
+                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                        match kind {
+                            ValKind::Int => return Ok((val, ValKind::Int)),
+                            ValKind::Float => {
+                                let i = bld!(self.builder.build_float_to_signed_int(val.into_float_value(), self.context.i64_type(), "ftoi"))?;
+                                return Ok((i.into(), ValKind::Int));
+                            }
+                            ValKind::Bool => {
+                                let i = bld!(self.builder.build_int_z_extend(val.into_int_value(), self.context.i64_type(), "btoi"))?;
+                                return Ok((i.into(), ValKind::Int));
+                            }
+                            ValKind::Str => {
+                                let rt = self.module.get_function("ore_str_to_int").unwrap();
+                                let result = bld!(self.builder.build_call(rt, &[val.into()], "stoi"))?;
+                                let v = self.call_result_to_value(result)?;
+                                return Ok((v, ValKind::Int));
+                            }
+                            _ => return Err(CodeGenError { line: None, msg: "int() cannot convert this type".into() }),
+                        }
+                    }
+                    "float" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "float takes 1 argument".into() });
+                        }
+                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                        match kind {
+                            ValKind::Float => return Ok((val, ValKind::Float)),
+                            ValKind::Int => {
+                                let f = bld!(self.builder.build_signed_int_to_float(val.into_int_value(), self.context.f64_type(), "itof"))?;
+                                return Ok((f.into(), ValKind::Float));
+                            }
+                            ValKind::Str => {
+                                let rt = self.module.get_function("ore_str_to_float").unwrap();
+                                let result = bld!(self.builder.build_call(rt, &[val.into()], "stof"))?;
+                                let v = self.call_result_to_value(result)?;
+                                return Ok((v, ValKind::Float));
+                            }
+                            _ => return Err(CodeGenError { line: None, msg: "float() cannot convert this type".into() }),
+                        }
+                    }
+                    "ord" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "ord takes 1 argument (string)".into() });
+                        }
+                        let str_val = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_ord").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[str_val.into()], "ord"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Int));
+                    }
+                    "chr" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "chr takes 1 argument (int)".into() });
+                        }
+                        let int_val = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_chr").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[int_val.into()], "chr"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val.into(), ValKind::Str));
+                    }
                     "type_of" => {
                         if args.len() != 1 {
                             return Err(CodeGenError { line: None, msg: "type_of takes 1 argument".into() });
@@ -1779,61 +1853,6 @@ impl<'ctx> CodeGen<'ctx> {
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Int);
                         return Ok((val, ValKind::List));
-                    }
-                    "int" => {
-                        if args.len() != 1 {
-                            return Err(CodeGenError { line: None, msg: "int() takes 1 argument".into() });
-                        }
-                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                        let result = match kind {
-                            ValKind::Int => val,
-                            ValKind::Float => {
-                                bld!(self.builder.build_float_to_signed_int(
-                                    val.into_float_value(), self.context.i64_type(), "ftoi"
-                                ))?.into()
-                            }
-                            ValKind::Bool => {
-                                bld!(self.builder.build_int_z_extend(
-                                    val.into_int_value(), self.context.i64_type(), "btoi"
-                                ))?.into()
-                            }
-                            ValKind::Str => {
-                                let rt = self.module.get_function("ore_str_to_int").unwrap();
-                                let r = bld!(self.builder.build_call(rt, &[val.into()], "stoi"))?;
-                                self.call_result_to_value(r)?
-                            }
-                            _ => val,
-                        };
-                        return Ok((result, ValKind::Int));
-                    }
-                    "float" => {
-                        if args.len() != 1 {
-                            return Err(CodeGenError { line: None, msg: "float() takes 1 argument".into() });
-                        }
-                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                        let result = match kind {
-                            ValKind::Float => val,
-                            ValKind::Int => {
-                                bld!(self.builder.build_signed_int_to_float(
-                                    val.into_int_value(), self.context.f64_type(), "itof"
-                                ))?.into()
-                            }
-                            ValKind::Str => {
-                                let rt = self.module.get_function("ore_str_to_float").unwrap();
-                                let r = bld!(self.builder.build_call(rt, &[val.into()], "stof"))?;
-                                self.call_result_to_value(r)?
-                            }
-                            _ => val,
-                        };
-                        return Ok((result, ValKind::Float));
-                    }
-                    "str" => {
-                        if args.len() != 1 {
-                            return Err(CodeGenError { line: None, msg: "str() takes 1 argument".into() });
-                        }
-                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                        let str_ptr = self.value_to_str(val, kind)?;
-                        return Ok((str_ptr.into(), ValKind::Str));
                     }
                     "len" => {
                         if args.len() != 1 {

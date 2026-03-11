@@ -521,9 +521,9 @@ impl TypeChecker {
                         match name.as_str() {
                             "print" | "readln" => return Type::Str,
                             "abs" | "min" | "max" => return Type::Int,
-                            "int" | "len" => return Type::Int,
+                            "int" | "len" | "ord" => return Type::Int,
                             "float" => return Type::Float,
-                            "str" => return Type::Str,
+                            "str" | "chr" => return Type::Str,
                             "file_read" => return Type::Str,
                             "file_read_lines" => return Type::List(Box::new(Type::Str)),
                             "file_write" | "file_append" => return Type::Bool,

@@ -1482,3 +1482,13 @@ fn showcase24() {
     assert!(out.contains("6820"));  // fib(10) + fib(20) = 55 + 6765
     assert!(out.contains("Sum of squares 1..5: 55"));
 }
+
+#[test]
+fn strings_ord_chr() {
+    let out = run_ore("strings/ord_chr.ore");
+    assert!(out.contains("65\n"));
+    assert!(out.contains("97\n"));
+    assert!(out.contains("A\n"));
+    assert!(out.contains("a\n"));
+    assert!(out.contains("HIJKL"));
+}

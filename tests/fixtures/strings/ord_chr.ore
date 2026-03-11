@@ -1,0 +1,18 @@
+-- Test ord() and chr() builtins
+fn main
+  -- ord returns character code
+  print ord("A")
+  print ord("a")
+  print ord("0")
+  print ord(" ")
+  
+  -- chr returns single-char string
+  print chr(65)
+  print chr(97)
+  print chr(48)
+  
+  -- Build string from codes
+  mut result := ""
+  for i in 0..5
+    result = result + chr(72 + i)
+  print result
