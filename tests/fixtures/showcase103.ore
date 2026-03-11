@@ -1,0 +1,51 @@
+-- Showcase 103: Complex pipelines and data transformation
+
+fn is_palindrome s:Str -> Bool
+  reversed := s.reverse()
+  s == reversed
+
+fn caesar_char ch:Str shift:Int -> Str
+  code := ord(ch)
+  if code >= 65 and code <= 90
+    chr(((code - 65 + shift) % 26) + 65)
+  else if code >= 97 and code <= 122
+    chr(((code - 97 + shift) % 26) + 97)
+  else
+    ch
+
+fn caesar text:Str shift:Int -> Str
+  mut result := ""
+  for i in range(0, text.len())
+    ch := text.char_at(i)
+    result = result + caesar_char(ch, shift)
+  result
+
+fn main
+  -- Palindrome check
+  words := ["racecar", "hello", "madam", "world", "level"]
+  for w in words
+    label := if is_palindrome(w) then "yes" else "no"
+    print "  {w}: {label}"
+
+  -- Caesar cipher
+  print ""
+  msg := "Hello World"
+  encrypted := caesar(msg, 3)
+  decrypted := caesar(encrypted, 23)
+  print "original:  {msg}"
+  print "encrypted: {encrypted}"
+  print "decrypted: {decrypted}"
+
+  -- Complex pipeline: word frequency analysis
+  print ""
+  text := "the cat sat on the mat the cat ate the rat"
+  words2 := text.split(" ")
+  freq := words2.frequencies()
+  for key, val in freq
+    print "  {key}: {val}"
+
+  -- Pipeline: top 3 most frequent
+  print ""
+  print "word count: {words2.len()}"
+  unique_words := words2.unique()
+  print "unique words: {unique_words.len()}"

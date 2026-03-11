@@ -2460,6 +2460,30 @@ fn showcase102_multiline_match_logic() {
 }
 
 #[test]
+fn showcase103_pipelines_transformation() {
+    let out = run_ore("showcase103.ore");
+    assert!(out.contains("racecar: yes"));
+    assert!(out.contains("hello: no"));
+    assert!(out.contains("encrypted: Khoor Zruog"));
+    assert!(out.contains("decrypted: Hello World"));
+    assert!(out.contains("the: 4"));
+    assert!(out.contains("word count: 11"));
+    assert!(out.contains("unique words: 7"));
+}
+
+#[test]
+fn showcase104_advanced_tests() {
+    let path = fixtures_dir().join("showcase104.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore test");
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("6 passed, 0 failed"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

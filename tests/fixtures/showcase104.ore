@@ -1,0 +1,68 @@
+-- Showcase 104: Advanced testing with ore test
+
+fn fib n:Int -> Int
+  if n < 2
+    n
+  else
+    fib(n - 1) + fib(n - 2)
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    false
+  else
+    mut i := 2
+    mut prime := true
+    while i * i <= n
+      if n % i == 0
+        prime = false
+        break
+      i = i + 1
+    prime
+
+test "fibonacci sequence"
+  assert_eq fib(0), 0
+  assert_eq fib(1), 1
+  assert_eq fib(5), 5
+  assert_eq fib(10), 55
+  assert_eq fib(15), 610
+
+test "primality testing"
+  assert is_prime(2)
+  assert is_prime(3)
+  assert not is_prime(4)
+  assert is_prime(5)
+  assert not is_prime(6)
+  assert is_prime(7)
+  assert not is_prime(9)
+  assert is_prime(97)
+  assert not is_prime(100)
+
+test "list operations"
+  nums := range(1, 11)
+  assert_eq nums.len(), 10
+  assert_eq nums.sum(), 55
+  assert_eq nums.filter(n => n % 2 == 0).sum(), 30
+  assert_eq nums.map(n => n * n).sum(), 385
+
+test "string transformations"
+  s := "Hello, World!"
+  assert_eq s.to_upper(), "HELLO, WORLD!"
+  assert_eq s.replace("World", "Ore"), "Hello, Ore!"
+  assert_eq s.split(",").len(), 2
+  assert s.contains("World")
+  assert s.starts_with("Hello")
+
+test "pipeline correctness"
+  result := range(1, 21)
+    .filter(n => n % 2 == 0)
+    .map(n => n * n)
+    .filter(n => n < 100)
+    .sum()
+  assert_eq result, 120
+
+test "map operations"
+  m := {"x": "10", "y": "20", "z": "30"}
+  assert_eq m.len(), 3
+  assert m.contains("x")
+  assert_eq m["x"], "10"
+  assert_eq m.get_or("w", "0"), "0"
