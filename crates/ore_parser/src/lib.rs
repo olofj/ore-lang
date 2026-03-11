@@ -574,6 +574,8 @@ impl Parser {
             }
             Token::Assert => {
                 self.advance();
+                let has_parens = self.peek() == &Token::LParen;
+                if has_parens { self.advance(); }
                 let cond = self.parse_expr(0)?;
                 let message = if self.peek() == &Token::Comma {
                     self.advance();
@@ -584,10 +586,13 @@ impl Parser {
                 } else {
                     None
                 };
+                if has_parens { self.expect(&Token::RParen)?; }
                 Ok(Stmt::Expr(Expr::Assert { cond: Box::new(cond), message }))
             }
             Token::AssertEq => {
                 self.advance();
+                let has_parens = self.peek() == &Token::LParen;
+                if has_parens { self.advance(); }
                 let left = self.parse_expr(0)?;
                 self.expect(&Token::Comma)?;
                 let right = self.parse_expr(0)?;
@@ -600,10 +605,13 @@ impl Parser {
                 } else {
                     None
                 };
+                if has_parens { self.expect(&Token::RParen)?; }
                 Ok(Stmt::Expr(Expr::AssertEq { left: Box::new(left), right: Box::new(right), message }))
             }
             Token::AssertNe => {
                 self.advance();
+                let has_parens = self.peek() == &Token::LParen;
+                if has_parens { self.advance(); }
                 let left = self.parse_expr(0)?;
                 self.expect(&Token::Comma)?;
                 let right = self.parse_expr(0)?;
@@ -616,6 +624,7 @@ impl Parser {
                 } else {
                     None
                 };
+                if has_parens { self.expect(&Token::RParen)?; }
                 Ok(Stmt::Expr(Expr::AssertNe { left: Box::new(left), right: Box::new(right), message }))
             }
             Token::Mut => {
