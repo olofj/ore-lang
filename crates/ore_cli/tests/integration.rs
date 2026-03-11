@@ -7808,6 +7808,169 @@ fn showcase600_grand_finale() {
 }
 
 #[test]
+fn showcase601_symbolic_math() {
+    let out = run_ore("showcase601.ore");
+    assert!(out.contains("Symbolic Math Simplification:"));
+    assert!(out.contains("Rule: x + 0 = x applied to expr 6"));
+    assert!(out.contains("Rule: x * 1 = x applied to expr 7"));
+    assert!(out.contains("Rule: x * 0 = 0 applied to expr 8"));
+    assert!(out.contains("Rule: constant fold 3 + 5 = 8 for expr 9"));
+    assert!(out.contains("Rule: constant fold 3 * 5 = 15 for expr 10"));
+    assert!(out.contains("Total rules applied: 6"));
+    assert!(out.contains("Expr 6 evaluates to: 7"));
+    assert!(out.contains("Expr 9 evaluates to: 8"));
+    assert!(out.contains("Expr 10 evaluates to: 15"));
+    assert!(out.contains("Nodes saved: 10"));
+    assert!(out.contains("Symbolic math: expression trees, simplification rules, constant folding, evaluation."));
+}
+
+#[test]
+fn showcase602_chord_protocol() {
+    let out = run_ore("showcase602.ore");
+    assert!(out.contains("Chord Protocol Simulation:"));
+    assert!(out.contains("Ring size: 64"));
+    assert!(out.contains("Nodes: 3, 10, 21, 32, 45, 56"));
+    assert!(out.contains("Node 3 -> successor: Node 10"));
+    assert!(out.contains("Node 56 -> successor: Node 3"));
+    assert!(out.contains("Key 5 -> responsible Node 10"));
+    assert!(out.contains("Key 50 -> responsible Node 56"));
+    assert!(out.contains("Hops taken: 5"));
+    assert!(out.contains("Route: 3 -> 10 -> 21 -> 32 -> 45 -> 56"));
+    assert!(out.contains("Joining Node 28"));
+    assert!(out.contains("Position: between Node 21 and Node 32"));
+    assert!(out.contains("Node 32 has failed!"));
+    assert!(out.contains("Max arc gap: 13"));
+    assert!(out.contains("Chord: ring topology, finger tables, key lookup, node join, failure detection."));
+}
+
+#[test]
+fn showcase603_bytecode_verifier() {
+    let out = run_ore("showcase603.ore");
+    assert!(out.contains("Bytecode Verifier:"));
+    assert!(out.contains("0: PUSH 10"));
+    assert!(out.contains("9: HALT"));
+    assert!(out.contains("Max stack depth: 2"));
+    assert!(out.contains("Stack analysis: PASS"));
+    assert!(out.contains("HALT found at position 9"));
+    assert!(out.contains("Program has HALT: PASS"));
+    assert!(out.contains("STORE to var[0] at 7: defined"));
+    assert!(out.contains("LOAD from var[0] at 8: OK (defined)"));
+    assert!(out.contains("Stack top: 180"));
+    assert!(out.contains("Var[0]: 180"));
+    assert!(out.contains("Verdict: VERIFIED"));
+    assert!(out.contains("Bytecode verifier: stack analysis, type checking, control flow, variable tracking."));
+}
+
+#[test]
+fn showcase604_reservoir_computing() {
+    let out = run_ore("showcase604.ore");
+    assert!(out.contains("Reservoir Computing Simulation:"));
+    assert!(out.contains("Reservoir size: 6"));
+    assert!(out.contains("t=0: state=[2, -1, 3, 0, -2, 1]"));
+    assert!(out.contains("Readout weights: 3, -2, 1, 4, -1, 2"));
+    assert!(out.contains("Mean absolute error: 4"));
+    assert!(out.contains("Non-zero connections: 18"));
+    assert!(out.contains("Sparsity: 50%"));
+    assert!(out.contains("Reservoir computing: fixed reservoir, state evolution, readout training, memory capacity."));
+}
+
+#[test]
+fn showcase605_lsm_tree() {
+    let out = run_ore("showcase605.ore");
+    assert!(out.contains("LSM Tree Simulation:"));
+    assert!(out.contains("Insert key=15 val=100 -> memtable size=1"));
+    assert!(out.contains("Flushed 4 entries to SSTable-0"));
+    assert!(out.contains("SSTable-0 range: [3, 23]"));
+    assert!(out.contains("Lookup key=7: found val=200 in SSTable-0"));
+    assert!(out.contains("Lookup key=99: NOT FOUND"));
+    assert!(out.contains("Lookup key=18: found val=800 in SSTable-1"));
+    assert!(out.contains("Merged SSTable (level 1): 8 entries"));
+    assert!(out.contains("Bloom filter: 12/16 bits set"));
+    assert!(out.contains("Key range: 3 to 25 (span=22)"));
+    assert!(out.contains("LSM tree: memtable, SSTable flush, compaction, bloom filter, point lookup."));
+}
+
+#[test]
+fn showcase606_model_checker() {
+    let out = run_ore("showcase606.ore");
+    assert!(out.contains("Model Checker Simulation:"));
+    assert!(out.contains("Reachable states: 4/4"));
+    assert!(out.contains("Safety: NS and EW never both green -> PASS"));
+    assert!(out.contains("Safety: At least one direction always red -> PASS"));
+    assert!(out.contains("Liveness: All states reachable from initial state -> PASS"));
+    assert!(out.contains("Liveness: Returns to initial state in 4 steps -> PASS"));
+    assert!(out.contains("AG(!(ns_green & ew_green)): SATISFIED"));
+    assert!(out.contains("EF(ns_green): SATISFIED"));
+    assert!(out.contains("Mutual exclusion: VERIFIED"));
+    assert!(out.contains("Properties checked: 6"));
+    assert!(out.contains("Properties satisfied: 6"));
+    assert!(out.contains("Properties violated: 0"));
+    assert!(out.contains("Model checker: state space, safety, liveness, CTL, mutual exclusion."));
+}
+
+#[test]
+fn showcase607_wavelet_tree() {
+    let out = run_ore("showcase607.ore");
+    assert!(out.contains("Wavelet Tree Simulation:"));
+    assert!(out.contains("Sequence: 3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9"));
+    assert!(out.contains("rank(1, 4) = 2"));
+    assert!(out.contains("rank(5, 10) = 2"));
+    assert!(out.contains("rank(9, 15) = 3"));
+    assert!(out.contains("select(5, 2) = position 8"));
+    assert!(out.contains("select(9, 3) = position 14"));
+    assert!(out.contains("access(0) = 3 (original: 3)"));
+    assert!(out.contains("access(5) = 9 (original: 9)"));
+    assert!(out.contains("freq(5, [4,12)) = 3"));
+    assert!(out.contains("quantile(1, [2,10)) = 1"));
+    assert!(out.contains("Distinct values: 9"));
+    assert!(out.contains("Most frequent: 5 (3 times)"));
+    assert!(out.contains("Wavelet tree: rank, select, access, range frequency, quantile queries."));
+}
+
+#[test]
+fn showcase608_proof_assistant() {
+    let out = run_ore("showcase608.ore");
+    assert!(out.contains("Proof Assistant Simulation:"));
+    assert!(out.contains("Verification: VALID (checked all 8 valuations)"));
+    assert!(out.contains("De Morgan's Law: VERIFIED"));
+    assert!(out.contains("Contrapositive: VERIFIED"));
+    assert!(out.contains("Resolution proof: VALID"));
+    assert!(out.contains("Theorems proved: 4"));
+    assert!(out.contains("Proof assistant: propositional logic, truth tables, modus ponens, De Morgan, resolution."));
+}
+
+#[test]
+fn showcase609_crdts() {
+    let out = run_ore("showcase609.ore");
+    assert!(out.contains("CRDT Simulation:"));
+    assert!(out.contains("Merged state: [3, 5, 2] total=10"));
+    assert!(out.contains("Counter value: 6"));
+    assert!(out.contains("Winner: Replica 1 with value=\"world\" at t=25"));
+    assert!(out.contains("Merged set: apple, banana, cherry, date"));
+    assert!(out.contains("Alive elements: 3"));
+    assert!(out.contains("A || B (concurrent)"));
+    assert!(out.contains("merge(A,B): [3, 4, 1]"));
+    assert!(out.contains("merge(A,B) == C: true"));
+    assert!(out.contains("All CRDTs converge without coordination"));
+    assert!(out.contains("CRDTs: G-Counter, PN-Counter, LWW-Register, G-Set, OR-Set, vector clocks."));
+}
+
+#[test]
+fn showcase610_quantum_computing() {
+    let out = run_ore("showcase610.ore");
+    assert!(out.contains("Quantum Computing Simulation:"));
+    assert!(out.contains("X|0> = (0,0)|0> + (1000,0)|1> = |1>"));
+    assert!(out.contains("Z|+> = (707,0)|0> + (-707,0)|1> = |->"));
+    assert!(out.contains("H|0> = (707,0)|0> + (707,0)|1> ~ |+>"));
+    assert!(out.contains("P(|00>) = 49%"));
+    assert!(out.contains("P(|11>) = 49%"));
+    assert!(out.contains("This is a Bell state: (|00> + |11>)/sqrt(2)"));
+    assert!(out.contains("Entangled: measuring one qubit determines the other"));
+    assert!(out.contains("Norm check: 1000000 (should be 1000000)"));
+    assert!(out.contains("Quantum computing: qubits, gates, measurement, entanglement, teleportation."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,190 @@
+-- Showcase 610: Simple Quantum Computing Concepts
+
+fn main
+  print "Quantum Computing Simulation:"
+  print ""
+
+  -- Simulate quantum concepts using integer arithmetic (x1000 fixed-point)
+  -- |0> = (1000, 0), |1> = (0, 1000)
+  -- Amplitudes stored as (real*1000, imag*1000) pairs
+
+  -- Part 1: Qubit states
+  print "=== Part 1: Qubit States ==="
+  -- |0> state
+  mut q0_r0 := 1000
+  mut q0_i0 := 0
+  mut q0_r1 := 0
+  mut q0_i1 := 0
+  print "  |0> = ({q0_r0}, {q0_i0})|0> + ({q0_r1}, {q0_i1})|1>"
+
+  -- |1> state
+  mut q1_r0 := 0
+  mut q1_i0 := 0
+  mut q1_r1 := 1000
+  mut q1_i1 := 0
+  print "  |1> = ({q1_r0}, {q1_i0})|0> + ({q1_r1}, {q1_i1})|1>"
+
+  -- |+> = (|0> + |1>) / sqrt(2) ~ (707, 707)
+  mut qp_r0 := 707
+  mut qp_i0 := 0
+  mut qp_r1 := 707
+  mut qp_i1 := 0
+  print "  |+> = ({qp_r0}, {qp_i0})|0> + ({qp_r1}, {qp_i1})|1>"
+
+  -- |-> = (|0> - |1>) / sqrt(2)
+  mut qm_r0 := 707
+  mut qm_i0 := 0
+  mut qm_r1 := -707
+  mut qm_i1 := 0
+  print "  |-> = ({qm_r0}, {qm_i0})|0> + ({qm_r1}, {qm_i1})|1>"
+
+  -- Part 2: Quantum gates
+  print ""
+  print "=== Part 2: Quantum Gates ==="
+
+  -- Pauli-X gate (NOT): swaps |0> and |1> amplitudes
+  print "  X gate (NOT):"
+  -- Apply X to |0>
+  mut xr0 := q0_r1
+  mut xi0 := q0_i1
+  mut xr1 := q0_r0
+  mut xi1 := q0_i0
+  print "    X|0> = ({xr0},{xi0})|0> + ({xr1},{xi1})|1> = |1>"
+
+  -- Pauli-Z gate: |0> -> |0>, |1> -> -|1>
+  print "  Z gate:"
+  mut zr0 := qp_r0
+  mut zi0 := qp_i0
+  mut zr1 := 0 - qp_r1
+  mut zi1 := 0 - qp_i1
+  print "    Z|+> = ({zr0},{zi0})|0> + ({zr1},{zi1})|1> = |->"
+
+  -- Hadamard gate: H = (1/sqrt(2))[[1,1],[1,-1]]
+  print "  H gate (Hadamard):"
+  -- Apply H to |0>: -> |+>
+  mut hr0 := (q0_r0 + q0_r1) * 707 / 1000
+  mut hi0 := (q0_i0 + q0_i1) * 707 / 1000
+  mut hr1 := (q0_r0 - q0_r1) * 707 / 1000
+  mut hi1 := (q0_i0 - q0_i1) * 707 / 1000
+  print "    H|0> = ({hr0},{hi0})|0> + ({hr1},{hi1})|1> ~ |+>"
+
+  -- Apply H to |+>: -> |0>
+  mut h2r0 := (qp_r0 + qp_r1) * 707 / 1000
+  mut h2i0 := (qp_i0 + qp_i1) * 707 / 1000
+  mut h2r1 := (qp_r0 - qp_r1) * 707 / 1000
+  mut h2i1 := (qp_i0 - qp_i1) * 707 / 1000
+  print "    H|+> = ({h2r0},{h2i0})|0> + ({h2r1},{h2i1})|1> ~ |0>"
+
+  -- Part 3: Measurement probabilities
+  print ""
+  print "=== Part 3: Measurement ==="
+  -- Probability = |amplitude|^2 / 1000000 (since amplitudes are x1000)
+  -- For |+>: P(0) = 707^2 / 1000000 = 499849/1000000 ~ 50%
+  p0 := qp_r0 * qp_r0 + qp_i0 * qp_i0
+  p1 := qp_r1 * qp_r1 + qp_i1 * qp_i1
+  -- Scale to percentage
+  p0_pct := p0 / 10000
+  p1_pct := p1 / 10000
+  print "  |+> measurement:"
+  print "    P(|0>) = {p0_pct}%"
+  print "    P(|1>) = {p1_pct}%"
+
+  -- For |0>: P(0) = 100%, P(1) = 0%
+  p0_0 := q0_r0 * q0_r0 + q0_i0 * q0_i0
+  p0_0_pct := p0_0 / 10000
+  print "  |0> measurement:"
+  print "    P(|0>) = {p0_0_pct}%"
+
+  -- Part 4: Two-qubit system
+  print ""
+  print "=== Part 4: Two-Qubit System ==="
+  -- |00>, |01>, |10>, |11> basis states
+  -- Start with |00>
+  mut tq := [1000, 0, 0, 0]
+  print "  Initial |00>: [{tq[0]}, {tq[1]}, {tq[2]}, {tq[3]}]"
+
+  -- Apply H to first qubit: |00> -> (|0>+|1>)/sqrt(2) x |0> = (|00>+|10>)/sqrt(2)
+  mut tq_new := [0, 0, 0, 0]
+  -- H on qubit 0: pairs (00,10) and (01,11)
+  tq_new[0] = (tq[0] + tq[2]) * 707 / 1000
+  tq_new[1] = (tq[1] + tq[3]) * 707 / 1000
+  tq_new[2] = (tq[0] - tq[2]) * 707 / 1000
+  tq_new[3] = (tq[1] - tq[3]) * 707 / 1000
+  print "  After H on q0: [{tq_new[0]}, {tq_new[1]}, {tq_new[2]}, {tq_new[3]}]"
+
+  -- Apply CNOT (control=q0, target=q1): |10> -> |11>
+  mut tq_cnot := [tq_new[0], tq_new[1], tq_new[3], tq_new[2]]
+  print "  After CNOT: [{tq_cnot[0]}, {tq_cnot[1]}, {tq_cnot[2]}, {tq_cnot[3]}]"
+  print "  This is a Bell state: (|00> + |11>)/sqrt(2)"
+
+  -- Part 5: Bell state measurement
+  print ""
+  print "=== Part 5: Bell State ==="
+  bp00 := tq_cnot[0] * tq_cnot[0] / 10000
+  bp01 := tq_cnot[1] * tq_cnot[1] / 10000
+  bp10 := tq_cnot[2] * tq_cnot[2] / 10000
+  bp11 := tq_cnot[3] * tq_cnot[3] / 10000
+  print "  P(|00>) = {bp00}%"
+  print "  P(|01>) = {bp01}%"
+  print "  P(|10>) = {bp10}%"
+  print "  P(|11>) = {bp11}%"
+  print "  Entangled: measuring one qubit determines the other"
+
+  -- Part 6: Quantum teleportation protocol
+  print ""
+  print "=== Part 6: Teleportation Protocol ==="
+  print "  Alice wants to send |psi> = 800|0> + 600|1>"
+  psi_r0 := 800
+  psi_r1 := 600
+  -- Verify normalization: 800^2 + 600^2 = 640000 + 360000 = 1000000
+  norm := psi_r0 * psi_r0 + psi_r1 * psi_r1
+  print "  Norm check: {norm} (should be 1000000)"
+  print "  Protocol:"
+  print "    1. Alice and Bob share Bell pair (|00>+|11>)/sqrt(2)"
+  print "    2. Alice applies CNOT(psi, her_bell_qubit)"
+  print "    3. Alice applies H to psi"
+  print "    4. Alice measures both qubits (2 classical bits)"
+  print "    5. Bob applies corrections based on classical bits"
+  print "    6. Bob has |psi>"
+  print "  Result: state transferred without moving qubit"
+
+  -- Part 7: Simple quantum circuit
+  print ""
+  print "=== Part 7: Quantum Circuit ==="
+  print "  Circuit: H -> S -> T -> H (on single qubit)"
+  -- Start |0>
+  mut cr0 := 1000
+  mut ci0 := 0
+  mut cr1 := 0
+  mut ci1 := 0
+  print "  Start: ({cr0}+{ci0}i)|0> + ({cr1}+{ci1}i)|1>"
+
+  -- H gate
+  mut nr0 := (cr0 + cr1) * 707 / 1000
+  mut ni0 := (ci0 + ci1) * 707 / 1000
+  mut nr1 := (cr0 - cr1) * 707 / 1000
+  mut ni1 := (ci0 - ci1) * 707 / 1000
+  cr0 = nr0
+  ci0 = ni0
+  cr1 = nr1
+  ci1 = ni1
+  print "  After H: ({cr0}+{ci0}i)|0> + ({cr1}+{ci1}i)|1>"
+
+  -- S gate: |1> -> i|1> (multiply |1> component by i)
+  -- (a+bi)*i = -b+ai
+  nr1 = 0 - ci1
+  ni1 = cr1
+  cr1 = nr1
+  ci1 = ni1
+  print "  After S: ({cr0}+{ci0}i)|0> + ({cr1}+{ci1}i)|1>"
+
+  -- Part 8: Summary
+  print ""
+  print "=== Part 8: Summary ==="
+  print "  Qubits simulated: single and two-qubit"
+  print "  Gates: X, Z, H, CNOT, S"
+  print "  Concepts: superposition, entanglement, measurement"
+  print "  Protocols: Bell states, teleportation"
+
+  print ""
+  print "Quantum computing: qubits, gates, measurement, entanglement, teleportation."

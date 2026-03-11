@@ -1,0 +1,154 @@
+-- Showcase 604: Reservoir Computing Concepts
+
+fn main
+  print "Reservoir Computing Simulation:"
+  print ""
+
+  -- Reservoir computing: a recurrent neural network approach
+  -- Input -> Reservoir (fixed random weights) -> Readout (trained)
+
+  -- Part 1: Reservoir setup
+  print "=== Part 1: Reservoir Setup ==="
+  reservoir_size := 6
+  -- Reservoir weights (scaled integers, divide by 10 for actual)
+  -- 6x6 adjacency matrix stored flat
+  mut weights := [0, 3, -2, 0, 1, 0, -1, 0, 4, 0, 0, 2, 0, -3, 0, 2, 0, -1, 3, 0, -1, 0, 4, 0, 0, 2, 0, -2, 0, 3, -2, 0, 1, 0, -3, 0]
+
+  print "  Reservoir size: {reservoir_size}"
+  print "  Weight matrix (x10):"
+  for i in range(0, reservoir_size)
+    mut row_str := "    "
+    for j in range(0, reservoir_size)
+      w := weights[i * reservoir_size + j]
+      if w >= 0
+        row_str = row_str + " " + str(w)
+      else
+        row_str = row_str + str(w)
+      row_str = row_str + " "
+    print row_str
+
+  -- Part 2: Input signal
+  print ""
+  print "=== Part 2: Input Signal ==="
+  mut input_signal := [10, 5, -3, 8, -2, 7, 1, -6, 4, 9]
+  num_steps := 10
+  -- Input weights (connecting input to reservoir nodes)
+  mut input_weights := [2, -1, 3, 0, -2, 1]
+
+  print "  Input signal: {input_signal | join(", ")}"
+  print "  Input weights: {input_weights | join(", ")}"
+
+  -- Part 3: Reservoir state evolution
+  print ""
+  print "=== Part 3: State Evolution ==="
+  mut state := [0, 0, 0, 0, 0, 0]
+  -- Store all states for readout
+  mut all_states := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  for t in range(0, num_steps)
+    inp := input_signal[t]
+    mut new_state := [0, 0, 0, 0, 0, 0]
+
+    for i in range(0, reservoir_size)
+      -- Compute weighted sum from reservoir connections
+      mut sum := 0
+      for j in range(0, reservoir_size)
+        sum = sum + weights[i * reservoir_size + j] * state[j]
+      -- Add input contribution
+      sum = sum + input_weights[i] * inp
+      -- Simple activation: clamp to [-100, 100] (tanh approximation)
+      val := sum / 10
+      if val > 100
+        new_state[i] = 100
+      else if val < -100
+        new_state[i] = -100
+      else
+        new_state[i] = val
+
+    -- Update state
+    for i in range(0, reservoir_size)
+      state[i] = new_state[i]
+      all_states[t * reservoir_size + i] = state[i]
+
+    print "  t={t}: state=[{state | join(", ")}]"
+
+  -- Part 4: Readout layer
+  print ""
+  print "=== Part 4: Readout Layer ==="
+  -- Readout weights (learned, but we'll set them manually)
+  mut readout_weights := [3, -2, 1, 4, -1, 2]
+  print "  Readout weights: {readout_weights | join(", ")}"
+
+  mut predictions := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for t in range(0, num_steps)
+    mut pred := 0
+    for i in range(0, reservoir_size)
+      pred = pred + readout_weights[i] * all_states[t * reservoir_size + i]
+    predictions[t] = pred / 10
+    print "  t={t}: prediction={predictions[t]}"
+
+  -- Part 5: Training error
+  print ""
+  print "=== Part 5: Training Error ==="
+  -- Target signal (shifted input for prediction task)
+  mut targets := [5, -3, 8, -2, 7, 1, -6, 4, 9, 0]
+  mut total_error := 0
+  for t in range(0, num_steps)
+    diff := predictions[t] - targets[t]
+    mut abs_diff := diff
+    if abs_diff < 0
+      abs_diff = 0 - abs_diff
+    total_error = total_error + abs_diff
+    print "  t={t}: pred={predictions[t]} target={targets[t]} error={abs_diff}"
+
+  mean_error := total_error / num_steps
+  print "  Mean absolute error: {mean_error}"
+
+  -- Part 6: Reservoir properties
+  print ""
+  print "=== Part 6: Reservoir Properties ==="
+  -- Count non-zero connections (sparsity)
+  mut connections := 0
+  total_possible := reservoir_size * reservoir_size
+  for i in range(0, total_possible)
+    if weights[i] != 0
+      connections = connections + 1
+  print "  Non-zero connections: {connections}"
+  print "  Total possible: {total_possible}"
+  sparsity_pct := (total_possible - connections) * 100 / total_possible
+  print "  Sparsity: {sparsity_pct}%"
+
+  -- Spectral radius approximation (max row sum)
+  mut max_row_sum := 0
+  for i in range(0, reservoir_size)
+    mut row_sum := 0
+    for j in range(0, reservoir_size)
+      w := weights[i * reservoir_size + j]
+      if w < 0
+        row_sum = row_sum - w
+      else
+        row_sum = row_sum + w
+    if row_sum > max_row_sum
+      max_row_sum = row_sum
+  print "  Max row sum (x10): {max_row_sum}"
+
+  -- Part 7: Memory capacity test
+  print ""
+  print "=== Part 7: Memory Capacity ==="
+  -- Check how well reservoir remembers past inputs
+  -- Compare current state with input from k steps ago
+  for delay in range(1, 4)
+    mut corr := 0
+    mut count := 0
+    for t in range(delay, num_steps)
+      past_input := input_signal[t - delay]
+      pred := predictions[t]
+      -- Simple correlation: same sign?
+      if (past_input > 0 and pred > 0) or (past_input < 0 and pred < 0) or (past_input == 0 and pred == 0)
+        corr = corr + 1
+      count = count + 1
+    pct := corr * 100 / count
+    print "  Delay {delay}: {corr}/{count} sign matches ({pct}%)"
+
+  print ""
+  print "Reservoir computing: fixed reservoir, state evolution, readout training, memory capacity."

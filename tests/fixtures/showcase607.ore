@@ -1,0 +1,165 @@
+-- Showcase 607: Wavelet Tree Data Structure
+
+fn main
+  print "Wavelet Tree Simulation:"
+  print ""
+
+  -- Wavelet tree: supports rank, select, and access queries on sequences
+  -- Alphabet: integers 0-7 (3-bit), sequence stored via bit planes
+
+  -- Part 1: Input sequence
+  print "=== Part 1: Input Sequence ==="
+  mut seq := [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9]
+  n := 15
+  print "  Sequence: {seq | join(", ")}"
+  print "  Length: {n}"
+  print "  Alphabet: 0-9"
+
+  -- Part 2: Build wavelet tree (bit-plane decomposition)
+  print ""
+  print "=== Part 2: Bit-Plane Decomposition ==="
+  -- For a simple wavelet tree over 0-9, we use 4 bit planes (bits 0-3)
+  -- Bit plane b: for each position, extract bit b of the value
+  num_bits := 4
+
+  -- Store bit planes
+  mut plane0 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut plane1 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut plane2 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut plane3 := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  for i in range(0, n)
+    v := seq[i]
+    -- Extract bits
+    plane0[i] = v % 2
+    plane1[i] = (v / 2) % 2
+    plane2[i] = (v / 4) % 2
+    plane3[i] = (v / 8) % 2
+
+  print "  Bit plane 0 (LSB): {plane0 | join("")}"
+  print "  Bit plane 1:       {plane1 | join("")}"
+  print "  Bit plane 2:       {plane2 | join("")}"
+  print "  Bit plane 3 (MSB): {plane3 | join("")}"
+
+  -- Part 3: Rank queries - rank(c, i) = count of c in seq[0..i]
+  print ""
+  print "=== Part 3: Rank Queries ==="
+  -- Count occurrences of each value up to position i
+  mut query_vals := [1, 5, 9, 3]
+  mut query_pos := [4, 10, 15, 8]
+  num_queries := 4
+
+  for q in range(0, num_queries)
+    target := query_vals[q]
+    pos := query_pos[q]
+    mut count := 0
+    for i in range(0, pos)
+      if seq[i] == target
+        count = count + 1
+    print "  rank({target}, {pos}) = {count}"
+
+  -- Part 4: Select queries - select(c, k) = position of k-th occurrence of c
+  print ""
+  print "=== Part 4: Select Queries ==="
+  mut sel_vals := [5, 9, 1]
+  mut sel_k := [2, 3, 1]
+  num_sel := 3
+
+  for q in range(0, num_sel)
+    target := sel_vals[q]
+    k := sel_k[q]
+    mut count := 0
+    mut found_pos := -1
+    for i in range(0, n)
+      if seq[i] == target
+        count = count + 1
+        if count == k and found_pos == -1
+          found_pos = i
+    if found_pos >= 0
+      print "  select({target}, {k}) = position {found_pos}"
+    else
+      print "  select({target}, {k}) = NOT FOUND"
+
+  -- Part 5: Access query - just seq[i], but verify through bit planes
+  print ""
+  print "=== Part 5: Access via Bit Planes ==="
+  mut access_pos := [0, 2, 5, 11, 14]
+  num_access := 5
+
+  for q in range(0, num_access)
+    pos := access_pos[q]
+    -- Reconstruct value from bit planes
+    val := plane0[pos] + plane1[pos] * 2 + plane2[pos] * 4 + plane3[pos] * 8
+    print "  access({pos}) = {val} (original: {seq[pos]})"
+
+  -- Part 6: Range frequency - count of value c in range [l, r)
+  print ""
+  print "=== Part 6: Range Frequency ==="
+  mut rf_c := [5, 9, 1]
+  mut rf_l := [4, 10, 0]
+  mut rf_r := [12, 15, 5]
+  num_rf := 3
+
+  for q in range(0, num_rf)
+    c := rf_c[q]
+    l := rf_l[q]
+    r := rf_r[q]
+    mut count := 0
+    for i in range(l, r)
+      if seq[i] == c
+        count = count + 1
+    print "  freq({c}, [{l},{r})) = {count}"
+
+  -- Part 7: Quantile query (k-th smallest in range)
+  print ""
+  print "=== Part 7: Quantile Query ==="
+  -- Find k-th smallest in seq[2..10]
+  l := 2
+  r := 10
+  -- Extract subarray and sort
+  mut sub := [0, 0, 0, 0, 0, 0, 0, 0]
+  sub_len := r - l
+  for i in range(0, sub_len)
+    sub[i] = seq[l + i]
+
+  -- Simple bubble sort
+  for i in range(0, sub_len)
+    for j in range(0, sub_len - 1 - i)
+      if sub[j] > sub[j + 1]
+        tmp := sub[j]
+        sub[j] = sub[j + 1]
+        sub[j + 1] = tmp
+
+  print "  Subarray seq[{l}..{r}]: sorted = {sub | take(sub_len) | join(", ")}"
+  for k in range(1, 4)
+    val := sub[k - 1]
+    print "  quantile({k}, [{l},{r})) = {val}"
+
+  -- Part 8: Statistics
+  print ""
+  print "=== Part 8: Statistics ==="
+  -- Frequency distribution
+  mut freq := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, n)
+    v := seq[i]
+    freq[v] = freq[v] + 1
+
+  mut distinct := 0
+  mut most_freq := 0
+  mut most_freq_val := 0
+  for v in range(0, 10)
+    if freq[v] > 0
+      distinct = distinct + 1
+      print "  Value {v}: {freq[v]} occurrences"
+      if freq[v] > most_freq
+        most_freq = freq[v]
+        most_freq_val = v
+
+  print "  Distinct values: {distinct}"
+  print "  Most frequent: {most_freq_val} ({most_freq} times)"
+  print "  Bits per element: {num_bits}"
+  total_bits := n * num_bits
+  print "  Total storage: {total_bits} bits"
+
+  print ""
+  print "Wavelet tree: rank, select, access, range frequency, quantile queries."

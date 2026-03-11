@@ -1,0 +1,197 @@
+-- Showcase 606: Simple Model Checker
+
+fn main
+  print "Model Checker Simulation:"
+  print ""
+
+  -- Model checking: verify properties of finite-state systems
+  -- We'll model a simple traffic light controller and verify properties
+
+  -- Part 1: State machine definition
+  print "=== Part 1: State Machine ==="
+  -- States: 0=RedNS_GreenEW, 1=RedNS_YellowEW, 2=GreenNS_RedEW, 3=YellowNS_RedEW
+  mut state_names := ["Red-NS/Green-EW", "Red-NS/Yellow-EW", "Green-NS/Red-EW", "Yellow-NS/Red-EW"]
+  num_states := 4
+
+  -- Transition table: each state has exactly one successor
+  mut transitions := [1, 2, 3, 0]
+
+  for i in range(0, num_states)
+    next := transitions[i]
+    print "  {state_names[i]} -> {state_names[next]}"
+
+  -- Part 2: State space exploration (BFS)
+  print ""
+  print "=== Part 2: State Space Exploration ==="
+  mut visited := [0, 0, 0, 0]
+  mut queue := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut q_front := 0
+  mut q_back := 0
+
+  -- Start from state 0
+  queue[q_back] = 0
+  q_back = q_back + 1
+  visited[0] = 1
+  mut reachable := 0
+
+  while q_front < q_back
+    s := queue[q_front]
+    q_front = q_front + 1
+    reachable = reachable + 1
+    print "  Visited state: {state_names[s]}"
+
+    next := transitions[s]
+    if visited[next] == 0
+      visited[next] = 1
+      queue[q_back] = next
+      q_back = q_back + 1
+
+  print "  Reachable states: {reachable}/{num_states}"
+
+  -- Part 3: Safety property - "NS and EW never both green"
+  print ""
+  print "=== Part 3: Safety Properties ==="
+  -- NS green in states: 2, 3(yellow but not red)
+  -- EW green in states: 0
+  -- Check: no state has both NS_green and EW_green
+  mut ns_green := [0, 0, 1, 0]
+  mut ew_green := [1, 0, 0, 0]
+  mut safety_ok := true
+
+  for i in range(0, num_states)
+    if ns_green[i] == 1 and ew_green[i] == 1
+      print "  VIOLATION: Both directions green in state {state_names[i]}"
+      safety_ok = false
+
+  if safety_ok
+    print "  Safety: NS and EW never both green -> PASS"
+
+  -- Check: red is always present for at least one direction
+  mut always_one_red := true
+  mut ns_red := [1, 1, 0, 0]
+  mut ew_red := [0, 0, 1, 1]
+  for i in range(0, num_states)
+    if ns_red[i] == 0 and ew_red[i] == 0
+      always_one_red = false
+  if always_one_red
+    print "  Safety: At least one direction always red -> PASS"
+
+  -- Part 4: Liveness property - "every state is eventually reached"
+  print ""
+  print "=== Part 4: Liveness Properties ==="
+  mut all_reachable := true
+  for i in range(0, num_states)
+    if visited[i] == 0
+      print "  State {state_names[i]} is NOT reachable"
+      all_reachable = false
+  if all_reachable
+    print "  Liveness: All states reachable from initial state -> PASS"
+
+  -- Check: system always returns to initial state (cycle detection)
+  mut current := 0
+  mut steps := 0
+  mut returned := false
+  for s in range(0, num_states + 1)
+    if s > 0
+      current = transitions[current]
+      steps = steps + 1
+      if current == 0
+        returned = true
+  if returned
+    print "  Liveness: Returns to initial state in {steps} steps -> PASS"
+
+  -- Part 5: CTL formula checking
+  print ""
+  print "=== Part 5: CTL Properties ==="
+  -- AG(not(ns_green AND ew_green)) - "always globally, never both green"
+  mut ag_safe := true
+  -- Check all reachable states
+  for i in range(0, num_states)
+    if ns_green[i] == 1 and ew_green[i] == 1
+      ag_safe = false
+  if ag_safe
+    print "  AG(!(ns_green & ew_green)): SATISFIED"
+
+  -- EF(ns_green) - "there exists a path where NS eventually becomes green"
+  mut ef_ns_green := false
+  current = 0
+  for s in range(0, num_states)
+    if ns_green[current] == 1
+      ef_ns_green = true
+    current = transitions[current]
+  if ef_ns_green
+    print "  EF(ns_green): SATISFIED"
+
+  -- AG(EF(initial)) - "from every state, can reach initial"
+  -- Since it's a cycle, this is trivially true
+  print "  AG(EF(state_0)): SATISFIED (cyclic system)"
+
+  -- Part 6: Extended model - mutual exclusion
+  print ""
+  print "=== Part 6: Mutual Exclusion Model ==="
+  -- Two processes trying to enter critical section
+  -- States: (p1_state, p2_state) where each is 0=idle, 1=trying, 2=critical
+  -- Encoded as p1*3 + p2
+  mut me_names := ["idle-idle", "idle-try", "idle-crit", "try-idle", "try-try", "try-crit", "crit-idle", "crit-try", "crit-crit"]
+
+  -- Check: state (2,2) = crit-crit should never be reachable
+  -- Transitions from a simple mutex protocol
+  mut me_trans := [3, 3, 1, 6, 5, 4, 0, 0, 0]
+  mut me_visited := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut me_queue := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut me_qf := 0
+  mut me_qb := 0
+
+  me_queue[me_qb] = 0
+  me_qb = me_qb + 1
+  me_visited[0] = 1
+  mut me_states_found := 0
+  mut mutex_violation := false
+
+  while me_qf < me_qb
+    s := me_queue[me_qf]
+    me_qf = me_qf + 1
+    me_states_found = me_states_found + 1
+
+    if s == 8
+      mutex_violation = true
+
+    next := me_trans[s]
+    if me_visited[next] == 0
+      me_visited[next] = 1
+      me_queue[me_qb] = next
+      me_qb = me_qb + 1
+
+  print "  Reachable states: {me_states_found}"
+  for i in range(0, 9)
+    if me_visited[i] == 1
+      print "    {me_names[i]}: reachable"
+  if mutex_violation
+    print "  Mutual exclusion: VIOLATED"
+  else
+    print "  Mutual exclusion: VERIFIED"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Verification Summary ==="
+  mut total_checks := 6
+  mut passed := 0
+  if safety_ok
+    passed = passed + 1
+  if always_one_red
+    passed = passed + 1
+  if all_reachable
+    passed = passed + 1
+  if returned
+    passed = passed + 1
+  if ag_safe
+    passed = passed + 1
+  if mutex_violation == false
+    passed = passed + 1
+
+  print "  Properties checked: {total_checks}"
+  print "  Properties satisfied: {passed}"
+  print "  Properties violated: {total_checks - passed}"
+
+  print ""
+  print "Model checker: state space, safety, liveness, CTL, mutual exclusion."

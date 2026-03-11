@@ -1,0 +1,247 @@
+-- Showcase 608: Simple Proof Assistant
+
+fn main
+  print "Proof Assistant Simulation:"
+  print ""
+
+  -- Simple propositional logic proof checker
+  -- Propositions encoded as integers, formulas as trees
+
+  -- Part 1: Proposition definitions
+  print "=== Part 1: Propositions ==="
+  -- Formula types: 0=Var, 1=Not, 2=And, 3=Or, 4=Implies, 5=True, 6=False
+  mut f_type := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut f_left := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut f_right := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut f_name := ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+  mut num_formulas := 0
+
+  -- f0: P (variable)
+  f_type[0] = 0
+  f_name[0] = "P"
+  num_formulas = 1
+
+  -- f1: Q (variable)
+  f_type[1] = 0
+  f_name[1] = "Q"
+  num_formulas = 2
+
+  -- f2: R (variable)
+  f_type[2] = 0
+  f_name[2] = "R"
+  num_formulas = 3
+
+  -- f3: P -> Q (implies)
+  f_type[3] = 4
+  f_left[3] = 0
+  f_right[3] = 1
+  f_name[3] = "P -> Q"
+  num_formulas = 4
+
+  -- f4: Q -> R (implies)
+  f_type[4] = 4
+  f_left[4] = 1
+  f_right[4] = 2
+  f_name[4] = "Q -> R"
+  num_formulas = 5
+
+  -- f5: P -> R (implies, goal)
+  f_type[5] = 4
+  f_left[5] = 0
+  f_right[5] = 2
+  f_name[5] = "P -> R"
+  num_formulas = 6
+
+  -- f6: P AND Q
+  f_type[6] = 2
+  f_left[6] = 0
+  f_right[6] = 1
+  f_name[6] = "P AND Q"
+  num_formulas = 7
+
+  -- f7: NOT P
+  f_type[7] = 1
+  f_left[7] = 0
+  f_name[7] = "NOT P"
+  num_formulas = 8
+
+  -- f8: P OR Q
+  f_type[8] = 3
+  f_left[8] = 0
+  f_right[8] = 1
+  f_name[8] = "P OR Q"
+  num_formulas = 9
+
+  for i in range(0, num_formulas)
+    print "  F{i}: {f_name[i]} (type={f_type[i]})"
+
+  -- Part 2: Truth table evaluation
+  print ""
+  print "=== Part 2: Truth Table ==="
+  print "  P | Q | R | P->Q | Q->R | P->R | P&Q | !P | P|Q"
+  print "  --|---|---|------|------|------|-----|----|----|"
+
+  for p in range(0, 2)
+    for q in range(0, 2)
+      for r in range(0, 2)
+        -- Evaluate each formula
+        -- P->Q: not p or q
+        mut pq := 1
+        if p == 1 and q == 0
+          pq = 0
+        -- Q->R
+        mut qr := 1
+        if q == 1 and r == 0
+          qr = 0
+        -- P->R
+        mut pr := 1
+        if p == 1 and r == 0
+          pr = 0
+        -- P AND Q
+        mut pand := 0
+        if p == 1 and q == 1
+          pand = 1
+        -- NOT P
+        notp := 1 - p
+        -- P OR Q
+        mut porq := 0
+        if p == 1 or q == 1
+          porq = 1
+        print "  {p} | {q} | {r} |   {pq}  |   {qr}  |   {pr}  |  {pand}  | {notp}  |  {porq}"
+
+  -- Part 3: Proof by modus ponens
+  print ""
+  print "=== Part 3: Proof - Hypothetical Syllogism ==="
+  print "  Given: P -> Q, Q -> R"
+  print "  Prove: P -> R"
+  print ""
+  print "  Proof:"
+  print "  1. P -> Q          [assumption]"
+  print "  2. Q -> R          [assumption]"
+  print "  3. Assume P        [hypothesis]"
+  print "  4. Q               [modus ponens: 1, 3]"
+  print "  5. R               [modus ponens: 2, 4]"
+  print "  6. P -> R          [discharge hypothesis 3]"
+  print "  QED"
+
+  -- Verify: check that whenever P->Q and Q->R are both true, P->R is true
+  mut valid := true
+  for p in range(0, 2)
+    for q in range(0, 2)
+      for r in range(0, 2)
+        mut pq := 1
+        if p == 1 and q == 0
+          pq = 0
+        mut qr := 1
+        if q == 1 and r == 0
+          qr = 0
+        mut pr := 1
+        if p == 1 and r == 0
+          pr = 0
+        if pq == 1 and qr == 1 and pr == 0
+          valid = false
+  if valid
+    print "  Verification: VALID (checked all 8 valuations)"
+
+  -- Part 4: Proof of De Morgan's Law
+  print ""
+  print "=== Part 4: De Morgan's Law ==="
+  print "  Prove: NOT(P AND Q) <-> (NOT P) OR (NOT Q)"
+
+  mut demorgan_valid := true
+  for p in range(0, 2)
+    for q in range(0, 2)
+      -- NOT(P AND Q)
+      mut pand := 0
+      if p == 1 and q == 1
+        pand = 1
+      lhs := 1 - pand
+
+      -- (NOT P) OR (NOT Q)
+      notp := 1 - p
+      notq := 1 - q
+      mut rhs := 0
+      if notp == 1 or notq == 1
+        rhs = 1
+
+      if lhs != rhs
+        demorgan_valid = false
+      print "  P={p} Q={q}: NOT(P&Q)={lhs}, (!P)|(!Q)={rhs} -> {lhs == rhs}"
+
+  if demorgan_valid
+    print "  De Morgan's Law: VERIFIED"
+
+  -- Part 5: Proof of contrapositive
+  print ""
+  print "=== Part 5: Contrapositive ==="
+  print "  Prove: (P -> Q) <-> (NOT Q -> NOT P)"
+
+  mut contra_valid := true
+  for p in range(0, 2)
+    for q in range(0, 2)
+      -- P -> Q
+      mut pq := 1
+      if p == 1 and q == 0
+        pq = 0
+      -- NOT Q -> NOT P
+      notp := 1 - p
+      notq := 1 - q
+      mut nqnp := 1
+      if notq == 1 and notp == 0
+        nqnp = 0
+
+      if pq != nqnp
+        contra_valid = false
+      print "  P={p} Q={q}: (P->Q)={pq}, (!Q->!P)={nqnp} -> {pq == nqnp}"
+
+  if contra_valid
+    print "  Contrapositive: VERIFIED"
+
+  -- Part 6: Resolution proof
+  print ""
+  print "=== Part 6: Resolution ==="
+  print "  Clauses:"
+  print "    C1: P OR Q"
+  print "    C2: NOT P OR R"
+  print "    C3: NOT Q OR R"
+  print "  Resolve C1 with C2 on P: Q OR R"
+  print "  Resolve (Q OR R) with C3 on Q: R OR R = R"
+  print "  Derived: R"
+
+  -- Verify: if all clauses true, R must be true
+  mut resolution_valid := true
+  for p in range(0, 2)
+    for q in range(0, 2)
+      for r in range(0, 2)
+        mut c1 := 0
+        if p == 1 or q == 1
+          c1 = 1
+        mut c2 := 0
+        if p == 0 or r == 1
+          c2 = 1
+        mut c3 := 0
+        if q == 0 or r == 1
+          c3 = 1
+        if c1 == 1 and c2 == 1 and c3 == 1 and r == 0
+          resolution_valid = false
+
+  if resolution_valid
+    print "  Resolution proof: VALID"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  mut proofs := 0
+  if valid
+    proofs = proofs + 1
+  if demorgan_valid
+    proofs = proofs + 1
+  if contra_valid
+    proofs = proofs + 1
+  if resolution_valid
+    proofs = proofs + 1
+  print "  Theorems proved: {proofs}"
+  print "  Methods: truth tables, modus ponens, resolution"
+
+  print ""
+  print "Proof assistant: propositional logic, truth tables, modus ponens, De Morgan, resolution."

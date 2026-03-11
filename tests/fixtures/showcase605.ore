@@ -1,0 +1,225 @@
+-- Showcase 605: Log-Structured Merge Tree (LSM Tree)
+
+fn main
+  print "LSM Tree Simulation:"
+  print ""
+
+  -- LSM tree: write-optimized data structure
+  -- Components: memtable (in-memory), sstables (on disk), compaction
+
+  -- Part 1: Memtable (sorted in-memory buffer)
+  print "=== Part 1: Memtable ==="
+  memtable_capacity := 4
+  mut mt_keys := [0, 0, 0, 0]
+  mut mt_vals := [0, 0, 0, 0]
+  mut mt_size := 0
+
+  -- Insert into memtable (insertion sort to keep sorted)
+  mut inserts := [15, 7, 23, 3]
+  mut insert_vals := [100, 200, 300, 400]
+
+  for i in range(0, 4)
+    key := inserts[i]
+    val := insert_vals[i]
+    -- Find insert position
+    mut pos := mt_size
+    for j in range(0, mt_size)
+      if mt_keys[j] > key and pos == mt_size
+        pos = j
+    -- Shift elements right
+    mut j := mt_size
+    while j > pos
+      mt_keys[j] = mt_keys[j - 1]
+      mt_vals[j] = mt_vals[j - 1]
+      j = j - 1
+    mt_keys[pos] = key
+    mt_vals[pos] = val
+    mt_size = mt_size + 1
+    print "  Insert key={key} val={val} -> memtable size={mt_size}"
+
+  print "  Memtable contents:"
+  for i in range(0, mt_size)
+    print "    [{mt_keys[i]}] = {mt_vals[i]}"
+
+  -- Part 2: Flush memtable to SSTable
+  print ""
+  print "=== Part 2: Flush to SSTable ==="
+  -- SSTable 0 (level 0)
+  mut sst0_keys := [0, 0, 0, 0]
+  mut sst0_vals := [0, 0, 0, 0]
+  mut sst0_size := 0
+
+  for i in range(0, mt_size)
+    sst0_keys[i] = mt_keys[i]
+    sst0_vals[i] = mt_vals[i]
+    sst0_size = sst0_size + 1
+
+  mt_size = 0
+  print "  Flushed {sst0_size} entries to SSTable-0"
+  print "  SSTable-0 range: [{sst0_keys[0]}, {sst0_keys[sst0_size - 1]}]"
+  print "  Memtable cleared"
+
+  -- Part 3: More writes, second flush
+  print ""
+  print "=== Part 3: Second Batch ==="
+  mut inserts2 := [10, 25, 5, 18]
+  mut insert_vals2 := [500, 600, 700, 800]
+
+  for i in range(0, 4)
+    key := inserts2[i]
+    val := insert_vals2[i]
+    mut pos := mt_size
+    for j in range(0, mt_size)
+      if mt_keys[j] > key and pos == mt_size
+        pos = j
+    mut j := mt_size
+    while j > pos
+      mt_keys[j] = mt_keys[j - 1]
+      mt_vals[j] = mt_vals[j - 1]
+      j = j - 1
+    mt_keys[pos] = key
+    mt_vals[pos] = val
+    mt_size = mt_size + 1
+
+  print "  Memtable after second batch:"
+  for i in range(0, mt_size)
+    print "    [{mt_keys[i]}] = {mt_vals[i]}"
+
+  -- Flush to SSTable-1
+  mut sst1_keys := [0, 0, 0, 0]
+  mut sst1_vals := [0, 0, 0, 0]
+  mut sst1_size := 0
+  for i in range(0, mt_size)
+    sst1_keys[i] = mt_keys[i]
+    sst1_vals[i] = mt_vals[i]
+    sst1_size = sst1_size + 1
+  mt_size = 0
+  print "  Flushed {sst1_size} entries to SSTable-1"
+
+  -- Part 4: Point lookup (check memtable, then SSTables newest first)
+  print ""
+  print "=== Part 4: Point Lookup ==="
+  mut lookup_keys := [7, 25, 99, 3, 18]
+  num_lookups := 5
+
+  for q in range(0, num_lookups)
+    key := lookup_keys[q]
+    mut found := false
+    mut found_val := 0
+    mut found_in := ""
+
+    -- Check memtable first
+    for i in range(0, mt_size)
+      if mt_keys[i] == key and found == false
+        found = true
+        found_val = mt_vals[i]
+        found_in = "memtable"
+
+    -- Check SSTable-1 (newer)
+    if found == false
+      for i in range(0, sst1_size)
+        if sst1_keys[i] == key and found == false
+          found = true
+          found_val = sst1_vals[i]
+          found_in = "SSTable-1"
+
+    -- Check SSTable-0 (older)
+    if found == false
+      for i in range(0, sst0_size)
+        if sst0_keys[i] == key and found == false
+          found = true
+          found_val = sst0_vals[i]
+          found_in = "SSTable-0"
+
+    if found
+      print "  Lookup key={key}: found val={found_val} in {found_in}"
+    else
+      print "  Lookup key={key}: NOT FOUND"
+
+  -- Part 5: Compaction (merge SSTable-0 and SSTable-1 into level-1)
+  print ""
+  print "=== Part 5: Compaction ==="
+  print "  Merging SSTable-0 and SSTable-1..."
+  mut merged_keys := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut merged_vals := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut merged_size := 0
+
+  mut i := 0
+  mut j := 0
+  while i < sst0_size and j < sst1_size
+    if sst0_keys[i] < sst1_keys[j]
+      merged_keys[merged_size] = sst0_keys[i]
+      merged_vals[merged_size] = sst0_vals[i]
+      merged_size = merged_size + 1
+      i = i + 1
+    else if sst0_keys[i] > sst1_keys[j]
+      merged_keys[merged_size] = sst1_keys[j]
+      merged_vals[merged_size] = sst1_vals[j]
+      merged_size = merged_size + 1
+      j = j + 1
+    else
+      -- Same key: newer (sst1) wins
+      merged_keys[merged_size] = sst1_keys[j]
+      merged_vals[merged_size] = sst1_vals[j]
+      merged_size = merged_size + 1
+      i = i + 1
+      j = j + 1
+
+  while i < sst0_size
+    merged_keys[merged_size] = sst0_keys[i]
+    merged_vals[merged_size] = sst0_vals[i]
+    merged_size = merged_size + 1
+    i = i + 1
+
+  while j < sst1_size
+    merged_keys[merged_size] = sst1_keys[j]
+    merged_vals[merged_size] = sst1_vals[j]
+    merged_size = merged_size + 1
+    j = j + 1
+
+  print "  Merged SSTable (level 1): {merged_size} entries"
+  for i in range(0, merged_size)
+    print "    [{merged_keys[i]}] = {merged_vals[i]}"
+
+  -- Part 6: Bloom filter simulation
+  print ""
+  print "=== Part 6: Bloom Filter ==="
+  bloom_size := 16
+  mut bloom := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Hash each key and set bits
+  for i in range(0, merged_size)
+    h1 := merged_keys[i] % bloom_size
+    h2 := (merged_keys[i] * 7 + 3) % bloom_size
+    bloom[h1] = 1
+    bloom[h2] = 1
+
+  mut bits_set := 0
+  for i in range(0, bloom_size)
+    if bloom[i] == 1
+      bits_set = bits_set + 1
+  print "  Bloom filter: {bits_set}/{bloom_size} bits set"
+
+  -- Test bloom filter
+  mut test_keys := [7, 99, 15, 42, 10]
+  for t in range(0, 5)
+    key := test_keys[t]
+    h1 := key % bloom_size
+    h2 := (key * 7 + 3) % bloom_size
+    if bloom[h1] == 1 and bloom[h2] == 1
+      print "  Key {key}: MAYBE present (bloom positive)"
+    else
+      print "  Key {key}: DEFINITELY absent (bloom negative)"
+
+  -- Part 7: Statistics
+  print ""
+  print "=== Part 7: Statistics ==="
+  print "  Total entries: {merged_size}"
+  print "  Levels: 1 (after compaction)"
+  print "  Write amplification: 2 (written twice: memtable + SSTable)"
+  print "  Read amplification: 1 (single SSTable after compaction)"
+  key_range := merged_keys[merged_size - 1] - merged_keys[0]
+  print "  Key range: {merged_keys[0]} to {merged_keys[merged_size - 1]} (span={key_range})"
+
+  print ""
+  print "LSM tree: memtable, SSTable flush, compaction, bloom filter, point lookup."

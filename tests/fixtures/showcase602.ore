@@ -1,0 +1,174 @@
+-- Showcase 602: Chord Protocol (Distributed Systems)
+
+fn main
+  print "Chord Protocol Simulation:"
+  print ""
+
+  -- Chord: distributed hash table with ring topology
+  -- Key space: 0..63 (6-bit identifiers)
+  ring_size := 64
+
+  -- Part 1: Node setup on the ring
+  print "=== Part 1: Chord Ring ==="
+  mut node_ids := [3, 10, 21, 32, 45, 56]
+  num_nodes := 6
+  print "  Ring size: {ring_size}"
+  print "  Nodes: {node_ids | join(", ")}"
+
+  -- Part 2: Successor table
+  print ""
+  print "=== Part 2: Successor Table ==="
+  -- For each node, find its successor on the ring
+  for i in range(0, num_nodes)
+    mut next := i + 1
+    if next >= num_nodes
+      next = 0
+    print "  Node {node_ids[i]} -> successor: Node {node_ids[next]}"
+
+  -- Part 3: Finger tables (3 fingers per node for simplicity)
+  print ""
+  print "=== Part 3: Finger Tables ==="
+  num_fingers := 3
+
+  for i in range(0, num_nodes)
+    nid := node_ids[i]
+    print "  Node {nid} fingers:"
+    for f in range(0, num_fingers)
+      -- Finger f points to successor of (nid + 2^f) mod ring_size
+      mut offset := 1
+      for p in range(0, f)
+        offset = offset * 2
+      target := (nid + offset) % ring_size
+
+      -- Find successor of target
+      mut succ := node_ids[0]
+      mut found := false
+      for j in range(0, num_nodes)
+        if found == false and node_ids[j] >= target
+          succ = node_ids[j]
+          found = true
+      -- If no node >= target, wrap around to first node
+      print "    finger[{f}]: start={target} -> Node {succ}"
+
+  -- Part 4: Key lookup
+  print ""
+  print "=== Part 4: Key Lookup ==="
+  mut keys := [5, 15, 25, 35, 50, 60, 1]
+  num_keys := 7
+
+  for k in range(0, num_keys)
+    key := keys[k]
+    -- Find responsible node (successor of key)
+    mut responsible := node_ids[0]
+    mut found := false
+    for j in range(0, num_nodes)
+      if found == false and node_ids[j] >= key
+        responsible = node_ids[j]
+        found = true
+    print "  Key {key} -> responsible Node {responsible}"
+
+  -- Part 5: Routing simulation
+  print ""
+  print "=== Part 5: Routing Hops ==="
+  -- Simulate lookup from node 3 to key 50
+  start_node := 0
+  target_key := 50
+  mut current := 0
+  mut hops := 0
+  mut route := [0, 0, 0, 0, 0, 0, 0]
+  route[0] = node_ids[current]
+  mut hop_count := 1
+
+  while node_ids[current] < target_key
+    -- Jump to next node (simplified: just go to successor)
+    mut best := current + 1
+    if best >= num_nodes
+      best = 0
+    current = best
+    route[hop_count] = node_ids[current]
+    hop_count = hop_count + 1
+    hops = hops + 1
+
+  print "  Lookup key {target_key} from Node {node_ids[0]}:"
+  print "  Hops taken: {hops}"
+  mut route_str := ""
+  for i in range(0, hop_count)
+    if i > 0
+      route_str = route_str + " -> "
+    r := route[i]
+    route_str = route_str + str(r)
+  print "  Route: {route_str}"
+
+  -- Part 6: Node join
+  print ""
+  print "=== Part 6: Node Join ==="
+  new_node := 28
+  print "  Joining Node {new_node}..."
+
+  -- Find position
+  mut pos := num_nodes
+  for i in range(0, num_nodes)
+    if node_ids[i] > new_node and pos == num_nodes
+      pos = i
+
+  -- Find predecessor and successor
+  pred_idx := pos - 1
+  succ_idx := pos
+  print "  Position: between Node {node_ids[pred_idx]} and Node {node_ids[succ_idx]}"
+
+  -- Count keys to transfer
+  mut keys_transferred := 0
+  for k in range(0, num_keys)
+    key := keys[k]
+    if key > node_ids[pred_idx] and key <= new_node
+      keys_transferred = keys_transferred + 1
+      print "  Transfer key {key} from Node {node_ids[succ_idx]} to Node {new_node}"
+  print "  Keys transferred: {keys_transferred}"
+
+  -- Part 7: Node failure detection
+  print ""
+  print "=== Part 7: Failure Detection ==="
+  failed_node := 32
+  print "  Node {failed_node} has failed!"
+
+  -- Find successor of failed node
+  mut fail_idx := 0
+  for i in range(0, num_nodes)
+    if node_ids[i] == failed_node
+      fail_idx = i
+  mut next_idx := fail_idx + 1
+  if next_idx >= num_nodes
+    next_idx = 0
+  prev_idx := fail_idx - 1
+
+  print "  Predecessor Node {node_ids[prev_idx]} updates successor to Node {node_ids[next_idx]}"
+
+  -- Count orphaned keys
+  mut orphaned := 0
+  for k in range(0, num_keys)
+    key := keys[k]
+    -- Keys that were on the failed node
+    if key > node_ids[prev_idx] and key <= failed_node
+      orphaned = orphaned + 1
+      print "  Key {key} reassigned to Node {node_ids[next_idx]}"
+  print "  Orphaned keys reassigned: {orphaned}"
+
+  -- Part 8: Statistics
+  print ""
+  print "=== Part 8: Ring Statistics ==="
+  print "  Ring size: {ring_size}"
+  print "  Active nodes: {num_nodes}"
+  print "  Keys stored: {num_keys}"
+  mut max_gap := 0
+  for i in range(0, num_nodes - 1)
+    gap := node_ids[i + 1] - node_ids[i]
+    if gap > max_gap
+      max_gap = gap
+  -- Wrap-around gap
+  wrap_gap := ring_size - node_ids[num_nodes - 1] + node_ids[0]
+  if wrap_gap > max_gap
+    max_gap = wrap_gap
+  print "  Max arc gap: {max_gap}"
+
+  print ""
+  print "Chord: ring topology, finger tables, key lookup, node join, failure detection."

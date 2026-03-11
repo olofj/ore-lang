@@ -1,0 +1,209 @@
+-- Showcase 601: Simple Symbolic Math (Simplification Rules)
+
+fn main
+  print "Symbolic Math Simplification:"
+  print ""
+
+  -- Represent expressions as encoded integers
+  -- Expression types: 0=Num, 1=Var, 2=Add, 3=Mul, 4=Neg
+  -- We store expressions in parallel arrays
+
+  -- Part 1: Expression store
+  print "=== Part 1: Expression Store ==="
+  mut expr_type := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut expr_val := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut expr_left := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut expr_right := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut expr_name := ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+  mut num_exprs := 0
+
+  -- Helper: create a number expression
+  -- Returns index
+  -- expr 0: Num(0)
+  expr_type[0] = 0
+  expr_val[0] = 0
+  num_exprs = 1
+
+  -- expr 1: Num(1)
+  expr_type[1] = 0
+  expr_val[1] = 1
+  num_exprs = 2
+
+  -- expr 2: Num(3)
+  expr_type[2] = 0
+  expr_val[2] = 3
+  num_exprs = 3
+
+  -- expr 3: Num(5)
+  expr_type[3] = 0
+  expr_val[3] = 5
+  num_exprs = 4
+
+  -- expr 4: Var("x")
+  expr_type[4] = 1
+  expr_name[4] = "x"
+  num_exprs = 5
+
+  -- expr 5: Var("y")
+  expr_type[5] = 1
+  expr_name[5] = "y"
+  num_exprs = 6
+
+  print "  Expressions defined: {num_exprs}"
+
+  -- Part 2: Build composite expressions
+  print ""
+  print "=== Part 2: Build Expressions ==="
+
+  -- expr 6: Add(x, 0) => should simplify to x
+  expr_type[6] = 2
+  expr_left[6] = 4
+  expr_right[6] = 0
+  num_exprs = 7
+  print "  Expr 6: x + 0"
+
+  -- expr 7: Mul(x, 1) => should simplify to x
+  expr_type[7] = 3
+  expr_left[7] = 4
+  expr_right[7] = 1
+  num_exprs = 8
+  print "  Expr 7: x * 1"
+
+  -- expr 8: Mul(x, 0) => should simplify to 0
+  expr_type[8] = 3
+  expr_left[8] = 4
+  expr_right[8] = 0
+  num_exprs = 9
+  print "  Expr 8: x * 0"
+
+  -- expr 9: Add(3, 5) => should simplify to 8
+  expr_type[9] = 2
+  expr_left[9] = 2
+  expr_right[9] = 3
+  num_exprs = 10
+  print "  Expr 9: 3 + 5"
+
+  -- expr 10: Mul(3, 5) => should simplify to 15
+  expr_type[10] = 3
+  expr_left[10] = 2
+  expr_right[10] = 3
+  num_exprs = 11
+  print "  Expr 10: 3 * 5"
+
+  -- expr 11: Add(x, x) => 2*x
+  expr_type[11] = 2
+  expr_left[11] = 4
+  expr_right[11] = 4
+  num_exprs = 12
+  print "  Expr 11: x + x"
+
+  -- Part 3: Apply simplification rules
+  print ""
+  print "=== Part 3: Simplification Rules ==="
+
+  mut simplified := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut rules_applied := 0
+
+  for i in range(0, num_exprs)
+    simplified[i] = i
+    t := expr_type[i]
+    if t == 2
+      -- Add rules
+      l := expr_left[i]
+      r := expr_right[i]
+      -- Rule: x + 0 = x
+      if expr_type[r] == 0 and expr_val[r] == 0
+        simplified[i] = l
+        rules_applied = rules_applied + 1
+        print "  Rule: x + 0 = x applied to expr {i}"
+      -- Rule: 0 + x = x
+      else if expr_type[l] == 0 and expr_val[l] == 0
+        simplified[i] = r
+        rules_applied = rules_applied + 1
+        print "  Rule: 0 + x = x applied to expr {i}"
+      -- Rule: Num + Num = Num (constant folding)
+      else if expr_type[l] == 0 and expr_type[r] == 0
+        -- Create new Num node
+        expr_type[num_exprs] = 0
+        expr_val[num_exprs] = expr_val[l] + expr_val[r]
+        simplified[i] = num_exprs
+        num_exprs = num_exprs + 1
+        rules_applied = rules_applied + 1
+        result := expr_val[l] + expr_val[r]
+        print "  Rule: constant fold {expr_val[l]} + {expr_val[r]} = {result} for expr {i}"
+      -- Rule: x + x = 2*x
+      else if l == r
+        rules_applied = rules_applied + 1
+        print "  Rule: x + x = 2*x applied to expr {i}"
+    else if t == 3
+      -- Mul rules
+      l := expr_left[i]
+      r := expr_right[i]
+      -- Rule: x * 0 = 0
+      if expr_type[r] == 0 and expr_val[r] == 0
+        simplified[i] = 0
+        rules_applied = rules_applied + 1
+        print "  Rule: x * 0 = 0 applied to expr {i}"
+      -- Rule: x * 1 = x
+      else if expr_type[r] == 0 and expr_val[r] == 1
+        simplified[i] = l
+        rules_applied = rules_applied + 1
+        print "  Rule: x * 1 = x applied to expr {i}"
+      -- Rule: 1 * x = x
+      else if expr_type[l] == 0 and expr_val[l] == 1
+        simplified[i] = r
+        rules_applied = rules_applied + 1
+        print "  Rule: 1 * x = x applied to expr {i}"
+      -- Rule: Num * Num (constant folding)
+      else if expr_type[l] == 0 and expr_type[r] == 0
+        expr_type[num_exprs] = 0
+        expr_val[num_exprs] = expr_val[l] * expr_val[r]
+        simplified[i] = num_exprs
+        num_exprs = num_exprs + 1
+        rules_applied = rules_applied + 1
+        result := expr_val[l] * expr_val[r]
+        print "  Rule: constant fold {expr_val[l]} * {expr_val[r]} = {result} for expr {i}"
+
+  print ""
+  print "  Total rules applied: {rules_applied}"
+
+  -- Part 4: Evaluate with variable bindings
+  print ""
+  print "=== Part 4: Evaluation ==="
+  -- Evaluate with x=7, y=3
+  mut var_vals := [0, 0]
+  var_vals[0] = 7
+  var_vals[1] = 3
+  print "  Variables: x=7, y=3"
+
+  -- Evaluate a few expressions
+  for i in range(0, 12)
+    idx := simplified[i]
+    t := expr_type[idx]
+    if t == 0
+      print "  Expr {i} evaluates to: {expr_val[idx]}"
+    else if t == 1
+      if expr_name[idx] == "x"
+        print "  Expr {i} evaluates to: {var_vals[0]}"
+      else
+        print "  Expr {i} evaluates to: {var_vals[1]}"
+
+  -- Part 5: Expression complexity
+  print ""
+  print "=== Part 5: Complexity Analysis ==="
+  mut original_nodes := 0
+  mut simplified_nodes := 0
+  for i in range(6, 12)
+    original_nodes = original_nodes + 3
+    s := simplified[i]
+    if expr_type[s] == 0 or expr_type[s] == 1
+      simplified_nodes = simplified_nodes + 1
+    else
+      simplified_nodes = simplified_nodes + 3
+  print "  Original node count: {original_nodes}"
+  print "  Simplified node count: {simplified_nodes}"
+  saved := original_nodes - simplified_nodes
+  print "  Nodes saved: {saved}"
+
+  print ""
+  print "Symbolic math: expression trees, simplification rules, constant folding, evaluation."

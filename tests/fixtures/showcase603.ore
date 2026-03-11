@@ -1,0 +1,211 @@
+-- Showcase 603: Simple Bytecode Verifier
+
+fn main
+  print "Bytecode Verifier:"
+  print ""
+
+  -- Bytecode instruction set:
+  -- 0=NOP, 1=PUSH(val), 2=POP, 3=ADD, 4=SUB, 5=MUL
+  -- 6=DUP, 7=SWAP, 8=LOAD(idx), 9=STORE(idx), 10=JUMP(addr)
+  -- 11=JUMP_IF_ZERO(addr), 12=HALT
+
+  -- Part 1: Define a bytecode program
+  print "=== Part 1: Bytecode Program ==="
+  mut opcodes := [1, 1, 3, 1, 5, 6, 3, 9, 8, 12, 0, 0, 0, 0, 0, 0]
+  mut operands := [10, 20, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  program_len := 10
+
+  mut op_names := ["NOP", "PUSH", "POP", "ADD", "SUB", "MUL", "DUP", "SWAP", "LOAD", "STORE", "JUMP", "JUMP_IF_ZERO", "HALT"]
+
+  for i in range(0, program_len)
+    op := opcodes[i]
+    name := op_names[op]
+    if op == 1 or op == 8 or op == 9 or op == 10 or op == 11
+      print "  {i}: {name} {operands[i]}"
+    else
+      print "  {i}: {name}"
+
+  -- Part 2: Stack effect analysis
+  print ""
+  print "=== Part 2: Stack Effect Analysis ==="
+  -- Track stack depth at each instruction
+  mut stack_depth := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut depth := 0
+  mut valid := true
+  mut max_depth := 0
+
+  for i in range(0, program_len)
+    stack_depth[i] = depth
+    op := opcodes[i]
+
+    if op == 1
+      -- PUSH: +1
+      depth = depth + 1
+    else if op == 2
+      -- POP: -1
+      depth = depth - 1
+    else if op == 3 or op == 4 or op == 5
+      -- ADD/SUB/MUL: -2 +1 = -1
+      depth = depth - 1
+    else if op == 6
+      -- DUP: +1
+      depth = depth + 1
+    else if op == 7
+      -- SWAP: 0
+      depth = depth
+    else if op == 8
+      -- LOAD: +1
+      depth = depth + 1
+    else if op == 9
+      -- STORE: -1
+      depth = depth - 1
+
+    if depth < 0
+      valid = false
+      print "  ERROR at {i}: stack underflow (depth={depth})"
+    if depth > max_depth
+      max_depth = depth
+
+    name := op_names[op]
+    print "  After {name} at {i}: depth={depth}"
+
+  print "  Max stack depth: {max_depth}"
+  print "  Final stack depth: {depth}"
+  if valid
+    print "  Stack analysis: PASS"
+  else
+    print "  Stack analysis: FAIL"
+
+  -- Part 3: Type checking (simplified: 0=int, 1=unknown)
+  print ""
+  print "=== Part 3: Type Verification ==="
+  mut type_errors := 0
+
+  -- Check that arithmetic ops have matching types
+  -- (In our simple case, everything is int)
+  for i in range(0, program_len)
+    op := opcodes[i]
+    if op == 3 or op == 4 or op == 5
+      name := op_names[op]
+      print "  {name} at {i}: operands are int, int -> OK"
+
+  print "  Type errors: {type_errors}"
+
+  -- Part 4: Control flow verification
+  print ""
+  print "=== Part 4: Control Flow ==="
+  mut has_halt := false
+  mut jump_targets := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut num_jumps := 0
+
+  for i in range(0, program_len)
+    op := opcodes[i]
+    if op == 12
+      has_halt = true
+      print "  HALT found at position {i}"
+    if op == 10 or op == 11
+      target := operands[i]
+      jump_targets[num_jumps] = target
+      num_jumps = num_jumps + 1
+      if target >= program_len
+        print "  ERROR: jump at {i} targets {target} (out of bounds)"
+      else
+        print "  Jump at {i} targets {target}: valid"
+
+  if has_halt
+    print "  Program has HALT: PASS"
+  else
+    print "  Program missing HALT: FAIL"
+
+  -- Part 5: Variable usage verification
+  print ""
+  print "=== Part 5: Variable Usage ==="
+  mut var_defined := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut var_errors := 0
+  max_vars := 8
+
+  for i in range(0, program_len)
+    op := opcodes[i]
+    if op == 9
+      -- STORE defines a variable
+      idx := operands[i]
+      if idx < max_vars
+        var_defined[idx] = 1
+        print "  STORE to var[{idx}] at {i}: defined"
+    if op == 8
+      -- LOAD reads a variable
+      idx := operands[i]
+      if idx < max_vars
+        if var_defined[idx] == 1
+          print "  LOAD from var[{idx}] at {i}: OK (defined)"
+        else
+          print "  LOAD from var[{idx}] at {i}: WARNING (may be uninitialized)"
+          var_errors = var_errors + 1
+
+  print "  Variable warnings: {var_errors}"
+
+  -- Part 6: Execute the bytecode
+  print ""
+  print "=== Part 6: Execution ==="
+  mut stack := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut sp := 0
+  mut vars := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut pc := 0
+  mut steps := 0
+
+  while pc < program_len
+    op := opcodes[pc]
+    if op == 1
+      stack[sp] = operands[pc]
+      sp = sp + 1
+    else if op == 3
+      sp = sp - 1
+      b := stack[sp]
+      sp = sp - 1
+      a := stack[sp]
+      stack[sp] = a + b
+      sp = sp + 1
+    else if op == 5
+      sp = sp - 1
+      b := stack[sp]
+      sp = sp - 1
+      a := stack[sp]
+      stack[sp] = a * b
+      sp = sp + 1
+    else if op == 6
+      val := stack[sp - 1]
+      stack[sp] = val
+      sp = sp + 1
+    else if op == 9
+      sp = sp - 1
+      vars[operands[pc]] = stack[sp]
+    else if op == 8
+      stack[sp] = vars[operands[pc]]
+      sp = sp + 1
+    else if op == 12
+      print "  HALT at step {steps}"
+      pc = program_len
+    pc = pc + 1
+    steps = steps + 1
+
+  print "  Stack top: {stack[0]}"
+  print "  Var[0]: {vars[0]}"
+  print "  Total steps: {steps}"
+
+  -- Part 7: Verification summary
+  print ""
+  print "=== Part 7: Verification Summary ==="
+  print "  Program length: {program_len}"
+  print "  Max stack depth: {max_depth}"
+  print "  Has HALT instruction: {has_halt}"
+  print "  Stack underflows: 0"
+  print "  Type errors: {type_errors}"
+  print "  Variable warnings: {var_errors}"
+  total_issues := type_errors + var_errors
+  if total_issues == 0 and valid and has_halt
+    print "  Verdict: VERIFIED"
+  else
+    print "  Verdict: ISSUES FOUND"
+
+  print ""
+  print "Bytecode verifier: stack analysis, type checking, control flow, variable tracking."
