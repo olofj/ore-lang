@@ -437,7 +437,23 @@ fn run_repl() {
         }
 
         // Wrap the expression in fn main with accumulated definitions
-        let source = format!("{}\nfn main\n  {}\n", definitions, trimmed);
+        // Auto-print bare expressions (not assignments, prints, for, while, etc.)
+        let stmt = if trimmed.contains(":=") || trimmed.contains(" = ")
+            || trimmed.starts_with("print ")
+            || trimmed.starts_with("mut ")
+            || trimmed.starts_with("for ")
+            || trimmed.starts_with("while ")
+            || trimmed.starts_with("if ")
+            || trimmed.starts_with("match ")
+            || trimmed.starts_with("loop")
+            || trimmed.starts_with("spawn ")
+            || trimmed.starts_with("--")
+        {
+            trimmed.to_string()
+        } else {
+            format!("print {}", trimmed)
+        };
+        let source = format!("{}\nfn main\n  {}\n", definitions, stmt);
 
         let result = (|| -> Result<(), String> {
             let tokens = ore_lexer::lex(&source).map_err(|e| e.to_string())?;
