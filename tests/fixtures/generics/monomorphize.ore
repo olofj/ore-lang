@@ -1,0 +1,28 @@
+-- Test monomorphization: same generic function with different types
+fn identity[T] x:T -> T
+  x
+
+fn double[T] x:T -> T
+  x + x
+
+fn first_of[T] a:T b:T -> T
+  a
+
+fn main
+  -- Int specialization
+  print identity(42)
+  -- String specialization
+  print identity("hello")
+  -- Bool specialization
+  print identity(true)
+
+  -- Multi-arg same type
+  print first_of(10, 20)
+  print first_of("foo", "bar")
+
+  -- Pipeline with generic function
+  result := 5 | double
+  print result
+
+  -- double with string (concatenation)
+  print double("ab")

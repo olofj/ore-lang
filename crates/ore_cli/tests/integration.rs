@@ -542,3 +542,14 @@ fn showcase2() {
         "Int", "List",
     ]);
 }
+
+#[test]
+fn generics_monomorphize() {
+    let out = run_ore("generics/monomorphize.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "42", "hello", "true",
+        "10", "foo",
+        "10", "abab",
+    ]);
+}
