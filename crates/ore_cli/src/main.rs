@@ -457,6 +457,8 @@ fn map_runtime_functions(
     map_fn!("ore_eprint_int", ore_runtime::ore_eprint_int);
     map_fn!("ore_eprint_float", ore_runtime::ore_eprint_float);
     map_fn!("ore_eprint_bool", ore_runtime::ore_eprint_bool);
+    // Runtime errors
+    map_fn!("ore_div_by_zero", ore_runtime::ore_div_by_zero);
     // Strings
     map_fn!("ore_str_new", ore_runtime::ore_str_new);
     map_fn!("ore_str_concat", ore_runtime::ore_str_concat);

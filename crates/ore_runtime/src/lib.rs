@@ -754,6 +754,13 @@ pub extern "C" fn ore_assert_fail(msg: *mut OreStr) {
     std::process::exit(1);
 }
 
+/// Runtime error for division by zero.
+#[no_mangle]
+pub extern "C" fn ore_div_by_zero() {
+    eprintln!("runtime error: division by zero");
+    std::process::exit(1);
+}
+
 // ── I/O ──
 
 #[no_mangle]

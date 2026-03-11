@@ -858,6 +858,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_args", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_exit", void_type.fn_type(&[i64_type.into()], false), ext);
         self.module.add_function("ore_env_get", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        // Runtime errors
+        self.module.add_function("ore_div_by_zero", void_type.fn_type(&[], false), ext);
         // JSON
         self.module.add_function("ore_json_parse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_json_stringify", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -7206,6 +7208,23 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(alloca)
     }
 
+    fn emit_div_by_zero_check(&mut self, divisor: IntValue<'ctx>) -> Result<(), CodeGenError> {
+        let current_fn = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+        let zero = divisor.get_type().const_zero();
+        let is_zero = bld!(self.builder.build_int_compare(
+            IntPredicate::EQ, divisor, zero, "is_zero"
+        ))?;
+        let err_bb = self.context.append_basic_block(current_fn, "div_zero");
+        let ok_bb = self.context.append_basic_block(current_fn, "div_ok");
+        bld!(self.builder.build_conditional_branch(is_zero, err_bb, ok_bb))?;
+        self.builder.position_at_end(err_bb);
+        let rt = self.module.get_function("ore_div_by_zero").unwrap();
+        bld!(self.builder.build_call(rt, &[], ""))?;
+        bld!(self.builder.build_unreachable())?;
+        self.builder.position_at_end(ok_bb);
+        Ok(())
+    }
+
     fn compile_binop(
         &mut self,
         op: BinOp,
@@ -7221,8 +7240,14 @@ impl<'ctx> CodeGen<'ctx> {
                     BinOp::Add => bld!(self.builder.build_int_add(l, r, "add")),
                     BinOp::Sub => bld!(self.builder.build_int_sub(l, r, "sub")),
                     BinOp::Mul => bld!(self.builder.build_int_mul(l, r, "mul")),
-                    BinOp::Div => bld!(self.builder.build_int_signed_div(l, r, "div")),
-                    BinOp::Mod => bld!(self.builder.build_int_signed_rem(l, r, "rem")),
+                    BinOp::Div => {
+                        self.emit_div_by_zero_check(r)?;
+                        bld!(self.builder.build_int_signed_div(l, r, "div"))
+                    },
+                    BinOp::Mod => {
+                        self.emit_div_by_zero_check(r)?;
+                        bld!(self.builder.build_int_signed_rem(l, r, "rem"))
+                    },
                     BinOp::Eq => bld!(self.builder.build_int_compare(IntPredicate::EQ, l, r, "eq")),
                     BinOp::NotEq => bld!(self.builder.build_int_compare(IntPredicate::NE, l, r, "ne")),
                     BinOp::Lt => bld!(self.builder.build_int_compare(IntPredicate::SLT, l, r, "lt")),
