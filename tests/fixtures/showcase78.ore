@@ -1,0 +1,43 @@
+-- Showcase 78: Type methods and conversions
+
+fn main
+  -- Int methods
+  n := -42
+  print "abs: {n.abs()}"
+  print "to_float: {n.to_float()}"
+  print "to_str: {42.to_str()}"
+  print "pow: {2.pow(10)}"
+  print "clamp: {15.clamp(0, 10)}"
+
+  -- Float methods
+  f := 3.7
+  print "floor: {f.floor()}"
+  print "ceil: {f.ceil()}"
+  print "round: {f.round()}"
+  print "to_int: {f.to_int()}"
+  print "abs: {(-2.5).abs()}"
+  print "sqrt: {16.0.sqrt()}"
+  print "pow: {2.0.pow(3.0)}"
+  print "clamp: {15.0.clamp(0.0, 10.0)}"
+
+  -- Bool methods
+  print "true.to_int: {true.to_int()}"
+  print "false.to_int: {false.to_int()}"
+  print "true.to_str: {true.to_str()}"
+
+  -- String parse methods
+  print "parse_int: {"123".parse_int()}"
+  print "parse_float: {"3.14".parse_float()}"
+
+  -- Chained conversions
+  result := "42".parse_int() * 2
+  print "parsed * 2 = {result}"
+
+  x := 255
+  print "hex-ish: {x / 16} * 16 + {x % 16}"
+
+  -- Float precision
+  pi := 3.14159265358979
+  print "pi floor: {pi.floor()}"
+  print "pi ceil: {pi.ceil()}"
+  print "pi round: {pi.round()}"

@@ -2117,6 +2117,36 @@ fn showcase76() {
 }
 
 #[test]
+fn showcase77() {
+    let out = run_ore("showcase77.ore");
+    assert!(out.contains("42\n"));
+    assert!(out.contains("hello\n"));
+    assert!(out.contains("true\n"));
+    assert!(out.contains("3.14\n"));
+    assert!(out.contains("alpha\n"));
+    assert!(out.contains("list identity: 1, 2, 3"));
+    assert!(out.contains("composed: 50"));
+    assert!(out.contains("Hello, world!"));
+    assert!(out.contains("n * 2 = 200"));
+}
+
+#[test]
+fn showcase78() {
+    let out = run_ore("showcase78.ore");
+    assert!(out.contains("abs: 42"));
+    assert!(out.contains("to_float: -42.0"));
+    assert!(out.contains("pow: 1024"));
+    assert!(out.contains("clamp: 10\n"));
+    assert!(out.contains("floor: 3.0"));
+    assert!(out.contains("ceil: 4.0"));
+    assert!(out.contains("sqrt: 4.0"));
+    assert!(out.contains("true.to_int: 1"));
+    assert!(out.contains("parse_int: 123"));
+    assert!(out.contains("parsed * 2 = 84"));
+    assert!(out.contains("pi round: 3.0"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
