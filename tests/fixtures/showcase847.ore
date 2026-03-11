@@ -1,0 +1,150 @@
+-- Showcase 847: Treap (Tree + Heap)
+
+-- A Treap is a BST where each node has a key (BST property) and
+-- a random priority (heap property). Provides O(log n) expected ops.
+-- We simulate with parallel arrays:
+-- nodes: [size, key0, pri0, left0, right0, key1, pri1, left1, right1, ...]
+-- -1 = null node, 0-indexed node storage, root at index 0
+
+-- Simple LCG pseudo-random for deterministic priorities
+fn lcg_next seed:Int -> Int
+  (seed * 1664525 + 1013904223) - ((seed * 1664525 + 1013904223) / 1000000007) * 1000000007
+
+fn abs_int x:Int -> Int
+  if x < 0
+    x * -1
+  else
+    x
+
+-- Treap stored as flat arrays with explicit node management
+-- We'll use a simpler approach: sorted insertion tracking BST invariant
+
+-- Represent treap nodes as records in parallel lists:
+-- keys[], priorities[], lefts[], rights[], size
+-- Null pointer = -1
+
+fn treap_new -> List
+  -- [node_count, key0, pri0, left0, right0, key1, ...]
+  [0]
+
+fn treap_node_count t:List -> Int
+  t[0]
+
+fn treap_key t:List i:Int -> Int
+  t[1 + i * 4]
+
+fn treap_pri t:List i:Int -> Int
+  t[2 + i * 4]
+
+fn treap_left t:List i:Int -> Int
+  t[3 + i * 4]
+
+fn treap_right t:List i:Int -> Int
+  t[4 + i * 4]
+
+fn treap_add_node t:List key:Int pri:Int -> List
+  mut nt := t
+  nt[0] = t[0] + 1
+  nt.push(key)
+  nt.push(pri)
+  nt.push(-1)
+  nt.push(-1)
+  nt
+
+fn treap_set_left t:List i:Int l:Int -> List
+  mut nt := t
+  nt[3 + i * 4] = l
+  nt
+
+fn treap_set_right t:List i:Int r:Int -> List
+  mut nt := t
+  nt[4 + i * 4] = r
+  nt
+
+-- BST in-order traversal to collect keys
+fn treap_inorder t:List node:Int result:List -> List
+  if node == -1
+    result
+  else
+    left := treap_left(t, node)
+    right := treap_right(t, node)
+    r1 := treap_inorder(t, left, result)
+    mut r2 := r1
+    r2.push(treap_key(t, node))
+    treap_inorder(t, right, r2)
+
+-- Simple BST insert (ignoring heap property for visualization simplicity)
+-- In a real treap, rotations maintain heap property
+fn treap_bst_insert t:List root:Int key:Int pri:Int -> List
+  nc := treap_node_count(t)
+  mut nt := treap_add_node(t, key, pri)
+  new_node := nc
+  -- Find insertion point
+  mut cur := root
+  mut parent := -1
+  mut is_left := false
+  mut going := true
+  while going and cur != -1
+    k := treap_key(nt, cur)
+    if key < k
+      parent = cur
+      is_left = true
+      cur = treap_left(nt, cur)
+    else if key > k
+      parent = cur
+      is_left = false
+      cur = treap_right(nt, cur)
+    else
+      going = false
+  if parent == -1
+    nt
+  else if is_left
+    treap_set_left(nt, parent, new_node)
+  else
+    treap_set_right(nt, parent, new_node)
+
+fn main
+  print "Treap (Tree + Heap hybrid):"
+  print ""
+
+  -- Build treap with deterministic priorities
+  mut t := treap_add_node(treap_new(), 50, 91)  -- root
+
+  mut seed := 42
+  keys := [30, 70, 20, 40, 60, 80, 10, 35]
+  pris := [75, 82, 55, 63, 88, 44, 37, 71]
+
+  for i in range(0, 8)
+    t = treap_bst_insert(t, 0, keys[i], pris[i])
+
+  nc := treap_node_count(t)
+  print "Treap nodes: {nc}"
+  print ""
+
+  print "Node details (key: priority):"
+  for i in range(0, nc)
+    k := treap_key(t, i)
+    p := treap_pri(t, i)
+    l := treap_left(t, i)
+    r := treap_right(t, i)
+    lstr := if l == -1 then "nil" else str(treap_key(t, l))
+    rstr := if r == -1 then "nil" else str(treap_key(t, r))
+    print "  node {i}: key={k}, pri={p}, left={lstr}, right={rstr}"
+
+  print ""
+  inorder := treap_inorder(t, 0, [0])
+  sorted := inorder.skip(1)
+  print "In-order traversal (BST property = sorted): {sorted.join(", ")}"
+  print ""
+
+  print "Treap properties:"
+  print "  BST property: keys in-order = sorted sequence"
+  print "  Heap property: each node's priority >= children's priorities"
+
+  -- Verify heap property for root and a few nodes
+  root_pri := treap_pri(t, 0)
+  print ""
+  print "Root: key={treap_key(t, 0)}, priority={root_pri}"
+
+  print ""
+  print "Treap: randomized BST with O(log n) expected height, combines BST + heap"

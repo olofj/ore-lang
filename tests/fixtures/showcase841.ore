@@ -1,0 +1,81 @@
+-- Showcase 841: Trie with Autocomplete
+
+-- Trie stored via prefix strings in a list
+-- Each node path stored as prefix, end-of-word marked with "!"
+
+fn trie_insert words:List word:Str -> List
+  cs := word.chars()
+  n := cs.len()
+  mut path := ""
+  mut result := words
+  for i in range(0, n)
+    c := cs[i]
+    path = path + c
+    if not result.contains(path)
+      result.push(path)
+  end_key := word + "!"
+  if not result.contains(end_key)
+    result.push(end_key)
+  result
+
+fn trie_has word:Str key:Str -> Bool
+  word == key
+
+fn trie_search words:List word:Str -> Bool
+  end_key := word + "!"
+  found := words.filter(w => trie_has(w, end_key))
+  found.len() > 0
+
+fn strip_marker w:Str -> Str
+  w.substr(0, w.len() - 1)
+
+fn word_matches w:Str prefix:Str -> Str
+  if w.ends_with("!") and strip_marker(w).starts_with(prefix)
+    strip_marker(w)
+  else
+    ""
+
+fn trie_autocomplete words:List prefix:Str -> List
+  mut results := [""]
+  for w in words
+    m := word_matches(w, prefix)
+    if m.len() > 0
+      results.push(m)
+  results.skip(1)
+
+fn main
+  print "Trie Autocomplete:"
+  mut trie := [""]
+  words_to_insert := ["apple", "app", "application", "apply", "apt", "banana", "band", "bandana", "can", "cat", "car"]
+  for w in words_to_insert
+    trie = trie_insert(trie, w)
+
+  print "Inserted: apple, app, application, apply, apt, banana, band, bandana, can, cat, car"
+  print ""
+
+  print "Search results:"
+  print "  'apple' found: {trie_search(trie, "apple")}"
+  print "  'app' found: {trie_search(trie, "app")}"
+  print "  'appl' found: {trie_search(trie, "appl")}"
+  print "  'ban' found: {trie_search(trie, "ban")}"
+  print ""
+
+  ac1 := trie_autocomplete(trie, "app")
+  ac1s := ac1.sort()
+  print "Autocomplete 'app': {ac1s.join(", ")}"
+
+  ac2 := trie_autocomplete(trie, "ban")
+  ac2s := ac2.sort()
+  print "Autocomplete 'ban': {ac2s.join(", ")}"
+
+  ac3 := trie_autocomplete(trie, "ca")
+  ac3s := ac3.sort()
+  print "Autocomplete 'ca': {ac3s.join(", ")}"
+
+  ac4 := trie_autocomplete(trie, "z")
+  print "Autocomplete 'z': {ac4.len()} results"
+
+  print ""
+  total := trie.len() - 1
+  print "Total trie entries: {total}"
+  print "Trie autocomplete: O(prefix_len + results) lookup"

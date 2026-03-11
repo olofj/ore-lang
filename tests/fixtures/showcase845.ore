@@ -1,0 +1,146 @@
+-- Showcase 845: Priority Queue (Binary Min-Heap)
+
+-- Binary heap stored as flat array: index 0=size, elements at 1..size
+-- Parent of i: (i-1)/2+1 (1-indexed: parent of i is i/2)
+-- Children of i: 2*i and 2*i+1 (1-indexed)
+-- Min-heap: parent <= children
+
+fn heap_new -> List
+  [0]
+
+fn heap_size h:List -> Int
+  h[0]
+
+fn heap_is_empty h:List -> Bool
+  h[0] == 0
+
+fn heap_swap h:List i:Int j:Int -> List
+  mut nh := h
+  tmp := nh[i]
+  nh[i] = nh[j]
+  nh[j] = tmp
+  nh
+
+fn heap_sift_up h:List idx:Int -> List
+  mut nh := h
+  mut i := idx
+  mut going := true
+  while going and i > 1
+    parent := i / 2
+    if nh[i] < nh[parent]
+      nh = heap_swap(nh, i, parent)
+      i = parent
+    else
+      going = false
+  nh
+
+fn heap_sift_down h:List idx:Int -> List
+  sz := h[0]
+  mut nh := h
+  mut i := idx
+  mut going := true
+  while going
+    left := 2 * i
+    right := 2 * i + 1
+    mut smallest := i
+    if left <= sz and nh[left] < nh[smallest]
+      smallest = left
+    if right <= sz and nh[right] < nh[smallest]
+      smallest = right
+    if smallest != i
+      nh = heap_swap(nh, i, smallest)
+      i = smallest
+    else
+      going = false
+  nh
+
+fn heap_insert h:List val:Int -> List
+  sz := h[0]
+  mut nh := h
+  nh[0] = sz + 1
+  nh.push(val)
+  heap_sift_up(nh, sz + 1)
+
+fn heap_min h:List -> Int
+  if h[0] == 0
+    -1
+  else
+    h[1]
+
+fn heap_extract_min h:List -> List
+  sz := h[0]
+  if sz == 0
+    h
+  else if sz == 1
+    mut nh := [0]
+    nh
+  else
+    mut nh := h
+    nh[1] = nh[sz]
+    nh[0] = sz - 1
+    mut result := [nh[0]]
+    for i in range(1, sz)
+      result.push(nh[i])
+    heap_sift_down(result, 1)
+
+fn heap_to_str h:List -> Str
+  sz := h[0]
+  if sz == 0
+    "[]"
+  else
+    mut s := "["
+    for i in range(1, sz + 1)
+      if i > 1
+        s = s + ", "
+      s = s + str(h[i])
+    s + "]"
+
+fn main
+  print "Priority Queue (Binary Min-Heap):"
+  print ""
+
+  mut heap := heap_new()
+  vals := [30, 10, 50, 5, 20, 40, 15]
+  print "Inserting: 30, 10, 50, 5, 20, 40, 15"
+  for v in vals
+    heap = heap_insert(heap, v)
+
+  print "Heap array: {heap_to_str(heap)}"
+  print "Size: {heap_size(heap)}"
+  print "Min: {heap_min(heap)}"
+  print ""
+
+  print "Extract-min sequence (heap sort):"
+  mut sorted := ""
+  mut count := 0
+  while not heap_is_empty(heap)
+    m := heap_min(heap)
+    heap = heap_extract_min(heap)
+    if count > 0
+      sorted = sorted + ", "
+    sorted = sorted + str(m)
+    count = count + 1
+  print "  {sorted}"
+  print ""
+
+  print "Priority queue use case (task scheduling):"
+  mut pq := heap_new()
+  -- Insert (priority, task_id) encoded as priority*1000+id
+  pq = heap_insert(pq, 3001)  -- priority 3, task 1
+  pq = heap_insert(pq, 1002)  -- priority 1, task 2 (highest priority)
+  pq = heap_insert(pq, 2003)  -- priority 2, task 3
+  pq = heap_insert(pq, 1004)  -- priority 1, task 4
+  pq = heap_insert(pq, 5005)  -- priority 5, task 5 (lowest priority)
+
+  print "Processing tasks by priority (lower = higher priority):"
+  mut order := 1
+  while not heap_is_empty(pq)
+    top := heap_min(pq)
+    pq = heap_extract_min(pq)
+    pri := top / 1000
+    tid := top - pri * 1000
+    print "  {order}. task-{tid} (priority {pri})"
+    order = order + 1
+
+  print ""
+  print "Binary min-heap: O(log n) insert/extract-min, O(1) peek-min"

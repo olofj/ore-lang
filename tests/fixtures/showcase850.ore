@@ -1,0 +1,180 @@
+-- Showcase 850: Fibonacci Heap Simulation
+
+-- Fibonacci heap provides O(1) amortized insert/find-min, O(log n) extract-min.
+-- Key operations: insert, find-min, extract-min, decrease-key, merge.
+-- Simulated using a sorted-by-priority list + lazy consolidation tracking.
+-- [size, min_idx, key0, degree0, marked0, key1, degree1, marked1, ...]
+
+fn fib_stride -> Int
+  3
+
+fn fib_new -> List
+  [0, -1]
+
+fn fib_size h:List -> Int
+  h[0]
+
+fn fib_total_nodes h:List -> Int
+  (h.len() - 2) / fib_stride()
+
+fn fib_min_key h:List -> Int
+  if h[0] == 0
+    -1
+  else
+    mi := h[1]
+    h[2 + mi * fib_stride()]
+
+fn fib_node_key h:List i:Int -> Int
+  h[2 + i * fib_stride()]
+
+fn fib_node_degree h:List i:Int -> Int
+  h[3 + i * fib_stride()]
+
+fn fib_node_marked h:List i:Int -> Int
+  h[4 + i * fib_stride()]
+
+fn fib_set_key h:List i:Int v:Int -> List
+  mut nh := h
+  nh[2 + i * fib_stride()] = v
+  nh
+
+fn fib_set_degree h:List i:Int v:Int -> List
+  mut nh := h
+  nh[3 + i * fib_stride()] = v
+  nh
+
+fn fib_set_marked h:List i:Int v:Int -> List
+  mut nh := h
+  nh[4 + i * fib_stride()] = v
+  nh
+
+fn fib_update_min h:List -> List
+  total := fib_total_nodes(h)
+  mut nh := h
+  mut min_k := 2000000000
+  mut min_i := -1
+  for i in range(0, total)
+    k := fib_node_key(nh, i)
+    if k >= 0 and k < min_k
+      min_k = k
+      min_i = i
+  nh[1] = min_i
+  nh
+
+fn fib_insert h:List key:Int -> List
+  sz := h[0]
+  mut nh := h
+  nh[0] = sz + 1
+  nh.push(key)
+  nh.push(0)
+  nh.push(0)
+  fib_update_min(nh)
+
+fn fib_extract_min h:List -> List
+  sz := h[0]
+  if sz == 0
+    h
+  else
+    mi := h[1]
+    -- Mark min node as deleted (key = -1)
+    mut nh := fib_set_key(h, mi, -1)
+    nh[0] = sz - 1
+    fib_update_min(nh)
+
+fn fib_decrease_key h:List i:Int new_key:Int -> List
+  old_key := fib_node_key(h, i)
+  if new_key >= old_key
+    h
+  else
+    mut nh := fib_set_key(h, i, new_key)
+    fib_update_min(nh)
+
+-- Merge two heaps: just concatenate node lists
+fn fib_merge h1:List h2:List -> List
+  sz1 := h1[0]
+  sz2 := h2[0]
+  mut merged := [sz1 + sz2, -1]
+  for i in range(0, sz1)
+    merged.push(fib_node_key(h1, i))
+    merged.push(fib_node_degree(h1, i))
+    merged.push(fib_node_marked(h1, i))
+  for i in range(0, sz2)
+    merged.push(fib_node_key(h2, i))
+    merged.push(fib_node_degree(h2, i))
+    merged.push(fib_node_marked(h2, i))
+  fib_update_min(merged)
+
+fn fib_to_str h:List -> Str
+  total := fib_total_nodes(h)
+  if total == 0
+    "[]"
+  else
+    mut elems := [""]
+    for i in range(0, total)
+      k := fib_node_key(h, i)
+      if k >= 0
+        elems.push(str(k))
+    elems.skip(1).join(", ")
+
+fn main
+  print "Fibonacci Heap Simulation:"
+  print ""
+
+  mut fh := fib_new()
+  print "Empty heap: size={fib_size(fh)}"
+  print ""
+
+  print "Insert: 30, 10, 50, 5, 20, 40, 15"
+  fh = fib_insert(fh, 30)
+  fh = fib_insert(fh, 10)
+  fh = fib_insert(fh, 50)
+  fh = fib_insert(fh, 5)
+  fh = fib_insert(fh, 20)
+  fh = fib_insert(fh, 40)
+  fh = fib_insert(fh, 15)
+  print "Heap keys: {fib_to_str(fh)}"
+  print "Size: {fib_size(fh)}, Min: {fib_min_key(fh)}"
+  print ""
+
+  print "Extract-min sequence:"
+  mut count := 0
+  mut extracted := ""
+  while fib_size(fh) > 0
+    m := fib_min_key(fh)
+    fh = fib_extract_min(fh)
+    if count > 0
+      extracted = extracted + ", "
+    extracted = extracted + str(m)
+    count = count + 1
+  print "  {extracted}"
+  print ""
+
+  print "Merge two heaps:"
+  mut h1 := fib_new()
+  h1 = fib_insert(h1, 3)
+  h1 = fib_insert(h1, 7)
+  h1 = fib_insert(h1, 11)
+  mut h2 := fib_new()
+  h2 = fib_insert(h2, 2)
+  h2 = fib_insert(h2, 9)
+  h2 = fib_insert(h2, 14)
+  merged := fib_merge(h1, h2)
+  print "  h1: {fib_to_str(h1)} (min={fib_min_key(h1)})"
+  print "  h2: {fib_to_str(h2)} (min={fib_min_key(h2)})"
+  print "  merged: {fib_to_str(merged)} (min={fib_min_key(merged)})"
+  print ""
+
+  print "Decrease-key demo:"
+  mut dh := fib_new()
+  dh = fib_insert(dh, 100)
+  dh = fib_insert(dh, 200)
+  dh = fib_insert(dh, 50)
+  print "  Before: keys={fib_to_str(dh)}, min={fib_min_key(dh)}"
+  -- Decrease node at index 1 (key=200) to 1
+  dh = fib_decrease_key(dh, 1, 1)
+  print "  After decrease-key(node1, 200->1): min={fib_min_key(dh)}"
+  dh = fib_decrease_key(dh, 0, 25)
+  print "  After decrease-key(node0, 100->25): min={fib_min_key(dh)}"
+
+  print ""
+  print "Fibonacci heap: O(1) insert/find-min/merge, O(log n) extract-min, O(1) decrease-key"

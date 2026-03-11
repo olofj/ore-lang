@@ -1,0 +1,107 @@
+-- Showcase 843: Persistent Stack (Functional)
+
+-- A persistent stack preserves all previous versions after push/pop.
+-- Each version is immutable; push/pop return new versions.
+-- We encode the stack size in index 0, data in indices 1..size.
+
+fn stack_new -> List
+  [0]
+
+fn stack_size stack:List -> Int
+  stack[0]
+
+fn stack_push stack:List val:Int -> List
+  sz := stack[0]
+  mut new_stack := [sz + 1]
+  for i in range(1, sz + 1)
+    new_stack.push(stack[i])
+  new_stack.push(val)
+  new_stack
+
+fn stack_pop stack:List -> List
+  sz := stack[0]
+  if sz == 0
+    [0]
+  else
+    mut new_stack := [sz - 1]
+    for i in range(1, sz)
+      new_stack.push(stack[i])
+    new_stack
+
+fn stack_peek stack:List -> Int
+  sz := stack[0]
+  if sz == 0
+    -1
+  else
+    stack[sz]
+
+fn stack_to_str stack:List -> Str
+  sz := stack[0]
+  if sz == 0
+    "[]"
+  else
+    mut s := "["
+    for i in range(1, sz + 1)
+      if i > 1
+        s = s + ", "
+      s = s + str(stack[i])
+    s + "] (top=" + str(stack[sz]) + ")"
+
+fn main
+  print "Persistent Stack (Functional):"
+  print ""
+
+  s0 := stack_new()
+  print "s0 (empty): size={stack_size(s0)}"
+
+  s1 := stack_push(s0, 10)
+  print "s1 = push(s0, 10): {stack_to_str(s1)}"
+
+  s2 := stack_push(s1, 20)
+  print "s2 = push(s1, 20): {stack_to_str(s2)}"
+
+  s3 := stack_push(s2, 30)
+  print "s3 = push(s2, 30): {stack_to_str(s3)}"
+
+  print ""
+  print "Peek s3: {stack_peek(s3)}"
+
+  s4 := stack_pop(s3)
+  print "s4 = pop(s3): {stack_to_str(s4)}"
+
+  print ""
+  print "Persistence (all old versions preserved):"
+  print "  s0: size={stack_size(s0)}"
+  print "  s1: size={stack_size(s1)}, top={stack_peek(s1)}"
+  print "  s2: size={stack_size(s2)}, top={stack_peek(s2)}"
+  print "  s3: size={stack_size(s3)}, top={stack_peek(s3)}"
+  print "  s4: size={stack_size(s4)}, top={stack_peek(s4)}"
+
+  print ""
+  print "Branching from s2:"
+  s2a := stack_push(s2, 100)
+  s2b := stack_push(s2, 200)
+  print "  s2a = push(s2, 100): top={stack_peek(s2a)}"
+  print "  s2b = push(s2, 200): top={stack_peek(s2b)}"
+  print "  s2 unchanged: top={stack_peek(s2)}, size={stack_size(s2)}"
+
+  print ""
+  print "RPN evaluation: 3 4 + 2 *"
+  mut calc := stack_new()
+  calc = stack_push(calc, 3)
+  calc = stack_push(calc, 4)
+  a := stack_peek(calc)
+  calc = stack_pop(calc)
+  b := stack_peek(calc)
+  calc = stack_pop(calc)
+  calc = stack_push(calc, a + b)
+  calc = stack_push(calc, 2)
+  x := stack_peek(calc)
+  calc = stack_pop(calc)
+  y := stack_peek(calc)
+  calc = stack_pop(calc)
+  calc = stack_push(calc, x * y)
+  print "Result: {stack_peek(calc)}"
+
+  print ""
+  print "Persistent stack: O(n) push/pop, all versions preserved for backtracking"

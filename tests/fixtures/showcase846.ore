@@ -1,0 +1,174 @@
+-- Showcase 846: Disjoint Set (Union-Find with Path Compression)
+
+-- Union-Find tracks connected components.
+-- parent[i] = parent of i (i if root)
+-- rank[i] = tree height for union-by-rank
+-- Encoded as: [n, parent0, parent1, ..., parentN-1, rank0, rank1, ..., rankN-1]
+
+fn uf_new n:Int -> List
+  mut uf := [n]
+  for i in range(0, n)
+    uf.push(i)
+  for i in range(0, n)
+    uf.push(0)
+  uf
+
+fn uf_n uf:List -> Int
+  uf[0]
+
+fn uf_parent uf:List i:Int -> Int
+  uf[1 + i]
+
+fn uf_rank uf:List i:Int -> Int
+  n := uf[0]
+  uf[1 + n + i]
+
+fn uf_set_parent uf:List i:Int p:Int -> List
+  mut nuf := uf
+  nuf[1 + i] = p
+  nuf
+
+fn uf_set_rank uf:List i:Int r:Int -> List
+  n := uf[0]
+  mut nuf := uf
+  nuf[1 + n + i] = r
+  nuf
+
+-- Find with path compression (iterative)
+fn uf_find uf:List x:Int -> Int
+  mut root := x
+  -- Find root
+  mut going := true
+  while going
+    p := uf_parent(uf, root)
+    if p == root
+      going = false
+    else
+      root = p
+  root
+
+fn uf_find_compress uf:List x:Int -> List
+  root := uf_find(uf, x)
+  -- Path compression: set all nodes on path to point to root
+  mut nuf := uf
+  mut cur := x
+  mut going := true
+  while going
+    p := uf_parent(nuf, cur)
+    if cur == root
+      going = false
+    else
+      nuf = uf_set_parent(nuf, cur, root)
+      cur = p
+  nuf
+
+fn uf_union uf:List x:Int y:Int -> List
+  rx := uf_find(uf, x)
+  ry := uf_find(uf, y)
+  if rx == ry
+    uf
+  else
+    mut nuf := uf
+    rankx := uf_rank(nuf, rx)
+    ranky := uf_rank(nuf, ry)
+    if rankx < ranky
+      nuf = uf_set_parent(nuf, rx, ry)
+    else if rankx > ranky
+      nuf = uf_set_parent(nuf, ry, rx)
+    else
+      nuf = uf_set_parent(nuf, ry, rx)
+      nuf = uf_set_rank(nuf, rx, rankx + 1)
+    nuf
+
+fn uf_connected uf:List x:Int y:Int -> Bool
+  uf_find(uf, x) == uf_find(uf, y)
+
+fn uf_count_components uf:List -> Int
+  n := uf[0]
+  mut count := 0
+  for i in range(0, n)
+    if uf_parent(uf, i) == i
+      count = count + 1
+  count
+
+fn main
+  print "Disjoint Set (Union-Find with Path Compression):"
+  print ""
+
+  -- 8 nodes: 0..7
+  mut uf := uf_new(8)
+  print "Initial: 8 nodes, {uf_count_components(uf)} components (each alone)"
+  print ""
+
+  print "Union operations:"
+  uf = uf_union(uf, 0, 1)
+  print "  union(0,1): {uf_count_components(uf)} components"
+  uf = uf_union(uf, 2, 3)
+  print "  union(2,3): {uf_count_components(uf)} components"
+  uf = uf_union(uf, 4, 5)
+  print "  union(4,5): {uf_count_components(uf)} components"
+  uf = uf_union(uf, 6, 7)
+  print "  union(6,7): {uf_count_components(uf)} components"
+  uf = uf_union(uf, 0, 2)
+  print "  union(0,2): {uf_count_components(uf)} components"
+  uf = uf_union(uf, 4, 6)
+  print "  union(4,6): {uf_count_components(uf)} components"
+  print ""
+
+  print "Connectivity queries:"
+  print "  connected(0,3): {uf_connected(uf, 0, 3)}"
+  print "  connected(1,2): {uf_connected(uf, 1, 2)}"
+  print "  connected(0,5): {uf_connected(uf, 0, 5)}"
+  print "  connected(4,7): {uf_connected(uf, 4, 7)}"
+  print "  connected(0,4): {uf_connected(uf, 0, 4)}"
+  print ""
+
+  uf = uf_union(uf, 0, 4)
+  print "After union(0,4): {uf_count_components(uf)} component(s)"
+  print "  connected(1,7): {uf_connected(uf, 1, 7)}"
+  print ""
+
+  print "Kruskal MST demo (graph with 5 nodes):"
+  mut kuf := uf_new(5)
+  -- Edges sorted by weight: (0,1,1), (1,2,2), (0,3,3), (2,4,4), (1,3,5), (3,4,6)
+  -- Process in order, skip if creates cycle
+  mut mst_weight := 0
+  mut mst_edges := 0
+
+  -- edge (0,1) weight 1
+  if not uf_connected(kuf, 0, 1)
+    kuf = uf_union(kuf, 0, 1)
+    mst_weight = mst_weight + 1
+    mst_edges = mst_edges + 1
+    print "  Add edge (0-1, w=1)"
+  -- edge (1,2) weight 2
+  if not uf_connected(kuf, 1, 2)
+    kuf = uf_union(kuf, 1, 2)
+    mst_weight = mst_weight + 2
+    mst_edges = mst_edges + 1
+    print "  Add edge (1-2, w=2)"
+  -- edge (0,3) weight 3
+  if not uf_connected(kuf, 0, 3)
+    kuf = uf_union(kuf, 0, 3)
+    mst_weight = mst_weight + 3
+    mst_edges = mst_edges + 1
+    print "  Add edge (0-3, w=3)"
+  -- edge (2,4) weight 4
+  if not uf_connected(kuf, 2, 4)
+    kuf = uf_union(kuf, 2, 4)
+    mst_weight = mst_weight + 4
+    mst_edges = mst_edges + 1
+    print "  Add edge (2-4, w=4)"
+  -- edge (1,3) weight 5 - would create cycle
+  if not uf_connected(kuf, 1, 3)
+    kuf = uf_union(kuf, 1, 3)
+    mst_weight = mst_weight + 5
+    mst_edges = mst_edges + 1
+    print "  Add edge (1-3, w=5)"
+  else
+    print "  Skip edge (1-3, w=5) - cycle"
+
+  print "MST: {mst_edges} edges, total weight={mst_weight}"
+
+  print ""
+  print "Union-Find: near-O(1) amortized with path compression + union-by-rank"

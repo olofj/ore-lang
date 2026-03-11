@@ -1,0 +1,101 @@
+-- Showcase 842: Rope Data Structure Simulation
+
+-- A Rope is a binary tree for efficient string manipulation.
+-- We simulate rope operations: concat, split, insert, delete, index.
+-- The rope is represented as a balanced segment list (using a string with
+-- chunk boundaries tracked via parallel Int arrays for positions).
+
+-- Rope stored as: one big string + a list of chunk sizes
+-- We track chunk positions as an Int list
+
+fn rope_to_str rope:Str -> Str
+  rope
+
+fn rope_len rope:Str -> Int
+  rope.len()
+
+fn rope_index rope:Str i:Int -> Str
+  rope.substr(i, 1)
+
+fn rope_concat a:Str b:Str -> Str
+  a + b
+
+fn rope_split rope:Str at:Int -> Str
+  -- Return "left|right" representation
+  total := rope.len()
+  left := rope.substr(0, at)
+  right := rope.substr(at, total - at)
+  left + "|" + right
+
+fn rope_insert rope:Str at:Int text:Str -> Str
+  total := rope.len()
+  left := rope.substr(0, at)
+  right := rope.substr(at, total - at)
+  left + text + right
+
+fn rope_delete rope:Str from:Int to:Int -> Str
+  total := rope.len()
+  left := rope.substr(0, from)
+  right := rope.substr(to, total - to)
+  left + right
+
+-- Simulate rope balancing by measuring chunk distribution
+fn chunk_balance total:Int parts:Int -> Int
+  if parts == 0
+    0
+  else
+    total / parts
+
+-- Build a rope from three parts (simulating tree concat)
+fn build_rope3 a:Str b:Str c:Str -> Str
+  a + b + c
+
+fn main
+  print "Rope Data Structure:"
+  print ""
+
+  -- Build rope by concatenating leaves
+  leaf1 := "Hello, "
+  leaf2 := "World"
+  leaf3 := "!"
+  rope := rope_concat(rope_concat(leaf1, leaf2), leaf3)
+  print "Rope (3 leaves concat): '{rope}'"
+  print "Length: {rope_len(rope)}"
+  print ""
+
+  print "Index access:"
+  print "  index 0: '{rope_index(rope, 0)}'"
+  print "  index 7: '{rope_index(rope, 7)}'"
+  print "  index 12: '{rope_index(rope, 12)}'"
+  print ""
+
+  -- Split
+  split_result := rope_split(rope, 5)
+  print "Split at 5: {split_result}"
+  print ""
+
+  -- Insert
+  big := build_rope3("The quick ", "brown fox ", "jumps over")
+  print "Big rope: '{big}'"
+  inserted := rope_insert(big, 10, "red ")
+  print "After insert 'red ' at 10: '{inserted}'"
+  print ""
+
+  -- Delete
+  deleted := rope_delete(big, 4, 9)
+  print "After delete [4,9): '{deleted}'"
+  print ""
+
+  -- Simulate rope tree structure (weight tracking)
+  print "Simulated rope tree weights (chunk sizes):"
+  chunks := ["The quick ", "brown fox ", "jumps over"]
+  n := chunks.len()
+  mut total_weight := 0
+  for i in range(0, n)
+    w := chunks[i].len()
+    total_weight = total_weight + w
+    print "  Leaf {i}: weight={w}, text='{chunks[i]}'"
+  print "  Root weight: {total_weight}"
+
+  print ""
+  print "Rope: tree of string chunks, O(log n) concat/split vs O(n) for plain strings"

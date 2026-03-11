@@ -10583,6 +10583,211 @@ fn showcase830_numerical_differentiation() {
 }
 
 #[test]
+fn showcase831_nim_game() {
+    let out = run_ore("showcase831.ore");
+    assert!(out.contains("Nim Game (Optimal Strategy):"), "got: {out}");
+    assert!(out.contains("Position (1, 4, 6): nim-sum = 3"), "got: {out}");
+    assert!(out.contains("Heaps (1,4,6): Take 1 from heap 3 (leave 5)"), "got: {out}");
+    assert!(out.contains("Nim: optimal play uses XOR (nim-sum) to always leave opponent in losing position."), "got: {out}");
+}
+
+#[test]
+fn showcase832_tower_of_hanoi() {
+    let out = run_ore("showcase832.ore");
+    assert!(out.contains("Tower of Hanoi (Recursive Solution):"), "got: {out}");
+    assert!(out.contains("n=3 disks: 7 moves"), "got: {out}");
+    assert!(out.contains("Move 4: disk 3: A -> C"), "got: {out}");
+    assert!(out.contains("Matches: true"), "got: {out}");
+    assert!(out.contains("Tower of Hanoi: divide and conquer, optimal solution in exactly 2^n - 1 moves."), "got: {out}");
+}
+
+#[test]
+fn showcase833_n_queens() {
+    let out = run_ore("showcase833.ore");
+    assert!(out.contains("N-Queens Problem:"), "got: {out}");
+    assert!(out.contains("8-Queens: 92 solutions"), "got: {out}");
+    assert!(out.contains("Column positions: 1 3 0 2"), "got: {out}");
+    assert!(out.contains("N-Queens: classic backtracking problem, solutions grow rapidly with n."), "got: {out}");
+}
+
+#[test]
+fn showcase834_sudoku_solver() {
+    let out = run_ore("showcase834.ore");
+    assert!(out.contains("Sudoku Solver (Backtracking):"), "got: {out}");
+    assert!(out.contains("solved=true"), "got: {out}");
+    assert!(out.contains("Cell (0,2) = 4 (expect 4)"), "got: {out}");
+    assert!(out.contains("Cell (4,4) = 5 (expect 5)"), "got: {out}");
+    assert!(out.contains("Sudoku: 9x9 grid with 3x3 boxes, each row/col/box has digits 1-9 exactly once."), "got: {out}");
+}
+
+#[test]
+fn showcase835_knights_tour() {
+    let out = run_ore("showcase835.ore");
+    assert!(out.contains("Knight's Tour (Warnsdorff's Heuristic):"), "got: {out}");
+    assert!(out.contains("Squares visited: 25 / 25"), "got: {out}");
+    assert!(out.contains("Squares visited: 64 / 64"), "got: {out}");
+    assert!(out.contains("Knight's Tour: visit all squares exactly once; Warnsdorff's greedy heuristic works well."), "got: {out}");
+}
+
+#[test]
+fn showcase836_game_of_life() {
+    let out = run_ore("showcase836.ore");
+    assert!(out.contains("Conway's Game of Life:"), "got: {out}");
+    assert!(out.contains("Generation 0 (alive=8)"), "got: {out}");
+    assert!(out.contains("Blinker period 2: gen0==gen2? true"), "got: {out}");
+    assert!(out.contains("Game of Life: simple rules create complex emergent patterns like oscillators and gliders."), "got: {out}");
+}
+
+#[test]
+fn showcase837_tic_tac_toe() {
+    let out = run_ore("showcase837.ore");
+    assert!(out.contains("Tic-Tac-Toe (Perfect Play via Minimax):"), "got: {out}");
+    assert!(out.contains("Empty board score (X first): 0"), "got: {out}");
+    assert!(out.contains("X best block move: position 2 (expect 2)"), "got: {out}");
+    assert!(out.contains("Result: Draw (as expected with perfect play)"), "got: {out}");
+    assert!(out.contains("Tic-tac-toe: minimax with perfect play from both sides always results in a draw."), "got: {out}");
+}
+
+#[test]
+fn showcase838_josephus_problem() {
+    let out = run_ore("showcase838.ore");
+    assert!(out.contains("Josephus Problem:"), "got: {out}");
+    assert!(out.contains("n=7: safe position = 4"), "got: {out}");
+    assert!(out.contains("Survivor: person 4"), "got: {out}");
+    assert!(out.contains("Match: true"), "got: {out}");
+    assert!(out.contains("Josephus problem: recursive formula J(n,k)=(J(n-1,k)+k) mod n finds safe position."), "got: {out}");
+}
+
+#[test]
+fn showcase839_water_jug() {
+    let out = run_ore("showcase839.ore");
+    assert!(out.contains("Water Jug Problem (BFS):"), "got: {out}");
+    assert!(out.contains("Minimum steps: 6"), "got: {out}");
+    assert!(out.contains("Minimum steps: -1"), "got: {out}");
+    assert!(out.contains("solvable in 2 steps"), "got: {out}");
+    assert!(out.contains("Water jug problem: BFS finds shortest solution; solvable iff target divisible by gcd."), "got: {out}");
+}
+
+#[test]
+fn showcase840_fifteen_puzzle() {
+    let out = run_ore("showcase840.ore");
+    assert!(out.contains("15-Puzzle Solvability Checker:"), "got: {out}");
+    assert!(out.contains("Inversions: 0, Solvable: true"), "got: {out}");
+    assert!(out.contains("Inversions: 1, Solvable: false"), "got: {out}");
+    assert!(out.contains("Inversions: 41, Solvable: true"), "got: {out}");
+    assert!(out.contains("15-puzzle: half of all permutations are solvable; inversions parity determines reachability."), "got: {out}");
+}
+
+#[test]
+fn showcase841_trie_autocomplete() {
+    let out = run_ore("showcase841.ore");
+    assert!(out.contains("Trie Autocomplete:"), "got: {out}");
+    assert!(out.contains("'apple' found: true"), "got: {out}");
+    assert!(out.contains("'appl' found: false"), "got: {out}");
+    assert!(out.contains("Autocomplete 'app': app, apple, application, apply"), "got: {out}");
+    assert!(out.contains("Autocomplete 'ban': banana, band, bandana"), "got: {out}");
+    assert!(out.contains("Autocomplete 'ca': can, car, cat"), "got: {out}");
+    assert!(out.contains("Trie autocomplete: O(prefix_len + results) lookup"), "got: {out}");
+}
+
+#[test]
+fn showcase842_rope_data_structure() {
+    let out = run_ore("showcase842.ore");
+    assert!(out.contains("Rope Data Structure:"), "got: {out}");
+    assert!(out.contains("Rope (3 leaves concat): 'Hello, World!'"), "got: {out}");
+    assert!(out.contains("index 7: 'W'"), "got: {out}");
+    assert!(out.contains("After insert 'red ' at 10: 'The quick red brown fox jumps over'"), "got: {out}");
+    assert!(out.contains("Root weight: 30"), "got: {out}");
+}
+
+#[test]
+fn showcase843_persistent_stack() {
+    let out = run_ore("showcase843.ore");
+    assert!(out.contains("Persistent Stack (Functional):"), "got: {out}");
+    assert!(out.contains("s3 = push(s2, 30): [10, 20, 30] (top=30)"), "got: {out}");
+    assert!(out.contains("s2 unchanged: top=20, size=2"), "got: {out}");
+    assert!(out.contains("Result: 14"), "got: {out}");
+    assert!(out.contains("Persistent stack: O(n) push/pop, all versions preserved for backtracking"), "got: {out}");
+}
+
+#[test]
+fn showcase844_circular_buffer() {
+    let out = run_ore("showcase844.ore");
+    assert!(out.contains("Circular Buffer:"), "got: {out}");
+    assert!(out.contains("Buffer: [10, 20, 30, 40, 50]"), "got: {out}");
+    assert!(out.contains("Size: 5, Full: true"), "got: {out}");
+    assert!(out.contains("Dequeued: 10, 20, 30"), "got: {out}");
+    assert!(out.contains("Drained: 40, 50, 60, 70, 80"), "got: {out}");
+    assert!(out.contains("Circular buffer: O(1) enqueue/dequeue, fixed memory, wrap-around indexing"), "got: {out}");
+}
+
+#[test]
+fn showcase845_priority_queue() {
+    let out = run_ore("showcase845.ore");
+    assert!(out.contains("Priority Queue (Binary Min-Heap):"), "got: {out}");
+    assert!(out.contains("Heap array: [5, 10, 15, 30, 20, 50, 40]"), "got: {out}");
+    assert!(out.contains("Min: 5"), "got: {out}");
+    assert!(out.contains("5, 10, 15, 20, 30, 40, 50"), "got: {out}");
+    assert!(out.contains("1. task-2 (priority 1)"), "got: {out}");
+    assert!(out.contains("Binary min-heap: O(log n) insert/extract-min, O(1) peek-min"), "got: {out}");
+}
+
+#[test]
+fn showcase846_disjoint_set() {
+    let out = run_ore("showcase846.ore");
+    assert!(out.contains("Disjoint Set (Union-Find with Path Compression):"), "got: {out}");
+    assert!(out.contains("Initial: 8 nodes, 8 components (each alone)"), "got: {out}");
+    assert!(out.contains("connected(0,3): true"), "got: {out}");
+    assert!(out.contains("connected(0,4): false"), "got: {out}");
+    assert!(out.contains("MST: 4 edges, total weight=10"), "got: {out}");
+    assert!(out.contains("Union-Find: near-O(1) amortized with path compression + union-by-rank"), "got: {out}");
+}
+
+#[test]
+fn showcase847_treap() {
+    let out = run_ore("showcase847.ore");
+    assert!(out.contains("Treap (Tree + Heap hybrid):"), "got: {out}");
+    assert!(out.contains("Treap nodes: 9"), "got: {out}");
+    assert!(out.contains("node 0: key=50, pri=91"), "got: {out}");
+    assert!(out.contains("In-order traversal (BST property = sorted): 10, 20, 30, 35, 40, 50, 60, 70, 80"), "got: {out}");
+    assert!(out.contains("Treap: randomized BST with O(log n) expected height, combines BST + heap"), "got: {out}");
+}
+
+#[test]
+fn showcase848_splay_tree() {
+    let out = run_ore("showcase848.ore");
+    assert!(out.contains("Splay Tree Operations:"), "got: {out}");
+    assert!(out.contains("Nodes: 10"), "got: {out}");
+    assert!(out.contains("In-order (BST property verified): 10, 20, 30, 35, 40, 45, 50, 60, 70, 80"), "got: {out}");
+    assert!(out.contains("find(40): node 4, key=40"), "got: {out}");
+    assert!(out.contains("find(99): -1 (not found)"), "got: {out}");
+    assert!(out.contains("Splay tree: O(log n) amortized, recently accessed nodes stay near root"), "got: {out}");
+}
+
+#[test]
+fn showcase849_van_emde_boas() {
+    let out = run_ore("showcase849.ore");
+    assert!(out.contains("Van Emde Boas Tree Simulation (universe U=20):"), "got: {out}");
+    assert!(out.contains("Set: set(0, 1, 3, 5, 7, 9, 12, 15, 18)"), "got: {out}");
+    assert!(out.contains("member(7): true"), "got: {out}");
+    assert!(out.contains("successor(3): 5"), "got: {out}");
+    assert!(out.contains("predecessor(9): 7"), "got: {out}");
+    assert!(out.contains("Set after delete: set(0, 1, 3, 5, 9, 12, 18)"), "got: {out}");
+    assert!(out.contains("vEB tree: O(log log U) for all operations"), "got: {out}");
+}
+
+#[test]
+fn showcase850_fibonacci_heap() {
+    let out = run_ore("showcase850.ore");
+    assert!(out.contains("Fibonacci Heap Simulation:"), "got: {out}");
+    assert!(out.contains("Size: 7, Min: 5"), "got: {out}");
+    assert!(out.contains("5, 10, 15, 20, 30, 40, 50"), "got: {out}");
+    assert!(out.contains("merged: 3, 7, 11, 2, 9, 14 (min=2)"), "got: {out}");
+    assert!(out.contains("After decrease-key(node1, 200->1): min=1"), "got: {out}");
+    assert!(out.contains("Fibonacci heap: O(1) insert/find-min/merge, O(log n) extract-min, O(1) decrease-key"), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

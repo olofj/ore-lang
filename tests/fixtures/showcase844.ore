@@ -1,0 +1,128 @@
+-- Showcase 844: Circular Buffer
+
+-- A circular buffer (ring buffer) uses a fixed-size array with head/tail
+-- pointers that wrap around. Efficient O(1) enqueue and dequeue.
+-- Encoded as: [capacity, head, tail, size, data0, data1, ...]
+
+fn cbuf_new capacity:Int -> List
+  mut buf := [capacity, 0, 0, 0]
+  for i in range(0, capacity)
+    buf.push(0)
+  buf
+
+fn cbuf_capacity buf:List -> Int
+  buf[0]
+
+fn cbuf_size buf:List -> Int
+  buf[3]
+
+fn cbuf_is_full buf:List -> Bool
+  buf[3] == buf[0]
+
+fn cbuf_is_empty buf:List -> Bool
+  buf[3] == 0
+
+fn cbuf_enqueue buf:List val:Int -> List
+  cap := buf[0]
+  head := buf[1]
+  tail := buf[2]
+  sz := buf[3]
+  if sz == cap
+    buf
+  else
+    mut new_buf := buf
+    new_buf[4 + tail] = val
+    new_tail := (tail + 1) - ((tail + 1) / cap) * cap
+    new_buf[2] = new_tail
+    new_buf[3] = sz + 1
+    new_buf
+
+fn cbuf_dequeue buf:List -> List
+  cap := buf[0]
+  head := buf[1]
+  sz := buf[3]
+  if sz == 0
+    buf
+  else
+    mut new_buf := buf
+    new_head := (head + 1) - ((head + 1) / cap) * cap
+    new_buf[1] = new_head
+    new_buf[3] = sz - 1
+    new_buf
+
+fn cbuf_front buf:List -> Int
+  head := buf[1]
+  buf[4 + head]
+
+fn cbuf_to_str buf:List -> Str
+  sz := buf[3]
+  head := buf[1]
+  cap := buf[0]
+  if sz == 0
+    "[]"
+  else
+    mut s := "["
+    for i in range(0, sz)
+      if i > 0
+        s = s + ", "
+      idx := (head + i) - ((head + i) / cap) * cap
+      s = s + str(buf[4 + idx])
+    s + "]"
+
+fn main
+  print "Circular Buffer:"
+  print ""
+
+  mut cbuf := cbuf_new(5)
+  print "Created buffer: capacity=5, size={cbuf_size(cbuf)}"
+  print ""
+
+  print "Enqueue 10, 20, 30, 40, 50:"
+  cbuf = cbuf_enqueue(cbuf, 10)
+  cbuf = cbuf_enqueue(cbuf, 20)
+  cbuf = cbuf_enqueue(cbuf, 30)
+  cbuf = cbuf_enqueue(cbuf, 40)
+  cbuf = cbuf_enqueue(cbuf, 50)
+  print "Buffer: {cbuf_to_str(cbuf)}"
+  print "Size: {cbuf_size(cbuf)}, Full: {cbuf_is_full(cbuf)}"
+  print ""
+
+  print "Try enqueue 60 (buffer full - rejected):"
+  cbuf = cbuf_enqueue(cbuf, 60)
+  print "Buffer: {cbuf_to_str(cbuf)}"
+  print ""
+
+  print "Dequeue 3 items:"
+  v1 := cbuf_front(cbuf)
+  cbuf = cbuf_dequeue(cbuf)
+  v2 := cbuf_front(cbuf)
+  cbuf = cbuf_dequeue(cbuf)
+  v3 := cbuf_front(cbuf)
+  cbuf = cbuf_dequeue(cbuf)
+  print "Dequeued: {v1}, {v2}, {v3}"
+  print "Buffer: {cbuf_to_str(cbuf)}, size={cbuf_size(cbuf)}"
+  print ""
+
+  print "Enqueue 60, 70, 80 (wraps around):"
+  cbuf = cbuf_enqueue(cbuf, 60)
+  cbuf = cbuf_enqueue(cbuf, 70)
+  cbuf = cbuf_enqueue(cbuf, 80)
+  print "Buffer: {cbuf_to_str(cbuf)}"
+  print "Full: {cbuf_is_full(cbuf)}"
+  print ""
+
+  print "Drain all:"
+  mut count := 0
+  mut vals := ""
+  while not cbuf_is_empty(cbuf)
+    v := cbuf_front(cbuf)
+    cbuf = cbuf_dequeue(cbuf)
+    if count > 0
+      vals = vals + ", "
+    vals = vals + str(v)
+    count = count + 1
+  print "Drained: {vals}"
+  print "Empty: {cbuf_is_empty(cbuf)}"
+
+  print ""
+  print "Circular buffer: O(1) enqueue/dequeue, fixed memory, wrap-around indexing"
