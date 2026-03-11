@@ -1,0 +1,125 @@
+-- Showcase 908: Chemical Reaction Network
+
+-- We simulate a chemical reaction network using mass-action kinetics.
+-- Reactions modeled (Brusselator oscillator):
+--   A      -> X         rate k1
+--   B + X  -> Y + D     rate k2
+--   2X + Y -> 3X        rate k3  (autocatalytic)
+--   X      -> E         rate k4
+-- When k2*B > 1 + (k1*k3*A/k4)^2, the system oscillates (Hopf bifurcation)
+
+fn round3 x:Float -> Float
+  r := (x * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+fn round2 x:Float -> Float
+  r := (x * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+fn main
+  print "Chemical Reaction Network: Brusselator Oscillator"
+  print "==================================================="
+  print ""
+
+  print "Reaction scheme:"
+  print "  A      -> X         (rate k1)"
+  print "  B + X  -> Y + D     (rate k2)"
+  print "  2X + Y -> 3X        (rate k3, autocatalytic)"
+  print "  X      -> E         (rate k4)"
+  print ""
+
+  -- Rate constants
+  k1 := 1.0
+  k2 := 1.0
+  k3 := 1.0
+  k4 := 1.0
+
+  -- Fixed reservoir concentrations (clamped)
+  conc_a := 1.0
+  conc_b := 3.0  -- above bifurcation point -> oscillation
+
+  -- Initial concentrations of intermediates
+  mut cx := 1.5   -- intermediate X
+  mut cy := 3.0   -- intermediate Y
+
+  dt := 0.05
+
+  -- Steady state (analytical): X_ss = A, Y_ss = B/A
+  x_ss := conc_a
+  y_ss := conc_b / conc_a
+  print "Parameters: A={conc_a} B={conc_b} k1={k1} k2={k2} k3={k3} k4={k4}"
+  print "Steady state: X={x_ss} Y={y_ss}"
+  print ""
+
+  -- Bifurcation condition: oscillations when k2*B > 1 + (k3*A^2/k4^2)
+  -- For Brusselator: when B > 1 + A^2 (with k1=k2=k3=k4=1)
+  bif_thresh := 1.0 + conc_a * conc_a
+  oscillates := conc_b > bif_thresh
+  print "Bifurcation threshold: B > {bif_thresh}"
+  print "Current B={conc_b}: oscillating = {oscillates}"
+  print ""
+
+  print "Time course simulation:"
+  print "  Time  |    X    |    Y    | X-X_ss  | Phase"
+  print "  ------+---------+---------+---------+-------"
+
+  mut t := 0.0
+  mut max_x := cx
+  mut min_x := cx
+  mut max_y := cy
+  mut min_y := cy
+  mut cycle_count := 0
+  mut prev_dx := 0.0
+  mut was_positive := true
+
+  for step in range(0, 400)
+    -- Brusselator ODEs (mass action)
+    rx1 := k1 * conc_a                   -- A -> X
+    rx2 := k2 * conc_b * cx              -- B + X -> Y + D
+    rx3 := k3 * cx * cx * cy             -- 2X + Y -> 3X
+    rx4 := k4 * cx                       -- X -> E
+
+    dx := (rx1 - rx2 + rx3 - rx4) * dt
+    ry1 := k2 * conc_b * cx
+    ry3 := k3 * cx * cx * cy
+    dy := (ry1 - ry3) * dt
+
+    cx = cx + dx
+    cy = cy + dy
+    t = t + dt
+
+    if cx > max_x
+      max_x = cx
+    if cx < min_x
+      min_x = cx
+    if cy > max_y
+      max_y = cy
+    if cy < min_y
+      min_y = cy
+
+    -- Count oscillation cycles (zero crossings of dx)
+    cur_pos := dx > 0.0
+    if was_positive and cur_pos == false
+      cycle_count = cycle_count + 1
+    was_positive = cur_pos
+
+    t_int := round2(t)
+    if step % 40 == 39
+      dev := round3(cx - x_ss)
+      phase := if cx > x_ss + 0.5 then "X peak"
+               else if cx < x_ss - 0.5 then "X trough"
+               else "crossing"
+      print "  {str(t_int).pad_left(5)} | {str(round3(cx)).pad_left(7)} | {str(round3(cy)).pad_left(7)} | {str(dev).pad_left(7)} | {phase}"
+
+  print ""
+  print "Oscillation statistics:"
+  print "  X range: [{round3(min_x)}, {round3(max_x)}]  amplitude={round3(max_x - min_x)}"
+  print "  Y range: [{round3(min_y)}, {round3(max_y)}]  amplitude={round3(max_y - min_y)}"
+  print "  Cycles detected: {cycle_count}"
+  period := 20.0 / cycle_count.to_float()
+  print "  Approx period: {round2(period)} time units"
+  print ""
+  print "Chemical insights:"
+  print "  Autocatalytic step (2X+Y->3X) drives oscillation"
+  print "  B controls bifurcation: B < {bif_thresh} => stable, B > {bif_thresh} => limit cycle"
+  print "  Brusselator is a classic model for chemical clocks (e.g., BZ reaction)"

@@ -1,0 +1,79 @@
+-- Showcase 910: Ecosystem Food Web Simulation
+-- Models energy flow through trophic levels in a food web.
+-- Tracks biomass transfer with efficiency losses at each level.
+
+fn main
+  print "Ecosystem Food Web Simulation"
+  print "=============================="
+
+  -- Trophic levels: producers, primary consumers, secondary consumers, apex
+  -- Energy transfer efficiency ~10% (Lindeman's rule)
+  efficiency := 0.10
+
+  -- Initial solar energy input (arbitrary units)
+  solar_input := 10000.0
+
+  print "Solar energy input: {str(solar_input)} units"
+  print "Transfer efficiency: {str(efficiency * 100.0)}%"
+  print ""
+
+  -- Simple chain: sun -> grass -> rabbit -> fox -> eagle
+  levels := ["Sun", "Grass", "Rabbit", "Fox", "Eagle"]
+  mut energy := solar_input
+  mut biomasses := []
+
+  print "=== Energy Pyramid ==="
+  for i in range(0, 5)
+    name := levels[i]
+    biomasses.push(energy)
+    mut bar_len := (energy / 200.0).to_int()
+    if bar_len < 1
+      bar_len = 1
+    bar := "#".repeat(bar_len)
+    npad := name.pad_right(8, " ")
+    epad := str(energy).pad_right(10, " ")
+    print "{npad}: {epad} {bar}"
+    energy = energy * efficiency
+
+  -- Biodiversity and stability
+  print ""
+  print "=== Food Web Complexity ==="
+  n_species := 12
+  -- Connectance = actual links / possible links
+  n_links := 20
+  possible := n_species * (n_species - 1) / 2
+  connectance := n_links.to_float() / possible.to_float()
+  print "Species: {n_species}"
+  print "Trophic links: {n_links}"
+  print "Possible links: {possible}"
+  print "Connectance: {str(connectance).substr(0, 5)}"
+
+  -- Species removal simulation
+  print ""
+  print "=== Keystone Species Removal ==="
+  -- Remove a species and see cascade effects
+  base_species := ["grass", "clover", "rabbit", "mouse", "deer", "fox", "hawk", "wolf"]
+  -- Dependencies: each consumer depends on producers
+  print "Removing 'rabbit' (keystone prey)..."
+  mut affected := 0
+  dependents := ["fox", "hawk", "wolf"]
+  for i in range(0, 3)
+    dep := dependents[i]
+    print "  {dep}: lost primary food source -> population decline"
+    affected = affected + 1
+
+  print "  Secondary effects: grass overgrowth, mouse population boom"
+  affected = affected + 2
+  print "Species affected: {affected + 1} out of {base_species | count()}"
+
+  -- Biomass ratio analysis
+  print ""
+  print "=== Trophic Ratios ==="
+  b_prod := biomasses[1]
+  b_herb := biomasses[2]
+  b_pred := biomasses[3]
+  ratio_ph := b_prod / b_herb
+  ratio_hp := b_herb / b_pred
+  print "Producer/Herbivore ratio: {str(ratio_ph).substr(0, 5)}"
+  print "Herbivore/Predator ratio: {str(ratio_hp).substr(0, 5)}"
+  print "Ecosystem follows 10% energy transfer rule"

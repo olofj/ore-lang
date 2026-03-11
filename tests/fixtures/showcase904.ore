@@ -1,0 +1,100 @@
+-- Showcase 904: Phylogenetic Tree Construction (UPGMA)
+
+-- UPGMA (Unweighted Pair Group Method with Arithmetic mean) constructs
+-- a rooted ultrametric tree from a distance matrix.
+-- At each step: merge the two closest clusters, update distances by averaging.
+
+fn round2 x:Float -> Float
+  r := (x * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+fn main
+  print "Phylogenetic Tree Construction (UPGMA)"
+  print "======================================="
+  print ""
+
+  -- 5 taxa (simpler to manage manually)
+  species := ["Human", "Chimp", "Gorilla", "Orangutan", "Gibbon"]
+  n := 5
+  print "Taxa: {species.join(", ")}"
+  print ""
+
+  -- Upper-triangle pairwise distances (stored as: [d01, d02, d03, d04, d12, d13, d14, d23, d24, d34])
+  -- Human-Chimp=4, Human-Gorilla=9, Human-Orang=18, Human-Gibbon=22
+  -- Chimp-Gorilla=9, Chimp-Orang=18, Chimp-Gibbon=22
+  -- Gorilla-Orang=17, Gorilla-Gibbon=22
+  -- Orang-Gibbon=22
+
+  -- Use a 5x5 flat mutable distance matrix
+  mut d00 := 0.0
+  mut d01 := 4.0
+  mut d02 := 9.0
+  mut d03 := 18.0
+  mut d04 := 22.0
+  mut d11 := 0.0
+  mut d12 := 9.0
+  mut d13 := 18.0
+  mut d14 := 22.0
+  mut d22 := 0.0
+  mut d23 := 17.0
+  mut d24 := 22.0
+  mut d33 := 0.0
+  mut d34 := 22.0
+  mut d44 := 0.0
+
+  print "Initial distance matrix:"
+  print "          | Human | Chimp | Gorilla | Orangutan | Gibbon"
+  print "----------+-------+-------+---------+-----------+-------"
+  print "  Human   |   0.0 |   4.0 |     9.0 |      18.0 |  22.0"
+  print "  Chimp   |   4.0 |   0.0 |     9.0 |      18.0 |  22.0"
+  print "  Gorilla |   9.0 |   9.0 |     0.0 |      17.0 |  22.0"
+  print "  Orang   |  18.0 |  18.0 |    17.0 |       0.0 |  22.0"
+  print "  Gibbon  |  22.0 |  22.0 |    22.0 |      22.0 |   0.0"
+  print ""
+
+  print "UPGMA Steps:"
+  print "============"
+
+  -- Step 1: closest = Human(0) + Chimp(1) = 4.0, height = 2.0
+  h01 := d01 / 2.0
+  print "Step 1: Merge Human + Chimp (distance={d01}, node height={h01})"
+  -- New cluster [Human,Chimp] = cluster A, update distances (average of cluster sizes 1,1)
+  dA2 := (d02 + d12) / 2.0
+  dA3 := (d03 + d13) / 2.0
+  dA4 := (d04 + d14) / 2.0
+  print "  [Human+Chimp] distances: Gorilla={dA2} Orang={dA3} Gibbon={dA4}"
+
+  -- Remaining: A(Human+Chimp), Gorilla(2), Orang(3), Gibbon(4)
+  -- Distances: A-2=9, A-3=18, A-4=22, 2-3=17, 2-4=22, 3-4=22
+  -- Step 2: closest = A(0) + Gorilla(2) = 9.0, height = 4.5
+  h_A2 := dA2 / 2.0
+  print "Step 2: Merge [Human+Chimp] + Gorilla (distance={dA2}, node height={h_A2})"
+  -- New cluster B=[Human,Chimp,Gorilla], size 3 vs size 1
+  dB3 := (dA3 * 2.0 + d23 * 1.0) / 3.0
+  dB4 := (dA4 * 2.0 + d24 * 1.0) / 3.0
+  print "  [[Human+Chimp]+Gorilla] distances: Orang={round2(dB3)} Gibbon={round2(dB4)}"
+
+  -- Remaining: B, Orang(3), Gibbon(4)
+  -- Distances: B-3=17.67, B-4=22, 3-4=22
+  -- Step 3: closest = B + Orang = 17.67, height = 8.83
+  h_B3 := dB3 / 2.0
+  print "Step 3: Merge [Human+Chimp+Gorilla] + Orangutan (distance={round2(dB3)}, node height={round2(h_B3)})"
+  dC4 := (dB4 * 3.0 + d34 * 1.0) / 4.0
+  print "  [[[Human+Chimp]+Gorilla]+Orang] distance to Gibbon: {round2(dC4)}"
+
+  -- Remaining: C=[all 4], Gibbon(4)
+  -- Step 4: merge C + Gibbon
+  h_C4 := dC4 / 2.0
+  print "Step 4: Merge [Human+Chimp+Gorilla+Orang] + Gibbon (distance={round2(dC4)}, node height={round2(h_C4)})"
+
+  print ""
+  print "Final rooted tree (Newick-like):"
+  print "  ((((Human:2.0, Chimp:2.0):2.5, Gorilla:4.5):4.33, Orangutan:8.83):2.42, Gibbon:11.0)"
+  print ""
+  print "Node heights (divergence times in relative units):"
+  print "  Human-Chimp ancestor:    {h01}"
+  print "  +Gorilla ancestor:       {h_A2}"
+  print "  +Orangutan ancestor:     {round2(h_B3)}"
+  print "  Root (+ Gibbon):         {round2(h_C4)}"
+  print ""
+  print "Key finding: Human and Chimp are most closely related (smallest distance=4.0)"

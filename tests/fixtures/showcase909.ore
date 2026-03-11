@@ -1,0 +1,71 @@
+-- Showcase 909: Neural Spike Train Analysis
+-- Simulates leaky integrate-and-fire neuron model.
+-- Computes firing rate, inter-spike intervals, and membrane dynamics.
+
+fn main
+  print "Neural Spike Train Analysis"
+  print "==========================="
+
+  -- Leaky Integrate-and-Fire neuron parameters
+  tau := 20.0      -- membrane time constant (ms)
+  v_rest := -70.0  -- resting potential (mV)
+  v_thresh := -55.0 -- spike threshold (mV)
+  v_reset := -75.0  -- reset potential (mV)
+  dt := 0.5        -- time step (ms)
+  t_max := 200     -- total steps (100 ms)
+
+  -- Constant input current (above threshold for regular spiking)
+  i_input := 2.0
+
+  mut v := v_rest
+  mut spike_count := 0
+  mut last_spike := -100
+  mut isi_sum := 0  -- inter-spike interval sum
+  mut isi_count := 0
+
+  print "Parameters: tau={str(tau)}ms, V_rest={str(v_rest)}mV, V_thresh={str(v_thresh)}mV"
+  print "Input current: {str(i_input)}"
+  print ""
+  print "Time(ms) | Voltage(mV) | Event"
+  print "---------+-------------+------"
+
+  for step in range(0, t_max)
+    -- Leaky integration: dV/dt = -(V - V_rest)/tau + I
+    dv := ((v_rest - v) / tau + i_input) * dt
+    v = v + dv
+
+    if v > v_thresh or v == v_thresh
+      spike_count = spike_count + 1
+      if last_spike >= 0
+        isi := step - last_spike
+        isi_sum = isi_sum + isi
+        isi_count = isi_count + 1
+      last_spike = step
+      t_ms := step.to_float() * dt
+      ts := str(t_ms).substr(0, 5).pad_right(8, " ")
+      vs := str(v).substr(0, 6).pad_right(11, " ")
+      print "{ts} | {vs} | SPIKE #{spike_count}"
+      v = v_reset
+
+  print ""
+  print "=== Statistics ==="
+  print "Total spikes: {spike_count}"
+  total_time := t_max.to_float() * dt
+  rate := spike_count.to_float() / (total_time / 1000.0)
+  print "Firing rate: {str(rate).substr(0, 5)} Hz"
+
+  if isi_count > 0
+    avg_isi := isi_sum.to_float() / isi_count.to_float() * dt
+    print "Mean ISI: {str(avg_isi).substr(0, 5)} ms"
+    print "ISI count: {isi_count}"
+
+  -- Phase plane analysis
+  print ""
+  print "=== Equilibrium Analysis ==="
+  v_eq := v_rest + i_input * tau
+  print "Equilibrium voltage: {str(v_eq).substr(0, 6)} mV"
+  if v_eq > v_thresh
+    print "V_eq > V_thresh: neuron fires regularly (tonic spiking)"
+  else
+    print "V_eq < V_thresh: neuron is subthreshold"
+  print "LIF model demonstrates basic neural computation"

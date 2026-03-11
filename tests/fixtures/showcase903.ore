@@ -1,0 +1,135 @@
+-- Showcase 903: DNA Sequence Alignment (Smith-Waterman)
+
+-- Smith-Waterman local alignment algorithm finds the best local alignment
+-- between two sequences using dynamic programming.
+-- Score: match=+2, mismatch=-1, gap=-2
+
+fn max3 a:Int b:Int c:Int -> Int
+  if a >= b and a >= c then a
+  else if b >= c then b
+  else c
+
+fn max2 a:Int b:Int -> Int
+  if a >= b then a else b
+
+-- Get score matrix value at row i, col j (stored as flat list)
+fn mat_get m:List cols:Int row:Int col:Int -> Int
+  m[row * cols + col]
+
+-- Complementary base
+fn complement b:Str -> Str
+  if b == "A" then "T"
+  else if b == "T" then "A"
+  else if b == "G" then "C"
+  else if b == "C" then "G"
+  else "N"
+
+fn main
+  print "DNA Sequence Alignment (Smith-Waterman)"
+  print "========================================"
+  print ""
+
+  seq1_chars := ["A","T","G","C","A","T","G","C","T","A"]
+  seq2_chars := ["T","A","T","G","C","A","T","G","A","C"]
+
+  seq1 := seq1_chars.join("")
+  seq2 := seq2_chars.join("")
+  print "Sequence 1: {seq1}"
+  print "Sequence 2: {seq2}"
+  print ""
+
+  n := seq1_chars.len()
+  m := seq2_chars.len()
+
+  match_score    := 2
+  mismatch_score := -1
+  gap_penalty    := -2
+
+  -- Build (n+1) x (m+1) score matrix
+  total := (n + 1) * (m + 1)
+  mut score_mat := []
+  for idx in range(0, total)
+    score_mat.push(0)
+
+  mut best_score := 0
+  mut best_row := 0
+  mut best_col := 0
+
+  cols := m + 1
+  for row in range(1, n + 1)
+    for col in range(1, m + 1)
+      c1 := seq1_chars[row - 1]
+      c2 := seq2_chars[col - 1]
+      sub := if c1 == c2 then match_score else mismatch_score
+      diag := mat_get(score_mat, cols, row - 1, col - 1) + sub
+      up   := mat_get(score_mat, cols, row - 1, col) + gap_penalty
+      left := mat_get(score_mat, cols, row, col - 1) + gap_penalty
+      cell := max2(0, max3(diag, up, left))
+      score_mat[row * cols + col] = cell
+      if cell > best_score
+        best_score = cell
+        best_row = row
+        best_col = col
+
+  print "Score matrix (rows=seq1, cols=seq2):"
+  print "    |  - | {seq2_chars.join(" | ")}"
+  print "----+----+{"----|".repeat(m)}"
+  for row in range(0, n + 1)
+    row_label := if row == 0 then " -" else seq1_chars[row - 1]
+    mut row_str := " {row_label} |"
+    for col in range(0, m + 1)
+      v := mat_get(score_mat, cols, row, col)
+      row_str = row_str + " {str(v).pad_left(2)} |"
+    print row_str
+
+  print ""
+  print "Best local alignment score: {best_score}"
+  print "  Alignment ends at seq1[{best_row}], seq2[{best_col}]"
+
+  -- Traceback from best cell
+  mut aln1 := []
+  mut aln2 := []
+  mut cur_row := best_row
+  mut cur_col := best_col
+
+  loop
+    if cur_row == 0 or cur_col == 0
+      break
+    cur := mat_get(score_mat, cols, cur_row, cur_col)
+    if cur == 0
+      break
+    c1 := seq1_chars[cur_row - 1]
+    c2 := seq2_chars[cur_col - 1]
+    diag_val := mat_get(score_mat, cols, cur_row - 1, cur_col - 1)
+    sub := if c1 == c2 then match_score else mismatch_score
+    if cur == diag_val + sub
+      aln1.push(c1)
+      aln2.push(c2)
+      cur_row = cur_row - 1
+      cur_col = cur_col - 1
+    else if cur == mat_get(score_mat, cols, cur_row - 1, cur_col) + gap_penalty
+      aln1.push(c1)
+      aln2.push("-")
+      cur_row = cur_row - 1
+    else
+      aln1.push("-")
+      aln2.push(c2)
+      cur_col = cur_col - 1
+
+  aln1_rev := aln1.reverse()
+  aln2_rev := aln2.reverse()
+  print ""
+  print "Local alignment:"
+  print "  Seq1: {aln1_rev.join("")}"
+  print "  Seq2: {aln2_rev.join("")}"
+  print "  Length: {aln1_rev.len()} positions"
+
+  -- Count matches
+  mut matches := 0
+  for k in range(0, aln1_rev.len())
+    if aln1_rev[k] == aln2_rev[k]
+      matches = matches + 1
+  identity := (matches * 100) / aln1_rev.len()
+  print "  Identity: {matches}/{aln1_rev.len()} = {identity}%"
+  print ""
+  print "Reverse complement of Seq1: {seq1_chars.reverse().map(b => complement(b)).join("")}"

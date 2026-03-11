@@ -1,0 +1,128 @@
+-- Showcase 907: Protein Folding (HP Lattice Model)
+
+-- The HP (Hydrophobic-Polar) model is a simplified protein folding model.
+-- Proteins are sequences of H (hydrophobic) or P (polar) residues on a 2D lattice.
+-- Energy: -1 for each H-H contact between non-adjacent residues on lattice.
+-- Goal: find the conformation that minimizes energy (maximizes H-H contacts).
+
+-- Direction encoding: 0=R, 1=L, 2=U, 3=D
+fn dir_dx d:Int -> Int
+  if d == 0 then 1 else if d == 1 then -1 else 0
+
+fn dir_dy d:Int -> Int
+  if d == 2 then 1 else if d == 3 then -1 else 0
+
+fn turn_right d:Int -> Int
+  if d == 0 then 3 else if d == 3 then 1 else if d == 1 then 2 else 0
+
+fn turn_left d:Int -> Int
+  if d == 0 then 2 else if d == 2 then 1 else if d == 1 then 3 else 0
+
+fn main
+  print "Protein Folding: HP Lattice Model"
+  print "==================================="
+  print ""
+
+  -- HP sequence: H=1, P=0
+  seq := [1, 1, 0, 1, 1, 0, 1, 0, 1, 1]
+  n := seq.len()
+  seq_str := seq.map(x => if x == 1 then "H" else "P").join("")
+  print "HP Sequence: {seq_str} (length={n})"
+  print "H=hydrophobic, P=polar"
+  print ""
+
+  mut best_energy := 0
+  mut total_valid := 0
+  mut best_xs := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  mut best_ys := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- 3^8 = 6561 choice sequences for 8 steps (after first 2 positions fixed)
+  for conf_idx in range(0, 6561)
+    -- Decode choices (0=straight, 1=left, 2=right) for steps 0..7
+    mut c0 := conf_idx % 3
+    mut c1 := (conf_idx / 3) % 3
+    mut c2 := (conf_idx / 9) % 3
+    mut c3 := (conf_idx / 27) % 3
+    mut c4 := (conf_idx / 81) % 3
+    mut c5 := (conf_idx / 243) % 3
+    mut c6 := (conf_idx / 729) % 3
+    mut c7 := (conf_idx / 2187) % 3
+    choices := [c0, c1, c2, c3, c4, c5, c6, c7]
+
+    -- Build positions starting from (0,0) going right
+    mut xs := [0, 1]
+    mut ys := [0, 0]
+    mut cur_dir := 0
+    mut valid := true
+
+    for step in range(0, 8)
+      choice := choices[step]
+      new_dir := if choice == 0 then cur_dir
+                 else if choice == 1 then turn_left(cur_dir)
+                 else turn_right(cur_dir)
+      cur_dir = new_dir
+      last_idx := xs.len() - 1
+      nx := xs[last_idx] + dir_dx(new_dir)
+      ny := ys[last_idx] + dir_dy(new_dir)
+
+      -- Check collision
+      mut collides := false
+      for prev in range(0, xs.len())
+        if xs[prev] == nx and ys[prev] == ny
+          collides = true
+
+      if collides
+        valid = false
+      else
+        xs.push(nx)
+        ys.push(ny)
+
+    if valid
+      total_valid = total_valid + 1
+      -- Calculate HH contacts
+      mut energy := 0
+      for ai in range(0, n)
+        for bi in range(ai + 2, n)
+          dx := xs[ai] - xs[bi]
+          dy := ys[ai] - ys[bi]
+          dist := dx * dx + dy * dy
+          if dist == 1
+            if seq[ai] == 1 and seq[bi] == 1
+              energy = energy - 1
+
+      if energy < best_energy
+        best_energy = energy
+        best_xs = xs
+        best_ys = ys
+
+  print "Search results:"
+  print "  Valid conformations: {total_valid} out of 6561"
+  print "  Best energy: {best_energy} (HH contacts: {0 - best_energy})"
+  print ""
+
+  -- Print best conformation as 2D grid
+  print "Best conformation on 2D lattice:"
+  min_x := best_xs.min()
+  min_y := best_ys.min()
+  max_x := best_xs.max()
+  max_y := best_ys.max()
+
+  for gy in range(0, max_y - min_y + 1)
+    row_y := max_y - gy
+    mut row_str := "  "
+    for gx in range(0, max_x - min_x + 1)
+      row_x := gx + min_x
+      mut found_ch := "."
+      for ri in range(0, n)
+        if best_xs[ri] == row_x and best_ys[ri] == row_y
+          found_ch := if seq[ri] == 1 then "H" else "P"
+          row_str = row_str + found_ch
+      if found_ch == "."
+        row_str = row_str + "."
+    print row_str
+
+  print ""
+  print "Biological insights:"
+  print "  Hydrophobic collapse is the main folding driver"
+  print "  H residues cluster in core, P residues face solvent"
+  print "  Minimum energy = native state"

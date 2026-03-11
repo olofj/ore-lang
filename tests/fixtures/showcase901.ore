@@ -1,0 +1,93 @@
+-- Showcase 901: Population Dynamics (Lotka-Volterra Predator-Prey)
+
+-- The Lotka-Volterra equations model predator-prey interactions:
+-- dX/dt = alpha*X - beta*X*Y   (prey: X grows, eaten by predators)
+-- dY/dt = delta*X*Y - gamma*Y  (predators: grow on prey, die naturally)
+-- We use Euler integration with small time steps.
+
+fn round2 x:Float -> Float
+  r := (x * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+fn round1 x:Float -> Float
+  r := (x * 10.0 + 0.5).to_int()
+  r.to_float() / 10.0
+
+fn main
+  print "Lotka-Volterra Predator-Prey Model"
+  print "==================================="
+  print ""
+
+  -- Parameters
+  alpha := 0.1    -- prey birth rate
+  beta  := 0.02   -- predation rate
+  delta := 0.01   -- predator growth rate from predation
+  gamma := 0.1    -- predator death rate
+  dt    := 0.5    -- time step
+  steps := 200    -- total steps (100 time units)
+
+  -- Initial populations
+  mut prey := 40.0
+  mut pred := 9.0
+
+  print "Parameters: alpha={alpha} beta={beta} delta={delta} gamma={gamma}"
+  print "Initial: prey={prey} predators={pred}"
+  print ""
+  print "Time | Prey  | Predators | State"
+  print "-----+-------+-----------+------"
+
+  mut t := 0.0
+  mut max_prey := prey
+  mut max_pred := pred
+  mut min_prey := prey
+  mut min_pred := pred
+  mut cycle_count := 0
+  mut prev_prey := prey
+  mut rising := true
+
+  for step in range(0, steps)
+    -- Lotka-Volterra Euler step
+    dprey := (alpha * prey - beta * prey * pred) * dt
+    dpred := (delta * prey * pred - gamma * pred) * dt
+    prey = prey + dprey
+    pred = pred + dpred
+    t = t + dt
+
+    -- Track extrema
+    if prey > max_prey
+      max_prey = prey
+    if prey < min_prey
+      min_prey = prey
+    if pred > max_pred
+      max_pred = pred
+    if pred < min_pred
+      min_pred = pred
+
+    -- Count prey cycles (local maxima)
+    if rising and prey < prev_prey
+      cycle_count = cycle_count + 1
+      rising = false
+    if rising == false and prey > prev_prey
+      rising = true
+    prev_prey = prey
+
+    -- Print every 10 steps
+    t_int := step * 5
+    if t_int % 50 == 0
+      pr := round1(prey)
+      pd := round1(pred)
+      state := if prey > 35.0 then "Peak prey"
+                else if pred > 12.0 then "Peak pred"
+                else "Trough"
+      print "  {str(t_int / 10).pad_left(3)} | {str(pr).pad_left(5)} | {str(pd).pad_left(9)} | {state}"
+
+  print ""
+  print "Summary over simulation:"
+  print "  Prey:      min={round1(min_prey)} max={round1(max_prey)}"
+  print "  Predators: min={round1(min_pred)} max={round1(max_pred)}"
+  print "  Prey oscillation cycles: {cycle_count}"
+  print ""
+  print "Biological insight:"
+  print "  Predator peaks lag behind prey peaks"
+  print "  Populations cycle indefinitely (conservative system)"
+  print "  Higher prey -> more predators -> fewer prey -> fewer predators"

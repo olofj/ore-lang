@@ -1,0 +1,117 @@
+-- Showcase 906: Gene Regulatory Network
+
+-- A gene regulatory network models transcription factor interactions.
+-- We simulate a simple network with:
+--   Gene A: constitutively expressed, activates Gene B
+--   Gene B: activated by A, represses Gene C, activates Gene D
+--   Gene C: repressed by B (forms a feed-forward loop)
+--   Gene D: activated by B, represses A (negative feedback)
+-- ODE: d[X]/dt = production - degradation
+-- Hill function: activation f_a(x) = x^n/(K^n + x^n)
+--               repression  f_r(x) = K^n/(K^n + x^n)
+
+fn round3 x:Float -> Float
+  r := (x * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+-- Hill activation: concentration x, threshold K, cooperativity n
+fn hill_act x:Float k:Float -> Float
+  xx := x * x
+  kk := k * k
+  xx / (kk + xx)
+
+-- Hill repression
+fn hill_rep x:Float k:Float -> Float
+  kk := k * k
+  kk / (kk + x * x)
+
+fn main
+  print "Gene Regulatory Network Simulation"
+  print "===================================="
+  print ""
+
+  print "Network topology:"
+  print "  Gene A -> Gene B (activation)"
+  print "  Gene B -> Gene C (repression)"
+  print "  Gene B -> Gene D (activation)"
+  print "  Gene D -| Gene A (negative feedback)"
+  print ""
+
+  -- Parameters: production rates, degradation rates, thresholds
+  prod_a := 2.0
+  prod_b := 3.0
+  prod_c := 2.5
+  prod_d := 2.0
+  deg    := 0.5   -- shared degradation rate
+  k_ab   := 1.0   -- threshold A->B
+  k_bc   := 1.5   -- threshold B->C (repression)
+  k_bd   := 1.0   -- threshold B->D
+  k_da   := 1.5   -- threshold D->A (repression)
+  dt     := 0.2
+
+  -- Initial expression levels
+  mut ga := 0.1
+  mut gb := 0.0
+  mut gc := 0.0
+  mut gd := 0.0
+
+  print "Parameters:"
+  print "  Production rates: A={prod_a} B={prod_b} C={prod_c} D={prod_d}"
+  print "  Degradation rate: {deg} (all genes)"
+  print "  Hill thresholds: K_AB={k_ab} K_BC={k_bc} K_BD={k_bd} K_DA={k_da}"
+  print ""
+  print "Time course (expression levels):"
+  print "  Time |    A    |    B    |    C    |    D"
+  print "  -----+---------+---------+---------+--------"
+
+  for step in range(0, 150)
+    -- ODE update
+    dga := (prod_a * hill_rep(gd, k_da) - deg * ga) * dt
+    dgb := (prod_b * hill_act(ga, k_ab) - deg * gb) * dt
+    dgc := (prod_c * hill_rep(gb, k_bc) - deg * gc) * dt
+    dgd := (prod_d * hill_act(gb, k_bd) - deg * gd) * dt
+    ga = ga + dga
+    gb = gb + dgb
+    gc = gc + dgc
+    gd = gd + dgd
+
+    t := step + 1
+    if t % 15 == 0
+      print "  {str(t).pad_left(4)} | {str(round3(ga)).pad_left(7)} | {str(round3(gb)).pad_left(7)} | {str(round3(gc)).pad_left(7)} | {str(round3(gd)).pad_left(7)}"
+
+  print ""
+  print "Steady-state expression levels (approx):"
+  print "  Gene A: {round3(ga)}"
+  print "  Gene B: {round3(gb)}"
+  print "  Gene C: {round3(gc)}"
+  print "  Gene D: {round3(gd)}"
+  print ""
+
+  -- Analyze network motifs
+  print "Network Motif Analysis:"
+  print "  Feed-forward loop (A->B->C, A does not regulate C directly):"
+  print "    B represses C, creating a coherent type-1 FFL"
+  print "    C responds slowly to A activation (delay via B)"
+  print "  Negative feedback loop (A->B->D->|A):"
+  print "    Stabilizes gene expression against perturbations"
+  print "    Can generate oscillations at high gain"
+  print ""
+
+  -- Perturbation response: double gene A production briefly
+  print "Perturbation: doubling prod_A for 5 time units, then restoring"
+  mut ga2 := ga
+  mut gb2 := gb
+  mut gc2 := gc
+  mut gd2 := gd
+  for step in range(0, 25)
+    prod_a2 := if step < 25 then prod_a * 2.0 else prod_a
+    dga2 := (prod_a2 * hill_rep(gd2, k_da) - deg * ga2) * dt
+    dgb2 := (prod_b * hill_act(ga2, k_ab) - deg * gb2) * dt
+    dgc2 := (prod_c * hill_rep(gb2, k_bc) - deg * gc2) * dt
+    dgd2 := (prod_d * hill_act(gb2, k_bd) - deg * gd2) * dt
+    ga2 = ga2 + dga2
+    gb2 = gb2 + dgb2
+    gc2 = gc2 + dgc2
+    gd2 = gd2 + dgd2
+  print "  After perturbation - A: {round3(ga2)} B: {round3(gb2)} C: {round3(gc2)} D: {round3(gd2)}"
+  print "  Negative feedback attenuates A perturbation (D rises, suppressing A)"

@@ -1,0 +1,94 @@
+-- Showcase 905: Enzyme Kinetics (Michaelis-Menten)
+
+-- The Michaelis-Menten model describes enzyme-catalyzed reactions:
+-- E + S <-> ES -> E + P
+-- v = Vmax * [S] / (Km + [S])
+-- Vmax: maximum reaction rate, Km: substrate concentration at half-Vmax
+-- Lineweaver-Burk: 1/v = (Km/Vmax)*(1/[S]) + 1/Vmax (double reciprocal)
+
+fn round3 x:Float -> Float
+  r := (x * 1000.0 + 0.5).to_int()
+  r.to_float() / 1000.0
+
+fn round2 x:Float -> Float
+  r := (x * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+fn mm_rate s:Float vmax:Float km:Float -> Float
+  vmax * s / (km + s)
+
+fn main
+  print "Enzyme Kinetics: Michaelis-Menten Model"
+  print "========================================="
+  print ""
+
+  -- Enzyme parameters
+  vmax := 100.0   -- umol/min
+  km   := 2.5     -- mM (substrate concentration for half Vmax)
+
+  print "Enzyme parameters:"
+  print "  Vmax = {vmax} umol/min"
+  print "  Km   = {km} mM"
+  print ""
+
+  -- Reaction rate vs substrate concentration
+  print "Velocity vs Substrate Concentration:"
+  print "  [S] (mM) | v (umol/min) | % Vmax | Saturation"
+  print "  ---------+--------------+--------+-----------"
+  substrates := [0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0]
+  for idx in range(0, substrates.len())
+    s := substrates[idx]
+    v := mm_rate(s, vmax, km)
+    pct := round2(v / vmax * 100.0)
+    saturation := if pct > 90.0 then "saturated"
+                  else if pct > 50.0 then "high"
+                  else if pct > 25.0 then "moderate"
+                  else "low"
+    print "  {str(round2(s)).pad_left(8)} | {str(round2(v)).pad_left(12)} | {str(pct).pad_left(6)} | {saturation}"
+
+  print ""
+  print "Lineweaver-Burk (double-reciprocal) plot data:"
+  print "  1/[S]   | 1/v     | (y = Km/Vmax * x + 1/Vmax)"
+  print "  --------+---------+----------------------------"
+  lb_substrates := [0.5, 1.0, 2.5, 5.0, 10.0, 25.0]
+  for idx in range(0, lb_substrates.len())
+    s := lb_substrates[idx]
+    v := mm_rate(s, vmax, km)
+    inv_s := round3(1.0 / s)
+    inv_v := round3(1.0 / v)
+    print "  {str(inv_s).pad_left(7)} | {str(inv_v).pad_left(7)}"
+
+  km_vmax := km / vmax
+  inv_vmax := 1.0 / vmax
+  print ""
+  print "Lineweaver-Burk slope:     Km/Vmax = {round3(km_vmax)}"
+  print "Lineweaver-Burk intercept: 1/Vmax  = {round3(inv_vmax)}"
+  print "X-intercept (at 1/v=0):   -1/Km   = {round3(0.0 - 1.0 / km)}"
+  print ""
+
+  -- Inhibition comparison
+  print "Inhibition Effects at [S] = 5.0 mM:"
+  s_test := 5.0
+  v_noinhib := mm_rate(s_test, vmax, km)
+
+  -- Competitive inhibition: apparent Km increases, Vmax unchanged
+  ki_comp := 1.0  -- inhibitor Ki
+  inh_conc := 2.0
+  km_app_comp := km * (1.0 + inh_conc / ki_comp)
+  v_comp := mm_rate(s_test, vmax, km_app_comp)
+
+  -- Uncompetitive inhibition: both Km and Vmax decrease by same factor
+  km_app_uncomp := km / (1.0 + inh_conc / ki_comp)
+  vmax_app_uncomp := vmax / (1.0 + inh_conc / ki_comp)
+  v_uncomp := mm_rate(s_test, vmax_app_uncomp, km_app_uncomp)
+
+  -- Noncompetitive inhibition: Vmax decreases, Km unchanged
+  vmax_app_noncomp := vmax / (1.0 + inh_conc / ki_comp)
+  v_noncomp := mm_rate(s_test, vmax_app_noncomp, km)
+
+  print "  No inhibitor:          v = {round2(v_noinhib)} umol/min"
+  print "  Competitive inhib:     v = {round2(v_comp)} umol/min (app Km={round2(km_app_comp)})"
+  print "  Uncompetitive inhib:   v = {round2(v_uncomp)} umol/min"
+  print "  Noncompetitive inhib:  v = {round2(v_noncomp)} umol/min"
+  print ""
+  print "Key insight: At [S] = Km ({km} mM), v = Vmax/2 = {vmax / 2.0} umol/min"

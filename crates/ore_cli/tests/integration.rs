@@ -11128,6 +11128,154 @@ fn showcase890_vcg_auction() {
 }
 
 #[test]
+fn showcase_891() {
+    let out = run_ore("showcase891.ore");
+    assert!(out.contains("Projectile Motion with Air Drag"), "got: {out}");
+    assert!(out.contains("Max height: 50.612 m"), "got: {out}");
+    assert!(out.contains("Range:      167.51 m"), "got: {out}");
+}
+
+#[test]
+fn showcase_892() {
+    let out = run_ore("showcase892.ore");
+    assert!(out.contains("Simple Harmonic Oscillator"), "got: {out}");
+    assert!(out.contains("Natural frequency omega0"), "got: {out}");
+    assert!(out.contains("Energy at t=0: E = 0.5*k*x0^2 = 2.0 J"), "got: {out}");
+}
+
+#[test]
+fn showcase_893() {
+    let out = run_ore("showcase893.ore");
+    assert!(out.contains("Orbital Mechanics: Kepler"), "got: {out}");
+    assert!(out.contains("Orbital period: 1.881 yr"), "got: {out}");
+}
+
+#[test]
+fn showcase_894() {
+    let out = run_ore("showcase894.ore");
+    assert!(out.contains("Heat Diffusion in 1D Rod"), "got: {out}");
+    assert!(out.contains("Grid points: 21"), "got: {out}");
+    assert!(out.contains("Heat flows from hot end"), "got: {out}");
+}
+
+#[test]
+fn showcase_895() {
+    let out = run_ore("showcase895.ore");
+    assert!(out.contains("Wave Equation: Vibrating String"), "got: {out}");
+    assert!(out.contains("Period T = 2L/c = 40.0"), "got: {out}");
+    assert!(out.contains("Energy conserved"), "got: {out}");
+}
+
+#[test]
+fn showcase_896() {
+    let out = run_ore("showcase896.ore");
+    assert!(out.contains("Pendulum Simulation"), "got: {out}");
+    assert!(out.contains("Small-angle period: 2.0060 s"), "got: {out}");
+}
+
+#[test]
+fn showcase_897() {
+    let out = run_ore("showcase897.ore");
+    assert!(out.contains("Electric Field Computation"), "got: {out}");
+    assert!(out.contains("Total charge = 0"), "got: {out}");
+}
+
+#[test]
+fn showcase_898() {
+    let out = run_ore("showcase898.ore");
+    assert!(out.contains("N-body Gravitational Simulation"), "got: {out}");
+    assert!(out.contains("Orbit is approximately circular: true"), "got: {out}");
+}
+
+#[test]
+fn showcase_899() {
+    let out = run_ore("showcase899.ore");
+    assert!(out.contains("Doppler Effect Calculator"), "got: {out}");
+    assert!(out.contains("Observed: 482.17"), "got: {out}");
+    assert!(out.contains("redshift z = 0.105"), "got: {out}");
+}
+
+#[test]
+fn showcase_900() {
+    let out = run_ore("showcase900.ore");
+    assert!(out.contains("Relativistic Kinematics"), "got: {out}");
+    assert!(out.contains("Ship time:  5.99 years"), "got: {out}");
+    assert!(out.contains("Nothing exceeds the speed of light"), "got: {out}");
+}
+
+#[test]
+fn showcase_901() {
+    let out = run_ore("showcase901.ore");
+    assert!(out.contains("Lotka-Volterra Predator-Prey"), "got: {out}");
+    assert!(out.contains("Populations cycle indefinitely"), "got: {out}");
+}
+
+#[test]
+fn showcase_902() {
+    let out = run_ore("showcase902.ore");
+    assert!(out.contains("SIR Epidemic Model"), "got: {out}");
+    assert!(out.contains("Herd immunity threshold"), "got: {out}");
+}
+
+#[test]
+fn showcase_903() {
+    let out = run_ore("showcase903.ore");
+    assert!(out.contains("DNA Sequence Alignment"), "got: {out}");
+    assert!(out.contains("Reverse complement"), "got: {out}");
+}
+
+#[test]
+fn showcase_904() {
+    let out = run_ore("showcase904.ore");
+    assert!(out.contains("Phylogenetic Tree Construction"), "got: {out}");
+    assert!(out.contains("Human and Chimp are most closely related"), "got: {out}");
+}
+
+#[test]
+fn showcase_905() {
+    let out = run_ore("showcase905.ore");
+    assert!(out.contains("Enzyme Kinetics: Michaelis-Menten"), "got: {out}");
+    assert!(out.contains("v = Vmax/2 = 50.0"), "got: {out}");
+}
+
+#[test]
+fn showcase_906() {
+    let out = run_ore("showcase906.ore");
+    assert!(out.contains("Gene Regulatory Network"), "got: {out}");
+    assert!(out.contains("Negative feedback attenuates"), "got: {out}");
+}
+
+#[test]
+fn showcase_907() {
+    let out = run_ore("showcase907.ore");
+    assert!(out.contains("Protein Folding: HP Lattice"), "got: {out}");
+    assert!(out.contains("Hydrophobic collapse"), "got: {out}");
+}
+
+#[test]
+fn showcase_908() {
+    let out = run_ore("showcase908.ore");
+    assert!(out.contains("Chemical Reaction Network: Brusselator"), "got: {out}");
+    assert!(out.contains("Autocatalytic step"), "got: {out}");
+}
+
+#[test]
+fn showcase_909() {
+    let out = run_ore("showcase909.ore");
+    assert!(out.contains("Neural Spike Train Analysis"), "got: {out}");
+    assert!(out.contains("Total spikes: 8"), "got: {out}");
+    assert!(out.contains("tonic spiking"), "got: {out}");
+}
+
+#[test]
+fn showcase_910() {
+    let out = run_ore("showcase910.ore");
+    assert!(out.contains("Ecosystem Food Web Simulation"), "got: {out}");
+    assert!(out.contains("Connectance: 0.303"), "got: {out}");
+    assert!(out.contains("10% energy transfer rule"), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

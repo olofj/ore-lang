@@ -1,0 +1,82 @@
+-- Showcase 902: SIR Epidemic Model
+
+-- The SIR model partitions a population into:
+-- S: Susceptible, I: Infectious, R: Recovered (immune)
+-- dS/dt = -beta*S*I/N
+-- dI/dt =  beta*S*I/N - gamma*I
+-- dR/dt =  gamma*I
+-- R0 = beta/gamma is the basic reproduction number.
+-- Epidemic occurs when R0 > 1.
+
+fn round2 x:Float -> Float
+  r := (x * 100.0 + 0.5).to_int()
+  r.to_float() / 100.0
+
+fn round0 x:Float -> Int
+  (x + 0.5).to_int()
+
+fn main
+  print "SIR Epidemic Model"
+  print "===================="
+  print ""
+
+  -- Population and parameters
+  n     := 10000.0  -- total population
+  beta  := 0.3      -- transmission rate (contacts * prob infection)
+  gamma := 0.1      -- recovery rate (1/infectious_period)
+  dt    := 0.5      -- time step in days
+
+  -- Initial conditions
+  mut s := 9990.0   -- susceptible
+  mut inf := 10.0   -- infectious (avoid keyword 'i')
+  mut r := 0.0      -- recovered
+
+  r0 := beta / gamma
+  print "Parameters:"
+  print "  Population N = {round0(n)}"
+  print "  Transmission rate beta  = {beta}"
+  print "  Recovery rate gamma     = {gamma}"
+  print "  Basic reproduction R0   = {r0}"
+  print ""
+  print "Initial: S={round0(s)} I={round0(inf)} R={round0(r)}"
+  print ""
+  print "Day | Susceptible | Infectious | Recovered | New cases"
+  print "----+-------------+------------+-----------+---------"
+
+  mut day := 0.0
+  mut max_inf := inf
+  mut peak_day := 0
+  mut total_infected := 0.0
+  mut prev_s := s
+
+  for step in range(0, 300)
+    ds := (0.0 - beta * s * inf / n) * dt
+    dinf := (beta * s * inf / n - gamma * inf) * dt
+    dr := gamma * inf * dt
+    s = s + ds
+    inf = inf + dinf
+    r = r + dr
+    day = day + dt
+
+    new_cases := prev_s - s
+    total_infected = total_infected + new_cases
+    prev_s = s
+
+    if inf > max_inf
+      max_inf = inf
+      peak_day = round0(day)
+
+    d_int := round0(day)
+    if step % 30 == 29
+      print "  {str(d_int).pad_left(3)} | {str(round0(s)).pad_left(11)} | {str(round0(inf)).pad_left(10)} | {str(round0(r)).pad_left(9)} | {str(round0(new_cases * 2.0)).pad_left(9)}"
+
+  print ""
+  print "Epidemic Summary:"
+  print "  Peak infectious: {round0(max_inf)} people on day {peak_day}"
+  print "  Total infected (attack rate): {round0(total_infected)} / {round0(n)}"
+  attack_pct := round2(total_infected / n * 100.0)
+  print "  Attack rate: {attack_pct}%"
+  print "  Herd immunity threshold: {round2((1.0 - 1.0 / r0) * 100.0)}%"
+  print ""
+  print "Epidemic threshold: R0={r0} > 1, so epidemic occurs"
+  print "Interventions reduce beta (masks, distancing) or increase gamma (treatment)"
