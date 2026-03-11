@@ -1,0 +1,38 @@
+-- Showcase 101: Inline if/then/else expressions
+
+fn abs n:Int -> Int
+  if n < 0 then -n else n
+
+fn max2 a:Int b:Int -> Int
+  if a > b then a else b
+
+fn sign n:Int -> Str
+  if n > 0 then "positive" else if n < 0 then "negative" else "zero"
+
+fn main
+  -- Simple inline conditional
+  x := if true then 42 else 0
+  print "x = {x}"
+
+  -- In bindings
+  label := if 10 > 5 then "big" else "small"
+  print "label: {label}"
+
+  -- In function calls
+  print "abs(-7) = {abs(-7)}"
+  print "abs(3) = {abs(3)}"
+  print "max(3, 7) = {max2(3, 7)}"
+
+  -- Nested
+  print "sign(5) = {sign(5)}"
+  print "sign(-3) = {sign(-3)}"
+  print "sign(0) = {sign(0)}"
+
+  -- In string interpolation
+  n := 42
+  print "{n} is {if n % 2 == 0 then "even" else "odd"}"
+
+  -- In list map
+  nums := [1, 2, 3, 4, 5]
+  labels := nums.map(n => if n > 3 then "big" else "small")
+  print "labels: {labels.join(", ")}"

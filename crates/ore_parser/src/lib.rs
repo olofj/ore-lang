@@ -1240,6 +1240,27 @@ impl Parser {
             Token::If => {
                 self.advance();
                 let cond = self.parse_expr(0)?;
+                // Inline form: `if cond then expr else expr`
+                if self.peek() == &Token::Then {
+                    self.advance();
+                    let then_expr = self.parse_expr(0)?;
+                    let line = self.peek_line();
+                    let then_block = Block { stmts: vec![SpannedStmt { stmt: Stmt::Expr(then_expr), line }] };
+                    let else_block = if self.peek() == &Token::Else {
+                        self.advance();
+                        let else_expr = self.parse_expr(0)?;
+                        let line = self.peek_line();
+                        Some(Block { stmts: vec![SpannedStmt { stmt: Stmt::Expr(else_expr), line }] })
+                    } else {
+                        None
+                    };
+                    return Ok(Expr::IfElse {
+                        cond: Box::new(cond),
+                        then_block,
+                        else_block,
+                    });
+                }
+                // Block form: `if cond\n  body\nelse\n  body`
                 self.skip_newlines();
                 let then_block = self.parse_block()?;
                 self.skip_newlines();

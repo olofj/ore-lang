@@ -2436,6 +2436,18 @@ fn showcase100_celebration() {
 }
 
 #[test]
+fn showcase101_inline_if_then_else() {
+    let out = run_ore("showcase101.ore");
+    assert!(out.contains("x = 42"));
+    assert!(out.contains("label: big"));
+    assert!(out.contains("abs(-7) = 7"));
+    assert!(out.contains("sign(5) = positive"));
+    assert!(out.contains("sign(0) = zero"));
+    assert!(out.contains("42 is even"));
+    assert!(out.contains("labels: small, small, small, big, big"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
