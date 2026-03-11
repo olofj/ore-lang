@@ -1,0 +1,27 @@
+-- Showcase 82: Map utility methods
+
+fn main
+  -- Basic map operations
+  config := {"host": "localhost", "port": "8080", "debug": "true"}
+  print "keys: {config.keys().join(", ")}"
+  print "values: {config.values().join(", ")}"
+  print "len: {config.len()}"
+  print "has host: {config.contains("host")}"
+  print "has timeout: {config.contains("timeout")}"
+
+  -- get_or with default
+  host := config.get_or("host", "0.0.0.0")
+  timeout := config.get_or("timeout", "30")
+  print "host: {host}"
+  print "timeout: {timeout}"
+
+  -- Merge maps
+  defaults := {"host": "0.0.0.0", "port": "3000", "timeout": "30"}
+  merged := defaults.merge(config)
+  print "merged port: {merged["port"]}"
+  print "merged timeout: {merged["timeout"]}"
+
+  -- Map filter
+  scores := {"alice": "95", "bob": "42", "carol": "88", "dave": "31"}
+  for key, val in scores
+    print "  {key}: {val}"

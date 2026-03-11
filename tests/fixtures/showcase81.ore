@@ -1,0 +1,55 @@
+-- Showcase 81: List mutation and utility methods
+
+fn main
+  -- insert
+  mut nums := [1, 2, 4, 5]
+  nums.insert(2, 3)
+  print "after insert: {nums.join(", ")}"
+
+  -- pop
+  last := nums.pop()
+  print "popped: {last}"
+  print "after pop: {nums.join(", ")}"
+
+  -- remove_at
+  removed := nums.remove_at(0)
+  print "removed at 0: {removed}"
+  print "after remove: {nums.join(", ")}"
+
+  -- clear
+  mut temp := [10, 20, 30]
+  temp.clear()
+  print "after clear len: {temp.len()}"
+
+  -- slice
+  items := [10, 20, 30, 40, 50, 60]
+  sliced := items.slice(1, 4)
+  print "slice(1,4): {sliced.join(", ")}"
+
+  -- concat
+  a := [1, 2, 3]
+  b := [4, 5, 6]
+  combined := a + b
+  print "concat: {combined.join(", ")}"
+
+  -- reverse (non-mutating)
+  rev := combined.reverse()
+  print "reversed: {rev.join(", ")}"
+
+  -- any and all
+  has_big := [1, 5, 10, 3].any(n => n > 7)
+  print "any > 7: {has_big}"
+  all_pos := [1, 5, 10, 3].all(n => n > 0)
+  print "all > 0: {all_pos}"
+  all_big := [1, 5, 10, 3].all(n => n > 5)
+  print "all > 5: {all_big}"
+
+  -- find and find_index
+  found := [10, 20, 30, 40].find(n => n > 25)
+  print "find > 25: {found}"
+  idx := [10, 20, 30, 40].find_index(n => n > 25)
+  print "find_index > 25: {idx}"
+
+  -- average
+  avg := [10, 20, 30, 40, 50].average()
+  print "average: {avg}"

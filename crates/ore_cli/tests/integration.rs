@@ -2207,6 +2207,94 @@ fn showcase80_comprehensive_tour() {
 }
 
 #[test]
+fn showcase81_list_mutation_methods() {
+    let out = run_ore("showcase81.ore");
+    assert!(out.contains("after insert: 1, 2, 3, 4, 5"));
+    assert!(out.contains("popped: 5"));
+    assert!(out.contains("after pop: 1, 2, 3, 4"));
+    assert!(out.contains("removed at 0: 1"));
+    assert!(out.contains("after clear len: 0"));
+    assert!(out.contains("slice(1,4): 20, 30, 40"));
+    assert!(out.contains("concat: 1, 2, 3, 4, 5, 6"));
+    assert!(out.contains("any > 7: true"));
+    assert!(out.contains("all > 0: true"));
+    assert!(out.contains("all > 5: false"));
+    assert!(out.contains("find > 25: 30"));
+    assert!(out.contains("find_index > 25: 2"));
+    assert!(out.contains("average: 30.0"));
+}
+
+#[test]
+fn showcase82_map_utility_methods() {
+    let out = run_ore("showcase82.ore");
+    assert!(out.contains("len: 3"));
+    assert!(out.contains("has host: true"));
+    assert!(out.contains("has timeout: false"));
+    assert!(out.contains("host: localhost"));
+    assert!(out.contains("timeout: 30"));
+    assert!(out.contains("merged port: 8080"));
+    assert!(out.contains("merged timeout: 30"));
+}
+
+#[test]
+fn showcase83_result_type() {
+    let out = run_ore("showcase83.ore");
+    assert!(out.contains("10 / 3 = 3"));
+    assert!(out.contains("error: division by zero"));
+    assert!(out.contains("100 / 2 = 50"));
+    assert!(out.contains("100 / 0: division by zero"));
+    assert!(out.contains("100 / 10 = 10"));
+}
+
+#[test]
+fn cli_check_valid() {
+    let path = fixtures_dir().join("showcase80.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["check", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore check");
+    assert!(output.status.success(), "ore check should pass for valid code");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("ok"));
+}
+
+#[test]
+fn cli_check_type_error() {
+    let path = fixtures_dir().join("check_error.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["check", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore check");
+    assert!(!output.status.success(), "ore check should fail for type errors");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("expects Int, got Str"));
+}
+
+#[test]
+fn cli_fmt_output() {
+    let path = fixtures_dir().join("showcase10.ore");
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["fmt", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore fmt");
+    assert!(output.status.success(), "ore fmt should succeed: {}", String::from_utf8_lossy(&output.stderr));
+    let out = String::from_utf8(output.stdout).unwrap();
+    assert!(out.contains("fn main"));
+    assert!(out.contains("print"));
+}
+
+#[test]
+fn cli_eval_expression() {
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["eval", "2 + 3 * 4"])
+        .output()
+        .expect("failed to execute ore eval");
+    assert!(output.status.success(), "ore eval should succeed");
+    let out = String::from_utf8(output.stdout).unwrap().trim().to_string();
+    assert_eq!(out, "14");
+}
+
+#[test]
 fn build_and_run_binary() {
     // Test `ore build` produces a working native binary
     let path = fixtures_dir().join("showcase36.ore");

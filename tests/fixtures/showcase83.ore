@@ -1,0 +1,27 @@
+-- Showcase 83: Error handling with Result type
+
+fn safe_divide a:Int b:Int -> Result[Int, Str]
+  if b == 0
+    Err("division by zero")
+  else
+    Ok(a / b)
+
+fn main
+  -- Basic Result usage
+  r1 := safe_divide(10, 3)
+  match r1
+    Ok val -> print "10 / 3 = {val}"
+    Err msg -> print "error: {msg}"
+
+  r2 := safe_divide(10, 0)
+  match r2
+    Ok val -> print "10 / 0 = {val}"
+    Err msg -> print "error: {msg}"
+
+  -- Multiple results
+  divisors := [2, 0, 5, 0, 10]
+  for d in divisors
+    result := safe_divide(100, d)
+    match result
+      Ok val -> print "100 / {d} = {val}"
+      Err msg -> print "100 / {d}: {msg}"
