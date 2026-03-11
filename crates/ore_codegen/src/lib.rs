@@ -1170,8 +1170,13 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Stmt::Assign { name, value } => {
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
-                let (ptr, _, _, is_mut) = self.variables.get(name).ok_or_else(|| CodeGenError {
-                    line: None, msg: format!("undefined variable '{}'", name),
+                let (ptr, _, _, is_mut) = self.variables.get(name).ok_or_else(|| {
+                    let mut msg = format!("undefined variable '{}'", name);
+                    let candidates: Vec<&str> = self.variables.keys().map(|s| s.as_str()).collect();
+                    if let Some(suggestion) = Self::find_similar(name, &candidates) {
+                        msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                    }
+                    CodeGenError { line: None, msg }
                 })?;
                 if !is_mut {
                     return Err(CodeGenError {
@@ -1375,8 +1380,13 @@ impl<'ctx> CodeGen<'ctx> {
                     return self.compile_expr_with_kind(&construct, func);
                 }
 
-                let (ptr, ty, kind, _) = self.variables.get(name).ok_or_else(|| CodeGenError {
-                    line: None, msg: format!("undefined variable '{}'", name),
+                let (ptr, ty, kind, _) = self.variables.get(name).ok_or_else(|| {
+                    let mut msg = format!("undefined variable '{}'", name);
+                    let candidates: Vec<&str> = self.variables.keys().map(|s| s.as_str()).collect();
+                    if let Some(suggestion) = Self::find_similar(name, &candidates) {
+                        msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                    }
+                    CodeGenError { line: None, msg }
                 })?;
                 let val = bld!(self.builder.build_load(*ty, *ptr, name))?;
                 let kind = kind.clone();
@@ -2199,7 +2209,12 @@ impl<'ctx> CodeGen<'ctx> {
                             Ok((val, ValKind::Int))
                         }
                     } else {
-                        Err(CodeGenError { line: None, msg: format!("undefined function '{}'", name) })
+                        let mut msg = format!("undefined function '{}'", name);
+                        let candidates: Vec<&str> = self.functions.keys().map(|s| s.as_str()).collect();
+                        if let Some(suggestion) = Self::find_similar(&name, &candidates) {
+                            msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                        }
+                        Err(CodeGenError { line: None, msg })
                     }
                 }
             }
@@ -6253,9 +6268,45 @@ impl<'ctx> CodeGen<'ctx> {
         if let Some(f) = self.module.get_function(name) {
             return Ok((f, ValKind::Void));
         }
-        Err(CodeGenError {
-            line: None, msg: format!("undefined function '{}'", name),
-        })
+        // Suggest similar function names
+        let mut msg = format!("undefined function '{}'", name);
+        let candidates: Vec<&str> = self.functions.keys().map(|s| s.as_str()).collect();
+        if let Some(suggestion) = Self::find_similar(name, &candidates) {
+            msg.push_str(&format!("; did you mean '{}'?", suggestion));
+        }
+        Err(CodeGenError { line: None, msg })
+    }
+
+    /// Find the most similar string from candidates (edit distance <= 2).
+    fn find_similar<'a>(name: &str, candidates: &[&'a str]) -> Option<&'a str> {
+        let mut best: Option<(&str, usize)> = None;
+        for &c in candidates {
+            let d = Self::edit_distance(name, c);
+            if d <= 2 && d > 0 {
+                if best.is_none() || d < best.unwrap().1 {
+                    best = Some((c, d));
+                }
+            }
+        }
+        best.map(|(s, _)| s)
+    }
+
+    fn edit_distance(a: &str, b: &str) -> usize {
+        let a: Vec<char> = a.chars().collect();
+        let b: Vec<char> = b.chars().collect();
+        let (m, n) = (a.len(), b.len());
+        if m == 0 { return n; }
+        if n == 0 { return m; }
+        let mut dp = vec![vec![0usize; n + 1]; m + 1];
+        for i in 0..=m { dp[i][0] = i; }
+        for j in 0..=n { dp[0][j] = j; }
+        for i in 1..=m {
+            for j in 1..=n {
+                let cost = if a[i-1] == b[j-1] { 0 } else { 1 };
+                dp[i][j] = (dp[i-1][j] + 1).min(dp[i][j-1] + 1).min(dp[i-1][j-1] + cost);
+            }
+        }
+        dp[m][n]
     }
 
     /// Map a ValKind back to a TypeExpr for monomorphization substitution.
