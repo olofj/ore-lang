@@ -1,0 +1,160 @@
+-- Showcase 665: Radix Tree
+
+fn main
+  print "Radix Tree:"
+  print ""
+
+  -- Radix tree (Patricia trie): compressed trie where single-child nodes are merged
+  -- Simulate using arrays for node labels, children, and flags
+
+  -- Part 1: Trie node structure
+  print "=== Part 1: Radix Tree Structure ==="
+  -- Nodes store: label (encoded as int), children indices, is_end flag
+  -- Max 20 nodes, each node has up to 4 children
+  mut node_label := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut node_is_end := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut node_child_count := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut node_parent := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 20)
+    node_parent[i] = -1
+  mut num_nodes := 1
+  -- Node 0 is root (empty label)
+  node_label[0] = 0
+  print "  Root node created (node 0)"
+
+  -- Part 2: Insert words (encoded as integers)
+  print ""
+  print "=== Part 2: Insert Words ==="
+  -- We'll track words as integer keys for simplicity
+  -- Words: "test"=1001, "team"=1002, "tea"=1003, "ten"=1004, "inn"=2001
+  -- Simulate prefix grouping manually
+
+  -- Insert "test" -> path: root -> "te" -> "st"
+  node_label[1] = 10
+  node_is_end[0] = 0
+  node_parent[1] = 0
+  node_child_count[0] = 1
+  num_nodes = num_nodes + 1
+
+  node_label[2] = 11
+  node_is_end[2] = 1
+  node_parent[2] = 1
+  node_child_count[1] = 1
+  num_nodes = num_nodes + 1
+  print "  Insert 'test': root -> te(1) -> st(2)*"
+
+  -- Insert "team" -> split "te" node, add "am" branch
+  node_label[3] = 12
+  node_is_end[3] = 1
+  node_parent[3] = 1
+  node_child_count[1] = 2
+  num_nodes = num_nodes + 1
+  print "  Insert 'team': root -> te(1) -> am(3)*"
+
+  -- Insert "tea" -> mark "te" + "a" as end
+  node_label[4] = 13
+  node_is_end[4] = 1
+  node_parent[4] = 1
+  node_child_count[1] = 3
+  num_nodes = num_nodes + 1
+  print "  Insert 'tea': root -> te(1) -> a(4)*"
+
+  -- Insert "ten" -> add "n" branch under "te"
+  node_label[5] = 14
+  node_is_end[5] = 1
+  node_parent[5] = 1
+  node_child_count[1] = 4
+  num_nodes = num_nodes + 1
+  print "  Insert 'ten': root -> te(1) -> n(5)*"
+
+  -- Insert "inn" -> new branch from root
+  node_label[6] = 20
+  node_is_end[0] = 0
+  node_parent[6] = 0
+  node_child_count[0] = 2
+  num_nodes = num_nodes + 1
+
+  node_label[7] = 21
+  node_is_end[7] = 1
+  node_parent[7] = 6
+  node_child_count[6] = 1
+  num_nodes = num_nodes + 1
+  print "  Insert 'inn': root -> in(6) -> n(7)*"
+
+  print "  Total nodes: {num_nodes}"
+
+  -- Part 3: Tree statistics
+  print ""
+  print "=== Part 3: Tree Statistics ==="
+  mut end_count := 0
+  mut leaf_count := 0
+  mut internal_count := 0
+  for i in range(0, num_nodes)
+    if node_is_end[i] == 1
+      end_count = end_count + 1
+    if node_child_count[i] == 0
+      leaf_count = leaf_count + 1
+    else
+      internal_count = internal_count + 1
+  print "  Word endpoints: {end_count}"
+  print "  Leaf nodes: {leaf_count}"
+  print "  Internal nodes: {internal_count}"
+
+  -- Part 4: Prefix search
+  print ""
+  print "=== Part 4: Prefix Search ==="
+  -- How many words start with "te"? -> all children of node 1
+  te_prefix_count := node_child_count[1]
+  print "  Words with prefix 'te': {te_prefix_count}"
+  print "  Words with prefix 'in': {node_child_count[6]}"
+  print "  Words with prefix 'te' -> [test, team, tea, ten]"
+  print "  Words with prefix 'in' -> [inn]"
+
+  -- Part 5: Compression ratio
+  print ""
+  print "=== Part 5: Compression ==="
+  -- Uncompressed trie for test,team,tea,ten,inn would need more nodes
+  -- Each character = 1 node in basic trie
+  -- t,e,s,t = 4 nodes; t,e,a,m = 4 (sharing t,e); t,e,a = 3 (sharing t,e,a);
+  -- t,e,n = 3; i,n,n = 3
+  -- Unique paths: t->e->s->t, t->e->a->m, t->e->a (subset), t->e->n, i->n->n
+  -- Basic trie nodes: t, e, s, t, a, m, n, i, n, n = ~8 unique
+  basic_trie_nodes := 8
+  radix_nodes := num_nodes
+  saved := basic_trie_nodes - radix_nodes
+  print "  Basic trie nodes: {basic_trie_nodes}"
+  print "  Radix tree nodes: {radix_nodes}"
+  print "  Nodes saved: {saved}"
+  print "  Compression merges single-child chains"
+
+  -- Part 6: Longest common prefix
+  print ""
+  print "=== Part 6: Longest Common Prefix ==="
+  -- Compare two integer "strings" encoded as digits
+  mut word1 := [1, 2, 3, 4, 5, 0, 0, 0]
+  mut word2 := [1, 2, 3, 7, 8, 0, 0, 0]
+  w1_len := 5
+  w2_len := 5
+  mut lcp := 0
+  mut matching := true
+  mut idx := 0
+  while idx < w1_len and idx < w2_len and matching
+    if word1[idx] == word2[idx]
+      lcp = lcp + 1
+    else
+      matching = false
+    idx = idx + 1
+  print "  Word1: [1,2,3,4,5]"
+  print "  Word2: [1,2,3,7,8]"
+  print "  LCP length: {lcp}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Radix tree: compressed trie"
+  print "  Merges single-child chains"
+  print "  Efficient prefix lookup: O(k) for key length k"
+  print "  Used in: IP routing, autocomplete, string databases"
+
+  print ""
+  print "Radix tree: compressed trie with prefix search and efficient storage."

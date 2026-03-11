@@ -1,0 +1,178 @@
+-- Showcase 666: Simple Proof Search
+
+fn main
+  print "Simple Proof Search:"
+  print ""
+
+  -- Simulate propositional logic proof search using truth tables
+  -- Evaluate logical formulas and search for proofs via exhaustive checking
+
+  -- Part 1: Truth table for basic connectives
+  print "=== Part 1: Truth Tables ==="
+  -- Encode: 0=false, 1=true
+  -- AND, OR, IMPLIES, NOT
+  mut a_vals := [0, 0, 1, 1]
+  mut b_vals := [0, 1, 0, 1]
+
+  print "  A | B | AND | OR | A=>B | NOT A"
+  print "  --|---|-----|----|------|------"
+  for i in range(0, 4)
+    a := a_vals[i]
+    b := b_vals[i]
+    mut and_v := 0
+    if a == 1 and b == 1
+      and_v = 1
+    mut or_v := 0
+    if a == 1 or b == 1
+      or_v = 1
+    -- A => B is equivalent to (NOT A) OR B
+    mut impl_v := 0
+    if a == 0 or b == 1
+      impl_v = 1
+    not_a := 1 - a
+    print "  {a} | {b} |  {and_v}  |  {or_v} |   {impl_v}  |   {not_a}"
+
+  -- Part 2: Check if formula is a tautology
+  print ""
+  print "=== Part 2: Tautology Check ==="
+  -- Check: A OR (NOT A) - law of excluded middle
+  mut is_tautology := true
+  for i in range(0, 2)
+    a := i
+    not_a := 1 - a
+    mut result := 0
+    if a == 1 or not_a == 1
+      result = 1
+    if result == 0
+      is_tautology = false
+  print "  A OR (NOT A): tautology = {is_tautology}"
+
+  -- Check: A AND (NOT A) - contradiction
+  mut is_taut2 := true
+  for i in range(0, 2)
+    a := i
+    not_a := 1 - a
+    mut result := 0
+    if a == 1 and not_a == 1
+      result = 1
+    if result == 0
+      is_taut2 = false
+  print "  A AND (NOT A): tautology = {is_taut2}"
+
+  -- Check: (A => B) => ((NOT B) => (NOT A)) - contrapositive
+  mut is_taut3 := true
+  for i in range(0, 4)
+    a := a_vals[i]
+    b := b_vals[i]
+    -- A => B
+    mut impl_ab := 0
+    if a == 0 or b == 1
+      impl_ab = 1
+    -- NOT B => NOT A
+    not_b := 1 - b
+    not_a := 1 - a
+    mut impl_nb_na := 0
+    if not_b == 0 or not_a == 1
+      impl_nb_na = 1
+    -- (A=>B) => ((NOT B)=>(NOT A))
+    mut whole := 0
+    if impl_ab == 0 or impl_nb_na == 1
+      whole = 1
+    if whole == 0
+      is_taut3 = false
+  print "  (A=>B) => ((~B)=>(~A)): tautology = {is_taut3}"
+
+  -- Part 3: Modus Ponens proof
+  print ""
+  print "=== Part 3: Modus Ponens ==="
+  -- Given: A is true, A => B is true
+  -- Prove: B is true
+  print "  Premise 1: A = true"
+  print "  Premise 2: A => B = true"
+  premise_a := 1
+  -- A => B means: if A=1 then B must be 1
+  -- So B = 1
+  mut proved_b := 0
+  if premise_a == 1
+    proved_b = 1
+  print "  Conclusion: B = {proved_b}"
+  print "  Proof valid: {proved_b == 1}"
+
+  -- Part 4: Resolution method
+  print ""
+  print "=== Part 4: Resolution ==="
+  -- Clauses as arrays of literals (positive=var, negative=negated)
+  -- Clause 1: A OR B  (encoded as [1, 2])
+  -- Clause 2: NOT A OR C (encoded as [-1, 3])
+  -- Resolve on A: B OR C
+  print "  Clause 1: A or B"
+  print "  Clause 2: (not A) or C"
+  print "  Resolve on A: B or C"
+
+  -- Verify by truth table: if (A or B) and (not A or C) then (B or C)
+  mut valid_resolution := true
+  -- Check all 8 combinations (A, B, C)
+  for a in range(0, 2)
+    for b in range(0, 2)
+      for c in range(0, 2)
+        mut cl1 := 0
+        if a == 1 or b == 1
+          cl1 = 1
+        mut cl2 := 0
+        if a == 0 or c == 1
+          cl2 = 1
+        mut resolvent := 0
+        if b == 1 or c == 1
+          resolvent = 1
+        -- If premises true, conclusion must be true
+        if cl1 == 1 and cl2 == 1 and resolvent == 0
+          valid_resolution = false
+  print "  Resolution valid: {valid_resolution}"
+
+  -- Part 5: SAT solving (brute force)
+  print ""
+  print "=== Part 5: SAT Solving ==="
+  -- Is (A or B) and (not A or C) and (not B or not C) satisfiable?
+  mut sat_count := 0
+  mut first_sat_a := -1
+  mut first_sat_b := -1
+  mut first_sat_c := -1
+  for a in range(0, 2)
+    for b in range(0, 2)
+      for c in range(0, 2)
+        mut cl1 := 0
+        if a == 1 or b == 1
+          cl1 = 1
+        mut cl2 := 0
+        if a == 0 or c == 1
+          cl2 = 1
+        mut cl3 := 0
+        nb := 1 - b
+        nc := 1 - c
+        if nb == 1 or nc == 1
+          cl3 = 1
+        if cl1 == 1 and cl2 == 1 and cl3 == 1
+          sat_count = sat_count + 1
+          if first_sat_a == -1
+            first_sat_a = a
+            first_sat_b = b
+            first_sat_c = c
+
+  print "  Formula: (A|B) & (~A|C) & (~B|~C)"
+  is_sat := sat_count > 0
+  print "  Satisfiable: {is_sat}"
+  print "  Solutions found: {sat_count}"
+  if sat_count > 0
+    print "  First solution: A={first_sat_a}, B={first_sat_b}, C={first_sat_c}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Truth tables: exhaustive evaluation"
+  print "  Tautology: true under all assignments"
+  print "  Modus ponens: fundamental inference rule"
+  print "  Resolution: combine clauses"
+  print "  SAT: satisfiability via brute force"
+
+  print ""
+  print "Proof search: truth tables, tautologies, resolution, SAT solving."

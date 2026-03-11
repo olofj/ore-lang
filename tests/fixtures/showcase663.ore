@@ -1,0 +1,166 @@
+-- Showcase 663: Lock-Free Algorithm Concepts
+
+fn main
+  print "Lock-Free Algorithm Concepts:"
+  print ""
+
+  -- Simulate lock-free data structure concepts using sequential execution
+  -- Demonstrates CAS (compare-and-swap), ABA problem, and lock-free stack
+
+  -- Part 1: Compare-And-Swap simulation
+  print "=== Part 1: Compare-And-Swap (CAS) ==="
+  mut atomic_val := 42
+  print "  Initial value: {atomic_val}"
+
+  -- CAS(expected, desired): if val == expected, set to desired, return true
+  expected := 42
+  desired := 99
+  mut cas_success := false
+  if atomic_val == expected
+    atomic_val = desired
+    cas_success = true
+  print "  CAS({expected}, {desired}): success={cas_success}, value={atomic_val}"
+
+  -- Failed CAS
+  expected2 := 42
+  desired2 := 55
+  mut cas2_success := false
+  if atomic_val == expected2
+    atomic_val = desired2
+    cas2_success = true
+  print "  CAS({expected2}, {desired2}): success={cas2_success}, value={atomic_val}"
+
+  -- Part 2: Lock-free stack (Treiber stack)
+  print ""
+  print "=== Part 2: Treiber Stack ==="
+  -- Simulate with arrays: stack_data and stack_next
+  -- -1 means null/empty
+  mut stack_data := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut stack_next := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 10)
+    stack_next[i] = -1
+  mut top := -1
+  mut free_idx := 0
+
+  -- Push 10
+  node0 := free_idx
+  free_idx = free_idx + 1
+  stack_data[node0] = 10
+  stack_next[node0] = top
+  top = node0
+  print "  Push 10: top -> node {node0}"
+
+  -- Push 20
+  node1 := free_idx
+  free_idx = free_idx + 1
+  stack_data[node1] = 20
+  stack_next[node1] = top
+  top = node1
+  print "  Push 20: top -> node {node1}"
+
+  -- Push 30
+  node2 := free_idx
+  free_idx = free_idx + 1
+  stack_data[node2] = 30
+  stack_next[node2] = top
+  top = node2
+  print "  Push 30: top -> node {node2}"
+
+  -- Pop
+  if top != -1
+    popped_val := stack_data[top]
+    top = stack_next[top]
+    print "  Pop: {popped_val}, top -> node {top}"
+
+  if top != -1
+    popped_val2 := stack_data[top]
+    top = stack_next[top]
+    print "  Pop: {popped_val2}, top -> node {top}"
+
+  -- Part 3: ABA problem demonstration
+  print ""
+  print "=== Part 3: ABA Problem ==="
+  -- Thread 1 reads A, then Thread 2 changes A->B->A, Thread 1 CAS succeeds incorrectly
+  mut shared := 100
+  print "  Initial: {shared}"
+
+  -- Thread 1 reads
+  t1_read := shared
+  print "  Thread 1 reads: {t1_read}"
+
+  -- Thread 2 changes 100->200->100
+  shared = 200
+  print "  Thread 2 changes to: {shared}"
+  shared = 100
+  print "  Thread 2 changes back to: {shared}"
+
+  -- Thread 1 CAS succeeds (incorrectly, state changed!)
+  mut t1_cas := false
+  if shared == t1_read
+    shared = 300
+    t1_cas = true
+  print "  Thread 1 CAS({t1_read}, 300): success={t1_cas} (ABA problem!)"
+  print "  Value is now: {shared}"
+
+  -- Part 4: Tagged pointers (ABA solution)
+  print ""
+  print "=== Part 4: Tagged Pointers ==="
+  -- Use version counter alongside value to detect ABA
+  mut tagged_val := 100
+  mut tag_version := 0
+  print "  Initial: val={tagged_val}, version={tag_version}"
+
+  -- Thread 1 reads both
+  t1_val := tagged_val
+  t1_ver := tag_version
+  print "  Thread 1 reads: val={t1_val}, ver={t1_ver}"
+
+  -- Thread 2 modifies (increments version each time)
+  tagged_val = 200
+  tag_version = tag_version + 1
+  tagged_val = 100
+  tag_version = tag_version + 1
+  print "  Thread 2 changes: A->B->A, version now={tag_version}"
+
+  -- Thread 1 CAS checks version too - detects the change
+  mut t1_tagged_cas := false
+  if tagged_val == t1_val and tag_version == t1_ver
+    tagged_val = 300
+    tag_version = tag_version + 1
+    t1_tagged_cas = true
+  print "  Thread 1 tagged CAS: success={t1_tagged_cas} (version mismatch detected)"
+
+  -- Part 5: Lock-free counter
+  print ""
+  print "=== Part 5: Lock-Free Counter ==="
+  mut counter := 0
+  num_ops := 10
+  for i in range(0, num_ops)
+    -- Simulate CAS loop for increment
+    mut done := false
+    mut retries := 0
+    while not done
+      old_val := counter
+      new_val := old_val + 1
+      -- CAS always succeeds in sequential simulation
+      if counter == old_val
+        counter = new_val
+        done = true
+      else
+        retries = retries + 1
+  print "  After {num_ops} increments: counter = {counter}"
+  print "  Expected: {num_ops}"
+  correct := counter == num_ops
+  print "  Correct: {correct}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  CAS: atomic compare-and-swap primitive"
+  print "  Treiber stack: lock-free stack using CAS"
+  print "  ABA problem: value reverts, CAS succeeds incorrectly"
+  print "  Tagged pointers: version counter prevents ABA"
+  print "  Lock-free: progress guaranteed for some thread"
+
+  print ""
+  print "Lock-free algorithms: CAS, Treiber stack, ABA problem, tagged pointers."

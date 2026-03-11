@@ -1,0 +1,180 @@
+-- Showcase 669: Weight-Balanced Tree
+
+fn main
+  print "Weight-Balanced Tree:"
+  print ""
+
+  -- Weight-balanced tree (BB[alpha] tree): BST where subtree sizes
+  -- are balanced by a weight constraint: size(child) <= alpha * size(parent)
+
+  -- Part 1: Tree structure with weights
+  print "=== Part 1: Tree Structure ==="
+  -- Arrays: key, left, right, weight (subtree size)
+  mut key := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut left := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut right := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut wt := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 15)
+    left[i] = -1
+    right[i] = -1
+
+  -- Build balanced tree:
+  --       40
+  --      /  \
+  --    20    60
+  --   / \   / \
+  --  10 30 50 70
+
+  key[0] = 40
+  left[0] = 1
+  right[0] = 2
+  wt[0] = 7
+
+  key[1] = 20
+  left[1] = 3
+  right[1] = 4
+  wt[1] = 3
+
+  key[2] = 60
+  left[2] = 5
+  right[2] = 6
+  wt[2] = 3
+
+  key[3] = 10
+  wt[3] = 1
+
+  key[4] = 30
+  wt[4] = 1
+
+  key[5] = 50
+  wt[5] = 1
+
+  key[6] = 70
+  wt[6] = 1
+
+  mut num_nodes := 7
+  print "  Tree: 40(20(10,30),60(50,70))"
+  print "  Root weight: {wt[0]}"
+  print "  Nodes: {num_nodes}"
+
+  -- Part 2: Balance check
+  print ""
+  print "=== Part 2: Weight Balance Check ==="
+  -- Alpha = 0.29 (approximately 2/7 scaled to integers)
+  -- Check: weight(child) <= alpha * weight(parent)
+  -- Using integer arithmetic: weight(child) * 100 <= 29 * weight(parent)
+  -- Actually for BB[alpha], the condition is:
+  -- weight(left) >= alpha * weight(node) AND weight(right) >= alpha * weight(node)
+  alpha_num := 29
+  alpha_den := 100
+
+  for i in range(0, num_nodes)
+    if left[i] != -1 and right[i] != -1
+      lw := wt[left[i]]
+      rw := wt[right[i]]
+      nw := wt[i]
+      -- Check: lw * 100 >= 29 * nw and rw * 100 >= 29 * nw
+      l_ok := lw * alpha_den >= alpha_num * nw
+      r_ok := rw * alpha_den >= alpha_num * nw
+      balanced := l_ok and r_ok
+      print "  Node {key[i]}: left_wt={lw}, right_wt={rw}, total={nw}, balanced={balanced}"
+
+  -- Part 3: Detect imbalance
+  print ""
+  print "=== Part 3: Detecting Imbalance ==="
+  -- Add nodes to left side to create imbalance
+  -- Insert 5 under 10 (left child)
+  key[7] = 5
+  left[7] = -1
+  right[7] = -1
+  wt[7] = 1
+  left[3] = 7
+  -- Update weights
+  wt[3] = 2
+  wt[1] = 4
+  wt[0] = 8
+  num_nodes = num_nodes + 1
+  print "  Inserted key=5 under 10"
+
+  -- Insert 2 under 5
+  key[8] = 2
+  wt[8] = 1
+  left[8] = -1
+  right[8] = -1
+  left[7] = 8
+  wt[7] = 2
+  wt[3] = 3
+  wt[1] = 5
+  wt[0] = 9
+  num_nodes = num_nodes + 1
+  print "  Inserted key=2 under 5"
+
+  -- Check balance at root
+  lw := wt[left[0]]
+  rw := wt[right[0]]
+  nw := wt[0]
+  l_ratio := (lw * 100) / nw
+  r_ratio := (rw * 100) / nw
+  print "  Root: left_wt={lw}, right_wt={rw}, total={nw}"
+  print "  Left ratio: {l_ratio}% (threshold: 29%)"
+  print "  Right ratio: {r_ratio}% (threshold: 29%)"
+  root_balanced := l_ratio >= 29 and r_ratio >= 29
+  print "  Root balanced: {root_balanced}"
+
+  -- Part 4: Rotation to rebalance
+  print ""
+  print "=== Part 4: Rotation ==="
+  -- Right rotation at node to fix left-heavy imbalance
+  -- Before: parent(heavy_left, light_right)
+  -- After: heavy_left(heavy_left.left, parent(heavy_left.right, light_right))
+  print "  Left-heavy: rotate right"
+  print "  Before: 40(20(10(5(2,-),-)30),60(50,70))"
+
+  -- Simulate rotation: new root = node 1 (key=20)
+  -- node 1's right becomes old root's left
+  -- old root's left becomes node 1's old right
+  print "  After rotation at root:"
+  print "  New root: 20"
+  print "  Left: 10(5(2,-),-)"
+  print "  Right: 40(30,60(50,70))"
+
+  -- Compute new weights
+  -- Right subtree of new root: 40 with children 30 and 60(50,70) = 1+3+1=5
+  new_right_wt := 1 + 3 + 1
+  -- Left subtree: 10(5(2)) = 3
+  new_left_wt := wt[3]
+  new_root_wt := new_left_wt + new_right_wt + 1
+  print "  New root weight: {new_root_wt}"
+  print "  New left: {new_left_wt}, right: {new_right_wt}"
+  new_l_ratio := (new_left_wt * 100) / new_root_wt
+  new_r_ratio := (new_right_wt * 100) / new_root_wt
+  print "  Ratios: left={new_l_ratio}%, right={new_r_ratio}%"
+
+  -- Part 5: Performance characteristics
+  print ""
+  print "=== Part 5: Performance ==="
+  -- Height of weight-balanced tree
+  -- For n nodes, height <= log_{1/alpha}(n) + 1
+  -- With alpha=0.29, log base ~3.45
+  mut heights := [1, 2, 3, 4, 5, 6]
+  mut max_nodes := [1, 0, 0, 0, 0, 0]
+  -- max_nodes at height h ~ (1/alpha)^h
+  -- Using ratio 3: max_nodes ~ 3^h
+  mut pwr := 1
+  for h in range(0, 6)
+    max_nodes[h] = pwr
+    pwr = pwr * 3
+  for h in range(0, 6)
+    print "  Height {h}: up to ~{max_nodes[h]} nodes"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Weight-balanced tree: balance by subtree sizes"
+  print "  Alpha parameter: controls balance strictness"
+  print "  Rotation: single or double to restore balance"
+  print "  O(log n) for search, insert, delete"
+  print "  Supports efficient set operations (merge, split)"
+
+  print ""
+  print "Weight-balanced tree: size-based balancing with rotations for O(log n) operations."

@@ -1,0 +1,121 @@
+-- Showcase 670: Simple Auto-Differentiation
+
+fn main
+  print "Simple Auto-Differentiation:"
+  print ""
+
+  -- Forward-mode automatic differentiation using dual numbers
+  -- Dual number: (value, derivative) where d(a+b) = da+db, d(a*b) = a*db + b*da
+
+  -- Part 1: Dual number arithmetic (scaled by 100 for precision)
+  print "=== Part 1: Dual Numbers ==="
+  -- Represent dual(val, deriv) as two separate values
+  -- For variable x at x=300 (i.e., 3.0): dual(300, 100) meaning value=3.0, dx/dx=1.0
+  x_val := 300
+  x_deriv := 100
+  print "  x = 3.0 (scaled: {x_val})"
+  print "  dx/dx = 1.0 (scaled: {x_deriv})"
+
+  -- Constant 2.0: dual(200, 0)
+  c_val := 200
+  c_deriv := 0
+  print "  c = 2.0 (scaled: {c_val})"
+  print "  dc/dx = 0 (constant)"
+
+  -- Part 2: f(x) = x + 2
+  print ""
+  print "=== Part 2: f(x) = x + 2 ==="
+  -- Addition: (a, da) + (b, db) = (a+b, da+db)
+  f1_val := x_val + c_val
+  f1_deriv := x_deriv + c_deriv
+  print "  f(3.0) = {f1_val} (scaled, = 5.0)"
+  print "  f'(3.0) = {f1_deriv} (scaled, = 1.0)"
+
+  -- Part 3: g(x) = x * x (x squared)
+  print ""
+  print "=== Part 3: g(x) = x * x ==="
+  -- Multiplication: (a, da) * (b, db) = (a*b, a*db + b*da)
+  -- x * x: val = x*x, deriv = x*dx + x*dx = 2*x*dx
+  g_val := (x_val * x_val) / 100
+  g_deriv := (x_val * x_deriv + x_val * x_deriv) / 100
+  print "  g(3.0) = {g_val} (scaled, = 9.0)"
+  print "  g'(3.0) = {g_deriv} (scaled, = 6.0, i.e., 2*3)"
+
+  -- Part 4: h(x) = x * x * x (x cubed)
+  print ""
+  print "=== Part 4: h(x) = x * x * x ==="
+  -- First compute x*x = (900, 600)
+  xx_val := g_val
+  xx_deriv := g_deriv
+  -- Then (x*x) * x: val = xx_val * x_val, deriv = xx_val * x_deriv + x_val * xx_deriv
+  h_val := (xx_val * x_val) / 100
+  h_deriv := (xx_val * x_deriv + x_val * xx_deriv) / 100
+  print "  h(3.0) = {h_val} (scaled, = 27.0)"
+  print "  h'(3.0) = {h_deriv} (scaled, = 27.0, i.e., 3*3*3)"
+  -- Analytical: d/dx(x^3) = 3x^2 = 3*9 = 27 -> scaled 2700
+
+  -- Part 5: Polynomial p(x) = 2*x*x + 3*x + 1
+  print ""
+  print "=== Part 5: p(x) = 2*x*x + 3*x + 1 ==="
+  -- 2 * x * x
+  -- First: 2 * x: val = 2*x = 600, deriv = 2*dx + 0*x = 200
+  two_val := 200
+  two_deriv := 0
+  twox_val := (two_val * x_val) / 100
+  twox_deriv := (two_val * x_deriv + x_val * two_deriv) / 100
+  -- twox * x:
+  twoxx_val := (twox_val * x_val) / 100
+  twoxx_deriv := (twox_val * x_deriv + x_val * twox_deriv) / 100
+  print "  2*x*x at x=3: val={twoxx_val}, deriv={twoxx_deriv}"
+
+  -- 3 * x
+  three_val := 300
+  three_deriv := 0
+  threex_val := (three_val * x_val) / 100
+  threex_deriv := (three_val * x_deriv + x_val * three_deriv) / 100
+  print "  3*x at x=3: val={threex_val}, deriv={threex_deriv}"
+
+  -- 1 (constant)
+  one_val := 100
+  one_deriv := 0
+
+  -- p(x) = 2*x*x + 3*x + 1
+  p_val := twoxx_val + threex_val + one_val
+  p_deriv := twoxx_deriv + threex_deriv + one_deriv
+  print "  p(3.0) = {p_val} (scaled, = 28.0)"
+  print "  p'(3.0) = {p_deriv} (scaled, = 15.0)"
+  -- Analytical: p'(x) = 4x + 3, p'(3) = 15
+
+  -- Part 6: Verify with finite differences
+  print ""
+  print "=== Part 6: Finite Difference Verification ==="
+  -- For g(x) = x*x, g'(3) = 6
+  -- Use h=10 (i.e., 0.1 in scaled units)
+  -- g(3.1) = 9.61 -> scaled 961; g(2.9) = 8.41 -> scaled 841
+  -- (961 - 841) / (2 * 10) * 100 = 600
+  xph := x_val + 10
+  xmh := x_val - 10
+  g_plus := (xph * xph) / 100
+  g_minus := (xmh * xmh) / 100
+  fd_deriv := ((g_plus - g_minus) * 100) / 20
+  print "  g(3.1) = {g_plus} (scaled)"
+  print "  g(2.9) = {g_minus} (scaled)"
+  print "  Finite diff deriv: {fd_deriv} (scaled)"
+  print "  Auto-diff deriv: {g_deriv} (scaled)"
+  mut diff := g_deriv - fd_deriv
+  if diff < 0
+    diff = 0 - diff
+  close_enough := diff <= 5
+  print "  Close match: {close_enough}"
+
+  -- Part 7: Summary
+  print ""
+  print "=== Part 7: Summary ==="
+  print "  Dual numbers: (value, derivative) pairs"
+  print "  Addition: derivatives add"
+  print "  Multiplication: product rule"
+  print "  Forward mode: compute f and f' simultaneously"
+  print "  Used in: gradient computation, optimization, machine learning"
+
+  print ""
+  print "Auto-differentiation: dual numbers for exact derivatives via forward mode."

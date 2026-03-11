@@ -1,0 +1,136 @@
+-- Showcase 661: Persistent Hash Map
+
+fn main
+  print "Persistent Hash Map:"
+  print ""
+
+  -- Simulate a persistent (immutable) hash map using array-based hash table
+  -- Each "version" is a snapshot; updates create new versions
+
+  -- Part 1: Hash function
+  print "=== Part 1: Hash Function ==="
+  -- Simple hash: key mod table_size
+  table_size := 8
+  mut keys := [10, 25, 33, 42, 18, 57, 61, 78]
+  num_keys := 8
+
+  mut hashes := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, num_keys)
+    hashes[i] = keys[i] % table_size
+
+  for i in range(0, num_keys)
+    print "  hash({keys[i]}) = {keys[i]} mod {table_size} = {hashes[i]}"
+
+  -- Part 2: Build version 0 (empty) and version 1
+  print ""
+  print "=== Part 2: Versioned Insertions ==="
+  -- Table stores values; 0 means empty, -1 means deleted
+  -- Version 0: empty table
+  mut v0 := [0, 0, 0, 0, 0, 0, 0, 0]
+  print "  Version 0: empty table"
+
+  -- Version 1: insert key=10, val=100
+  mut v1 := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, table_size)
+    v1[i] = v0[i]
+  slot := 10 % table_size
+  v1[slot] = 100
+  print "  Version 1: insert(10, 100) -> slot {slot}"
+
+  -- Version 2: insert key=25, val=250
+  mut v2 := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, table_size)
+    v2[i] = v1[i]
+  slot2 := 25 % table_size
+  v2[slot2] = 250
+  print "  Version 2: insert(25, 250) -> slot {slot2}"
+
+  -- Version 3: insert key=42, val=420
+  mut v3 := [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, table_size)
+    v3[i] = v2[i]
+  slot3 := 42 % table_size
+  v3[slot3] = 420
+  print "  Version 3: insert(42, 420) -> slot {slot3}"
+
+  -- Part 3: Verify persistence (old versions unchanged)
+  print ""
+  print "=== Part 3: Persistence Verification ==="
+  print "  v0[{slot}] = {v0[slot]} (should be 0)"
+  print "  v1[{slot}] = {v1[slot]} (should be 100)"
+  print "  v2[{slot}] = {v2[slot]} (should be 100)"
+  print "  v3[{slot}] = {v3[slot]} (should be 420, overwritten)"
+
+  mut v0_sum := 0
+  mut v1_sum := 0
+  mut v2_sum := 0
+  mut v3_sum := 0
+  for i in range(0, table_size)
+    v0_sum = v0_sum + v0[i]
+    v1_sum = v1_sum + v1[i]
+    v2_sum = v2_sum + v2[i]
+    v3_sum = v3_sum + v3[i]
+  print "  v0 total: {v0_sum}"
+  print "  v1 total: {v1_sum}"
+  print "  v2 total: {v2_sum}"
+  print "  v3 total: {v3_sum}"
+
+  -- Part 4: Collision handling with linear probing
+  print ""
+  print "=== Part 4: Collision Handling ==="
+  mut ht := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut ht_keys := [0, 0, 0, 0, 0, 0, 0, 0]
+  mut ht_used := [0, 0, 0, 0, 0, 0, 0, 0]
+
+  -- Insert keys that collide: 2, 10, 18 all hash to 2
+  mut insert_keys := [2, 10, 18]
+  mut insert_vals := [200, 1000, 1800]
+  for k in range(0, 3)
+    mut pos := insert_keys[k] % table_size
+    mut probes := 0
+    while ht_used[pos] == 1
+      pos = (pos + 1) % table_size
+      probes = probes + 1
+    ht[pos] = insert_vals[k]
+    ht_keys[pos] = insert_keys[k]
+    ht_used[pos] = 1
+    print "  Insert key={insert_keys[k]}, hash={insert_keys[k] % table_size}, placed at slot {pos}, probes={probes}"
+
+  -- Part 5: Lookup with probing
+  print ""
+  print "=== Part 5: Lookup ==="
+  mut search_keys := [2, 10, 18, 5]
+  for sk in range(0, 4)
+    target := search_keys[sk]
+    mut pos := target % table_size
+    mut found := false
+    mut steps := 0
+    while steps < table_size and not found
+      if ht_used[pos] == 1 and ht_keys[pos] == target
+        found = true
+      else if ht_used[pos] == 0
+        steps = table_size
+      else
+        pos = (pos + 1) % table_size
+        steps = steps + 1
+    if found
+      print "  lookup({target}) = {ht[pos]} (slot {pos})"
+    else
+      print "  lookup({target}) = NOT FOUND"
+
+  -- Part 6: Load factor analysis
+  print ""
+  print "=== Part 6: Load Factor ==="
+  mut occupied := 0
+  for i in range(0, table_size)
+    if ht_used[i] == 1
+      occupied = occupied + 1
+  load_pct := (occupied * 100) / table_size
+  print "  Occupied: {occupied}/{table_size}"
+  print "  Load factor: {load_pct}%"
+  print "  Threshold for resize: 75%"
+  needs_resize := load_pct > 75
+  print "  Needs resize: {needs_resize}"
+
+  print ""
+  print "Persistent hash map: versioned snapshots, collision handling, load factor analysis."

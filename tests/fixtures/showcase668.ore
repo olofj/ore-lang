@@ -1,0 +1,139 @@
+-- Showcase 668: Simple Program Synthesis
+
+fn main
+  print "Simple Program Synthesis:"
+  print ""
+
+  -- Synthesize simple arithmetic programs from input-output examples
+  -- Search space: constants, +, -, *
+
+  -- Part 1: Target function from examples
+  print "=== Part 1: Input-Output Examples ==="
+  -- Target: f(x) = 2*x + 3
+  mut inputs := [0, 1, 2, 3, 4, 5]
+  mut outputs := [3, 5, 7, 9, 11, 13]
+  num_examples := 6
+
+  for i in range(0, num_examples)
+    print "  f({inputs[i]}) = {outputs[i]}"
+
+  -- Part 2: Enumerate candidate programs
+  print ""
+  print "=== Part 2: Enumerate Candidates ==="
+  -- Try: f(x) = a*x + b for a in [0..5], b in [0..5]
+  mut found_a := -1
+  mut found_b := -1
+  mut candidates_tried := 0
+
+  for a in range(0, 6)
+    for b in range(0, 6)
+      candidates_tried = candidates_tried + 1
+      mut all_match := true
+      for i in range(0, num_examples)
+        predicted := a * inputs[i] + b
+        if predicted != outputs[i]
+          all_match = false
+      if all_match and found_a == -1
+        found_a = a
+        found_b = b
+
+  print "  Candidates tried: {candidates_tried}"
+  print "  Found: f(x) = {found_a}*x + {found_b}"
+
+  -- Verify
+  mut all_correct := true
+  for i in range(0, num_examples)
+    v := found_a * inputs[i] + found_b
+    if v != outputs[i]
+      all_correct = false
+  print "  Verified: {all_correct}"
+
+  -- Part 3: Synthesize quadratic
+  print ""
+  print "=== Part 3: Quadratic Synthesis ==="
+  -- Target: f(x) = x*x + 1
+  mut q_inputs := [0, 1, 2, 3, 4]
+  mut q_outputs := [1, 2, 5, 10, 17]
+  q_examples := 5
+
+  for i in range(0, q_examples)
+    print "  g({q_inputs[i]}) = {q_outputs[i]}"
+
+  -- Try: g(x) = a*x*x + b*x + c
+  mut qa := -1
+  mut qb := -1
+  mut qc := -1
+  mut q_tried := 0
+
+  for a in range(0, 4)
+    for b in range(0, 4)
+      for c in range(0, 4)
+        q_tried = q_tried + 1
+        mut q_match := true
+        for i in range(0, q_examples)
+          x := q_inputs[i]
+          predicted := a * x * x + b * x + c
+          if predicted != q_outputs[i]
+            q_match = false
+        if q_match and qa == -1
+          qa = a
+          qb = b
+          qc = c
+
+  print "  Candidates tried: {q_tried}"
+  if qa != -1
+    print "  Found: g(x) = {qa}*x*x + {qb}*x + {qc}"
+  else
+    print "  No solution in search space"
+
+  -- Part 4: Distinguishing inputs
+  print ""
+  print "=== Part 4: Distinguishing Inputs ==="
+  -- Given ambiguous examples, find an input that distinguishes candidates
+  -- Examples: f(0)=0, f(1)=2 -- could be 2*x or x*x+x
+  print "  f(0) = 0, f(1) = 2"
+  print "  Candidate 1: f(x) = 2*x"
+  print "  Candidate 2: f(x) = x*x + x"
+  -- Test x=2: 2*2=4 vs 2*2+2=6
+  c1_x2 := 2 * 2
+  c2_x2 := 2 * 2 + 2
+  print "  At x=2: candidate1={c1_x2}, candidate2={c2_x2}"
+  distinguishes := c1_x2 != c2_x2
+  print "  x=2 distinguishes: {distinguishes}"
+  -- Test x=3: 2*3=6 vs 3*3+3=12
+  c1_x3 := 2 * 3
+  c2_x3 := 3 * 3 + 3
+  print "  At x=3: candidate1={c1_x3}, candidate2={c2_x3}"
+
+  -- Part 5: Program complexity ranking
+  print ""
+  print "=== Part 5: Occam's Razor ==="
+  -- Prefer simpler programs (fewer operations)
+  -- f(x) = 2*x + 3: complexity 2 (one mul, one add)
+  -- f(x) = x + x + 3: complexity 2 (two adds)
+  -- f(x) = x + x + 1 + 1 + 1: complexity 4 (four adds)
+  print "  Program 1: 2*x + 3 (cost=2)"
+  print "  Program 2: x + x + 3 (cost=2)"
+  print "  Program 3: x + x + 1 + 1 + 1 (cost=4)"
+  print "  Prefer: programs with cost <= 2"
+
+  -- Evaluate all at x=7
+  x := 7
+  p1 := 2 * x + 3
+  p2 := x + x + 3
+  p3 := x + x + 1 + 1 + 1
+  print "  f(7): P1={p1}, P2={p2}, P3={p3}"
+  all_agree := p1 == p2 and p2 == p3
+  print "  All agree: {all_agree}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Synthesis: search for program matching examples"
+  print "  Linear: a*x + b enumeration"
+  print "  Quadratic: a*x*x + b*x + c enumeration"
+  print "  Distinguishing inputs: resolve ambiguity"
+  print "  Occam's razor: prefer simpler programs"
+
+  print ""
+  print "Program synthesis: enumerate candidates, verify against examples, prefer simplicity."

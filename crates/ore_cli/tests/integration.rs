@@ -8585,6 +8585,137 @@ fn showcase660_randomized_algorithms() {
 }
 
 #[test]
+fn showcase661_persistent_hash_map() {
+    let out = run_ore("showcase661.ore");
+    assert!(out.contains("Persistent Hash Map:"));
+    assert!(out.contains("hash(10) = 10 mod 8 = 2"));
+    assert!(out.contains("Version 1: insert(10, 100) -> slot 2"));
+    assert!(out.contains("v0[2] = 0 (should be 0)"));
+    assert!(out.contains("v1[2] = 100 (should be 100)"));
+    assert!(out.contains("Insert key=10, hash=2, placed at slot 3, probes=1"));
+    assert!(out.contains("lookup(2) = 200 (slot 2)"));
+    assert!(out.contains("lookup(5) = NOT FOUND"));
+    assert!(out.contains("Load factor: 37%"));
+    assert!(out.contains("Persistent hash map: versioned snapshots, collision handling, load factor analysis."));
+}
+
+#[test]
+fn showcase662_ray_box_intersection() {
+    let out = run_ore("showcase662.ore");
+    assert!(out.contains("Simple Ray-Box Intersection:"));
+    assert!(out.contains("X slab: t_enter=200, t_exit=400"));
+    assert!(out.contains("Y slab: ray parallel and inside"));
+    assert!(out.contains("Hit: true"));
+    assert!(out.contains("Hit point (x100): (300, 100, 100)"));
+    assert!(out.contains("Result: MISS"));
+    assert!(out.contains("Ray-box intersection: slab method for AABB hit testing in ray tracing."));
+}
+
+#[test]
+fn showcase663_lock_free_algorithms() {
+    let out = run_ore("showcase663.ore");
+    assert!(out.contains("Lock-Free Algorithm Concepts:"));
+    assert!(out.contains("CAS(42, 99): success=true, value=99"));
+    assert!(out.contains("CAS(42, 55): success=false, value=99"));
+    assert!(out.contains("Push 30: top -> node 2"));
+    assert!(out.contains("Pop: 30, top -> node 1"));
+    assert!(out.contains("Thread 1 CAS(100, 300): success=true (ABA problem!)"));
+    assert!(out.contains("Thread 1 tagged CAS: success=false (version mismatch detected)"));
+    assert!(out.contains("After 10 increments: counter = 10"));
+    assert!(out.contains("Lock-free algorithms: CAS, Treiber stack, ABA problem, tagged pointers."));
+}
+
+#[test]
+fn showcase664_interpreter_optimization() {
+    let out = run_ore("showcase664.ore");
+    assert!(out.contains("Simple Interpreter Optimization:"));
+    assert!(out.contains("MUL: 8 * 2 = 16"));
+    assert!(out.contains("Result: 16"));
+    assert!(out.contains("Fold: PUSH 3, PUSH 5, ADD -> PUSH 8"));
+    assert!(out.contains("Folded 2 constant expressions"));
+    assert!(out.contains("7 * 2 = 7 + 7 = 14"));
+    assert!(out.contains("Interpreter optimization: bytecode execution, constant folding, strength reduction."));
+}
+
+#[test]
+fn showcase665_radix_tree() {
+    let out = run_ore("showcase665.ore");
+    assert!(out.contains("Radix Tree:"));
+    assert!(out.contains("Total nodes: 8"));
+    assert!(out.contains("Word endpoints: 5"));
+    assert!(out.contains("Leaf nodes: 5"));
+    assert!(out.contains("Words with prefix 'te': 4"));
+    assert!(out.contains("LCP length: 3"));
+    assert!(out.contains("Radix tree: compressed trie with prefix search and efficient storage."));
+}
+
+#[test]
+fn showcase666_proof_search() {
+    let out = run_ore("showcase666.ore");
+    assert!(out.contains("Simple Proof Search:"));
+    assert!(out.contains("A OR (NOT A): tautology = true"));
+    assert!(out.contains("A AND (NOT A): tautology = false"));
+    assert!(out.contains("(A=>B) => ((~B)=>(~A)): tautology = true"));
+    assert!(out.contains("Conclusion: B = 1"));
+    assert!(out.contains("Resolution valid: true"));
+    assert!(out.contains("Satisfiable: true"));
+    assert!(out.contains("Solutions found: 2"));
+    assert!(out.contains("Proof search: truth tables, tautologies, resolution, SAT solving."));
+}
+
+#[test]
+fn showcase667_order_statistic_tree() {
+    let out = run_ore("showcase667.ore");
+    assert!(out.contains("Order-Statistic Tree Concepts:"));
+    assert!(out.contains("Select(1) = 3 (smallest)"));
+    assert!(out.contains("Select(5) = 20 (median)"));
+    assert!(out.contains("Select(9) = 50 (largest)"));
+    assert!(out.contains("Rank(20) = 5"));
+    assert!(out.contains("Rank(3) = 1"));
+    assert!(out.contains("Count in [10, 40]: 5"));
+    assert!(out.contains("New node count: 10"));
+    assert!(out.contains("Order-statistic tree: augmented BST for rank and select queries."));
+}
+
+#[test]
+fn showcase668_program_synthesis() {
+    let out = run_ore("showcase668.ore");
+    assert!(out.contains("Simple Program Synthesis:"));
+    assert!(out.contains("Candidates tried: 36"));
+    assert!(out.contains("Found: f(x) = 2*x + 3"));
+    assert!(out.contains("Verified: true"));
+    assert!(out.contains("Found: g(x) = 1*x*x + 0*x + 1"));
+    assert!(out.contains("x=2 distinguishes: true"));
+    assert!(out.contains("All agree: true"));
+    assert!(out.contains("Program synthesis: enumerate candidates, verify against examples, prefer simplicity."));
+}
+
+#[test]
+fn showcase669_weight_balanced_tree() {
+    let out = run_ore("showcase669.ore");
+    assert!(out.contains("Weight-Balanced Tree:"));
+    assert!(out.contains("Root weight: 7"));
+    assert!(out.contains("Node 40: left_wt=3, right_wt=3, total=7, balanced=true"));
+    assert!(out.contains("Root balanced: true"));
+    assert!(out.contains("New root weight: 9"));
+    assert!(out.contains("Height 3: up to ~27 nodes"));
+    assert!(out.contains("Weight-balanced tree: size-based balancing with rotations for O(log n) operations."));
+}
+
+#[test]
+fn showcase670_auto_differentiation() {
+    let out = run_ore("showcase670.ore");
+    assert!(out.contains("Simple Auto-Differentiation:"));
+    assert!(out.contains("g(3.0) = 900 (scaled, = 9.0)"));
+    assert!(out.contains("g'(3.0) = 600 (scaled, = 6.0, i.e., 2*3)"));
+    assert!(out.contains("h'(3.0) = 2700 (scaled, = 27.0, i.e., 3*3*3)"));
+    assert!(out.contains("p(3.0) = 2800 (scaled, = 28.0)"));
+    assert!(out.contains("p'(3.0) = 1500 (scaled, = 15.0)"));
+    assert!(out.contains("Close match: true"));
+    assert!(out.contains("Auto-differentiation: dual numbers for exact derivatives via forward mode."));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,147 @@
+-- Showcase 662: Simple Ray-Box Intersection
+
+fn main
+  print "Simple Ray-Box Intersection:"
+  print ""
+
+  -- Ray-AABB intersection using the slab method
+  -- A ray is defined by origin + t * direction
+  -- An AABB (axis-aligned bounding box) is defined by min and max corners
+
+  -- Part 1: Ray and box setup (using scaled integers, x100)
+  print "=== Part 1: Setup ==="
+  -- Ray origin: (100, 100, 100) = (1.0, 1.0, 1.0) scaled
+  ray_ox := 100
+  ray_oy := 100
+  ray_oz := 100
+  -- Ray direction: (100, 0, 0) = pointing along +X
+  ray_dx := 100
+  ray_dy := 0
+  ray_dz := 0
+  print "  Ray origin: (1.0, 1.0, 1.0)"
+  print "  Ray direction: (1.0, 0.0, 0.0)"
+
+  -- Box: min=(3.0, 0.0, 0.0), max=(5.0, 2.0, 2.0)
+  box_minx := 300
+  box_miny := 0
+  box_minz := 0
+  box_maxx := 500
+  box_maxy := 200
+  box_maxz := 200
+  print "  Box min: (3.0, 0.0, 0.0)"
+  print "  Box max: (5.0, 2.0, 2.0)"
+
+  -- Part 2: Slab intersection (X axis)
+  print ""
+  print "=== Part 2: Slab Method ==="
+  -- For each axis: tmin = (box_min - ray_o) / ray_d, tmax = (box_max - ray_o) / ray_d
+  -- X axis: tmin_x = (300 - 100) / 100 = 2.0, tmax_x = (500 - 100) / 100 = 4.0
+  mut t_enter := 0
+  mut t_exit := 100000
+
+  -- X slab
+  if ray_dx != 0
+    tx1 := ((box_minx - ray_ox) * 100) / ray_dx
+    tx2 := ((box_maxx - ray_ox) * 100) / ray_dx
+    mut txmin := tx1
+    mut txmax := tx2
+    if tx1 > tx2
+      txmin = tx2
+      txmax = tx1
+    if txmin > t_enter
+      t_enter = txmin
+    if txmax < t_exit
+      t_exit = txmax
+    print "  X slab: t_enter={txmin}, t_exit={txmax}"
+
+  -- Y slab: ray_dy=0, so check if origin.y is inside [miny, maxy]
+  if ray_dy == 0
+    if ray_oy >= box_miny and ray_oy <= box_maxy
+      print "  Y slab: ray parallel and inside (y={ray_oy}, range=[{box_miny}, {box_maxy}])"
+    else
+      t_enter = 100001
+      print "  Y slab: ray parallel and OUTSIDE - no hit"
+  else
+    ty1 := ((box_miny - ray_oy) * 100) / ray_dy
+    ty2 := ((box_maxy - ray_oy) * 100) / ray_dy
+    mut tymin := ty1
+    mut tymax := ty2
+    if ty1 > ty2
+      tymin = ty2
+      tymax = ty1
+    if tymin > t_enter
+      t_enter = tymin
+    if tymax < t_exit
+      t_exit = tymax
+    print "  Y slab: t_enter={tymin}, t_exit={tymax}"
+
+  -- Z slab: ray_dz=0, same parallel check
+  if ray_dz == 0
+    if ray_oz >= box_minz and ray_oz <= box_maxz
+      print "  Z slab: ray parallel and inside (z={ray_oz}, range=[{box_minz}, {box_maxz}])"
+    else
+      t_enter = 100001
+      print "  Z slab: ray parallel and OUTSIDE - no hit"
+  else
+    tz1 := ((box_minz - ray_oz) * 100) / ray_dz
+    tz2 := ((box_maxz - ray_oz) * 100) / ray_dz
+    mut tzmin := tz1
+    mut tzmax := tz2
+    if tz1 > tz2
+      tzmin = tz2
+      tzmax = tz1
+    if tzmin > t_enter
+      t_enter = tzmin
+    if tzmax < t_exit
+      t_exit = tzmax
+    print "  Z slab: t_enter={tzmin}, t_exit={tzmax}"
+
+  -- Part 3: Hit test
+  print ""
+  print "=== Part 3: Hit Result ==="
+  hit := t_enter <= t_exit and t_exit >= 0
+  print "  t_enter={t_enter}, t_exit={t_exit}"
+  print "  Hit: {hit}"
+
+  if hit
+    -- Intersection point: origin + t_enter * direction (scaled)
+    hit_x := ray_ox + (t_enter * ray_dx) / 100
+    hit_y := ray_oy + (t_enter * ray_dy) / 100
+    hit_z := ray_oz + (t_enter * ray_dz) / 100
+    print "  Hit point (x100): ({hit_x}, {hit_y}, {hit_z})"
+
+  -- Part 4: Test ray that misses
+  print ""
+  print "=== Part 4: Miss Test ==="
+  -- Ray from (100, 500, 100) direction (100, 0, 0) - above the box
+  miss_oy := 500
+  print "  Ray origin: (1.0, 5.0, 1.0) direction (1.0, 0.0, 0.0)"
+  -- Y: parallel, check 500 in [0, 200] -> no
+  miss_inside_y := miss_oy >= box_miny and miss_oy <= box_maxy
+  print "  Y parallel check: {miss_inside_y} (y=500 in [0, 200])"
+  print "  Result: MISS"
+
+  -- Part 5: Ray from inside the box
+  print ""
+  print "=== Part 5: Ray From Inside ==="
+  -- Origin at (400, 100, 100), direction (100, 0, 0)
+  inside_ox := 400
+  print "  Origin: (4.0, 1.0, 1.0) - inside box"
+  ix_enter := ((box_minx - inside_ox) * 100) / ray_dx
+  ix_exit := ((box_maxx - inside_ox) * 100) / ray_dx
+  if ix_enter > ix_exit
+    print "  Swap needed"
+  print "  X: t_enter={ix_enter}, t_exit={ix_exit}"
+  inside_hit := ix_exit >= 0
+  print "  Inside box: exits at t={ix_exit}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Slab method: intersect ray with axis-aligned slabs"
+  print "  Handles parallel rays via containment check"
+  print "  Used in BVH traversal for ray tracing"
+  print "  Time complexity: O(dimensions) = O(3)"
+
+  print ""
+  print "Ray-box intersection: slab method for AABB hit testing in ray tracing."

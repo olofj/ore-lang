@@ -1,0 +1,221 @@
+-- Showcase 667: Order-Statistic Tree Concepts
+
+fn main
+  print "Order-Statistic Tree Concepts:"
+  print ""
+
+  -- Order-statistic tree: BST augmented with subtree sizes
+  -- Supports: rank(x), select(k), count in range
+
+  -- Part 1: Build BST with sizes
+  print "=== Part 1: Build Augmented BST ==="
+  -- Store tree as arrays: key, left, right, size
+  -- -1 means null
+  mut key := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut left := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut right := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut sz := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(0, 15)
+    left[i] = -1
+    right[i] = -1
+    sz[i] = 0
+  mut num_nodes := 0
+
+  -- Build a balanced tree manually:
+  --        30
+  --       /  \
+  --     15    45
+  --    / \   / \
+  --   8  20 35  50
+  --  / \
+  -- 3  12
+
+  -- Node 0: key=30
+  key[0] = 30
+  left[0] = 1
+  right[0] = 2
+  sz[0] = 9
+  -- Node 1: key=15
+  key[1] = 15
+  left[1] = 3
+  right[1] = 4
+  sz[1] = 5
+  -- Node 2: key=45
+  key[2] = 45
+  left[2] = 5
+  right[2] = 6
+  sz[2] = 3
+  -- Node 3: key=8
+  key[3] = 8
+  left[3] = 7
+  right[3] = 8
+  sz[3] = 3
+  -- Node 4: key=20
+  key[4] = 20
+  sz[4] = 1
+  -- Node 5: key=35
+  key[5] = 35
+  sz[5] = 1
+  -- Node 6: key=50
+  key[6] = 50
+  sz[6] = 1
+  -- Node 7: key=3
+  key[7] = 3
+  sz[7] = 1
+  -- Node 8: key=12
+  key[8] = 12
+  sz[8] = 1
+  num_nodes = 9
+
+  print "  Tree: 30(15(8(3,12),20),45(35,50))"
+  print "  Root size: {sz[0]}"
+  print "  Nodes: {num_nodes}"
+
+  -- Part 2: Select k-th smallest (1-indexed)
+  print ""
+  print "=== Part 2: Select k-th Smallest ==="
+  -- Select(node, k): left_size = size(left); if k <= left_size, go left
+  -- if k == left_size+1, return node; else go right with k - left_size - 1
+
+  -- Select 1st (smallest)
+  mut node := 0
+  mut target_k := 1
+  mut found := false
+  while not found
+    mut left_sz := 0
+    if left[node] != -1
+      left_sz = sz[left[node]]
+    if target_k <= left_sz
+      node = left[node]
+    else if target_k == left_sz + 1
+      found = true
+    else
+      target_k = target_k - left_sz - 1
+      node = right[node]
+  print "  Select(1) = {key[node]} (smallest)"
+
+  -- Select 5th
+  node = 0
+  target_k = 5
+  found = false
+  while not found
+    mut left_sz := 0
+    if left[node] != -1
+      left_sz = sz[left[node]]
+    if target_k <= left_sz
+      node = left[node]
+    else if target_k == left_sz + 1
+      found = true
+    else
+      target_k = target_k - left_sz - 1
+      node = right[node]
+  print "  Select(5) = {key[node]} (median)"
+
+  -- Select 9th (largest)
+  node = 0
+  target_k = 9
+  found = false
+  while not found
+    mut left_sz := 0
+    if left[node] != -1
+      left_sz = sz[left[node]]
+    if target_k <= left_sz
+      node = left[node]
+    else if target_k == left_sz + 1
+      found = true
+    else
+      target_k = target_k - left_sz - 1
+      node = right[node]
+  print "  Select(9) = {key[node]} (largest)"
+
+  -- Part 3: Rank query
+  print ""
+  print "=== Part 3: Rank Query ==="
+  -- Rank(x): how many elements are <= x
+  -- For sorted order: 3, 8, 12, 15, 20, 30, 35, 45, 50
+  -- Rank(20) = 5, Rank(30) = 6, Rank(3) = 1
+
+  -- Use inorder traversal simulation with counting
+  mut sorted := [3, 8, 12, 15, 20, 30, 35, 45, 50]
+
+  -- Rank of 20
+  mut rank_20 := 0
+  for i in range(0, 9)
+    if sorted[i] <= 20
+      rank_20 = rank_20 + 1
+  print "  Rank(20) = {rank_20}"
+
+  -- Rank of 30
+  mut rank_30 := 0
+  for i in range(0, 9)
+    if sorted[i] <= 30
+      rank_30 = rank_30 + 1
+  print "  Rank(30) = {rank_30}"
+
+  -- Rank of 3
+  mut rank_3 := 0
+  for i in range(0, 9)
+    if sorted[i] <= 3
+      rank_3 = rank_3 + 1
+  print "  Rank(3) = {rank_3}"
+
+  -- Rank of 25 (not in tree)
+  mut rank_25 := 0
+  for i in range(0, 9)
+    if sorted[i] <= 25
+      rank_25 = rank_25 + 1
+  print "  Rank(25) = {rank_25} (not in tree, 5 elements <= 25)"
+
+  -- Part 4: Range counting
+  print ""
+  print "=== Part 4: Range Count ==="
+  -- Count elements in [lo, hi] = Rank(hi) - Rank(lo-1)
+  lo := 10
+  hi := 40
+  mut rank_hi := 0
+  mut rank_lo_minus := 0
+  for i in range(0, 9)
+    if sorted[i] <= hi
+      rank_hi = rank_hi + 1
+    if sorted[i] <= lo - 1
+      rank_lo_minus = rank_lo_minus + 1
+  range_count := rank_hi - rank_lo_minus
+  print "  Count in [{lo}, {hi}]: {range_count}"
+  -- Elements: 12, 15, 20, 30, 35
+  print "  Elements: 12, 15, 20, 30, 35"
+
+  lo2 := 1
+  hi2 := 100
+  print "  Count in [{lo2}, {hi2}]: {sz[0]} (all elements)"
+
+  -- Part 5: Dynamic operations (conceptual)
+  print ""
+  print "=== Part 5: Size Maintenance ==="
+  -- When inserting, update sizes along the path
+  -- Simulate inserting key=25
+  print "  Insert key=25:"
+  -- Path: 30 (go left) -> 15 (go right) -> 20 (go right, insert)
+  key[9] = 25
+  left[9] = -1
+  right[9] = -1
+  sz[9] = 1
+  right[4] = 9
+  -- Update sizes: node 4: 1->2, node 1: 5->6, node 0: 9->10
+  sz[4] = 2
+  sz[1] = 6
+  sz[0] = 10
+  num_nodes = num_nodes + 1
+  print "  Updated sizes: root={sz[0]}, left_subtree={sz[1]}"
+  print "  New node count: {num_nodes}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Order-statistic tree: BST + subtree sizes"
+  print "  Select(k): find k-th smallest in O(log n)"
+  print "  Rank(x): count elements <= x in O(log n)"
+  print "  Range count: Rank(hi) - Rank(lo-1)"
+  print "  Size maintenance: update on insert/delete path"
+
+  print ""
+  print "Order-statistic tree: augmented BST for rank and select queries."

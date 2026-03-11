@@ -1,0 +1,187 @@
+-- Showcase 664: Simple Interpreter Optimization
+
+fn main
+  print "Simple Interpreter Optimization:"
+  print ""
+
+  -- Simulate bytecode interpretation and peephole optimization
+  -- Opcodes: 1=PUSH, 2=ADD, 3=SUB, 4=MUL, 5=LOAD, 6=STORE, 7=HALT
+
+  -- Part 1: Bytecode representation
+  print "=== Part 1: Bytecode ==="
+  -- Program: compute (3 + 5) * 2
+  -- PUSH 3, PUSH 5, ADD, PUSH 2, MUL, HALT
+  mut opcodes := [1, 3, 1, 5, 2, 0, 1, 2, 4, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Format: pairs of (opcode, operand)
+  program_len := 6
+  print "  Program: (3 + 5) * 2"
+  print "  PUSH 3"
+  print "  PUSH 5"
+  print "  ADD"
+  print "  PUSH 2"
+  print "  MUL"
+  print "  HALT"
+
+  -- Part 2: Stack-based interpreter
+  print ""
+  print "=== Part 2: Execution ==="
+  mut stack := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut sp := 0
+  mut pc := 0
+  mut halted := false
+  mut steps := 0
+
+  while not halted and pc < 20
+    op := opcodes[pc]
+    arg := opcodes[pc + 1]
+    if op == 1
+      -- PUSH
+      stack[sp] = arg
+      sp = sp + 1
+      print "  PUSH {arg} -> stack[{sp - 1}] = {arg}"
+      pc = pc + 2
+    else if op == 2
+      -- ADD
+      sp = sp - 1
+      b := stack[sp]
+      sp = sp - 1
+      a := stack[sp]
+      result := a + b
+      stack[sp] = result
+      sp = sp + 1
+      print "  ADD: {a} + {b} = {result}"
+      pc = pc + 2
+    else if op == 3
+      -- SUB
+      sp = sp - 1
+      b := stack[sp]
+      sp = sp - 1
+      a := stack[sp]
+      result := a - b
+      stack[sp] = result
+      sp = sp + 1
+      print "  SUB: {a} - {b} = {result}"
+      pc = pc + 2
+    else if op == 4
+      -- MUL
+      sp = sp - 1
+      b := stack[sp]
+      sp = sp - 1
+      a := stack[sp]
+      result := a * b
+      stack[sp] = result
+      sp = sp + 1
+      print "  MUL: {a} * {b} = {result}"
+      pc = pc + 2
+    else if op == 7
+      halted = true
+      print "  HALT"
+    else
+      pc = pc + 2
+    steps = steps + 1
+
+  result := stack[0]
+  print "  Result: {result}"
+  print "  Steps: {steps}"
+
+  -- Part 3: Constant folding optimization
+  print ""
+  print "=== Part 3: Constant Folding ==="
+  -- PUSH 3, PUSH 5, ADD can be folded to PUSH 8
+  mut opt := [1, 3, 1, 5, 2, 0, 1, 2, 4, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  mut opt_len := 12
+  mut folded := 0
+
+  -- Scan for PUSH, PUSH, OP pattern
+  mut i := 0
+  while i + 5 < opt_len
+    if opt[i] == 1 and opt[i + 2] == 1
+      next_op := opt[i + 4]
+      if next_op == 2 or next_op == 3 or next_op == 4
+        a := opt[i + 1]
+        b := opt[i + 3]
+        mut res := 0
+        mut op_name := "?"
+        if next_op == 2
+          res = a + b
+          op_name = "ADD"
+        else if next_op == 3
+          res = a - b
+          op_name = "SUB"
+        else if next_op == 4
+          res = a * b
+          op_name = "MUL"
+        print "  Fold: PUSH {a}, PUSH {b}, {op_name} -> PUSH {res}"
+        opt[i] = 1
+        opt[i + 1] = res
+        -- Shift remaining instructions
+        for j in range(i + 2, opt_len - 4)
+          opt[j] = opt[j + 4]
+        opt_len = opt_len - 4
+        folded = folded + 1
+      else
+        i = i + 2
+    else
+      i = i + 2
+  print "  Folded {folded} constant expressions"
+
+  -- Show optimized program
+  print "  Optimized bytecode:"
+  mut k := 0
+  while k < opt_len
+    if opt[k] == 1
+      print "    PUSH {opt[k + 1]}"
+    else if opt[k] == 4
+      print "    MUL"
+    else if opt[k] == 7
+      print "    HALT"
+    k = k + 2
+
+  -- Part 4: Strength reduction
+  print ""
+  print "=== Part 4: Strength Reduction ==="
+  -- Replace MUL by 2 with ADD (self)
+  print "  x * 2 -> x + x"
+  print "  x * 4 -> (x + x) + (x + x)"
+  print "  x * 8 -> shift left 3"
+
+  -- Demonstrate: 7 * 2 using add
+  val := 7
+  doubled := val + val
+  print "  {val} * 2 = {val} + {val} = {doubled}"
+  quadrupled := doubled + doubled
+  print "  {val} * 4 = {doubled} + {doubled} = {quadrupled}"
+
+  -- Part 5: Dead code elimination
+  print ""
+  print "=== Part 5: Dead Code Elimination ==="
+  -- Program with dead code: PUSH 10, PUSH 20, PUSH 30, ADD, HALT
+  -- The PUSH 10 result is never used (overwritten by PUSH 20, PUSH 30, ADD)
+  mut prog2 := [1, 10, 1, 20, 1, 30, 2, 0, 7, 0]
+  prog2_len := 10
+  print "  Original: PUSH 10, PUSH 20, PUSH 30, ADD, HALT"
+  print "  PUSH 10 is dead (result never used)"
+  print "  After DCE: PUSH 20, PUSH 30, ADD, HALT"
+  -- Execute optimized version
+  sp = 0
+  stack[0] = 20
+  stack[1] = 30
+  sp = 2
+  sp = sp - 1
+  bv := stack[sp]
+  sp = sp - 1
+  av := stack[sp]
+  dce_result := av + bv
+  print "  Result: {dce_result}"
+
+  -- Part 6: Summary
+  print ""
+  print "=== Part 6: Summary ==="
+  print "  Bytecode: compact instruction representation"
+  print "  Stack machine: simple execution model"
+  print "  Constant folding: evaluate at compile time"
+  print "  Strength reduction: replace expensive ops"
+  print "  Dead code elimination: remove unused computations"
+
+  print ""
+  print "Interpreter optimization: bytecode execution, constant folding, strength reduction."
