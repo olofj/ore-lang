@@ -1,0 +1,12 @@
+trait Greeter
+  fn greet self:Self -> Str
+
+type Robot { id:Int }
+
+-- Missing the greet method
+impl Greeter for Robot
+  fn hello self:Robot -> Str
+    "beep"
+
+fn main
+  print 0

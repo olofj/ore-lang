@@ -1,0 +1,12 @@
+trait Hasher
+  fn hash self:Self -> Int
+
+type Foo { x:Int }
+
+-- Wrong return type: Str instead of Int
+impl Hasher for Foo
+  fn hash self:Foo -> Str
+    "not a number"
+
+fn main
+  print 0

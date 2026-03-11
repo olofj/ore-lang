@@ -583,6 +583,8 @@ impl<'a> Lexer<'a> {
                     match self.advance() {
                         Some(b'n') => s.push('\n'),
                         Some(b't') => s.push('\t'),
+                        Some(b'r') => s.push('\r'),
+                        Some(b'0') => s.push('\0'),
                         Some(b'\\') => s.push('\\'),
                         Some(b'"') => s.push('"'),
                         Some(b'{') => s.push('{'),

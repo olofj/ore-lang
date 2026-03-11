@@ -190,12 +190,75 @@ impl TypeChecker {
                         self.check_fn(m);
                     }
                 }
-                Item::ImplTrait { methods, .. } => {
+                Item::ImplTrait { trait_name, type_name, methods } => {
+                    self.check_impl_trait(trait_name, type_name, methods);
                     for m in methods {
                         self.check_fn(m);
                     }
                 }
                 _ => {}
+            }
+        }
+    }
+
+    /// Validate that an impl block implements all required trait methods
+    fn check_impl_trait(&mut self, trait_name: &str, type_name: &str, methods: &[FnDef]) {
+        let trait_info = match self.traits.get(trait_name) {
+            Some(info) => info.clone(),
+            None => {
+                self.err(format!("unknown trait '{}'", trait_name));
+                return;
+            }
+        };
+
+        // Check that the type exists
+        if !self.records.contains_key(type_name)
+            && !self.enums.contains_key(type_name)
+            && !matches!(type_name, "Int" | "Float" | "Bool" | "Str")
+        {
+            self.err(format!("unknown type '{}' in impl block", type_name));
+        }
+
+        // Check that all required methods are implemented
+        for (req_name, req_params, req_ret) in &trait_info.methods {
+            if let Some(impl_method) = methods.iter().find(|m| m.name == *req_name) {
+                // Check parameter count (impl has self as first param, trait sig also has self)
+                let impl_param_count = impl_method.params.len();
+                let trait_param_count = req_params.len();
+                if impl_param_count != trait_param_count {
+                    self.err(format!(
+                        "method '{}' in impl {} for {} has {} params, trait requires {}",
+                        req_name, trait_name, type_name, impl_param_count, trait_param_count
+                    ));
+                }
+
+                // Check return type matches
+                if let Some(req_ret_ty) = req_ret {
+                    if let Some(impl_ret) = &impl_method.ret_type {
+                        let impl_ret_ty = self.resolve_type_expr(impl_ret);
+                        if !req_ret_ty.compatible_with(&impl_ret_ty) {
+                            self.err(format!(
+                                "method '{}' in impl {} for {}: return type mismatch, expected {}, got {}",
+                                req_name, trait_name, type_name, req_ret_ty, impl_ret_ty
+                            ));
+                        }
+                    }
+                }
+            } else {
+                self.err(format!(
+                    "impl {} for {} is missing method '{}'",
+                    trait_name, type_name, req_name
+                ));
+            }
+        }
+
+        // Warn about extra methods not in the trait
+        for m in methods {
+            if !trait_info.methods.iter().any(|(name, _, _)| name == &m.name) {
+                self.err(format!(
+                    "method '{}' in impl {} for {} is not defined in trait {}",
+                    m.name, trait_name, type_name, trait_name
+                ));
             }
         }
     }
