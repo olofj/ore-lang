@@ -489,6 +489,9 @@ fn map_runtime_functions(
     // Map methods
     map_fn!("ore_map_merge", ore_runtime::ore_map_merge);
     map_fn!("ore_map_clear", ore_runtime::ore_map_clear);
+    map_fn!("ore_map_each", ore_runtime::ore_map_each);
+    map_fn!("ore_map_map_values", ore_runtime::ore_map_map_values);
+    map_fn!("ore_map_filter", ore_runtime::ore_map_filter);
     // String parsing
     map_fn!("ore_str_parse_int", ore_runtime::ore_str_parse_int);
     map_fn!("ore_str_parse_float", ore_runtime::ore_str_parse_float);

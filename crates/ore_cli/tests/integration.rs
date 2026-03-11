@@ -995,6 +995,17 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn maps_functional() {
+    let out = run_ore("maps/functional.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "a: 1", "b: 2", "c: 3",  // each
+        "{b: 2, c: 3}",           // filter
+        "{a: 2, b: 4, c: 6}",    // map
+    ]);
+}
+
+#[test]
 fn lists_product_is_empty() {
     let out = run_ore("lists/product_is_empty.ore");
     let lines: Vec<&str> = out.lines().collect();

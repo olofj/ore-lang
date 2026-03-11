@@ -897,7 +897,9 @@ impl TypeChecker {
                 "get" => *v.clone(),
                 "keys" => Type::List(Box::new(Type::Str)),
                 "values" => Type::List(Box::new(*v.clone())),
-                "set" | "remove" => Type::Unit,
+                "set" | "remove" | "each" => Type::Unit,
+                "map" | "merge" | "filter" => obj_ty.clone(),
+                "clear" => Type::Unit,
                 _ => Type::Any,
             },
             Type::Bool => match method {

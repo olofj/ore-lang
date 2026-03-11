@@ -1,0 +1,12 @@
+fn main
+  -- map.each with 2-arg lambda
+  m := {"a": 1, "b": 2, "c": 3}
+  m.each((k, v) => print "{k}: {v}")
+
+  -- map.filter with 2-arg lambda
+  big := m.filter((k, v) => v > 1)
+  print big
+
+  -- map.map with 2-arg lambda (transform values)
+  doubled := m.map((k, v) => v * 2)
+  print doubled

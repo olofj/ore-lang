@@ -1464,6 +1464,66 @@ pub extern "C" fn ore_map_clear(map: *mut OreMap) {
     }
 }
 
+/// Iterate a map calling lambda(key_ptr_as_i64, value_i64) for each entry.
+#[no_mangle]
+pub extern "C" fn ore_map_each(
+    map: *mut OreMap,
+    func: *const u8,
+    env_ptr: *mut u8,
+) {
+    unsafe {
+        let map = &*map;
+        let mut keys: Vec<&String> = map.inner.keys().collect();
+        keys.sort();
+        for key in keys {
+            let val = map.inner[key];
+            let key_str = ore_str_new(key.as_ptr(), key.len() as u32);
+            call_closure2(func, env_ptr, key_str as i64, val);
+        }
+    }
+}
+
+/// Map over values: apply lambda(key, value) -> new_value for each entry, return new map.
+#[no_mangle]
+pub extern "C" fn ore_map_map_values(
+    map: *mut OreMap,
+    func: *const u8,
+    env_ptr: *mut u8,
+) -> *mut OreMap {
+    let result = ore_map_new();
+    unsafe {
+        let map = &*map;
+        for (key, &val) in &map.inner {
+            let key_str = ore_str_new(key.as_ptr(), key.len() as u32);
+            let new_val = call_closure2(func, env_ptr, key_str as i64, val);
+            let key_str2 = ore_str_new(key.as_ptr(), key.len() as u32);
+            ore_map_set(result, key_str2, new_val);
+        }
+    }
+    result
+}
+
+/// Filter a map: keep entries where lambda(key, value) returns nonzero.
+#[no_mangle]
+pub extern "C" fn ore_map_filter(
+    map: *mut OreMap,
+    func: *const u8,
+    env_ptr: *mut u8,
+) -> *mut OreMap {
+    let result = ore_map_new();
+    unsafe {
+        let map = &*map;
+        for (key, &val) in &map.inner {
+            let key_str = ore_str_new(key.as_ptr(), key.len() as u32);
+            if call_closure2(func, env_ptr, key_str as i64, val) != 0 {
+                let key_str2 = ore_str_new(key.as_ptr(), key.len() as u32);
+                ore_map_set(result, key_str2, val);
+            }
+        }
+    }
+    result
+}
+
 // ── Concurrency ──
 
 static THREADS: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new());

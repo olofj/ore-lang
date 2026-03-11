@@ -764,6 +764,9 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_map_print_str", void_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_map_merge", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_map_clear", void_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_each", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_map_values", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_filter", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         // I/O
         self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -3555,6 +3558,89 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_call(rt, &[map_val.into()], ""))?;
                 Ok((map_val, ValKind::Map))
             }
+            "each" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "map.each() takes 1 argument (lambda)".into() });
+                }
+                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        let kinds = vec![ValKind::Str, val_kind.clone()];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "map.each() requires a lambda".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let rt = self.module.get_function("ore_map_each").unwrap();
+                bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
+                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+            }
+            "map" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "map.map() takes 1 argument (lambda)".into() });
+                }
+                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        let kinds = vec![ValKind::Str, val_kind.clone()];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "map.map() requires a lambda".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let rt = self.module.get_function("ore_map_map_values").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mmap"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Map))
+            }
+            "filter" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "map.filter() takes 1 argument (lambda)".into() });
+                }
+                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        let kinds = vec![ValKind::Str, val_kind.clone()];
+                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: "map.filter() requires a lambda".into() }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let rt = self.module.get_function("ore_map_filter").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mfilter"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val, ValKind::Map))
+            }
             _ => Err(CodeGenError { line: None, msg: format!("unknown map method '{}'", method) }),
         }
     }
@@ -6039,24 +6125,45 @@ impl<'ctx> CodeGen<'ctx> {
         let param_offset: u32 = if has_captures { 1 } else { 0 };
         for (i, param_name) in params.iter().enumerate() {
             let val = lambda_fn.get_nth_param(i as u32 + param_offset).unwrap();
-            let ty = val.get_type();
-            let alloca = bld!(self.builder.build_alloca(ty, param_name))?;
-            bld!(self.builder.build_store(alloca, val))?;
             let kind = param_kinds.and_then(|k| k.get(i).cloned()).unwrap_or(ValKind::Int);
-            self.variables.insert(param_name.clone(), (alloca, ty, kind, false));
+            // For pointer-based types (Str, List, Map), convert i64 param to pointer
+            match &kind {
+                ValKind::Str | ValKind::List | ValKind::Map => {
+                    let ptr_ty = self.ptr_type();
+                    let ptr_val = bld!(self.builder.build_int_to_ptr(
+                        val.into_int_value(), ptr_ty, &format!("{}_ptr", param_name)
+                    ))?;
+                    let alloca = bld!(self.builder.build_alloca(ptr_ty, param_name))?;
+                    bld!(self.builder.build_store(alloca, ptr_val))?;
+                    self.variables.insert(param_name.clone(), (alloca, ptr_ty.as_basic_type_enum(), kind, false));
+                }
+                _ => {
+                    let ty = val.get_type();
+                    let alloca = bld!(self.builder.build_alloca(ty, param_name))?;
+                    bld!(self.builder.build_store(alloca, val))?;
+                    self.variables.insert(param_name.clone(), (alloca, ty, kind, false));
+                }
+            }
         }
 
         let (result, kind) = self.compile_expr_with_kind(body, lambda_fn)?;
         let return_kind = kind.clone();
 
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
-            // Coerce result to i64 if needed (e.g. bool i1 from comparisons)
+            // Coerce result to i64 if needed (e.g. bool i1 from comparisons, ptr from Str)
             let ret_val = match kind {
                 ValKind::Bool => {
                     bld!(self.builder.build_int_z_extend(
                         result.into_int_value(),
                         self.context.i64_type(),
                         "bool_to_i64"
+                    ))?.into()
+                }
+                ValKind::Str | ValKind::List | ValKind::Map if result.is_pointer_value() => {
+                    bld!(self.builder.build_ptr_to_int(
+                        result.into_pointer_value(),
+                        self.context.i64_type(),
+                        "ptr_to_i64"
                     ))?.into()
                 }
                 _ => result,
