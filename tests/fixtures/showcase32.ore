@@ -1,0 +1,29 @@
+-- Test: complex nesting of if/else in loops with mutations
+fn main
+  -- Bubble sort (tests if inside for inside for with mutations)
+  mut arr := [64, 34, 25, 12, 22, 11, 90]
+  n := arr.len()
+  for i in 0..n
+    for j in 0..n - i - 1
+      if arr.get(j) > arr.get(j + 1)
+        tmp := arr.get(j)
+        arr.set(j, arr.get(j + 1))
+        arr.set(j + 1, tmp)
+  print "Bubble sorted: {arr.join(", ")}"
+  
+  -- Binary search
+  target := 25
+  mut low := 0
+  mut high := arr.len() - 1
+  mut found := -1
+  while low <= high
+    mid := (low + high) / 2
+    val := arr.get(mid)
+    if val == target
+      found = mid
+      break
+    else if val < target
+      low = mid + 1
+    else
+      high = mid - 1
+  print "Found {target} at index: {found}"

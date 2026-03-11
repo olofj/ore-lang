@@ -1570,3 +1570,19 @@ fn showcase31() {
     assert!(out.contains("5 1 2 + 4 * + 3 - = 14"));
     assert!(out.contains("2 3 + 4 5 + * = 45"));
 }
+
+#[test]
+fn showcase32() {
+    let out = run_ore("showcase32.ore");
+    assert!(out.contains("Bubble sorted: 11, 12, 22, 25, 34, 64, 90"));
+    assert!(out.contains("Found 25 at index: 3"));
+}
+
+#[test]
+fn showcase33() {
+    let out = run_ore("showcase33.ore");
+    assert!(out.contains("GCD(12, 8) = 4"));
+    assert!(out.contains("LCM(12, 8) = 24"));
+    assert!(out.contains("2^10 = 1024"));
+    assert!(out.contains("Coprime pairs 1-5:"));
+}
