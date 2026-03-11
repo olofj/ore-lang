@@ -378,6 +378,17 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
 
+    /// Generate a helpful "unknown method" error with available methods listed.
+    fn unknown_method_error(type_name: &str, method: &str, available: &[&str]) -> CodeGenError {
+        let mut msg = format!("unknown {} method '{}'. Available: {}", type_name, method, available.join(", "));
+        // Add did-you-mean suggestion
+        let best = Self::find_similar(method, available);
+        if let Some(suggestion) = best {
+            msg = format!("unknown {} method '{}'; did you mean '{}'?", type_name, method, suggestion);
+        }
+        CodeGenError { line: None, msg }
+    }
+
     /// Look up a runtime function by name, returning a proper error instead of panicking.
     fn rt(&self, name: &str) -> Result<FunctionValue<'ctx>, CodeGenError> {
         self.module.get_function(name).ok_or_else(|| CodeGenError {
@@ -2582,7 +2593,7 @@ impl<'ctx> CodeGen<'ctx> {
                         ))?;
                         Ok((f.into(), ValKind::Float))
                     }
-                    _ => Err(CodeGenError { line: None, msg: format!("unknown method '{}' on Int", method) }),
+                    _ => Err(Self::unknown_method_error("Int", method, &["abs", "to_float", "to_str", "pow", "clamp", "min", "max"])),
                 }
             }
             _ => Err(CodeGenError { line: None, msg: format!("cannot call method '{}' on {:?} in optional chain", method, kind) }),
@@ -2727,7 +2738,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Str));
                 }
-                _ => return Err(CodeGenError { line: None, msg: format!("unknown Int method '{}'", method) }),
+                _ => return Err(Self::unknown_method_error("Int", method, &["abs", "to_float", "to_str", "pow", "clamp", "min", "max"])),
             }
         }
 
@@ -2867,7 +2878,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Str));
                 }
-                _ => return Err(CodeGenError { line: None, msg: format!("unknown Float method '{}'", method) }),
+                _ => return Err(Self::unknown_method_error("Float", method, &["abs", "floor", "ceil", "round", "sqrt", "pow", "to_int", "to_str", "clamp", "min", "max"])),
             }
         }
 
@@ -4036,7 +4047,15 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val.into(), ValKind::List))
             }
-            _ => Err(CodeGenError { line: None, msg: format!("unknown list method '{}'", method) }),
+            _ => Err(Self::unknown_method_error("List", method, &[
+                "len", "push", "pop", "insert", "remove_at", "clear", "join", "reverse", "sort",
+                "sort_by", "map", "filter", "reduce", "fold", "scan", "each", "any", "all",
+                "find", "find_index", "index_of", "contains", "count", "sum", "product",
+                "min", "max", "average", "unique", "dedup", "flatten", "flat_map",
+                "take", "skip", "take_while", "drop_while", "slice", "zip", "zip_with",
+                "first", "last", "enumerate", "window", "chunks", "frequencies",
+                "intersperse", "partition", "group_by", "to_map", "step",
+            ])),
         }
     }
 
@@ -4310,7 +4329,14 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
-            _ => Err(CodeGenError { line: None, msg: format!("unknown string method '{}'", method) }),
+            _ => Err(Self::unknown_method_error("Str", method, &[
+                "len", "contains", "starts_with", "ends_with", "to_upper", "to_lower",
+                "trim", "trim_start", "trim_end", "replace", "split", "join", "repeat",
+                "reverse", "chars", "char_at", "index_of", "slice", "substr",
+                "parse_int", "parse_float", "pad_left", "pad_right",
+                "capitalize", "count", "strip_prefix", "strip_suffix", "is_empty",
+                "words", "lines",
+            ])),
         }
     }
 
@@ -4437,7 +4463,7 @@ impl<'ctx> CodeGen<'ctx> {
                 phi.add_incoming(&[(&some_result, some_end), (&none_result, none_bb)]);
                 Ok((phi.as_basic_value(), ValKind::Option))
             }
-            _ => Err(CodeGenError { line: None, msg: format!("unknown method '{}' on Option", method) }),
+            _ => Err(Self::unknown_method_error("Option", method, &["unwrap_or", "map", "is_some", "is_none"])),
         }
     }
 
@@ -4689,7 +4715,10 @@ impl<'ctx> CodeGen<'ctx> {
                 self.last_list_elem_kind = Some(ValKind::List);
                 Ok((val, ValKind::List))
             }
-            _ => Err(CodeGenError { line: None, msg: format!("unknown map method '{}'", method) }),
+            _ => Err(Self::unknown_method_error("Map", method, &[
+                "get", "set", "contains", "len", "remove", "keys", "values",
+                "merge", "clear", "each", "map", "filter", "get_or",
+            ])),
         }
     }
 
@@ -4717,7 +4746,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
-            _ => Err(CodeGenError { line: None, msg: format!("unknown channel method '{}'", method) }),
+            _ => Err(Self::unknown_method_error("Channel", method, &["send", "recv"])),
         }
     }
 
