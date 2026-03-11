@@ -3188,6 +3188,27 @@ fn showcase170_data_transforms() {
 }
 
 #[test]
+fn showcase171_first_class_functions() {
+    let out = run_ore("showcase171.ore");
+    assert!(out.contains("apply(double, 5) = 10"));
+    assert!(out.contains("apply(square, 4) = 16"));
+    assert!(out.contains("apply_twice(double, 3) = 12"));
+    assert!(out.contains("compose(double, square, 3) = 18"));
+    assert!(out.contains("squares: 1, 4, 9, 16, 25"));
+}
+
+#[test]
+fn showcase172_multiline_if_then_else() {
+    let out = run_ore("showcase172.ore");
+    assert!(out.contains("extreme heat"));
+    assert!(out.contains("warm"));
+    assert!(out.contains("freezing"));
+    assert!(out.contains("95: A"));
+    assert!(out.contains("45: F"));
+    assert!(out.contains("FizzBuzz"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

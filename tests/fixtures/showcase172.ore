@@ -1,0 +1,35 @@
+-- Showcase 172: Multi-line if/then/else expressions
+
+fn classify_temp celsius:Int -> Str
+  if celsius >= 40 then "extreme heat"
+    else if celsius >= 30 then "hot"
+    else if celsius >= 20 then "warm"
+    else if celsius >= 10 then "cool"
+    else if celsius >= 0 then "cold"
+    else "freezing"
+
+fn grade score:Int -> Str
+  if score >= 90 then "A"
+    else if score >= 80 then "B"
+    else if score >= 70 then "C"
+    else if score >= 60 then "D"
+    else "F"
+
+fn main
+  -- Temperature classification
+  for temp in [45, 35, 25, 15, 5, -10]
+    print "{temp}°C: {classify_temp(temp)}"
+
+  -- Grade calculation
+  print ""
+  for score in [95, 82, 74, 63, 45]
+    print "{score}: {grade(score)}"
+
+  -- Inline expression in for loop
+  print ""
+  for n in range(1, 16)
+    label := if n % 15 == 0 then "FizzBuzz"
+      else if n % 3 == 0 then "Fizz"
+      else if n % 5 == 0 then "Buzz"
+      else "{n}"
+    print label

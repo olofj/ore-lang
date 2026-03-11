@@ -1247,11 +1247,37 @@ impl Parser {
                     let line = self.peek_line();
                     let then_block = Block { stmts: vec![SpannedStmt { stmt: Stmt::Expr(then_expr), line }] };
                     // Allow `else` on the next line for chained if/then/else
+                    // Count indent tokens consumed so we can balance them after
                     self.skip_newlines();
+                    let mut consumed_indents: i32 = 0;
+                    {
+                        let mut la = self.pos;
+                        let mut depth: i32 = 0;
+                        while la < self.tokens.len() && matches!(self.tokens[la].token, Token::Indent | Token::Dedent | Token::Newline) {
+                            match self.tokens[la].token {
+                                Token::Indent => depth += 1,
+                                Token::Dedent => depth -= 1,
+                                _ => {}
+                            }
+                            la += 1;
+                        }
+                        if la < self.tokens.len() && self.tokens[la].token == Token::Else {
+                            consumed_indents = depth;
+                            self.pos = la;
+                        }
+                    }
                     let else_block = if self.peek() == &Token::Else {
                         self.advance();
                         let else_expr = self.parse_expr(0)?;
                         let line = self.peek_line();
+                        // Consume matching dedent tokens that pair with consumed indents
+                        self.skip_newlines();
+                        for _ in 0..consumed_indents {
+                            if self.peek() == &Token::Dedent {
+                                self.advance();
+                                self.skip_newlines();
+                            }
+                        }
                         Some(Block { stmts: vec![SpannedStmt { stmt: Stmt::Expr(else_expr), line }] })
                     } else {
                         None

@@ -1442,6 +1442,14 @@ impl<'ctx> CodeGen<'ctx> {
                     return self.compile_expr_with_kind(&construct, func);
                 }
 
+                // Check if it's a function reference (for passing functions as values)
+                if !self.variables.contains_key(name) {
+                    if let Ok((f, _ret_kind)) = self.resolve_function(name) {
+                        let fn_ptr = f.as_global_value().as_pointer_value();
+                        return Ok((fn_ptr.into(), ValKind::Int));
+                    }
+                }
+
                 let (ptr, ty, kind, _) = self.variables.get(name).ok_or_else(|| {
                     let mut msg = format!("undefined variable '{}'", name);
                     let candidates: Vec<&str> = self.variables.keys().map(|s| s.as_str()).collect();

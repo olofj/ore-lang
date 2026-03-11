@@ -1,0 +1,44 @@
+-- Showcase 171: First-class functions
+
+fn double x:Int -> Int
+  x * 2
+
+fn square x:Int -> Int
+  x * x
+
+fn negate x:Int -> Int
+  0 - x
+
+fn apply f:(Int -> Int) x:Int -> Int
+  f(x)
+
+fn apply_twice f:(Int -> Int) x:Int -> Int
+  f(f(x))
+
+fn compose f:(Int -> Int) g:(Int -> Int) x:Int -> Int
+  f(g(x))
+
+fn main
+  -- Pass named functions as arguments
+  print "apply(double, 5) = {apply(double, 5)}"
+  print "apply(square, 4) = {apply(square, 4)}"
+  print "apply(negate, 7) = {apply(negate, 7)}"
+
+  -- Apply twice
+  print ""
+  print "apply_twice(double, 3) = {apply_twice(double, 3)}"
+  print "apply_twice(square, 2) = {apply_twice(square, 2)}"
+
+  -- Composition
+  print ""
+  print "compose(double, square, 3) = {compose(double, square, 3)}"
+  print "compose(square, double, 3) = {compose(square, double, 3)}"
+  print "compose(negate, double, 5) = {compose(negate, double, 5)}"
+
+  -- Pipeline with named functions
+  print ""
+  result := range(1, 6) | map(square) | join(", ")
+  print "squares: {result}"
+
+  doubled := range(1, 6) | map(double) | join(", ")
+  print "doubled: {doubled}"
