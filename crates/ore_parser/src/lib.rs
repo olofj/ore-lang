@@ -997,7 +997,7 @@ impl Parser {
                     self.skip_whitespace_tokens();
                     // Check for list comprehension: [expr for var in iterable if cond]
                     if self.peek() == &Token::For {
-                        let comp_expr = elements.pop().unwrap();
+                        let comp_expr = elements.pop().ok_or_else(|| self.error("expected expression before 'for' in list comprehension".to_string()))?;
                         self.advance(); // consume 'for'
                         self.skip_whitespace_tokens();
                         let var = match self.peek().clone() {

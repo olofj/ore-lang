@@ -232,7 +232,7 @@ fn resolve_imports(
             already_loaded.insert(canonical.clone());
 
             let imported_program = parse_file(&canonical)?;
-            let dep_dir = canonical.parent().unwrap();
+            let dep_dir = canonical.parent().ok_or_else(|| format!("cannot determine parent directory of '{}'", canonical.display()))?;
 
             // Recursively resolve imports from the imported file
             let transitive = resolve_imports(&imported_program, dep_dir, already_loaded)?;
@@ -257,7 +257,7 @@ fn compile_source<'ctx>(
 ) -> Result<ore_codegen::CodeGen<'ctx>, String> {
     let canonical_path = path.canonicalize()
         .map_err(|e| format!("cannot resolve '{}': {}", path.display(), e))?;
-    let base_dir = canonical_path.parent().unwrap();
+    let base_dir = canonical_path.parent().ok_or_else(|| format!("cannot determine parent directory of '{}'", canonical_path.display()))?;
 
     let program = parse_file(&canonical_path)?;
 
@@ -290,7 +290,7 @@ fn compile_source<'ctx>(
 fn check_file(path: &Path) -> Result<(), String> {
     let canonical_path = path.canonicalize()
         .map_err(|e| format!("cannot resolve '{}': {}", path.display(), e))?;
-    let base_dir = canonical_path.parent().unwrap();
+    let base_dir = canonical_path.parent().ok_or_else(|| format!("cannot determine parent directory of '{}'", canonical_path.display()))?;
 
     let program = parse_file(&canonical_path)?;
 
@@ -769,7 +769,7 @@ fn test_file(path: &Path) -> Result<(), String> {
         unsafe {
             let test_fn: JitFunction<TestFunc> = ee
                 .get_function(&fn_name)
-                .expect("test function not found");
+                .map_err(|e| format!("test function '{}' not found: {}", fn_name, e))?;
             test_fn.call();
         }
         if ore_runtime::ore_assert_check_and_reset() {

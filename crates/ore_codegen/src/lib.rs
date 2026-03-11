@@ -378,6 +378,14 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
 
+    /// Look up a runtime function by name, returning a proper error instead of panicking.
+    fn rt(&self, name: &str) -> Result<FunctionValue<'ctx>, CodeGenError> {
+        self.module.get_function(name).ok_or_else(|| CodeGenError {
+            line: None,
+            msg: format!("runtime function '{}' not declared", name),
+        })
+    }
+
     pub fn compile_program(&mut self, program: &Program) -> Result<(), CodeGenError> {
         self.declare_runtime_functions();
 
@@ -1022,7 +1030,7 @@ impl<'ctx> CodeGen<'ctx> {
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
             if fndef.name == "main" {
                 // Join all spawned threads before returning from main
-                let join_all = self.module.get_function("ore_thread_join_all").unwrap();
+                let join_all = self.rt("ore_thread_join_all")?;
                 bld!(self.builder.build_call(join_all, &[], ""))?;
                 let zero = self.context.i32_type().const_int(0, false);
                 bld!(self.builder.build_return(Some(&zero)))?;
@@ -1131,7 +1139,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (val, _kind) = self.compile_expr_with_kind(value, func)?;
                 let list_ptr = val.into_pointer_value();
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                let list_get_fn = self.module.get_function("ore_list_get").unwrap();
+                let list_get_fn = self.rt("ore_list_get")?;
                 let i64_type = self.context.i64_type();
 
                 for (i, name) in names.iter().enumerate() {
@@ -1189,7 +1197,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
                 match obj_kind {
                     ValKind::List => {
-                        let rt = self.module.get_function("ore_list_set").unwrap();
+                        let rt = self.rt("ore_list_set")?;
                         bld!(self.builder.build_call(rt, &[obj_val.into(), idx_val.into(), val.into()], ""))?;
                     }
                     ValKind::Map => {
@@ -1199,7 +1207,7 @@ impl<'ctx> CodeGen<'ctx> {
                         } else {
                             self.value_to_str(idx_val, ValKind::Int)?.into()
                         };
-                        let rt = self.module.get_function("ore_map_set").unwrap();
+                        let rt = self.rt("ore_map_set")?;
                         bld!(self.builder.build_call(rt, &[obj_val.into(), map_key.into(), val.into()], ""))?;
                     }
                     _ => return Err(CodeGenError { line: None, msg: "index assignment only supported on lists and maps".into() }),
@@ -1287,7 +1295,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let fn_ptr = target_fn.as_global_value().as_pointer_value();
 
                         if args.is_empty() {
-                            let ore_spawn = self.module.get_function("ore_spawn").unwrap();
+                            let ore_spawn = self.rt("ore_spawn")?;
                             bld!(self.builder.build_call(ore_spawn, &[fn_ptr.into()], ""))?;
                         } else {
                             let mut i64_args: Vec<BasicValueEnum> = vec![fn_ptr.into()];
@@ -1302,7 +1310,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 3 => "ore_spawn_with_3args",
                                 n => return Err(CodeGenError { line: None, msg: format!("spawn supports at most 3 arguments, got {}", n) }),
                             };
-                            let ore_spawn = self.module.get_function(spawn_fn_name).unwrap();
+                            let ore_spawn = self.rt(spawn_fn_name)?;
                             let call_args: Vec<_> = i64_args.iter().map(|a| (*a).into()).collect();
                             bld!(self.builder.build_call(ore_spawn, &call_args, ""))?;
                         }
@@ -1396,7 +1404,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // List concatenation: list + list
                 if lk == ValKind::List && *op == BinOp::Add {
-                    let rt = self.module.get_function("ore_list_concat").unwrap();
+                    let rt = self.rt("ore_list_concat")?;
                     let result = bld!(self.builder.build_call(rt, &[lhs.into(), rhs.into()], "lcat"))?;
                     let val = self.call_result_to_value(result)?;
                     // Preserve element kind: prefer RHS (the appended elements) if it has a concrete kind
@@ -1410,7 +1418,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // String repetition: str * int
                 if lk == ValKind::Str && *op == BinOp::Mul {
-                    let rt = self.module.get_function("ore_str_repeat").unwrap();
+                    let rt = self.rt("ore_str_repeat")?;
                     let result = bld!(self.builder.build_call(rt, &[lhs.into(), rhs.into()], "srepeat"))?;
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Str));
@@ -1472,12 +1480,12 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Expr::Ident(name) = inner.as_ref() {
                     if let Some(kind_alloca) = self.dynamic_kind_tags.get(name).copied() {
                         let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_alloca, "dyn_kind"))?.into_int_value();
-                        let dyn_fn = self.module.get_function("ore_dynamic_to_str").unwrap();
+                        let dyn_fn = self.rt("ore_dynamic_to_str")?;
                         let result = bld!(self.builder.build_call(dyn_fn, &[val.into(), kind_i8.into()], "dyntos"))?;
                         let str_ptr = self.call_result_to_value(result)?.into_pointer_value();
-                        let pf = self.module.get_function("ore_str_print").unwrap();
+                        let pf = self.rt("ore_str_print")?;
                         bld!(self.builder.build_call(pf, &[str_ptr.into()], ""))?;
-                        let release = self.module.get_function("ore_str_release").unwrap();
+                        let release = self.rt("ore_str_release")?;
                         bld!(self.builder.build_call(release, &[str_ptr.into()], ""))?;
                         return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
                     }
@@ -1507,7 +1515,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // Check for string-valued map printing
                 if kind == ValKind::Map {
                     if let Some(ValKind::Str) = self.last_map_val_kind.take() {
-                        let pf = self.module.get_function("ore_map_print_str").unwrap();
+                        let pf = self.rt("ore_map_print_str")?;
                         bld!(self.builder.build_call(pf, &[val.into()], ""))?;
                         return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
                     }
@@ -1517,13 +1525,13 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::Sleep(inner) => {
                 let val = self.compile_expr(inner, func)?;
-                let ore_sleep = self.module.get_function("ore_sleep").unwrap();
+                let ore_sleep = self.rt("ore_sleep")?;
                 bld!(self.builder.build_call(ore_sleep, &[val.into()], ""))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
             Expr::Assert { cond, message } => {
                 let cond_val = self.compile_expr(cond, func)?;
-                let ore_assert = self.module.get_function("ore_assert").unwrap();
+                let ore_assert = self.rt("ore_assert")?;
                 let msg_str = message.as_deref().unwrap_or("assertion failed");
                 // Build a global C string for the message
                 let msg_bytes: Vec<u8> = msg_str.bytes().chain(std::iter::once(0)).collect();
@@ -1566,7 +1574,7 @@ impl<'ctx> CodeGen<'ctx> {
                     (ValKind::Str, _) | (_, ValKind::Str) => "ore_assert_eq_str",
                     _ => "ore_assert_eq_int",
                 };
-                let assert_fn = self.module.get_function(fn_name).unwrap();
+                let assert_fn = self.rt(fn_name)?;
                 bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
@@ -1591,7 +1599,7 @@ impl<'ctx> CodeGen<'ctx> {
                     (ValKind::Str, _) | (_, ValKind::Str) => "ore_assert_ne_str",
                     _ => "ore_assert_ne_int",
                 };
-                let assert_fn = self.module.get_function(fn_name).unwrap();
+                let assert_fn = self.rt(fn_name)?;
                 bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
@@ -1670,7 +1678,7 @@ impl<'ctx> CodeGen<'ctx> {
                         return Ok((result, ValKind::Int));
                     }
                     "channel" => {
-                        let rt = self.module.get_function("ore_channel_new").unwrap();
+                        let rt = self.rt("ore_channel_new")?;
                         let result = bld!(self.builder.build_call(rt, &[], "ch"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Channel));
@@ -1680,10 +1688,10 @@ impl<'ctx> CodeGen<'ctx> {
                         // input() / readln() just reads line
                         if args.len() == 1 {
                             let (prompt, _) = self.compile_expr_with_kind(&args[0], func)?;
-                            let print_fn = self.module.get_function("ore_str_print_no_newline").unwrap();
+                            let print_fn = self.rt("ore_str_print_no_newline")?;
                             bld!(self.builder.build_call(print_fn, &[prompt.into()], ""))?;
                         }
-                        let rt = self.module.get_function("ore_readln").unwrap();
+                        let rt = self.rt("ore_readln")?;
                         let result = bld!(self.builder.build_call(rt, &[], "readln"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
@@ -1693,7 +1701,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "file_read takes 1 argument".into() });
                         }
                         let path_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_file_read").unwrap();
+                        let rt = self.rt("ore_file_read")?;
                         let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_read"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
@@ -1703,7 +1711,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "file_read_lines takes 1 argument".into() });
                         }
                         let path_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_file_read_lines").unwrap();
+                        let rt = self.rt("ore_file_read_lines")?;
                         let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_read_lines"))?;
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Str);
@@ -1716,7 +1724,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let path_val = self.compile_expr(&args[0], func)?;
                         let content_val = self.compile_expr(&args[1], func)?;
                         let rt_name = format!("ore_{}", name);
-                        let rt = self.module.get_function(&rt_name).unwrap();
+                        let rt = self.rt(&rt_name)?;
                         let result = bld!(self.builder.build_call(rt, &[path_val.into(), content_val.into()], name.as_str()))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Bool));
@@ -1726,7 +1734,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "file_exists takes 1 argument".into() });
                         }
                         let path_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_file_exists").unwrap();
+                        let rt = self.rt("ore_file_exists")?;
                         let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_exists"))?;
                         let i8_val = self.call_result_to_value(result)?.into_int_value();
                         let bool_val = bld!(self.builder.build_int_compare(
@@ -1742,7 +1750,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "env_get takes 1 argument (key)".into() });
                         }
                         let key = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_env_get").unwrap();
+                        let rt = self.rt("ore_env_get")?;
                         let result = bld!(self.builder.build_call(rt, &[key.into()], "env_get"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
@@ -1753,12 +1761,12 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                         let key = self.compile_expr(&args[0], func)?;
                         let value = self.compile_expr(&args[1], func)?;
-                        let rt = self.module.get_function("ore_env_set").unwrap();
+                        let rt = self.rt("ore_env_set")?;
                         bld!(self.builder.build_call(rt, &[key.into(), value.into()], ""))?;
                         return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Int));
                     }
                     "args" => {
-                        let rt = self.module.get_function("ore_args").unwrap();
+                        let rt = self.rt("ore_args")?;
                         let result = bld!(self.builder.build_call(rt, &[], "args"))?;
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Str);
@@ -1771,19 +1779,19 @@ impl<'ctx> CodeGen<'ctx> {
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         match kind {
                             ValKind::Str => {
-                                let rt = self.module.get_function("ore_eprint_str").unwrap();
+                                let rt = self.rt("ore_eprint_str")?;
                                 bld!(self.builder.build_call(rt, &[val.into()], ""))?;
                             }
                             ValKind::Float => {
-                                let rt = self.module.get_function("ore_eprint_float").unwrap();
+                                let rt = self.rt("ore_eprint_float")?;
                                 bld!(self.builder.build_call(rt, &[val.into()], ""))?;
                             }
                             ValKind::Bool => {
-                                let rt = self.module.get_function("ore_eprint_bool").unwrap();
+                                let rt = self.rt("ore_eprint_bool")?;
                                 bld!(self.builder.build_call(rt, &[val.into()], ""))?;
                             }
                             _ => {
-                                let rt = self.module.get_function("ore_eprint_int").unwrap();
+                                let rt = self.rt("ore_eprint_int")?;
                                 bld!(self.builder.build_call(rt, &[val.into()], ""))?;
                             }
                         }
@@ -1794,7 +1802,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "exit takes 1 argument (exit code)".into() });
                         }
                         let code = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_exit").unwrap();
+                        let rt = self.rt("ore_exit")?;
                         bld!(self.builder.build_call(rt, &[code.into()], ""))?;
                         return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Int));
                     }
@@ -1803,7 +1811,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "exec takes 1 argument (command string)".into() });
                         }
                         let cmd_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_exec").unwrap();
+                        let rt = self.rt("ore_exec")?;
                         let result = bld!(self.builder.build_call(rt, &[cmd_val.into()], "exec"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
@@ -1832,7 +1840,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 return Ok((i.into(), ValKind::Int));
                             }
                             ValKind::Str => {
-                                let rt = self.module.get_function("ore_str_to_int").unwrap();
+                                let rt = self.rt("ore_str_to_int")?;
                                 let result = bld!(self.builder.build_call(rt, &[val.into()], "stoi"))?;
                                 let v = self.call_result_to_value(result)?;
                                 return Ok((v, ValKind::Int));
@@ -1852,7 +1860,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 return Ok((f.into(), ValKind::Float));
                             }
                             ValKind::Str => {
-                                let rt = self.module.get_function("ore_str_to_float").unwrap();
+                                let rt = self.rt("ore_str_to_float")?;
                                 let result = bld!(self.builder.build_call(rt, &[val.into()], "stof"))?;
                                 let v = self.call_result_to_value(result)?;
                                 return Ok((v, ValKind::Float));
@@ -1865,7 +1873,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "ord takes 1 argument (string)".into() });
                         }
                         let str_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_ord").unwrap();
+                        let rt = self.rt("ore_ord")?;
                         let result = bld!(self.builder.build_call(rt, &[str_val.into()], "ord"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Int));
@@ -1875,7 +1883,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "chr takes 1 argument (int)".into() });
                         }
                         let int_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_chr").unwrap();
+                        let rt = self.rt("ore_chr")?;
                         let result = bld!(self.builder.build_call(rt, &[int_val.into()], "chr"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val.into(), ValKind::Str));
@@ -1887,7 +1895,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         let kind_tag = self.valkind_to_tag(&kind);
                         let kind_val = self.context.i8_type().const_int(kind_tag as u64, false);
-                        let rt = self.module.get_function("ore_type_of").unwrap();
+                        let rt = self.rt("ore_type_of")?;
                         let result = bld!(self.builder.build_call(rt, &[kind_val.into()], "typeof"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
@@ -1898,14 +1906,14 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                         let low = self.compile_expr(&args[0], func)?;
                         let high = self.compile_expr(&args[1], func)?;
-                        let rt = self.module.get_function("ore_rand_int").unwrap();
+                        let rt = self.rt("ore_rand_int")?;
                         let result = bld!(self.builder.build_call(rt, &[low.into(), high.into()], "rand"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Int));
                     }
                     "time_now" | "time_ms" => {
                         let rt_name = format!("ore_{}", name);
-                        let rt = self.module.get_function(&rt_name).unwrap();
+                        let rt = self.rt(&rt_name)?;
                         let result = bld!(self.builder.build_call(rt, &[], name.as_str()))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Int));
@@ -1915,7 +1923,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "json_parse takes 1 argument".into() });
                         }
                         let str_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_json_parse").unwrap();
+                        let rt = self.rt("ore_json_parse")?;
                         let result = bld!(self.builder.build_call(rt, &[str_val.into()], "json_parse"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Map));
@@ -1925,7 +1933,7 @@ impl<'ctx> CodeGen<'ctx> {
                             return Err(CodeGenError { line: None, msg: "json_stringify takes 1 argument".into() });
                         }
                         let map_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.module.get_function("ore_json_stringify").unwrap();
+                        let rt = self.rt("ore_json_stringify")?;
                         let result = bld!(self.builder.build_call(rt, &[map_val.into()], "json_stringify"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
@@ -1937,7 +1945,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         let val_i64 = self.value_to_i64(val)?;
                         let count = self.compile_expr(&args[1], func)?;
-                        let rt = self.module.get_function("ore_list_repeat").unwrap();
+                        let rt = self.rt("ore_list_repeat")?;
                         let result = bld!(self.builder.build_call(rt, &[val_i64.into(), count.into()], "repeat"))?;
                         let list_val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(kind);
@@ -1951,10 +1959,10 @@ impl<'ctx> CodeGen<'ctx> {
                         let end = self.compile_expr(&args[1], func)?;
                         let result = if args.len() == 3 {
                             let step = self.compile_expr(&args[2], func)?;
-                            let rt = self.module.get_function("ore_range_step").unwrap();
+                            let rt = self.rt("ore_range_step")?;
                             bld!(self.builder.build_call(rt, &[start.into(), end.into(), step.into()], "range"))?
                         } else {
-                            let rt = self.module.get_function("ore_range").unwrap();
+                            let rt = self.rt("ore_range")?;
                             bld!(self.builder.build_call(rt, &[start.into(), end.into()], "range"))?
                         };
                         let val = self.call_result_to_value(result)?;
@@ -1968,17 +1976,17 @@ impl<'ctx> CodeGen<'ctx> {
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         match kind {
                             ValKind::Str => {
-                                let rt = self.module.get_function("ore_str_len").unwrap();
+                                let rt = self.rt("ore_str_len")?;
                                 let result = bld!(self.builder.build_call(rt, &[val.into()], "slen"))?;
                                 return Ok((self.call_result_to_value(result)?, ValKind::Int));
                             }
                             ValKind::List => {
-                                let rt = self.module.get_function("ore_list_len").unwrap();
+                                let rt = self.rt("ore_list_len")?;
                                 let result = bld!(self.builder.build_call(rt, &[val.into()], "llen"))?;
                                 return Ok((self.call_result_to_value(result)?, ValKind::Int));
                             }
                             ValKind::Map => {
-                                let rt = self.module.get_function("ore_map_len").unwrap();
+                                let rt = self.rt("ore_map_len")?;
                                 let result = bld!(self.builder.build_call(rt, &[val.into()], "mlen"))?;
                                 return Ok((self.call_result_to_value(result)?, ValKind::Int));
                             }
@@ -2003,7 +2011,7 @@ impl<'ctx> CodeGen<'ctx> {
                             let line = self.current_line;
                             self.compile_string_literal(&format!("assertion failed at line {}", line))?
                         };
-                        let rt = self.module.get_function("ore_assert_fail").unwrap();
+                        let rt = self.rt("ore_assert_fail")?;
                         bld!(self.builder.build_call(rt, &[msg.into()], ""))?;
                         bld!(self.builder.build_unreachable())?;
 
@@ -2044,7 +2052,7 @@ impl<'ctx> CodeGen<'ctx> {
                             _ => return Err(CodeGenError { line: None, msg: format!("{}() requires numeric argument", name) }),
                         };
                         let rt_name = format!("ore_math_{}", name.strip_prefix("math_").unwrap_or(&name));
-                        let rt = self.module.get_function(&rt_name).unwrap();
+                        let rt = self.rt(&rt_name)?;
                         let result = bld!(self.builder.build_call(rt, &[f_val.into()], &name))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Float));
@@ -2065,7 +2073,7 @@ impl<'ctx> CodeGen<'ctx> {
                             ValKind::Int => bld!(self.builder.build_signed_int_to_float(exp.into_int_value(), self.context.f64_type(), "itof"))?,
                             _ => return Err(CodeGenError { line: None, msg: "pow() requires numeric arguments".into() }),
                         };
-                        let rt = self.module.get_function("ore_math_pow").unwrap();
+                        let rt = self.rt("ore_math_pow")?;
                         let result = bld!(self.builder.build_call(rt, &[base_f.into(), exp_f.into()], "pow"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Float));
@@ -2086,19 +2094,19 @@ impl<'ctx> CodeGen<'ctx> {
                             ValKind::Int => bld!(self.builder.build_signed_int_to_float(x.into_int_value(), self.context.f64_type(), "itof"))?,
                             _ => return Err(CodeGenError { line: None, msg: "atan2() requires numeric arguments".into() }),
                         };
-                        let rt = self.module.get_function("ore_math_atan2").unwrap();
+                        let rt = self.rt("ore_math_atan2")?;
                         let result = bld!(self.builder.build_call(rt, &[y_f.into(), x_f.into()], "atan2"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Float));
                     }
                     "pi" => {
-                        let rt = self.module.get_function("ore_math_pi").unwrap();
+                        let rt = self.rt("ore_math_pi")?;
                         let result = bld!(self.builder.build_call(rt, &[], "pi"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Float));
                     }
                     "euler" => {
-                        let rt = self.module.get_function("ore_math_e").unwrap();
+                        let rt = self.rt("ore_math_e")?;
                         let result = bld!(self.builder.build_call(rt, &[], "euler"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Float));
@@ -2692,13 +2700,13 @@ impl<'ctx> CodeGen<'ctx> {
                         return Err(CodeGenError { line: None, msg: "Int.pow() takes 1 argument".into() });
                     }
                     let (exp_val, _) = self.compile_expr_with_kind(&args[0], func)?;
-                    let rt = self.module.get_function("ore_int_pow").unwrap();
+                    let rt = self.rt("ore_int_pow")?;
                     let result = bld!(self.builder.build_call(rt, &[obj_val.into(), exp_val.into()], "pow"))?;
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Int));
                 }
                 "to_str" => {
-                    let rt = self.module.get_function("ore_int_to_str").unwrap();
+                    let rt = self.rt("ore_int_to_str")?;
                     let result = bld!(self.builder.build_call(rt, &[obj_val.into()], "i2s"))?;
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Str));
@@ -2838,7 +2846,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((val, ValKind::Float));
                 }
                 "to_str" => {
-                    let rt = self.module.get_function("ore_float_to_str").unwrap();
+                    let rt = self.rt("ore_float_to_str")?;
                     let result = bld!(self.builder.build_call(rt, &[obj_val.into()], "f2s"))?;
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Str));
@@ -2877,13 +2885,13 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         match method {
             "len" => {
-                let list_len = self.module.get_function("ore_list_len").unwrap();
+                let list_len = self.rt("ore_list_len")?;
                 let result = bld!(self.builder.build_call(list_len, &[list_val.into()], "len"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
             "is_empty" => {
-                let list_len = self.module.get_function("ore_list_len").unwrap();
+                let list_len = self.rt("ore_list_len")?;
                 let result = bld!(self.builder.build_call(list_len, &[list_val.into()], "len"))?;
                 let len_val = self.call_result_to_value(result)?.into_int_value();
                 let is_zero = bld!(self.builder.build_int_compare(
@@ -2895,7 +2903,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((is_zero.into(), ValKind::Bool))
             }
             "clear" => {
-                let rt = self.module.get_function("ore_list_clear").unwrap();
+                let rt = self.rt("ore_list_clear")?;
                 bld!(self.builder.build_call(rt, &[list_val.into()], ""))?;
                 Ok((list_val, ValKind::List))
             }
@@ -2904,7 +2912,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "push takes exactly 1 argument".into() });
                 }
                 let (arg, arg_kind) = self.compile_expr_with_kind(&args[0], func)?;
-                let list_push = self.module.get_function("ore_list_push").unwrap();
+                let list_push = self.rt("ore_list_push")?;
                 bld!(self.builder.build_call(list_push, &[list_val.into(), arg.into()], ""))?;
                 // Track element kind so join/pop/iteration know the type
                 self.last_list_elem_kind = Some(arg_kind);
@@ -2912,7 +2920,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "pop" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                let list_pop = self.module.get_function("ore_list_pop").unwrap();
+                let list_pop = self.rt("ore_list_pop")?;
                 let result = bld!(self.builder.build_call(list_pop, &[list_val.into()], "pop"))?;
                 let raw_val = self.call_result_to_value(result)?;
                 match &elem_kind {
@@ -2937,7 +2945,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let idx = self.compile_expr(&args[0], func)?;
                 let (val, _) = self.compile_expr_with_kind(&args[1], func)?;
                 let i64_val = self.value_to_i64(val)?;
-                let rt = self.module.get_function("ore_list_insert").unwrap();
+                let rt = self.rt("ore_list_insert")?;
                 bld!(self.builder.build_call(rt, &[list_val.into(), idx.into(), i64_val.into()], ""))?;
                 Ok((list_val, ValKind::List))
             }
@@ -2947,7 +2955,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let idx = self.compile_expr(&args[0], func)?;
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                let rt = self.module.get_function("ore_list_remove_at").unwrap();
+                let rt = self.rt("ore_list_remove_at")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), idx.into()], "removed"))?;
                 let raw_val = self.call_result_to_value(result)?;
                 match &elem_kind {
@@ -2967,7 +2975,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let idx = self.compile_expr(&args[0], func)?;
-                let list_get = self.module.get_function("ore_list_get").unwrap();
+                let list_get = self.rt("ore_list_get")?;
                 let result = bld!(self.builder.build_call(list_get, &[list_val.into(), idx.into()], "get"))?;
                 let raw_val = self.call_result_to_value(result)?;
                 // Convert i64 to the correct type based on element kind
@@ -2993,7 +3001,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let idx = self.compile_expr(&args[0], func)?;
                 let val = self.compile_expr(&args[1], func)?;
                 let val_i64 = self.value_to_i64(val)?;
-                let rt = self.module.get_function("ore_list_set").unwrap();
+                let rt = self.rt("ore_list_set")?;
                 bld!(self.builder.build_call(rt, &[list_val.into(), idx.into(), val_i64.into()], ""))?;
                 Ok((list_val, ValKind::List))
             }
@@ -3005,7 +3013,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let idx = self.compile_expr(&args[0], func)?;
                 let default = self.compile_expr(&args[1], func)?;
                 let default_i64 = self.value_to_i64(default)?;
-                let rt = self.module.get_function("ore_list_get_or").unwrap();
+                let rt = self.rt("ore_list_get_or")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), idx.into(), default_i64.into()], "getor"))?;
                 let raw_val = self.call_result_to_value(result)?;
                 match &elem_kind {
@@ -3049,7 +3057,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
                 let runtime_fn_name = format!("ore_list_{}", method);
-                let runtime_fn = self.module.get_function(&runtime_fn_name).unwrap();
+                let runtime_fn = self.rt(&runtime_fn_name)?;
                 let result = bld!(self.builder.build_call(
                     runtime_fn,
                     &[list_val.into(), fn_ptr.into(), env_ptr.into()],
@@ -3088,7 +3096,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_partition").unwrap();
+                let rt = self.rt("ore_list_partition")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "part"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::List);
@@ -3117,7 +3125,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_find_index").unwrap();
+                let rt = self.rt("ore_list_find_index")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "fidx"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
@@ -3147,7 +3155,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_fold").unwrap();
+                let rt = self.rt("ore_list_fold")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "fold"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
@@ -3175,7 +3183,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let runtime_fn = self.module.get_function("ore_list_each").unwrap();
+                let runtime_fn = self.rt("ore_list_each")?;
                 bld!(self.builder.build_call(
                     runtime_fn,
                     &[list_val.into(), fn_ptr.into(), env_ptr.into()],
@@ -3206,7 +3214,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_tap").unwrap();
+                let rt = self.rt("ore_list_tap")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "tap"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3234,7 +3242,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_map_with_index").unwrap();
+                let rt = self.rt("ore_list_map_with_index")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "mwi"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3262,7 +3270,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_each_with_index").unwrap();
+                let rt = self.rt("ore_list_each_with_index")?;
                 bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
@@ -3282,7 +3290,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_par_map").unwrap();
+                let rt = self.rt("ore_list_par_map")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "par_map"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3303,7 +3311,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_par_each").unwrap();
+                let rt = self.rt("ore_list_par_each")?;
                 bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
@@ -3315,7 +3323,7 @@ impl<'ctx> CodeGen<'ctx> {
                         ValKind::Float => "ore_list_sort_float",
                         _ => "ore_list_sort",
                     };
-                    let rt = self.module.get_function(rt_name).unwrap();
+                    let rt = self.rt(rt_name)?;
                     let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sorted"))?;
                     let sorted_val = self.call_result_to_value(result)?;
                     return Ok((sorted_val, ValKind::List));
@@ -3341,7 +3349,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_sort_by").unwrap();
+                let rt = self.rt("ore_list_sort_by")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "sorted"))?;
                 let sorted_val = self.call_result_to_value(result)?;
                 Ok((sorted_val, ValKind::List))
@@ -3371,7 +3379,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
                 // Determine which runtime to use based on key return type
-                let rt = self.module.get_function("ore_list_sort_by_key").unwrap();
+                let rt = self.rt("ore_list_sort_by_key")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "sorted"))?;
                 let sorted_val = self.call_result_to_value(result)?;
                 Ok((sorted_val, ValKind::List))
@@ -3400,7 +3408,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
                 let fn_name = if method == "min_by" { "ore_list_min_by" } else { "ore_list_max_by" };
-                let rt = self.module.get_function(fn_name).unwrap();
+                let rt = self.rt(fn_name)?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "mby"))?;
                 let val = self.call_result_to_value(result)?;
                 let ek = elem_kind.unwrap_or(ValKind::Int);
@@ -3415,7 +3423,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             "reverse" => {
-                let rt = self.module.get_function("ore_list_reverse_new").unwrap();
+                let rt = self.rt("ore_list_reverse_new")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "reversed"))?;
                 let rev_val = self.call_result_to_value(result)?;
                 Ok((rev_val, ValKind::List))
@@ -3427,10 +3435,10 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let (val, _) = self.compile_expr_with_kind(&args[0], func)?;
                 let result = if matches!(elem_kind, ValKind::Str) {
-                    let rt = self.module.get_function("ore_list_contains_str").unwrap();
+                    let rt = self.rt("ore_list_contains_str")?;
                     bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lcontains"))?
                 } else {
-                    let rt = self.module.get_function("ore_list_contains").unwrap();
+                    let rt = self.rt("ore_list_contains")?;
                     let i64_val = if val.is_pointer_value() {
                         bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), self.context.i64_type(), "p2i"))?.into()
                     } else {
@@ -3473,7 +3481,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
                 if args.len() == 1 {
-                    let rt = self.module.get_function("ore_list_reduce1").unwrap();
+                    let rt = self.rt("ore_list_reduce1")?;
                     let result = bld!(self.builder.build_call(
                         rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "reduce"
                     ))?;
@@ -3481,7 +3489,7 @@ impl<'ctx> CodeGen<'ctx> {
                     Ok((val, ValKind::Int))
                 } else {
                     let init_val = self.compile_expr(&args[0], func)?;
-                    let rt = self.module.get_function("ore_list_reduce").unwrap();
+                    let rt = self.rt("ore_list_reduce")?;
                     let result = bld!(self.builder.build_call(
                         rt, &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "reduce"
                     ))?;
@@ -3514,7 +3522,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_scan").unwrap();
+                let rt = self.rt("ore_list_scan")?;
                 let result = bld!(self.builder.build_call(
                     rt, &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "scan"
                 ))?;
@@ -3547,7 +3555,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
                 let default_val = self.context.i64_type().const_int(0, false);
-                let rt = self.module.get_function("ore_list_find").unwrap();
+                let rt = self.rt("ore_list_find")?;
                 let result = bld!(self.builder.build_call(
                     rt, &[list_val.into(), fn_ptr.into(), env_ptr.into(), default_val.into()], "find"
                 ))?;
@@ -3577,7 +3585,7 @@ impl<'ctx> CodeGen<'ctx> {
                     Some(ValKind::Float) => "ore_list_join_float",
                     _ => "ore_list_join",
                 };
-                let rt = self.module.get_function(fn_name).unwrap();
+                let rt = self.rt(fn_name)?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), sep.into()], "join"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
@@ -3588,7 +3596,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let n = self.compile_expr(&args[0], func)?;
                 let runtime_fn_name = format!("ore_list_{}", method);
-                let rt = self.module.get_function(&runtime_fn_name).unwrap();
+                let rt = self.rt(&runtime_fn_name)?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), n.into()], method))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3596,12 +3604,12 @@ impl<'ctx> CodeGen<'ctx> {
             "sum" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 if matches!(elem_kind, ValKind::Float) {
-                    let rt = self.module.get_function("ore_list_sum_float").unwrap();
+                    let rt = self.rt("ore_list_sum_float")?;
                     let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sumf"))?;
                     let val = self.call_result_to_value(result)?;
                     Ok((val, ValKind::Float))
                 } else {
-                    let rt = self.module.get_function("ore_list_sum").unwrap();
+                    let rt = self.rt("ore_list_sum")?;
                     let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sum"))?;
                     let val = self.call_result_to_value(result)?;
                     Ok((val, ValKind::Int))
@@ -3610,12 +3618,12 @@ impl<'ctx> CodeGen<'ctx> {
             "product" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 if matches!(elem_kind, ValKind::Float) {
-                    let rt = self.module.get_function("ore_list_product_float").unwrap();
+                    let rt = self.rt("ore_list_product_float")?;
                     let result = bld!(self.builder.build_call(rt, &[list_val.into()], "prodf"))?;
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Float));
                 }
-                let rt = self.module.get_function("ore_list_product").unwrap();
+                let rt = self.rt("ore_list_product")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "product"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
@@ -3623,7 +3631,7 @@ impl<'ctx> CodeGen<'ctx> {
             "average" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let rt_name = if matches!(elem_kind, ValKind::Float) { "ore_list_average_float" } else { "ore_list_average" };
-                let rt = self.module.get_function(rt_name).unwrap();
+                let rt = self.rt(rt_name)?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "avg"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Float))
@@ -3652,7 +3660,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
                 let runtime_fn_name = format!("ore_list_{}", method);
-                let rt = self.module.get_function(&runtime_fn_name).unwrap();
+                let rt = self.rt(&runtime_fn_name)?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], method))?;
                 let val = self.call_result_to_value(result)?;
                 let bool_val = bld!(self.builder.build_int_truncate(val.into_int_value(), self.context.bool_type(), &format!("{}_bool", method)))?;
@@ -3663,7 +3671,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "zip takes 1 argument (other list)".into() });
                 }
                 let other = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_list_zip").unwrap();
+                let rt = self.rt("ore_list_zip")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), other.into()], "zip"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3693,7 +3701,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_zip_with").unwrap();
+                let rt = self.rt("ore_list_zip_with")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), other.into(), fn_ptr.into(), env_ptr.into()], "zipw"))?;
                 let val = self.call_result_to_value(result)?;
                 if let Some(rk) = self.last_lambda_return_kind.take() {
@@ -3702,7 +3710,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::List))
             }
             "enumerate" => {
-                let rt = self.module.get_function("ore_list_enumerate").unwrap();
+                let rt = self.rt("ore_list_enumerate")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "enum"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3713,7 +3721,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let start = self.compile_expr(&args[0], func)?;
                 let end = self.compile_expr(&args[1], func)?;
-                let rt = self.module.get_function("ore_list_slice").unwrap();
+                let rt = self.rt("ore_list_slice")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), start.into(), end.into()], "lslice"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3725,10 +3733,10 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let val = self.compile_expr(&args[0], func)?;
                 let result = if matches!(elem_kind, ValKind::Str) {
-                    let rt = self.module.get_function("ore_list_index_of_str").unwrap();
+                    let rt = self.rt("ore_list_index_of_str")?;
                     bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lidx"))?
                 } else {
-                    let rt = self.module.get_function("ore_list_index_of").unwrap();
+                    let rt = self.rt("ore_list_index_of")?;
                     bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lidx"))?
                 };
                 let v = self.call_result_to_value(result)?;
@@ -3737,7 +3745,7 @@ impl<'ctx> CodeGen<'ctx> {
             "unique" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let rt_name = if matches!(elem_kind, ValKind::Str) { "ore_list_unique_str" } else { "ore_list_unique" };
-                let rt = self.module.get_function(rt_name).unwrap();
+                let rt = self.rt(rt_name)?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "luniq"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3765,13 +3773,13 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_unique_by").unwrap();
+                let rt = self.rt("ore_list_unique_by")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "uniqby"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
             }
             "flatten" => {
-                let rt = self.module.get_function("ore_list_flatten").unwrap();
+                let rt = self.rt("ore_list_flatten")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lflat"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3781,7 +3789,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "window takes 1 argument (size)".into() });
                 }
                 let n = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_list_window").unwrap();
+                let rt = self.rt("ore_list_window")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), n.into()], "lwin"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::List);
@@ -3792,14 +3800,14 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "chunks takes 1 argument (size)".into() });
                 }
                 let n = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_list_chunks").unwrap();
+                let rt = self.rt("ore_list_chunks")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), n.into()], "lchk"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::List);
                 Ok((val, ValKind::List))
             }
             "first" => {
-                let rt = self.module.get_function("ore_list_get").unwrap();
+                let rt = self.rt("ore_list_get")?;
                 let zero = self.context.i64_type().const_int(0, false);
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), zero.into()], "first"))?;
                 let val = self.call_result_to_value(result)?;
@@ -3816,7 +3824,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             "last" => {
-                let rt = self.module.get_function("ore_list_get").unwrap();
+                let rt = self.rt("ore_list_get")?;
                 let neg_one = self.context.i64_type().const_int((-1i64) as u64, true);
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), neg_one.into()], "last"))?;
                 let val = self.call_result_to_value(result)?;
@@ -3836,19 +3844,19 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 match elem_kind {
                     ValKind::Float => {
-                        let rt = self.module.get_function("ore_list_min_float").unwrap();
+                        let rt = self.rt("ore_list_min_float")?;
                         let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lminf"))?;
                         let val = self.call_result_to_value(result)?;
                         Ok((val, ValKind::Float))
                     }
                     ValKind::Str => {
-                        let rt = self.module.get_function("ore_list_min_str").unwrap();
+                        let rt = self.rt("ore_list_min_str")?;
                         let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmins"))?;
                         let val = self.call_result_to_value(result)?;
                         Ok((val, ValKind::Str))
                     }
                     _ => {
-                        let rt = self.module.get_function("ore_list_min").unwrap();
+                        let rt = self.rt("ore_list_min")?;
                         let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmin"))?;
                         let val = self.call_result_to_value(result)?;
                         Ok((val, ValKind::Int))
@@ -3859,19 +3867,19 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 match elem_kind {
                     ValKind::Float => {
-                        let rt = self.module.get_function("ore_list_max_float").unwrap();
+                        let rt = self.rt("ore_list_max_float")?;
                         let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmaxf"))?;
                         let val = self.call_result_to_value(result)?;
                         Ok((val, ValKind::Float))
                     }
                     ValKind::Str => {
-                        let rt = self.module.get_function("ore_list_max_str").unwrap();
+                        let rt = self.rt("ore_list_max_str")?;
                         let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmaxs"))?;
                         let val = self.call_result_to_value(result)?;
                         Ok((val, ValKind::Str))
                     }
                     _ => {
-                        let rt = self.module.get_function("ore_list_max").unwrap();
+                        let rt = self.rt("ore_list_max")?;
                         let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmax"))?;
                         let val = self.call_result_to_value(result)?;
                         Ok((val, ValKind::Int))
@@ -3901,7 +3909,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_count").unwrap();
+                let rt = self.rt("ore_list_count")?;
                 let result = bld!(self.builder.build_call(
                     rt,
                     &[list_val.into(), fn_ptr.into(), env_ptr.into()],
@@ -3934,7 +3942,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
                 let rt_name = format!("ore_list_{}", method);
-                let rt = self.module.get_function(&rt_name).unwrap();
+                let rt = self.rt(&rt_name)?;
                 let result = bld!(self.builder.build_call(
                     rt,
                     &[list_val.into(), fn_ptr.into(), env_ptr.into()],
@@ -3968,7 +3976,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_list_to_map").unwrap();
+                let rt = self.rt("ore_list_to_map")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "tomap"))?;
                 let val = self.call_result_to_value(result)?;
                 let vk = elem_kind.unwrap_or(ValKind::Int);
@@ -3976,7 +3984,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val.into(), ValKind::Map))
             }
             "dedup" => {
-                let rt = self.module.get_function("ore_list_dedup").unwrap();
+                let rt = self.rt("ore_list_dedup")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into()], "dedup"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List))
@@ -3990,7 +3998,7 @@ impl<'ctx> CodeGen<'ctx> {
                     ValKind::Str => 3,
                     _ => 0,
                 }, false);
-                let rt = self.module.get_function("ore_list_frequencies").unwrap();
+                let rt = self.rt("ore_list_frequencies")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), kind_val.into()], "freq"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_map_val_kind = Some(ValKind::Int);
@@ -4007,7 +4015,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => sep_val.into_int_value(),
                 };
-                let rt = self.module.get_function("ore_list_intersperse").unwrap();
+                let rt = self.rt("ore_list_intersperse")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), sep_i64.into()], "inter"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val.into(), ValKind::List))
@@ -4025,13 +4033,13 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         match method {
             "len" => {
-                let rt = self.module.get_function("ore_str_len").unwrap();
+                let rt = self.rt("ore_str_len")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slen"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
             "is_empty" => {
-                let rt = self.module.get_function("ore_str_len").unwrap();
+                let rt = self.rt("ore_str_len")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slen"))?;
                 let len_val = self.call_result_to_value(result)?.into_int_value();
                 let is_zero = bld!(self.builder.build_int_compare(
@@ -4047,7 +4055,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "contains takes 1 argument".into() });
                 }
                 let needle = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_str_contains").unwrap();
+                let rt = self.rt("ore_str_contains")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "scontains"))?;
                 let i8_val = self.call_result_to_value(result)?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
@@ -4060,20 +4068,20 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "trim" | "trim_start" | "trim_end" => {
                 let fn_name = format!("ore_str_{}", method);
-                let rt = self.module.get_function(&fn_name).unwrap();
+                let rt = self.rt(&fn_name)?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "strim"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
             "words" => {
-                let rt = self.module.get_function("ore_str_split_whitespace").unwrap();
+                let rt = self.rt("ore_str_split_whitespace")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "words"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::List))
             }
             "lines" => {
-                let rt = self.module.get_function("ore_str_lines").unwrap();
+                let rt = self.rt("ore_str_lines")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "lines"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
@@ -4082,7 +4090,7 @@ impl<'ctx> CodeGen<'ctx> {
             "split" => {
                 if args.is_empty() {
                     // split() with no args = split on whitespace
-                    let rt = self.module.get_function("ore_str_split_whitespace").unwrap();
+                    let rt = self.rt("ore_str_split_whitespace")?;
                     let result = bld!(self.builder.build_call(rt, &[str_val.into()], "ssplit"))?;
                     let val = self.call_result_to_value(result)?;
                     self.last_list_elem_kind = Some(ValKind::Str);
@@ -4092,20 +4100,20 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "split takes 0 or 1 arguments".into() });
                 }
                 let delim = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_str_split").unwrap();
+                let rt = self.rt("ore_str_split")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), delim.into()], "ssplit"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::List))
             }
             "to_int" => {
-                let rt = self.module.get_function("ore_str_to_int").unwrap();
+                let rt = self.rt("ore_str_to_int")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "stoi"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
             "to_float" => {
-                let rt = self.module.get_function("ore_str_to_float").unwrap();
+                let rt = self.rt("ore_str_to_float")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "stof"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Float))
@@ -4116,7 +4124,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let from = self.compile_expr(&args[0], func)?;
                 let to = self.compile_expr(&args[1], func)?;
-                let rt = self.module.get_function("ore_str_replace").unwrap();
+                let rt = self.rt("ore_str_replace")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), from.into(), to.into()], "sreplace"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
@@ -4126,7 +4134,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "starts_with takes 1 argument".into() });
                 }
                 let prefix = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_str_starts_with").unwrap();
+                let rt = self.rt("ore_str_starts_with")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), prefix.into()], "ssw"))?;
                 let i8_val = self.call_result_to_value(result)?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
@@ -4140,7 +4148,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "ends_with takes 1 argument".into() });
                 }
                 let suffix = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_str_ends_with").unwrap();
+                let rt = self.rt("ore_str_ends_with")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), suffix.into()], "sew"))?;
                 let i8_val = self.call_result_to_value(result)?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
@@ -4150,19 +4158,19 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "to_upper" => {
-                let rt = self.module.get_function("ore_str_to_upper").unwrap();
+                let rt = self.rt("ore_str_to_upper")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "supper"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
             "capitalize" => {
-                let rt = self.module.get_function("ore_str_capitalize").unwrap();
+                let rt = self.rt("ore_str_capitalize")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "scap"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
             "to_lower" => {
-                let rt = self.module.get_function("ore_str_to_lower").unwrap();
+                let rt = self.rt("ore_str_to_lower")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slower"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
@@ -4173,13 +4181,13 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let start = self.compile_expr(&args[0], func)?;
                 let len = self.compile_expr(&args[1], func)?;
-                let rt = self.module.get_function("ore_str_substr").unwrap();
+                let rt = self.rt("ore_str_substr")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), start.into(), len.into()], "ssub"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
             "chars" => {
-                let rt = self.module.get_function("ore_str_chars").unwrap();
+                let rt = self.rt("ore_str_chars")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "schars"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
@@ -4190,7 +4198,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "char_at takes 1 argument (index)".into() });
                 }
                 let idx = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_str_char_at").unwrap();
+                let rt = self.rt("ore_str_char_at")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), idx.into()], "charat"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
@@ -4200,7 +4208,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "index_of takes 1 argument".into() });
                 }
                 let needle = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_str_index_of").unwrap();
+                let rt = self.rt("ore_str_index_of")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "sidx"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
@@ -4211,25 +4219,25 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let start = self.compile_expr(&args[0], func)?;
                 let end = self.compile_expr(&args[1], func)?;
-                let rt = self.module.get_function("ore_str_slice").unwrap();
+                let rt = self.rt("ore_str_slice")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), start.into(), end.into()], "sslice"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
             "reverse" => {
-                let rt = self.module.get_function("ore_str_reverse").unwrap();
+                let rt = self.rt("ore_str_reverse")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "srev"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
             }
             "parse_int" => {
-                let rt = self.module.get_function("ore_str_parse_int").unwrap();
+                let rt = self.rt("ore_str_parse_int")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "parse_int"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
             "parse_float" => {
-                let rt = self.module.get_function("ore_str_parse_float").unwrap();
+                let rt = self.rt("ore_str_parse_float")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "parse_float"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Float))
@@ -4239,7 +4247,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "repeat takes 1 argument".into() });
                 }
                 let count = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_str_repeat").unwrap();
+                let rt = self.rt("ore_str_repeat")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), count.into()], "srep"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
@@ -4249,7 +4257,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "count takes 1 argument".into() });
                 }
                 let needle = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_str_count").unwrap();
+                let rt = self.rt("ore_str_count")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "scount"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
@@ -4260,7 +4268,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let arg = self.compile_expr(&args[0], func)?;
                 let fn_name = format!("ore_str_{}", method);
-                let rt = self.module.get_function(&fn_name).unwrap();
+                let rt = self.rt(&fn_name)?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), arg.into()], "sstrip"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
@@ -4275,13 +4283,13 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     // Default pad char: space
                     let space = " ";
-                    let rt = self.module.get_function("ore_str_new").unwrap();
+                    let rt = self.rt("ore_str_new")?;
                     let space_ptr = bld!(self.builder.build_global_string_ptr(space, "pad_space"))?.as_pointer_value();
                     let result = bld!(self.builder.build_call(rt, &[space_ptr.into(), self.context.i32_type().const_int(1, false).into()], "spad"))?;
                     self.call_result_to_value(result)?
                 };
                 let fn_name = if method == "pad_left" { "ore_str_pad_left" } else { "ore_str_pad_right" };
-                let rt = self.module.get_function(fn_name).unwrap();
+                let rt = self.rt(fn_name)?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), width.into(), pad_char.into()], "spad"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Str))
@@ -4445,7 +4453,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => val.into_int_value(),
                 };
-                let rt = self.module.get_function("ore_map_set").unwrap();
+                let rt = self.rt("ore_map_set")?;
                 bld!(self.builder.build_call(rt, &[map_val.into(), key.into(), i64_val.into()], ""))?;
                 Ok((map_val, ValKind::Map))
             }
@@ -4454,7 +4462,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "get takes 1 argument (key)".into() });
                 }
                 let key = self.compile_map_key(&args[0], func)?;
-                let rt = self.module.get_function("ore_map_get").unwrap();
+                let rt = self.rt("ore_map_get")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mget"))?;
                 let i64_val = self.call_result_to_value(result)?;
 
@@ -4483,7 +4491,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "contains takes 1 argument (key)".into() });
                 }
                 let key = self.compile_map_key(&args[0], func)?;
-                let rt = self.module.get_function("ore_map_contains").unwrap();
+                let rt = self.rt("ore_map_contains")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mcontains"))?;
                 let i8_val = self.call_result_to_value(result)?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
@@ -4495,7 +4503,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "len" => {
-                let rt = self.module.get_function("ore_map_len").unwrap();
+                let rt = self.rt("ore_map_len")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mlen"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
@@ -4505,20 +4513,20 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "remove takes 1 argument (key)".into() });
                 }
                 let key = self.compile_map_key(&args[0], func)?;
-                let rt = self.module.get_function("ore_map_remove").unwrap();
+                let rt = self.rt("ore_map_remove")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mremove"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
             "keys" => {
-                let rt = self.module.get_function("ore_map_keys").unwrap();
+                let rt = self.rt("ore_map_keys")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mkeys"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::List))
             }
             "values" => {
-                let rt = self.module.get_function("ore_map_values").unwrap();
+                let rt = self.rt("ore_map_values")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mvalues"))?;
                 let val = self.call_result_to_value(result)?;
                 // Track the value kind from the map
@@ -4531,13 +4539,13 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(CodeGenError { line: None, msg: "merge takes 1 argument (other map)".into() });
                 }
                 let other = self.compile_expr(&args[0], func)?;
-                let rt = self.module.get_function("ore_map_merge").unwrap();
+                let rt = self.rt("ore_map_merge")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), other.into()], "mmerge"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Map))
             }
             "clear" => {
-                let rt = self.module.get_function("ore_map_clear").unwrap();
+                let rt = self.rt("ore_map_clear")?;
                 bld!(self.builder.build_call(rt, &[map_val.into()], ""))?;
                 Ok((map_val, ValKind::Map))
             }
@@ -4564,7 +4572,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_map_each").unwrap();
+                let rt = self.rt("ore_map_each")?;
                 bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
@@ -4591,7 +4599,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_map_map_values").unwrap();
+                let rt = self.rt("ore_map_map_values")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mmap"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Map))
@@ -4619,7 +4627,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.module.get_function("ore_map_filter").unwrap();
+                let rt = self.rt("ore_map_filter")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mfilter"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Map))
@@ -4638,7 +4646,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => default_val.into_int_value(),
                 };
-                let rt = self.module.get_function("ore_map_get_or").unwrap();
+                let rt = self.rt("ore_map_get_or")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into(), default_i64.into()], "mgetor"))?;
                 let i64_val = self.call_result_to_value(result)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
@@ -4659,7 +4667,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             "entries" => {
-                let rt = self.module.get_function("ore_map_entries").unwrap();
+                let rt = self.rt("ore_map_entries")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mentries"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::List);
@@ -4683,12 +4691,12 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let val = self.compile_expr(&args[0], func)?;
                 let i64_val = self.value_to_i64(val)?;
-                let rt = self.module.get_function("ore_channel_send").unwrap();
+                let rt = self.rt("ore_channel_send")?;
                 bld!(self.builder.build_call(rt, &[ch_val.into(), i64_val.into()], ""))?;
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
             "recv" => {
-                let rt = self.module.get_function("ore_channel_recv").unwrap();
+                let rt = self.rt("ore_channel_recv")?;
                 let result = bld!(self.builder.build_call(rt, &[ch_val.into()], "recv"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
@@ -5131,7 +5139,7 @@ impl<'ctx> CodeGen<'ctx> {
             Pattern::StringLit(s) => {
                 // Create string constant and compare
                 let str_val = self.compile_string_literal(s)?;
-                let rt = self.module.get_function("ore_str_eq").unwrap();
+                let rt = self.rt("ore_str_eq")?;
                 let result = bld!(self.builder.build_call(rt, &[subject.into(), str_val.into()], "seq"))?;
                 let i8_val = self.call_result_to_value(result)?.into_int_value();
                 bld!(self.builder.build_int_compare(
@@ -5336,8 +5344,8 @@ impl<'ctx> CodeGen<'ctx> {
         elements: &[Expr],
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let list_new = self.module.get_function("ore_list_new").unwrap();
-        let list_push = self.module.get_function("ore_list_push").unwrap();
+        let list_new = self.rt("ore_list_new")?;
+        let list_push = self.rt("ore_list_push")?;
 
         let list_result = bld!(self.builder.build_call(list_new, &[], "list"))?;
         let list_ptr = self.call_result_to_value(list_result)?.into_pointer_value();
@@ -5391,8 +5399,8 @@ impl<'ctx> CodeGen<'ctx> {
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         let i64_type = self.context.i64_type();
-        let list_new = self.module.get_function("ore_list_new").unwrap();
-        let list_push = self.module.get_function("ore_list_push").unwrap();
+        let list_new = self.rt("ore_list_new")?;
+        let list_push = self.rt("ore_list_push")?;
 
         // Create output list
         let list_result = bld!(self.builder.build_call(list_new, &[], "comp_list"))?;
@@ -5482,7 +5490,7 @@ impl<'ctx> CodeGen<'ctx> {
             let list_src = self.compile_expr(iterable, func)?.into_pointer_value();
             let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
 
-            let list_len_fn = self.module.get_function("ore_list_len").unwrap();
+            let list_len_fn = self.rt("ore_list_len")?;
             let len_result = bld!(self.builder.build_call(list_len_fn, &[list_src.into()], "len"))?;
             let len_val = self.call_result_to_value(len_result)?.into_int_value();
 
@@ -5513,7 +5521,7 @@ impl<'ctx> CodeGen<'ctx> {
 
             self.builder.position_at_end(body_bb);
             let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-            let list_get_fn = self.module.get_function("ore_list_get").unwrap();
+            let list_get_fn = self.rt("ore_list_get")?;
             let elem_result = bld!(self.builder.build_call(list_get_fn, &[list_src.into(), idx.into()], "elem"))?;
             let raw_val = self.call_result_to_value(elem_result)?;
 
@@ -5581,8 +5589,8 @@ impl<'ctx> CodeGen<'ctx> {
         entries: &[(Expr, Expr)],
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let map_new = self.module.get_function("ore_map_new").unwrap();
-        let map_set = self.module.get_function("ore_map_set").unwrap();
+        let map_new = self.rt("ore_map_new")?;
+        let map_set = self.rt("ore_map_set")?;
 
         let map_result = bld!(self.builder.build_call(map_new, &[], "map"))?;
         let map_ptr = self.call_result_to_value(map_result)?.into_pointer_value();
@@ -5641,7 +5649,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         match obj_kind {
             ValKind::List => {
-                let list_get = self.module.get_function("ore_list_get").unwrap();
+                let list_get = self.rt("ore_list_get")?;
                 let result = bld!(self.builder.build_call(
                     list_get,
                     &[obj_val.into(), idx_val.into()],
@@ -5669,7 +5677,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.value_to_str(idx_val, ValKind::Int)?.into()
                 };
-                let map_get = self.module.get_function("ore_map_get").unwrap();
+                let map_get = self.rt("ore_map_get")?;
                 let result = bld!(self.builder.build_call(
                     map_get,
                     &[obj_val.into(), map_key.into()],
@@ -5712,7 +5720,7 @@ impl<'ctx> CodeGen<'ctx> {
         ));
         global.set_constant(true);
 
-        let str_new = self.module.get_function("ore_str_new").unwrap();
+        let str_new = self.rt("ore_str_new")?;
         let ptr = bld!(self.builder.build_pointer_cast(
             global.as_pointer_value(),
             self.ptr_type(),
@@ -5755,8 +5763,8 @@ impl<'ctx> CodeGen<'ctx> {
         parts: &[StringPart],
         func: FunctionValue<'ctx>,
     ) -> Result<PointerValue<'ctx>, CodeGenError> {
-        let concat_fn = self.module.get_function("ore_str_concat").unwrap();
-        let release_fn = self.module.get_function("ore_str_release").unwrap();
+        let concat_fn = self.rt("ore_str_concat")?;
+        let release_fn = self.rt("ore_str_release")?;
 
         let mut result: Option<PointerValue<'ctx>> = None;
         let mut temps: Vec<PointerValue<'ctx>> = Vec::new();
@@ -5774,7 +5782,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let p = if let Expr::Ident(name) = expr {
                         if let Some(kind_alloca) = self.dynamic_kind_tags.get(name).copied() {
                             let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_alloca, "dyn_kind"))?.into_int_value();
-                            let dyn_fn = self.module.get_function("ore_dynamic_to_str").unwrap();
+                            let dyn_fn = self.rt("ore_dynamic_to_str")?;
                             let result = bld!(self.builder.build_call(dyn_fn, &[val.into(), kind_i8.into()], "dyntos"))?;
                             self.call_result_to_value(result)?.into_pointer_value()
                         } else {
@@ -5809,7 +5817,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Retain the final result before releasing temps
         if !final_ptr.is_null() {
-            let retain_fn = self.module.get_function("ore_str_retain").unwrap();
+            let retain_fn = self.rt("ore_str_retain")?;
             bld!(self.builder.build_call(retain_fn, &[final_ptr.into()], ""))?;
         }
 
@@ -5863,23 +5871,23 @@ impl<'ctx> CodeGen<'ctx> {
         match kind {
             ValKind::Str => {
                 // Already a string pointer, retain it
-                let retain_fn = self.module.get_function("ore_str_retain").unwrap();
+                let retain_fn = self.rt("ore_str_retain")?;
                 let ptr = val.into_pointer_value();
                 bld!(self.builder.build_call(retain_fn, &[ptr.into()], ""))?;
                 Ok(ptr)
             }
             ValKind::Int => {
-                let int_to_str = self.module.get_function("ore_int_to_str").unwrap();
+                let int_to_str = self.rt("ore_int_to_str")?;
                 let result = bld!(self.builder.build_call(int_to_str, &[val.into()], "itos"))?;
                 Ok(self.call_result_to_value(result)?.into_pointer_value())
             }
             ValKind::Float => {
-                let float_to_str = self.module.get_function("ore_float_to_str").unwrap();
+                let float_to_str = self.rt("ore_float_to_str")?;
                 let result = bld!(self.builder.build_call(float_to_str, &[val.into()], "ftos"))?;
                 Ok(self.call_result_to_value(result)?.into_pointer_value())
             }
             ValKind::Bool => {
-                let bool_to_str = self.module.get_function("ore_bool_to_str").unwrap();
+                let bool_to_str = self.rt("ore_bool_to_str")?;
                 let int_val = val.into_int_value();
                 let ext = bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?;
                 let result = bld!(self.builder.build_call(bool_to_str, &[ext.into()], "btos"))?;
@@ -5893,7 +5901,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             _ => {
                 // Fallback: convert as int
-                let int_to_str = self.module.get_function("ore_int_to_str").unwrap();
+                let int_to_str = self.rt("ore_int_to_str")?;
                 let result = bld!(self.builder.build_call(int_to_str, &[val.into()], "itos"))?;
                 Ok(self.call_result_to_value(result)?.into_pointer_value())
             }
@@ -5912,9 +5920,9 @@ impl<'ctx> CodeGen<'ctx> {
         let field_names = info.field_names.clone();
         let field_kinds = info.field_kinds.clone();
 
-        let str_new = self.module.get_function("ore_str_new").unwrap();
-        let concat_fn = self.module.get_function("ore_str_concat").unwrap();
-        let release_fn = self.module.get_function("ore_str_release").unwrap();
+        let str_new = self.rt("ore_str_new")?;
+        let concat_fn = self.rt("ore_str_concat")?;
+        let release_fn = self.rt("ore_str_release")?;
 
         // Store the struct to an alloca so we can GEP into it
         let alloca = bld!(self.builder.build_alloca(struct_type, "rec_tmp"))?;
@@ -5974,9 +5982,9 @@ impl<'ctx> CodeGen<'ctx> {
             (v.name.clone(), v.tag, v.field_names.clone(), v.field_kinds.clone(), v.payload_type)
         }).collect();
 
-        let str_new = self.module.get_function("ore_str_new").unwrap();
-        let concat_fn = self.module.get_function("ore_str_concat").unwrap();
-        let release_fn = self.module.get_function("ore_str_release").unwrap();
+        let str_new = self.rt("ore_str_new")?;
+        let concat_fn = self.rt("ore_str_concat")?;
+        let release_fn = self.rt("ore_str_release")?;
 
         // Store enum to alloca
         let alloca = bld!(self.builder.build_alloca(enum_type, "enum_tmp"))?;
@@ -6097,13 +6105,13 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(), CodeGenError> {
         // Print "[" using ore_str_print
         let open_bracket = self.compile_string_literal("[")?;
-        let str_print = self.module.get_function("ore_str_print_no_newline").unwrap();
+        let str_print = self.rt("ore_str_print_no_newline")?;
         bld!(self.builder.build_call(str_print, &[open_bracket.into()], ""))?;
-        let release = self.module.get_function("ore_str_release").unwrap();
+        let release = self.rt("ore_str_release")?;
         bld!(self.builder.build_call(release, &[open_bracket.into()], ""))?;
 
-        let list_len = self.module.get_function("ore_list_len").unwrap();
-        let list_get = self.module.get_function("ore_list_get").unwrap();
+        let list_len = self.rt("ore_list_len")?;
+        let list_get = self.rt("ore_list_get")?;
 
         let len_result = bld!(self.builder.build_call(list_len, &[list_ptr.into()], "len"))?;
         let len = self.call_result_to_value(len_result)?.into_int_value();
@@ -6155,16 +6163,16 @@ impl<'ctx> CodeGen<'ctx> {
             }
             ValKind::Float => {
                 let f = bld!(self.builder.build_bit_cast(elem_i64, self.context.f64_type(), "f"))?.into_float_value();
-                let print_float = self.module.get_function("ore_print_float_no_newline").unwrap();
+                let print_float = self.rt("ore_print_float_no_newline")?;
                 bld!(self.builder.build_call(print_float, &[f.into()], ""))?;
             }
             ValKind::Bool => {
                 let b = bld!(self.builder.build_int_truncate(elem_i64, self.context.i8_type(), "b"))?;
-                let print_bool = self.module.get_function("ore_print_bool_no_newline").unwrap();
+                let print_bool = self.rt("ore_print_bool_no_newline")?;
                 bld!(self.builder.build_call(print_bool, &[b.into()], ""))?;
             }
             _ => {
-                let print_int = self.module.get_function("ore_print_int_no_newline").unwrap();
+                let print_int = self.rt("ore_print_int_no_newline")?;
                 bld!(self.builder.build_call(print_int, &[elem_i64.into()], ""))?;
             }
         }
@@ -6177,7 +6185,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(loop_end);
         // Print "]\n"
         let close_str = self.compile_string_literal("]")?;
-        let print_str_fn = self.module.get_function("ore_str_print").unwrap();
+        let print_str_fn = self.rt("ore_str_print")?;
         bld!(self.builder.build_call(print_str_fn, &[close_str.into()], ""))?;
         bld!(self.builder.build_call(release, &[close_str.into()], ""))?;
 
@@ -6191,43 +6199,43 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(), CodeGenError> {
         match kind {
             ValKind::Str => {
-                let pf = self.module.get_function("ore_str_print").unwrap();
+                let pf = self.rt("ore_str_print")?;
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
             ValKind::Bool => {
-                let pf = self.module.get_function("ore_print_bool").unwrap();
+                let pf = self.rt("ore_print_bool")?;
                 let int_val = val.into_int_value();
                 let ext = bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?;
                 bld!(self.builder.build_call(pf, &[ext.into()], ""))?;
             }
             ValKind::Float => {
-                let pf = self.module.get_function("ore_print_float").unwrap();
+                let pf = self.rt("ore_print_float")?;
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
             ValKind::List => {
-                let pf = self.module.get_function("ore_list_print").unwrap();
+                let pf = self.rt("ore_list_print")?;
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
             ValKind::Map => {
-                let pf = self.module.get_function("ore_map_print").unwrap();
+                let pf = self.rt("ore_map_print")?;
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
             ValKind::Record(ref name) => {
                 let s = self.record_to_str(val, name)?;
-                let pf = self.module.get_function("ore_str_print").unwrap();
+                let pf = self.rt("ore_str_print")?;
                 bld!(self.builder.build_call(pf, &[s.into()], ""))?;
-                let release = self.module.get_function("ore_str_release").unwrap();
+                let release = self.rt("ore_str_release")?;
                 bld!(self.builder.build_call(release, &[s.into()], ""))?;
             }
             ValKind::Enum(ref name) => {
                 let s = self.enum_to_str(val, name)?;
-                let pf = self.module.get_function("ore_str_print").unwrap();
+                let pf = self.rt("ore_str_print")?;
                 bld!(self.builder.build_call(pf, &[s.into()], ""))?;
-                let release = self.module.get_function("ore_str_release").unwrap();
+                let release = self.rt("ore_str_release")?;
                 bld!(self.builder.build_call(release, &[s.into()], ""))?;
             }
             _ => {
-                let pf = self.module.get_function("ore_print_int").unwrap();
+                let pf = self.rt("ore_print_int")?;
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
         }
@@ -6602,7 +6610,7 @@ impl<'ctx> CodeGen<'ctx> {
         if is_map {
             // For maps: get keys list and iterate over it
             let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
-            let keys_fn = self.module.get_function("ore_map_keys").unwrap();
+            let keys_fn = self.rt("ore_map_keys")?;
             let keys_result = bld!(self.builder.build_call(keys_fn, &[map_ptr.into()], "keys"))?;
             let list_ptr = self.call_result_to_value(keys_result)?.into_pointer_value();
             return self.compile_for_each_over_list(var, list_ptr, ValKind::Str, body, func);
@@ -6634,7 +6642,7 @@ impl<'ctx> CodeGen<'ctx> {
         let i64_type = self.context.i64_type();
 
         // Get list length
-        let list_len_fn = self.module.get_function("ore_list_len").unwrap();
+        let list_len_fn = self.rt("ore_list_len")?;
         let len_result = bld!(self.builder.build_call(list_len_fn, &[list_ptr.into()], "len"))?;
         let len_val = self.call_result_to_value(len_result)?.into_int_value();
 
@@ -6682,7 +6690,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Body: load element, execute body
         self.builder.position_at_end(body_bb);
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let list_get_fn = self.module.get_function("ore_list_get").unwrap();
+        let list_get_fn = self.rt("ore_list_get")?;
         let elem_result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "elem"))?;
         let raw_val = self.call_result_to_value(elem_result)?;
         // For records, the i64 is a heap pointer — dereference to get the struct
@@ -6776,7 +6784,7 @@ impl<'ctx> CodeGen<'ctx> {
         let elem_kind = final_elem_kind;
         let list_ptr = list_val.into_pointer_value();
 
-        let list_len_fn = self.module.get_function("ore_list_len").unwrap();
+        let list_len_fn = self.rt("ore_list_len")?;
         let len_result = bld!(self.builder.build_call(list_len_fn, &[list_ptr.into()], "len"))?;
         let len_val = self.call_result_to_value(len_result)?.into_int_value();
 
@@ -6817,7 +6825,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(body_bb);
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let list_get_fn = self.module.get_function("ore_list_get").unwrap();
+        let list_get_fn = self.rt("ore_list_get")?;
         let elem_result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "elem"))?;
         let raw_val = self.call_result_to_value(elem_result)?;
         match &elem_kind {
@@ -6877,11 +6885,11 @@ impl<'ctx> CodeGen<'ctx> {
 
         let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
 
-        let keys_fn = self.module.get_function("ore_map_keys").unwrap();
+        let keys_fn = self.rt("ore_map_keys")?;
         let keys_result = bld!(self.builder.build_call(keys_fn, &[map_ptr.into()], "keys"))?;
         let keys_list = self.call_result_to_value(keys_result)?.into_pointer_value();
 
-        let list_len_fn = self.module.get_function("ore_list_len").unwrap();
+        let list_len_fn = self.rt("ore_list_len")?;
         let len_result = bld!(self.builder.build_call(list_len_fn, &[keys_list.into()], "len"))?;
         let len_val = self.call_result_to_value(len_result)?.into_int_value();
 
@@ -6918,13 +6926,13 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(body_bb);
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
 
-        let list_get_fn = self.module.get_function("ore_list_get").unwrap();
+        let list_get_fn = self.rt("ore_list_get")?;
         let key_result = bld!(self.builder.build_call(list_get_fn, &[keys_list.into(), idx.into()], "key_raw"))?;
         let key_raw = self.call_result_to_value(key_result)?.into_int_value();
         let key_ptr = bld!(self.builder.build_int_to_ptr(key_raw, ptr_type, "key_ptr"))?;
         bld!(self.builder.build_store(key_alloca, key_ptr))?;
 
-        let map_get_fn = self.module.get_function("ore_map_get").unwrap();
+        let map_get_fn = self.rt("ore_map_get")?;
         let val_result = bld!(self.builder.build_call(map_get_fn, &[map_ptr.into(), key_ptr.into()], "val_raw"))?;
         let val_raw = self.call_result_to_value(val_result)?;
         match &val_kind {
@@ -7354,7 +7362,7 @@ impl<'ctx> CodeGen<'ctx> {
         let ok_bb = self.context.append_basic_block(current_fn, "div_ok");
         bld!(self.builder.build_conditional_branch(is_zero, err_bb, ok_bb))?;
         self.builder.position_at_end(err_bb);
-        let rt = self.module.get_function("ore_div_by_zero").unwrap();
+        let rt = self.rt("ore_div_by_zero")?;
         bld!(self.builder.build_call(rt, &[], ""))?;
         bld!(self.builder.build_unreachable())?;
         self.builder.position_at_end(ok_bb);
@@ -7414,7 +7422,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // String comparison via ore_str_eq
                 match op {
                     BinOp::Eq => {
-                        let rt = self.module.get_function("ore_str_eq").unwrap();
+                        let rt = self.rt("ore_str_eq")?;
                         let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "seq"))?;
                         let i8_val = self.call_result_to_value(result)?.into_int_value();
                         let bool_val = bld!(self.builder.build_int_compare(
@@ -7424,7 +7432,7 @@ impl<'ctx> CodeGen<'ctx> {
                         Ok(bool_val.into())
                     }
                     BinOp::NotEq => {
-                        let rt = self.module.get_function("ore_str_eq").unwrap();
+                        let rt = self.rt("ore_str_eq")?;
                         let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "seq"))?;
                         let i8_val = self.call_result_to_value(result)?.into_int_value();
                         let bool_val = bld!(self.builder.build_int_compare(
@@ -7435,14 +7443,14 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     BinOp::Add => {
                         // String concatenation
-                        let rt = self.module.get_function("ore_str_concat").unwrap();
+                        let rt = self.rt("ore_str_concat")?;
                         let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "sconcat"))?;
                         let val = self.call_result_to_value(result)?;
                         Ok(val)
                     }
                     BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq => {
                         // String ordering via ore_str_cmp
-                        let rt = self.module.get_function("ore_str_cmp").unwrap();
+                        let rt = self.rt("ore_str_cmp")?;
                         let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "scmp"))?;
                         let cmp_val = self.call_result_to_value(result)?.into_int_value();
                         let zero = self.context.i64_type().const_int(0, false);
