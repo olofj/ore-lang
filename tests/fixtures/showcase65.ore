@@ -1,0 +1,93 @@
+-- Showcase 65: Complete programs - statistics calculator and text analyzer
+
+fn mean xs:List[Int] -> Float
+  xs.sum().to_float() / xs.len().to_float()
+
+fn variance xs:List[Int] -> Float
+  avg := mean(xs)
+  mut sum_sq := 0.0
+  for x in xs
+    diff := x.to_float() - avg
+    sum_sq = sum_sq + diff * diff
+  sum_sq / xs.len().to_float()
+
+fn std_dev xs:List[Int] -> Float
+  sqrt(variance(xs))
+
+fn median xs:List[Int] -> Float
+  sorted := xs.sort()
+  n := sorted.len()
+  if n % 2 == 1
+    sorted[n / 2].to_float()
+  else
+    (sorted[n / 2 - 1] + sorted[n / 2]).to_float() / 2.0
+
+fn main
+  -- Statistics calculator
+  data := [4, 8, 15, 16, 23, 42]
+  print "Data: {data.join(", ")}"
+  print "Count: {data.len()}"
+  print "Sum: {data.sum()}"
+  print "Mean: {mean(data)}"
+  print "Median: {median(data)}"
+  print "Variance: {variance(data)}"
+  print "Std Dev: {std_dev(data)}"
+  print "Min: {data.min()}"
+  print "Max: {data.max()}"
+  print "Range: {data.max() - data.min()}"
+
+  -- Text analyzer
+  text := "the quick brown fox jumps over the lazy dog the fox"
+  words := text.split(" ")
+  print ""
+  print "Text: {text}"
+  print "Word count: {words.len()}"
+  print "Char count: {text.len()}"
+
+  -- Unique words
+  mut seen := {}
+  mut unique_words := 0
+  for word in words
+    if not seen.contains(word)
+      seen.set(word, 1)
+      unique_words = unique_words + 1
+  print "Unique words: {unique_words}"
+
+  -- Most frequent word
+  mut freq := {}
+  for word in words
+    if freq.contains(word)
+      freq.set(word, freq.get(word) + 1)
+    else
+      freq.set(word, 1)
+
+  -- Find max frequency
+  mut max_freq := 0
+  mut max_word := ""
+  all_keys := freq.keys()
+  for i in range(0, all_keys.len())
+    key := all_keys[i]
+    count := freq.get(key)
+    if count > max_freq
+      max_freq = count
+      max_word = key
+  print "Most common: '{max_word}' ({max_freq} times)"
+
+  -- Average word length
+  mut total_len := 0
+  for word in words
+    total_len = total_len + word.len()
+  avg_len := total_len.to_float() / words.len().to_float()
+  print "Avg word length: {avg_len}"
+
+  -- Histogram of word lengths
+  print ""
+  print "Word length histogram:"
+  for len in range(1, 6)
+    mut count := 0
+    for word in words
+      if word.len() == len
+        count = count + 1
+    if count > 0
+      bar := range(0, count).map(i => "#").join("")
+      print "  {len}: {bar} ({count})"

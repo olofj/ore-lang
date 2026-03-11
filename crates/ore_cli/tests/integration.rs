@@ -1926,6 +1926,36 @@ fn showcase63_test() {
 }
 
 #[test]
+fn showcase64() {
+    let out = run_ore("showcase64.ore");
+    assert!(out.contains("Distance: 5.0"));
+    assert!(out.contains("Circle area: 78.5398"));
+    assert!(out.contains("Rect area: 12.0"));
+    assert!(out.contains("Triangle area: 24.0"));
+    assert!(out.contains("Red: 1"));
+    assert!(out.contains("1 = one"));
+    assert!(out.contains("4 = other"));
+    assert!(out.contains("Circle perimeter: 62.8318"));
+    assert!(out.contains("Rect perimeter: 16.0"));
+}
+
+#[test]
+fn showcase65() {
+    let out = run_ore("showcase65.ore");
+    assert!(out.contains("Count: 6"));
+    assert!(out.contains("Sum: 108"));
+    assert!(out.contains("Mean: 18.0"));
+    assert!(out.contains("Median: 15.5"));
+    assert!(out.contains("Min: 4"));
+    assert!(out.contains("Max: 42"));
+    assert!(out.contains("Range: 38"));
+    assert!(out.contains("Word count: 11"));
+    assert!(out.contains("Unique words: 8"));
+    assert!(out.contains("Most common: 'the' (3 times)"));
+    assert!(out.contains("3: ###### (6)"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
