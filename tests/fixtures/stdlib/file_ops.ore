@@ -1,0 +1,20 @@
+-- Extended file operations
+
+fn main
+  -- Write a file
+  file_write("/tmp/ore_test_file_ops.txt", "line1\n")
+
+  -- Check it exists
+  assert file_exists("/tmp/ore_test_file_ops.txt")
+
+  -- Append to it
+  file_append("/tmp/ore_test_file_ops.txt", "line2\n")
+
+  -- Read it back
+  content := file_read("/tmp/ore_test_file_ops.txt")
+  print content
+
+  -- Check non-existent file
+  assert not file_exists("/tmp/ore_definitely_does_not_exist_12345.txt")
+
+  print "file_ops ok"

@@ -585,6 +585,30 @@ pub extern "C" fn ore_file_write(path: *mut OreStr, content: *mut OreStr) -> i8 
     }
 }
 
+#[no_mangle]
+pub extern "C" fn ore_file_exists(path: *mut OreStr) -> i8 {
+    if path.is_null() { return 0; }
+    let path_str = unsafe { (*path).as_str() };
+    if std::path::Path::new(path_str).exists() { 1 } else { 0 }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_file_append(path: *mut OreStr, content: *mut OreStr) -> i8 {
+    if path.is_null() { return 0; }
+    let path_str = unsafe { (*path).as_str() };
+    let content_str = if content.is_null() { "" } else { unsafe { (*content).as_str() } };
+    use std::io::Write;
+    match std::fs::OpenOptions::new().append(true).create(true).open(path_str) {
+        Ok(mut f) => {
+            match f.write_all(content_str.as_bytes()) {
+                Ok(()) => 1,
+                Err(e) => { eprintln!("error appending to '{}': {}", path_str, e); 0 }
+            }
+        }
+        Err(e) => { eprintln!("error opening '{}': {}", path_str, e); 0 }
+    }
+}
+
 // ── Range ──
 
 /// Create a list of integers from start (inclusive) to end (exclusive).

@@ -749,6 +749,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_file_write", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_file_exists", i8_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_file_append", i8_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // JSON
         self.module.add_function("ore_json_parse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_json_stringify", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -1469,16 +1471,33 @@ impl<'ctx> CodeGen<'ctx> {
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Str));
                     }
-                    "file_write" => {
+                    "file_write" | "file_append" => {
                         if args.len() != 2 {
-                            return Err(CodeGenError { line: None, msg: "file_write takes 2 arguments".into() });
+                            return Err(CodeGenError { line: None, msg: format!("{} takes 2 arguments", name) });
                         }
                         let path_val = self.compile_expr(&args[0], func)?;
                         let content_val = self.compile_expr(&args[1], func)?;
-                        let rt = self.module.get_function("ore_file_write").unwrap();
-                        let result = bld!(self.builder.build_call(rt, &[path_val.into(), content_val.into()], "file_write"))?;
+                        let rt_name = format!("ore_{}", name);
+                        let rt = self.module.get_function(&rt_name).unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[path_val.into(), content_val.into()], name.as_str()))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ValKind::Bool));
+                    }
+                    "file_exists" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: "file_exists takes 1 argument".into() });
+                        }
+                        let path_val = self.compile_expr(&args[0], func)?;
+                        let rt = self.module.get_function("ore_file_exists").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_exists"))?;
+                        let i8_val = self.call_result_to_value(result)?.into_int_value();
+                        let bool_val = bld!(self.builder.build_int_compare(
+                            inkwell::IntPredicate::NE,
+                            i8_val,
+                            self.context.i8_type().const_int(0, false),
+                            "tobool"
+                        ))?;
+                        return Ok((bool_val.into(), ValKind::Bool));
                     }
                     "env_get" => {
                         if args.len() != 1 {

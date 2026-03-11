@@ -307,6 +307,14 @@ fn stdlib_random() {
 }
 
 #[test]
+fn stdlib_file_ops() {
+    let out = run_ore("stdlib/file_ops.ore");
+    assert!(out.contains("line1"));
+    assert!(out.contains("line2"));
+    assert!(out.contains("file_ops ok"));
+}
+
+#[test]
 fn stdlib_env() {
     let out = run_ore("stdlib/env.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
