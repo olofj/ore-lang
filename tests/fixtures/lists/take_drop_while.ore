@@ -1,0 +1,12 @@
+fn main
+  nums := [1, 2, 3, 4, 5, 6, 7, 8]
+
+  -- take_while: take elements while < 5
+  print nums.take_while(x => x < 5) | join(" ")
+
+  -- drop_while: drop elements while < 5
+  print nums.drop_while(x => x < 5) | join(" ")
+
+  -- Combined: skip leading zeros
+  data := [0, 0, 0, 1, 2, 0, 3]
+  print data.drop_while(x => x == 0) | join(" ")

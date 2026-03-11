@@ -1267,6 +1267,50 @@ pub extern "C" fn ore_list_skip(list: *mut OreList, n: i64) -> *mut OreList {
     }
 }
 
+/// Take elements while predicate is true.
+#[no_mangle]
+pub extern "C" fn ore_list_take_while(
+    list: *mut OreList,
+    func: *const u8,
+    env_ptr: *mut u8,
+) -> *mut OreList {
+    let result = ore_list_new();
+    unsafe {
+        let src = &*list;
+        for i in 0..src.len as usize {
+            let elem = *src.data.add(i);
+            if call_closure(func, env_ptr, elem) == 0 {
+                break;
+            }
+            ore_list_push(result, elem);
+        }
+    }
+    result
+}
+
+/// Drop elements while predicate is true, return the rest.
+#[no_mangle]
+pub extern "C" fn ore_list_drop_while(
+    list: *mut OreList,
+    func: *const u8,
+    env_ptr: *mut u8,
+) -> *mut OreList {
+    let result = ore_list_new();
+    unsafe {
+        let src = &*list;
+        let mut dropping = true;
+        for i in 0..src.len as usize {
+            let elem = *src.data.add(i);
+            if dropping && call_closure(func, env_ptr, elem) != 0 {
+                continue;
+            }
+            dropping = false;
+            ore_list_push(result, elem);
+        }
+    }
+    result
+}
+
 /// Partition list into two lists: [matching, not_matching].
 /// Returns a list containing two inner lists.
 #[no_mangle]

@@ -995,6 +995,13 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn lists_take_drop_while() {
+    let out = run_ore("lists/take_drop_while.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["1 2 3 4", "5 6 7 8", "1 2 0 3"]);
+}
+
+#[test]
 fn showcase10() {
     let out = run_ore("showcase10.ore");
     assert!(out.contains("dot: 35"));

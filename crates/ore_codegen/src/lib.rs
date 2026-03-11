@@ -752,6 +752,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_unique", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_flatten", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_list_partition", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_take_while", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_drop_while", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_window", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_chunks", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_str_reverse", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -2516,6 +2518,21 @@ impl<'ctx> CodeGen<'ctx> {
                     let result = bld!(self.builder.build_select(cmp, a, b, "fmin"))?;
                     return Ok((result, ValKind::Float));
                 }
+                "clamp" => {
+                    if args.len() != 2 {
+                        return Err(CodeGenError { line: None, msg: "Float.clamp() takes 2 arguments (min, max)".into() });
+                    }
+                    let (lo_val, _) = self.compile_expr_with_kind(&args[0], func)?;
+                    let (hi_val, _) = self.compile_expr_with_kind(&args[1], func)?;
+                    let x = obj_val.into_float_value();
+                    let lo = lo_val.into_float_value();
+                    let hi = hi_val.into_float_value();
+                    let cmp_lo = bld!(self.builder.build_float_compare(inkwell::FloatPredicate::OLT, x, lo, "fclamp_lo"))?;
+                    let v1 = bld!(self.builder.build_select(cmp_lo, lo, x, "fclamp1"))?;
+                    let cmp_hi = bld!(self.builder.build_float_compare(inkwell::FloatPredicate::OGT, v1.into_float_value(), hi, "fclamp_hi"))?;
+                    let result = bld!(self.builder.build_select(cmp_hi, hi, v1.into_float_value(), "fclamp"))?;
+                    return Ok((result, ValKind::Float));
+                }
                 "pow" => {
                     if args.len() != 1 {
                         return Err(CodeGenError { line: None, msg: "Float.pow() takes 1 argument".into() });
@@ -2609,7 +2626,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
-            "map" | "filter" | "flat_map" => {
+            "map" | "filter" | "flat_map" | "take_while" | "drop_while" => {
                 if args.len() != 1 {
                     return Err(CodeGenError { line: None, msg: format!("{} takes exactly 1 argument", method) });
                 }

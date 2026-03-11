@@ -888,7 +888,7 @@ impl TypeChecker {
                 "reduce" => Type::Any,
                 "find" | "min_by" | "max_by" => *elem.clone(),
                 "join" => Type::Str,
-                "sort" | "sort_by" | "reverse" | "window" | "chunks" => obj_ty.clone(),
+                "sort" | "sort_by" | "reverse" | "window" | "chunks" | "take_while" | "drop_while" => obj_ty.clone(),
                 "count_by" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),
                 "group_by" => Type::Map(Box::new(Type::Str), Box::new(obj_ty.clone())),
                 _ => Type::Any,
