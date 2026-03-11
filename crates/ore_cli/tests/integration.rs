@@ -2247,6 +2247,46 @@ fn showcase83_result_type() {
 }
 
 #[test]
+fn showcase84_pattern_matching() {
+    let out = run_ore("showcase84.ore");
+    assert!(out.contains("small circle"));
+    assert!(out.contains("large circle"));
+    assert!(out.contains("rectangle"));
+    assert!(out.contains("square"));
+    assert!(out.contains("equilateral"));
+    assert!(out.contains("circle area: 78.53975"));
+    assert!(out.contains("rect area: 12.0"));
+    assert!(out.contains("x has 42"));
+    assert!(out.contains("y is empty"));
+    assert!(out.contains("other"));
+}
+
+#[test]
+fn showcase85_string_operations() {
+    let out = run_ore("showcase85.ore");
+    assert!(out.contains("trim: 'Hello, World!'"));
+    assert!(out.contains("starts_with: true"));
+    assert!(out.contains("split: one | two | three | four"));
+    assert!(out.contains("the dog sat on the mat"));
+    assert!(out.contains("--------------------"));
+    assert!(out.contains("sub: Hello"));
+    assert!(out.contains("char_at(7): W"));
+    assert!(out.contains("index_of: 7"));
+    assert!(out.contains("empty len: 0"));
+}
+
+#[test]
+fn showcase86_loops_mutation() {
+    let out = run_ore("showcase86.ore");
+    assert!(out.contains("sum 1..10 = 55"));
+    assert!(out.contains("7! = 5040"));
+    assert!(out.contains("loop count: 5"));
+    assert!(out.contains("pairs where x < y: 6"));
+    assert!(out.contains("squares: 1, 4, 9, 16, 25"));
+    assert!(out.contains("5, 4, 3, 2, 1"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

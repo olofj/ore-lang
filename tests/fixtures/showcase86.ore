@@ -1,0 +1,49 @@
+-- Showcase 86: Loops and mutable state
+
+fn main
+  -- While loop
+  mut i := 1
+  mut total := 0
+  while i <= 10
+    total = total + i
+    i = i + 1
+  print "sum 1..10 = {total}"
+
+  -- For loop with range
+  mut product := 1
+  for n in range(1, 8)
+    product = product * n
+  print "7! = {product}"
+
+  -- Loop with break
+  mut count := 0
+  loop
+    count = count + 1
+    if count >= 5
+      break
+  print "loop count: {count}"
+
+  -- Nested loops
+  mut pairs := 0
+  for x in range(1, 5)
+    for y in range(1, 5)
+      if x < y
+        pairs = pairs + 1
+  print "pairs where x < y: {pairs}"
+
+  -- Building a list with mutation
+  mut squares := [0]
+  squares.pop()
+  for n in range(1, 6)
+    squares.push(n * n)
+  print "squares: {squares.join(", ")}"
+
+  -- Countdown
+  mut n := 5
+  mut countdown := ""
+  while n > 0
+    if n < 5
+      countdown = countdown + ", "
+    countdown = countdown + "{n}"
+    n = n - 1
+  print countdown

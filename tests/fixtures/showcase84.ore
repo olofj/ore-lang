@@ -1,0 +1,69 @@
+-- Showcase 84: Advanced pattern matching
+
+type Shape
+  Circle(radius: Float)
+  Rect(w: Float, h: Float)
+  Triangle(a: Float, b: Float, c: Float)
+
+fn describe_circle r:Float -> Str
+  if r > 10.0
+    "large circle"
+  else
+    "small circle"
+
+fn describe_rect w:Float h:Float -> Str
+  if w == h
+    "square"
+  else
+    "rectangle"
+
+fn describe_tri a:Float b:Float c:Float -> Str
+  if a == b and b == c
+    "equilateral"
+  else
+    "triangle"
+
+fn describe s:Shape -> Str
+  match s
+    Circle r -> describe_circle(r)
+    Rect w h -> describe_rect(w, h)
+    Triangle a b c -> describe_tri(a, b, c)
+
+fn area s:Shape -> Float
+  match s
+    Circle r -> 3.14159 * r * r
+    Rect w h -> w * h
+    Triangle a b c -> sqrt((a + b + c) / 2.0 * ((a + b + c) / 2.0 - a) * ((a + b + c) / 2.0 - b) * ((a + b + c) / 2.0 - c))
+
+fn main
+  -- Pattern match each shape
+  print describe(Circle(radius: 5.0))
+  print describe(Circle(radius: 15.0))
+  print describe(Rect(w: 3.0, h: 4.0))
+  print describe(Rect(w: 5.0, h: 5.0))
+  print describe(Triangle(a: 5.0, b: 5.0, c: 5.0))
+  print describe(Triangle(a: 3.0, b: 4.0, c: 5.0))
+
+  -- Areas
+  print "circle area: {area(Circle(radius: 5.0))}"
+  print "rect area: {area(Rect(w: 3.0, h: 4.0))}"
+
+  -- Nested match with Option
+  x := Some(42)
+  y := None
+
+  match x
+    Some v -> print "x has {v}"
+    None -> print "x is empty"
+
+  match y
+    Some v -> print "y has {v}"
+    None -> print "y is empty"
+
+  -- Match with wildcard
+  val := 42
+  msg := match val
+    0 -> "zero"
+    1 -> "one"
+    _ -> "other"
+  print msg

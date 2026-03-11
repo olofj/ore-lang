@@ -1,0 +1,51 @@
+-- Showcase 85: Advanced string operations
+
+fn main
+  -- String methods
+  s := "  Hello, World!  "
+  print "trim: '{s.trim()}'"
+  print "starts_with: {s.trim().starts_with("Hello")}"
+  print "ends_with: {s.trim().ends_with("!")}"
+
+  -- Split and join round-trip
+  csv := "one,two,three,four"
+  parts := csv.split(",")
+  print "split: {parts.join(" | ")}"
+  print "count: {parts.len()}"
+
+  -- Replace
+  text := "the cat sat on the mat"
+  replaced := text.replace("cat", "dog")
+  print replaced
+
+  -- Repeat
+  line := "-".repeat(20)
+  print line
+
+  -- Substring
+  msg := "Hello, World!"
+  sub := msg.slice(0, 5)
+  print "sub: {sub}"
+
+  -- Char at index
+  ch := msg.char_at(7)
+  print "char_at(7): {ch}"
+
+  -- Index of
+  idx := msg.index_of("World")
+  print "index_of: {idx}"
+
+  -- String comparison
+  print "abc < def: {"abc" < "def"}"
+  print "same: {"abc" == "abc"}"
+
+  -- Empty string
+  empty := ""
+  print "empty len: {empty.len()}"
+  print "empty is_empty: {empty.len() == 0}"
+
+  -- Multiline via concat
+  a := "line one"
+  b := "line two"
+  both := a + "\n" + b
+  print both
