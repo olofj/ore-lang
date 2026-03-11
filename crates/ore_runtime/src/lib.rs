@@ -1999,6 +1999,26 @@ pub extern "C" fn ore_map_filter(
     result
 }
 
+/// Convert a list to a map using a key function. Each element becomes a value,
+/// keyed by the result of calling the key function on it.
+#[no_mangle]
+pub extern "C" fn ore_list_to_map(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreMap {
+    unsafe {
+        let src = &*list;
+        let result = ore_map_new();
+        let map = &mut *result;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            let key_val = call_closure(func, env, val);
+            let key_str = &*(key_val as *mut OreStr);
+            let key = key_str.as_str().to_string();
+            map.inner.insert(key.clone(), val);
+            // We don't know the value kind here, store as 0 (Int) by default
+        }
+        result
+    }
+}
+
 /// Count occurrences of each element, returning a Map[Str, Int].
 /// Elements are converted to their string representation for grouping.
 #[no_mangle]

@@ -1199,6 +1199,13 @@ fn math_functions() {
 }
 
 #[test]
+fn lists_to_map() {
+    let out = run_ore("lists/to_map.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["10", "20", "30", "3"]);
+}
+
+#[test]
 fn lists_each_with_index() {
     let out = run_ore("lists/each_with_index.ore");
     let lines: Vec<&str> = out.lines().collect();

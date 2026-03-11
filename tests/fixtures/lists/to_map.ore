@@ -1,0 +1,8 @@
+fn main
+  -- Convert list of numbers to map by string key
+  nums := [10, 20, 30]
+  m := nums.to_map(n => str(n))
+  print m.get("10")
+  print m.get("20")
+  print m.get("30")
+  print m.len()
