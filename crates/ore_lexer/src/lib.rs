@@ -106,9 +106,9 @@ pub fn lex(source: &str) -> Result<Vec<Spanned>, LexError> {
     Ok(tokens)
 }
 
-/// Post-processing: enable multi-line pipe continuation.
-/// When a line starts with `|` at a deeper indent, remove the Newline + Indent
-/// tokens so the pipe is parsed as a continuation of the previous expression.
+/// Post-processing: enable multi-line pipe and dot continuation.
+/// When a line starts with `|` or `.` at a deeper indent, remove the Newline + Indent
+/// tokens so it is parsed as a continuation of the previous expression.
 /// Also removes the matching Dedent.
 fn fixup_multiline_pipes(tokens: Vec<Spanned>) -> Vec<Spanned> {
     let len = tokens.len();
@@ -117,7 +117,7 @@ fn fixup_multiline_pipes(tokens: Vec<Spanned>) -> Vec<Spanned> {
 
     let mut i = 0;
     while i + 2 < len {
-        // Pattern: Newline [Indent] Pipe
+        // Pattern: Newline [Indent] (Pipe | Dot)
         if matches!(tokens[i].token, Token::Newline) {
             let mut j = i + 1;
             let mut indent_count = 0;
@@ -125,14 +125,14 @@ fn fixup_multiline_pipes(tokens: Vec<Spanned>) -> Vec<Spanned> {
                 indent_count += 1;
                 j += 1;
             }
-            if j < len && matches!(tokens[j].token, Token::Pipe) {
+            if j < len && matches!(tokens[j].token, Token::Pipe | Token::Dot) {
                 // Remove the Newline and all Indent tokens
                 remove[i] = true;
                 for k in (i + 1)..j {
                     remove[k] = true;
                 }
                 pending_dedent_removes += indent_count;
-                i = j; // skip to Pipe
+                i = j; // skip to Pipe/Dot
                 continue;
             }
         }
