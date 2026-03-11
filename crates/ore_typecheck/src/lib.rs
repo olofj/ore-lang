@@ -527,6 +527,9 @@ impl TypeChecker {
                             "json_parse" => return Type::Map(Box::new(Type::Str), Box::new(Type::Any)),
                             "json_stringify" => return Type::Str,
                             "channel" => return Type::Channel,
+                            "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "math_abs" | "math_floor" | "math_ceil" | "math_round" => return Type::Float,
+                            "pow" | "atan2" => return Type::Float,
+                            "pi" | "euler" => return Type::Float,
                             _ => {}
                         }
 
@@ -892,6 +895,8 @@ impl TypeChecker {
                 "sort" | "sort_by" | "reverse" | "window" | "chunks" | "take_while" | "drop_while" | "step" => obj_ty.clone(),
                 "count_by" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),
                 "group_by" => Type::Map(Box::new(Type::Str), Box::new(obj_ty.clone())),
+                "frequencies" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),
+                "intersperse" => obj_ty.clone(),
                 _ => Type::Any,
             },
             Type::Map(_, v) => match method {
@@ -903,6 +908,7 @@ impl TypeChecker {
                 "set" | "remove" | "each" => Type::Unit,
                 "map" | "merge" | "filter" => obj_ty.clone(),
                 "clear" => Type::Unit,
+                "entries" => Type::List(Box::new(Type::List(Box::new(Type::Any)))),
                 _ => Type::Any,
             },
             Type::Bool => match method {

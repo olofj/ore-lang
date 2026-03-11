@@ -1,0 +1,14 @@
+fn main
+  -- Count occurrences of each element
+  words := ["apple", "banana", "apple", "cherry", "banana", "apple"]
+  freq := words.frequencies()
+  print freq.get("apple")
+  print freq.get("banana")
+  print freq.get("cherry")
+
+  -- Numbers
+  nums := [1, 2, 2, 3, 3, 3]
+  nf := nums.frequencies()
+  print nf.get("1")
+  print nf.get("2")
+  print nf.get("3")

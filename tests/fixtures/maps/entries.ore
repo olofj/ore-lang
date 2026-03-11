@@ -1,0 +1,5 @@
+fn main
+  m := {"x": 10, "y": 20, "z": 30}
+  entries := m.entries()
+  print entries.len()
+  print m.values().sum()

@@ -1861,6 +1861,106 @@ pub extern "C" fn ore_map_filter(
     result
 }
 
+/// Count occurrences of each element, returning a Map[Str, Int].
+/// Elements are converted to their string representation for grouping.
+#[no_mangle]
+pub extern "C" fn ore_list_frequencies(list: *mut OreList, elem_kind: i8) -> *mut OreMap {
+    unsafe {
+        let src = &*list;
+        let result = ore_map_new();
+        let map = &mut *result;
+        for i in 0..src.len as usize {
+            let val = *src.data.add(i);
+            let key = match elem_kind {
+                0 => format!("{}", val), // Int
+                1 => {
+                    let f = f64::from_bits(val as u64);
+                    if f == f.floor() { format!("{:.1}", f) } else { format!("{}", f) }
+                }
+                2 => if val != 0 { "true".to_string() } else { "false".to_string() }, // Bool
+                3 => { // Str
+                    let s = &*(val as *mut OreStr);
+                    s.as_str().to_string()
+                }
+                _ => format!("{}", val),
+            };
+            let count = map.inner.get(&key).copied().unwrap_or(0);
+            map.inner.insert(key.clone(), count + 1);
+            map.kinds.insert(key, 0); // 0 = Int
+        }
+        result
+    }
+}
+
+/// Insert an element between each pair of elements.
+#[no_mangle]
+pub extern "C" fn ore_list_intersperse(list: *mut OreList, sep: i64) -> *mut OreList {
+    unsafe {
+        let src = &*list;
+        let result = ore_list_new();
+        for i in 0..src.len as usize {
+            if i > 0 {
+                ore_list_push(result, sep);
+            }
+            ore_list_push(result, *src.data.add(i));
+        }
+        result
+    }
+}
+
+/// Return map entries as a list of [key, value] pairs (each pair is an OreList).
+#[no_mangle]
+pub extern "C" fn ore_map_entries(map: *mut OreMap) -> *mut OreList {
+    unsafe {
+        let map = &*map;
+        let result = ore_list_new();
+        let mut keys: Vec<&String> = map.inner.keys().collect();
+        keys.sort();
+        for key in keys {
+            let val = map.inner[key];
+            let pair = ore_list_new();
+            let key_str = ore_str_new(key.as_ptr(), key.len() as u32);
+            ore_list_push(pair, key_str as i64);
+            ore_list_push(pair, val);
+            ore_list_push(result, pair as i64);
+        }
+        result
+    }
+}
+
+// ── Math functions ──
+
+#[no_mangle]
+pub extern "C" fn ore_math_sqrt(x: f64) -> f64 { x.sqrt() }
+#[no_mangle]
+pub extern "C" fn ore_math_sin(x: f64) -> f64 { x.sin() }
+#[no_mangle]
+pub extern "C" fn ore_math_cos(x: f64) -> f64 { x.cos() }
+#[no_mangle]
+pub extern "C" fn ore_math_tan(x: f64) -> f64 { x.tan() }
+#[no_mangle]
+pub extern "C" fn ore_math_log(x: f64) -> f64 { x.ln() }
+#[no_mangle]
+pub extern "C" fn ore_math_log10(x: f64) -> f64 { x.log10() }
+#[no_mangle]
+pub extern "C" fn ore_math_exp(x: f64) -> f64 { x.exp() }
+#[no_mangle]
+pub extern "C" fn ore_math_pow(base: f64, exp: f64) -> f64 { base.powf(exp) }
+#[no_mangle]
+pub extern "C" fn ore_math_abs(x: f64) -> f64 { x.abs() }
+#[no_mangle]
+pub extern "C" fn ore_math_floor(x: f64) -> f64 { x.floor() }
+#[no_mangle]
+pub extern "C" fn ore_math_ceil(x: f64) -> f64 { x.ceil() }
+#[no_mangle]
+pub extern "C" fn ore_math_round(x: f64) -> f64 { x.round() }
+#[no_mangle]
+pub extern "C" fn ore_math_pi() -> f64 { std::f64::consts::PI }
+#[no_mangle]
+pub extern "C" fn ore_math_e() -> f64 { std::f64::consts::E }
+#[no_mangle]
+pub extern "C" fn ore_math_atan2(y: f64, x: f64) -> f64 { y.atan2(x) }
+
 // ── Concurrency ──
 
 static THREADS: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new());

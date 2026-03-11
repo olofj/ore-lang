@@ -786,6 +786,25 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_map_each", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_map_map_values", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_map_filter", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_map_entries", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_frequencies", ptr_type.fn_type(&[ptr_type.into(), i8_type.into()], false), ext);
+        self.module.add_function("ore_list_intersperse", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
+        // Math functions
+        self.module.add_function("ore_math_sqrt", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_sin", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_cos", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_tan", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_log", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_log10", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_exp", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_pow", f64_type.fn_type(&[f64_type.into(), f64_type.into()], false), ext);
+        self.module.add_function("ore_math_abs", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_floor", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_ceil", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_round", f64_type.fn_type(&[f64_type.into()], false), ext);
+        self.module.add_function("ore_math_pi", f64_type.fn_type(&[], false), ext);
+        self.module.add_function("ore_math_e", f64_type.fn_type(&[], false), ext);
+        self.module.add_function("ore_math_atan2", f64_type.fn_type(&[f64_type.into(), f64_type.into()], false), ext);
         // I/O
         self.module.add_function("ore_readln", ptr_type.fn_type(&[], false), ext);
         self.module.add_function("ore_file_read", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -1838,6 +1857,77 @@ impl<'ctx> CodeGen<'ctx> {
                         };
                         let str_val = self.compile_string_literal(type_name)?;
                         return Ok((str_val.into(), ValKind::Str));
+                    }
+                    // Math functions
+                    "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "math_abs" | "math_floor" | "math_ceil" | "math_round" => {
+                        if args.len() != 1 {
+                            return Err(CodeGenError { line: None, msg: format!("{}() takes 1 argument", name) });
+                        }
+                        let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                        let f_val = match kind {
+                            ValKind::Float => val.into_float_value(),
+                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(val.into_int_value(), self.context.f64_type(), "itof"))?,
+                            _ => return Err(CodeGenError { line: None, msg: format!("{}() requires numeric argument", name) }),
+                        };
+                        let rt_name = format!("ore_math_{}", name.strip_prefix("math_").unwrap_or(&name));
+                        let rt = self.module.get_function(&rt_name).unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[f_val.into()], &name))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Float));
+                    }
+                    "pow" => {
+                        if args.len() != 2 {
+                            return Err(CodeGenError { line: None, msg: "pow() takes 2 arguments (base, exp)".into() });
+                        }
+                        let (base, bk) = self.compile_expr_with_kind(&args[0], func)?;
+                        let (exp, ek) = self.compile_expr_with_kind(&args[1], func)?;
+                        let base_f = match bk {
+                            ValKind::Float => base.into_float_value(),
+                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(base.into_int_value(), self.context.f64_type(), "itof"))?,
+                            _ => return Err(CodeGenError { line: None, msg: "pow() requires numeric arguments".into() }),
+                        };
+                        let exp_f = match ek {
+                            ValKind::Float => exp.into_float_value(),
+                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(exp.into_int_value(), self.context.f64_type(), "itof"))?,
+                            _ => return Err(CodeGenError { line: None, msg: "pow() requires numeric arguments".into() }),
+                        };
+                        let rt = self.module.get_function("ore_math_pow").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[base_f.into(), exp_f.into()], "pow"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Float));
+                    }
+                    "atan2" => {
+                        if args.len() != 2 {
+                            return Err(CodeGenError { line: None, msg: "atan2() takes 2 arguments (y, x)".into() });
+                        }
+                        let (y, yk) = self.compile_expr_with_kind(&args[0], func)?;
+                        let (x, xk) = self.compile_expr_with_kind(&args[1], func)?;
+                        let y_f = match yk {
+                            ValKind::Float => y.into_float_value(),
+                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(y.into_int_value(), self.context.f64_type(), "itof"))?,
+                            _ => return Err(CodeGenError { line: None, msg: "atan2() requires numeric arguments".into() }),
+                        };
+                        let x_f = match xk {
+                            ValKind::Float => x.into_float_value(),
+                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(x.into_int_value(), self.context.f64_type(), "itof"))?,
+                            _ => return Err(CodeGenError { line: None, msg: "atan2() requires numeric arguments".into() }),
+                        };
+                        let rt = self.module.get_function("ore_math_atan2").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[y_f.into(), x_f.into()], "atan2"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Float));
+                    }
+                    "pi" => {
+                        let rt = self.module.get_function("ore_math_pi").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[], "pi"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Float));
+                    }
+                    "euler" => {
+                        let rt = self.module.get_function("ore_math_e").unwrap();
+                        let result = bld!(self.builder.build_call(rt, &[], "euler"))?;
+                        let val = self.call_result_to_value(result)?;
+                        return Ok((val, ValKind::Float));
                     }
                     _ => {}
                 }
@@ -3289,6 +3379,37 @@ impl<'ctx> CodeGen<'ctx> {
                 self.last_map_val_kind = Some(val_kind);
                 Ok((val.into(), ValKind::Map))
             }
+            "frequencies" => {
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                let kind_val = self.context.i8_type().const_int(match elem_kind {
+                    ValKind::Int => 0,
+                    ValKind::Float => 1,
+                    ValKind::Bool => 2,
+                    ValKind::Str => 3,
+                    _ => 0,
+                }, false);
+                let rt = self.module.get_function("ore_list_frequencies").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), kind_val.into()], "freq"))?;
+                let val = self.call_result_to_value(result)?;
+                self.last_map_val_kind = Some(ValKind::Int);
+                Ok((val.into(), ValKind::Map))
+            }
+            "intersperse" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: "intersperse takes 1 argument".to_string() });
+                }
+                let (sep_val, sep_kind) = self.compile_expr_with_kind(&args[0], func)?;
+                let sep_i64: IntValue = match sep_kind {
+                    ValKind::Str | ValKind::List | ValKind::Map => {
+                        bld!(self.builder.build_ptr_to_int(sep_val.into_pointer_value(), self.context.i64_type(), "sep2i"))?
+                    }
+                    _ => sep_val.into_int_value(),
+                };
+                let rt = self.module.get_function("ore_list_intersperse").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), sep_i64.into()], "inter"))?;
+                let val = self.call_result_to_value(result)?;
+                Ok((val.into(), ValKind::List))
+            }
             _ => Err(CodeGenError { line: None, msg: format!("unknown list method '{}'", method) }),
         }
     }
@@ -3884,6 +4005,13 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mfilter"))?;
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Map))
+            }
+            "entries" => {
+                let rt = self.module.get_function("ore_map_entries").unwrap();
+                let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mentries"))?;
+                let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::List);
+                Ok((val, ValKind::List))
             }
             _ => Err(CodeGenError { line: None, msg: format!("unknown map method '{}'", method) }),
         }
@@ -6381,6 +6509,14 @@ impl<'ctx> CodeGen<'ctx> {
                     bld!(self.builder.build_store(alloca, ptr_val))?;
                     self.variables.insert(param_name.clone(), (alloca, ptr_ty.as_basic_type_enum(), kind, false));
                 }
+                ValKind::Float => {
+                    // Float list elements are stored as i64 (bit pattern); bitcast to f64
+                    let f64_ty = self.context.f64_type();
+                    let f_val = bld!(self.builder.build_bit_cast(val, f64_ty, &format!("{}_f", param_name)))?;
+                    let alloca = bld!(self.builder.build_alloca(f64_ty, param_name))?;
+                    bld!(self.builder.build_store(alloca, f_val))?;
+                    self.variables.insert(param_name.clone(), (alloca, f64_ty.as_basic_type_enum(), kind, false));
+                }
                 _ => {
                     let ty = val.get_type();
                     let alloca = bld!(self.builder.build_alloca(ty, param_name))?;
@@ -6409,6 +6545,9 @@ impl<'ctx> CodeGen<'ctx> {
                         self.context.i64_type(),
                         "ptr_to_i64"
                     ))?.into()
+                }
+                ValKind::Float if result.is_float_value() => {
+                    bld!(self.builder.build_bit_cast(result, self.context.i64_type(), "f64_to_i64"))?.into()
                 }
                 _ => result,
             };

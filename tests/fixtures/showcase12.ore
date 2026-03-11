@@ -1,0 +1,30 @@
+fn main
+  -- Math: compute distance between two points
+  x1 := 3.0
+  y1 := 4.0
+  dist := sqrt(x1 * x1 + y1 * y1)
+  print "distance: {dist}"
+
+  -- Frequency analysis
+  votes := ["yes", "no", "yes", "yes", "no", "abstain"]
+  freq := votes.frequencies()
+  print "yes: {freq.get("yes")}, no: {freq.get("no")}, abstain: {freq.get("abstain")}"
+
+  -- Intersperse for formatting
+  parts := ["2025", "03", "10"]
+  date := parts.intersperse("-").join("")
+  print "date: {date}"
+
+  -- Trigonometry: area of triangle using sides
+  a := 3.0
+  b := 4.0
+  c := 5.0
+  s := (a + b + c) / 2.0
+  area := sqrt(s * (s - a) * (s - b) * (s - c))
+  print "triangle area: {area}"
+
+  -- Pipeline with math
+  angles := [0.0, 1.5707963, 3.14159265]
+  angles.each(ang => print "sin = {sin(ang)}")
+
+  print "showcase12 ok"

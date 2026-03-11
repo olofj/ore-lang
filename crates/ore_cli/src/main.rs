@@ -511,6 +511,25 @@ fn map_runtime_functions(
     map_fn!("ore_map_each", ore_runtime::ore_map_each);
     map_fn!("ore_map_map_values", ore_runtime::ore_map_map_values);
     map_fn!("ore_map_filter", ore_runtime::ore_map_filter);
+    map_fn!("ore_map_entries", ore_runtime::ore_map_entries);
+    map_fn!("ore_list_frequencies", ore_runtime::ore_list_frequencies);
+    map_fn!("ore_list_intersperse", ore_runtime::ore_list_intersperse);
+    // Math functions
+    map_fn!("ore_math_sqrt", ore_runtime::ore_math_sqrt);
+    map_fn!("ore_math_sin", ore_runtime::ore_math_sin);
+    map_fn!("ore_math_cos", ore_runtime::ore_math_cos);
+    map_fn!("ore_math_tan", ore_runtime::ore_math_tan);
+    map_fn!("ore_math_log", ore_runtime::ore_math_log);
+    map_fn!("ore_math_log10", ore_runtime::ore_math_log10);
+    map_fn!("ore_math_exp", ore_runtime::ore_math_exp);
+    map_fn!("ore_math_pow", ore_runtime::ore_math_pow);
+    map_fn!("ore_math_abs", ore_runtime::ore_math_abs);
+    map_fn!("ore_math_floor", ore_runtime::ore_math_floor);
+    map_fn!("ore_math_ceil", ore_runtime::ore_math_ceil);
+    map_fn!("ore_math_round", ore_runtime::ore_math_round);
+    map_fn!("ore_math_pi", ore_runtime::ore_math_pi);
+    map_fn!("ore_math_e", ore_runtime::ore_math_e);
+    map_fn!("ore_math_atan2", ore_runtime::ore_math_atan2);
     // String parsing
     map_fn!("ore_str_parse_int", ore_runtime::ore_str_parse_int);
     map_fn!("ore_str_parse_float", ore_runtime::ore_str_parse_float);

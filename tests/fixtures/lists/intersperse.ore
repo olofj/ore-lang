@@ -1,0 +1,5 @@
+fn main
+  -- Intersperse integers
+  nums := [1, 2, 3, 4]
+  result := nums.intersperse(0)
+  result.each(x => print x)

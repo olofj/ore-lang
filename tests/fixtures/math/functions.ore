@@ -1,0 +1,32 @@
+fn main
+  -- Basic math
+  print sqrt(16.0)
+  print sqrt(2.0)
+
+  -- Trigonometry
+  p := pi()
+  print p
+
+  -- sin(pi) should be ~0
+  s := sin(p)
+  print s < 0.0001
+
+  -- cos(0) = 1
+  print cos(0.0)
+
+  -- Logarithms
+  print log(1.0)
+  print exp(0.0)
+
+  -- Power
+  print pow(2.0, 10.0)
+
+  -- Floor/ceil
+  print math_floor(3.7)
+  print math_ceil(3.2)
+  print math_round(3.5)
+
+  -- Euler's number
+  e := euler()
+  print e > 2.71
+  print e < 2.72

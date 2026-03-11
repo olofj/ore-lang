@@ -1150,3 +1150,53 @@ fn types_numeric_methods() {
         "3.0",                 // to_float
     ]);
 }
+
+#[test]
+fn lists_frequencies() {
+    let out = run_ore("lists/frequencies.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["3", "2", "1", "1", "2", "3"]);
+}
+
+#[test]
+fn lists_intersperse() {
+    let out = run_ore("lists/intersperse.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["1", "0", "2", "0", "3", "0", "4"]);
+}
+
+#[test]
+fn maps_entries() {
+    let out = run_ore("maps/entries.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["3", "60"]);
+}
+
+#[test]
+fn math_functions() {
+    let out = run_ore("math/functions.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "4.0", "1.4142135623730951",   // sqrt
+        "3.141592653589793",            // pi
+        "true",                         // sin(pi) < 0.0001
+        "1.0",                          // cos(0)
+        "0.0",                          // log(1)
+        "1.0",                          // exp(0)
+        "1024.0",                       // pow(2, 10)
+        "3.0",                          // floor(3.7)
+        "4.0",                          // ceil(3.2)
+        "4.0",                          // round(3.5)
+        "true", "true",                // euler bounds
+    ]);
+}
+
+#[test]
+fn showcase12() {
+    let out = run_ore("showcase12.ore");
+    assert!(out.contains("distance: 5.0"));
+    assert!(out.contains("yes: 3, no: 2, abstain: 1"));
+    assert!(out.contains("date: 2025-03-10"));
+    assert!(out.contains("triangle area: 6.0"));
+    assert!(out.contains("showcase12 ok"));
+}
