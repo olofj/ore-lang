@@ -2383,6 +2383,25 @@ fn showcase95_functional_patterns() {
 }
 
 #[test]
+fn showcase96_time_env_random() {
+    let out = run_ore("showcase96.ore");
+    assert!(out.contains("time is positive: true"));
+    assert!(out.contains("PATH starts with /: true"));
+    assert!(out.contains("missing env empty: true"));
+    assert!(out.contains("random in range: true"));
+}
+
+#[test]
+fn showcase97_state_machine() {
+    let out = run_ore("showcase97.ore");
+    assert!(out.contains("start: idle"));
+    assert!(out.contains("-> done(50)"));
+    assert!(out.contains("finished in 7 iterations"));
+    assert!(out.contains("Alice: 95 (excellent)"));
+    assert!(out.contains("Dave: 78 (passing)"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

@@ -1,0 +1,56 @@
+-- Showcase 97: State machine and data processing
+
+type State
+  Idle
+  Running(steps: Int)
+  Done(result: Int)
+
+fn step s:State -> State
+  match s
+    Idle -> Running(steps: 0)
+    Running steps ->
+      if steps >= 5
+        Done(result: steps * 10)
+      else
+        Running(steps: steps + 1)
+    Done result -> Done(result: result)
+
+fn state_name s:State -> Str
+  match s
+    Idle -> "idle"
+    Running steps -> "running({steps})"
+    Done result -> "done({result})"
+
+fn main
+  -- Run a state machine
+  mut state := Idle
+  print "start: {state_name(state)}"
+
+  mut iterations := 0
+  loop
+    state = step(state)
+    iterations = iterations + 1
+    print "  -> {state_name(state)}"
+    match state
+      Done _ -> break
+      _ -> 0
+
+  print "finished in {iterations} iterations"
+
+  -- Data transformation pipeline
+  raw := "  Alice:95  Bob:87  Carol:92  Dave:78  "
+  names := raw.trim().split("  ")
+
+  print ""
+  print "scores:"
+  for entry in names
+    parts := entry.split(":")
+    name := parts[0]
+    score := parts[1]
+    label := if score.parse_int() >= 90
+      "excellent"
+    else if score.parse_int() >= 80
+      "good"
+    else
+      "passing"
+    print "  {name}: {score} ({label})"

@@ -1,0 +1,22 @@
+-- Showcase 96: Time and environment
+
+fn main
+  -- Time functions
+  t := time_now()
+  print "time (ms): {t}"
+  print "time is positive: {t > 0}"
+
+  -- Environment variables
+  path := env_get("PATH")
+  print "PATH starts with /: {path.starts_with("/")}"
+  print "PATH len > 0: {path.len() > 0}"
+
+  -- Missing env returns empty string
+  missing := env_get("ORE_NONEXISTENT_VAR_12345")
+  print "missing env empty: {missing.len() == 0}"
+
+  -- Random numbers
+  r1 := rand_int(1, 100)
+  r2 := rand_int(1, 100)
+  print "random in range: {r1 >= 1 and r1 <= 100}"
+  print "two randoms differ or same: {r1 == r2 or r1 != r2}"
