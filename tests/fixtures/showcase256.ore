@@ -1,0 +1,37 @@
+-- Showcase 256: Comprehensive record showcase
+
+type Point2D { x:Float, y:Float }
+type Rect { origin:Point2D, width:Float, height:Float }
+
+fn rect_area r:Rect -> Float
+  r.width * r.height
+
+fn rect_perimeter r:Rect -> Float
+  2.0 * (r.width + r.height)
+
+fn rect_center r:Rect -> Point2D
+  Point2D(x: r.origin.x + r.width / 2.0, y: r.origin.y + r.height / 2.0)
+
+fn point_str p:Point2D -> Str
+  "({p.x}, {p.y})"
+
+fn main
+  r1 := Rect(origin: Point2D(x: 0.0, y: 0.0), width: 10.0, height: 5.0)
+  r2 := Rect(origin: Point2D(x: 3.0, y: 2.0), width: 4.0, height: 6.0)
+
+  print "Rectangle 1:"
+  print "  Origin: {point_str(r1.origin)}"
+  print "  Size: {r1.width} x {r1.height}"
+  print "  Area: {rect_area(r1)}"
+  print "  Perimeter: {rect_perimeter(r1)}"
+  center1 := rect_center(r1)
+  print "  Center: {point_str(center1)}"
+
+  print ""
+  print "Rectangle 2:"
+  print "  Origin: {point_str(r2.origin)}"
+  print "  Size: {r2.width} x {r2.height}"
+  print "  Area: {rect_area(r2)}"
+  print "  Perimeter: {rect_perimeter(r2)}"
+  center2 := rect_center(r2)
+  print "  Center: {point_str(center2)}"

@@ -1,0 +1,45 @@
+-- Showcase 259: Maze generation (simple)
+
+fn main
+  -- Simple maze using arrays
+  rows := 7
+  cols := 13
+  
+  -- Initialize with walls
+  mut maze := range(0, rows * cols) | map(n => 1)
+  
+  -- Carve paths (simple pattern)
+  -- Horizontal corridors
+  for c in range(1, cols - 1)
+    maze[1 * cols + c] = 0
+    maze[3 * cols + c] = 0
+    maze[5 * cols + c] = 0
+  
+  -- Vertical connections
+  maze[2 * cols + 1] = 0
+  maze[2 * cols + 11] = 0
+  maze[4 * cols + 3] = 0
+  maze[4 * cols + 9] = 0
+  
+  -- Entry and exit
+  maze[1 * cols + 0] = 0
+  maze[5 * cols + 12] = 0
+  
+  -- Print maze
+  print "Maze:"
+  for r in range(0, rows)
+    mut line := ""
+    for c in range(0, cols)
+      if maze[r * cols + c] == 1
+        line = "{line}#"
+      else
+        line = "{line} "
+    print line
+  
+  -- Count open cells
+  open := maze | filter(c => c == 0) | count()
+  walls := maze | filter(c => c == 1) | count()
+  print ""
+  print "Open cells: {open}"
+  print "Wall cells: {walls}"
+  print "Total: {open + walls}"

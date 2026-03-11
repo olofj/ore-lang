@@ -1,0 +1,47 @@
+-- Showcase 254: String interpolation edge cases
+
+fn greet name:Str greeting:Str -> Str
+  "{greeting}, {name}!"
+
+fn repeat_with_sep s:Str n:Int sep:Str -> Str
+  mut result := s
+  for i in range(1, n)
+    result = "{result}{sep}{s}"
+  result
+
+fn main
+  -- Nested interpolation
+  x := 42
+  msg := "The value is {x}"
+  print "Message: {msg}"
+  print "Quoted: '{msg}'"
+
+  -- Interpolation with expressions
+  a := 10
+  b := 20
+  print "Sum: {a} + {b} = {a + b}"
+  print "Product: {a} * {b} = {a * b}"
+
+  -- Function calls in interpolation
+  print ""
+  print greet("World", "Hello")
+  print greet("Ore", "Welcome to")
+  print "Greeting: {greet("User", "Hi")}"
+
+  -- String building
+  print ""
+  print repeat_with_sep("la", 5, " ")
+  print repeat_with_sep("tick", 3, "-tock-")
+
+  -- Multi-level
+  print ""
+  inner := "inner"
+  outer := "outer({inner})"
+  print "nested: {outer}"
+  print "double: {"{x}"}"
+  
+  -- Empty and special
+  print ""
+  print "empty: ''"
+  print "newline: 'line1\nline2'"
+  print "tab: 'col1\tcol2'"

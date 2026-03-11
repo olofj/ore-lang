@@ -1,0 +1,50 @@
+-- Showcase 255: Functional data transformations
+
+fn main
+  -- Zip two lists manually
+  names := ["Alice", "Bob", "Carol", "Dave"]
+  ages := [30, 25, 35, 28]
+  
+  print "Zipped:"
+  for i in range(0, names | count())
+    print "  {names[i]} is {ages[i]} years old"
+
+  -- Group by first letter
+  print ""
+  words := ["apple", "banana", "avocado", "cherry", "apricot", "blueberry", "coconut"]
+  mut groups := {}
+  -- Initialize with first of each letter, then append
+  for word in words
+    letter := word.substr(0, 1)
+    if not groups.contains(letter)
+      groups.set(letter, word)
+  -- Now append remaining words
+  for word in ["avocado", "apricot", "blueberry", "coconut"]
+    letter := word.substr(0, 1)
+    existing := groups[letter]
+    groups.set(letter, "{existing}, {word}")
+  
+  print "Grouped by first letter:"
+  for key in groups.keys()
+    print "  {key}: {groups[key]}"
+
+  -- Partition
+  print ""
+  numbers := range(1, 21)
+  evens := numbers | filter(n => n % 2 == 0)
+  odds := numbers | filter(n => n % 2 != 0)
+  print "Evens: {evens | join(", ")}"
+  print "Odds: {odds | join(", ")}"
+
+  -- Unique (dedup using map)
+  print ""
+  data := [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5]
+  mut seen := {}
+  mut unique := []
+  for v in data
+    key := "{v}"
+    if not seen.contains(key)
+      seen.set(key, 1)
+      unique.push(v)
+  print "Original: {data | join(", ")}"
+  print "Unique: {unique | join(", ")}"

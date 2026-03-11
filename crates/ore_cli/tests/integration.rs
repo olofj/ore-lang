@@ -3900,6 +3900,89 @@ fn showcase250_grand_finale() {
 }
 
 #[test]
+fn showcase251_match_blocks() {
+    let out = run_ore("showcase251.ore");
+    assert!(out.contains("Moved to (1, 0)"));
+    assert!(out.contains("Said: hello"));
+    assert!(out.contains("Final position: (1, -1)"));
+    assert!(out.contains("All messages: hello, bye"));
+}
+
+#[test]
+fn showcase252_graph_bfs() {
+    let out = run_ore("showcase252.ore");
+    assert!(out.contains("A: B, C"));
+    assert!(out.contains("Visiting E"));
+    assert!(out.contains("Path found!"));
+}
+
+#[test]
+fn showcase253_weekdays() {
+    let out = run_ore("showcase253.ore");
+    assert!(out.contains("6. Saturday (weekend)"));
+    assert!(out.contains("Workdays: 5, Weekends: 2"));
+}
+
+#[test]
+fn showcase254_interpolation() {
+    let out = run_ore("showcase254.ore");
+    assert!(out.contains("Sum: 10 + 20 = 30"));
+    assert!(out.contains("Hello, World!"));
+    assert!(out.contains("la la la la la"));
+    assert!(out.contains("tick-tock-tick-tock-tick"));
+}
+
+#[test]
+fn showcase255_transformations() {
+    let out = run_ore("showcase255.ore");
+    assert!(out.contains("Alice is 30 years old"));
+    assert!(out.contains("a: apple, avocado, apricot"));
+    assert!(out.contains("Unique: 3, 1, 4, 5, 9, 2, 6"));
+}
+
+#[test]
+fn showcase256_nested_records() {
+    let out = run_ore("showcase256.ore");
+    assert!(out.contains("Area: 50.0"));
+    assert!(out.contains("Perimeter: 30.0"));
+    assert!(out.contains("Center: (5.0, 2.5)"));
+}
+
+#[test]
+fn showcase257_control_flow() {
+    let out = run_ore("showcase257.ore");
+    assert!(out.contains("27: 111 steps"));
+    assert!(out.contains("1 2 Fizz 4 Buzz Fizz"));
+    assert!(out.contains("121"));
+}
+
+#[test]
+fn showcase258_lambdas() {
+    let out = run_ore("showcase258.ore");
+    assert!(out.contains("double(5) = 10"));
+    assert!(out.contains("Sum 1-100: 5050"));
+    assert!(out.contains("Max of [5,2,8,1,9,3]: 9"));
+    assert!(out.contains("Top 5 even squares: 4, 16, 36, 64, 100"));
+}
+
+#[test]
+fn showcase259_maze() {
+    let out = run_ore("showcase259.ore");
+    assert!(out.contains("#############"));
+    assert!(out.contains("Open cells: 39"));
+    assert!(out.contains("Total: 91"));
+}
+
+#[test]
+fn showcase260_features_tour() {
+    let out = run_ore("showcase260.ore");
+    assert!(out.contains("Factorials: 1, 120, 3628800"));
+    assert!(out.contains("Cubes: 1, 8, 27, 64, 125"));
+    assert!(out.contains("Replace: Hello, Ore!"));
+    assert!(out.contains("42 = the answer"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

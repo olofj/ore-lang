@@ -1,0 +1,43 @@
+-- Showcase 258: Lambda showcase
+
+fn apply f:(Int -> Int) x:Int -> Int
+  f(x)
+
+fn apply_str f:(Str -> Str) s:Str -> Str
+  f(s)
+
+fn main
+  -- Basic lambdas
+  print "Lambda applications:"
+  print "  double(5) = {apply(n => n * 2, 5)}"
+  print "  square(7) = {apply(n => n * n, 7)}"
+  print "  negate(42) = {apply(n => 0 - n, 42)}"
+
+  -- Lambda with pipeline
+  print ""
+  result := range(1, 11) | map(n => n * n) | filter(n => n > 20) | sum()
+  print "Sum of squares > 20 (1-10): {result}"
+
+  -- Fold with lambda
+  sum := range(1, 101) | fold(0, (acc, n) => acc + n)
+  print "Sum 1-100: {sum}"
+
+  -- Multi-param lambdas in fold
+  max := [5, 2, 8, 1, 9, 3] | fold(0, (a, b) => if a > b then a else b)
+  print "Max of [5,2,8,1,9,3]: {max}"
+
+  -- String operations
+  print ""
+  upper := "hello".to_upper()
+  print "String transform: {upper}"
+  excl := "wow!"
+  print "String concat: {excl}"
+
+  -- Nested pipeline
+  print ""
+  data := range(1, 21)
+  top5_even_squares := data
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | take(5)
+  print "Top 5 even squares: {top5_even_squares | join(", ")}"

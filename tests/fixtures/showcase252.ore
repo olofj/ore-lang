@@ -1,0 +1,57 @@
+-- Showcase 252: Complex data structures with maps
+
+fn main
+  -- Adjacency matrix via map
+  mut edges := {}
+  edges.set("A->B", 1)
+  edges.set("A->C", 1)
+  edges.set("B->D", 1)
+  edges.set("C->D", 1)
+  edges.set("D->E", 1)
+
+  nodes := ["A", "B", "C", "D", "E"]
+  
+  print "Adjacency check:"
+  for src in nodes
+    mut neighbors := ""
+    for dst in nodes
+      key := "{src}->{dst}"
+      if edges.contains(key)
+        if neighbors == ""
+          neighbors = dst
+        else
+          neighbors = "{neighbors}, {dst}"
+    if neighbors != ""
+      print "  {src}: {neighbors}"
+
+  -- Path existence (simplified DFS via iteration)
+  print ""
+  print "Path A to E:"
+  mut visited := {}
+  mut queue := ["A"]
+  mut found := false
+  mut step := 0
+  while (queue | count()) > 0 and not found and step < 20
+    current := queue[0]
+    -- Remove first element
+    mut new_queue := []
+    for i in range(1, queue | count())
+      new_queue.push(queue[i])
+    queue = new_queue
+    
+    if not visited.contains(current)
+      visited.set(current, 1)
+      print "  Visiting {current}"
+      if current == "E"
+        found = true
+      else
+        for dst in nodes
+          key := "{current}->{dst}"
+          if edges.contains(key)
+            queue.push(dst)
+    step = step + 1
+  
+  if found
+    print "Path found!"
+  else
+    print "No path found"

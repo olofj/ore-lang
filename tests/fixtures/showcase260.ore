@@ -1,0 +1,57 @@
+-- Showcase 260: Mini language features tour
+
+fn factorial n:Int -> Int
+  if n <= 1
+    return 1
+  n * factorial(n - 1)
+
+fn fib n:Int -> Int
+  if n < 2
+    return n
+  fib(n - 1) + fib(n - 2)
+
+type Pair { first:Int, second:Int }
+
+fn pair_sum p:Pair -> Int
+  p.first + p.second
+
+fn main
+  -- Recursion
+  print "Factorials: {factorial(1)}, {factorial(5)}, {factorial(10)}"
+  print "Fibonacci: {fib(0)}, {fib(1)}, {fib(5)}, {fib(10)}"
+
+  -- Records
+  print ""
+  p := Pair(first: 10, second: 20)
+  print "Pair({p.first}, {p.second}) sum = {pair_sum(p)}"
+
+  -- Pipelines
+  print ""
+  cubes := range(1, 6) | map(n => n * n * n) | join(", ")
+  print "Cubes: {cubes}"
+
+  -- String methods
+  print ""
+  s := "Hello, World!"
+  print "Upper: {s.to_upper()}"
+  print "Lower: {s.to_lower()}"
+  print "Replace: {s.replace("World", "Ore")}"
+  print "Reverse: {s.reverse()}"
+
+  -- Map
+  print ""
+  mut config := {}
+  config.set("lang", "Ore")
+  config.set("version", "0.1")
+  print "Config: lang={config["lang"]}, version={config["version"]}"
+
+  -- Match
+  print ""
+  for n in [1, 2, 3, 10, 42]
+    label := match n
+      1 -> "one"
+      2 -> "two"
+      3 -> "three"
+      42 -> "the answer"
+      _ -> "other"
+    print "  {n} = {label}"

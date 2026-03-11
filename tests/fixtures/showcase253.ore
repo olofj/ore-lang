@@ -1,0 +1,57 @@
+-- Showcase 253: Type system showcase
+
+type Weekday
+  Monday
+  Tuesday
+  Wednesday
+  Thursday
+  Friday
+  Saturday
+  Sunday
+
+fn is_weekend d:Weekday -> Bool
+  match d
+    Saturday -> true
+    Sunday -> true
+    _ -> false
+
+fn day_name d:Weekday -> Str
+  match d
+    Monday -> "Monday"
+    Tuesday -> "Tuesday"
+    Wednesday -> "Wednesday"
+    Thursday -> "Thursday"
+    Friday -> "Friday"
+    Saturday -> "Saturday"
+    Sunday -> "Sunday"
+
+fn day_number d:Weekday -> Int
+  match d
+    Monday -> 1
+    Tuesday -> 2
+    Wednesday -> 3
+    Thursday -> 4
+    Friday -> 5
+    Saturday -> 6
+    Sunday -> 7
+
+fn main
+  days := [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
+  
+  print "Week overview:"
+  for d in days
+    mut kind := "workday"
+    if is_weekend(d)
+      kind = "weekend"
+    print "  {day_number(d)}. {day_name(d)} ({kind})"
+
+  -- Count workdays vs weekends
+  mut workdays := 0
+  mut weekends := 0
+  for d in days
+    if is_weekend(d)
+      weekends = weekends + 1
+    else
+      workdays = workdays + 1
+  print ""
+  print "Workdays: {workdays}, Weekends: {weekends}"

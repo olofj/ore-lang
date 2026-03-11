@@ -1,0 +1,47 @@
+-- Showcase 251: Match arms with blocks (statement bodies)
+
+type Action
+  Move(dx: Int, dy: Int)
+  Speak(msg: Str)
+  Wait(turns: Int)
+
+fn action_str a:Action -> Str
+  match a
+    Move dx dy -> "move({dx},{dy})"
+    Speak m -> "speak({m})"
+    Wait t -> "wait({t})"
+
+fn main
+  actions := [
+    Move(dx: 1, dy: 0),
+    Speak(msg: "hello"),
+    Wait(turns: 3),
+    Move(dx: 0, dy: -1),
+    Speak(msg: "bye")
+  ]
+
+  mut x := 0
+  mut y := 0
+  mut total_wait := 0
+  mut messages := ""
+
+  for a in actions
+    match a
+      Move dx dy ->
+        x = x + dx
+        y = y + dy
+        print "Moved to ({x}, {y})"
+      Speak m ->
+        if messages == ""
+          messages = m
+        else
+          messages = "{messages}, {m}"
+        print "Said: {m}"
+      Wait t ->
+        total_wait = total_wait + t
+        print "Waited {t} turns"
+
+  print ""
+  print "Final position: ({x}, {y})"
+  print "Total wait: {total_wait}"
+  print "All messages: {messages}"
