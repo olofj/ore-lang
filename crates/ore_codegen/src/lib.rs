@@ -740,6 +740,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_list_count", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_sort_by", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_sort_by_key", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_min_by", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
+        self.module.add_function("ore_list_max_by", i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_sort_by_key_str", void_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_list_index_of", i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_list_unique", ptr_type.fn_type(&[ptr_type.into()], false), ext);
@@ -2768,6 +2770,44 @@ impl<'ctx> CodeGen<'ctx> {
                 let rt = self.module.get_function("ore_list_sort_by_key").unwrap();
                 bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
                 Ok((list_val, ValKind::List))
+            }
+            "min_by" | "max_by" => {
+                if args.len() != 1 {
+                    return Err(CodeGenError { line: None, msg: format!("{} takes 1 argument (key function)", method) });
+                }
+                let elem_kind = self.last_list_elem_kind.clone();
+                let lambda_fn = match &args[0] {
+                    Expr::Lambda { params, body } => {
+                        let ek = elem_kind.clone().unwrap_or(ValKind::Int);
+                        self.compile_lambda_with_kinds(params, body, func, Some(&[ek]))?
+                    }
+                    Expr::Ident(name) => {
+                        let (f, _) = self.resolve_function(name)?;
+                        f
+                    }
+                    _ => return Err(CodeGenError { line: None, msg: format!("{} requires a key function", method) }),
+                };
+                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
+                    self.build_captures_struct(&lambda_name)?
+                } else {
+                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
+                };
+                let fn_name = if method == "min_by" { "ore_list_min_by" } else { "ore_list_max_by" };
+                let rt = self.module.get_function(fn_name).unwrap();
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "mby"))?;
+                let val = self.call_result_to_value(result)?;
+                let ek = elem_kind.unwrap_or(ValKind::Int);
+                match &ek {
+                    ValKind::Str | ValKind::List | ValKind::Map => {
+                        let ptr = bld!(self.builder.build_int_to_ptr(
+                            val.into_int_value(), self.ptr_type(), "mby2p"
+                        ))?;
+                        Ok((ptr.into(), ek))
+                    }
+                    _ => Ok((val, ek))
+                }
             }
             "reverse" => {
                 let rt = self.module.get_function("ore_list_reverse").unwrap();

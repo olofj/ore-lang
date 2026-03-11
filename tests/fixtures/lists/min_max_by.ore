@@ -1,0 +1,13 @@
+fn main
+  nums := [3, 1, 4, 1, 5, 9, 2, 6]
+
+  -- min/max by identity
+  print nums.min_by(x => x)
+  print nums.max_by(x => x)
+
+  -- min/max by transformation (closest to 4)
+  closest := nums.min_by(x => (x - 4).abs())
+  print closest
+
+  -- min/max by negative (largest via min_by of negative)
+  print nums.min_by(x => 0 - x)

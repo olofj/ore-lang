@@ -884,7 +884,7 @@ impl TypeChecker {
                 "map" | "filter" => obj_ty.clone(),
                 "each" => Type::Unit,
                 "reduce" => Type::Any,
-                "find" => *elem.clone(),
+                "find" | "min_by" | "max_by" => *elem.clone(),
                 "join" => Type::Str,
                 "sort" | "sort_by" | "reverse" | "window" | "chunks" => obj_ty.clone(),
                 "count_by" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),

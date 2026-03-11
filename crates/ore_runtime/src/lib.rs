@@ -780,6 +780,54 @@ pub extern "C" fn ore_list_sort_by(
     }
 }
 
+/// Find the element with the minimum key value.
+#[no_mangle]
+pub extern "C" fn ore_list_min_by(
+    list: *mut OreList,
+    key_fn: extern "C" fn(i64, *mut u8) -> i64,
+    env_ptr: *mut u8,
+) -> i64 {
+    unsafe {
+        let src = &*list;
+        if src.len == 0 { return 0; }
+        let mut best_elem = *src.data;
+        let mut best_key = key_fn(best_elem, env_ptr);
+        for i in 1..src.len as usize {
+            let elem = *src.data.add(i);
+            let key = key_fn(elem, env_ptr);
+            if key < best_key {
+                best_key = key;
+                best_elem = elem;
+            }
+        }
+        best_elem
+    }
+}
+
+/// Find the element with the maximum key value.
+#[no_mangle]
+pub extern "C" fn ore_list_max_by(
+    list: *mut OreList,
+    key_fn: extern "C" fn(i64, *mut u8) -> i64,
+    env_ptr: *mut u8,
+) -> i64 {
+    unsafe {
+        let src = &*list;
+        if src.len == 0 { return 0; }
+        let mut best_elem = *src.data;
+        let mut best_key = key_fn(best_elem, env_ptr);
+        for i in 1..src.len as usize {
+            let elem = *src.data.add(i);
+            let key = key_fn(elem, env_ptr);
+            if key > best_key {
+                best_key = key;
+                best_elem = elem;
+            }
+        }
+        best_elem
+    }
+}
+
 /// Sort list in-place by a key function that returns an i64.
 /// The key function is called once per element to compute a sort key.
 #[no_mangle]

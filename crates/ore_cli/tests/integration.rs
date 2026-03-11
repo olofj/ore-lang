@@ -995,6 +995,13 @@ fn types_bool_methods() {
 }
 
 #[test]
+fn lists_min_max_by() {
+    let out = run_ore("lists/min_max_by.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["1", "9", "4", "9"]);
+}
+
+#[test]
 fn lists_window_chunks() {
     let out = run_ore("lists/window_chunks.ore");
     let lines: Vec<&str> = out.lines().collect();
