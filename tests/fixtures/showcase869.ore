@@ -1,0 +1,138 @@
+-- Showcase 869: Finite State Transducer (FST)
+
+-- An FST maps input strings to output strings.
+-- It's like a finite automaton but produces output symbols.
+-- Example 1: Morse code encoder (letters to dots/dashes)
+-- Example 2: Run-length encoding transducer
+-- Example 3: Caesar cipher transducer
+
+fn morse_char c:Str -> Str
+  if c == "A" or c == "a" then ".-"
+  else if c == "B" or c == "b" then "-..."
+  else if c == "C" or c == "c" then "-.-."
+  else if c == "D" or c == "d" then "-.."
+  else if c == "E" or c == "e" then "."
+  else if c == "F" or c == "f" then "..-."
+  else if c == "G" or c == "g" then "--."
+  else if c == "H" or c == "h" then "...."
+  else if c == "I" or c == "i" then ".."
+  else if c == "J" or c == "j" then ".---"
+  else if c == "K" or c == "k" then "-.-"
+  else if c == "L" or c == "l" then ".-.."
+  else if c == "M" or c == "m" then "--"
+  else if c == "N" or c == "n" then "-."
+  else if c == "O" or c == "o" then "---"
+  else if c == "P" or c == "p" then ".--."
+  else if c == "R" or c == "r" then ".-."
+  else if c == "S" or c == "s" then "..."
+  else if c == "T" or c == "t" then "-"
+  else if c == "U" or c == "u" then "..-"
+  else if c == "V" or c == "v" then "...-"
+  else if c == "W" or c == "w" then ".--"
+  else "?"
+
+fn fst_morse input:Str -> Str
+  words := input.words()
+  mut result := ""
+  for wi in range(0, words.len())
+    w := words[wi]
+    if wi > 0
+      result = result + " / "
+    chars := w.chars()
+    for ci in range(0, chars.len())
+      c := chars[ci]
+      if ci > 0
+        result = result + " "
+      result = result + morse_char(c)
+  result
+
+fn fst_rle input:Str -> Str
+  chars := input.chars()
+  n := chars.len()
+  if n == 0
+    ""
+  else
+    mut result := ""
+    mut cur := chars[0]
+    mut count := 1
+    for i in range(1, n)
+      c := chars[i]
+      if c == cur
+        count = count + 1
+      else
+        if count == 1
+          result = result + cur
+        else
+          result = result + str(count) + cur
+        cur = c
+        count = 1
+    if count == 1
+      result = result + cur
+    else
+      result = result + str(count) + cur
+    result
+
+fn fst_caesar input:Str shift:Int -> Str
+  upper := input.to_upper()
+  chars := upper.chars()
+  alphabet := ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+  mut result := ""
+  for i in range(0, chars.len())
+    c := chars[i]
+    idx := alphabet.index_of(c)
+    if idx >= 0
+      new_idx := (idx + shift) % 26
+      result = result + alphabet[new_idx]
+    else
+      result = result + c
+  result
+
+fn main
+  print "Finite State Transducer Examples"
+  print ""
+
+  print "FST 1: Morse Code Encoder"
+  print "  (dots and dashes, words separated by /)"
+  words := ["SOS", "HELLO", "MORSE"]
+  for i in range(0, words.len())
+    w := words[i]
+    encoded := fst_morse(w)
+    print "  '{w}' -> '{encoded}'"
+
+  print ""
+  print "FST 2: Run-Length Encoding"
+  inputs := ["AAABBC", "ABCABC", "AAAA", "AABBCCDD", "A", "AABBBCCCC"]
+  for i in range(0, inputs.len())
+    inp := inputs[i]
+    encoded := fst_rle(inp)
+    print "  '{inp}' -> '{encoded}'"
+
+  print ""
+  print "FST 3: Caesar Cipher (shift=3)"
+  messages := ["HELLO", "WORLD", "ATTACKATDAWN"]
+  for i in range(0, messages.len())
+    msg := messages[i]
+    enc := fst_caesar(msg, 3)
+    dec := fst_caesar(enc, 23)
+    print "  '{msg}' -> '{enc}' -> '{dec}'"
+
+  print ""
+  print "FST 4: Vowel-deletion transducer"
+  vd_inputs := ["hello", "world", "automata", "transducer"]
+  for i in range(0, vd_inputs.len())
+    inp := vd_inputs[i]
+    chars := inp.chars()
+    mut out := ""
+    vowels := "aeiouAEIOU"
+    for j in range(0, chars.len())
+      c := chars[j]
+      if not vowels.contains(c)
+        out = out + c
+    print "  '{inp}' -> '{out}'"
+
+  print ""
+  print "FST as recognizer/transducer duality:"
+  print "  An FST with empty output = FSA (acceptor)"
+  print "  Composition of FSTs = pipeline transformation"
+  rle_then_morse := fst_morse(fst_rle("AAABBC"))
+  print "  RLE then Morse of 'AAABBC': '{rle_then_morse}'"

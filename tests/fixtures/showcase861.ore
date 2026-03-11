@@ -1,0 +1,79 @@
+-- Showcase 861: Finite Automaton Simulator
+
+-- Simulates a DFA that accepts strings over {a,b} ending in "ab".
+-- States: 0=start, 1=saw_a, 2=saw_ab (accept)
+-- Transition table stored as flat list: [state*alpha_size + symbol_idx -> next_state]
+-- Alphabet: 'a'=0, 'b'=1
+
+fn fa_new_dfa -> List
+  -- 3 states x 2 symbols = 6 entries
+  -- state0: a->1, b->0
+  -- state1: a->1, b->2
+  -- state2: a->1, b->0
+  [1, 0, 1, 2, 1, 0]
+
+fn fa_symbol_idx c:Str -> Int
+  if c == "a"
+    0
+  else
+    1
+
+fn fa_step table:List state:Int symbol:Str -> Int
+  idx := state * 2 + fa_symbol_idx(symbol)
+  table[idx]
+
+fn fa_run table:List input:Str -> Int
+  chars := input.chars()
+  mut state := 0
+  for i in range(0, chars.len())
+    c := chars[i]
+    state = fa_step(table, state, c)
+  state
+
+fn fa_accepts table:List accept_states:List input:Str -> Bool
+  final := fa_run(table, input)
+  accept_states.contains(final)
+
+fn fa_trace table:List input:Str -> Str
+  chars := input.chars()
+  mut state := 0
+  mut trace := str(state)
+  for i in range(0, chars.len())
+    c := chars[i]
+    state = fa_step(table, state, c)
+    trace = trace + " -" + c + "-> " + str(state)
+  trace
+
+fn main
+  print "Finite Automaton Simulator"
+  print "DFA: accepts strings over a,b ending in 'ab'"
+  print "States: 0=start, 1=saw_a, 2=saw_ab(accept)"
+  print ""
+
+  dfa := fa_new_dfa()
+  accept := [2]
+
+  inputs := ["ab", "aab", "bab", "abab", "ba", "b", "a", "ababab"]
+  print "Input    | Accepted | Trace"
+  print "---------+----------+------"
+  for i in range(0, inputs.len())
+    inp := inputs[i]
+    acc := fa_accepts(dfa, accept, inp)
+    trace := fa_trace(dfa, inp)
+    result := if acc then "yes" else "no"
+    padded := inp.pad_right(8)
+    print "{padded} | {result.pad_right(8)} | {trace}"
+
+  print ""
+  print "NFA simulation: accepts strings containing 'aa'"
+  print "(Subset construction result: 4-state DFA)"
+  -- Simple DFA for 'aa' substring: states 0,1,2
+  -- 0: initial, 1: saw one a, 2: saw aa (sticky accept)
+  nfa_table := [1, 0, 2, 0, 2, 2]
+  nfa_accept := [2]
+  inputs2 := ["aa", "baa", "aba", "aab", "bbbb", "aaa"]
+  for i in range(0, inputs2.len())
+    inp := inputs2[i]
+    acc := fa_accepts(nfa_table, nfa_accept, inp)
+    result := if acc then "accepts" else "rejects"
+    print "  '{inp}' -> {result}"

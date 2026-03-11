@@ -10788,6 +10788,186 @@ fn showcase850_fibonacci_heap() {
 }
 
 #[test]
+fn showcase851_hamming_code() {
+    let out = run_ore("showcase851.ore");
+    assert!(out.contains("Hamming(7,4) Error Detection and Correction:"), "got: {out}");
+    assert!(out.contains("Encoded (7 bits): 0110011"), "got: {out}");
+    assert!(out.contains("Syndrome (no error): 0"), "got: {out}");
+    assert!(out.contains("Hamming(7,4): rate=4/7, detects 2-bit errors, corrects 1-bit errors"), "got: {out}");
+}
+
+#[test]
+fn showcase852_crc_checksum() {
+    let out = run_ore("showcase852.ore");
+    assert!(out.contains("CRC Checksum Computation:"), "got: {out}");
+    assert!(out.contains("CRC-8: 246"), "got: {out}");
+    assert!(out.contains("Error detected! (CRC mismatch)"), "got: {out}");
+    assert!(out.contains("Data+CRC remainder: 0"), "got: {out}");
+}
+
+#[test]
+fn showcase853_reed_solomon() {
+    let out = run_ore("showcase853.ore");
+    assert!(out.contains("Reed-Solomon Error Correction Simulation:"), "got: {out}");
+    assert!(out.contains("gf_add(45, 67) = 110"), "got: {out}");
+    assert!(out.contains("Valid codeword: true"), "got: {out}");
+    assert!(out.contains("Reed-Solomon: RS(n,k) corrects (n-k)/2 errors"), "got: {out}");
+}
+
+#[test]
+fn showcase854_arithmetic_coding() {
+    let out = run_ore("showcase854.ore");
+    assert!(out.contains("Arithmetic Coding Simulation:"), "got: {out}");
+    assert!(out.contains("Encode 'aab': range=[125000,187500]"), "got: {out}");
+    assert!(out.contains("Decode 156250: 'aab'"), "got: {out}");
+    assert!(out.contains("Arithmetic coding: asymptotically optimal, approaches entropy limit"), "got: {out}");
+}
+
+#[test]
+fn showcase855_shannon_entropy() {
+    let out = run_ore("showcase855.ore");
+    assert!(out.contains("Shannon Entropy Calculation:"), "got: {out}");
+    assert!(out.contains("P(H)=0.5, P(T)=0.5 => H = 1000 milli-bits"), "got: {out}");
+    assert!(out.contains("Uniform [0.25,0.25,0.25,0.25] => H = 2000 milli-bits"), "got: {out}");
+    assert!(out.contains("Shannon entropy: fundamental measure of information and uncertainty"), "got: {out}");
+}
+
+#[test]
+fn showcase856_huffman_codes() {
+    let out = run_ore("showcase856.ore");
+    assert!(out.contains("Huffman Tree with Variable-Length Codes:"), "got: {out}");
+    assert!(out.contains("Tree built: root weight = 100 (total frequency)"), "got: {out}");
+    assert!(out.contains("A(freq=45): 1 bits"), "got: {out}");
+    assert!(out.contains("Huffman coding: optimal prefix-free code, minimizes expected code length"), "got: {out}");
+}
+
+#[test]
+fn showcase857_convolutional_code() {
+    let out = run_ore("showcase857.ore");
+    assert!(out.contains("Convolutional Code Simulation:"), "got: {out}");
+    assert!(out.contains("Output: 111000010111"), "got: {out}");
+    assert!(out.contains("state(0,0) + in=1 -> out=(1,1) next_state=(1,0)"), "got: {out}");
+    assert!(out.contains("Convolutional codes: memory-based channel coding with Viterbi decoding"), "got: {out}");
+}
+
+#[test]
+fn showcase858_turbo_interleaver() {
+    let out = run_ore("showcase858.ore");
+    assert!(out.contains("Turbo Code Interleaver:"), "got: {out}");
+    assert!(out.contains("Permutation: 6, 3, 2, 4, 8, 11, 10, 14, 7, 5, 0, 12, 9, 15, 13, 1"), "got: {out}");
+    assert!(out.contains("Original:     1011001011100100"), "got: {out}");
+    assert!(out.contains("Turbo codes: achieve within 0.5 dB of Shannon limit"), "got: {out}");
+}
+
+#[test]
+fn showcase859_ldpc_code() {
+    let out = run_ore("showcase859.ore");
+    assert!(out.contains("LDPC Code Simulation:"), "got: {out}");
+    assert!(out.contains("101 -> 101101 syndrome=000 valid=true"), "got: {out}");
+    assert!(out.contains("111 -> 111000 syndrome=000 valid=true"), "got: {out}");
+    assert!(out.contains("LDPC codes: near-Shannon-limit, O(n) decoding complexity via belief propagation"), "got: {out}");
+}
+
+#[test]
+fn showcase860_channel_capacity() {
+    let out = run_ore("showcase860.ore");
+    assert!(out.contains("Information Channel Capacity:"), "got: {out}");
+    assert!(out.contains("SNR=0 dB: C = 1000 kbps"), "got: {out}");
+    assert!(out.contains("p=50%: C = 0 milli-bits/use"), "got: {out}");
+    assert!(out.contains("Channel capacity: fundamental limit on reliable information transmission rate"), "got: {out}");
+}
+
+#[test]
+fn showcase861_finite_automaton() {
+    let out = run_ore("showcase861.ore");
+    assert!(out.contains("Finite Automaton Simulator"), "got: {out}");
+    assert!(out.contains("ab       | yes"), "got: {out}");
+    assert!(out.contains("ba       | no"), "got: {out}");
+    assert!(out.contains("'aa' -> accepts"), "got: {out}");
+}
+
+#[test]
+fn showcase862_pushdown_automaton() {
+    let out = run_ore("showcase862.ore");
+    assert!(out.contains("Pushdown Automaton Simulator"), "got: {out}");
+    assert!(out.contains("aabb        | accept"), "got: {out}");
+    assert!(out.contains("aab         | reject"), "got: {out}");
+    assert!(out.contains("'(())' -> balanced"), "got: {out}");
+}
+
+#[test]
+fn showcase863_turing_machine() {
+    let out = run_ore("showcase863.ore");
+    assert!(out.contains("Turing Machine Simulator"), "got: {out}");
+    assert!(out.contains("0011      | accept"), "got: {out}");
+    assert!(out.contains("0101      | reject"), "got: {out}");
+    assert!(out.contains("no 0s or 1s remain -> ACCEPT"), "got: {out}");
+}
+
+#[test]
+fn showcase864_cellular_automaton() {
+    let out = run_ore("showcase864.ore");
+    assert!(out.contains("Cellular Automaton: Rule 110"), "got: {out}");
+    assert!(out.contains("Rule 110 is Turing-complete"), "got: {out}");
+    assert!(out.contains("Gen  1: ......................................##"), "got: {out}");
+    assert!(out.contains("111 -> 0"), "got: {out}");
+}
+
+#[test]
+fn showcase865_mealy_machine() {
+    let out = run_ore("showcase865.ore");
+    assert!(out.contains("Mealy Machine: Binary Increment"), "got: {out}");
+    assert!(out.contains("0 -> 1"), "got: {out}");
+    assert!(out.contains("7 -> 8"), "got: {out}");
+    assert!(out.contains("'010' -> '.R.'"), "got: {out}");
+}
+
+#[test]
+fn showcase866_moore_machine() {
+    let out = run_ore("showcase866.ore");
+    assert!(out.contains("Moore Machine: Traffic Light Controller"), "got: {out}");
+    assert!(out.contains("Step 0: RED"), "got: {out}");
+    assert!(out.contains("Step 2: GREEN"), "got: {out}");
+    assert!(out.contains("'ab': output=01, detections=1"), "got: {out}");
+}
+
+#[test]
+fn showcase867_petri_net() {
+    let out = run_ore("showcase867.ore");
+    assert!(out.contains("Petri Net Simulator: Producer-Consumer"), "got: {out}");
+    assert!(out.contains("Fire t0 (produce): free=1, prod_ready=1, full=1, cons_ready=1"), "got: {out}");
+    assert!(out.contains("Deadlock: true"), "got: {out}");
+    assert!(out.contains("Total reachable markings: 3"), "got: {out}");
+}
+
+#[test]
+fn showcase868_markov_chain() {
+    let out = run_ore("showcase868.ore");
+    assert!(out.contains("Markov Chain: Weather Model"), "got: {out}");
+    assert!(out.contains("Day  0: Sunny=100% Cloudy=0% Rainy=0%"), "got: {out}");
+    assert!(out.contains("Day  1: Sunny=70% Cloudy=20% Rainy=10%"), "got: {out}");
+    assert!(out.contains("P(win from state 2) = 50%"), "got: {out}");
+}
+
+#[test]
+fn showcase869_finite_state_transducer() {
+    let out = run_ore("showcase869.ore");
+    assert!(out.contains("Finite State Transducer Examples"), "got: {out}");
+    assert!(out.contains("'SOS' -> '... --- ...'"), "got: {out}");
+    assert!(out.contains("'AAABBC' -> '3A2BC'"), "got: {out}");
+    assert!(out.contains("'HELLO' -> 'KHOOR' -> 'HELLO'"), "got: {out}");
+}
+
+#[test]
+fn showcase870_two_stack_pda() {
+    let out = run_ore("showcase870.ore");
+    assert!(out.contains("Two-Stack PDA: Universal Computation"), "got: {out}");
+    assert!(out.contains("abba      | accept"), "got: {out}");
+    assert!(out.contains("aabb      | reject"), "got: {out}");
+    assert!(out.contains("3 * 4 = 12"), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

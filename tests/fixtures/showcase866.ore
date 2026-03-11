@@ -1,0 +1,101 @@
+-- Showcase 866: Moore Machine Simulation
+
+-- A Moore machine's output depends only on the current state (not input).
+-- Example: traffic light controller with states: Red, RedYellow, Green, Yellow.
+-- Inputs: 'T' = timer tick
+-- Output: current light color name
+
+-- States: 0=Red, 1=RedYellow, 2=Green, 3=Yellow
+-- Transitions on 'T': 0->1->2->3->0
+
+fn moore_output state:Int -> Str
+  if state == 0
+    "RED"
+  else if state == 1
+    "RED+YELLOW"
+  else if state == 2
+    "GREEN"
+  else
+    "YELLOW"
+
+fn moore_next state:Int input:Str -> Int
+  if input == "T"
+    (state + 1) % 4
+  else
+    state
+
+fn moore_run init:Int inputs:List -> List
+  mut state := init
+  mut outputs := [moore_output(state)]
+  for i in range(0, inputs.len())
+    inp := inputs[i]
+    state = moore_next(state, inp)
+    outputs.push(moore_output(state))
+  outputs
+
+fn main
+  print "Moore Machine: Traffic Light Controller"
+  print "Output depends only on current state."
+  print "States: Red -> Red+Yellow -> Green -> Yellow -> Red"
+  print ""
+
+  -- Run 8 timer ticks
+  mut ticks := ["T", "T", "T", "T", "T", "T", "T", "T"]
+  outputs := moore_run(0, ticks)
+  print "Cycle through 8 ticks starting from Red:"
+  for i in range(0, outputs.len())
+    print "  Step {i}: {outputs[i]}"
+
+  print ""
+  print "Second Moore machine: modulo-3 counter"
+  print "States: 0, 1, 2. Input 'I' increments (mod 3)."
+  print "Output: current count value"
+  print ""
+
+  -- Moore machine for mod-3 counter
+  -- State is the count (0,1,2)
+  -- On 'I': go to (state+1) % 3
+  mut state := 0
+  print "Counter sequence (10 increments):"
+  mut seq := "0"
+  for i in range(0, 10)
+    state = (state + 1) % 3
+    seq = seq + ", " + str(state)
+  print "  {seq}"
+
+  print ""
+  print "Third Moore machine: sequence detector (detects 'ab' pattern)"
+  print "States: 0=start, 1=saw_a, 2=detected(output=1)"
+  print ""
+
+  -- States: 0=idle, 1=saw_a, 2=accept
+  -- Transitions: (0,'a')->1, (0,'b')->0, (1,'a')->1, (1,'b')->2, (2,_)->reset
+  -- Output: state2 -> 1 (detected), others -> 0
+  inputs_str := ["ab", "aab", "bab", "ba", "aaab"]
+  for k in range(0, inputs_str.len())
+    inp := inputs_str[k]
+    chars := inp.chars()
+    mut st := 0
+    mut detections := 0
+    mut trace := ""
+    for j in range(0, chars.len())
+      c := chars[j]
+      if st == 0
+        if c == "a"
+          st = 1
+        else
+          st = 0
+      else if st == 1
+        if c == "b"
+          st = 2
+        else
+          st = 1
+      else
+        st = 0
+        if c == "a"
+          st = 1
+      out := if st == 2 then 1 else 0
+      if out == 1
+        detections = detections + 1
+      trace = trace + str(out)
+    print "  '{inp}': output={trace}, detections={detections}"

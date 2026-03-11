@@ -1,0 +1,110 @@
+-- Showcase 867: Petri Net Simulation
+
+-- A Petri net has Places (hold tokens) and Transitions (consume/produce tokens).
+-- A transition is enabled if all input places have enough tokens.
+-- Firing a transition: remove tokens from inputs, add to outputs.
+--
+-- Example: producer-consumer Petri net
+-- Places: p0=free_buffer(2), p1=producer_ready(1), p2=full_buffer(0), p3=consumer_ready(1)
+-- Transitions:
+--   t0: p1,p0 -> p2     (produce: use free slot, producer becomes busy)
+--   t1: p2,p3 -> p0,p3  (consume: free slot, consumer stays ready)
+
+fn pn_enabled marking:List pre:List -> Bool
+  n := marking.len()
+  mut ok := true
+  for i in range(0, n)
+    if marking[i] < pre[i]
+      ok = false
+  ok
+
+fn pn_fire marking:List pre:List post:List -> List
+  n := marking.len()
+  mut m := marking
+  for i in range(0, n)
+    m[i] = m[i] - pre[i] + post[i]
+  m
+
+fn pn_marking_str marking:List -> Str
+  parts := [""]
+  place_names := ["free", "prod_ready", "full", "cons_ready"]
+  for i in range(0, marking.len())
+    v := marking[i]
+    nm := place_names[i]
+    parts.push(nm + "=" + str(v))
+  parts.skip(1).join(", ")
+
+fn main
+  print "Petri Net Simulator: Producer-Consumer"
+  print ""
+  print "Places: free_buffer(p0), producer_ready(p1), full_buffer(p2), consumer_ready(p3)"
+  print "Transitions:"
+  print "  t0 (produce): p0+p1 -> p2+p1  (producer fills a buffer slot)"
+  print "  t1 (consume): p2+p3 -> p0+p3  (consumer drains a buffer slot)"
+  print ""
+
+  -- Initial marking: [free=2, prod_ready=1, full=0, cons_ready=1]
+  mut marking := [2, 1, 0, 1]
+
+  -- pre/post for t0: consume p0+p1, produce p2+p1
+  -- pre[p0]=1, pre[p1]=1, pre[p2]=0, pre[p3]=0
+  -- post[p0]=0, post[p1]=1, post[p2]=1, post[p3]=0
+  t0_pre  := [1, 1, 0, 0]
+  t0_post := [0, 1, 1, 0]
+
+  -- pre/post for t1: consume p2+p3, produce p0+p3
+  -- pre[p0]=0, pre[p1]=0, pre[p2]=1, pre[p3]=1
+  -- post[p0]=1, post[p1]=0, post[p2]=0, post[p3]=1
+  t1_pre  := [0, 0, 1, 1]
+  t1_post := [1, 0, 0, 1]
+
+  print "Initial: {pn_marking_str(marking)}"
+  print ""
+
+  -- Simulate: produce twice, then consume twice
+  sequence := ["produce", "produce", "consume", "consume", "produce", "consume"]
+  for i in range(0, sequence.len())
+    action := sequence[i]
+    if action == "produce"
+      enabled := pn_enabled(marking, t0_pre)
+      if enabled
+        marking = pn_fire(marking, t0_pre, t0_post)
+        print "Fire t0 (produce): {pn_marking_str(marking)}"
+      else
+        print "t0 not enabled (buffer full?)"
+    else
+      enabled := pn_enabled(marking, t1_pre)
+      if enabled
+        marking = pn_fire(marking, t1_pre, t1_post)
+        print "Fire t1 (consume): {pn_marking_str(marking)}"
+      else
+        print "t1 not enabled (buffer empty?)"
+
+  print ""
+  print "Deadlock detection demo:"
+  print "A marking is a deadlock if no transition is enabled."
+  deadlock_marking := [0, 0, 0, 1]
+  e0 := pn_enabled(deadlock_marking, t0_pre)
+  e1 := pn_enabled(deadlock_marking, t1_pre)
+  is_deadlock := not e0 and not e1
+  print "  Marking {pn_marking_str(deadlock_marking)}"
+  print "  t0 enabled: {e0}, t1 enabled: {e1}"
+  print "  Deadlock: {is_deadlock}"
+
+  print ""
+  print "Reachability: enumerate reachable markings from initial"
+  print "  [free, prod_ready, full, cons_ready]"
+  -- Manually enumerate: free in 0..2, prod_ready=1, full in 0..2, cons_ready=1
+  -- Constraint: free + full = 2
+  mut count := 0
+  for f in range(0, 3)
+    for u in range(0, 3)
+      if f + u == 2
+        m := [f, 1, u, 1]
+        e0 := pn_enabled(m, t0_pre)
+        e1 := pn_enabled(m, t1_pre)
+        e0s := if e0 then "t0" else "--"
+        e1s := if e1 then "t1" else "--"
+        print "    [{f}, 1, {u}, 1] enabled: {e0s} {e1s}"
+        count = count + 1
+  print "  Total reachable markings: {count}"

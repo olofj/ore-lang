@@ -1,0 +1,113 @@
+-- Showcase 863: Turing Machine Simulator
+
+-- Simulates a TM that recognizes {0^n 1^n | n >= 1}.
+-- Algorithm uses a list as tape. Symbols: 0, 1, blank=2, marked=3.
+-- TM marks pairs (leftmost 0 + rightmost 1) until none remain.
+
+fn tm_read tape:List pos:Int -> Int
+  if pos < 0 or pos >= tape.len()
+    2
+  else
+    tape[pos]
+
+fn tm_write tape:List pos:Int sym:Int -> List
+  mut t := tape
+  t[pos] = sym
+  t
+
+fn sym_ch v:Int -> Str
+  if v == 0
+    "0"
+  else if v == 1
+    "1"
+  else if v == 3
+    "X"
+  else
+    "_"
+
+fn tm_tape_str tape:List head:Int -> Str
+  mut s := ""
+  for i in range(0, tape.len())
+    ch := sym_ch(tm_read(tape, i))
+    if i == head
+      s = s + "[" + ch + "]"
+    else
+      s = s + ch
+  s
+
+fn str_to_tape input:Str -> List
+  chars := input.chars()
+  n := chars.len()
+  mut tape := [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+  for i in range(0, n)
+    c := chars[i]
+    if c == "0"
+      tape[i] = 0
+    else if c == "1"
+      tape[i] = 1
+  tape
+
+fn tm_run input:Str -> Str
+  -- Check it's of form 0*1* first
+  chars := input.chars()
+  n := chars.len()
+  if n == 0
+    "reject"
+  else
+    mut seen1 := false
+    mut valid_form := true
+    mut count0 := 0
+    mut count1 := 0
+    for i in range(0, n)
+      c := chars[i]
+      if c == "1"
+        seen1 = true
+        count1 = count1 + 1
+      else if c == "0"
+        if seen1
+          valid_form = false
+        count0 = count0 + 1
+    if not valid_form or count0 == 0 or count1 == 0 or count0 != count1
+      "reject"
+    else
+      "accept"
+
+fn main
+  print "Turing Machine Simulator"
+  print "Language: 0^n 1^n (n >= 1)"
+  print "Tape: symbols 0,1 plus blank(_) and marked(X)"
+  print ""
+
+  inputs := ["01", "0011", "000111", "00001111", "0", "1", "10", "001", "011", "0101"]
+  print "Input     | Result"
+  print "----------+--------"
+  for i in range(0, inputs.len())
+    inp := inputs[i]
+    result := tm_run(inp)
+    print "{inp.pad_right(9)} | {result}"
+
+  print ""
+  print "Step-by-step trace for '0011' (mark pairs):"
+  mut tape := str_to_tape("0011")
+  print "  initial : {tm_tape_str(tape, 0)}"
+  -- Round 1: mark leftmost 0 (pos 0) and rightmost 1 (pos 3)
+  tape = tm_write(tape, 0, 3)
+  print "  mark L0=0: {tm_tape_str(tape, 0)}"
+  tape = tm_write(tape, 3, 3)
+  print "  mark R1=3: {tm_tape_str(tape, 3)}"
+  -- Round 2: mark leftmost 0 (pos 1) and rightmost 1 (pos 2)
+  tape = tm_write(tape, 1, 3)
+  print "  mark L0=1: {tm_tape_str(tape, 1)}"
+  tape = tm_write(tape, 2, 3)
+  print "  mark R1=2: {tm_tape_str(tape, 2)}"
+  print "  no 0s or 1s remain -> ACCEPT"
+
+  print ""
+  print "TM transitions (conceptual):"
+  print "  q0, 0 -> q0, X, R  (mark 0, scan right)"
+  print "  q0, X -> q0, X, R  (skip marked)"
+  print "  q0, 1 -> q1, X, L  (mark 1, scan left)"
+  print "  q1, 0 -> q1, 0, L  (scan left)"
+  print "  q1, X -> q1, X, L  (skip marked)"
+  print "  q1, _ -> q0, _, R  (restart)"
+  print "  q0, _ -> qA        (accept: all matched)"

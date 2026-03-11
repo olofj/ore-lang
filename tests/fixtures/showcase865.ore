@@ -1,0 +1,118 @@
+-- Showcase 865: Mealy Machine Simulation
+
+-- A Mealy machine produces output on transitions (output depends on state + input).
+-- Example: binary increment machine. Adds 1 to a binary number (LSB first).
+-- States: 0=carry_in, 1=no_carry
+-- Alphabet: 0, 1
+-- Transitions and outputs:
+--   (0, '0') -> state=1, output '1'   (0+carry=1, no more carry)
+--   (0, '1') -> state=0, output '0'   (1+carry=0, carry out)
+--   (1, '0') -> state=1, output '0'   (just copy)
+--   (1, '1') -> state=1, output '1'   (just copy)
+
+fn mealy_step state:Int sym:Str -> List
+  -- Returns [next_state, output_sym]
+  if state == 0
+    if sym == "0"
+      [1, 1]
+    else
+      [0, 0]
+  else
+    if sym == "0"
+      [1, 0]
+    else
+      [1, 1]
+
+fn mealy_run input:Str init_state:Int -> Str
+  chars := input.chars()
+  mut state := init_state
+  mut output := ""
+  for i in range(0, chars.len())
+    c := chars[i]
+    result := mealy_step(state, c)
+    state = result[0]
+    out_sym := result[1]
+    output = output + str(out_sym)
+  -- If still in carry state, append 1
+  if state == 0
+    output = output + "1"
+  output
+
+fn bin_to_int bits:Str -> Int
+  chars := bits.chars()
+  n := chars.len()
+  mut val := 0
+  mut place := 1
+  for i in range(0, n)
+    c := chars[i]
+    if c == "1"
+      val = val + place
+    place = place * 2
+  val
+
+fn int_to_bin_lsb n:Int -> Str
+  if n == 0
+    "0"
+  else
+    mut result := ""
+    mut v := n
+    while v > 0
+      bit := v % 2
+      result = result + str(bit)
+      v = v / 2
+    result
+
+fn main
+  print "Mealy Machine: Binary Increment (LSB first)"
+  print "State 0=carry, State 1=no_carry. Start in carry state."
+  print ""
+
+  -- Test binary increment
+  inputs := ["0", "1", "01", "11", "001", "111", "1001", "1111"]
+  print "Input (LSB) | Output (LSB) | Decimal: in -> out"
+  print "------------+--------------+-------------------"
+  for i in range(0, inputs.len())
+    inp := inputs[i]
+    out := mealy_run(inp, 0)
+    in_val := bin_to_int(inp)
+    out_val := bin_to_int(out)
+    print "{inp.pad_right(11)} | {out.pad_right(12)} | {in_val} -> {out_val}"
+
+  print ""
+  print "Second Mealy machine: parity checker"
+  print "Outputs 'E' (even) or 'O' (odd) after each bit."
+  print "State 0=even parity so far, 1=odd parity"
+  print ""
+
+  parity_inputs := ["0", "1", "01", "11", "001", "110", "1010"]
+  print "Input  | Parity output"
+  print "-------+--------------"
+  for i in range(0, parity_inputs.len())
+    inp := parity_inputs[i]
+    chars := inp.chars()
+    mut state := 0
+    mut out := ""
+    for j in range(0, chars.len())
+      c := chars[j]
+      bit := if c == "1" then 1 else 0
+      state = (state + bit) % 2
+      sym := if state == 0 then "E" else "O"
+      out = out + sym
+    print "{inp.pad_right(6)} | {out}"
+
+  print ""
+  print "Third Mealy machine: detect rising edges (0->1 transitions)"
+  print "Outputs 'R' on rising edge, '.' otherwise"
+  edge_inputs := ["010", "001", "101", "0101", "1100", "00110"]
+  for i in range(0, edge_inputs.len())
+    inp := edge_inputs[i]
+    chars := inp.chars()
+    mut prev := 0
+    mut out := ""
+    for j in range(0, chars.len())
+      c := chars[j]
+      cur := if c == "1" then 1 else 0
+      sym := if prev == 0 and cur == 1 then "R" else "."
+      out = out + sym
+      prev = cur
+    print "  '{inp}' -> '{out}'"

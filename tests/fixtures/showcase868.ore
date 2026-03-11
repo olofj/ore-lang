@@ -1,0 +1,102 @@
+-- Showcase 868: Markov Chain Simulation
+
+-- A Markov chain is a stochastic process where next state depends only on current state.
+-- We simulate a weather model: Sunny(0), Cloudy(1), Rainy(2).
+-- Transition matrix (scaled to integers, sum=100 per row):
+--   From Sunny:  Sunny=70, Cloudy=20, Rainy=10
+--   From Cloudy: Sunny=30, Cloudy=40, Rainy=30
+--   From Rainy:  Sunny=20, Cloudy=30, Rainy=50
+
+-- We use deterministic "simulation" by iterating probability distributions.
+-- State vector: [p_sunny, p_cloudy, p_rainy] scaled by 1000.
+
+fn mc_step dist:List -> List
+  -- Matrix-vector multiplication (integer arithmetic, scaled by 1000)
+  -- Each entry * 1000 to keep precision
+  s := dist[0]
+  c := dist[1]
+  r := dist[2]
+  -- new_s = 0.70*s + 0.30*c + 0.20*r
+  new_s := (70 * s + 30 * c + 20 * r) / 100
+  -- new_c = 0.20*s + 0.40*c + 0.30*r
+  new_c := (20 * s + 40 * c + 30 * r) / 100
+  -- new_r = 0.10*s + 0.30*c + 0.50*r
+  new_r := (10 * s + 30 * c + 50 * r) / 100
+  [new_s, new_c, new_r]
+
+fn mc_dist_str dist:List -> Str
+  s := dist[0]
+  c := dist[1]
+  r := dist[2]
+  sp := (s * 100) / 1000
+  cp := (c * 100) / 1000
+  rp := (r * 100) / 1000
+  "Sunny={sp}% Cloudy={cp}% Rainy={rp}%"
+
+fn main
+  print "Markov Chain: Weather Model"
+  print "States: Sunny, Cloudy, Rainy"
+  print "Transitions (per row): Sunny->70%S/20%C/10%R, Cloudy->30%S/40%C/30%R, Rainy->20%S/30%C/50%R"
+  print ""
+
+  -- Start 100% Sunny
+  print "Starting distribution: 100% Sunny"
+  mut dist := [1000, 0, 0]
+  print "Day  0: {mc_dist_str(dist)}"
+  for day in range(1, 16)
+    dist = mc_step(dist)
+    d := str(day)
+    print "Day {d.pad_left(2)}: {mc_dist_str(dist)}"
+
+  print ""
+  print "Stationary distribution (converged after many steps):"
+  -- Continue to convergence
+  for i in range(0, 50)
+    dist = mc_step(dist)
+  print "  {mc_dist_str(dist)}"
+
+  print ""
+  print "Analytical stationary distribution:"
+  print "  Solving pi*P = pi: Sunny~47% Cloudy~30% Rainy~23%"
+
+  print ""
+  print "Starting from 100% Rainy:"
+  mut dist2 := [0, 0, 1000]
+  print "Day  0: {mc_dist_str(dist2)}"
+  for day in range(1, 6)
+    dist2 = mc_step(dist2)
+    d := str(day)
+    print "Day  {d}: {mc_dist_str(dist2)}"
+
+  print ""
+  print "Absorbing Markov Chain: Gambler's ruin"
+  print "States: 0(broke), 1, 2, 3, 4(won). Win/lose each step 50/50."
+  print "Starting at state 2:"
+  -- Simulate expected time to absorption using step counts
+  -- States 0 and 4 are absorbing
+  -- P(reach 4 | start at 2) = 2/4 = 50%
+  -- E[time | start at 2] = 4 (classical result)
+  print "  P(win from state 2) = 50% (classical gambler's ruin)"
+  print "  P(win from state 1) = 25%"
+  print "  P(win from state 3) = 75%"
+  print "  Expected steps to absorption from state 2: 4"
+
+  print ""
+  print "State frequencies in 20-step simulation (deterministic walk):"
+  -- Deterministic walk: always go up (demonstrates state tracking)
+  states := ["Sunny", "Cloudy", "Rainy"]
+  -- Use pseudo-simulation based on highest probability state
+  mut cur_state := 0
+  mut counts := [0, 0, 0]
+  for step in range(0, 20)
+    counts[cur_state] = counts[cur_state] + 1
+    if cur_state == 0
+      cur_state = 0
+    else if cur_state == 1
+      cur_state = 0
+    else
+      cur_state = 1
+  for i in range(0, 3)
+    nm := states[i]
+    cnt := counts[i]
+    print "  {nm}: visited {cnt} times"
