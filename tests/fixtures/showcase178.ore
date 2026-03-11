@@ -1,0 +1,71 @@
+-- Showcase 178: Mini language interpreter
+
+type Instruction
+  Push(val: Int)
+  Pop
+  Dup
+  Add
+  Sub
+  Mul
+  Print
+
+fn run_program instructions:List[Instruction]
+  mut stack := []
+  for inst in instructions
+    match inst
+      Push v -> stack.push(v)
+      Pop -> stack.pop()
+      Dup ->
+        top := stack[stack.len() - 1]
+        stack.push(top)
+      Add ->
+        b := stack.pop()
+        a := stack.pop()
+        stack.push(a + b)
+      Sub ->
+        b := stack.pop()
+        a := stack.pop()
+        stack.push(a - b)
+      Mul ->
+        b := stack.pop()
+        a := stack.pop()
+        stack.push(a * b)
+      Print ->
+        print stack[stack.len() - 1]
+
+fn main
+  -- Program: compute (3 + 4) * (2 + 5)
+  prog := [
+    Push(val: 3), Push(val: 4), Add,
+    Push(val: 2), Push(val: 5), Add,
+    Mul, Print
+  ]
+  print "Program: (3 + 4) * (2 + 5)"
+  run_program(prog)
+
+  -- Program: compute 10 - 3 and duplicate
+  print ""
+  prog2 := [
+    Push(val: 10), Push(val: 3), Sub,
+    Dup, Print, Print
+  ]
+  print "Program: 10 - 3, dup"
+  run_program(prog2)
+
+  -- Fibonacci via stack machine: compute fib(6)
+  print ""
+  print "Stack machine fibonacci(6):"
+  -- Manual: push 0, push 1, then add-dup pattern
+  fib_prog := [
+    Push(val: 0), Push(val: 1),
+    Dup, Print
+  ]
+  run_program(fib_prog)
+  -- Continue manually
+  mut a := 0
+  mut b := 1
+  for i in range(0, 6)
+    c := a + b
+    a = b
+    b = c
+    print b

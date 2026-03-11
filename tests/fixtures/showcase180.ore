@@ -1,0 +1,74 @@
+-- Showcase 180: Type system showcase
+
+type Color
+  Red
+  Green
+  Blue
+  Custom(r: Int, g: Int, b: Int)
+
+fn color_name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+    Custom r g b -> "rgb({r},{g},{b})"
+
+type Direction
+  North
+  South
+  East
+  West
+
+fn opposite d:Direction -> Direction
+  match d
+    North -> South
+    South -> North
+    East -> West
+    West -> East
+
+fn dir_name d:Direction -> Str
+  match d
+    North -> "N"
+    South -> "S"
+    East -> "E"
+    West -> "W"
+
+type Suit
+  Hearts
+  Diamonds
+  Clubs
+  Spades
+
+fn suit_name s:Suit -> Str
+  match s
+    Hearts -> "♥"
+    Diamonds -> "♦"
+    Clubs -> "♣"
+    Spades -> "♠"
+
+fn main
+  -- Colors
+  colors := [Red, Green, Blue, Custom(r: 128, g: 64, b: 255)]
+  for c in colors
+    print color_name(c)
+
+  -- Directions with opposite
+  print ""
+  directions := [North, South, East, West]
+  for d in directions
+    opp := opposite(d)
+    print "{dir_name(d)} -> {dir_name(opp)}"
+
+  -- Card suits
+  print ""
+  suits := [Hearts, Diamonds, Clubs, Spades]
+  for s in suits
+    print suit_name(s)
+
+  -- Mixed enum patterns
+  print ""
+  c := Custom(r: 255, g: 0, b: 0)
+  match c
+    Custom r g b if r > 200 -> print "bright red-ish"
+    Custom r g b -> print "custom color"
+    _ -> print "primary color"

@@ -3253,6 +3253,32 @@ fn showcase177_stack_operations() {
 }
 
 #[test]
+fn showcase178_stack_machine() {
+    let out = run_ore("showcase178.ore");
+    assert!(out.contains("49"));
+    assert!(out.contains("7\n7"));
+}
+
+#[test]
+fn showcase179_pipeline_showcase() {
+    let out = run_ore("showcase179.ore");
+    assert!(out.contains("primes < 50: 2, 3, 5, 7, 11, 13"));
+    assert!(out.contains("sum: 328"));
+    assert!(out.contains("shouting: HELLO WORLD FROM ORE LANGUAGE"));
+    assert!(out.contains("1-100 sum: 5050"));
+    assert!(out.contains("5! = 120"));
+}
+
+#[test]
+fn showcase180_type_system() {
+    let out = run_ore("showcase180.ore");
+    assert!(out.contains("rgb(128,64,255)"));
+    assert!(out.contains("N -> S"));
+    assert!(out.contains("E -> W"));
+    assert!(out.contains("bright red-ish"));
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

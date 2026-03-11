@@ -1,0 +1,54 @@
+-- Showcase 179: Comprehensive pipeline showcase
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    return false
+  mut i := 2
+  while i * i <= n
+    if n % i == 0
+      return false
+    i = i + 1
+  true
+
+fn main
+  -- Pipeline-heavy data processing
+  print "=== Pipeline Showcase ==="
+
+  -- Primes via filter
+  primes := range(2, 50) | filter(n => is_prime(n))
+  print "primes < 50: {primes | join(", ")}"
+  print "count: {primes | count()}"
+  print "sum: {primes | sum()}"
+
+  -- Chain of transformations
+  print ""
+  result := range(1, 21)
+    | filter(n => n % 2 == 0)
+    | map(n => n * n)
+    | filter(n => n > 50)
+    | join(", ")
+  print "even squares > 50: {result}"
+
+  -- String pipeline
+  print ""
+  sentence := "hello world from ore language"
+  words := sentence.split(" ")
+  upper_words := words | map(w => w.to_upper())
+  print "shouting: {upper_words | join(" ")}"
+
+  -- Numeric analysis
+  print ""
+  data := range(1, 101)
+  print "1-100 sum: {data | sum()}"
+  print "1-100 even count: {data | filter(n => n % 2 == 0) | count()}"
+  print "1-100 squares sum: {data | map(n => n * n) | sum()}"
+  print "multiples of 7: {data | filter(n => n % 7 == 0) | join(", ")}"
+
+  -- Scan for cumulative products
+  print ""
+  factorials := range(1, 8) | scan(1, (acc, n) => acc * n)
+  print "factorials: {factorials | join(", ")}"
+
+  -- Fold for product
+  product := range(1, 6) | fold(1, (acc, n) => acc * n)
+  print "5! = {product}"
