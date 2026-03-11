@@ -1,0 +1,155 @@
+-- Showcase 750: Fast Exponentiation (Modular)
+
+fn mod_pow base:Int exp:Int modulus:Int -> Int
+  -- Binary exponentiation: base^exp mod modulus in O(log exp)
+  if modulus == 1
+    0
+  else
+    mut result := 1
+    mut b := base % modulus
+    mut e := exp
+    while e > 0
+      if e % 2 == 1
+        result = (result * b) % modulus
+      e = e / 2
+      b = (b * b) % modulus
+    result
+
+fn fast_pow base:Int exp:Int -> Int
+  -- Binary exponentiation without modulus (for small results)
+  mut result := 1
+  mut b := base
+  mut e := exp
+  while e > 0
+    if e % 2 == 1
+      result = result * b
+    e = e / 2
+    b = b * b
+  result
+
+fn main
+  print "Fast Exponentiation (Modular):"
+  print ""
+
+  -- Binary exponentiation: a^n using O(log n) multiplications
+  -- Key insight: a^n = (a^(n/2))^2 if n even, a * a^(n-1) if n odd
+  -- Used in: RSA, Diffie-Hellman, primality testing, modular arithmetic
+
+  -- Part 1: Algorithm trace
+  print "=== Part 1: Algorithm Trace ==="
+  print "  Computing 3^13 step by step:"
+  print "  13 in binary: 1101 (8+4+1)"
+  print "  3^1  = 3   (bit 0 set)"
+  print "  3^2  = 9   (square)"
+  print "  3^4  = 81  (square)"
+  print "  3^8  = 6561 (square)"
+  print "  3^13 = 3^8 * 3^4 * 3^1 = 6561 * 81 * 3"
+  result := fast_pow(3, 13)
+  print "  Result: 3^13 = {result}"
+  -- Verify
+  naive := 3 * 3 * 3 * 3 * 3 * 3 * 3 * 3 * 3 * 3 * 3 * 3 * 3
+  print "  Naive check: 3^13 = {naive}"
+
+  -- Part 2: Modular exponentiation
+  print ""
+  print "=== Part 2: Modular Exponentiation ==="
+  print "  a^n mod m: same algorithm, reduce each step mod m"
+  -- Test cases
+  mut bases := [2, 3, 5, 7, 10, 2, 3]
+  mut exps  := [10, 100, 50, 30, 20, 256, 1000]
+  mut mods  := [1000, 1000000007, 97, 101, 9999, 1000000007, 999999937]
+  n_tests := 7
+  for i in range(0, n_tests)
+    b := bases[i]
+    e := exps[i]
+    m := mods[i]
+    r := mod_pow(b, e, m)
+    print "  {b}^{e} mod {m} = {r}"
+
+  -- Part 3: Multiplication count
+  print ""
+  print "=== Part 3: Multiplication Count ==="
+  print "  Binary method multiplications for various exponents:"
+  mut exps2 := [1, 2, 4, 8, 16, 32, 64, 128, 256, 1000, 65536]
+  n_exp2 := 11
+  for i in range(0, n_exp2)
+    e := exps2[i]
+    -- Count: number of bits (squarings) + number of 1-bits - 1 (multiplications)
+    mut bits := 0
+    mut ones := 0
+    mut temp := e
+    while temp > 0
+      bits = bits + 1
+      if temp % 2 == 1
+        ones = ones + 1
+      temp = temp / 2
+    squarings := bits - 1
+    mults := ones - 1
+    total := squarings + mults
+    print "  e={e}: {bits} bits, {total} multiplications (vs {e - 1} naive)"
+
+  -- Part 4: Fermat's little theorem application
+  print ""
+  print "=== Part 4: Fermat's Little Theorem ==="
+  print "  For prime p and gcd(a,p)=1: a^(p-1) = 1 (mod p)"
+  mut primes := [7, 11, 13, 17, 19, 23]
+  for i in range(0, 6)
+    p := primes[i]
+    -- Verify: 2^(p-1) mod p
+    r := mod_pow(2, p - 1, p)
+    print "  2^{p - 1} mod {p} = {r}"
+
+  -- Part 5: Modular inverse via Fermat
+  print ""
+  print "=== Part 5: Modular Inverse via Fast Exponentiation ==="
+  print "  inv(a, p) = a^(p-2) mod p (p prime)"
+  -- Modular inverse examples
+  p := 1000000007
+  mut as_inv := [2, 3, 5, 7, 100]
+  for i in range(0, 5)
+    a := as_inv[i]
+    inv_a := mod_pow(a, p - 2, p)
+    check := (a * inv_a) % p
+    print "  inv({a}, {p}) = {inv_a}, verify: {a}*inv mod p = {check}"
+
+  -- Part 6: RSA encryption/decryption
+  print ""
+  print "=== Part 6: RSA Example ==="
+  -- Small RSA: p=61, q=53, n=pq=3233, phi=3120
+  -- e=17, d=2753 (e*d = 1 mod phi)
+  n_rsa := 3233
+  e_rsa := 17
+  d_rsa := 2753
+  print "  RSA params: n={n_rsa}, e={e_rsa}, d={d_rsa}"
+  -- Encrypt m=65: c = 65^17 mod 3233
+  mut messages := [65, 72, 101]
+  for i in range(0, 3)
+    m := messages[i]
+    c := mod_pow(m, e_rsa, n_rsa)
+    m2 := mod_pow(c, d_rsa, n_rsa)
+    print "  m={m} -> encrypt -> c={c} -> decrypt -> m={m2}"
+
+  -- Part 7: Discrete logarithm hardness
+  print ""
+  print "=== Part 7: Discrete Logarithm ==="
+  print "  Given g, p, and g^x mod p, finding x is hard"
+  print "  This asymmetry underlies Diffie-Hellman and ElGamal"
+  g := 2
+  p2 := 23
+  print "  g={g}, p={p2}: powers of g mod p:"
+  mut x := 1
+  for i in range(1, 12)
+    x = (x * g) % p2
+    print "  g^{i} mod {p2} = {x}"
+
+  -- Part 8: Complexity
+  print ""
+  print "=== Part 8: Complexity ==="
+  print "  Fast exponentiation: O(log n) multiplications"
+  print "  Naive exponentiation: O(n) multiplications"
+  print "  With n=2^64: fast=64, naive=18 quintillion ops"
+  print "  Modular multiplication: O(log^2 m) bit operations"
+  print "  Overall mod_pow: O(log n * log^2 m)"
+
+  print ""
+  print "Fast modular exponentiation: O(log n) squarings enable RSA, Diffie-Hellman, and primality testing."

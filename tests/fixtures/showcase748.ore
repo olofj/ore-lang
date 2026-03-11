@@ -1,0 +1,156 @@
+-- Showcase 748: Chinese Remainder Theorem
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  while y != 0
+    t := y
+    y = x % y
+    x = t
+  x
+
+fn ext_gcd a:Int b:Int -> Int
+  -- Returns x such that a*x ≡ 1 (mod b), assumes gcd(a,b)=1
+  -- Extended Euclidean algorithm
+  mut old_r := a
+  mut r := b
+  mut old_s := 1
+  mut s := 0
+  while r != 0
+    q := old_r / r
+    new_r := old_r - q * r
+    new_s := old_s - q * s
+    old_r = r
+    old_s = s
+    r = new_r
+    s = new_s
+  -- old_s is inverse, ensure positive
+  if old_s < 0
+    old_s + b
+  else
+    old_s
+
+fn crt2 r1:Int m1:Int r2:Int m2:Int -> Int
+  -- CRT for 2 congruences: x ≡ r1 (mod m1), x ≡ r2 (mod m2)
+  -- Requires gcd(m1,m2)=1
+  -- Solution: x = r1 + m1 * ((r2 - r1) * inv(m1, m2) mod m2)
+  inv_m1 := ext_gcd(m1, m2)
+  diff := ((r2 - r1) % m2 + m2) % m2
+  x := r1 + m1 * ((diff * inv_m1) % m2)
+  x % (m1 * m2)
+
+fn main
+  print "Chinese Remainder Theorem:"
+  print ""
+
+  -- CRT: if m1, m2, ..., mk are pairwise coprime, then
+  -- the system x ≡ ri (mod mi) has a unique solution mod M = m1*m2*...*mk
+
+  -- Part 1: Classic example
+  print "=== Part 1: Classic Example ==="
+  print "  System:"
+  print "  x = 2 (mod 3)"
+  print "  x = 3 (mod 5)"
+  print "  x = 2 (mod 7)"
+  -- Solve step by step
+  -- Step 1: x = 2 (mod 3), x = 3 (mod 5) => x = 8 (mod 15)
+  x12 := crt2(2, 3, 3, 5)
+  print "  x = 2 (mod 3) and x = 3 (mod 5) => x = {x12} (mod 15)"
+  -- Step 2: x = 8 (mod 15) and x = 2 (mod 7) => x = ? (mod 105)
+  x123 := crt2(x12, 15, 2, 7)
+  print "  Combined with x = 2 (mod 7) => x = {x123} (mod 105)"
+  -- Verify
+  v3 := x123 % 3
+  v5 := x123 % 5
+  v7 := x123 % 7
+  print "  Verify: {x123} mod 3 = {v3}, mod 5 = {v5}, mod 7 = {v7}"
+
+  -- Part 2: Multiple examples
+  print ""
+  print "=== Part 2: More Examples ==="
+  -- x ≡ 0 (mod 3), x ≡ 0 (mod 5), x ≡ 0 (mod 7) => x = 0 (mod 105)
+  x1 := crt2(0, 3, 0, 5)
+  x1b := crt2(x1, 15, 0, 7)
+  print "  x=0(mod 3), x=0(mod 5), x=0(mod 7) => x={x1b} (mod 105)"
+
+  -- x ≡ 1 (mod 2), x ≡ 1 (mod 3), x ≡ 1 (mod 5)
+  x2 := crt2(1, 2, 1, 3)
+  x2b := crt2(x2, 6, 1, 5)
+  print "  x=1(mod 2), x=1(mod 3), x=1(mod 5) => x={x2b} (mod 30)"
+  print "  Verify: {x2b} mod 2={x2b % 2}, mod 3={x2b % 3}, mod 5={x2b % 5}"
+
+  -- Part 3: Modular inverse via CRT
+  print ""
+  print "=== Part 3: Modular Inverses ==="
+  print "  inv(a, m) = a^-1 mod m, using extended GCD"
+  mut pairs := [2, 7, 3, 11, 5, 13, 7, 17]
+  for i in range(0, 4)
+    a := pairs[i * 2]
+    m := pairs[i * 2 + 1]
+    inv := ext_gcd(a, m)
+    check := (a * inv) % m
+    print "  inv({a}, {m}) = {inv}, verify: {a}*{inv} mod {m} = {check}"
+
+  -- Part 4: Garner's algorithm
+  print ""
+  print "=== Part 4: Garner's Algorithm ==="
+  print "  Garner: mixed-radix representation for large moduli"
+  print "  Given x mod m1=r1, x mod m2=r2, x mod m3=r3:"
+  print "  x = a0 + a1*m1 + a2*m1*m2 (Garner coefficients)"
+  -- Example: x=5, m1=3, m2=5, m3=7
+  x_orig := 23
+  m1 := 3
+  m2 := 5
+  m3 := 7
+  r1 := x_orig % m1
+  r2 := x_orig % m2
+  r3 := x_orig % m3
+  print "  x={x_orig}: r1={r1}(mod {m1}), r2={r2}(mod {m2}), r3={r3}(mod {m3})"
+  -- Garner: a0=r1
+  a0 := r1
+  -- a1 = (r2 - a0) * inv(m1, m2) mod m2
+  inv_m1_m2 := ext_gcd(m1, m2)
+  a1 := ((r2 - a0) % m2 + m2) % m2 * inv_m1_m2 % m2
+  -- a2 = ((r3 - a0 - a1*m1) * inv(m1*m2, m3)) mod m3
+  inv_m12_m3 := ext_gcd(m1 * m2, m3)
+  a2 := ((r3 - a0 - a1 * m1) % m3 + m3) % m3 * inv_m12_m3 % m3
+  reconstructed := a0 + a1 * m1 + a2 * m1 * m2
+  print "  Garner coefficients: a0={a0}, a1={a1}, a2={a2}"
+  print "  Reconstructed: {reconstructed}"
+
+  -- Part 5: Application - breaking RSA with small exponent
+  print ""
+  print "=== Part 5: Application - Hastad's Broadcast Attack ==="
+  print "  If RSA uses e=3 and same message m sent to 3 different n_i:"
+  print "  We know c_i = m^3 mod n_i"
+  print "  CRT recovers m^3 as integer (if m^3 < n1*n2*n3)"
+  print "  Then take cube root to get m"
+  -- Small example
+  -- m=5, e=3: m^3=125
+  m_msg := 5
+  e := 3
+  m_cube := 125
+  n_rsa1 := 143
+  n_rsa2 := 187
+  n_rsa3 := 209
+  c1 := m_cube % n_rsa1
+  c2 := m_cube % n_rsa2
+  c3 := m_cube % n_rsa3
+  print "  m={m_msg}, m^3={m_cube}"
+  print "  c1={c1}(mod {n_rsa1}), c2={c2}(mod {n_rsa2}), c3={c3}(mod {n_rsa3})"
+  -- Recover m^3 via CRT
+  x_crt := crt2(c1, n_rsa1, c2, n_rsa2)
+  m1m2 := n_rsa1 * n_rsa2
+  x_final := crt2(x_crt, m1m2, c3, n_rsa3)
+  print "  CRT result (=m^3): {x_final}"
+
+  -- Part 6: Complexity
+  print ""
+  print "=== Part 6: Complexity ==="
+  print "  Extended GCD: O(log(min(a,b)))"
+  print "  CRT solve (k congruences): O(k log M)"
+  print "  Garner's algorithm: O(k^2 log M)"
+  print "  Applications: RSA, fast polynomial multiplication, calendar puzzles"
+
+  print ""
+  print "Chinese remainder theorem: reconstructs integers from residues modulo pairwise coprime moduli."

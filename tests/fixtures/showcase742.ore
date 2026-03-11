@@ -1,0 +1,130 @@
+-- Showcase 742: Count-Min Sketch
+
+fn init_sketch size:Int -> List
+  mut s := [0]
+  s[0] = 0
+  for i in range(1, size)
+    s.push(0)
+  s
+
+fn main
+  print "Count-Min Sketch:"
+  print ""
+
+  -- Count-Min Sketch: probabilistic data structure for frequency estimation
+  -- Uses d hash functions and w counters per row
+  -- Point query: minimum of d counters
+
+  -- Part 1: Parameters
+  print "=== Part 1: Parameters ==="
+  d := 4
+  w := 16
+  print "  Rows (hash functions): d={d}"
+  print "  Columns (buckets per row): w={w}"
+  print "  Total counters: {d * w}"
+  print "  Error bound: eps = e/w ~ 0.17"
+  print "  Confidence: 1 - delta ~ 0.82"
+
+  -- Part 2: Hash functions (simple polynomial hashes mod w)
+  print ""
+  print "=== Part 2: Hash Functions ==="
+  mut hash_a := [1, 3, 5, 7]
+  mut hash_b := [0, 2, 4, 6]
+  print "  Using polynomial hashes h_i(x) = (a*x + b) mod {w}"
+  for i in range(0, d)
+    print "  h_{i}(x): a={hash_a[i]}, b={hash_b[i]}"
+
+  -- Part 3: Initialize sketch
+  print ""
+  print "=== Part 3: Building the Sketch ==="
+  mut sketch := init_sketch(d * w)
+
+  -- Stream: apple=1, banana=2, cherry=3, date=4, elderberry=5
+  -- Frequencies: apple x5, banana x2, cherry x8, date x2, elderberry x1
+  mut items := [1, 2, 3, 4, 5, 1, 1, 3, 2, 3]
+  items.push(1)
+  items.push(3)
+  items.push(3)
+  items.push(3)
+  items.push(4)
+  items.push(1)
+  items.push(3)
+  items.push(3)
+  n_items := 18
+  mut item_names := ["apple", "banana", "cherry", "date", "elderberry"]
+  print "  Adding {n_items} items to sketch..."
+  for idx in range(0, n_items)
+    x := items[idx]
+    for i in range(0, d)
+      col := (hash_a[i] * x + hash_b[i]) % w
+      sketch[i * w + col] = sketch[i * w + col] + 1
+  print "  Done. Sketch populated."
+
+  -- Part 4: Point queries
+  print ""
+  print "=== Part 4: Point Queries ==="
+  mut true_counts := [5, 2, 8, 2, 1]
+  for x in range(1, 6)
+    mut min_count := 1000000
+    for i in range(0, d)
+      col := (hash_a[i] * x + hash_b[i]) % w
+      val := sketch[i * w + col]
+      if val < min_count
+        min_count = val
+    name := item_names[x - 1]
+    true_c := true_counts[x - 1]
+    print "  {name} (x={x}): estimate={min_count}, true={true_c}"
+
+  -- Part 5: Heavy hitters
+  print ""
+  print "=== Part 5: Heavy Hitters ==="
+  -- Items with frequency > n/4 are heavy hitters
+  threshold := n_items / 4
+  print "  Threshold (n/4={threshold}):"
+  for x in range(1, 6)
+    mut min_count := 1000000
+    for i in range(0, d)
+      col := (hash_a[i] * x + hash_b[i]) % w
+      val := sketch[i * w + col]
+      if val < min_count
+        min_count = val
+    name := item_names[x - 1]
+    if min_count > threshold
+      print "  Heavy hitter: {name} (estimate={min_count})"
+
+  -- Part 6: Merging sketches
+  print ""
+  print "=== Part 6: Merging Sketches ==="
+  -- Two sketches over disjoint streams can be merged by addition
+  mut sketch2 := init_sketch(d * w)
+  mut items2 := [1, 1, 3, 3, 3, 4, 4, 4, 4]
+  n2 := 9
+  for idx in range(0, n2)
+    x := items2[idx]
+    for i in range(0, d)
+      col := (hash_a[i] * x + hash_b[i]) % w
+      sketch2[i * w + col] = sketch2[i * w + col] + 1
+  -- Merge: sum counters
+  mut merged := init_sketch(d * w)
+  for i in range(0, d * w)
+    merged[i] = sketch[i] + sketch2[i]
+  -- Query merged for item 3 (cherry: 8+3=11)
+  mut min_merged := 1000000
+  for i in range(0, d)
+    col := (hash_a[i] * 3 + hash_b[i]) % w
+    val := merged[i * w + col]
+    if val < min_merged
+      min_merged = val
+  print "  Cherry in merged sketch (true=11): estimate={min_merged}"
+
+  -- Part 7: Complexity
+  print ""
+  print "=== Part 7: Complexity ==="
+  print "  Space: O(d*w) counters"
+  print "  Update: O(d) per item"
+  print "  Query: O(d) per lookup"
+  print "  Merge: O(d*w) for two sketches"
+  print "  Applications: network traffic, NLP, heavy hitters detection"
+
+  print ""
+  print "Count-min sketch: space-efficient probabilistic frequency estimation with guaranteed additive error bounds."

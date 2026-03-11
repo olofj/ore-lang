@@ -1,0 +1,158 @@
+-- Showcase 745: Fenwick Tree (Binary Indexed Tree)
+
+fn lowbit x:Int -> Int
+  -- Lowest set bit: x & (-x) using 2's complement identity
+  -- In Ore: x & (-x) not available, so compute via loop
+  mut bit := 1
+  mut found := false
+  mut result := 1
+  while not found
+    if x % (bit * 2) != 0
+      result = bit
+      found = true
+    else
+      bit = bit * 2
+      if bit > x
+        result = bit
+        found = true
+  result
+
+fn fenwick_update tree:List i:Int delta:Int n:Int -> List
+  mut t := tree
+  mut idx := i
+  while idx <= n
+    t[idx] = t[idx] + delta
+    lb := lowbit(idx)
+    idx = idx + lb
+  t
+
+fn fenwick_query tree:List i:Int -> Int
+  mut s := 0
+  mut idx := i
+  while idx > 0
+    s = s + tree[idx]
+    lb := lowbit(idx)
+    idx = idx - lb
+  s
+
+fn main
+  print "Fenwick Tree (Binary Indexed Tree):"
+  print ""
+
+  -- Fenwick tree: efficient prefix sum queries and point updates in O(log n)
+  -- Named after Peter Fenwick (1994)
+  -- Key insight: each node covers a range determined by its lowest set bit
+
+  -- Part 1: Lowbit function
+  print "=== Part 1: Lowbit (Lowest Set Bit) ==="
+  print "  lowbit(i) determines range each node covers"
+  mut demo_vals := [1, 2, 3, 4, 5, 6, 7, 8]
+  for i in range(0, 8)
+    v := demo_vals[i]
+    lb := lowbit(v)
+    print "  lowbit({v}) = {lb}"
+
+  -- Part 2: Build Fenwick tree
+  print ""
+  print "=== Part 2: Building Fenwick Tree ==="
+  n := 8
+  -- Initial array: [3, 2, -1, 6, 5, 4, -3, 3]
+  mut arr := [3, 2, -1, 6, 5, 4, -3, 3]
+  -- tree[0] unused; tree[1..n] stores partial sums
+  mut tree := [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  print "  Array: [3, 2, -1, 6, 5, 4, -3, 3]"
+  -- Build by updating each element
+  for i in range(0, n)
+    tree = fenwick_update(tree, i + 1, arr[i], n)
+  print "  Fenwick tree array:"
+  for i in range(1, n + 1)
+    print "  tree[{i}] = {tree[i]}"
+
+  -- Part 3: Prefix sum queries
+  print ""
+  print "=== Part 3: Prefix Sum Queries ==="
+  print "  prefix_sum(i) = sum of arr[1..i]"
+  for i in range(1, n + 1)
+    s := fenwick_query(tree, i)
+    print "  prefix_sum({i}) = {s}"
+
+  -- Part 4: Range sum queries
+  print ""
+  print "=== Part 4: Range Sum Queries ==="
+  -- range_sum(l, r) = prefix_sum(r) - prefix_sum(l-1)
+  print "  range_sum(l, r) = prefix_sum(r) - prefix_sum(l-1)"
+  -- Example queries
+  mut ql := [1, 2, 3, 4]
+  mut qr := [4, 6, 8, 5]
+  n_queries := 4
+  for qi in range(0, n_queries)
+    l := ql[qi]
+    r := qr[qi]
+    sr := fenwick_query(tree, r)
+    sl := fenwick_query(tree, l - 1)
+    s := sr - sl
+    print "  range_sum({l}, {r}) = {s}"
+
+  -- Part 5: Point updates
+  print ""
+  print "=== Part 5: Point Updates ==="
+  -- Update arr[3] from -1 to 4 (delta = 5)
+  print "  Update: arr[3] := 4 (was -1, delta=+5)"
+  tree = fenwick_update(tree, 3, 5, n)
+  arr[2] = 4
+  print "  After update, prefix_sum(5) = {fenwick_query(tree, 5)}"
+  print "  After update, range_sum(1,8) = {fenwick_query(tree, 8)}"
+  -- Another update: arr[6] from 4 to 1 (delta = -3)
+  print "  Update: arr[6] := 1 (was 4, delta=-3)"
+  tree = fenwick_update(tree, 6, -3, n)
+  arr[5] = 1
+  print "  After update, prefix_sum(6) = {fenwick_query(tree, 6)}"
+  print "  After update, range_sum(1,8) = {fenwick_query(tree, 8)}"
+
+  -- Part 6: Find kth prefix sum (binary search on tree)
+  print ""
+  print "=== Part 6: Order Statistics ==="
+  -- Find smallest i such that prefix_sum(i) >= k
+  -- Using the Fenwick tree structure for O(log n) search
+  print "  Binary search for prefix sum threshold:"
+  mut target_k := [5, 10, 15]
+  for ti in range(0, 3)
+    k := target_k[ti]
+    -- Binary lifting: start from highest power of 2 <= n
+    mut pos := 0
+    mut running := 0
+    mut step := 8
+    while step > 0
+      next := pos + step
+      if next <= n and running + tree[next] < k
+        running = running + tree[next]
+        pos = next
+      step = step / 2
+    pos = pos + 1
+    if pos <= n
+      print "  Smallest i with prefix_sum >= {k}: i={pos}"
+    else
+      print "  No i found for k={k}"
+
+  -- Part 7: 2D Fenwick tree concept
+  print ""
+  print "=== Part 7: 2D Fenwick Tree ==="
+  m := 4
+  print "  2D Fenwick tree for {n / 2} x {m} grid"
+  print "  Update (i,j): O(log n * log m)"
+  print "  Query prefix_sum(i,j): O(log n * log m)"
+  print "  Applications: 2D range sum queries, rectangle counting"
+
+  -- Part 8: Complexity
+  print ""
+  print "=== Part 8: Complexity ==="
+  print "  Build: O(n log n)"
+  print "  Point update: O(log n)"
+  print "  Prefix sum query: O(log n)"
+  print "  Range sum query: O(log n)"
+  print "  Space: O(n) - same as array"
+  print "  Compare: segment tree O(n) space but more complex"
+  print "  Compare: prefix sum array O(1) query, O(n) update"
+
+  print ""
+  print "Fenwick tree: elegant O(log n) data structure for prefix sums using lowest-set-bit decomposition."

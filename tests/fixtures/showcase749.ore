@@ -1,0 +1,171 @@
+-- Showcase 749: Miller-Rabin Primality Test
+
+fn mod_pow base:Int exp:Int modulus:Int -> Int
+  -- Fast modular exponentiation: base^exp mod modulus
+  if modulus == 1
+    0
+  else
+    mut result := 1
+    mut b := base % modulus
+    mut e := exp
+    while e > 0
+      if e % 2 == 1
+        result = (result * b) % modulus
+      e = e / 2
+      b = (b * b) % modulus
+    result
+
+fn miller_rabin_witness n:Int a:Int -> Bool
+  -- Check if a is a witness for n being composite
+  -- Write n-1 = 2^r * d with d odd
+  mut d := n - 1
+  mut r := 0
+  while d % 2 == 0
+    d = d / 2
+    r = r + 1
+  -- Compute a^d mod n
+  mut x := mod_pow(a, d, n)
+  if x == 1 or x == n - 1
+    false
+  else
+    mut composite := true
+    mut i := 0
+    while i < r - 1 and composite
+      x = (x * x) % n
+      if x == n - 1
+        composite = false
+      i = i + 1
+    composite
+
+fn is_prime_miller_rabin n:Int -> Bool
+  -- Deterministic for n < 3,215,031,751 using witnesses {2,3,5,7}
+  if n < 2
+    false
+  else if n == 2 or n == 3 or n == 5 or n == 7
+    true
+  else if n % 2 == 0 or n % 3 == 0
+    false
+  else
+    -- Check witnesses 2, 3, 5, 7
+    w0 := miller_rabin_witness(n, 2)
+    w1 := miller_rabin_witness(n, 3)
+    w2 := miller_rabin_witness(n, 5)
+    w3 := miller_rabin_witness(n, 7)
+    not (w0 or w1 or w2 or w3)
+
+fn main
+  print "Miller-Rabin Primality Test:"
+  print ""
+
+  -- Miller-Rabin: probabilistic primality test, O(k log^2 n) per test
+  -- Deterministic for small n with fixed witnesses
+  -- Based on: if n is prime, then a^(n-1) = 1 (mod n) (Fermat)
+  -- Strengthened: check a^(2^i * d) for i in 0..r
+
+  -- Part 1: Algorithm overview
+  print "=== Part 1: Algorithm Overview ==="
+  print "  Input: n, witnesses a1, ..., ak"
+  print "  Write n-1 = 2^r * d (d odd)"
+  print "  For each witness a:"
+  print "    Compute x = a^d mod n"
+  print "    If x=1 or x=n-1: continue (not composite via this witness)"
+  print "    For i in 1..r-1: x = x^2 mod n"
+  print "      If x=n-1: not composite via this witness"
+  print "    Else: a is a witness => n is COMPOSITE"
+  print "  If no witness found: n is (probably) PRIME"
+
+  -- Part 2: Decompose n-1
+  print ""
+  print "=== Part 2: Decomposing n-1 = 2^r * d ==="
+  mut test_ns := [13, 17, 23, 100, 341, 561, 1009, 1729]
+  for i in range(0, 8)
+    n := test_ns[i]
+    mut d := n - 1
+    mut r := 0
+    while d % 2 == 0
+      d = d / 2
+      r = r + 1
+    print "  n={n}: n-1={n-1} = 2^{r} * {d}"
+
+  -- Part 3: Testing primality
+  print ""
+  print "=== Part 3: Primality Testing ==="
+  mut candidates := [2, 7, 11, 15, 17, 23, 25, 29, 100, 101, 341, 561, 1009, 1729, 7919]
+  n_cands := 15
+  print "  Testing candidates with witnesses [2,3,5,7]:"
+  for i in range(0, n_cands)
+    n := candidates[i]
+    prime := is_prime_miller_rabin(n)
+    if prime
+      print "  {n}: PRIME"
+    else
+      print "  {n}: COMPOSITE"
+
+  -- Part 4: Carmichael numbers
+  print ""
+  print "=== Part 4: Carmichael Numbers ==="
+  print "  Carmichael numbers: composite but pass Fermat test for all a"
+  print "  Smallest: 561, 1105, 1729, 2465"
+  -- Miller-Rabin correctly identifies them as composite
+  mut carmichael := [561, 1105, 1729, 2465]
+  for i in range(0, 4)
+    n := carmichael[i]
+    prime := is_prime_miller_rabin(n)
+    -- Verify Fermat test: 2^(n-1) mod n = 1
+    fermat := mod_pow(2, n - 1, n)
+    if prime
+      print "  {n}: MR says PRIME (WRONG!)"
+    else
+      print "  {n}: MR says COMPOSITE (correct), Fermat test: 2^{n-1} mod {n} = {fermat}"
+
+  -- Part 5: Large primes
+  print ""
+  print "=== Part 5: Testing Larger Numbers ==="
+  mut large_ns := [7919, 7920, 104729, 104730, 15485863]
+  for i in range(0, 5)
+    n := large_ns[i]
+    prime := is_prime_miller_rabin(n)
+    if prime
+      print "  {n}: PRIME"
+    else
+      print "  {n}: COMPOSITE"
+
+  -- Part 6: Witness verification example
+  print ""
+  print "=== Part 6: Witness Trace for n=341 ==="
+  -- 341 = 11 * 31, but passes Fermat for a=2
+  -- n-1 = 340 = 2^2 * 85
+  n := 341
+  d := 85
+  r := 2
+  print "  n=341=11*31, n-1=340=2^{r}*{d}"
+  a := 2
+  x := mod_pow(a, d, n)
+  print "  a=2: x = 2^{d} mod {n} = {x}"
+  if x == n - 1
+    print "  x = n-1: not composite via a=2"
+  else
+    x2 := (x * x) % n
+    print "  x^2 mod n = {x2}"
+    if x2 == n - 1
+      print "  x^2 = n-1: passes test for a=2 (false negative for Fermat!)"
+    else
+      print "  x^2 != n-1: a=2 IS a witness, 341 is COMPOSITE"
+  -- Check a=3
+  x3 := mod_pow(3, d, n)
+  print "  a=3: x = 3^{d} mod {n} = {x3}"
+  is_comp := miller_rabin_witness(n, 3)
+  if is_comp
+    print "  a=3 IS a witness: 341 is COMPOSITE"
+
+  -- Part 7: Complexity
+  print ""
+  print "=== Part 7: Complexity ==="
+  print "  Single witness check: O(log^2 n)"
+  print "  k witnesses: O(k log^2 n)"
+  print "  Deterministic (4 witnesses): O(log^2 n)"
+  print "  Error probability (random witnesses): < 4^(-k)"
+  print "  AKS deterministic: O(log^6 n) but slower in practice"
+
+  print ""
+  print "Miller-Rabin: efficient probabilistic primality test, deterministic with carefully chosen witnesses."

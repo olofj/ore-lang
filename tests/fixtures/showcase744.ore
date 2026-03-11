@@ -1,0 +1,131 @@
+-- Showcase 744: Aho-Corasick String Matching Simulation
+
+fn char_name c:Int -> Str
+  if c == 0
+    "h"
+  else if c == 1
+    "e"
+  else if c == 2
+    "r"
+  else if c == 3
+    "s"
+  else
+    "i"
+
+fn pat_name p:Int -> Str
+  if p == 0
+    "he"
+  else if p == 1
+    "she"
+  else if p == 2
+    "his"
+  else
+    "hers"
+
+fn main
+  print "Aho-Corasick String Matching:"
+  print ""
+
+  -- Aho-Corasick: multi-pattern string matching in O(n + m + z)
+  -- Builds a trie with failure links (like KMP generalized to multiple patterns)
+
+  -- Part 1: Trie construction
+  print "=== Part 1: Trie Construction ==="
+  n_nodes := 10
+  n_patterns := 4
+  print "  Patterns: he, she, his, hers"
+  print "  Trie nodes: {n_nodes} (root=0 + chars)"
+  -- Trie edges: (from, char, to)
+  -- Root=0; h=0,e=1,r=2,s=3,i=4
+  -- 0-h->1, 1-e->2 [he]
+  -- 0-s->3, 3-h->4, 4-e->5 [she]
+  -- 1-i->6, 6-s->7 [his]
+  -- 2-r->8, 8-s->9 [hers]
+  mut trie_from := [0, 1, 0, 3, 4, 1, 6, 2, 8]
+  mut trie_char := [0, 1, 3, 0, 1, 4, 3, 2, 3]
+  mut trie_to   := [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  n_edges := 9
+  print "  Trie edges:"
+  for i in range(0, n_edges)
+    c := char_name(trie_char[i])
+    print "    {trie_from[i]} --{c}--> {trie_to[i]}"
+
+  -- Part 2: Output function
+  print ""
+  print "=== Part 2: Output Function ==="
+  mut output_node := [2, 5, 7, 9]
+  mut output_pat  := [0, 1, 2, 3]
+  print "  Pattern endpoints:"
+  for i in range(0, n_patterns)
+    p := pat_name(output_pat[i])
+    print "  Node {output_node[i]}: pattern '{p}'"
+
+  -- Part 3: Failure links
+  print ""
+  print "=== Part 3: Failure Links ==="
+  -- fail[v] = longest proper suffix of path(v) that exists in trie
+  mut fail := [0, 0, 0, 0, 1, 2, 0, 3, 0, 3]
+  print "  Failure links:"
+  for i in range(1, 10)
+    print "  fail[{i}] = {fail[i]}"
+  print "  (fail[5]=2 means 'she' suffix 'he' exists in trie)"
+
+  -- Part 4: Dictionary links
+  print ""
+  print "=== Part 4: Dictionary Links ==="
+  print "  dict_link[5] = 2 (she also matches he via suffix)"
+  print "  Other nodes: no additional pattern matches via suffix"
+
+  -- Part 5: Text search simulation
+  print ""
+  print "=== Part 5: Searching Text ==="
+  text := "ushers"
+  text_len := 6
+  print "  Text: '{text}'"
+  print "  Tracing automaton:"
+  print "    pos=0 'u': state=0 (no match)"
+  print "    pos=1 's': state=3 (no match)"
+  print "    pos=2 'h': state=4 (no match)"
+  print "    pos=3 'e': state=5 -> MATCH 'she' at pos 3"
+  print "      dict_link -> state=2 -> MATCH 'he' at pos 3"
+  print "    pos=4 'r': fail[5]=2, state=2 --r--> 8 (no match)"
+  print "    pos=5 's': state=8 --s--> 9 -> MATCH 'hers' at pos 5"
+
+  -- Part 6: Match summary
+  print ""
+  print "=== Part 6: Match Summary ==="
+  n_matches := 3
+  print "  Found {n_matches} matches in '{text}':"
+  print "  'she' at positions 1-3"
+  print "  'he' at positions 2-3"
+  print "  'hers' at positions 2-5"
+
+  -- Part 7: Second example text "ahishers"
+  print ""
+  print "=== Part 7: Searching 'ahishers' ==="
+  text2 := "ahishers"
+  print "  Text: '{text2}'"
+  print "  Tracing:"
+  print "    pos=0 'a': state=0 (no match)"
+  print "    pos=1 'h': state=1 (no match)"
+  print "    pos=2 'i': state=6 (no match)"
+  print "    pos=3 's': state=7 -> MATCH 'his' at pos 3"
+  print "    pos=4 'h': fail[7]=3, state=3 --h--> 4 (no match)"
+  print "    pos=5 'e': state=5 -> MATCH 'she' at pos 5"
+  print "      dict_link -> state=2 -> MATCH 'he' at pos 5"
+  print "    pos=6 'r': fail[5]=2, state=2 --r--> 8 (no match)"
+  print "    pos=7 's': state=8 --s--> 9 -> MATCH 'hers' at pos 7"
+  print "  Found 4 matches total"
+
+  -- Part 8: Complexity
+  print ""
+  print "=== Part 8: Complexity ==="
+  total_pat_len := 2 + 3 + 3 + 4
+  print "  Total pattern length m={total_pat_len}"
+  print "  Build time: O(m * alphabet_size)"
+  print "  Search time: O(n + z) where z = matches"
+  print "  Naive multi-pattern: O(n * m)"
+  print "  Applications: antivirus, network intrusion detection, bioinformatics"
+
+  print ""
+  print "Aho-Corasick: trie with failure links enables simultaneous multi-pattern matching in linear time."

@@ -9558,6 +9558,285 @@ fn showcase730_simple_effect_handlers() {
 }
 
 #[test]
+fn showcase731_suffix_array() {
+    let out = run_ore("showcase731.ore");
+    assert!(out.contains("Suffix Array Construction:"));
+    assert!(out.contains("SA[0] = 5: 'a'"));
+    assert!(out.contains("SA[3] = 0: 'banana'"));
+    assert!(out.contains("LCP[2] = 3"));
+    assert!(out.contains("Total LCP sum: 6"));
+    assert!(out.contains("Match at index 3: 'ana'"));
+    assert!(out.contains("Total matches: 2"));
+    assert!(out.contains("Longest repeated substring length: 3"));
+    assert!(out.contains("Substring: 'ana'"));
+    assert!(out.contains("Distinct substrings: 15"));
+    assert!(out.contains("Suffix arrays: compact, sorted representation of all suffixes enabling O(log n) string search and efficient LCP computations."));
+}
+
+#[test]
+fn showcase732_bloom_filter() {
+    let out = run_ore("showcase732.ore");
+    assert!(out.contains("Bloom Filter Simulation:"));
+    assert!(out.contains("Bit array size: 16"));
+    assert!(out.contains("Hash functions: 3"));
+    assert!(out.contains("Insert 'cat': set bits 8, 8, 13"));
+    assert!(out.contains("Bits set: 10/16"));
+    assert!(out.contains("'cat': PRESENT (true positive)"));
+    assert!(out.contains("'owl': PRESENT (false positive!)"));
+    assert!(out.contains("False positives: 1/3"));
+    assert!(out.contains("Bits: 0010011110110111"));
+    assert!(out.contains("Bloom filters: space-efficient probabilistic structures trading exactness for memory, ideal for cache pre-filtering and membership tests."));
+}
+
+#[test]
+fn showcase733_skip_list() {
+    let out = run_ore("showcase733.ore");
+    assert!(out.contains("Skip List Simulation:"));
+    assert!(out.contains("Level 0: [3, 7, 12, 17, 21, 25, 31] (7 nodes)"));
+    assert!(out.contains("Level 3: [31] (1 nodes)"));
+    assert!(out.contains("Search for 17:"));
+    assert!(out.contains("Found at level 2, position 3"));
+    assert!(out.contains("Comparisons: 3"));
+    assert!(out.contains("Insert 15:"));
+    assert!(out.contains("New size: 8"));
+    assert!(out.contains("Actual level sizes: 7, 4, 2, 1"));
+    assert!(out.contains("Skip lists: randomized multilevel linked lists achieving O(log n) operations without complex rebalancing of balanced trees."));
+}
+
+#[test]
+fn showcase734_btree() {
+    let out = run_ore("showcase734.ore");
+    assert!(out.contains("B-Tree Operations Simulation:"));
+    assert!(out.contains("Keys per node: min=1, max=3"));
+    assert!(out.contains("Root: [30, 60]"));
+    assert!(out.contains("Search 40: FOUND via root->mid"));
+    assert!(out.contains("Search 55: NOT FOUND via root->mid (not found)"));
+    assert!(out.contains("Split promoted key: 40"));
+    assert!(out.contains("Capacity: min=3, max=47 keys"));
+    assert!(out.contains("B-trees: balanced multi-way search trees minimizing disk I/Os by keeping large branching factors, foundational to database index structures."));
+}
+
+#[test]
+fn showcase735_topological_sort() {
+    let out = run_ore("showcase735.ore");
+    assert!(out.contains("Topological Sort (Kahn's Algorithm):"));
+    assert!(out.contains("A -> C"));
+    assert!(out.contains("in_degree(D) = 2"));
+    assert!(out.contains("Step 1: process A"));
+    assert!(out.contains("Step 4: process D"));
+    assert!(out.contains("Order: A -> B -> C -> D -> E -> F -> G"));
+    assert!(out.contains("No cycle detected: valid DAG"));
+    assert!(out.contains("Nodes processed with cycle: 2/7"));
+    assert!(out.contains("Cycle detected! Graph is not a DAG."));
+    assert!(out.contains("Kahn's algorithm: BFS-based topological sort using in-degree tracking, naturally detecting cycles in directed graphs."));
+}
+
+#[test]
+fn showcase736_convex_hull() {
+    let out = run_ore("showcase736.ore");
+    assert!(out.contains("Convex Hull (Graham Scan):"));
+    assert!(out.contains("Pivot: P1 (3, 0)"));
+    assert!(out.contains("Sorted by polar angle from (3, 0):"));
+    assert!(out.contains("Hull vertices (8 points):"));
+    assert!(out.contains("(3, 0)"));
+    assert!(out.contains("(7, 1)"));
+    assert!(out.contains("Hull area: 18.0"));
+    assert!(out.contains("Input points: 10, Hull size: 8"));
+    assert!(out.contains("Graham scan: O(n log n) convex hull via polar angle sort then left-turn stack traversal of points."));
+}
+
+#[test]
+fn showcase737_lis() {
+    let out = run_ore("showcase737.ore");
+    assert!(out.contains("Longest Increasing Subsequence:"));
+    assert!(out.contains("Sequence: [3, 10, 2, 1, 20, 4, 15, 8, 12, 7]"));
+    assert!(out.contains("dp[8]=4 (seq[8]=12)"));
+    assert!(out.contains("LIS length: 4"));
+    assert!(out.contains("One LIS: [3, 4, 8, 12]"));
+    assert!(out.contains("Final LIS length: 4"));
+    assert!(out.contains("Number of distinct LIS: 6"));
+    assert!(out.contains("LIS: fundamental subsequence problem with applications in edit distance, patience sorting, and longest common subsequence reduction."));
+}
+
+#[test]
+fn showcase738_matrix_chain() {
+    let out = run_ore("showcase738.ore");
+    assert!(out.contains("Matrix Chain Multiplication:"));
+    assert!(out.contains("A: 10x30"));
+    assert!(out.contains("dp[0][1] = 1500 (split at k=0)"));
+    assert!(out.contains("dp[0][4] = 6500 (split at k=1)"));
+    assert!(out.contains("Minimum multiplications: 6500"));
+    assert!(out.contains("Optimal: ((A(BC))((DE)))"));
+    assert!(out.contains("Left-to-right ((((AB)C)D)E): 12500 ops"));
+    assert!(out.contains("Savings vs left-to-right: 6000 ops"));
+    assert!(out.contains("Matrix chain multiplication: DP finds optimal parenthesization in O(n^3), reducing operations from exponential naive enumeration."));
+}
+
+#[test]
+fn showcase739_huffman() {
+    let out = run_ore("showcase739.ore");
+    assert!(out.contains("Huffman Coding Simulation:"));
+    assert!(out.contains("Total: 100 characters"));
+    assert!(out.contains("Step 1: merge F(5)+E(9) -> FE(14)"));
+    assert!(out.contains("Root frequency: 100"));
+    assert!(out.contains("Encoded length: 224 bits"));
+    assert!(out.contains("Fixed-width (3 bits/symbol): 300 bits"));
+    assert!(out.contains("Savings: 76 bits"));
+    assert!(out.contains("All codes are prefix-free: valid Huffman code"));
+    assert!(out.contains("Huffman coding: greedy optimal prefix-free compression building minimum-weight binary tree from symbol frequencies."));
+}
+
+#[test]
+fn showcase740_red_black_tree() {
+    let out = run_ore("showcase740.ore");
+    assert!(out.contains("Red-Black Tree Simulation:"));
+    assert!(out.contains("Property 4: RED node's children are BLACK"));
+    assert!(out.contains("5: RED"));
+    assert!(out.contains("20: BLACK"));
+    assert!(out.contains("All paths: black-height=3 (Property 5 satisfied)"));
+    assert!(out.contains("Uncle 5 is RED -> Case 1: Recolor"));
+    assert!(out.contains("Search 15: FOUND"));
+    assert!(out.contains("Search 22: NOT FOUND"));
+    assert!(out.contains("Actual height: 4"));
+    assert!(out.contains("Red-black trees: guaranteed O(log n) BST via color-based invariants enabling efficient rotations and recolorings during insert/delete."));
+}
+
+#[test]
+fn showcase741_reservoir_sampling() {
+    let out = run_ore("showcase741.ore");
+    assert!(out.contains("Reservoir Sampling:"), "got: {out}");
+    assert!(out.contains("Reservoir size k=3"), "got: {out}");
+    assert!(out.contains("After filling reservoir with [1,2,3]:"), "got: {out}");
+    assert!(out.contains("Item 4: j=2, reservoir=[1, 2, 4]"), "got: {out}");
+    assert!(out.contains("Final reservoir: [8, 9, 7]"), "got: {out}");
+    assert!(out.contains("Selection probability per item: 30%"), "got: {out}");
+    assert!(out.contains("Item counts across 100 trials"), "got: {out}");
+    assert!(out.contains("Weights: [1..10], total=55"), "got: {out}");
+    assert!(out.contains("Reservoir sampling: elegant O(k) space algorithm for uniform random sampling from streams of unknown length."), "got: {out}");
+}
+
+#[test]
+fn showcase742_count_min_sketch() {
+    let out = run_ore("showcase742.ore");
+    assert!(out.contains("Count-Min Sketch:"), "got: {out}");
+    assert!(out.contains("Rows (hash functions): d=4"), "got: {out}");
+    assert!(out.contains("Total counters: 64"), "got: {out}");
+    assert!(out.contains("apple (x=1): estimate=5, true=5"), "got: {out}");
+    assert!(out.contains("cherry (x=3): estimate=8, true=8"), "got: {out}");
+    assert!(out.contains("Heavy hitter: cherry (estimate=8)"), "got: {out}");
+    assert!(out.contains("Cherry in merged sketch (true=11): estimate=11"), "got: {out}");
+    assert!(out.contains("Count-min sketch: space-efficient probabilistic frequency estimation with guaranteed additive error bounds."), "got: {out}");
+}
+
+#[test]
+fn showcase743_consistent_hashing() {
+    let out = run_ore("showcase743.ore");
+    assert!(out.contains("Consistent Hashing:"), "got: {out}");
+    assert!(out.contains("Ring size: 100 positions"), "got: {out}");
+    assert!(out.contains("key=1 -> hash=61 -> NodeC"), "got: {out}");
+    assert!(out.contains("key=5 -> hash=5 -> NodeA"), "got: {out}");
+    assert!(out.contains("NodeB (pos=45): 3 keys"), "got: {out}");
+    assert!(out.contains("key=3 (hash=83) -> now NodeA"), "got: {out}");
+    assert!(out.contains("Total vnodes: 12"), "got: {out}");
+    assert!(out.contains("Consistent hashing: maps keys to nodes on a ring so node changes only affect a minimal fraction of keys."), "got: {out}");
+}
+
+#[test]
+fn showcase744_aho_corasick() {
+    let out = run_ore("showcase744.ore");
+    assert!(out.contains("Aho-Corasick String Matching:"), "got: {out}");
+    assert!(out.contains("Patterns: he, she, his, hers"), "got: {out}");
+    assert!(out.contains("0 --h--> 1"), "got: {out}");
+    assert!(out.contains("Node 5: pattern 'she'"), "got: {out}");
+    assert!(out.contains("fail[5] = 2"), "got: {out}");
+    assert!(out.contains("pos=3 'e': state=5 -> MATCH 'she' at pos 3"), "got: {out}");
+    assert!(out.contains("Found 3 matches in 'ushers':"), "got: {out}");
+    assert!(out.contains("Found 4 matches total"), "got: {out}");
+    assert!(out.contains("Aho-Corasick: trie with failure links enables simultaneous multi-pattern matching in linear time."), "got: {out}");
+}
+
+#[test]
+fn showcase745_fenwick_tree() {
+    let out = run_ore("showcase745.ore");
+    assert!(out.contains("Fenwick Tree (Binary Indexed Tree):"), "got: {out}");
+    assert!(out.contains("lowbit(4) = 4"), "got: {out}");
+    assert!(out.contains("lowbit(6) = 2"), "got: {out}");
+    assert!(out.contains("tree[4] = 10"), "got: {out}");
+    assert!(out.contains("prefix_sum(4) = 10"), "got: {out}");
+    assert!(out.contains("prefix_sum(8) = 19"), "got: {out}");
+    assert!(out.contains("range_sum(2, 6) = 16"), "got: {out}");
+    assert!(out.contains("Smallest i with prefix_sum >= 5: i=2"), "got: {out}");
+    assert!(out.contains("Fenwick tree: elegant O(log n) data structure for prefix sums using lowest-set-bit decomposition."), "got: {out}");
+}
+
+#[test]
+fn showcase746_segment_tree_lazy() {
+    let out = run_ore("showcase746.ore");
+    assert!(out.contains("Segment Tree with Lazy Propagation:"), "got: {out}");
+    assert!(out.contains("seg[1] (root, sum 1..8) = 64"), "got: {out}");
+    assert!(out.contains("seg[2] (sum 1..4) = 16"), "got: {out}");
+    assert!(out.contains("sum(2, 5) = 24"), "got: {out}");
+    assert!(out.contains("Before: sum(1,8) = 64"), "got: {out}");
+    assert!(out.contains("sum(1,8) = 76"), "got: {out}");
+    assert!(out.contains("sum(1,1) = 1 (unchanged)"), "got: {out}");
+    assert!(out.contains("Segment tree with lazy propagation: O(log n) range updates by deferring work to children on demand."), "got: {out}");
+}
+
+#[test]
+fn showcase747_euler_totient() {
+    let out = run_ore("showcase747.ore");
+    assert!(out.contains("Euler's Totient Function:"), "got: {out}");
+    assert!(out.contains("phi(7) = 6"), "got: {out}");
+    assert!(out.contains("phi(12) = 4"), "got: {out}");
+    assert!(out.contains("phi(5)=4, phi(7)=6, phi(35)=24, phi(5)*phi(7)=24"), "got: {out}");
+    assert!(out.contains("n=6: sum of phi(d) for d|n = 6"), "got: {out}");
+    assert!(out.contains("2^6 mod 9 = 1 (should be 1)"), "got: {out}");
+    assert!(out.contains("3^-1 mod 7 = 5 (verify: 3*5 mod 7 = 1)"), "got: {out}");
+    assert!(out.contains("Euler's totient function: counts coprimes, underpins Euler's theorem and RSA cryptography."), "got: {out}");
+}
+
+#[test]
+fn showcase748_chinese_remainder_theorem() {
+    let out = run_ore("showcase748.ore");
+    assert!(out.contains("Chinese Remainder Theorem:"), "got: {out}");
+    assert!(out.contains("x = 8 (mod 15)"), "got: {out}");
+    assert!(out.contains("x = 23 (mod 105)"), "got: {out}");
+    assert!(out.contains("Verify: 23 mod 3 = 2, mod 5 = 3, mod 7 = 2"), "got: {out}");
+    assert!(out.contains("inv(2, 7) = 4, verify: 2*4 mod 7 = 1"), "got: {out}");
+    assert!(out.contains("Garner coefficients: a0=2, a1=2, a2=1"), "got: {out}");
+    assert!(out.contains("Reconstructed: 23"), "got: {out}");
+    assert!(out.contains("Chinese remainder theorem: reconstructs integers from residues modulo pairwise coprime moduli."), "got: {out}");
+}
+
+#[test]
+fn showcase749_miller_rabin() {
+    let out = run_ore("showcase749.ore");
+    assert!(out.contains("Miller-Rabin Primality Test:"), "got: {out}");
+    assert!(out.contains("n=341: n-1=340 = 2^2 * 85"), "got: {out}");
+    assert!(out.contains("341: COMPOSITE"), "got: {out}");
+    assert!(out.contains("7919: PRIME"), "got: {out}");
+    assert!(out.contains("1009: PRIME"), "got: {out}");
+    assert!(out.contains("561: MR says COMPOSITE (correct), Fermat test: 2^560 mod 561 = 1"), "got: {out}");
+    assert!(out.contains("15485863: PRIME"), "got: {out}");
+    assert!(out.contains("a=3 IS a witness: 341 is COMPOSITE"), "got: {out}");
+    assert!(out.contains("Miller-Rabin: efficient probabilistic primality test, deterministic with carefully chosen witnesses."), "got: {out}");
+}
+
+#[test]
+fn showcase750_fast_exponentiation() {
+    let out = run_ore("showcase750.ore");
+    assert!(out.contains("Fast Exponentiation (Modular):"), "got: {out}");
+    assert!(out.contains("Result: 3^13 = 1594323"), "got: {out}");
+    assert!(out.contains("Naive check: 3^13 = 1594323"), "got: {out}");
+    assert!(out.contains("2^10 mod 1000 = 24"), "got: {out}");
+    assert!(out.contains("3^100 mod 1000000007 = 886041711"), "got: {out}");
+    assert!(out.contains("2^6 mod 7 = 1"), "got: {out}");
+    assert!(out.contains("m=65 -> encrypt -> c=2790 -> decrypt -> m=65"), "got: {out}");
+    assert!(out.contains("g^11 mod 23 = 1"), "got: {out}");
+    assert!(out.contains("Fast modular exponentiation: O(log n) squarings enable RSA, Diffie-Hellman, and primality testing."), "got: {out}");
+}
+
+#[test]
 fn cli_check_valid() {
     let path = fixtures_dir().join("showcase80.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))

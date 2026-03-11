@@ -1,0 +1,114 @@
+-- Showcase 741: Reservoir Sampling
+
+fn main
+  print "Reservoir Sampling:"
+  print ""
+
+  -- Reservoir sampling: select k items uniformly at random from a stream
+  -- When stream size n is unknown in advance
+  -- Algorithm R (Vitter): keep reservoir of size k,
+  -- for each new item i > k, replace a random reservoir slot with prob k/i
+
+  -- Part 1: Algorithm overview
+  print "=== Part 1: Algorithm R Overview ==="
+  k := 3
+  print "  Reservoir size k={k}"
+  print "  For item i (1-indexed):"
+  print "    if i <= k: add to reservoir"
+  print "    else: with prob k/i, replace random slot"
+  print "  Each item has equal probability k/n of selection"
+
+  -- Part 2: Simulate with fixed stream [1..10], k=3
+  print ""
+  print "=== Part 2: Simulate Stream [1..10], k=3 ==="
+  -- Use deterministic pseudo-random (LCG) for reproducibility
+  -- LCG: seed=42, a=1664525, c=1013904223, m=2^32
+  mut seed := 42
+  stream_len := 10
+
+  -- Fill reservoir with first k items
+  mut res := [1, 2, 3]
+  print "  After filling reservoir with [1,2,3]:"
+  print "  Reservoir: [{res[0]}, {res[1]}, {res[2]}]"
+
+  -- Process remaining items 4..10
+  for i in range(4, stream_len + 1)
+    -- LCG step: next random number
+    seed = (seed * 1664525 + 1013904223) % 1000000007
+    -- j = seed mod i (0-indexed, so slot to maybe replace)
+    j := seed % i
+    if j < k
+      res[j] = i
+    print "  Item {i}: j={j}, reservoir=[{res[0]}, {res[1]}, {res[2]}]"
+
+  print "  Final reservoir: [{res[0]}, {res[1]}, {res[2]}]"
+
+  -- Part 3: Statistical properties
+  print ""
+  print "=== Part 3: Statistical Properties ==="
+  n := 10
+  print "  Stream size n={n}, reservoir k={k}"
+  -- Each item selected with prob k/n = 3/10
+  -- Numerator * 100 / denominator for percentage
+  prob_num := k * 100
+  prob_den := n
+  prob_pct := prob_num / prob_den
+  print "  Selection probability per item: {prob_pct}%"
+  print "  Expected items from first half: {k / 2}"
+  print "  Algorithm is unbiased: YES"
+
+  -- Part 4: Multiple runs simulation
+  print ""
+  print "=== Part 4: Frequency Analysis (100 simulated runs) ==="
+  -- Count how often each item appears in reservoir across simulations
+  -- Use deterministic runs with different seeds
+  mut counts := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  num_trials := 100
+  mut trial_seed := 1
+  for trial in range(0, num_trials)
+    trial_seed = (trial_seed * 6364136223846793005 + 1442695040888963407) % 1000000007
+    mut r0 := 1
+    mut r1 := 2
+    mut r2 := 3
+    mut ts := trial_seed
+    for i in range(4, n + 1)
+      ts = (ts * 1664525 + 1013904223) % 1000000007
+      j := ts % i
+      if j == 0
+        r0 = i
+      if j == 1
+        r1 = i
+      if j == 2
+        r2 = i
+    counts[r0 - 1] = counts[r0 - 1] + 1
+    counts[r1 - 1] = counts[r1 - 1] + 1
+    counts[r2 - 1] = counts[r2 - 1] + 1
+  print "  Item counts across {num_trials} trials (k=3, expected ~{k * num_trials / n} each):"
+  for i in range(0, n)
+    print "    Item {i + 1}: {counts[i]} times"
+
+  -- Part 5: Weighted reservoir sampling
+  print ""
+  print "=== Part 5: Weighted Reservoir Sampling ==="
+  -- Items have weights; selection probability proportional to weight
+  -- Algorithm A-Res: for each item i, key = U^(1/w_i), keep k largest keys
+  -- Approximate with integer weights here
+  mut weights := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  total_weight := weights[0] + weights[1] + weights[2] + weights[3] + weights[4] + weights[5] + weights[6] + weights[7] + weights[8] + weights[9]
+  print "  Weights: [1..10], total={total_weight}"
+  -- Probability of item i = weight[i] / total_weight
+  for i in range(0, 5)
+    p_num := weights[i] * 100
+    p_pct := p_num / total_weight
+    print "  Item {i + 1} weight={weights[i]}: ~{p_pct}% probability"
+
+  -- Part 6: Complexity
+  print ""
+  print "=== Part 6: Complexity ==="
+  print "  Time: O(n) for stream of n items"
+  print "  Space: O(k) reservoir"
+  print "  Each update: O(1) expected"
+  print "  Optimal: cannot do better than O(n) time or O(k) space"
+
+  print ""
+  print "Reservoir sampling: elegant O(k) space algorithm for uniform random sampling from streams of unknown length."

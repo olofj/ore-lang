@@ -1,0 +1,159 @@
+-- Showcase 743: Consistent Hashing
+
+fn hash_pos key:Int ring_size:Int -> Int
+  -- Simple hash: polynomial mod ring_size
+  (key * 2654435761) % ring_size
+
+fn main
+  print "Consistent Hashing:"
+  print ""
+
+  -- Consistent hashing: distribute keys across nodes so that
+  -- when a node is added/removed, only k/n keys are remapped (not all)
+  -- Used in distributed systems: Dynamo, Cassandra, memcached
+
+  -- Part 1: Ring setup
+  print "=== Part 1: Ring Setup ==="
+  ring_size := 100
+  n_nodes := 4
+  print "  Ring size: {ring_size} positions (0 to {ring_size - 1})"
+  print "  Number of nodes: {n_nodes}"
+  -- Node positions on ring (sorted): 20, 45, 70, 90
+  mut node_pos := [20, 45, 70, 90]
+  print "  NodeA: position 20"
+  print "  NodeB: position 45"
+  print "  NodeC: position 70"
+  print "  NodeD: position 90"
+
+  -- Part 2: Key assignment
+  print ""
+  print "=== Part 2: Key Assignment ==="
+  -- Keys 1..8 with their hashes mod 100
+  -- hash(x) = (x * 2654435761) % 100
+  -- hash(1)=61, hash(2)=22, hash(3)=83, hash(4)=44
+  -- hash(5)=5, hash(6)=66, hash(7)=27, hash(8)=88
+  mut keys := [1, 2, 3, 4, 5, 6, 7, 8]
+  n_keys := 8
+  print "  Assigning {n_keys} keys to nodes:"
+  mut node_labels := ["A", "B", "C", "D"]
+  for ki in range(0, n_keys)
+    key := keys[ki]
+    h := hash_pos(key, ring_size)
+    mut assigned := 0
+    mut found := false
+    for ni in range(0, n_nodes)
+      if not found
+        if node_pos[ni] >= h
+          assigned = ni
+          found = true
+    if not found
+      assigned = 0
+    lbl := node_labels[assigned]
+    print "  key={key} -> hash={h} -> Node{lbl}"
+
+  -- Part 3: Load distribution
+  print ""
+  print "=== Part 3: Load Distribution ==="
+  mut load := [0, 0, 0, 0]
+  for ki in range(0, n_keys)
+    key := keys[ki]
+    h := hash_pos(key, ring_size)
+    mut assigned := 0
+    mut found := false
+    for ni in range(0, n_nodes)
+      if not found
+        if node_pos[ni] >= h
+          assigned = ni
+          found = true
+    if not found
+      assigned = 0
+    load[assigned] = load[assigned] + 1
+  print "  NodeA (pos=20): {load[0]} keys (responsible for range 91-20)"
+  print "  NodeB (pos=45): {load[1]} keys (responsible for range 21-45)"
+  print "  NodeC (pos=70): {load[2]} keys (responsible for range 46-70)"
+  print "  NodeD (pos=90): {load[3]} keys (responsible for range 71-90)"
+
+  -- Part 4: Add a node at position 60
+  print ""
+  print "=== Part 4: Adding NodeE at position 60 ==="
+  -- New sorted ring: 20, 45, 60, 70, 90
+  -- Keys previously in NodeC with hash in (45,60] now go to NodeE
+  n_nodes2 := 5
+  mut node_pos2 := [20, 45, 60, 70, 90]
+  mut node_label2 := ["A", "B", "E", "C", "D"]
+  mut moved := 0
+  for ki in range(0, n_keys)
+    key := keys[ki]
+    h := hash_pos(key, ring_size)
+    -- Old assignment
+    mut old_idx := 0
+    mut found_old := false
+    for ni in range(0, n_nodes)
+      if not found_old
+        if node_pos[ni] >= h
+          old_idx = ni
+          found_old = true
+    if not found_old
+      old_idx = 0
+    -- New assignment
+    mut new_idx := 0
+    mut found_new := false
+    for ni in range(0, n_nodes2)
+      if not found_new
+        if node_pos2[ni] >= h
+          new_idx = ni
+          found_new = true
+    if not found_new
+      new_idx = 0
+    -- Compare indices (old NodeC=2, new NodeE=2, NodeC=3)
+    -- A key moves if it was in NodeC and now is in NodeE
+    old_lbl := node_labels[old_idx]
+    new_lbl := node_label2[new_idx]
+    if old_idx == 2 and new_idx == 2
+      moved = moved + 1
+      h2 := hash_pos(key, ring_size)
+      print "  key={key} (hash={h2}) moved: Node{old_lbl} -> Node{new_lbl}"
+  print "  Keys moved: {moved} of {n_keys} (hashes 61,66 are in 60-70, stay in NodeC)"
+  ideal := n_keys / n_nodes2
+  print "  Ideal remapping: ~{ideal} key(s)"
+  total_unchanged := n_keys - moved
+  print "  Keys unchanged: {total_unchanged} (no hashes fall in 45-60 range)"
+
+  -- Part 5: Virtual nodes (vnodes)
+  print ""
+  print "=== Part 5: Virtual Nodes ==="
+  vnodes_per := 3
+  total_vnodes := n_nodes * vnodes_per
+  print "  Physical nodes: {n_nodes}, vnodes each: {vnodes_per}"
+  print "  Total vnodes: {total_vnodes}"
+  print "  Better load balance: each node handles multiple ring segments"
+  -- Simulate vnode positions
+  mut vnode_labels := ["A", "C", "B", "D", "A", "C", "B", "D", "A", "B", "C", "D"]
+  mut vnode_positions := [8, 17, 29, 38, 52, 61, 74, 83, 91, 95, 97, 99]
+  for i in range(0, total_vnodes)
+    lbl := vnode_labels[i]
+    pos := vnode_positions[i]
+    print "  vnode {i}: pos={pos} -> Node{lbl}"
+
+  -- Part 6: Node removal
+  print ""
+  print "=== Part 6: Removing NodeD ==="
+  -- Keys in NodeD's range go to NodeA (wraps around)
+  print "  Before: NodeD responsible for range 71-90"
+  print "  After removal: that range falls to NodeA (next clockwise)"
+  -- Keys with hash 71-90: hash(3)=83, hash(8)=88
+  print "  key=3 (hash=83) -> now NodeA"
+  print "  key=8 (hash=88) -> now NodeA"
+  print "  Keys affected: 2 (only NodeD's range)"
+
+  -- Part 7: Complexity
+  print ""
+  print "=== Part 7: Complexity ==="
+  print "  Lookup: O(log n) with sorted ring"
+  print "  Add/Remove node: O(k/n) keys remapped"
+  print "  Space: O(n * vnodes)"
+  print "  Standard remapping: O(k) keys all remapped"
+  print "  Consistent advantage: only 1/n fraction moves"
+
+  print ""
+  print "Consistent hashing: maps keys to nodes on a ring so node changes only affect a minimal fraction of keys."

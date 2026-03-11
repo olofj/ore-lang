@@ -1,0 +1,156 @@
+-- Showcase 747: Euler's Totient Function
+
+fn gcd a:Int b:Int -> Int
+  mut x := a
+  mut y := b
+  while y != 0
+    t := y
+    y = x % y
+    x = t
+  x
+
+fn totient n:Int -> Int
+  -- phi(n) = n * product of (1 - 1/p) for each prime p dividing n
+  -- Compute by trial factorization
+  mut result := n
+  mut remaining := n
+  mut p := 2
+  while p * p <= remaining
+    if remaining % p == 0
+      while remaining % p == 0
+        remaining = remaining / p
+      -- result = result - result/p = result * (1 - 1/p)
+      result = result - result / p
+    p = p + 1
+  if remaining > 1
+    result = result - result / remaining
+  result
+
+fn is_prime n:Int -> Bool
+  if n < 2
+    false
+  else if n == 2
+    true
+  else if n % 2 == 0
+    false
+  else
+    mut i := 3
+    mut prime := true
+    while i * i <= n and prime
+      if n % i == 0
+        prime = false
+      i = i + 2
+    prime
+
+fn main
+  print "Euler's Totient Function:"
+  print ""
+
+  -- phi(n) counts integers in [1,n] coprime to n
+  -- Key formula: phi(n) = n * prod(1 - 1/p) for prime p|n
+
+  -- Part 1: Basic values
+  print "=== Part 1: Basic Values ==="
+  print "  phi(n) = count of k in [1,n] with gcd(k,n)=1"
+  for n in range(1, 21)
+    phi := totient(n)
+    print "  phi({n}) = {phi}"
+
+  -- Part 2: Key properties
+  print ""
+  print "=== Part 2: Key Properties ==="
+  -- phi(p) = p-1 for prime p
+  mut primes := [2, 3, 5, 7, 11, 13]
+  print "  For primes: phi(p) = p-1"
+  for i in range(0, 6)
+    p := primes[i]
+    phi_p := totient(p)
+    print "  phi({p}) = {phi_p}"
+
+  -- phi(p^k) = p^k - p^(k-1) = p^(k-1)(p-1)
+  print "  For prime powers: phi(p^k) = p^(k-1)*(p-1)"
+  print "  phi(4) = phi(2^2) = {totient(4)}"
+  print "  phi(8) = phi(2^3) = {totient(8)}"
+  print "  phi(9) = phi(3^2) = {totient(9)}"
+
+  -- Multiplicativity: phi(mn) = phi(m)*phi(n) for gcd(m,n)=1
+  print "  Multiplicativity: phi(mn) = phi(m)*phi(n) if gcd(m,n)=1"
+  phi5 := totient(5)
+  phi7 := totient(7)
+  phi35 := totient(35)
+  product := phi5 * phi7
+  print "  phi(5)={phi5}, phi(7)={phi7}, phi(35)={phi35}, phi(5)*phi(7)={product}"
+
+  -- Part 3: Sum formula
+  print ""
+  print "=== Part 3: Sum Formula ==="
+  -- sum_{d|n} phi(d) = n
+  print "  sum of phi(d) for all divisors d of n = n"
+  mut test_ns := [6, 12, 30]
+  for ti in range(0, 3)
+    n := test_ns[ti]
+    mut total := 0
+    for d in range(1, n + 1)
+      if n % d == 0
+        total = total + totient(d)
+    print "  n={n}: sum of phi(d) for d|n = {total}"
+
+  -- Part 4: Euler's theorem
+  print ""
+  print "=== Part 4: Euler's Theorem ==="
+  print "  Euler's theorem: a^phi(n) = 1 (mod n) if gcd(a,n)=1"
+  -- Verify: 2^phi(9) mod 9
+  n := 9
+  a := 2
+  phi_n := totient(n)
+  print "  n={n}, a={a}, phi(n)={phi_n}"
+  -- Compute 2^6 mod 9
+  mut power := 1
+  for i in range(0, phi_n)
+    power = (power * a) % n
+  print "  {a}^{phi_n} mod {n} = {power} (should be 1)"
+  -- Fermat's little theorem is a special case
+  n2 := 7
+  phi_n2 := totient(n2)
+  mut power2 := 1
+  for i in range(0, phi_n2)
+    power2 = (power2 * 3) % n2
+  print "  Fermat: 3^{phi_n2} mod {n2} = {power2} (should be 1)"
+
+  -- Part 5: Sieve of Eratosthenes variant for phi
+  print ""
+  print "=== Part 5: Computing phi(1..20) via Sieve ==="
+  -- O(n log log n) to compute phi for all n up to N
+  limit := 20
+  mut phi_sieve := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  -- Initialize phi[i] = i
+  for i in range(0, limit + 1)
+    phi_sieve[i] = i
+  -- Sieve: for each prime p, update multiples
+  for p in range(2, limit + 1)
+    if phi_sieve[p] == p
+      -- p is prime
+      mut multiple := p
+      while multiple <= limit
+        phi_sieve[multiple] = phi_sieve[multiple] - phi_sieve[multiple] / p
+        multiple = multiple + p
+  print "  Sieve results:"
+  for i in range(1, limit + 1)
+    print "  phi({i}) = {phi_sieve[i]}"
+
+  -- Part 6: Applications
+  print ""
+  print "=== Part 6: Applications ==="
+  print "  RSA cryptography: key generation uses phi(n)"
+  print "  Primitive roots: there are phi(phi(p)) primitive roots mod p"
+  phi_phi_7 := totient(totient(7))
+  print "  Primitive roots mod 7: phi(phi(7)) = phi(6) = {phi_phi_7}"
+  print "  Modular inverse: a^-1 mod n = a^(phi(n)-1) mod n if gcd(a,n)=1"
+  -- 3^-1 mod 7: 3^(6-1) = 3^5 = 243 mod 7
+  mut inv := 1
+  for i in range(0, 5)
+    inv = (inv * 3) % 7
+  print "  3^-1 mod 7 = {inv} (verify: 3*{inv} mod 7 = {(3 * inv) % 7})"
+
+  print ""
+  print "Euler's totient function: counts coprimes, underpins Euler's theorem and RSA cryptography."
