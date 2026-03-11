@@ -318,6 +318,7 @@ fn map_runtime_functions(
     map_fn!("ore_str_to_lower", ore_runtime::ore_str_to_lower);
     map_fn!("ore_str_substr", ore_runtime::ore_str_substr);
     map_fn!("ore_str_chars", ore_runtime::ore_str_chars);
+    map_fn!("ore_str_repeat", ore_runtime::ore_str_repeat);
     map_fn!("ore_str_index_of", ore_runtime::ore_str_index_of);
     // Lists
     map_fn!("ore_list_new", ore_runtime::ore_list_new);

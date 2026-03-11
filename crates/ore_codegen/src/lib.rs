@@ -623,6 +623,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_to_lower", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_substr", ptr_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_str_chars", ptr_type.fn_type(&[ptr_type.into()], false), ext);
+        self.module.add_function("ore_str_repeat", ptr_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_str_index_of", i64_type.fn_type(&[ptr_type.into(), ptr_type.into()], false), ext);
         // ore_list_reduce(ptr, i64, fn_ptr, env_ptr) -> i64
         self.module.add_function("ore_list_reduce", i64_type.fn_type(&[ptr_type.into(), i64_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
@@ -987,6 +988,14 @@ impl<'ctx> CodeGen<'ctx> {
                     let result = bld!(self.builder.build_call(rt, &[lhs.into(), rhs.into()], "lcat"))?;
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::List));
+                }
+
+                // String repetition: str * int
+                if lk == ValKind::Str && *op == BinOp::Mul {
+                    let rt = self.module.get_function("ore_str_repeat").unwrap();
+                    let result = bld!(self.builder.build_call(rt, &[lhs.into(), rhs.into()], "srepeat"))?;
+                    let val = self.call_result_to_value(result)?;
+                    return Ok((val, ValKind::Str));
                 }
 
                 let result = self.compile_binop(*op, lhs, rhs)?;

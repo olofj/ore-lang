@@ -349,6 +349,14 @@ pub extern "C" fn ore_str_substr(s: *mut OreStr, start: i64, len: i64) -> *mut O
 }
 
 #[no_mangle]
+pub extern "C" fn ore_str_repeat(s: *mut OreStr, n: i64) -> *mut OreStr {
+    if s.is_null() || n <= 0 { return ore_str_new(std::ptr::null(), 0); }
+    let str_val = unsafe { (*s).as_str() };
+    let repeated = str_val.repeat(n as usize);
+    ore_str_new(repeated.as_ptr(), repeated.len() as u32)
+}
+
+#[no_mangle]
 pub extern "C" fn ore_str_chars(s: *mut OreStr) -> *mut OreList {
     let list = ore_list_new();
     if s.is_null() { return list; }
