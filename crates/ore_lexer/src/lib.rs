@@ -530,6 +530,14 @@ impl<'a> Lexer<'a> {
     fn lex_string(&mut self) -> Result<(), LexError> {
         let start = self.pos;
         self.advance(); // skip opening "
+
+        // Check for triple-quoted string: """..."""
+        if self.peek() == Some(b'"') && self.pos + 1 < self.src.len() && self.src[self.pos + 1] == b'"' {
+            self.advance(); // skip second "
+            self.advance(); // skip third "
+            return self.lex_triple_string(start);
+        }
+
         let mut s = String::new();
         let mut has_interp = false;
 
@@ -611,6 +619,65 @@ impl<'a> Lexer<'a> {
         } else {
             self.emit(Token::StringLit(s), start);
         }
+        Ok(())
+    }
+
+    fn lex_triple_string(&mut self, start: usize) -> Result<(), LexError> {
+        // Read until """ (three consecutive double-quotes)
+        let mut s = String::new();
+        // Skip initial newline if present
+        if self.peek() == Some(b'\n') {
+            self.advance();
+        } else if self.peek() == Some(b'\r') {
+            self.advance();
+            if self.peek() == Some(b'\n') {
+                self.advance();
+            }
+        }
+        loop {
+            match self.peek() {
+                None => {
+                    return Err(self.lex_error_at("unterminated triple-quoted string".to_string(), start));
+                }
+                Some(b'"') => {
+                    if self.pos + 2 < self.src.len()
+                        && self.src[self.pos + 1] == b'"'
+                        && self.src[self.pos + 2] == b'"'
+                    {
+                        self.advance(); // skip first "
+                        self.advance(); // skip second "
+                        self.advance(); // skip third "
+                        break;
+                    } else {
+                        s.push(self.advance().unwrap() as char);
+                    }
+                }
+                Some(_) => {
+                    s.push(self.advance().unwrap() as char);
+                }
+            }
+        }
+        // Trim trailing newline if present
+        if s.ends_with('\n') {
+            s.pop();
+            if s.ends_with('\r') {
+                s.pop();
+            }
+        }
+        // Dedent: find minimum indentation and strip it
+        let lines: Vec<&str> = s.split('\n').collect();
+        let min_indent = lines.iter()
+            .filter(|l| !l.trim().is_empty())
+            .map(|l| l.len() - l.trim_start().len())
+            .min()
+            .unwrap_or(0);
+        if min_indent > 0 {
+            let dedented: Vec<&str> = lines.iter()
+                .map(|l| if l.len() >= min_indent { &l[min_indent..] } else { l })
+                .collect();
+            s = dedented.join("\n");
+        }
+        self.emit(Token::StringLit(s), start);
         Ok(())
     }
 

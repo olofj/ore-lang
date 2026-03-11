@@ -1,0 +1,16 @@
+fn main
+  text := """
+    Line one
+    Line two
+    Line three
+    """
+  print text.lines().len()
+  print text.lines().get(0)
+  print text.lines().get(2)
+
+  -- No extra indentation
+  simple := """
+hello
+world
+"""
+  print simple

@@ -1381,3 +1381,10 @@ fn control_for_step() {
     let lines: Vec<&str> = out.lines().collect();
     assert_eq!(lines, vec!["0 2 4 6 8", "0 3 6 9 12", "5"]);
 }
+
+#[test]
+fn strings_triple_quoted() {
+    let out = run_ore("strings/triple_quoted.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec!["3", "Line one", "Line three", "hello", "world"]);
+}
