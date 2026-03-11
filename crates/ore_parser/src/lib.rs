@@ -766,6 +766,38 @@ impl Parser {
 
             self.advance(); // consume operator
             let rhs = self.parse_expr(r_bp)?;
+
+            // Comparison chaining: `a < b < c` → `a < b and b < c`
+            if matches!(op, BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq) {
+                let next_op = match self.peek() {
+                    Token::Lt => Some(BinOp::Lt),
+                    Token::Gt => Some(BinOp::Gt),
+                    Token::LtEq => Some(BinOp::LtEq),
+                    Token::GtEq => Some(BinOp::GtEq),
+                    _ => None,
+                };
+                if let Some(op2) = next_op {
+                    self.advance(); // consume second comparison operator
+                    let rhs2 = self.parse_expr(r_bp)?;
+                    let first_cmp = Expr::BinOp {
+                        op,
+                        left: Box::new(lhs),
+                        right: Box::new(rhs.clone()),
+                    };
+                    let second_cmp = Expr::BinOp {
+                        op: op2,
+                        left: Box::new(rhs),
+                        right: Box::new(rhs2),
+                    };
+                    lhs = Expr::BinOp {
+                        op: BinOp::And,
+                        left: Box::new(first_cmp),
+                        right: Box::new(second_cmp),
+                    };
+                    continue;
+                }
+            }
+
             lhs = Expr::BinOp {
                 op,
                 left: Box::new(lhs),

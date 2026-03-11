@@ -439,3 +439,10 @@ fn lists_take_skip() {
     let lines: Vec<&str> = out.trim().lines().collect();
     assert_eq!(lines, vec!["[1, 2, 3]", "[3, 4, 5]", "15", "12"]);
 }
+
+#[test]
+fn control_chain_cmp() {
+    let out = run_ore("control/chain_cmp.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["true", "false", "false", "false"]);
+}

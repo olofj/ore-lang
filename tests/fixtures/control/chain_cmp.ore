@@ -1,0 +1,8 @@
+fn in_range x:Int -> Bool
+  0 < x < 100
+
+fn main
+  print in_range(50)
+  print in_range(0)
+  print in_range(100)
+  print in_range(-5)
