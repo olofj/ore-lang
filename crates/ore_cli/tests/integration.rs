@@ -2147,6 +2147,20 @@ fn showcase78() {
 }
 
 #[test]
+fn showcase79() {
+    let out = run_ore("showcase79.ore");
+    assert!(out.contains("doubled: 2, 4, 6, 8, 10"));
+    assert!(out.contains("tripled: 3, 6, 9, 12, 15"));
+    assert!(out.contains("squared: 1, 4, 9, 16, 25"));
+    assert!(out.contains("scaled by 7: 7, 14, 21, 28, 35"));
+    assert!(out.contains("pipeline: 31, 41, 51"));
+    assert!(out.contains("positives: 2, 5, 7"));
+    assert!(out.contains("long upper: HELLO, WORLD"));
+    assert!(out.contains("product: 120"));
+    assert!(out.contains("fold sum: 15"));
+}
+
+#[test]
 fn div_by_zero() {
     let path = fixtures_dir().join("errors/div_zero.ore");
     let output = Command::new(env!("CARGO_BIN_EXE_ore"))
@@ -2156,6 +2170,40 @@ fn div_by_zero() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("division by zero"));
+}
+
+#[test]
+fn showcase79_closures_lambdas() {
+    let out = run_ore("showcase79.ore");
+    assert!(out.contains("doubled: 2, 4, 6, 8, 10"));
+    assert!(out.contains("tripled: 3, 6, 9, 12, 15"));
+    assert!(out.contains("squared: 1, 4, 9, 16, 25"));
+    assert!(out.contains("scaled by 7: 7, 14, 21, 28, 35"));
+    assert!(out.contains("pipeline: 31, 41, 51"));
+    assert!(out.contains("positives: 2, 5, 7"));
+    assert!(out.contains("adjusted: 101, 102, 103, 104, 105"));
+    assert!(out.contains("long upper: HELLO, WORLD"));
+    assert!(out.contains("product: 120"));
+    assert!(out.contains("fold sum: 15"));
+}
+
+#[test]
+fn showcase80_comprehensive_tour() {
+    let out = run_ore("showcase80.ore");
+    assert!(out.contains("x = 42, y = 85"));
+    assert!(out.contains("true and false = false"));
+    assert!(out.contains("Hello, Ore!"));
+    assert!(out.contains("upper: HELLO, ORE!"));
+    assert!(out.contains("nums: 1, 2, 3, 4, 5"));
+    assert!(out.contains("sum: 15, product: 120"));
+    assert!(out.contains("evens: 2, 4, 6, 8, 10"));
+    assert!(out.contains("#FF0000"));
+    assert!(out.contains("#128,64,255"));
+    assert!(out.contains("fib(9) = 34"));
+    assert!(out.contains("9 -> 36 -> 81 -> 144"));
+    assert!(out.contains("sqrt(2) = 1.4142135623730951"));
+    assert!(out.contains("2^10 = 1024"));
+    assert!(out.contains("Done! Ore is working."));
 }
 
 #[test]

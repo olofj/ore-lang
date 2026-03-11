@@ -1,0 +1,59 @@
+-- Showcase 79: Closure captures and higher-order functions
+
+fn double x:Int -> Int
+  x * 2
+
+fn triple x:Int -> Int
+  x * 3
+
+fn add3 x:Int -> Int
+  x + 3
+
+fn main
+  -- Named functions with map
+  nums := [1, 2, 3, 4, 5]
+  doubled := nums.map(double)
+  tripled := nums.map(triple)
+  print "doubled: {doubled.join(", ")}"
+  print "tripled: {tripled.join(", ")}"
+
+  -- Lambda expressions
+  squared := nums.map(n => n * n)
+  print "squared: {squared.join(", ")}"
+
+  -- Closures capturing outer variables
+  factor := 7
+  scaled := nums.map(n => n * factor)
+  print "scaled by {factor}: {scaled.join(", ")}"
+
+  -- Multi-step pipeline with lambdas
+  result := nums
+    .filter(n => n > 2)
+    .map(n => n * 10)
+    .map(n => n + 1)
+  print "pipeline: {result.join(", ")}"
+
+  -- Filter with named function indirectly
+  mixed := [-3, -1, 0, 2, 5, -4, 7]
+  positives := mixed.filter(n => n > 0)
+  print "positives: {positives.join(", ")}"
+
+  -- Lambda with capture
+  offset := 100
+  adjusted := nums.map(n => n + offset)
+  print "adjusted: {adjusted.join(", ")}"
+
+  -- Nested lambdas in pipeline
+  words := ["hello", "world", "foo", "bar"]
+  long_upper := words
+    .filter(w => w.len() > 3)
+    .map(w => w.to_upper())
+  print "long upper: {long_upper.join(", ")}"
+
+  -- Reduce
+  product := nums.reduce((a, b) => a * b)
+  print "product: {product}"
+
+  -- Fold
+  sum := nums.fold(0, (acc, n) => acc + n)
+  print "fold sum: {sum}"

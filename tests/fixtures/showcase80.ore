@@ -1,0 +1,105 @@
+-- Showcase 80: Comprehensive language tour
+
+-- Type definitions
+type Color
+  Red
+  Green
+  Blue
+  RGB(r: Int, g: Int, b: Int)
+
+type Point { x: Float, y: Float }
+
+-- Functions with pattern matching
+fn color_to_hex c:Color -> Str
+  match c
+    Red -> "#FF0000"
+    Green -> "#00FF00"
+    Blue -> "#0000FF"
+    RGB r g b -> "#{r},{g},{b}"
+
+-- Recursive function
+fn fib n:Int -> Int
+  if n < 2
+    n
+  else
+    fib(n - 1) + fib(n - 2)
+
+-- Generic function
+fn swap[T] a:T b:T -> List[Int]
+  [b, a]
+
+fn main
+  -- Integers and arithmetic
+  print "=== Basics ==="
+  x := 42
+  y := x * 2 + 1
+  print "x = {x}, y = {y}"
+  print "x / 7 = {x / 7}, x % 7 = {x % 7}"
+
+  -- Booleans and logic
+  print "true and false = {true and false}"
+  print "true or false = {true or false}"
+  print "not true = {not true}"
+
+  -- Strings
+  print ""
+  print "=== Strings ==="
+  name := "Ore"
+  greeting := "Hello, {name}!"
+  print greeting
+  print "length: {greeting.len()}"
+  print "upper: {greeting.to_upper()}"
+  print "contains 'Ore': {greeting.contains("Ore")}"
+
+  -- Lists
+  print ""
+  print "=== Lists ==="
+  nums := [1, 2, 3, 4, 5]
+  print "nums: {nums.join(", ")}"
+  print "sum: {nums.sum()}, product: {nums.product()}"
+  print "reversed: {nums.reverse().join(", ")}"
+
+  -- List comprehension
+  evens := [n * 2 for n in range(1, 6)]
+  print "evens: {evens.join(", ")}"
+
+  -- Maps
+  print ""
+  print "=== Maps ==="
+  config := {"name": "myapp", "version": "1.0", "debug": "false"}
+  for key, val in config
+    print "  {key}: {val}"
+
+  -- Enums and matching
+  print ""
+  print "=== Enums ==="
+  print color_to_hex(Red)
+  print color_to_hex(Green)
+  print color_to_hex(Blue)
+  print color_to_hex(RGB(r: 128, g: 64, b: 255))
+
+  -- Recursion
+  print ""
+  print "=== Fibonacci ==="
+  for i in range(0, 10)
+    print "fib({i}) = {fib(i)}"
+
+  -- Pipelines
+  print ""
+  print "=== Pipelines ==="
+  result := range(1, 21)
+    .filter(n => n % 3 == 0)
+    .map(n => n * n)
+    .take(4)
+    .join(" -> ")
+  print result
+
+  -- Math
+  print ""
+  print "=== Math ==="
+  print "sqrt(2) = {sqrt(2.0)}"
+  print "pi = {pi()}"
+  print "2^10 = {2.pow(10)}"
+
+  print ""
+  print "Done! Ore is working."
