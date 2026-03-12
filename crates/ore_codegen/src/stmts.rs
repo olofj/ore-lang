@@ -62,7 +62,7 @@ impl<'ctx> CodeGen<'ctx> {
     /// `consume` = true uses .take() (for new bindings), false uses .clone() (for reassignment).
     fn track_variable_kinds(&mut self, name: &str, kind: &ValKind, consume: bool) {
         if let ValKind::List(Some(ref ek)) = kind {
-            self.list_element_kinds.insert(name.to_string(), *ek.clone());
+            self.list_element_kinds.insert(name.to_string(), ek.as_ref().clone());
         } else if kind.is_list() {
             let ek = if consume { self.last_list_elem_kind.take() } else { self.last_list_elem_kind.clone() };
             if let Some(ek) = ek {
@@ -99,7 +99,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (val, vk) = self.compile_expr_with_kind(value, func)?;
                 let list_ptr = val.into_pointer_value();
                 let elem_kind = match &vk {
-                    ValKind::List(Some(ek)) => *ek.clone(),
+                    ValKind::List(Some(ek)) => ek.as_ref().clone(),
                     _ => self.list_elem_kind(),
                 };
                 let list_get_fn = self.rt("ore_list_get")?;
@@ -423,7 +423,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
         self.last_list_elem_kind.clone()
             .or_else(|| match list_kind {
-                ValKind::List(Some(ek)) => Some(*ek.clone()),
+                ValKind::List(Some(ek)) => Some(ek.as_ref().clone()),
                 _ => None,
             })
             .unwrap_or(ValKind::Int)

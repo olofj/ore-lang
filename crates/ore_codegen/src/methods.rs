@@ -177,7 +177,7 @@ impl<'ctx> CodeGen<'ctx> {
             // (the Ident handler may have set it from list_element_kinds, which is more accurate)
             if self.last_list_elem_kind.is_none() {
                 if let ValKind::List(Some(ref ek)) = obj_kind {
-                    self.last_list_elem_kind = Some(*ek.clone());
+                    self.last_list_elem_kind = Some(ek.as_ref().clone());
                 }
             }
             let result = self.compile_list_method(obj_val, method, args, func)?;
@@ -185,7 +185,7 @@ impl<'ctx> CodeGen<'ctx> {
             if method == "push" {
                 if let Expr::Ident(var_name) = object {
                     if let ValKind::List(Some(ref ek)) = result.1 {
-                        self.list_element_kinds.insert(var_name.clone(), *ek.clone());
+                        self.list_element_kinds.insert(var_name.clone(), ek.as_ref().clone());
                     } else if let Some(ek) = self.last_list_elem_kind.clone() {
                         self.list_element_kinds.insert(var_name.clone(), ek);
                     }
@@ -454,7 +454,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::List(ref ek) => {
                 let val = self.call_rt("ore_list_get", &[obj_val.into(), idx_val.into()], "list_get")?;
                 let elem_kind = self.last_list_elem_kind.clone()
-                    .or_else(|| ek.as_ref().map(|k| *k.clone()))
+                    .or_else(|| ek.as_ref().map(|k| k.as_ref().clone()))
                     .unwrap_or(ValKind::Int);
                 let typed_val = self.list_elem_from_i64(val, &elem_kind)?;
                 Ok((typed_val, elem_kind))
