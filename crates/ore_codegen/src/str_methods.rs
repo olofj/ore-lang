@@ -41,13 +41,13 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_rt(&fn_name, &[str_val.into()], "strim")?;
                 Ok((val, ValKind::Str))
             }
-            "words" => {
-                let val = self.call_rt("ore_str_split_whitespace", &[str_val.into()], "words")?;
-                self.last_list_elem_kind = Some(ValKind::Str);
-                Ok((val, ValKind::list_of(ValKind::Str)))
-            }
-            "lines" => {
-                let val = self.call_rt("ore_str_lines", &[str_val.into()], "lines")?;
+            "words" | "lines" | "chars" => {
+                let rt_name = match method {
+                    "words" => "ore_str_split_whitespace",
+                    "lines" => "ore_str_lines",
+                    _ => "ore_str_chars",
+                };
+                let val = self.call_rt(rt_name, &[str_val.into()], method)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
@@ -79,36 +79,20 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_rt("ore_str_replace", &[str_val.into(), from.into(), to.into()], "sreplace")?;
                 Ok((val, ValKind::Str))
             }
-            "starts_with" => {
-                self.check_arity("starts_with", args, 1)?;
-                let prefix = self.compile_expr(&args[0], func)?;
-                let i8_val = self.call_rt("ore_str_starts_with", &[str_val.into(), prefix.into()], "ssw")?.into_int_value();
+            "starts_with" | "ends_with" => {
+                self.check_arity(method, args, 1)?;
+                let arg = self.compile_expr(&args[0], func)?;
+                let rt_name = format!("ore_str_{}", method);
+                let i8_val = self.call_rt(&rt_name, &[str_val.into(), arg.into()], method)?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
                     inkwell::IntPredicate::NE, i8_val,
                     self.context.i8_type().const_int(0, false), "tobool"
                 ))?;
                 Ok((bool_val.into(), ValKind::Bool))
             }
-            "ends_with" => {
-                self.check_arity("ends_with", args, 1)?;
-                let suffix = self.compile_expr(&args[0], func)?;
-                let i8_val = self.call_rt("ore_str_ends_with", &[str_val.into(), suffix.into()], "sew")?.into_int_value();
-                let bool_val = bld!(self.builder.build_int_compare(
-                    inkwell::IntPredicate::NE, i8_val,
-                    self.context.i8_type().const_int(0, false), "tobool"
-                ))?;
-                Ok((bool_val.into(), ValKind::Bool))
-            }
-            "to_upper" => {
-                let val = self.call_rt("ore_str_to_upper", &[str_val.into()], "supper")?;
-                Ok((val, ValKind::Str))
-            }
-            "capitalize" => {
-                let val = self.call_rt("ore_str_capitalize", &[str_val.into()], "scap")?;
-                Ok((val, ValKind::Str))
-            }
-            "to_lower" => {
-                let val = self.call_rt("ore_str_to_lower", &[str_val.into()], "slower")?;
+            "to_upper" | "capitalize" | "to_lower" | "reverse" => {
+                let rt_name = format!("ore_str_{}", method);
+                let val = self.call_rt(&rt_name, &[str_val.into()], method)?;
                 Ok((val, ValKind::Str))
             }
             "substr" => {
@@ -117,11 +101,6 @@ impl<'ctx> CodeGen<'ctx> {
                 let len = self.compile_expr(&args[1], func)?;
                 let val = self.call_rt("ore_str_substr", &[str_val.into(), start.into(), len.into()], "ssub")?;
                 Ok((val, ValKind::Str))
-            }
-            "chars" => {
-                let val = self.call_rt("ore_str_chars", &[str_val.into()], "schars")?;
-                self.last_list_elem_kind = Some(ValKind::Str);
-                Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "char_at" => {
                 self.check_arity("char_at", args, 1)?;
@@ -140,10 +119,6 @@ impl<'ctx> CodeGen<'ctx> {
                 let start = self.compile_expr(&args[0], func)?;
                 let end = self.compile_expr(&args[1], func)?;
                 let val = self.call_rt("ore_str_slice", &[str_val.into(), start.into(), end.into()], "sslice")?;
-                Ok((val, ValKind::Str))
-            }
-            "reverse" => {
-                let val = self.call_rt("ore_str_reverse", &[str_val.into()], "srev")?;
                 Ok((val, ValKind::Str))
             }
             "parse_int" => {
