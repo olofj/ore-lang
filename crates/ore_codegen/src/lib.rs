@@ -945,7 +945,10 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub(crate) fn compile_function(&mut self, fndef: &FnDef) -> Result<(), CodeGenError> {
-        let (func, _ret_kind) = self.functions.get(&fndef.name).unwrap();
+        let (func, _ret_kind) = self.functions.get(&fndef.name).ok_or_else(|| CodeGenError {
+            line: Some(self.current_line),
+            msg: format!("undefined function '{}' (not declared before compilation)", fndef.name),
+        })?;
         let func = *func;
         let entry = self.context.append_basic_block(func, "entry");
         self.builder.position_at_end(entry);
@@ -994,7 +997,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             if fndef.name == "main" {
                 // Join all spawned threads before returning from main
                 let join_all = self.rt("ore_thread_join_all")?;
@@ -1073,4 +1076,68 @@ impl<'ctx> CodeGen<'ctx> {
         Ok((last_val, last_kind))
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn compile_to_ir(src: &str) -> String {
+        let tokens = ore_lexer::lex(src).expect("lex failed");
+        let program = ore_parser::parse(tokens).expect("parse failed");
+        let context = inkwell::context::Context::create();
+        let mut codegen = CodeGen::new(&context, "test");
+        codegen.compile_program(&program).expect("codegen failed");
+        codegen.module.print_to_string().to_string()
+    }
+
+    #[test]
+    fn test_int_arithmetic_ir() {
+        let ir = compile_to_ir("fn add a:Int b:Int -> Int\n  a + b");
+        assert!(ir.contains("add i64"), "expected 'add i64' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_float_arithmetic_ir() {
+        let ir = compile_to_ir("fn add a:Float b:Float -> Float\n  a + b");
+        assert!(ir.contains("fadd double"), "expected 'fadd double' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_function_declaration_ir() {
+        let ir = compile_to_ir("fn add a:Int b:Int -> Int\n  a + b");
+        assert!(ir.contains("define i64 @add(i64 %0, i64 %1)"), "expected 'define i64 @add(i64 %0, i64 %1)' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_comparison_ir() {
+        let ir = compile_to_ir("fn cmp a:Int b:Int -> Bool\n  a < b");
+        assert!(ir.contains("icmp slt"), "expected 'icmp slt' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_float_comparison_ir() {
+        let ir = compile_to_ir("fn cmp a:Float b:Float -> Bool\n  a >= b");
+        assert!(ir.contains("fcmp oge"), "expected 'fcmp oge' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_string_literal_ir() {
+        let ir = compile_to_ir("fn main\n  x := \"hello\"");
+        assert!(ir.contains("@ore_str_new"), "expected '@ore_str_new' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_int_to_float_promotion_ir() {
+        let ir = compile_to_ir("fn add a:Int b:Float -> Float\n  a + b");
+        assert!(ir.contains("sitofp"), "expected 'sitofp' in IR:\n{}", ir);
+        assert!(ir.contains("fadd"), "expected 'fadd' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_push_ir() {
+        let ir = compile_to_ir("fn main\n  x := [1, 2, 3]");
+        assert!(ir.contains("@ore_list_new"), "expected '@ore_list_new' in IR:\n{}", ir);
+        assert!(ir.contains("@ore_list_push"), "expected '@ore_list_push' in IR:\n{}", ir);
+    }
 }

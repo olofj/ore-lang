@@ -14,6 +14,22 @@ impl<'ctx> CodeGen<'ctx> {
         CodeGenError { line: None, msg }
     }
 
+    /// Get the current insert block, returning a proper error instead of panicking.
+    pub(crate) fn current_block(&self) -> Result<inkwell::basic_block::BasicBlock<'ctx>, CodeGenError> {
+        self.builder.get_insert_block().ok_or_else(|| CodeGenError {
+            line: Some(self.current_line),
+            msg: "LLVM builder has no current insert block".into(),
+        })
+    }
+
+    /// Get the current function from the builder's insert block.
+    pub(crate) fn current_fn(&self) -> Result<FunctionValue<'ctx>, CodeGenError> {
+        self.current_block()?.get_parent().ok_or_else(|| CodeGenError {
+            line: Some(self.current_line),
+            msg: "current block has no parent function".into(),
+        })
+    }
+
     /// Look up a runtime function by name, returning a proper error instead of panicking.
     pub(crate) fn rt(&self, name: &str) -> Result<FunctionValue<'ctx>, CodeGenError> {
         self.module.get_function(name).ok_or_else(|| CodeGenError {
@@ -355,7 +371,10 @@ impl<'ctx> CodeGen<'ctx> {
             self.builder.position_at_end(bb);
         }
 
-        let (f, k) = self.functions.get(&mangled).unwrap().clone();
+        let (f, k) = self.functions.get(&mangled).ok_or_else(|| CodeGenError {
+            line: Some(self.current_line),
+            msg: format!("monomorphized function '{}' not found after compilation", mangled),
+        })?.clone();
         Ok((f, k))
     }
 

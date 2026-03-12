@@ -7,3 +7,6 @@ edition = "2021"
 ore_parser = { path = "../ore_parser" }
 ore_types = { path = "../ore_types" }
 inkwell = { workspace = true }
+
+[dev-dependencies]
+ore_lexer = { path = "../ore_lexer" }

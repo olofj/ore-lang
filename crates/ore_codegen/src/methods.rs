@@ -186,7 +186,7 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_store(res_val_ptr, result_i64))?;
         let some_result = bld!(self.builder.build_load(opt_ty, result_opt_alloca, "some_res"))?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
-        let some_end = self.builder.get_insert_block().unwrap();
+        let some_end = self.current_block()?;
 
         // None branch
         self.builder.position_at_end(none_bb);

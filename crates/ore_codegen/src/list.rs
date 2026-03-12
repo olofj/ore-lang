@@ -983,7 +983,7 @@ impl<'ctx> CodeGen<'ctx> {
             };
             bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
 
-            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if self.current_block()?.get_terminator().is_none() {
                 bld!(self.builder.build_unconditional_branch(inc_bb))?;
             }
 
@@ -1079,7 +1079,7 @@ impl<'ctx> CodeGen<'ctx> {
             };
             bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
 
-            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if self.current_block()?.get_terminator().is_none() {
                 bld!(self.builder.build_unconditional_branch(inc_bb))?;
             }
 

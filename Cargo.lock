@@ -225,6 +225,7 @@ name = "ore_codegen"
 version = "0.1.0"
 dependencies = [
  "inkwell",
+ "ore_lexer",
  "ore_parser",
  "ore_types",
 ]

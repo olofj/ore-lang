@@ -318,7 +318,7 @@ impl<'ctx> CodeGen<'ctx> {
         let (result, kind) = self.compile_expr_with_kind(body, lambda_fn)?;
         let return_kind = kind.clone();
 
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             // Coerce result to i64 if needed (e.g. bool i1 from comparisons, ptr from Str)
             let ret_val = match kind {
                 ValKind::Bool => {

@@ -19,7 +19,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // backend issues with dynamic stack allocations in non-entry blocks
                 let alloca = {
                     let entry = func.get_first_basic_block().unwrap();
-                    let current = self.builder.get_insert_block().unwrap();
+                    let current = self.current_block()?;
                     if let Some(first_instr) = entry.get_first_instruction() {
                         self.builder.position_before(&first_instr);
                     } else {
@@ -381,7 +381,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.break_target = saved_break;
         self.continue_target = saved_continue;
 
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(inc_bb))?;
         }
 
@@ -513,7 +513,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.break_target = saved_break;
         self.continue_target = saved_continue;
 
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(inc_bb))?;
         }
 
@@ -630,7 +630,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.break_target = saved_break;
         self.continue_target = saved_continue;
 
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(inc_bb))?;
         }
 
@@ -731,7 +731,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.break_target = saved_break;
         self.continue_target = saved_continue;
 
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(inc_bb))?;
         }
 
@@ -769,7 +769,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.compile_block_stmts(body, func)?;
         self.break_target = saved_break;
         self.continue_target = saved_continue;
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(cond_bb))?;
         }
 
@@ -795,7 +795,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.compile_block_stmts(body, func)?;
         self.break_target = saved_break;
         self.continue_target = saved_continue;
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(body_bb))?;
         }
 
@@ -805,7 +805,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub(crate) fn build_entry_alloca(&self, func: FunctionValue<'ctx>, ty: BasicTypeEnum<'ctx>, name: &str) -> Result<PointerValue<'ctx>, CodeGenError> {
         let entry_bb = func.get_first_basic_block().unwrap();
-        let current_bb = self.builder.get_insert_block().unwrap();
+        let current_bb = self.current_block()?;
         if let Some(first_instr) = entry_bb.get_first_instruction() {
             self.builder.position_before(&first_instr);
         } else {
@@ -840,10 +840,10 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(then_bb);
         let (then_val, then_kind) = self.compile_block_stmts_with_kind(then_block, func)?;
         let then_val = then_val.unwrap_or_else(|| i64_type.const_int(0, false).into());
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(merge_bb))?;
         }
-        let then_end_bb = self.builder.get_insert_block().unwrap();
+        let then_end_bb = self.current_block()?;
 
         // Compile else branch
         self.builder.position_at_end(else_bb);
@@ -854,10 +854,10 @@ impl<'ctx> CodeGen<'ctx> {
             (i64_type.const_int(0, false).into(), ValKind::Int)
         };
 
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self.current_block()?.get_terminator().is_none() {
             bld!(self.builder.build_unconditional_branch(merge_bb))?;
         }
-        let else_end_bb = self.builder.get_insert_block().unwrap();
+        let else_end_bb = self.current_block()?;
 
         self.builder.position_at_end(merge_bb);
 
@@ -920,7 +920,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(then_bb);
         let (then_val, then_kind) = self.compile_expr_with_kind(then_expr, func)?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
-        let then_end_bb = self.builder.get_insert_block().unwrap();
+        let then_end_bb = self.current_block()?;
 
         self.builder.position_at_end(else_bb);
         let (else_val, _) = if let Some(e) = else_expr {
@@ -929,7 +929,7 @@ impl<'ctx> CodeGen<'ctx> {
             (self.context.i64_type().const_int(0, false).into(), ValKind::Int)
         };
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
-        let else_end_bb = self.builder.get_insert_block().unwrap();
+        let else_end_bb = self.current_block()?;
 
         self.builder.position_at_end(merge_bb);
         let phi = bld!(self.builder.build_phi(then_val.get_type(), "cval"))?;

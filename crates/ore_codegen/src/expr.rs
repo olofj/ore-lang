@@ -1082,7 +1082,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Place alloca in entry block for proper stack allocation.
         let result_alloca = {
             let entry = func.get_first_basic_block().unwrap();
-            let current = self.builder.get_insert_block().unwrap();
+            let current = self.current_block()?;
             if let Some(first_instr) = entry.get_first_instruction() {
                 self.builder.position_before(&first_instr);
             } else {
@@ -1260,7 +1260,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub(crate) fn emit_div_by_zero_check(&mut self, divisor: IntValue<'ctx>) -> Result<(), CodeGenError> {
-        let current_fn = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+        let current_fn = self.current_fn()?;
         let zero = divisor.get_type().const_zero();
         let is_zero = bld!(self.builder.build_int_compare(
             IntPredicate::EQ, divisor, zero, "is_zero"

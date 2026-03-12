@@ -548,7 +548,7 @@ impl<'ctx> CodeGen<'ctx> {
         let tag_ptr = bld!(self.builder.build_struct_gep(enum_type, alloca, 0, "tag_ptr"))?;
         let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
 
-        let current_fn = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+        let current_fn = self.current_fn()?;
 
         // Create merge block and default block
         let merge_bb = self.context.append_basic_block(current_fn, "enum_str_merge");

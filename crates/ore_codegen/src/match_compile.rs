@@ -130,7 +130,7 @@ impl<'ctx> CodeGen<'ctx> {
                         // Patch previous guard failure to jump here instead of default_bb
                         self.builder.position_at_end(*prev_fail_bb);
                         // The previous fail block should be empty (we'll fill it with a branch)
-                        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                        if self.current_block()?.get_terminator().is_none() {
                             bld!(self.builder.build_unconditional_branch(bb))?;
                         }
                         bb
@@ -182,10 +182,10 @@ impl<'ctx> CodeGen<'ctx> {
                     let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
                     result_kind = arm_kind;
 
-                    if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                    if self.current_block()?.get_terminator().is_none() {
                         bld!(self.builder.build_unconditional_branch(merge_bb))?;
                     }
-                    let end_bb = self.builder.get_insert_block().unwrap();
+                    let end_bb = self.current_block()?;
                     branch_results.push((arm_val, end_bb));
 
                     self.variables = saved_vars;
@@ -200,7 +200,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Patch any remaining guard failure blocks to jump to default_bb
         for (_, fail_bb) in &tag_to_guard_fail {
             self.builder.position_at_end(*fail_bb);
-            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if self.current_block()?.get_terminator().is_none() {
                 bld!(self.builder.build_unconditional_branch(default_bb))?;
             }
         }
@@ -210,10 +210,10 @@ impl<'ctx> CodeGen<'ctx> {
         if let Some(arm) = wildcard_arm {
             let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
             result_kind = arm_kind;
-            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if self.current_block()?.get_terminator().is_none() {
                 bld!(self.builder.build_unconditional_branch(merge_bb))?;
             }
-            let end_bb = self.builder.get_insert_block().unwrap();
+            let end_bb = self.current_block()?;
             branch_results.push((arm_val, end_bb));
         } else {
             // Unreachable default
@@ -303,10 +303,10 @@ impl<'ctx> CodeGen<'ctx> {
                     let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
                     result_kind = arm_kind;
 
-                    if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                    if self.current_block()?.get_terminator().is_none() {
                         bld!(self.builder.build_unconditional_branch(merge_bb))?;
                     }
-                    let end_bb = self.builder.get_insert_block().unwrap();
+                    let end_bb = self.current_block()?;
                     branch_results.push((arm_val, end_bb));
 
                     self.variables = saved_vars;
@@ -323,10 +323,10 @@ impl<'ctx> CodeGen<'ctx> {
         if let Some(arm) = wildcard_arm {
             let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
             result_kind = arm_kind;
-            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if self.current_block()?.get_terminator().is_none() {
                 bld!(self.builder.build_unconditional_branch(merge_bb))?;
             }
-            let end_bb = self.builder.get_insert_block().unwrap();
+            let end_bb = self.current_block()?;
             branch_results.push((arm_val, end_bb));
         } else {
             bld!(self.builder.build_unreachable())?;
@@ -405,10 +405,10 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     let (body_val, bk) = self.compile_expr_with_kind(&arm.body, func)?;
                     result_kind = bk;
-                    if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                    if self.current_block()?.get_terminator().is_none() {
                         bld!(self.builder.build_unconditional_branch(merge_bb))?;
                     }
-                    let end_bb = self.builder.get_insert_block().unwrap();
+                    let end_bb = self.current_block()?;
                     branch_results.push((body_val, end_bb));
 
                     // Restore variables
@@ -439,10 +439,10 @@ impl<'ctx> CodeGen<'ctx> {
 
                     let (body_val, bk) = self.compile_expr_with_kind(&arm.body, func)?;
                     result_kind = bk;
-                    if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                    if self.current_block()?.get_terminator().is_none() {
                         bld!(self.builder.build_unconditional_branch(merge_bb))?;
                     }
-                    let end_bb = self.builder.get_insert_block().unwrap();
+                    let end_bb = self.current_block()?;
                     branch_results.push((body_val, end_bb));
 
                     self.builder.position_at_end(else_bb);
@@ -453,10 +453,10 @@ impl<'ctx> CodeGen<'ctx> {
         // If no wildcard, the current block is the fallthrough from the last else.
         // Branch to merge with a dummy value so the phi has an incoming for every predecessor.
         if !has_wildcard {
-            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if self.current_block()?.get_terminator().is_none() {
                 if !branch_results.is_empty() {
                     let undef = branch_results[0].0.get_type().const_zero();
-                    let default_bb = self.builder.get_insert_block().unwrap();
+                    let default_bb = self.current_block()?;
                     bld!(self.builder.build_unconditional_branch(merge_bb))?;
                     branch_results.push((undef, default_bb));
                 } else {
@@ -586,10 +586,10 @@ impl<'ctx> CodeGen<'ctx> {
                     let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
                     result_kind = arm_kind;
 
-                    if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                    if self.current_block()?.get_terminator().is_none() {
                         bld!(self.builder.build_unconditional_branch(merge_bb))?;
                     }
-                    let end_bb = self.builder.get_insert_block().unwrap();
+                    let end_bb = self.current_block()?;
                     branch_results.push((arm_val, end_bb));
 
                     self.variables = saved_vars;
@@ -605,10 +605,10 @@ impl<'ctx> CodeGen<'ctx> {
         if let Some(arm) = wildcard_arm {
             let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
             result_kind = arm_kind;
-            if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if self.current_block()?.get_terminator().is_none() {
                 bld!(self.builder.build_unconditional_branch(merge_bb))?;
             }
-            let end_bb = self.builder.get_insert_block().unwrap();
+            let end_bb = self.current_block()?;
             branch_results.push((arm_val, end_bb));
         } else {
             bld!(self.builder.build_unreachable())?;
@@ -770,7 +770,7 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_store(res_val_ptr, mapped_i64))?;
                 let some_result = bld!(self.builder.build_load(opt_ty, res_alloca, "some_res"))?;
                 bld!(self.builder.build_unconditional_branch(merge_bb))?;
-                let some_end = self.builder.get_insert_block().unwrap();
+                let some_end = self.current_block()?;
 
                 // None branch
                 self.builder.position_at_end(none_bb);
@@ -897,7 +897,7 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_store(res_val_ptr, mapped_i64))?;
                 let ok_result = bld!(self.builder.build_load(res_ty, res_alloca, "ok_res"))?;
                 bld!(self.builder.build_unconditional_branch(merge_bb))?;
-                let ok_end = self.builder.get_insert_block().unwrap();
+                let ok_end = self.current_block()?;
 
                 // Err branch: pass through unchanged
                 self.builder.position_at_end(err_bb);

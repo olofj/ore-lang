@@ -21,7 +21,7 @@ impl<'ctx> CodeGen<'ctx> {
         let len_result = bld!(self.builder.build_call(list_len, &[list_ptr.into()], "len"))?;
         let len = self.call_result_to_value(len_result)?.into_int_value();
 
-        let current_fn = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+        let current_fn = self.current_fn()?;
 
         // Loop: for i in 0..len
         let idx_alloca = bld!(self.builder.build_alloca(self.context.i64_type(), "idx"))?;
