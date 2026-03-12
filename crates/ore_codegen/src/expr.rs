@@ -172,7 +172,7 @@ impl<'ctx> CodeGen<'ctx> {
                         bld!(self.builder.build_call(pf, &[str_ptr.into()], ""))?;
                         let release = self.rt("ore_str_release")?;
                         bld!(self.builder.build_call(release, &[str_ptr.into()], ""))?;
-                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                        return Ok(self.void_result());
                     }
                     // Check for typed list printing
                     if kind.is_list() {
@@ -182,7 +182,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 _ => {
                                     // Generate inline typed list print loop
                                     self.compile_typed_list_print(val.into_pointer_value(), &elem_kind)?;
-                                    return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                                    return Ok(self.void_result());
                                 }
                             }
                         }
@@ -193,7 +193,7 @@ impl<'ctx> CodeGen<'ctx> {
                     if let Some(elem_kind) = self.last_list_elem_kind.take() {
                         if elem_kind != ValKind::Int {
                             self.compile_typed_list_print(val.into_pointer_value(), &elem_kind)?;
-                            return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                            return Ok(self.void_result());
                         }
                     }
                 }
@@ -202,57 +202,32 @@ impl<'ctx> CodeGen<'ctx> {
                     if let Some(ValKind::Str) = self.last_map_val_kind.take() {
                         let pf = self.rt("ore_map_print_str")?;
                         bld!(self.builder.build_call(pf, &[val.into()], ""))?;
-                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                        return Ok(self.void_result());
                     }
                 }
                 self.compile_print(val, kind)?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             Expr::Sleep(inner) => {
                 let val = self.compile_expr(inner, func)?;
                 let ore_sleep = self.rt("ore_sleep")?;
                 bld!(self.builder.build_call(ore_sleep, &[val.into()], ""))?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             Expr::Assert { cond, message } => {
                 let cond_val = self.compile_expr(cond, func)?;
                 let ore_assert = self.rt("ore_assert")?;
                 let msg_str = message.as_deref().unwrap_or("assertion failed");
-                // Build a global C string for the message
-                let msg_bytes: Vec<u8> = msg_str.bytes().chain(std::iter::once(0)).collect();
-                let i8_type = self.context.i8_type();
-                let arr_type = i8_type.array_type(msg_bytes.len() as u32);
-                let global_name = format!("assert_msg_{}", self.current_line);
-                let global = self.module.add_global(arr_type, None, &global_name);
-                global.set_initializer(&i8_type.const_array(
-                    &msg_bytes.iter().map(|&b| i8_type.const_int(b as u64, false)).collect::<Vec<_>>(),
-                ));
-                global.set_constant(true);
-                let msg_ptr = bld!(self.builder.build_pointer_cast(
-                    global.as_pointer_value(),
-                    self.ptr_type(),
-                    "assert_msg_ptr"
-                ))?;
+                let msg_ptr = self.build_c_string_global(msg_str, &format!("assert_msg_{}", self.current_line))?;
                 let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
                 bld!(self.builder.build_call(ore_assert, &[cond_val.into(), msg_ptr.into(), line_val.into()], ""))?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             Expr::AssertEq { left, right, message } => {
                 let (left_val, left_kind) = self.compile_expr_with_kind(left, func)?;
                 let (right_val, right_kind) = self.compile_expr_with_kind(right, func)?;
                 let msg_str = message.as_deref().unwrap_or("assert_eq failed");
-                let msg_bytes: Vec<u8> = msg_str.bytes().chain(std::iter::once(0)).collect();
-                let i8_type = self.context.i8_type();
-                let arr_type = i8_type.array_type(msg_bytes.len() as u32);
-                let global_name = format!("assert_eq_msg_{}", self.current_line);
-                let global = self.module.add_global(arr_type, None, &global_name);
-                global.set_initializer(&i8_type.const_array(
-                    &msg_bytes.iter().map(|&b| i8_type.const_int(b as u64, false)).collect::<Vec<_>>(),
-                ));
-                global.set_constant(true);
-                let msg_ptr = bld!(self.builder.build_pointer_cast(
-                    global.as_pointer_value(), self.ptr_type(), "aeq_msg"
-                ))?;
+                let msg_ptr = self.build_c_string_global(msg_str, &format!("assert_eq_msg_{}", self.current_line))?;
                 let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
                 let fn_name = match (&left_kind, &right_kind) {
                     (ValKind::Float, _) | (_, ValKind::Float) => "ore_assert_eq_float",
@@ -261,24 +236,13 @@ impl<'ctx> CodeGen<'ctx> {
                 };
                 let assert_fn = self.rt(fn_name)?;
                 bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             Expr::AssertNe { left, right, message } => {
                 let (left_val, left_kind) = self.compile_expr_with_kind(left, func)?;
                 let (right_val, right_kind) = self.compile_expr_with_kind(right, func)?;
                 let msg_str = message.as_deref().unwrap_or("assert_ne failed");
-                let msg_bytes: Vec<u8> = msg_str.bytes().chain(std::iter::once(0)).collect();
-                let i8_type = self.context.i8_type();
-                let arr_type = i8_type.array_type(msg_bytes.len() as u32);
-                let global_name = format!("assert_ne_msg_{}", self.current_line);
-                let global = self.module.add_global(arr_type, None, &global_name);
-                global.set_initializer(&i8_type.const_array(
-                    &msg_bytes.iter().map(|&b| i8_type.const_int(b as u64, false)).collect::<Vec<_>>(),
-                ));
-                global.set_constant(true);
-                let msg_ptr = bld!(self.builder.build_pointer_cast(
-                    global.as_pointer_value(), self.ptr_type(), "ane_msg"
-                ))?;
+                let msg_ptr = self.build_c_string_global(msg_str, &format!("assert_ne_msg_{}", self.current_line))?;
                 let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
                 let fn_name = match (&left_kind, &right_kind) {
                     (ValKind::Str, _) | (_, ValKind::Str) => "ore_assert_ne_str",
@@ -286,7 +250,7 @@ impl<'ctx> CodeGen<'ctx> {
                 };
                 let assert_fn = self.rt(fn_name)?;
                 bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             Expr::Call { func: callee, args } => {
                 let name = match callee.as_ref() {
@@ -444,7 +408,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 bld!(self.builder.build_call(rt, &[val.into()], ""))?;
                             }
                         }
-                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                        return Ok(self.void_result());
                     }
                     "exit" => {
                         self.check_arity("exit", args, 1)?;
@@ -491,7 +455,7 @@ impl<'ctx> CodeGen<'ctx> {
                         match kind {
                             ValKind::Float => return Ok((val, ValKind::Float)),
                             ValKind::Int => {
-                                let f = bld!(self.builder.build_signed_int_to_float(val.into_int_value(), self.context.f64_type(), "itof"))?;
+                                let f = self.to_float_val(val, &kind, "float()")?;
                                 return Ok((f.into(), ValKind::Float));
                             }
                             ValKind::Str => {
@@ -612,7 +576,7 @@ impl<'ctx> CodeGen<'ctx> {
                         bld!(self.builder.build_unreachable())?;
 
                         self.builder.position_at_end(pass_bb);
-                        return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+                        return Ok(self.void_result());
                     }
                     "typeof" => {
                         self.check_arity("typeof", args, 1)?;
@@ -639,11 +603,7 @@ impl<'ctx> CodeGen<'ctx> {
                         // round(x, decimals) — 2-arg overload
                         if (name == "round" || name == "math_round") && args.len() == 2 {
                             let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                            let f_val = match kind {
-                                ValKind::Float => val.into_float_value(),
-                                ValKind::Int => bld!(self.builder.build_signed_int_to_float(val.into_int_value(), self.context.f64_type(), "itof"))?,
-                                _ => return Err(self.err("round() requires numeric first argument")),
-                            };
+                            let f_val = self.to_float_val(val, &kind, "round()")?;
                             let (dec_val, dec_kind) = self.compile_expr_with_kind(&args[1], func)?;
                             let dec_i = match dec_kind {
                                 ValKind::Int => dec_val.into_int_value(),
@@ -654,11 +614,7 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                         self.check_arity(&name, args, 1)?;
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                        let f_val = match kind {
-                            ValKind::Float => val.into_float_value(),
-                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(val.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(self.err(format!("{}() requires numeric argument", name))),
-                        };
+                        let f_val = self.to_float_val(val, &kind, &format!("{}()", name))?;
                         let rt_name = format!("ore_math_{}", name.strip_prefix("math_").unwrap_or(&name));
                         let val = self.call_rt(&rt_name, &[f_val.into()], &name)?;
                         return Ok((val, ValKind::Float));
@@ -667,16 +623,8 @@ impl<'ctx> CodeGen<'ctx> {
                         self.check_arity("pow()", args, 2)?;
                         let (base, bk) = self.compile_expr_with_kind(&args[0], func)?;
                         let (exp, ek) = self.compile_expr_with_kind(&args[1], func)?;
-                        let base_f = match bk {
-                            ValKind::Float => base.into_float_value(),
-                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(base.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(self.err("pow() requires numeric arguments")),
-                        };
-                        let exp_f = match ek {
-                            ValKind::Float => exp.into_float_value(),
-                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(exp.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(self.err("pow() requires numeric arguments")),
-                        };
+                        let base_f = self.to_float_val(base, &bk, "pow()")?;
+                        let exp_f = self.to_float_val(exp, &ek, "pow()")?;
                         let val = self.call_rt("ore_math_pow", &[base_f.into(), exp_f.into()], "pow")?;
                         return Ok((val, ValKind::Float));
                     }
@@ -684,16 +632,8 @@ impl<'ctx> CodeGen<'ctx> {
                         self.check_arity("atan2()", args, 2)?;
                         let (y, yk) = self.compile_expr_with_kind(&args[0], func)?;
                         let (x, xk) = self.compile_expr_with_kind(&args[1], func)?;
-                        let y_f = match yk {
-                            ValKind::Float => y.into_float_value(),
-                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(y.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(self.err("atan2() requires numeric arguments")),
-                        };
-                        let x_f = match xk {
-                            ValKind::Float => x.into_float_value(),
-                            ValKind::Int => bld!(self.builder.build_signed_int_to_float(x.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(self.err("atan2() requires numeric arguments")),
-                        };
+                        let y_f = self.to_float_val(y, &yk, "atan2()")?;
+                        let x_f = self.to_float_val(x, &xk, "atan2()")?;
                         let val = self.call_rt("ore_math_atan2", &[y_f.into(), x_f.into()], "atan2")?;
                         return Ok((val, ValKind::Float));
                     }
@@ -911,7 +851,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     return Err(self.err("break outside of loop"));
                 }
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
         }
     }

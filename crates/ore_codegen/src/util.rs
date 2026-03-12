@@ -147,6 +147,43 @@ impl<'ctx> CodeGen<'ctx> {
         Err(CodeGenError { line: None, msg })
     }
 
+    /// Return (i64_zero, ValKind::Void) — used as the return value for void expressions.
+    pub(crate) fn void_result(&self) -> (BasicValueEnum<'ctx>, ValKind) {
+        (self.context.i64_type().const_int(0, false).into(), ValKind::Void)
+    }
+
+    /// Build a null-terminated C string as an LLVM global constant.
+    /// Returns a pointer to the string data.
+    pub(crate) fn build_c_string_global(&mut self, s: &str, name: &str) -> Result<PointerValue<'ctx>, CodeGenError> {
+        let bytes: Vec<u8> = s.bytes().chain(std::iter::once(0)).collect();
+        let i8_type = self.context.i8_type();
+        let arr_type = i8_type.array_type(bytes.len() as u32);
+        let global = self.module.add_global(arr_type, None, name);
+        global.set_initializer(&i8_type.const_array(
+            &bytes.iter().map(|&b| i8_type.const_int(b as u64, false)).collect::<Vec<_>>(),
+        ));
+        global.set_constant(true);
+        bld!(self.builder.build_pointer_cast(
+            global.as_pointer_value(), self.ptr_type(), "cstr_ptr"
+        ))
+    }
+
+    /// Convert a value to f64, accepting both Float and Int kinds.
+    pub(crate) fn to_float_val(
+        &mut self,
+        val: BasicValueEnum<'ctx>,
+        kind: &ValKind,
+        context: &str,
+    ) -> Result<inkwell::values::FloatValue<'ctx>, CodeGenError> {
+        match kind {
+            ValKind::Float => Ok(val.into_float_value()),
+            ValKind::Int => bld!(self.builder.build_signed_int_to_float(
+                val.into_int_value(), self.context.f64_type(), "itof"
+            )),
+            _ => Err(self.err(format!("{} requires numeric argument", context))),
+        }
+    }
+
     /// Resolve a lambda or function reference argument into (FunctionValue, fn_ptr, env_ptr).
     /// `param_kinds` specifies the types passed to the lambda parameters.
     /// If `track_return_kind` is true, sets `self.last_lambda_return_kind` from named function refs.
