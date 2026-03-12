@@ -250,7 +250,6 @@ impl<'ctx> CodeGen<'ctx> {
                 struct_type: st,
                 names: capture_names.clone(),
                 types: capture_types.clone(),
-                kinds: capture_kinds.clone(),
             });
             Some(st)
         } else {

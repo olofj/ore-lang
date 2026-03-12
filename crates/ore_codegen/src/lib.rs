@@ -65,7 +65,6 @@ pub(crate) struct EnumInfo<'ctx> {
 }
 
 /// Tracks capture information for a compiled lambda/closure
-#[allow(dead_code)]
 pub(crate) struct CaptureInfo<'ctx> {
     /// The LLVM struct type holding all captured values
     pub(crate) struct_type: inkwell::types::StructType<'ctx>,
@@ -73,8 +72,6 @@ pub(crate) struct CaptureInfo<'ctx> {
     pub(crate) names: Vec<String>,
     /// LLVM types of captured variables (in struct field order)
     pub(crate) types: Vec<inkwell::types::BasicTypeEnum<'ctx>>,
-    /// ValKind of each captured variable
-    pub(crate) kinds: Vec<ValKind>,
 }
 
 pub struct CodeGen<'ctx> {
@@ -124,7 +121,6 @@ pub struct CodeGen<'ctx> {
 #[derive(Debug, Default)]
 pub struct CodeGenError {
     pub msg: String,
-    #[allow(dead_code)]
     pub line: Option<usize>,
 }
 
