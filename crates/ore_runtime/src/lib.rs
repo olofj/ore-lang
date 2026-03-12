@@ -645,11 +645,10 @@ pub extern "C" fn ore_str_split_whitespace(s: *mut OreStr) -> *mut OreList {
 
 fn list_extremum_int(list: *mut OreList, is_better: fn(i64, i64) -> bool) -> i64 {
     if list.is_null() { return 0; }
-    let l = unsafe { &*list };
-    if l.len == 0 { return 0; }
-    let mut best = unsafe { *l.data };
-    for i in 1..l.len {
-        let val = unsafe { *l.data.offset(i as isize) };
+    let slice = unsafe { (&*list).as_slice() };
+    if slice.is_empty() { return 0; }
+    let mut best = slice[0];
+    for &val in &slice[1..] {
         if is_better(val, best) { best = val; }
     }
     best
@@ -1126,12 +1125,11 @@ unsafe fn list_extremum_by(
     env_ptr: *mut u8,
     is_better: fn(i64, i64) -> bool,
 ) -> i64 {
-    let src = &*list;
-    if src.len == 0 { return 0; }
-    let mut best_elem = *src.data;
+    let slice = (&*list).as_slice();
+    if slice.is_empty() { return 0; }
+    let mut best_elem = slice[0];
     let mut best_key = key_fn(best_elem, env_ptr);
-    for i in 1..src.len as usize {
-        let elem = *src.data.add(i);
+    for &elem in &slice[1..] {
         let key = key_fn(elem, env_ptr);
         if is_better(key, best_key) {
             best_key = key;
@@ -1392,12 +1390,11 @@ pub extern "C" fn ore_list_fold(list: *mut OreList, init: i64, func: *const u8, 
 }
 
 unsafe fn list_extremum_str(list: *mut OreList, is_better: fn(&str, &str) -> bool) -> *mut OreStr {
-    let src = &*list;
-    if src.len == 0 { return ore_str_new(std::ptr::null(), 0); }
-    let mut best_val = *src.data;
+    let slice = (&*list).as_slice();
+    if slice.is_empty() { return ore_str_new(std::ptr::null(), 0); }
+    let mut best_val = slice[0];
     let mut best_str = (&*(best_val as *mut OreStr)).as_str();
-    for i in 1..src.len as usize {
-        let val = *src.data.add(i);
+    for &val in &slice[1..] {
         let s = (&*(val as *mut OreStr)).as_str();
         if is_better(s, best_str) {
             best_val = val;
@@ -1586,11 +1583,11 @@ pub extern "C" fn ore_list_reduce(list: *mut OreList, init: i64, func: *const u8
 #[no_mangle]
 pub extern "C" fn ore_list_reduce1(list: *mut OreList, func: *const u8, env: *mut u8) -> i64 {
     unsafe {
-        let src = &*list;
-        if src.len == 0 { return 0; }
-        let mut acc = *src.data;
-        for i in 1..src.len as usize {
-            acc = call_closure2(func, env, acc, *src.data.add(i));
+        let slice = (&*list).as_slice();
+        if slice.is_empty() { return 0; }
+        let mut acc = slice[0];
+        for &val in &slice[1..] {
+            acc = call_closure2(func, env, acc, val);
         }
         acc
     }
@@ -1891,11 +1888,11 @@ pub extern "C" fn ore_list_product_float(list: *mut OreList) -> f64 {
 }
 
 unsafe fn list_extremum_float(list: *mut OreList, is_better: fn(f64, f64) -> bool) -> f64 {
-    let src = &*list;
-    if src.len == 0 { return 0.0; }
-    let mut best = f64::from_bits(*src.data as u64);
-    for i in 1..src.len as usize {
-        let v = f64::from_bits(*src.data.add(i) as u64);
+    let slice = (&*list).as_slice();
+    if slice.is_empty() { return 0.0; }
+    let mut best = f64::from_bits(slice[0] as u64);
+    for &val in &slice[1..] {
+        let v = f64::from_bits(val as u64);
         if is_better(v, best) { best = v; }
     }
     best
