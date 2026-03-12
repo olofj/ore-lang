@@ -59,7 +59,6 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub(crate) fn coerce_to_i64(&mut self, val: BasicValueEnum<'ctx>, kind: &ValKind) -> Result<IntValue<'ctx>, CodeGenError> {
         match kind {
-            ValKind::Int => Ok(val.into_int_value()),
             ValKind::Bool => {
                 bld!(self.builder.build_int_z_extend(
                     val.into_int_value(), self.context.i64_type(), "btoi64"

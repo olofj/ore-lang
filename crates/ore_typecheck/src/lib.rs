@@ -456,8 +456,7 @@ impl TypeChecker {
                 Env::pop_scope(child, env);
                 Type::Unit
             }
-            Stmt::Break => Type::Unit,
-            Stmt::Continue => Type::Unit,
+            Stmt::Break | Stmt::Continue => Type::Unit,
             Stmt::Spawn(e) => {
                 // Check that spawn doesn't pass mutable variables
                 if let Expr::Call { args, .. } = e {
@@ -503,8 +502,7 @@ impl TypeChecker {
             Expr::IntLit(_) => Type::Int,
             Expr::FloatLit(_) => Type::Float,
             Expr::BoolLit(_) => Type::Bool,
-            Expr::StringLit(_) => Type::Str,
-            Expr::StringInterp(_) => Type::Str,
+            Expr::StringLit(_) | Expr::StringInterp(_) => Type::Str,
 
             Expr::Ident(name) => {
                 if let Some((ty, _)) = env.lookup(name) {
@@ -570,28 +568,20 @@ impl TypeChecker {
                     Expr::Ident(name) => {
                         // Built-in functions
                         match name.as_str() {
-                            "print" | "readln" | "input" => return Type::Str,
-                            "abs" | "min" | "max" => return Type::Int,
-                            "int" | "len" | "ord" => return Type::Int,
+                            "print" | "readln" | "input" | "str" | "chr" | "file_read"
+                            | "exec" | "type_of" | "env_get" => return Type::Str,
+                            "abs" | "min" | "max" | "int" | "len" | "ord"
+                            | "time_now" | "time_ms" | "rand_int" => return Type::Int,
                             "float" => return Type::Float,
-                            "str" | "chr" => return Type::Str,
-                            "file_read" => return Type::Str,
-                            "file_read_lines" => return Type::List(Box::new(Type::Str)),
-                            "file_write" | "file_append" => return Type::Bool,
-                            "file_exists" => return Type::Bool,
-                            "args" => return Type::List(Box::new(Type::Str)),
+                            "file_read_lines" | "args" => return Type::List(Box::new(Type::Str)),
+                            "file_write" | "file_append" | "file_exists" => return Type::Bool,
                             "range" | "repeat" => return Type::List(Box::new(Type::Int)),
-                            "time_now" | "time_ms" | "rand_int" => return Type::Int,
-                            "exit" | "eprint" | "assert" | "assert_eq" | "assert_ne" => return Type::Unit,
-                            "exec" => return Type::Str,
-                            "type_of" | "env_get" => return Type::Str,
-                            "env_set" => return Type::Unit,
+                            "exit" | "eprint" | "assert" | "assert_eq" | "assert_ne" | "env_set" => return Type::Unit,
                             "json_parse" => return Type::Map(Box::new(Type::Str), Box::new(Type::Any)),
                             "json_stringify" => return Type::Str,
                             "channel" => return Type::Channel,
-                            "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "math_abs" | "math_floor" | "math_ceil" | "math_round" => return Type::Float,
-                            "pow" | "atan2" => return Type::Float,
-                            "pi" | "euler" | "e" => return Type::Float,
+                            "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "math_abs" | "math_floor" | "math_ceil" | "math_round"
+                            | "pow" | "atan2" | "pi" | "euler" | "e" => return Type::Float,
                             _ => {}
                         }
 
@@ -952,26 +942,20 @@ impl TypeChecker {
                 _ => Type::Any,
             },
             Type::List(elem) => match method {
-                "len" | "sum" | "product" => Type::Int,
+                "len" | "sum" | "product" | "find_index" | "fold" => Type::Int,
                 "average" => Type::Float,
-                "push" | "set" => Type::Unit,
-                "pop" => *elem.clone(),
-                "get" | "get_or" => *elem.clone(),
+                "push" | "set" | "each" | "each_with_index" | "map_with_index" => Type::Unit,
+                "pop" | "get" | "get_or" | "find" | "min_by" | "max_by" => *elem.clone(),
                 "contains" | "is_empty" => Type::Bool,
-                "map" | "filter" => obj_ty.clone(),
+                "map" | "filter" | "sort" | "sort_by" | "reverse" | "window" | "chunks"
+                | "take_while" | "drop_while" | "step" | "intersperse" | "dedup" => obj_ty.clone(),
                 "partition" => Type::List(Box::new(obj_ty.clone())),
-                "each" | "each_with_index" | "map_with_index" => Type::Unit,
                 "reduce" => Type::Any,
                 "scan" => Type::List(Box::new(Type::Any)),
-                "find" | "min_by" | "max_by" => *elem.clone(),
-                "find_index" | "fold" => Type::Int,
                 "join" => Type::Str,
-                "sort" | "sort_by" | "reverse" | "window" | "chunks" | "take_while" | "drop_while" | "step" => obj_ty.clone(),
-                "count_by" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),
+                "count_by" | "frequencies" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),
                 "group_by" => Type::Map(Box::new(Type::Str), Box::new(obj_ty.clone())),
-                "frequencies" => Type::Map(Box::new(Type::Str), Box::new(Type::Int)),
                 "to_map" => Type::Map(Box::new(Type::Str), Box::new(Type::Any)),
-                "intersperse" | "dedup" => obj_ty.clone(),
                 _ => Type::Any,
             },
             Type::Map(_, v) => match method {
@@ -980,9 +964,8 @@ impl TypeChecker {
                 "get" | "get_or" => *v.clone(),
                 "keys" => Type::List(Box::new(Type::Str)),
                 "values" => Type::List(Box::new(*v.clone())),
-                "set" | "remove" | "each" => Type::Unit,
+                "set" | "remove" | "each" | "clear" => Type::Unit,
                 "map" | "merge" | "filter" => obj_ty.clone(),
-                "clear" => Type::Unit,
                 "entries" => Type::List(Box::new(Type::List(Box::new(Type::Any)))),
                 _ => Type::Any,
             },

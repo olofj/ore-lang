@@ -232,7 +232,6 @@ impl Parser {
                     ret_type = Some(self.parse_type_expr()?);
                     break;
                 }
-                Token::Newline | Token::Dedent | Token::Eof => break,
                 Token::Ident(_) => {
                     params.push(self.parse_param()?);
                 }
@@ -340,7 +339,6 @@ impl Parser {
                     ret_type = Some(self.parse_type_expr()?);
                     break;
                 }
-                Token::Newline | Token::Indent | Token::Eof => break,
                 Token::Ident(_) => {
                     params.push(self.parse_param()?);
                 }
@@ -1550,8 +1548,7 @@ fn infix_binding_power(op: BinOp) -> (u8, u8) {
     match op {
         BinOp::Or => (3, 4),
         BinOp::And => (5, 6),
-        BinOp::Eq | BinOp::NotEq => (7, 8),
-        BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq => (7, 8),
+        BinOp::Eq | BinOp::NotEq | BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq => (7, 8),
         BinOp::Pipe => (9, 20),
         BinOp::Add | BinOp::Sub => (11, 12),
         BinOp::Mul | BinOp::Div | BinOp::Mod => (13, 14),

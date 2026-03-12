@@ -32,8 +32,7 @@ impl std::fmt::Display for Type {
             Type::Map(k, v) => write!(f, "Map[{}, {}]", k, v),
             Type::Option(inner) => write!(f, "Option[{}]", inner),
             Type::Result(ok, err) => write!(f, "Result[{}, {}]", ok, err),
-            Type::Record(name) => write!(f, "{}", name),
-            Type::Enum(name) => write!(f, "{}", name),
+            Type::Record(name) | Type::Enum(name) => write!(f, "{}", name),
             Type::Channel => write!(f, "Channel"),
             Type::Fn { params, ret } => {
                 let ps: Vec<String> = params.iter().map(|p| p.to_string()).collect();
@@ -51,9 +50,8 @@ impl Type {
             return true;
         }
         match (self, other) {
-            (Type::Option(a), Type::Option(b)) => a.compatible_with(b),
+            (Type::Option(a), Type::Option(b)) | (Type::List(a), Type::List(b)) => a.compatible_with(b),
             (Type::Result(a1, a2), Type::Result(b1, b2)) => a1.compatible_with(b1) && a2.compatible_with(b2),
-            (Type::List(a), Type::List(b)) => a.compatible_with(b),
             (Type::Map(k1, v1), Type::Map(k2, v2)) => k1.compatible_with(k2) && v1.compatible_with(v2),
             _ => self == other,
         }

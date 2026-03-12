@@ -1269,7 +1269,6 @@ pub extern "C" fn ore_list_print_typed(list: *mut OreList, kind: i64) {
                 let _ = write!(handle, ", ");
             }
             match kind {
-                0 => { let _ = write!(handle, "{}", val); }
                 1 => { let _ = write!(handle, "{}", format_float(f64::from_bits(val as u64))); }
                 2 => { let _ = write!(handle, "{}", if val != 0 { "true" } else { "false" }); }
                 3 => {
@@ -2665,8 +2664,7 @@ pub extern "C" fn ore_type_of(kind: i8) -> *mut OreStr {
         4 => "Record",
         5 => "Enum",
         6 => "Option",
-        7 => "Result",
-        8 => "Result",
+        7 | 8 => "Result",
         9 => "List",
         10 => "Map",
         11 => "Channel",

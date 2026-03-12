@@ -18,7 +18,8 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
                 free.push(name.clone());
             }
         }
-        Expr::BinOp { left, right, .. } => {
+        Expr::BinOp { left, right, .. }
+        | Expr::AssertEq { left, right, .. } | Expr::AssertNe { left, right, .. } => {
             collect_free_vars(left, bound, free, seen);
             collect_free_vars(right, bound, free, seen);
         }
@@ -129,10 +130,6 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
         }
         Expr::Assert { cond, .. } => {
             collect_free_vars(cond, bound, free, seen);
-        }
-        Expr::AssertEq { left, right, .. } | Expr::AssertNe { left, right, .. } => {
-            collect_free_vars(left, bound, free, seen);
-            collect_free_vars(right, bound, free, seen);
         }
         // Literals and constants have no free variables
         Expr::IntLit(_) | Expr::FloatLit(_) | Expr::BoolLit(_) | Expr::StringLit(_)
