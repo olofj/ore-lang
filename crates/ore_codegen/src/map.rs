@@ -15,8 +15,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let key = self.compile_map_key(&args[0], func)?;
                 let (val, val_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let i64_val = self.value_to_i64(val)?;
-                let rt = self.rt("ore_map_set")?;
-                bld!(self.builder.build_call(rt, &[map_val.into(), key.into(), i64_val.into()], ""))?;
+                self.call_rt("ore_map_set", &[map_val.into(), key.into(), i64_val.into()], "")?;
                 // Track value kind for later retrieval
                 self.last_map_val_kind = Some(val_kind);
                 Ok((map_val, ValKind::Map))
@@ -78,8 +77,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Map))
             }
             "clear" => {
-                let rt = self.rt("ore_map_clear")?;
-                bld!(self.builder.build_call(rt, &[map_val.into()], ""))?;
+                self.call_rt("ore_map_clear", &[map_val.into()], "")?;
                 Ok((map_val, ValKind::Map))
             }
             "each" => {
@@ -88,8 +86,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let kinds = [ValKind::Str, val_kind];
                 let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.each()", false)?;
 
-                let rt = self.rt("ore_map_each")?;
-                bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
+                self.call_rt("ore_map_each", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "")?;
                 Ok(self.void_result())
             }
             "map" => {
@@ -146,11 +143,7 @@ impl<'ctx> CodeGen<'ctx> {
         entries: &[(Expr, Expr)],
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let map_new = self.rt("ore_map_new")?;
-        let map_set_typed = self.rt("ore_map_set_typed")?;
-
-        let map_result = bld!(self.builder.build_call(map_new, &[], "map"))?;
-        let map_ptr = self.call_result_to_value(map_result)?.into_pointer_value();
+        let map_ptr = self.call_rt("ore_map_new", &[], "map")?.into_pointer_value();
 
         let mut first_val_kind = None;
         for (key, value) in entries {
@@ -169,11 +162,7 @@ impl<'ctx> CodeGen<'ctx> {
             let kind_tag = self.valkind_to_tag(&val_kind);
             let kind_const = self.context.i8_type().const_int(kind_tag as u64, false);
             let i64_val = self.value_to_i64(val)?;
-            bld!(self.builder.build_call(
-                map_set_typed,
-                &[map_ptr.into(), key_val.into(), i64_val.into(), kind_const.into()],
-                ""
-            ))?;
+            self.call_rt("ore_map_set_typed", &[map_ptr.into(), key_val.into(), i64_val.into(), kind_const.into()], "")?;
         }
 
         self.last_map_val_kind = first_val_kind;
