@@ -268,13 +268,7 @@ impl<'ctx> CodeGen<'ctx> {
                     for arg in args {
                         compiled_args.push(self.compile_expr(arg, func)?.into());
                     }
-                    // Fill in default parameter values for missing args
-                    if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
-                        let num_args = compiled_args.len();
-                        for default_expr in defaults.iter().skip(num_args).flatten() {
-                            compiled_args.push(self.compile_expr(default_expr, func)?.into());
-                        }
-                    }
+                    self.fill_default_args(&name, &mut compiled_args, func)?;
                     let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
                     let val = self.call_result_to_value(result)?;
                     // Propagate list element kind from function return type annotation
@@ -547,14 +541,7 @@ impl<'ctx> CodeGen<'ctx> {
                     for a in args {
                         compiled_args.push(self.compile_expr(a, current_fn)?.into());
                     }
-                    // Fill in default parameter values for missing args
-                    if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
-                        let num_args = compiled_args.len();
-                        for default_expr in defaults.iter().skip(num_args).flatten() {
-                            compiled_args.push(self.compile_expr(default_expr, current_fn)?.into());
-                        }
-                    }
-
+                    self.fill_default_args(&name, &mut compiled_args, current_fn)?;
                     let result = bld!(self.builder.build_call(called_fn, &compiled_args, "pipe"))?;
                     let val = self.call_result_to_value(result)?;
                     Ok((val, ret_kind))
@@ -772,6 +759,22 @@ impl<'ctx> CodeGen<'ctx> {
         let assert_fn = self.rt(fn_name)?;
         bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
         Ok(self.void_result())
+    }
+
+    /// Append default parameter values for any missing arguments in a function call.
+    pub(crate) fn fill_default_args(
+        &mut self,
+        name: &str,
+        compiled_args: &mut Vec<inkwell::values::BasicMetadataValueEnum<'ctx>>,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        if let Some(defaults) = self.fn_defaults.get(name).cloned() {
+            let num_args = compiled_args.len();
+            for default_expr in defaults.iter().skip(num_args).flatten() {
+                compiled_args.push(self.compile_expr(default_expr, func)?.into());
+            }
+        }
+        Ok(())
     }
 
 }
