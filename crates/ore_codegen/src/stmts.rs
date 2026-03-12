@@ -3,6 +3,25 @@ use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
 use inkwell::IntPredicate;
 
 impl<'ctx> CodeGen<'ctx> {
+    /// Track list element kind and map value kind for a variable binding.
+    /// `consume` = true uses .take() (for new bindings), false uses .clone() (for reassignment).
+    fn track_variable_kinds(&mut self, name: &str, kind: &ValKind, consume: bool) {
+        if let ValKind::List(Some(ref ek)) = kind {
+            self.list_element_kinds.insert(name.to_string(), *ek.clone());
+        } else if kind.is_list() {
+            let ek = if consume { self.last_list_elem_kind.take() } else { self.last_list_elem_kind.clone() };
+            if let Some(ek) = ek {
+                self.list_element_kinds.insert(name.to_string(), ek);
+            }
+        }
+        if *kind == ValKind::Map {
+            let vk = if consume { self.last_map_val_kind.take() } else { self.last_map_val_kind.clone() };
+            if let Some(vk) = vk {
+                self.map_value_kinds.insert(name.to_string(), vk);
+            }
+        }
+    }
+
     pub(crate) fn compile_stmt(
         &mut self,
         stmt: &Stmt,
@@ -17,20 +36,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let alloca = self.build_entry_alloca(func, ty, name)?;
                 bld!(self.builder.build_store(alloca, val))?;
                 self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: kind.clone(), is_mutable: *mutable });
-                // Track element kind for typed lists
-                if let ValKind::List(Some(ref ek)) = kind {
-                    self.list_element_kinds.insert(name.clone(), *ek.clone());
-                } else if kind.is_list() {
-                    if let Some(ek) = self.last_list_elem_kind.take() {
-                        self.list_element_kinds.insert(name.clone(), ek);
-                    }
-                }
-                // Track value kind for typed maps
-                if kind == ValKind::Map {
-                    if let Some(vk) = self.last_map_val_kind.take() {
-                        self.map_value_kinds.insert(name.clone(), vk);
-                    }
-                }
+                self.track_variable_kinds(name, &kind, true);
                 Ok(None)
             }
             Stmt::LetDestructure { names, value } => {
@@ -82,19 +88,7 @@ impl<'ctx> CodeGen<'ctx> {
                     });
                 }
                 bld!(self.builder.build_store(var_info.ptr, val))?;
-                // Update element kind tracking for lists and maps on reassignment
-                if let ValKind::List(Some(ref ek)) = kind {
-                    self.list_element_kinds.insert(name.clone(), *ek.clone());
-                } else if kind.is_list() {
-                    if let Some(ek) = self.last_list_elem_kind.clone() {
-                        self.list_element_kinds.insert(name.clone(), ek);
-                    }
-                }
-                if kind == ValKind::Map {
-                    if let Some(vk) = self.last_map_val_kind.clone() {
-                        self.map_value_kinds.insert(name.clone(), vk);
-                    }
-                }
+                self.track_variable_kinds(name, &kind, false);
                 Ok(None)
             }
             Stmt::IndexAssign { object, index, value } => {
