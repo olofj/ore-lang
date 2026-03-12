@@ -1855,4 +1855,261 @@ mod tests {
             _ => panic!("expected FnDef"),
         }
     }
+
+    #[test]
+    fn test_pipeline() {
+        let prog = parse_src("fn main\n  x := 5 | double\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { value, .. } => {
+                        match value {
+                            Expr::BinOp { op: BinOp::Pipe, left, right } => {
+                                assert_eq!(**left, Expr::IntLit(5));
+                                assert_eq!(**right, Expr::Ident("double".into()));
+                            }
+                            _ => panic!("expected pipe, got {:?}", value),
+                        }
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_pipeline_chain() {
+        let prog = parse_src("fn main\n  x := 5 | f | g\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { value, .. } => {
+                        // Should be (5 | f) | g — left-associative
+                        match value {
+                            Expr::BinOp { op: BinOp::Pipe, left, right } => {
+                                match left.as_ref() {
+                                    Expr::BinOp { op: BinOp::Pipe, .. } => {}
+                                    _ => panic!("expected inner pipe"),
+                                }
+                                assert_eq!(**right, Expr::Ident("g".into()));
+                            }
+                            _ => panic!("expected pipe"),
+                        }
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_lambda() {
+        let prog = parse_src("fn main\n  f := (x => x + 1)\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { value, .. } => {
+                        match value {
+                            Expr::Lambda { params, .. } => {
+                                assert_eq!(params.len(), 1);
+                                assert_eq!(params[0], "x");
+                            }
+                            _ => panic!("expected lambda, got {:?}", value),
+                        }
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_list_literal() {
+        let prog = parse_src("fn main\n  xs := [1, 2, 3]\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { value, .. } => {
+                        match value {
+                            Expr::ListLit(elems) => {
+                                assert_eq!(elems.len(), 3);
+                                assert_eq!(elems[0], Expr::IntLit(1));
+                            }
+                            _ => panic!("expected list literal"),
+                        }
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_method_call() {
+        let prog = parse_src("fn main\n  xs.len()\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Expr(Expr::MethodCall { object, method, args }) => {
+                        assert_eq!(**object, Expr::Ident("xs".into()));
+                        assert_eq!(method, "len");
+                        assert_eq!(args.len(), 0);
+                    }
+                    _ => panic!("expected method call"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_string_interpolation() {
+        let prog = parse_src("fn main\n  x := \"hello {name}\"\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { value, .. } => {
+                        match value {
+                            Expr::StringInterp(parts) => {
+                                assert!(parts.len() >= 2); // at least literal + expr
+                            }
+                            _ => panic!("expected string interpolation, got {:?}", value),
+                        }
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_match_expression() {
+        let prog = parse_src("fn main\n  match x\n    1 -> \"one\"\n    _ -> \"other\"\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Expr(Expr::Match { arms, .. }) => {
+                        assert_eq!(arms.len(), 2);
+                    }
+                    _ => panic!("expected match"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_for_in_range() {
+        let prog = parse_src("fn main\n  for i in 0..10\n    print i\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::ForIn { var, .. } => {
+                        assert_eq!(var, "i");
+                    }
+                    _ => panic!("expected for-in"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_while_loop() {
+        let prog = parse_src("fn main\n  while true\n    print 1\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::While { .. } => {}
+                    _ => panic!("expected while"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_record_def() {
+        let prog = parse_src("type Point { x:Float, y:Float }\n");
+        match &prog.items[0] {
+            Item::TypeDef(td) => {
+                assert_eq!(td.name, "Point");
+                assert_eq!(td.fields.len(), 2);
+                assert_eq!(td.fields[0].name, "x");
+            }
+            _ => panic!("expected TypeDef"),
+        }
+    }
+
+    #[test]
+    fn test_enum_def() {
+        let prog = parse_src("type Color\n  Red\n  Green\n  Blue\n");
+        match &prog.items[0] {
+            Item::EnumDef(ed) => {
+                assert_eq!(ed.name, "Color");
+                assert_eq!(ed.variants.len(), 3);
+            }
+            _ => panic!("expected EnumDef"),
+        }
+    }
+
+    #[test]
+    fn test_mutable_binding() {
+        let prog = parse_src("fn main\n  mut x := 0\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { name, mutable, .. } => {
+                        assert_eq!(name, "x");
+                        assert!(mutable);
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_comparison_operators() {
+        let prog = parse_src("fn main\n  x := 1 <= 2\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { value, .. } => {
+                        match value {
+                            Expr::BinOp { op: BinOp::LtEq, .. } => {}
+                            _ => panic!("expected <=, got {:?}", value),
+                        }
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_float_literal() {
+        let prog = parse_src("fn main\n  x := 3.14\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { value, .. } => {
+                        match value {
+                            Expr::FloatLit(v) => assert!((*v - 3.14).abs() < 1e-10),
+                            _ => panic!("expected float literal"),
+                        }
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
 }

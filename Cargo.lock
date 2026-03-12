@@ -251,6 +251,7 @@ dependencies = [
 name = "ore_typecheck"
 version = "0.1.0"
 dependencies = [
+ "ore_lexer",
  "ore_parser",
  "ore_types",
 ]

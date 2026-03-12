@@ -1008,3 +1008,125 @@ pub fn typecheck(program: &Program) -> Result<(), Vec<TypeError>> {
         Err(checker.errors)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ore_lexer::lex;
+    use ore_parser::parse;
+
+    fn check(src: &str) -> Result<(), Vec<TypeError>> {
+        let tokens = lex(src).expect("lex failed");
+        let program = parse(tokens).expect("parse failed");
+        typecheck(&program)
+    }
+
+    fn check_err(src: &str) -> Vec<TypeError> {
+        check(src).expect_err("expected type error")
+    }
+
+    // --- Passing programs ---
+
+    #[test]
+    fn valid_simple_fn() {
+        assert!(check("fn main\n  x := 42\n  print x\n").is_ok());
+    }
+
+    #[test]
+    fn valid_typed_fn() {
+        assert!(check("fn add a:Int b:Int -> Int\n  a + b\n\nfn main\n  print add(1, 2)\n").is_ok());
+    }
+
+    #[test]
+    fn valid_bool_binding() {
+        assert!(check("fn main\n  x := true\n  print x\n").is_ok());
+    }
+
+    #[test]
+    fn valid_string_binding() {
+        assert!(check("fn main\n  x := \"hello\"\n  print x\n").is_ok());
+    }
+
+    #[test]
+    fn valid_mutable_variable() {
+        assert!(check("fn main\n  mut x := 0\n  x = 1\n  print x\n").is_ok());
+    }
+
+    #[test]
+    fn valid_if_else() {
+        assert!(check("fn main\n  if true\n    print 1\n  else\n    print 2\n").is_ok());
+    }
+
+    #[test]
+    fn valid_while_loop() {
+        assert!(check("fn main\n  mut i := 0\n  while i < 10\n    i = i + 1\n").is_ok());
+    }
+
+    #[test]
+    fn valid_for_loop() {
+        assert!(check("fn main\n  for i in 0..10\n    print i\n").is_ok());
+    }
+
+    #[test]
+    fn valid_list_literal() {
+        assert!(check("fn main\n  xs := [1, 2, 3]\n  print xs\n").is_ok());
+    }
+
+    #[test]
+    fn valid_record_def() {
+        assert!(check("type Point { x:Int, y:Int }\n\nfn main\n  p := Point(x: 1, y: 2)\n  print p.x\n").is_ok());
+    }
+
+    // --- Error cases ---
+
+    #[test]
+    fn error_assign_to_immutable() {
+        let errs = check_err("fn main\n  x := 0\n  x = 1\n");
+        assert!(errs.iter().any(|e| e.msg.contains("immutable") || e.msg.contains("mutable") || e.msg.contains("mut")),
+            "expected mutability error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_undefined_function() {
+        let errs = check_err("fn main\n  foo()\n");
+        assert!(errs.iter().any(|e| e.msg.contains("foo") || e.msg.contains("undefined") || e.msg.contains("unknown")),
+            "expected undefined function error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_record_missing_field() {
+        let errs = check_err("type Point { x:Int, y:Int }\n\nfn main\n  p := Point(x: 1)\n");
+        assert!(errs.iter().any(|e| e.msg.to_lowercase().contains("field") || e.msg.to_lowercase().contains("missing")),
+            "expected missing field error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn valid_recursion() {
+        assert!(check("fn fib n:Int -> Int\n  if n < 2\n    n\n  else\n    fib(n - 1) + fib(n - 2)\n\nfn main\n  print fib(10)\n").is_ok());
+    }
+
+    #[test]
+    fn valid_enum_def() {
+        assert!(check("type Color\n  Red\n  Green\n  Blue\n\nfn main\n  c := Red\n  print c\n").is_ok());
+    }
+
+    #[test]
+    fn valid_match() {
+        assert!(check("fn main\n  x := 1\n  match x\n    1 -> print \"one\"\n    _ -> print \"other\"\n").is_ok());
+    }
+
+    #[test]
+    fn valid_test_block() {
+        assert!(check("fn main\n  print 1\n\ntest \"basic\"\n  assert true\n").is_ok());
+    }
+
+    #[test]
+    fn valid_pipeline() {
+        assert!(check("fn double x:Int -> Int\n  x * 2\n\nfn main\n  5 | double\n").is_ok());
+    }
+
+    #[test]
+    fn valid_lambda() {
+        assert!(check("fn main\n  f := (x => x + 1)\n  print f(5)\n").is_ok());
+    }
+}
