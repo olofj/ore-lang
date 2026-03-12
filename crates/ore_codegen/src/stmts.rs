@@ -458,13 +458,13 @@ impl<'ctx> CodeGen<'ctx> {
         if self.is_map_iterable(iterable) {
             let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
             let list_ptr = self.call_rt("ore_map_keys", &[map_ptr.into()], "keys")?.into_pointer_value();
-            return self.compile_for_each_over_list(var, list_ptr, ValKind::Str, body, func);
+            return self.compile_for_each_over_list(var, list_ptr, ValKind::Str, body, func, None);
         }
 
         let (list_val, list_kind) = self.compile_expr_with_kind(iterable, func)?;
         let elem_kind = self.resolve_list_elem_kind(iterable, &list_kind);
         let list_ptr = list_val.into_pointer_value();
-        self.compile_for_each_over_list(var, list_ptr, elem_kind, body, func)
+        self.compile_for_each_over_list(var, list_ptr, elem_kind, body, func, None)
     }
 
     /// Allocate a local variable with the correct LLVM type for a given ValKind.
@@ -503,6 +503,8 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
+    /// Compile a for-each loop over a list. If `index_var` is Some, also exposes the
+    /// loop index as a variable with that name.
     pub(crate) fn compile_for_each_over_list(
         &mut self,
         var: &str,
@@ -510,13 +512,21 @@ impl<'ctx> CodeGen<'ctx> {
         elem_kind: ValKind,
         body: &Block,
         func: FunctionValue<'ctx>,
+        index_var: Option<&str>,
     ) -> Result<(), CodeGenError> {
         let len_val = self.call_rt("ore_list_len", &[list_ptr.into()], "len")?.into_int_value();
 
         let (elem_alloca, elem_ty) = self.alloca_for_kind(var, &elem_kind)?;
         self.variables.insert(var.to_string(), VarInfo { ptr: elem_alloca, ty: elem_ty, kind: elem_kind.clone(), is_mutable: false });
 
-        let lp = self.build_indexed_loop(len_val, "foreach", func)?;
+        let label = if index_var.is_some() { "forenum" } else { "foreach" };
+        let lp = self.build_indexed_loop(len_val, label, func)?;
+
+        if let Some(idx_name) = index_var {
+            let i64_type = self.context.i64_type();
+            self.variables.insert(idx_name.to_string(), VarInfo { ptr: lp.idx_alloca, ty: i64_type.into(), kind: ValKind::Int, is_mutable: false });
+        }
+
         let idx = self.loop_index(&lp)?;
         let raw_val = self.call_rt("ore_list_get", &[list_ptr.into(), idx.into()], "elem")?;
         let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
@@ -546,28 +556,7 @@ impl<'ctx> CodeGen<'ctx> {
         let (list_val, list_kind) = self.compile_expr_with_kind(iterable, func)?;
         let elem_kind = self.resolve_list_elem_kind(iterable, &list_kind);
         let list_ptr = list_val.into_pointer_value();
-
-        let len_val = self.call_rt("ore_list_len", &[list_ptr.into()], "len")?.into_int_value();
-
-        let (elem_alloca, elem_ty) = self.alloca_for_kind(val_var, &elem_kind)?;
-        self.variables.insert(val_var.to_string(), VarInfo { ptr: elem_alloca, ty: elem_ty, kind: elem_kind.clone(), is_mutable: false });
-
-        let lp = self.build_indexed_loop(len_val, "forenum", func)?;
-        // Expose the loop index as key_var
-        let i64_type = self.context.i64_type();
-        self.variables.insert(key_var.to_string(), VarInfo { ptr: lp.idx_alloca, ty: i64_type.into(), kind: ValKind::Int, is_mutable: false });
-
-        let idx = self.loop_index(&lp)?;
-        let raw_val = self.call_rt("ore_list_get", &[list_ptr.into(), idx.into()], "elem")?;
-        let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
-        bld!(self.builder.build_store(elem_alloca, typed_val))?;
-
-        let saved = self.set_loop_targets(lp.end_bb, lp.inc_bb);
-        self.compile_block_stmts(body, func)?;
-        self.restore_loop_targets(saved, lp.inc_bb)?;
-
-        self.finish_indexed_loop(&lp)?;
-        Ok(())
+        self.compile_for_each_over_list(val_var, list_ptr, elem_kind, body, func, Some(key_var))
     }
 
     pub(crate) fn compile_for_each_kv_map(
@@ -697,7 +686,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Compile else branch
         self.builder.position_at_end(else_bb);
-        let (else_val, _else_kind) = if let Some(eb) = else_block {
+        let (else_val, else_kind) = if let Some(eb) = else_block {
             let (v, k) = self.compile_block_stmts_with_kind(eb, func)?;
             (v.unwrap_or_else(|| i64_type.const_int(0, false).into()), k)
         } else {
@@ -740,7 +729,7 @@ impl<'ctx> CodeGen<'ctx> {
         } else {
             self.builder.position_at_end(else_end_bb);
         }
-        let else_i64 = self.coerce_to_i64(else_val, &_else_kind)?;
+        let else_i64 = self.coerce_to_i64(else_val, &else_kind)?;
         bld!(self.builder.build_store(result_alloca, else_i64))?;
 
         self.builder.position_at_end(merge_bb);
