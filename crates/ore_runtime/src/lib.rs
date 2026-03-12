@@ -505,8 +505,7 @@ pub extern "C" fn ore_str_repeat(s: *mut OreStr, n: i64) -> *mut OreStr {
     str_to_ore(repeated)
 }
 
-#[no_mangle]
-pub extern "C" fn ore_str_pad_left(s: *mut OreStr, width: i64, pad_char: *mut OreStr) -> *mut OreStr {
+fn pad_str(s: *mut OreStr, width: i64, pad_char: *mut OreStr, left: bool) -> *mut OreStr {
     if s.is_null() { return empty_ore_str(); }
     let str_val = unsafe { (*s).as_str() };
     let pad = if pad_char.is_null() { " " } else { unsafe { (*pad_char).as_str() } };
@@ -516,23 +515,21 @@ pub extern "C" fn ore_str_pad_left(s: *mut OreStr, width: i64, pad_char: *mut Or
         return str_to_ore(str_val);
     }
     let padding: String = std::iter::repeat_n(pad_ch, width - str_val.len()).collect();
-    let result = format!("{}{}", padding, str_val);
-    str_to_ore(result)
+    if left {
+        str_to_ore(format!("{}{}", padding, str_val))
+    } else {
+        str_to_ore(format!("{}{}", str_val, padding))
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_pad_left(s: *mut OreStr, width: i64, pad_char: *mut OreStr) -> *mut OreStr {
+    pad_str(s, width, pad_char, true)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_str_pad_right(s: *mut OreStr, width: i64, pad_char: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return empty_ore_str(); }
-    let str_val = unsafe { (*s).as_str() };
-    let pad = if pad_char.is_null() { " " } else { unsafe { (*pad_char).as_str() } };
-    let pad_ch = pad.chars().next().unwrap_or(' ');
-    let width = width.max(0) as usize;
-    if str_val.len() >= width {
-        return str_to_ore(str_val);
-    }
-    let padding: String = std::iter::repeat_n(pad_ch, width - str_val.len()).collect();
-    let result = format!("{}{}", str_val, padding);
-    str_to_ore(result)
+    pad_str(s, width, pad_char, false)
 }
 
 #[no_mangle]
@@ -2201,53 +2198,35 @@ pub extern "C" fn ore_map_values(map: *mut OreMap) -> *mut OreList {
     }
 }
 
-/// Print a map: {key1: value1, key2: value2, ...} (assumes int values)
-#[no_mangle]
-pub extern "C" fn ore_map_print(map: *mut OreMap) {
+fn print_map_with(map: *mut OreMap, fmt_val: impl Fn(i64) -> String) {
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
     unsafe {
         let map = &*map;
         let _ = write!(handle, "{{");
-        let mut first = true;
-        // Sort keys for deterministic output
         let mut keys: Vec<&String> = map.inner.keys().collect();
         keys.sort();
-        for key in keys {
-            if !first {
-                let _ = write!(handle, ", ");
-            }
-            first = false;
-            let val = map.inner[key];
-            let _ = write!(handle, "{}: {}", key, val);
+        for (i, key) in keys.iter().enumerate() {
+            if i > 0 { let _ = write!(handle, ", "); }
+            let _ = write!(handle, "{}: {}", key, fmt_val(map.inner[*key]));
         }
         let _ = writeln!(handle, "}}");
     }
 }
 
+/// Print a map: {key1: value1, key2: value2, ...} (assumes int values)
+#[no_mangle]
+pub extern "C" fn ore_map_print(map: *mut OreMap) {
+    print_map_with(map, |v| v.to_string());
+}
+
 /// Print a map with string values
 #[no_mangle]
 pub extern "C" fn ore_map_print_str(map: *mut OreMap) {
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    unsafe {
-        let map = &*map;
-        let _ = write!(handle, "{{");
-        let mut first = true;
-        let mut keys: Vec<&String> = map.inner.keys().collect();
-        keys.sort();
-        for key in keys {
-            if !first {
-                let _ = write!(handle, ", ");
-            }
-            first = false;
-            let val = map.inner[key] as *mut OreStr;
-            if !val.is_null() {
-                let _ = write!(handle, "{}: {}", key, (*val).as_str());
-            }
-        }
-        let _ = writeln!(handle, "}}");
-    }
+    print_map_with(map, |v| {
+        let s = v as *mut OreStr;
+        if s.is_null() { String::new() } else { unsafe { (*s).as_str().to_string() } }
+    });
 }
 
 /// Merge other map into a copy of self, returning new map
