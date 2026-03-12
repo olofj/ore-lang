@@ -22,9 +22,7 @@ impl<'ctx> CodeGen<'ctx> {
                         ))?
                     }
                     ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        bld!(self.builder.build_ptr_to_int(
-                            val.into_pointer_value(), self.context.i64_type(), "ptr_to_i64"
-                        ))?
+                        self.ptr_to_i64(val.into_pointer_value())?
                     }
                     _ => val.into_int_value(),
                 };
@@ -47,15 +45,11 @@ impl<'ctx> CodeGen<'ctx> {
                 match &val_kind {
                     ValKind::Str => {
                         // Convert i64 back to pointer
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
-                        ))?;
+                        let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
                         Ok((ptr.into(), ValKind::Str))
                     }
                     ValKind::List(_) => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
-                        ))?;
+                        let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
                         Ok((ptr.into(), val_kind))
                     }
                     _ => Ok((i64_val, val_kind))
@@ -132,7 +126,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => return Err(self.err("map.each() requires a lambda")),
                 };
-                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let lambda_name = Self::get_lambda_name(lambda_fn);
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
                     self.build_captures_struct(&lambda_name)?
@@ -157,7 +151,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => return Err(self.err("map.map() requires a lambda")),
                 };
-                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let lambda_name = Self::get_lambda_name(lambda_fn);
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
                     self.build_captures_struct(&lambda_name)?
@@ -183,7 +177,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => return Err(self.err("map.filter() requires a lambda")),
                 };
-                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let lambda_name = Self::get_lambda_name(lambda_fn);
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
                     self.build_captures_struct(&lambda_name)?
@@ -201,9 +195,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (default_val, default_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let default_i64 = match default_kind {
                     ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        bld!(self.builder.build_ptr_to_int(
-                            default_val.into_pointer_value(), self.context.i64_type(), "def2i"
-                        ))?
+                        self.ptr_to_i64(default_val.into_pointer_value())?
                     }
                     _ => default_val.into_int_value(),
                 };
@@ -213,15 +205,11 @@ impl<'ctx> CodeGen<'ctx> {
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 match &val_kind {
                     ValKind::Str => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
-                        ))?;
+                        let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
                         Ok((ptr.into(), ValKind::Str))
                     }
                     ValKind::List(_) => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
-                        ))?;
+                        let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
                         Ok((ptr.into(), val_kind))
                     }
                     _ => Ok((i64_val, val_kind))
@@ -279,11 +267,7 @@ impl<'ctx> CodeGen<'ctx> {
                     ))?
                 }
                 ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                    bld!(self.builder.build_ptr_to_int(
-                        val.into_pointer_value(),
-                        self.context.i64_type(),
-                        "ptr_to_i64"
-                    ))?
+                    self.ptr_to_i64(val.into_pointer_value())?
                 }
                 _ => val.into_int_value(),
             };

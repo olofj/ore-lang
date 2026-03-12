@@ -63,7 +63,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Convert and print based on element kind
         match elem_kind {
             ValKind::Str => {
-                let elem_ptr = bld!(self.builder.build_int_to_ptr(elem_i64, self.ptr_type(), "str_ptr"))?;
+                let elem_ptr = self.i64_to_ptr(elem_i64)?;
                 bld!(self.builder.build_call(str_print, &[elem_ptr.into()], ""))?;
             }
             ValKind::Float => {

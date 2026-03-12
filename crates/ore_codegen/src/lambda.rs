@@ -291,9 +291,7 @@ impl<'ctx> CodeGen<'ctx> {
             match &kind {
                 ValKind::Str | ValKind::List(_) | ValKind::Map => {
                     let ptr_ty = self.ptr_type();
-                    let ptr_val = bld!(self.builder.build_int_to_ptr(
-                        val.into_int_value(), ptr_ty, &format!("{}_ptr", param_name)
-                    ))?;
+                    let ptr_val = self.i64_to_ptr(val.into_int_value())?;
                     let alloca = bld!(self.builder.build_alloca(ptr_ty, param_name))?;
                     bld!(self.builder.build_store(alloca, ptr_val))?;
                     self.variables.insert(param_name.clone(), (alloca, ptr_ty.as_basic_type_enum(), kind, false));
@@ -329,11 +327,7 @@ impl<'ctx> CodeGen<'ctx> {
                     ))?.into()
                 }
                 ValKind::Str | ValKind::List(_) | ValKind::Map if result.is_pointer_value() => {
-                    bld!(self.builder.build_ptr_to_int(
-                        result.into_pointer_value(),
-                        self.context.i64_type(),
-                        "ptr_to_i64"
-                    ))?.into()
+                    self.ptr_to_i64(result.into_pointer_value())?.into()
                 }
                 ValKind::Float if result.is_float_value() => {
                     bld!(self.builder.build_bit_cast(result, self.context.i64_type(), "f64_to_i64"))?.into()

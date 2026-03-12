@@ -48,9 +48,7 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_bit_cast(val, self.context.i64_type(), "ftoi64")).map(|v| v.into_int_value())
             }
             ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                bld!(self.builder.build_ptr_to_int(
-                    val.into_pointer_value(), self.context.i64_type(), "ptoi64"
-                ))
+                self.ptr_to_i64(val.into_pointer_value())
             }
             ValKind::Void => Ok(self.context.i64_type().const_int(0, false)),
             _ => Ok(val.into_int_value()),
@@ -60,9 +58,7 @@ impl<'ctx> CodeGen<'ctx> {
     pub(crate) fn coerce_from_i64(&mut self, val: BasicValueEnum<'ctx>, kind: &ValKind) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
         match kind {
             ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                let ptr = bld!(self.builder.build_int_to_ptr(
-                    val.into_int_value(), self.context.ptr_type(inkwell::AddressSpace::default()), "i64toptr"
-                ))?;
+                let ptr = self.i64_to_ptr(val.into_int_value())?;
                 Ok(ptr.into())
             }
             ValKind::Bool => {
@@ -86,27 +82,18 @@ impl<'ctx> CodeGen<'ctx> {
         match kind {
             ValKind::Enum(name) => {
                 let et = self.enums[name].enum_type;
-                let ptr = bld!(self.builder.build_int_to_ptr(
-                    raw.into_int_value(),
-                    self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
-                ))?;
+                let ptr = self.i64_to_ptr(raw.into_int_value())?;
                 let val = bld!(self.builder.build_load(et, ptr, "load_enum"))?;
                 Ok(val)
             }
             ValKind::Record(name) => {
                 let st = self.records[name].struct_type;
-                let ptr = bld!(self.builder.build_int_to_ptr(
-                    raw.into_int_value(),
-                    self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
-                ))?;
+                let ptr = self.i64_to_ptr(raw.into_int_value())?;
                 let val = bld!(self.builder.build_load(st, ptr, "load_rec"))?;
                 Ok(val)
             }
             ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                let ptr = bld!(self.builder.build_int_to_ptr(
-                    raw.into_int_value(),
-                    self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
-                ))?;
+                let ptr = self.i64_to_ptr(raw.into_int_value())?;
                 Ok(ptr.into())
             }
             ValKind::Float => {
@@ -138,7 +125,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(bld!(self.builder.build_bit_cast(v, self.context.i64_type(), "f2i"))?.into_int_value())
             }
             BasicValueEnum::PointerValue(v) => {
-                Ok(bld!(self.builder.build_ptr_to_int(v, self.context.i64_type(), "p2i"))?)
+                self.ptr_to_i64(v)
             }
             _ => Ok(val.into_int_value()),
         }
@@ -184,7 +171,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             _ => return Err(self.err(format!("{} argument must be a function", method_name))),
         };
-        let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+        let lambda_name = Self::get_lambda_name(lambda_fn);
         let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
             self.build_captures_struct(&lambda_name)?
         } else {

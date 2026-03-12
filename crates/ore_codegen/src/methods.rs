@@ -626,11 +626,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // If the value is a pointer type (Str, List, Map), convert i64 -> ptr
                 match val_kind {
                     ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            val.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()),
-                            "i2p"
-                        ))?;
+                        let ptr = self.i64_to_ptr(val.into_int_value())?;
                         Ok((ptr.into(), val_kind))
                     }
                     _ => Ok((val, val_kind))

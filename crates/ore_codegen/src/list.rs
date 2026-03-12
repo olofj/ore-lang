@@ -44,14 +44,14 @@ impl<'ctx> CodeGen<'ctx> {
                         let et = self.enums[name].enum_type;
                         let heap_ptr = bld!(self.builder.build_malloc(et, "heap_enum"))?;
                         bld!(self.builder.build_store(heap_ptr, arg))?;
-                        let i64_val = bld!(self.builder.build_ptr_to_int(heap_ptr, self.context.i64_type(), "p2i"))?;
+                        let i64_val = self.ptr_to_i64(heap_ptr)?;
                         i64_val.into()
                     }
                     ValKind::Record(name) => {
                         let st = self.records[name].struct_type;
                         let heap_ptr = bld!(self.builder.build_malloc(st, "heap_rec"))?;
                         bld!(self.builder.build_store(heap_ptr, arg))?;
-                        let i64_val = bld!(self.builder.build_ptr_to_int(heap_ptr, self.context.i64_type(), "p2i"))?;
+                        let i64_val = self.ptr_to_i64(heap_ptr)?;
                         i64_val.into()
                     }
                     ValKind::Float => {
@@ -63,7 +63,7 @@ impl<'ctx> CodeGen<'ctx> {
                         i64_val.into()
                     }
                     ValKind::Str => {
-                        let i64_val = bld!(self.builder.build_ptr_to_int(arg.into_pointer_value(), self.context.i64_type(), "p2i"))?;
+                        let i64_val = self.ptr_to_i64(arg.into_pointer_value())?;
                         i64_val.into()
                     }
                     _ => arg,
@@ -99,10 +99,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let raw_val = self.call_result_to_value(result)?;
                 match &elem_kind {
                     ValKind::Str => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            raw_val.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
-                        ))?;
+                        let ptr = self.i64_to_ptr(raw_val.into_int_value())?;
                         Ok((ptr.into(), ValKind::Str))
                     }
                     _ => Ok((raw_val, elem_kind))
@@ -322,9 +319,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let ek = elem_kind.unwrap_or(ValKind::Int);
                 match &ek {
                     ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            val.into_int_value(), self.ptr_type(), "mby2p"
-                        ))?;
+                        let ptr = self.i64_to_ptr(val.into_int_value())?;
                         Ok((ptr.into(), ek))
                     }
                     _ => Ok((val, ek))
@@ -346,7 +341,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     let rt = self.rt("ore_list_contains")?;
                     let i64_val = if val.is_pointer_value() {
-                        bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), self.context.i64_type(), "p2i"))?.into()
+                        self.ptr_to_i64(val.into_pointer_value())?.into()
                     } else {
                         val.into()
                     };
@@ -420,10 +415,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let ek = elem_kind.unwrap_or(ValKind::Int);
                 match ek {
                     ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            val.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()), "find2p"
-                        ))?;
+                        let ptr = self.i64_to_ptr(val.into_int_value())?;
                         Ok((ptr.into(), ek))
                     }
                     _ => Ok((val, ek))
@@ -609,10 +601,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let ek = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 match ek {
                     ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            val.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()), "first2p"
-                        ))?;
+                        let ptr = self.i64_to_ptr(val.into_int_value())?;
                         Ok((ptr.into(), ek))
                     }
                     _ => Ok((val, ek))
@@ -626,10 +615,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let ek = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 match ek {
                     ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        let ptr = bld!(self.builder.build_int_to_ptr(
-                            val.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()), "last2p"
-                        ))?;
+                        let ptr = self.i64_to_ptr(val.into_int_value())?;
                         Ok((ptr.into(), ek))
                     }
                     _ => Ok((val, ek))
@@ -766,7 +752,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (sep_val, sep_kind) = self.compile_expr_with_kind(&args[0], func)?;
                 let sep_i64: IntValue = match sep_kind {
                     ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        bld!(self.builder.build_ptr_to_int(sep_val.into_pointer_value(), self.context.i64_type(), "sep2i"))?
+                        self.ptr_to_i64(sep_val.into_pointer_value())?
                     }
                     _ => sep_val.into_int_value(),
                 };
@@ -809,12 +795,12 @@ impl<'ctx> CodeGen<'ctx> {
                     let st = info.struct_type;
                     let heap_ptr = bld!(self.builder.build_malloc(st, "heap_rec"))?;
                     bld!(self.builder.build_store(heap_ptr, val))?;
-                    let i64_val = bld!(self.builder.build_ptr_to_int(heap_ptr, self.context.i64_type(), "p2i"))?;
+                    let i64_val = self.ptr_to_i64(heap_ptr)?;
                     i64_val.into()
                 }
                 ValKind::Str => {
                     // Strings are already pointers, convert to i64
-                    let i64_val = bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), self.context.i64_type(), "p2i"))?;
+                    let i64_val = self.ptr_to_i64(val.into_pointer_value())?;
                     i64_val.into()
                 }
                 ValKind::Float => {
@@ -831,7 +817,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let et = self.enums[name].enum_type;
                     let heap_ptr = bld!(self.builder.build_malloc(et, "heap_enum"))?;
                     bld!(self.builder.build_store(heap_ptr, val))?;
-                    let i64_val = bld!(self.builder.build_ptr_to_int(heap_ptr, self.context.i64_type(), "p2i"))?;
+                    let i64_val = self.ptr_to_i64(heap_ptr)?;
                     i64_val.into()
                 }
                 _ => val,
@@ -912,7 +898,7 @@ impl<'ctx> CodeGen<'ctx> {
             let (val, kind) = self.compile_expr_with_kind(expr, func)?;
             let push_val = match &kind {
                 ValKind::Str => {
-                    let i64_val = bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), i64_type, "p2i"))?;
+                    let i64_val = self.ptr_to_i64(val.into_pointer_value())?;
                     i64_val.into()
                 }
                 ValKind::Float => {
@@ -982,10 +968,7 @@ impl<'ctx> CodeGen<'ctx> {
 
             match &elem_kind {
                 ValKind::Str => {
-                    let ptr = bld!(self.builder.build_int_to_ptr(
-                        raw_val.into_int_value(),
-                        self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
-                    ))?;
+                    let ptr = self.i64_to_ptr(raw_val.into_int_value())?;
                     bld!(self.builder.build_store(var_alloca, ptr))?;
                 }
                 _ => {
@@ -1008,7 +991,7 @@ impl<'ctx> CodeGen<'ctx> {
             let (val, kind) = self.compile_expr_with_kind(expr, func)?;
             let push_val = match &kind {
                 ValKind::Str => {
-                    let i64_val = bld!(self.builder.build_ptr_to_int(val.into_pointer_value(), i64_type, "p2i"))?;
+                    let i64_val = self.ptr_to_i64(val.into_pointer_value())?;
                     i64_val.into()
                 }
                 ValKind::Float => {

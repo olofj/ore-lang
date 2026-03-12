@@ -126,18 +126,10 @@ impl<'ctx> CodeGen<'ctx> {
                 // If both sides are strings but represented as i64 (e.g. in lambdas), convert to pointers
                 let (lhs, rhs) = if lk == ValKind::Str && _rk == ValKind::Str {
                     let l = if lhs.is_int_value() {
-                        bld!(self.builder.build_int_to_ptr(
-                            lhs.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()),
-                            "l2p"
-                        ))?.into()
+                        self.i64_to_ptr(lhs.into_int_value())?.into()
                     } else { lhs };
                     let r = if rhs.is_int_value() {
-                        bld!(self.builder.build_int_to_ptr(
-                            rhs.into_int_value(),
-                            self.context.ptr_type(inkwell::AddressSpace::default()),
-                            "r2p"
-                        ))?.into()
+                        self.i64_to_ptr(rhs.into_int_value())?.into()
                     } else { rhs };
                     (l, r)
                 } else {
@@ -1190,7 +1182,7 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::Lambda { params, body } => {
                 let arg_val = self.compile_expr(arg, current_fn)?;
                 let lambda_fn = self.compile_lambda(params, body, current_fn)?;
-                let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
+                let lambda_name = Self::get_lambda_name(lambda_fn);
 
                 let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> = Vec::new();
                 if self.lambda_captures.contains_key(&lambda_name) {

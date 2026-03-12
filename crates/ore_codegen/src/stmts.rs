@@ -64,10 +64,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                     match &elem_kind {
                         ValKind::Str => {
-                            let ptr = bld!(self.builder.build_int_to_ptr(
-                                raw_val.into_int_value(),
-                                self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
-                            ))?;
+                            let ptr = self.i64_to_ptr(raw_val.into_int_value())?;
                             let pt = self.context.ptr_type(inkwell::AddressSpace::default());
                             let alloca = bld!(self.builder.build_alloca(pt, name))?;
                             bld!(self.builder.build_store(alloca, ptr))?;
@@ -634,12 +631,12 @@ impl<'ctx> CodeGen<'ctx> {
         match &elem_kind {
             ValKind::Record(name) => {
                 let st = self.records[name].struct_type;
-                let p = bld!(self.builder.build_int_to_ptr(raw_val.into_int_value(), ptr_type, "i2p"))?;
+                let p = self.i64_to_ptr(raw_val.into_int_value())?;
                 let sv = bld!(self.builder.build_load(st, p, "rec_elem"))?;
                 bld!(self.builder.build_store(elem_alloca, sv))?;
             }
             ValKind::Str => {
-                let p = bld!(self.builder.build_int_to_ptr(raw_val.into_int_value(), ptr_type, "i2p"))?;
+                let p = self.i64_to_ptr(raw_val.into_int_value())?;
                 bld!(self.builder.build_store(elem_alloca, p))?;
             }
             _ => {
@@ -732,7 +729,7 @@ impl<'ctx> CodeGen<'ctx> {
         let list_get_fn = self.rt("ore_list_get")?;
         let key_result = bld!(self.builder.build_call(list_get_fn, &[keys_list.into(), idx.into()], "key_raw"))?;
         let key_raw = self.call_result_to_value(key_result)?.into_int_value();
-        let key_ptr = bld!(self.builder.build_int_to_ptr(key_raw, ptr_type, "key_ptr"))?;
+        let key_ptr = self.i64_to_ptr(key_raw)?;
         bld!(self.builder.build_store(key_alloca, key_ptr))?;
 
         let map_get_fn = self.rt("ore_map_get")?;
@@ -740,7 +737,7 @@ impl<'ctx> CodeGen<'ctx> {
         let val_raw = self.call_result_to_value(val_result)?;
         match &val_kind {
             ValKind::Str => {
-                let val_ptr = bld!(self.builder.build_int_to_ptr(val_raw.into_int_value(), ptr_type, "val_ptr"))?;
+                let val_ptr = self.i64_to_ptr(val_raw.into_int_value())?;
                 bld!(self.builder.build_store(val_alloca, val_ptr))?;
             }
             _ => {
