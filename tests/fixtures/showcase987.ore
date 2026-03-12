@@ -89,7 +89,7 @@ fn cosine_sim_pct a:List b:List -> Int
   else
     -- cos * 100 = dp * 100 / sqrt(ma * mb)
     denom := sqrt(ma.to_float() * mb.to_float())
-    result := dp.to_float() * 100.0 / denom
+    result := dp * 100.0 / denom
     result.to_int()
 
 fn main

@@ -7,11 +7,11 @@
 
 fn round2 x:Float -> Float
   r := (x * 100.0 + 0.5).to_int()
-  r.to_float() / 100.0
+  r / 100.0
 
 fn round1 x:Float -> Float
   r := (x * 10.0 + 0.5).to_int()
-  r.to_float() / 10.0
+  r / 10.0
 
 fn main
   print "Lotka-Volterra Predator-Prey Model"

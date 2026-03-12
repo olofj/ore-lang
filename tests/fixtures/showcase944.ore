@@ -4,7 +4,7 @@
 
 fn round4 v:Float -> Float
   r := (v * 10000.0 + 0.5).to_int()
-  r.to_float() / 10000.0
+  r / 10000.0
 
 fn binom_likelihood heads:Int flips:Int p:Float -> Float
   -- Likelihood: p^heads * (1-p)^tails

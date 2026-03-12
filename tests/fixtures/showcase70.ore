@@ -40,5 +40,5 @@ fn main
   print "Product: {factors.product()}"
 
   -- Generate float sequence
-  steps := range(0, 6).map(i => i.to_float() * 0.5)
+  steps := range(0, 6).map(i => i * 0.5)
   print "Steps: {steps.join(", ")}"

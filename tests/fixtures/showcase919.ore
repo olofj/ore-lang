@@ -54,8 +54,8 @@ fn main
 
   for fi in range(0, 7)
     freq := freqs[fi]
-    k := (freq / sample_rate * n.to_float() + 0.5).to_int()
-    omega := 2.0 * 3.14159265 * k.to_float() / n.to_float()
+    k := (freq / sample_rate * n + 0.5).to_int()
+    omega := 2.0 * 3.14159265 * k / n.to_float()
     coeff := 2.0 * cos(omega)
     mut s1 := 0.0
     mut s2 := 0.0
@@ -99,8 +99,8 @@ fn main
 
   for fi in range(0, 7)
     freq := dtmf_freqs[fi]
-    k := (freq / sample_rate * n.to_float() + 0.5).to_int()
-    omega := 2.0 * 3.14159265 * k.to_float() / n.to_float()
+    k := (freq / sample_rate * n + 0.5).to_int()
+    omega := 2.0 * 3.14159265 * k / n.to_float()
     coeff := 2.0 * cos(omega)
     mut s1 := 0.0
     mut s2 := 0.0

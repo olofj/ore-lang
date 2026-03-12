@@ -10,7 +10,7 @@ fn to_unit seed:Int -> Float
   mut v := s
   if v < 0
     v = 0 - v
-  v.to_float() / 1000000.0
+  v / 1000000.0
 
 fn estimate_pi samples:Int seed_init:Int -> Float
   -- Monte Carlo pi estimation: sample random points in unit square

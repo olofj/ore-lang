@@ -4,7 +4,7 @@
 
 fn round3 v:Float -> Float
   r := (v * 1000.0 + 0.5).to_int()
-  r.to_float() / 1000.0
+  r / 1000.0
 
 -- Rotate point (x,y) by angle_deg degrees around origin
 fn rotate_x x:Float y:Float angle_deg:Float -> Float

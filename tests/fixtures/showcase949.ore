@@ -5,17 +5,17 @@
 
 fn round6 v:Float -> Float
   r := (v * 1000000.0 + 0.5).to_int()
-  r.to_float() / 1000000.0
+  r / 1000000.0
 
 fn round4 v:Float -> Float
   r := (v * 10000.0 + 0.5).to_int()
-  r.to_float() / 10000.0
+  r / 10000.0
 
 fn lcg seed:Int -> Int
   (seed * 1664525 + 1013904223) % 2147483647
 
 fn lcg_f seed:Int -> Float
-  seed.to_float() / 2147483647.0
+  seed / 2147483647.0
 
 fn estimate_pi n:Int seed_in:Int -> Float
   mut seed := seed_in
@@ -27,7 +27,7 @@ fn estimate_pi n:Int seed_in:Int -> Float
     y := lcg_f(seed)
     if x * x + y * y < 1.0
       inside = inside + 1
-  4.0 * inside.to_float() / n.to_float()
+  4.0 * inside / n.to_float()
 
 fn main
   print "Monte Carlo Pi Estimation"

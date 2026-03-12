@@ -10,7 +10,7 @@
 
 fn round2 x:Float -> Float
   r := (x * 100.0 + 0.5).to_int()
-  r.to_float() / 100.0
+  r / 100.0
 
 fn round0 x:Float -> Int
   (x + 0.5).to_int()

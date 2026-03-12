@@ -77,7 +77,7 @@ fn jaccard a:List b:List -> Float
 
 fn round3 x:Float -> Float
   i := (x * 1000.0).to_int()
-  i.to_float() / 1000.0
+  i / 1000.0
 
 fn print_similarity doc_a:Str doc_b:Str label_a:Str label_b:Str
   sa := text_to_set(doc_a)

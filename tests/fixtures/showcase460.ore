@@ -84,7 +84,7 @@ fn main
     xn = xn - fx / fpx
     -- Display with precision
     xn_int := (xn * 1000000.0).to_int()
-    xn_disp := xn_int.to_float() / 1000000.0
+    xn_disp := xn_int / 1000000.0
     print "    Step {i + 1}: x = {xn_disp}"
 
   -- Part 5: Polynomial multiplication and derivative

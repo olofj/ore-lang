@@ -4,11 +4,11 @@
 
 fn round4 v:Float -> Float
   r := (v * 10000.0 + 0.5).to_int()
-  r.to_float() / 10000.0
+  r / 10000.0
 
 fn round2 v:Float -> Float
   r := (v * 100.0 + 0.5).to_int()
-  r.to_float() / 100.0
+  r / 100.0
 
 fn mm1_rho lam:Float mu:Float -> Float
   -- Traffic intensity rho = lambda / mu (must be < 1 for stability)

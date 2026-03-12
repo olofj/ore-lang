@@ -12,7 +12,7 @@
 
 fn round3 x:Float -> Float
   r := (x * 1000.0 + 0.5).to_int()
-  r.to_float() / 1000.0
+  r / 1000.0
 
 -- Hill activation: concentration x, threshold K, cooperativity n
 fn hill_act x:Float k:Float -> Float

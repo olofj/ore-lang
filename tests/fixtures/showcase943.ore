@@ -4,7 +4,7 @@
 
 fn round3 v:Float -> Float
   r := (v * 1000.0 + 0.5).to_int()
-  r.to_float() / 1000.0
+  r / 1000.0
 
 fn chi_squared obs:List exp:List n_cats:Int -> Float
   -- sum of (O - E)^2 / E  (obs and exp are Int lists * 10, scale not needed since ratio)

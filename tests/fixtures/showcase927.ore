@@ -5,7 +5,7 @@
 
 fn round4 v:Float -> Float
   r := (v * 10000.0 + 0.5).to_int()
-  r.to_float() / 10000.0
+  r / 10000.0
 
 -- In-circle test: positive if d is inside circumcircle of (a,b,c) CCW
 fn in_circle ax:Float ay:Float bx:Float by:Float cx:Float cy:Float dx:Float dy:Float -> Float

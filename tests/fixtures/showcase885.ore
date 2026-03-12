@@ -48,11 +48,11 @@ fn bs_put s:Float k:Float r:Float sigma:Float t:Float -> Float
 
 fn round2 x:Float -> Float
   r := (x * 100.0 + 0.5).to_int()
-  r.to_float() / 100.0
+  r / 100.0
 
 fn round4 x:Float -> Float
   r := (x * 10000.0 + 0.5).to_int()
-  r.to_float() / 10000.0
+  r / 10000.0
 
 -- Delta: sensitivity of option price to underlying price
 fn call_delta s:Float k:Float r:Float sigma:Float t:Float -> Float

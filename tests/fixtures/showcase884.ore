@@ -7,11 +7,11 @@
 
 fn round1 x:Float -> Float
   r := (x * 10.0 + 0.5).to_int()
-  r.to_float() / 10.0
+  r / 10.0
 
 fn round2 x:Float -> Float
   r := (x * 100.0 + 0.5).to_int()
-  r.to_float() / 100.0
+  r / 100.0
 
 -- Compute portfolio return given weights and fixed assets
 fn port_return ws:Float wb:Float wg:Float -> Float
@@ -55,9 +55,9 @@ fn main
     for bi in range(0, 11)
       gi := 10 - si - bi
       if gi >= 0
-        ws := si.to_float() / 10.0
-        wb := bi.to_float() / 10.0
-        wg := gi.to_float() / 10.0
+        ws := si / 10.0
+        wb := bi / 10.0
+        wg := gi / 10.0
         ret := port_return(ws, wb, wg)
         vol := port_vol(ws, wb, wg)
         sh := sharpe(ws, wb, wg)

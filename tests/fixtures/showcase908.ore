@@ -10,11 +10,11 @@
 
 fn round3 x:Float -> Float
   r := (x * 1000.0 + 0.5).to_int()
-  r.to_float() / 1000.0
+  r / 1000.0
 
 fn round2 x:Float -> Float
   r := (x * 100.0 + 0.5).to_int()
-  r.to_float() / 100.0
+  r / 100.0
 
 fn main
   print "Chemical Reaction Network: Brusselator Oscillator"
@@ -116,7 +116,7 @@ fn main
   print "  X range: [{round3(min_x)}, {round3(max_x)}]  amplitude={round3(max_x - min_x)}"
   print "  Y range: [{round3(min_y)}, {round3(max_y)}]  amplitude={round3(max_y - min_y)}"
   print "  Cycles detected: {cycle_count}"
-  period := 20.0 / cycle_count.to_float()
+  period := 20.0 / cycle_count
   print "  Approx period: {round2(period)} time units"
   print ""
   print "Chemical insights:"

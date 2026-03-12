@@ -5,7 +5,7 @@
 
 fn round3 v:Float -> Float
   r := (v * 1000.0 + 0.5).to_int()
-  r.to_float() / 1000.0
+  r / 1000.0
 
 -- Catmull-Rom basis: evaluate position at parameter t in [0,1]
 -- between p1 and p2, with p0 and p3 as tangent guides
@@ -70,7 +70,7 @@ fn main
     p2y := all_y[seg + 2]
     p3y := all_y[seg + 3]
     for si in range(0, 4)
-      t := si.to_float() / 4.0
+      t := si / 4.0
       x := catmull_rom_x(p0x, p1x, p2x, p3x, t)
       y := catmull_rom_y(p0y, p1y, p2y, p3y, t)
       t_glob := seg.to_float() + t

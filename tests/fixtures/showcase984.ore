@@ -44,7 +44,7 @@ fn count_docs_with_term w1:List w2:List w3:List term:Str -> Int
 
 fn round2 x:Float -> Float
   i := (x * 100.0).to_int()
-  i.to_float() / 100.0
+  i / 100.0
 
 fn main
   print "TF-IDF Computation"

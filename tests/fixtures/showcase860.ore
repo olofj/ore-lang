@@ -52,7 +52,7 @@ fn main
   print "  (p = crossover probability)"
   bsc_probs := [0, 5, 10, 20, 30, 50]
   for p_pct in bsc_probs
-    p := p_pct.to_float() / 100.0
+    p := p_pct / 100.0
     c := bsc_capacity(p)
     c_milli := (c * 1000.0).to_int()
     print "  p={p_pct}%: C = {c_milli} milli-bits/use"
@@ -62,7 +62,7 @@ fn main
   print "  (epsilon = erasure probability)"
   bec_probs := [0, 10, 25, 50, 75, 100]
   for e_pct in bec_probs
-    e := e_pct.to_float() / 100.0
+    e := e_pct / 100.0
     c := bec_capacity(e)
     c_milli := (c * 1000.0).to_int()
     print "  e={e_pct}%: C = {c_milli} milli-bits/use"
@@ -72,7 +72,7 @@ fn main
   snr_fixed := 10.0
   bws := [1, 10, 100, 1000]
   for bw_khz in bws
-    bw_hz := bw_khz.to_float() * 1000.0
+    bw_hz := bw_khz * 1000.0
     c := awgn_capacity_bps(bw_hz, snr_fixed)
     c_kbps := (c / 1000.0).to_int()
     print "  B={bw_khz} kHz: C = {c_kbps} kbps"

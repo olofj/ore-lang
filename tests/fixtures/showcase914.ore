@@ -37,7 +37,7 @@ fn main
     -- Sinc component
     h_sinc := 2.0 * cutoff * sinc(2.0 * cutoff * n.to_float())
     -- Hamming window: 0.54 - 0.46*cos(2*pi*i/(N-1))
-    phase := 2.0 * 3.14159265 * i.to_float() / (order - 1).to_float()
+    phase := 2.0 * 3.14159265 * i / (order - 1).to_float()
     w := 0.54 - 0.46 * cos(phase)
     h := h_sinc * w
     coeffs.push(h)

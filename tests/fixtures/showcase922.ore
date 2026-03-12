@@ -17,7 +17,7 @@ fn compute_outcode x:Float y:Float xmin:Float ymin:Float xmax:Float ymax:Float -
 
 fn round2 v:Float -> Float
   r := (v * 100.0 + 0.5).to_int()
-  r.to_float() / 100.0
+  r / 100.0
 
 fn clip_x x0:Float y0:Float x1:Float y1:Float boundary:Float -> Float
   dx := x1 - x0

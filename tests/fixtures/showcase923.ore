@@ -7,7 +7,7 @@ fn lerp a:Float b:Float t:Float -> Float
 
 fn round3 v:Float -> Float
   r := (v * 1000.0 + 0.5).to_int()
-  r.to_float() / 1000.0
+  r / 1000.0
 
 -- Quadratic Bezier: 3 control points
 fn bezier_quad_x p0x:Float p1x:Float p2x:Float t:Float -> Float
@@ -49,7 +49,7 @@ fn main
   steps := [0, 1, 2, 3, 4, 5, 6, 7, 8]
   for i in range(0, 9)
     ti := steps[i]
-    t := ti.to_float() / 8.0
+    t := ti / 8.0
     x := bezier_quad_x(0.0, 1.0, 2.0, t)
     y := bezier_quad_y(0.0, 2.0, 0.0, t)
     ts := str(round3(t)).pad_right(6, " ")
@@ -64,7 +64,7 @@ fn main
   print "  ----  ------  ------"
   for i in range(0, 9)
     ti := steps[i]
-    t := ti.to_float() / 8.0
+    t := ti / 8.0
     x := bezier_cubic_x(0.0, 0.0, 3.0, 3.0, t)
     y := bezier_cubic_y(0.0, 3.0, 3.0, 0.0, t)
     ts := str(round3(t)).pad_right(6, " ")
