@@ -2004,6 +2004,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_float_literal() {
         let prog = parse_src("fn main\n  x := 3.14\n");
         match &prog.items[0] {
