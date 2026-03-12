@@ -251,11 +251,8 @@ fn resolve_imports(
     Ok(imported_items)
 }
 
-/// Parse, resolve imports, and compile a source file, returning the codegen context.
-fn compile_source<'ctx>(
-    path: &Path,
-    context: &'ctx Context,
-) -> Result<ore_codegen::CodeGen<'ctx>, String> {
+/// Parse a source file, resolve imports, merge, and type-check.
+fn parse_and_typecheck(path: &Path) -> Result<ore_parser::ast::Program, String> {
     let canonical_path = path.canonicalize()
         .map_err(|e| format!("cannot resolve '{}': {}", path.display(), e))?;
     let base_dir = canonical_path.parent().ok_or_else(|| format!("cannot determine parent directory of '{}'", canonical_path.display()))?;
@@ -282,6 +279,16 @@ fn compile_source<'ctx>(
         return Err(msgs.join("\n"));
     }
 
+    Ok(program)
+}
+
+/// Parse, resolve imports, and compile a source file, returning the codegen context.
+fn compile_source<'ctx>(
+    path: &Path,
+    context: &'ctx Context,
+) -> Result<ore_codegen::CodeGen<'ctx>, String> {
+    let program = parse_and_typecheck(path)?;
+
     let mut codegen = ore_codegen::CodeGen::new(context, "ore_main");
     codegen.compile_program(&program).map_err(|e| e.to_string())?;
 
@@ -289,32 +296,7 @@ fn compile_source<'ctx>(
 }
 
 fn check_file(path: &Path) -> Result<(), String> {
-    let canonical_path = path.canonicalize()
-        .map_err(|e| format!("cannot resolve '{}': {}", path.display(), e))?;
-    let base_dir = canonical_path.parent().ok_or_else(|| format!("cannot determine parent directory of '{}'", canonical_path.display()))?;
-
-    let program = parse_file(&canonical_path)?;
-
-    // Also resolve imports to check them
-    let mut already_loaded = HashSet::new();
-    already_loaded.insert(canonical_path.clone());
-    let imported_items = resolve_imports(&program, base_dir, &mut already_loaded)?;
-
-    // Merge for type checking
-    let mut merged_items = imported_items;
-    for item in program.items {
-        if !matches!(item, ore_parser::ast::Item::Use { .. }) {
-            merged_items.push(item);
-        }
-    }
-    let merged = ore_parser::ast::Program { items: merged_items };
-
-    // Type check
-    if let Err(errors) = ore_typecheck::typecheck(&merged) {
-        let msgs: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
-        return Err(msgs.join("\n"));
-    }
-
+    parse_and_typecheck(path)?;
     Ok(())
 }
 
