@@ -4,6 +4,14 @@ use inkwell::IntPredicate;
 
 type BranchResults<'ctx> = Vec<(BasicValueEnum<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)>;
 
+/// Groups the common state for Option/Result method helpers.
+struct TaggedUnion<'ctx> {
+    ty: inkwell::types::StructType<'ctx>,
+    alloca: inkwell::values::PointerValue<'ctx>,
+    tag: IntValue<'ctx>,
+    ok_tag: u8,
+}
+
 impl<'ctx> CodeGen<'ctx> {
     /// Compile the wildcard/default arm of a match, or emit unreachable if none.
     fn compile_default_arm(
@@ -599,17 +607,14 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Shared implementation for Option.unwrap_or / Result.unwrap_or.
-    /// `ok_tag` is the tag value that means "has value" (1 for Option/Some, 0 for Result/Ok).
     fn compile_unwrap_or(
         &mut self,
-        union_ty: inkwell::types::StructType<'ctx>,
-        alloca: PointerValue<'ctx>,
-        tag: IntValue<'ctx>,
-        ok_tag: u8,
+        tu: &TaggedUnion<'ctx>,
         args: &[Expr],
         func: FunctionValue<'ctx>,
         prefix: &str,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let (union_ty, alloca, tag, ok_tag) = (tu.ty, tu.alloca, tu.tag, tu.ok_tag);
         if args.is_empty() {
             return Err(self.err("unwrap_or requires a default argument"));
         }
@@ -638,21 +643,18 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Shared implementation for Option.map / Result.map.
-    /// `ok_tag` is the tag for the "has value" variant; `wrap_tag` is what to wrap the mapped result in.
     /// `passthrough_val` is the original value to pass through the other branch.
     fn compile_tagged_map(
         &mut self,
-        union_ty: inkwell::types::StructType<'ctx>,
-        alloca: PointerValue<'ctx>,
-        tag: IntValue<'ctx>,
-        ok_tag: u8,
-        wrap_tag: u8,
+        tu: &TaggedUnion<'ctx>,
         passthrough_val: BasicValueEnum<'ctx>,
         args: &[Expr],
         func: FunctionValue<'ctx>,
         ret_kind: ValKind,
         prefix: &str,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let (union_ty, alloca, tag, ok_tag) = (tu.ty, tu.alloca, tu.tag, tu.ok_tag);
+        let wrap_tag = ok_tag;
         self.check_arity("map", args, 1)?;
         let is_ok = self.check_tag(tag, ok_tag, &format!("{}_ok", prefix))?;
         let ok_bb = self.context.append_basic_block(func, &format!("{}_ok", prefix));
@@ -689,9 +691,10 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_m"))?;
         bld!(self.builder.build_store(alloca, opt_val))?;
         let tag = self.load_tag(opt_ty, alloca)?;
+        let tu = TaggedUnion { ty: opt_ty, alloca, tag, ok_tag: 1 };
 
         match method {
-            "unwrap_or" => self.compile_unwrap_or(opt_ty, alloca, tag, 1, args, func, "unwrap"),
+            "unwrap_or" => self.compile_unwrap_or(&tu, args, func, "unwrap"),
             "unwrap" => {
                 let inner = self.load_tagged_value(opt_ty, alloca)?;
                 Ok((inner, ValKind::Int))
@@ -700,7 +703,7 @@ impl<'ctx> CodeGen<'ctx> {
             "is_none" => Ok((self.check_tag(tag, 0, "is_none")?.into(), ValKind::Bool)),
             "map" => {
                 let none = self.build_tagged_union(opt_ty, 0, None, "none_res")?;
-                self.compile_tagged_map(opt_ty, alloca, tag, 1, 1, none, args, func, ValKind::Option, "optmap")
+                self.compile_tagged_map(&tu, none, args, func, ValKind::Option, "optmap")
             }
             _ => Err(Self::unknown_method_error("Option", method, &["unwrap_or", "unwrap", "map", "is_some", "is_none"])),
         }
@@ -717,9 +720,10 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(result_ty, "res_m"))?;
         bld!(self.builder.build_store(alloca, result_val))?;
         let tag = self.load_tag(result_ty, alloca)?;
+        let tu = TaggedUnion { ty: result_ty, alloca, tag, ok_tag: 0 };
 
         match method {
-            "unwrap_or" => self.compile_unwrap_or(result_ty, alloca, tag, 0, args, func, "result"),
+            "unwrap_or" => self.compile_unwrap_or(&tu, args, func, "result"),
             "is_ok" => Ok((self.check_tag(tag, 0, "is_ok")?.into(), ValKind::Bool)),
             "is_err" => Ok((self.check_tag(tag, 1, "is_err")?.into(), ValKind::Bool)),
             "unwrap" => {
@@ -727,7 +731,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let coerced = self.coerce_from_i64(inner, &ValKind::Int)?;
                 Ok((coerced, ValKind::Int))
             }
-            "map" => self.compile_tagged_map(result_ty, alloca, tag, 0, 0, result_val, args, func, ValKind::Result, "resmap"),
+            "map" => self.compile_tagged_map(&tu, result_val, args, func, ValKind::Result, "resmap"),
             _ => Err(Self::unknown_method_error("Result", method, &["unwrap_or", "unwrap", "map", "is_ok", "is_err"])),
         }
     }
