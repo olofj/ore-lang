@@ -558,11 +558,7 @@ impl<'ctx> CodeGen<'ctx> {
             let push_bb = if let Some(c) = cond {
                 let filter_bb = self.context.append_basic_block(func, "comp_filter");
                 let (cond_val, _) = self.compile_expr_with_kind(c, func)?;
-                let bool_val = if cond_val.is_int_value() && cond_val.into_int_value().get_type().get_bit_width() > 1 {
-                    bld!(self.builder.build_int_compare(IntPredicate::NE, cond_val.into_int_value(), i64_type.const_int(0, false), "tobool"))?
-                } else {
-                    cond_val.into_int_value()
-                };
+                let bool_val = self.normalize_to_bool(cond_val)?;
                 bld!(self.builder.build_conditional_branch(bool_val, filter_bb, inc_bb))?;
                 self.builder.position_at_end(filter_bb);
                 filter_bb
@@ -637,11 +633,7 @@ impl<'ctx> CodeGen<'ctx> {
             if let Some(c) = cond {
                 let filter_bb = self.context.append_basic_block(func, "comp_filter");
                 let (cond_val, _) = self.compile_expr_with_kind(c, func)?;
-                let bool_val = if cond_val.is_int_value() && cond_val.into_int_value().get_type().get_bit_width() > 1 {
-                    bld!(self.builder.build_int_compare(IntPredicate::NE, cond_val.into_int_value(), i64_type.const_int(0, false), "tobool"))?
-                } else {
-                    cond_val.into_int_value()
-                };
+                let bool_val = self.normalize_to_bool(cond_val)?;
                 bld!(self.builder.build_conditional_branch(bool_val, filter_bb, inc_bb))?;
                 self.builder.position_at_end(filter_bb);
             }

@@ -11,6 +11,19 @@ impl<'ctx> CodeGen<'ctx> {
         ))?)
     }
 
+    /// Normalize a value to i1 bool: if it's an integer wider than 1 bit, compare != 0.
+    pub(crate) fn normalize_to_bool(&self, val: BasicValueEnum<'ctx>) -> Result<IntValue<'ctx>, CodeGenError> {
+        let iv = val.into_int_value();
+        if iv.get_type().get_bit_width() > 1 {
+            Ok(bld!(self.builder.build_int_compare(
+                IntPredicate::NE, iv,
+                iv.get_type().const_int(0, false), "tobool"
+            ))?)
+        } else {
+            Ok(iv)
+        }
+    }
+
     /// Generate a helpful "unknown method" error with available methods listed.
     pub(crate) fn unknown_method_error(type_name: &str, method: &str, available: &[&str]) -> CodeGenError {
         let mut msg = format!("unknown {} method '{}'. Available: {}", type_name, method, available.join(", "));
