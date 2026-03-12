@@ -27,19 +27,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // Determine value kind from map tracking
                 // Check if the map object is a variable with a tracked value kind
-                let val_kind = self.map_val_kind();
-                match &val_kind {
-                    ValKind::Str => {
-                        // Convert i64 back to pointer
-                        let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
-                        Ok((ptr.into(), ValKind::Str))
-                    }
-                    ValKind::List(_) => {
-                        let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
-                        Ok((ptr.into(), val_kind))
-                    }
-                    _ => Ok((i64_val, val_kind))
-                }
+                self.unwrap_map_value(i64_val)
             }
             "contains" => {
                 self.check_arity("contains", args, 1)?;
@@ -113,18 +101,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (default_val, _default_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let default_i64 = self.value_to_i64(default_val)?;
                 let i64_val = self.call_rt("ore_map_get_or", &[map_val.into(), key.into(), default_i64.into()], "mgetor")?;
-                let val_kind = self.map_val_kind();
-                match &val_kind {
-                    ValKind::Str => {
-                        let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
-                        Ok((ptr.into(), ValKind::Str))
-                    }
-                    ValKind::List(_) => {
-                        let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
-                        Ok((ptr.into(), val_kind))
-                    }
-                    _ => Ok((i64_val, val_kind))
-                }
+                self.unwrap_map_value(i64_val)
             }
             "entries" => {
                 let val = self.call_rt("ore_map_entries", &[map_val.into()], "mentries")?;
@@ -167,6 +144,21 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.last_map_val_kind = first_val_kind;
         Ok((map_ptr.into(), ValKind::Map))
+    }
+
+    /// Convert a raw i64 map value back to the correct type based on tracked value kind.
+    fn unwrap_map_value(
+        &mut self,
+        i64_val: BasicValueEnum<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let val_kind = self.map_val_kind();
+        match &val_kind {
+            ValKind::Str | ValKind::List(_) => {
+                let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
+                Ok((ptr.into(), val_kind))
+            }
+            _ => Ok((i64_val, val_kind))
+        }
     }
 
     /// Compile a map key expression, converting non-string keys to strings.
