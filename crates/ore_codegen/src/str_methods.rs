@@ -11,15 +11,11 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         match method {
             "len" => {
-                let rt = self.rt("ore_str_len")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slen"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_len", &[str_val.into()], "slen")?;
                 Ok((val, ValKind::Int))
             }
             "is_empty" => {
-                let rt = self.rt("ore_str_len")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slen"))?;
-                let len_val = self.call_result_to_value(result)?.into_int_value();
+                let len_val = self.call_rt("ore_str_len", &[str_val.into()], "slen")?.into_int_value();
                 let is_zero = bld!(self.builder.build_int_compare(
                     inkwell::IntPredicate::EQ,
                     len_val,
@@ -31,9 +27,7 @@ impl<'ctx> CodeGen<'ctx> {
             "contains" => {
                 self.check_arity("contains", args, 1)?;
                 let needle = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_str_contains")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "scontains"))?;
-                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let i8_val = self.call_rt("ore_str_contains", &[str_val.into(), needle.into()], "scontains")?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
                     inkwell::IntPredicate::NE,
                     i8_val,
@@ -44,69 +38,51 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "trim" | "trim_start" | "trim_end" => {
                 let fn_name = format!("ore_str_{}", method);
-                let rt = self.rt(&fn_name)?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "strim"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt(&fn_name, &[str_val.into()], "strim")?;
                 Ok((val, ValKind::Str))
             }
             "words" => {
-                let rt = self.rt("ore_str_split_whitespace")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "words"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_split_whitespace", &[str_val.into()], "words")?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "lines" => {
-                let rt = self.rt("ore_str_lines")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "lines"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_lines", &[str_val.into()], "lines")?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "split" => {
                 if args.is_empty() {
                     // split() with no args = split on whitespace
-                    let rt = self.rt("ore_str_split_whitespace")?;
-                    let result = bld!(self.builder.build_call(rt, &[str_val.into()], "ssplit"))?;
-                    let val = self.call_result_to_value(result)?;
+                    let val = self.call_rt("ore_str_split_whitespace", &[str_val.into()], "ssplit")?;
                     self.last_list_elem_kind = Some(ValKind::Str);
                     return Ok((val, ValKind::list_of(ValKind::Str)));
                 }
                 self.check_arity("split", args, 1)?;
                 let delim = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_str_split")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), delim.into()], "ssplit"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_split", &[str_val.into(), delim.into()], "ssplit")?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "to_int" => {
-                let rt = self.rt("ore_str_to_int")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "stoi"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_to_int", &[str_val.into()], "stoi")?;
                 Ok((val, ValKind::Int))
             }
             "to_float" => {
-                let rt = self.rt("ore_str_to_float")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "stof"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_to_float", &[str_val.into()], "stof")?;
                 Ok((val, ValKind::Float))
             }
             "replace" => {
                 self.check_arity("replace", args, 2)?;
                 let from = self.compile_expr(&args[0], func)?;
                 let to = self.compile_expr(&args[1], func)?;
-                let rt = self.rt("ore_str_replace")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), from.into(), to.into()], "sreplace"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_replace", &[str_val.into(), from.into(), to.into()], "sreplace")?;
                 Ok((val, ValKind::Str))
             }
             "starts_with" => {
                 self.check_arity("starts_with", args, 1)?;
                 let prefix = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_str_starts_with")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), prefix.into()], "ssw"))?;
-                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let i8_val = self.call_rt("ore_str_starts_with", &[str_val.into(), prefix.into()], "ssw")?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
                     inkwell::IntPredicate::NE, i8_val,
                     self.context.i8_type().const_int(0, false), "tobool"
@@ -116,9 +92,7 @@ impl<'ctx> CodeGen<'ctx> {
             "ends_with" => {
                 self.check_arity("ends_with", args, 1)?;
                 let suffix = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_str_ends_with")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), suffix.into()], "sew"))?;
-                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let i8_val = self.call_rt("ore_str_ends_with", &[str_val.into(), suffix.into()], "sew")?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
                     inkwell::IntPredicate::NE, i8_val,
                     self.context.i8_type().const_int(0, false), "tobool"
@@ -126,105 +100,77 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "to_upper" => {
-                let rt = self.rt("ore_str_to_upper")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "supper"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_to_upper", &[str_val.into()], "supper")?;
                 Ok((val, ValKind::Str))
             }
             "capitalize" => {
-                let rt = self.rt("ore_str_capitalize")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "scap"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_capitalize", &[str_val.into()], "scap")?;
                 Ok((val, ValKind::Str))
             }
             "to_lower" => {
-                let rt = self.rt("ore_str_to_lower")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "slower"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_to_lower", &[str_val.into()], "slower")?;
                 Ok((val, ValKind::Str))
             }
             "substr" => {
                 self.check_arity("substr", args, 2)?;
                 let start = self.compile_expr(&args[0], func)?;
                 let len = self.compile_expr(&args[1], func)?;
-                let rt = self.rt("ore_str_substr")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), start.into(), len.into()], "ssub"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_substr", &[str_val.into(), start.into(), len.into()], "ssub")?;
                 Ok((val, ValKind::Str))
             }
             "chars" => {
-                let rt = self.rt("ore_str_chars")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "schars"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_chars", &[str_val.into()], "schars")?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "char_at" => {
                 self.check_arity("char_at", args, 1)?;
                 let idx = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_str_char_at")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), idx.into()], "charat"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_char_at", &[str_val.into(), idx.into()], "charat")?;
                 Ok((val, ValKind::Str))
             }
             "index_of" | "find" => {
                 self.check_arity("index_of/find", args, 1)?;
                 let needle = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_str_index_of")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "sidx"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_index_of", &[str_val.into(), needle.into()], "sidx")?;
                 Ok((val, ValKind::Int))
             }
             "slice" => {
                 self.check_arity("slice", args, 2)?;
                 let start = self.compile_expr(&args[0], func)?;
                 let end = self.compile_expr(&args[1], func)?;
-                let rt = self.rt("ore_str_slice")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), start.into(), end.into()], "sslice"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_slice", &[str_val.into(), start.into(), end.into()], "sslice")?;
                 Ok((val, ValKind::Str))
             }
             "reverse" => {
-                let rt = self.rt("ore_str_reverse")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "srev"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_reverse", &[str_val.into()], "srev")?;
                 Ok((val, ValKind::Str))
             }
             "parse_int" => {
-                let rt = self.rt("ore_str_parse_int")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "parse_int"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_parse_int", &[str_val.into()], "parse_int")?;
                 Ok((val, ValKind::Int))
             }
             "parse_float" => {
-                let rt = self.rt("ore_str_parse_float")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into()], "parse_float"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_parse_float", &[str_val.into()], "parse_float")?;
                 Ok((val, ValKind::Float))
             }
             "repeat" => {
                 self.check_arity("repeat", args, 1)?;
                 let count = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_str_repeat")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), count.into()], "srep"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_repeat", &[str_val.into(), count.into()], "srep")?;
                 Ok((val, ValKind::Str))
             }
             "count" => {
                 self.check_arity("count", args, 1)?;
                 let needle = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_str_count")?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "scount"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_str_count", &[str_val.into(), needle.into()], "scount")?;
                 Ok((val, ValKind::Int))
             }
             "strip_prefix" | "strip_suffix" => {
                 self.check_arity(method, args, 1)?;
                 let arg = self.compile_expr(&args[0], func)?;
                 let fn_name = format!("ore_str_{}", method);
-                let rt = self.rt(&fn_name)?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), arg.into()], "sstrip"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt(&fn_name, &[str_val.into(), arg.into()], "sstrip")?;
                 Ok((val, ValKind::Str))
             }
             "pad_left" | "pad_right" => {
@@ -237,15 +183,11 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     // Default pad char: space
                     let space = " ";
-                    let rt = self.rt("ore_str_new")?;
                     let space_ptr = bld!(self.builder.build_global_string_ptr(space, "pad_space"))?.as_pointer_value();
-                    let result = bld!(self.builder.build_call(rt, &[space_ptr.into(), self.context.i32_type().const_int(1, false).into()], "spad"))?;
-                    self.call_result_to_value(result)?
+                    self.call_rt("ore_str_new", &[space_ptr.into(), self.context.i32_type().const_int(1, false).into()], "spad")?
                 };
                 let fn_name = if method == "pad_left" { "ore_str_pad_left" } else { "ore_str_pad_right" };
-                let rt = self.rt(fn_name)?;
-                let result = bld!(self.builder.build_call(rt, &[str_val.into(), width.into(), pad_char.into()], "spad"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt(fn_name, &[str_val.into(), width.into(), pad_char.into()], "spad")?;
                 Ok((val, ValKind::Str))
             }
             _ => Err(Self::unknown_method_error("Str", method, &[
@@ -334,9 +276,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let p = if let Expr::Ident(name) = expr {
                         if let Some(kind_alloca) = self.dynamic_kind_tags.get(name).copied() {
                             let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_alloca, "dyn_kind"))?.into_int_value();
-                            let dyn_fn = self.rt("ore_dynamic_to_str")?;
-                            let result = bld!(self.builder.build_call(dyn_fn, &[val.into(), kind_i8.into()], "dyntos"))?;
-                            self.call_result_to_value(result)?.into_pointer_value()
+                            self.call_rt("ore_dynamic_to_str", &[val.into(), kind_i8.into()], "dyntos")?.into_pointer_value()
                         } else {
                             self.value_to_str(val, kind)?
                         }
@@ -395,17 +335,12 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(ptr)
             }
             ValKind::Int => {
-                let int_to_str = self.rt("ore_int_to_str")?;
-                let result = bld!(self.builder.build_call(int_to_str, &[val.into()], "itos"))?;
-                Ok(self.call_result_to_value(result)?.into_pointer_value())
+                Ok(self.call_rt("ore_int_to_str", &[val.into()], "itos")?.into_pointer_value())
             }
             ValKind::Float => {
-                let float_to_str = self.rt("ore_float_to_str")?;
-                let result = bld!(self.builder.build_call(float_to_str, &[val.into()], "ftos"))?;
-                Ok(self.call_result_to_value(result)?.into_pointer_value())
+                Ok(self.call_rt("ore_float_to_str", &[val.into()], "ftos")?.into_pointer_value())
             }
             ValKind::Bool => {
-                let bool_to_str = self.rt("ore_bool_to_str")?;
                 let int_val = val.into_int_value();
                 let ext = {
                     let bw = int_val.get_type().get_bit_width();
@@ -417,8 +352,7 @@ impl<'ctx> CodeGen<'ctx> {
                         int_val
                     }
                 };
-                let result = bld!(self.builder.build_call(bool_to_str, &[ext.into()], "btos"))?;
-                Ok(self.call_result_to_value(result)?.into_pointer_value())
+                Ok(self.call_rt("ore_bool_to_str", &[ext.into()], "btos")?.into_pointer_value())
             }
             ValKind::Record(ref name) => {
                 self.record_to_str(val, name)
@@ -428,9 +362,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             _ => {
                 // Fallback: convert as int
-                let int_to_str = self.rt("ore_int_to_str")?;
-                let result = bld!(self.builder.build_call(int_to_str, &[val.into()], "itos"))?;
-                Ok(self.call_result_to_value(result)?.into_pointer_value())
+                Ok(self.call_rt("ore_int_to_str", &[val.into()], "itos")?.into_pointer_value())
             }
         }
     }

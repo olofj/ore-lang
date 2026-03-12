@@ -460,4 +460,16 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(bld!(self.builder.build_load(struct_type, alloca, load_name))?)
     }
 
+    /// Look up a runtime function, call it, and extract the return value.
+    pub(crate) fn call_rt(
+        &self,
+        name: &str,
+        args: &[inkwell::values::BasicMetadataValueEnum<'ctx>],
+        label: &str,
+    ) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        let rt = self.rt(name)?;
+        let result = bld!(self.builder.build_call(rt, args, label))?;
+        self.call_result_to_value(result)
+    }
+
 }

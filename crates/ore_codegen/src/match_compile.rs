@@ -501,9 +501,7 @@ impl<'ctx> CodeGen<'ctx> {
             Pattern::StringLit(s) => {
                 // Create string constant and compare
                 let str_val = self.compile_string_literal(s)?;
-                let rt = self.rt("ore_str_eq")?;
-                let result = bld!(self.builder.build_call(rt, &[subject.into(), str_val.into()], "seq"))?;
-                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let i8_val = self.call_rt("ore_str_eq", &[subject.into(), str_val.into()], "seq")?.into_int_value();
                 bld!(self.builder.build_int_compare(
                     IntPredicate::NE, i8_val,
                     self.context.i8_type().const_int(0, false), "tobool"

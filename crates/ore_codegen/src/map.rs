@@ -35,9 +35,7 @@ impl<'ctx> CodeGen<'ctx> {
             "get" => {
                 self.check_arity("get", args, 1)?;
                 let key = self.compile_map_key(&args[0], func)?;
-                let rt = self.rt("ore_map_get")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mget"))?;
-                let i64_val = self.call_result_to_value(result)?;
+                let i64_val = self.call_rt("ore_map_get", &[map_val.into(), key.into()], "mget")?;
 
                 // Determine value kind from map tracking
                 // Check if the map object is a variable with a tracked value kind
@@ -58,9 +56,7 @@ impl<'ctx> CodeGen<'ctx> {
             "contains" => {
                 self.check_arity("contains", args, 1)?;
                 let key = self.compile_map_key(&args[0], func)?;
-                let rt = self.rt("ore_map_contains")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mcontains"))?;
-                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                let i8_val = self.call_rt("ore_map_contains", &[map_val.into(), key.into()], "mcontains")?.into_int_value();
                 let bool_val = bld!(self.builder.build_int_compare(
                     inkwell::IntPredicate::NE,
                     i8_val,
@@ -70,30 +66,22 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "len" => {
-                let rt = self.rt("ore_map_len")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mlen"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_map_len", &[map_val.into()], "mlen")?;
                 Ok((val, ValKind::Int))
             }
             "remove" => {
                 self.check_arity("remove", args, 1)?;
                 let key = self.compile_map_key(&args[0], func)?;
-                let rt = self.rt("ore_map_remove")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mremove"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_map_remove", &[map_val.into(), key.into()], "mremove")?;
                 Ok((val, ValKind::Int))
             }
             "keys" => {
-                let rt = self.rt("ore_map_keys")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mkeys"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_map_keys", &[map_val.into()], "mkeys")?;
                 self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "values" => {
-                let rt = self.rt("ore_map_values")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mvalues"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_map_values", &[map_val.into()], "mvalues")?;
                 // Track the value kind from the map
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 self.last_list_elem_kind = Some(val_kind.clone());
@@ -102,9 +90,7 @@ impl<'ctx> CodeGen<'ctx> {
             "merge" => {
                 self.check_arity("merge", args, 1)?;
                 let other = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_map_merge")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into(), other.into()], "mmerge"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_map_merge", &[map_val.into(), other.into()], "mmerge")?;
                 Ok((val, ValKind::Map))
             }
             "clear" => {
@@ -158,9 +144,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.rt("ore_map_map_values")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mmap"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_map_map_values", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mmap")?;
                 Ok((val, ValKind::Map))
             }
             "filter" => {
@@ -184,9 +168,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
                 };
-                let rt = self.rt("ore_map_filter")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mfilter"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_map_filter", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mfilter")?;
                 Ok((val, ValKind::Map))
             }
             "get_or" => {
@@ -199,9 +181,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => default_val.into_int_value(),
                 };
-                let rt = self.rt("ore_map_get_or")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into(), default_i64.into()], "mgetor"))?;
-                let i64_val = self.call_result_to_value(result)?;
+                let i64_val = self.call_rt("ore_map_get_or", &[map_val.into(), key.into(), default_i64.into()], "mgetor")?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 match &val_kind {
                     ValKind::Str => {
@@ -216,9 +196,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             "entries" => {
-                let rt = self.rt("ore_map_entries")?;
-                let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mentries"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_map_entries", &[map_val.into()], "mentries")?;
                 self.last_list_elem_kind = Some(ValKind::List(None));
                 Ok((val, ValKind::list_of(ValKind::List(None))))
             }

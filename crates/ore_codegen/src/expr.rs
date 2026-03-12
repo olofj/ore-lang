@@ -102,9 +102,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // List concatenation: list + list
                 if lk.is_list() && *op == BinOp::Add {
-                    let rt = self.rt("ore_list_concat")?;
-                    let result = bld!(self.builder.build_call(rt, &[lhs.into(), rhs.into()], "lcat"))?;
-                    let val = self.call_result_to_value(result)?;
+                    let val = self.call_rt("ore_list_concat", &[lhs.into(), rhs.into()], "lcat")?;
                     // Preserve element kind: prefer RHS (the appended elements) if it has a concrete kind
                     if rhs_elem_kind.is_some() {
                         self.last_list_elem_kind = rhs_elem_kind;
@@ -117,9 +115,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // String repetition: str * int
                 if lk == ValKind::Str && *op == BinOp::Mul {
-                    let rt = self.rt("ore_str_repeat")?;
-                    let result = bld!(self.builder.build_call(rt, &[lhs.into(), rhs.into()], "srepeat"))?;
-                    let val = self.call_result_to_value(result)?;
+                    let val = self.call_rt("ore_str_repeat", &[lhs.into(), rhs.into()], "srepeat")?;
                     return Ok((val, ValKind::Str));
                 }
 
@@ -171,9 +167,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Expr::Ident(name) = inner.as_ref() {
                     if let Some(kind_alloca) = self.dynamic_kind_tags.get(name).copied() {
                         let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_alloca, "dyn_kind"))?.into_int_value();
-                        let dyn_fn = self.rt("ore_dynamic_to_str")?;
-                        let result = bld!(self.builder.build_call(dyn_fn, &[val.into(), kind_i8.into()], "dyntos"))?;
-                        let str_ptr = self.call_result_to_value(result)?.into_pointer_value();
+                        let str_ptr = self.call_rt("ore_dynamic_to_str", &[val.into(), kind_i8.into()], "dyntos")?.into_pointer_value();
                         let pf = self.rt("ore_str_print")?;
                         bld!(self.builder.build_call(pf, &[str_ptr.into()], ""))?;
                         let release = self.rt("ore_str_release")?;
@@ -363,9 +357,7 @@ impl<'ctx> CodeGen<'ctx> {
                         return Ok((result, ValKind::Int));
                     }
                     "channel" => {
-                        let rt = self.rt("ore_channel_new")?;
-                        let result = bld!(self.builder.build_call(rt, &[], "ch"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_channel_new", &[], "ch")?;
                         return Ok((val, ValKind::Channel));
                     }
                     "readln" | "input" => {
@@ -376,25 +368,19 @@ impl<'ctx> CodeGen<'ctx> {
                             let print_fn = self.rt("ore_str_print_no_newline")?;
                             bld!(self.builder.build_call(print_fn, &[prompt.into()], ""))?;
                         }
-                        let rt = self.rt("ore_readln")?;
-                        let result = bld!(self.builder.build_call(rt, &[], "readln"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_readln", &[], "readln")?;
                         return Ok((val, ValKind::Str));
                     }
                     "file_read" => {
                         self.check_arity("file_read", args, 1)?;
                         let path_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.rt("ore_file_read")?;
-                        let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_read"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_file_read", &[path_val.into()], "file_read")?;
                         return Ok((val, ValKind::Str));
                     }
                     "file_read_lines" => {
                         self.check_arity("file_read_lines", args, 1)?;
                         let path_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.rt("ore_file_read_lines")?;
-                        let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_read_lines"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_file_read_lines", &[path_val.into()], "file_read_lines")?;
                         self.last_list_elem_kind = Some(ValKind::Str);
                         return Ok((val, ValKind::list_of(ValKind::Str)));
                     }
@@ -403,17 +389,13 @@ impl<'ctx> CodeGen<'ctx> {
                         let path_val = self.compile_expr(&args[0], func)?;
                         let content_val = self.compile_expr(&args[1], func)?;
                         let rt_name = format!("ore_{}", name);
-                        let rt = self.rt(&rt_name)?;
-                        let result = bld!(self.builder.build_call(rt, &[path_val.into(), content_val.into()], name.as_str()))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt(&rt_name, &[path_val.into(), content_val.into()], name.as_str())?;
                         return Ok((val, ValKind::Bool));
                     }
                     "file_exists" => {
                         self.check_arity("file_exists", args, 1)?;
                         let path_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.rt("ore_file_exists")?;
-                        let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_exists"))?;
-                        let i8_val = self.call_result_to_value(result)?.into_int_value();
+                        let i8_val = self.call_rt("ore_file_exists", &[path_val.into()], "file_exists")?.into_int_value();
                         let bool_val = bld!(self.builder.build_int_compare(
                             inkwell::IntPredicate::NE,
                             i8_val,
@@ -425,9 +407,7 @@ impl<'ctx> CodeGen<'ctx> {
                     "env_get" => {
                         self.check_arity("env_get", args, 1)?;
                         let key = self.compile_expr(&args[0], func)?;
-                        let rt = self.rt("ore_env_get")?;
-                        let result = bld!(self.builder.build_call(rt, &[key.into()], "env_get"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_env_get", &[key.into()], "env_get")?;
                         return Ok((val, ValKind::Str));
                     }
                     "env_set" => {
@@ -439,9 +419,7 @@ impl<'ctx> CodeGen<'ctx> {
                         return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Int));
                     }
                     "args" => {
-                        let rt = self.rt("ore_args")?;
-                        let result = bld!(self.builder.build_call(rt, &[], "args"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_args", &[], "args")?;
                         self.last_list_elem_kind = Some(ValKind::Str);
                         return Ok((val, ValKind::list_of(ValKind::Str)));
                     }
@@ -478,9 +456,7 @@ impl<'ctx> CodeGen<'ctx> {
                     "exec" => {
                         self.check_arity("exec", args, 1)?;
                         let cmd_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.rt("ore_exec")?;
-                        let result = bld!(self.builder.build_call(rt, &[cmd_val.into()], "exec"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_exec", &[cmd_val.into()], "exec")?;
                         return Ok((val, ValKind::Str));
                     }
                     "str" => {
@@ -503,9 +479,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 return Ok((i.into(), ValKind::Int));
                             }
                             ValKind::Str => {
-                                let rt = self.rt("ore_str_to_int")?;
-                                let result = bld!(self.builder.build_call(rt, &[val.into()], "stoi"))?;
-                                let v = self.call_result_to_value(result)?;
+                                let v = self.call_rt("ore_str_to_int", &[val.into()], "stoi")?;
                                 return Ok((v, ValKind::Int));
                             }
                             _ => return Err(self.err("int() cannot convert this type")),
@@ -521,9 +495,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 return Ok((f.into(), ValKind::Float));
                             }
                             ValKind::Str => {
-                                let rt = self.rt("ore_str_to_float")?;
-                                let result = bld!(self.builder.build_call(rt, &[val.into()], "stof"))?;
-                                let v = self.call_result_to_value(result)?;
+                                let v = self.call_rt("ore_str_to_float", &[val.into()], "stof")?;
                                 return Ok((v, ValKind::Float));
                             }
                             _ => return Err(self.err("float() cannot convert this type")),
@@ -532,17 +504,13 @@ impl<'ctx> CodeGen<'ctx> {
                     "ord" => {
                         self.check_arity("ord", args, 1)?;
                         let str_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.rt("ore_ord")?;
-                        let result = bld!(self.builder.build_call(rt, &[str_val.into()], "ord"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_ord", &[str_val.into()], "ord")?;
                         return Ok((val, ValKind::Int));
                     }
                     "chr" => {
                         self.check_arity("chr", args, 1)?;
                         let int_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.rt("ore_chr")?;
-                        let result = bld!(self.builder.build_call(rt, &[int_val.into()], "chr"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_chr", &[int_val.into()], "chr")?;
                         return Ok((val, ValKind::Str));
                     }
                     "type_of" => {
@@ -550,41 +518,31 @@ impl<'ctx> CodeGen<'ctx> {
                         let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         let kind_tag = self.valkind_to_tag(&kind);
                         let kind_val = self.context.i8_type().const_int(kind_tag as u64, false);
-                        let rt = self.rt("ore_type_of")?;
-                        let result = bld!(self.builder.build_call(rt, &[kind_val.into()], "typeof"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_type_of", &[kind_val.into()], "typeof")?;
                         return Ok((val, ValKind::Str));
                     }
                     "rand_int" => {
                         self.check_arity("rand_int", args, 2)?;
                         let low = self.compile_expr(&args[0], func)?;
                         let high = self.compile_expr(&args[1], func)?;
-                        let rt = self.rt("ore_rand_int")?;
-                        let result = bld!(self.builder.build_call(rt, &[low.into(), high.into()], "rand"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_rand_int", &[low.into(), high.into()], "rand")?;
                         return Ok((val, ValKind::Int));
                     }
                     "time_now" | "time_ms" => {
                         let rt_name = format!("ore_{}", name);
-                        let rt = self.rt(&rt_name)?;
-                        let result = bld!(self.builder.build_call(rt, &[], name.as_str()))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt(&rt_name, &[], name.as_str())?;
                         return Ok((val, ValKind::Int));
                     }
                     "json_parse" => {
                         self.check_arity("json_parse", args, 1)?;
                         let str_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.rt("ore_json_parse")?;
-                        let result = bld!(self.builder.build_call(rt, &[str_val.into()], "json_parse"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_json_parse", &[str_val.into()], "json_parse")?;
                         return Ok((val, ValKind::Map));
                     }
                     "json_stringify" => {
                         self.check_arity("json_stringify", args, 1)?;
                         let map_val = self.compile_expr(&args[0], func)?;
-                        let rt = self.rt("ore_json_stringify")?;
-                        let result = bld!(self.builder.build_call(rt, &[map_val.into()], "json_stringify"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_json_stringify", &[map_val.into()], "json_stringify")?;
                         return Ok((val, ValKind::Str));
                     }
                     "repeat" => {
@@ -592,9 +550,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         let val_i64 = self.value_to_i64(val)?;
                         let count = self.compile_expr(&args[1], func)?;
-                        let rt = self.rt("ore_list_repeat")?;
-                        let result = bld!(self.builder.build_call(rt, &[val_i64.into(), count.into()], "repeat"))?;
-                        let list_val = self.call_result_to_value(result)?;
+                        let list_val = self.call_rt("ore_list_repeat", &[val_i64.into(), count.into()], "repeat")?;
                         let kind_for_list = kind.clone();
                         self.last_list_elem_kind = Some(kind);
                         return Ok((list_val, ValKind::list_of(kind_for_list)));
@@ -622,19 +578,13 @@ impl<'ctx> CodeGen<'ctx> {
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         match kind {
                             ValKind::Str => {
-                                let rt = self.rt("ore_str_len")?;
-                                let result = bld!(self.builder.build_call(rt, &[val.into()], "slen"))?;
-                                return Ok((self.call_result_to_value(result)?, ValKind::Int));
+                                return Ok((self.call_rt("ore_str_len", &[val.into()], "slen")?, ValKind::Int));
                             }
                             ValKind::List(_) => {
-                                let rt = self.rt("ore_list_len")?;
-                                let result = bld!(self.builder.build_call(rt, &[val.into()], "llen"))?;
-                                return Ok((self.call_result_to_value(result)?, ValKind::Int));
+                                return Ok((self.call_rt("ore_list_len", &[val.into()], "llen")?, ValKind::Int));
                             }
                             ValKind::Map => {
-                                let rt = self.rt("ore_map_len")?;
-                                let result = bld!(self.builder.build_call(rt, &[val.into()], "mlen"))?;
-                                return Ok((self.call_result_to_value(result)?, ValKind::Int));
+                                return Ok((self.call_rt("ore_map_len", &[val.into()], "mlen")?, ValKind::Int));
                             }
                             _ => return Err(self.err("len() not supported on this type")),
                         }
@@ -699,9 +649,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 ValKind::Int => dec_val.into_int_value(),
                                 _ => return Err(self.err("round() second argument must be Int (decimals)")),
                             };
-                            let rt = self.rt("ore_float_round_to")?;
-                            let result = bld!(self.builder.build_call(rt, &[f_val.into(), dec_i.into()], "round_to"))?;
-                            let val = self.call_result_to_value(result)?;
+                            let val = self.call_rt("ore_float_round_to", &[f_val.into(), dec_i.into()], "round_to")?;
                             return Ok((val, ValKind::Float));
                         }
                         self.check_arity(&name, args, 1)?;
@@ -712,9 +660,7 @@ impl<'ctx> CodeGen<'ctx> {
                             _ => return Err(self.err(format!("{}() requires numeric argument", name))),
                         };
                         let rt_name = format!("ore_math_{}", name.strip_prefix("math_").unwrap_or(&name));
-                        let rt = self.rt(&rt_name)?;
-                        let result = bld!(self.builder.build_call(rt, &[f_val.into()], &name))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt(&rt_name, &[f_val.into()], &name)?;
                         return Ok((val, ValKind::Float));
                     }
                     "pow" => {
@@ -731,9 +677,7 @@ impl<'ctx> CodeGen<'ctx> {
                             ValKind::Int => bld!(self.builder.build_signed_int_to_float(exp.into_int_value(), self.context.f64_type(), "itof"))?,
                             _ => return Err(self.err("pow() requires numeric arguments")),
                         };
-                        let rt = self.rt("ore_math_pow")?;
-                        let result = bld!(self.builder.build_call(rt, &[base_f.into(), exp_f.into()], "pow"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_math_pow", &[base_f.into(), exp_f.into()], "pow")?;
                         return Ok((val, ValKind::Float));
                     }
                     "atan2" => {
@@ -750,21 +694,15 @@ impl<'ctx> CodeGen<'ctx> {
                             ValKind::Int => bld!(self.builder.build_signed_int_to_float(x.into_int_value(), self.context.f64_type(), "itof"))?,
                             _ => return Err(self.err("atan2() requires numeric arguments")),
                         };
-                        let rt = self.rt("ore_math_atan2")?;
-                        let result = bld!(self.builder.build_call(rt, &[y_f.into(), x_f.into()], "atan2"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_math_atan2", &[y_f.into(), x_f.into()], "atan2")?;
                         return Ok((val, ValKind::Float));
                     }
                     "pi" => {
-                        let rt = self.rt("ore_math_pi")?;
-                        let result = bld!(self.builder.build_call(rt, &[], "pi"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_math_pi", &[], "pi")?;
                         return Ok((val, ValKind::Float));
                     }
                     "euler" | "e" => {
-                        let rt = self.rt("ore_math_e")?;
-                        let result = bld!(self.builder.build_call(rt, &[], "euler"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_math_e", &[], "euler")?;
                         return Ok((val, ValKind::Float));
                     }
                     _ => {}
@@ -1233,9 +1171,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // String comparison via ore_str_eq
                 match op {
                     BinOp::Eq => {
-                        let rt = self.rt("ore_str_eq")?;
-                        let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "seq"))?;
-                        let i8_val = self.call_result_to_value(result)?.into_int_value();
+                        let i8_val = self.call_rt("ore_str_eq", &[l.into(), r.into()], "seq")?.into_int_value();
                         let bool_val = bld!(self.builder.build_int_compare(
                             IntPredicate::NE, i8_val,
                             self.context.i8_type().const_int(0, false), "tobool"
@@ -1243,9 +1179,7 @@ impl<'ctx> CodeGen<'ctx> {
                         Ok(bool_val.into())
                     }
                     BinOp::NotEq => {
-                        let rt = self.rt("ore_str_eq")?;
-                        let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "seq"))?;
-                        let i8_val = self.call_result_to_value(result)?.into_int_value();
+                        let i8_val = self.call_rt("ore_str_eq", &[l.into(), r.into()], "seq")?.into_int_value();
                         let bool_val = bld!(self.builder.build_int_compare(
                             IntPredicate::EQ, i8_val,
                             self.context.i8_type().const_int(0, false), "tobool"
@@ -1254,16 +1188,12 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     BinOp::Add => {
                         // String concatenation
-                        let rt = self.rt("ore_str_concat")?;
-                        let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "sconcat"))?;
-                        let val = self.call_result_to_value(result)?;
+                        let val = self.call_rt("ore_str_concat", &[l.into(), r.into()], "sconcat")?;
                         Ok(val)
                     }
                     BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq => {
                         // String ordering via ore_str_cmp
-                        let rt = self.rt("ore_str_cmp")?;
-                        let result = bld!(self.builder.build_call(rt, &[l.into(), r.into()], "scmp"))?;
-                        let cmp_val = self.call_result_to_value(result)?.into_int_value();
+                        let cmp_val = self.call_rt("ore_str_cmp", &[l.into(), r.into()], "scmp")?.into_int_value();
                         let zero = self.context.i64_type().const_int(0, false);
                         let pred = match op {
                             BinOp::Lt => IntPredicate::SLT,

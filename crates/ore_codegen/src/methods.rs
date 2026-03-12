@@ -368,15 +368,11 @@ impl<'ctx> CodeGen<'ctx> {
                 "pow" => {
                     self.check_arity("Int.pow()", args, 1)?;
                     let (exp_val, _) = self.compile_expr_with_kind(&args[0], func)?;
-                    let rt = self.rt("ore_int_pow")?;
-                    let result = bld!(self.builder.build_call(rt, &[obj_val.into(), exp_val.into()], "pow"))?;
-                    let val = self.call_result_to_value(result)?;
+                    let val = self.call_rt("ore_int_pow", &[obj_val.into(), exp_val.into()], "pow")?;
                     return Ok((val, ValKind::Int));
                 }
                 "to_str" => {
-                    let rt = self.rt("ore_int_to_str")?;
-                    let result = bld!(self.builder.build_call(rt, &[obj_val.into()], "i2s"))?;
-                    let val = self.call_result_to_value(result)?;
+                    let val = self.call_rt("ore_int_to_str", &[obj_val.into()], "i2s")?;
                     return Ok((val, ValKind::Str));
                 }
                 _ => return Err(Self::unknown_method_error("Int", method, &["abs", "to_float", "to_str", "pow", "clamp", "min", "max"])),
@@ -453,9 +449,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((val, ValKind::Float));
                 }
                 "to_str" => {
-                    let rt = self.rt("ore_float_to_str")?;
-                    let result = bld!(self.builder.build_call(rt, &[obj_val.into()], "f2s"))?;
-                    let val = self.call_result_to_value(result)?;
+                    let val = self.call_rt("ore_float_to_str", &[obj_val.into()], "f2s")?;
                     return Ok((val, ValKind::Str));
                 }
                 "format" => {
@@ -465,9 +459,7 @@ impl<'ctx> CodeGen<'ctx> {
                         ValKind::Int => dec_val.into_int_value(),
                         _ => return Err(self.err("Float.format() argument must be Int (decimals)")),
                     };
-                    let rt = self.rt("ore_float_format")?;
-                    let result = bld!(self.builder.build_call(rt, &[obj_val.into(), dec_i.into()], "ffmt"))?;
-                    let val = self.call_result_to_value(result)?;
+                    let val = self.call_rt("ore_float_format", &[obj_val.into(), dec_i.into()], "ffmt")?;
                     return Ok((val, ValKind::Str));
                 }
                 _ => return Err(Self::unknown_method_error("Float", method, &["abs", "floor", "ceil", "round", "sqrt", "pow", "to_int", "to_str", "format", "clamp", "min", "max"])),
@@ -512,9 +504,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
             "recv" => {
-                let rt = self.rt("ore_channel_recv")?;
-                let result = bld!(self.builder.build_call(rt, &[ch_val.into()], "recv"))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_channel_recv", &[ch_val.into()], "recv")?;
                 Ok((val, ValKind::Int))
             }
             _ => Err(Self::unknown_method_error("Channel", method, &["send", "recv"])),
@@ -532,13 +522,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         match obj_kind {
             ValKind::List(ref ek) => {
-                let list_get = self.rt("ore_list_get")?;
-                let result = bld!(self.builder.build_call(
-                    list_get,
-                    &[obj_val.into(), idx_val.into()],
-                    "list_get"
-                ))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_list_get", &[obj_val.into(), idx_val.into()], "list_get")?;
                 let elem_kind = self.last_list_elem_kind.clone()
                     .or_else(|| ek.as_ref().map(|k| *k.clone()))
                     .unwrap_or(ValKind::Int);
@@ -552,13 +536,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.value_to_str(idx_val, ValKind::Int)?.into()
                 };
-                let map_get = self.rt("ore_map_get")?;
-                let result = bld!(self.builder.build_call(
-                    map_get,
-                    &[obj_val.into(), map_key.into()],
-                    "map_get"
-                ))?;
-                let val = self.call_result_to_value(result)?;
+                let val = self.call_rt("ore_map_get", &[obj_val.into(), map_key.into()], "map_get")?;
                 // Look up tracked value kind for this map variable
                 let val_kind = if let Expr::Ident(name) = object {
                     self.map_value_kinds.get(name).cloned().unwrap_or(ValKind::Int)

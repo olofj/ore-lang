@@ -403,9 +403,7 @@ impl<'ctx> CodeGen<'ctx> {
         if is_map {
             // For maps: get keys list and iterate over it
             let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
-            let keys_fn = self.rt("ore_map_keys")?;
-            let keys_result = bld!(self.builder.build_call(keys_fn, &[map_ptr.into()], "keys"))?;
-            let list_ptr = self.call_result_to_value(keys_result)?.into_pointer_value();
+            let list_ptr = self.call_rt("ore_map_keys", &[map_ptr.into()], "keys")?.into_pointer_value();
             return self.compile_for_each_over_list(var, list_ptr, ValKind::Str, body, func);
         }
 
@@ -445,9 +443,7 @@ impl<'ctx> CodeGen<'ctx> {
         let i64_type = self.context.i64_type();
 
         // Get list length
-        let list_len_fn = self.rt("ore_list_len")?;
-        let len_result = bld!(self.builder.build_call(list_len_fn, &[list_ptr.into()], "len"))?;
-        let len_val = self.call_result_to_value(len_result)?.into_int_value();
+        let len_val = self.call_rt("ore_list_len", &[list_ptr.into()], "len")?.into_int_value();
 
         // Index variable
         let idx_alloca = bld!(self.builder.build_alloca(i64_type, "idx"))?;
@@ -498,9 +494,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Body: load element, execute body
         self.builder.position_at_end(body_bb);
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let list_get_fn = self.rt("ore_list_get")?;
-        let elem_result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "elem"))?;
-        let raw_val = self.call_result_to_value(elem_result)?;
+        let raw_val = self.call_rt("ore_list_get", &[list_ptr.into(), idx.into()], "elem")?;
         // Convert raw i64 from list back to the correct type
         let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
         bld!(self.builder.build_store(elem_alloca, typed_val))?;
@@ -571,9 +565,7 @@ impl<'ctx> CodeGen<'ctx> {
         let elem_kind = final_elem_kind;
         let list_ptr = list_val.into_pointer_value();
 
-        let list_len_fn = self.rt("ore_list_len")?;
-        let len_result = bld!(self.builder.build_call(list_len_fn, &[list_ptr.into()], "len"))?;
-        let len_val = self.call_result_to_value(len_result)?.into_int_value();
+        let len_val = self.call_rt("ore_list_len", &[list_ptr.into()], "len")?.into_int_value();
 
         // Index variable (exposed as key_var)
         let idx_alloca = bld!(self.builder.build_alloca(i64_type, key_var))?;
@@ -612,9 +604,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(body_bb);
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let list_get_fn = self.rt("ore_list_get")?;
-        let elem_result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "elem"))?;
-        let raw_val = self.call_result_to_value(elem_result)?;
+        let raw_val = self.call_rt("ore_list_get", &[list_ptr.into(), idx.into()], "elem")?;
         match &elem_kind {
             ValKind::Record(name) => {
                 let st = self.records[name].struct_type;
@@ -672,13 +662,9 @@ impl<'ctx> CodeGen<'ctx> {
 
         let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
 
-        let keys_fn = self.rt("ore_map_keys")?;
-        let keys_result = bld!(self.builder.build_call(keys_fn, &[map_ptr.into()], "keys"))?;
-        let keys_list = self.call_result_to_value(keys_result)?.into_pointer_value();
+        let keys_list = self.call_rt("ore_map_keys", &[map_ptr.into()], "keys")?.into_pointer_value();
 
-        let list_len_fn = self.rt("ore_list_len")?;
-        let len_result = bld!(self.builder.build_call(list_len_fn, &[keys_list.into()], "len"))?;
-        let len_val = self.call_result_to_value(len_result)?.into_int_value();
+        let len_val = self.call_rt("ore_list_len", &[keys_list.into()], "len")?.into_int_value();
 
         let idx_alloca = bld!(self.builder.build_alloca(i64_type, "idx"))?;
         bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
@@ -713,15 +699,11 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(body_bb);
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
 
-        let list_get_fn = self.rt("ore_list_get")?;
-        let key_result = bld!(self.builder.build_call(list_get_fn, &[keys_list.into(), idx.into()], "key_raw"))?;
-        let key_raw = self.call_result_to_value(key_result)?.into_int_value();
+        let key_raw = self.call_rt("ore_list_get", &[keys_list.into(), idx.into()], "key_raw")?.into_int_value();
         let key_ptr = self.i64_to_ptr(key_raw)?;
         bld!(self.builder.build_store(key_alloca, key_ptr))?;
 
-        let map_get_fn = self.rt("ore_map_get")?;
-        let val_result = bld!(self.builder.build_call(map_get_fn, &[map_ptr.into(), key_ptr.into()], "val_raw"))?;
-        let val_raw = self.call_result_to_value(val_result)?;
+        let val_raw = self.call_rt("ore_map_get", &[map_ptr.into(), key_ptr.into()], "val_raw")?;
         match &val_kind {
             ValKind::Str => {
                 let val_ptr = self.i64_to_ptr(val_raw.into_int_value())?;
