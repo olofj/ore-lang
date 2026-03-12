@@ -34,36 +34,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("push", args, 1)?;
                 let (arg, arg_kind) = self.compile_expr_with_kind(&args[0], func)?;
                 let list_push = self.rt("ore_list_push")?;
-                // For enums/records, heap-allocate and push pointer as i64
-                let push_val: BasicValueEnum = match &arg_kind {
-                    ValKind::Enum(name) => {
-                        let et = self.enums[name].enum_type;
-                        let heap_ptr = bld!(self.builder.build_malloc(et, "heap_enum"))?;
-                        bld!(self.builder.build_store(heap_ptr, arg))?;
-                        let i64_val = self.ptr_to_i64(heap_ptr)?;
-                        i64_val.into()
-                    }
-                    ValKind::Record(name) => {
-                        let st = self.records[name].struct_type;
-                        let heap_ptr = bld!(self.builder.build_malloc(st, "heap_rec"))?;
-                        bld!(self.builder.build_store(heap_ptr, arg))?;
-                        let i64_val = self.ptr_to_i64(heap_ptr)?;
-                        i64_val.into()
-                    }
-                    ValKind::Float => {
-                        let i64_val = bld!(self.builder.build_bit_cast(arg, self.context.i64_type(), "f2i"))?;
-                        i64_val
-                    }
-                    ValKind::Bool => {
-                        let i64_val = bld!(self.builder.build_int_z_extend(arg.into_int_value(), self.context.i64_type(), "b2i"))?;
-                        i64_val.into()
-                    }
-                    ValKind::Str => {
-                        let i64_val = self.ptr_to_i64(arg.into_pointer_value())?;
-                        i64_val.into()
-                    }
-                    _ => arg,
-                };
+                let push_val = self.val_to_list_i64(arg, &arg_kind)?;
                 bld!(self.builder.build_call(list_push, &[list_val.into(), push_val.into()], ""))?;
                 // Track element kind so join/pop/iteration know the type
                 self.last_list_elem_kind = Some(arg_kind.clone());
@@ -584,40 +555,7 @@ impl<'ctx> CodeGen<'ctx> {
         for elem in elements {
             let (val, kind) = self.compile_expr_with_kind(elem, func)?;
             elem_kind = kind.clone();
-            // For records/enums, heap-allocate and push the pointer
-            let push_val = match &kind {
-                ValKind::Record(name) => {
-                    let info = &self.records[name];
-                    let st = info.struct_type;
-                    let heap_ptr = bld!(self.builder.build_malloc(st, "heap_rec"))?;
-                    bld!(self.builder.build_store(heap_ptr, val))?;
-                    let i64_val = self.ptr_to_i64(heap_ptr)?;
-                    i64_val.into()
-                }
-                ValKind::Str => {
-                    // Strings are already pointers, convert to i64
-                    let i64_val = self.ptr_to_i64(val.into_pointer_value())?;
-                    i64_val.into()
-                }
-                ValKind::Float => {
-                    // Floats need bitcast to i64 for storage
-                    let i64_val = bld!(self.builder.build_bit_cast(val, self.context.i64_type(), "f2i"))?;
-                    i64_val
-                }
-                ValKind::Bool => {
-                    // Bools need zero-extension to i64
-                    let i64_val = bld!(self.builder.build_int_z_extend(val.into_int_value(), self.context.i64_type(), "b2i"))?;
-                    i64_val.into()
-                }
-                ValKind::Enum(name) => {
-                    let et = self.enums[name].enum_type;
-                    let heap_ptr = bld!(self.builder.build_malloc(et, "heap_enum"))?;
-                    bld!(self.builder.build_store(heap_ptr, val))?;
-                    let i64_val = self.ptr_to_i64(heap_ptr)?;
-                    i64_val.into()
-                }
-                _ => val,
-            };
+            let push_val = self.val_to_list_i64(val, &kind)?;
             bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
         }
 
@@ -690,20 +628,7 @@ impl<'ctx> CodeGen<'ctx> {
             };
 
             let (val, kind) = self.compile_expr_with_kind(expr, func)?;
-            let push_val = match &kind {
-                ValKind::Str => {
-                    let i64_val = self.ptr_to_i64(val.into_pointer_value())?;
-                    i64_val.into()
-                }
-                ValKind::Float => {
-                    bld!(self.builder.build_bit_cast(val, i64_type, "f2i"))?
-                }
-                ValKind::Bool => {
-                    let i64_val = bld!(self.builder.build_int_z_extend(val.into_int_value(), i64_type, "b2i"))?;
-                    i64_val.into()
-                }
-                _ => val,
-            };
+            let push_val = self.val_to_list_i64(val, &kind)?;
             bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
 
             if self.current_block()?.get_terminator().is_none() {
@@ -779,20 +704,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
 
             let (val, kind) = self.compile_expr_with_kind(expr, func)?;
-            let push_val = match &kind {
-                ValKind::Str => {
-                    let i64_val = self.ptr_to_i64(val.into_pointer_value())?;
-                    i64_val.into()
-                }
-                ValKind::Float => {
-                    bld!(self.builder.build_bit_cast(val, i64_type, "f2i"))?
-                }
-                ValKind::Bool => {
-                    let i64_val = bld!(self.builder.build_int_z_extend(val.into_int_value(), i64_type, "b2i"))?;
-                    i64_val.into()
-                }
-                _ => val,
-            };
+            let push_val = self.val_to_list_i64(val, &kind)?;
             bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
 
             if self.current_block()?.get_terminator().is_none() {

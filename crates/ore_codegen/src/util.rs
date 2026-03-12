@@ -131,6 +131,38 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
+    /// Convert a value to i64 for storage in a list, heap-allocating enums/records.
+    pub(crate) fn val_to_list_i64(
+        &mut self,
+        val: BasicValueEnum<'ctx>,
+        kind: &ValKind,
+    ) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        match kind {
+            ValKind::Enum(name) => {
+                let et = self.enums[name].enum_type;
+                let heap_ptr = bld!(self.builder.build_malloc(et, "heap_enum"))?;
+                bld!(self.builder.build_store(heap_ptr, val))?;
+                Ok(self.ptr_to_i64(heap_ptr)?.into())
+            }
+            ValKind::Record(name) => {
+                let st = self.records[name].struct_type;
+                let heap_ptr = bld!(self.builder.build_malloc(st, "heap_rec"))?;
+                bld!(self.builder.build_store(heap_ptr, val))?;
+                Ok(self.ptr_to_i64(heap_ptr)?.into())
+            }
+            ValKind::Float => {
+                Ok(bld!(self.builder.build_bit_cast(val, self.context.i64_type(), "f2i"))?)
+            }
+            ValKind::Bool => {
+                Ok(bld!(self.builder.build_int_z_extend(val.into_int_value(), self.context.i64_type(), "b2i"))?.into())
+            }
+            ValKind::Str | ValKind::List(_) | ValKind::Map => {
+                Ok(self.ptr_to_i64(val.into_pointer_value())?.into())
+            }
+            _ => Ok(val),
+        }
+    }
+
     pub(crate) fn resolve_function(&self, name: &str) -> Result<(FunctionValue<'ctx>, ValKind), CodeGenError> {
         if let Some((f, k)) = self.functions.get(name) {
             return Ok((*f, k.clone()));
