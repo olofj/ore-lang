@@ -186,7 +186,7 @@ impl<'ctx> CodeGen<'ctx> {
                     &[list_val.into(), fn_ptr.into(), env_ptr.into()],
                     ""
                 ))?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             "tap" => {
                 self.check_arity("tap", args, 1)?;
@@ -218,7 +218,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let rt = self.rt("ore_list_each_with_index")?;
                 bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             "par_map" => {
                 self.check_arity("par_map", args, 1)?;
@@ -237,7 +237,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let rt = self.rt("ore_list_par_each")?;
                 bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             "sort" => {
                 if args.is_empty() {

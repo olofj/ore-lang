@@ -234,7 +234,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Build merge phi
         self.builder.position_at_end(merge_bb);
         if branch_results.is_empty() {
-            return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+            return Ok(self.void_result());
         }
 
         let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "match_val"))?;
@@ -344,7 +344,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Build merge phi
         self.builder.position_at_end(merge_bb);
         if branch_results.is_empty() {
-            return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+            return Ok(self.void_result());
         }
 
         let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "opt_val"))?;
@@ -467,7 +467,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(merge_bb);
 
         if branch_results.is_empty() {
-            return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+            return Ok(self.void_result());
         }
 
         let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "lmatch_val"))?;
@@ -621,7 +621,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(merge_bb);
         if branch_results.is_empty() {
-            return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
+            return Ok(self.void_result());
         }
 
         let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "res_val"))?;

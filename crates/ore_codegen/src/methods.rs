@@ -501,7 +501,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let i64_val = self.value_to_i64(val)?;
                 let rt = self.rt("ore_channel_send")?;
                 bld!(self.builder.build_call(rt, &[ch_val.into(), i64_val.into()], ""))?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             "recv" => {
                 let val = self.call_rt("ore_channel_recv", &[ch_val.into()], "recv")?;

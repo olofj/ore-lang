@@ -121,7 +121,7 @@ impl<'ctx> CodeGen<'ctx> {
                 };
                 let rt = self.rt("ore_map_each")?;
                 bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
-                Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
+                Ok(self.void_result())
             }
             "map" => {
                 self.check_arity("map.map()", args, 1)?;
