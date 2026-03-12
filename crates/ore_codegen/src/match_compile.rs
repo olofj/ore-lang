@@ -257,6 +257,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Unified match compilation for tagged union types (Option and Result).
+    #[allow(clippy::too_many_arguments)]
     /// `variant_tags` maps variant names to their tag values.
     /// `has_payload` determines whether a given tag carries a payload to bind.
     fn compile_tagged_union_match(

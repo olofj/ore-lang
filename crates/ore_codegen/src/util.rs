@@ -169,7 +169,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Convert a value to f64, accepting both Float and Int kinds.
-    pub(crate) fn to_float_val(
+    pub(crate) fn coerce_to_float(
         &mut self,
         val: BasicValueEnum<'ctx>,
         kind: &ValKind,

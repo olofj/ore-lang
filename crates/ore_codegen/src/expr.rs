@@ -455,7 +455,7 @@ impl<'ctx> CodeGen<'ctx> {
                         match kind {
                             ValKind::Float => return Ok((val, ValKind::Float)),
                             ValKind::Int => {
-                                let f = self.to_float_val(val, &kind, "float()")?;
+                                let f = self.coerce_to_float(val, &kind, "float()")?;
                                 return Ok((f.into(), ValKind::Float));
                             }
                             ValKind::Str => {
@@ -603,7 +603,7 @@ impl<'ctx> CodeGen<'ctx> {
                         // round(x, decimals) — 2-arg overload
                         if (name == "round" || name == "math_round") && args.len() == 2 {
                             let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                            let f_val = self.to_float_val(val, &kind, "round()")?;
+                            let f_val = self.coerce_to_float(val, &kind, "round()")?;
                             let (dec_val, dec_kind) = self.compile_expr_with_kind(&args[1], func)?;
                             let dec_i = match dec_kind {
                                 ValKind::Int => dec_val.into_int_value(),
@@ -614,7 +614,7 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                         self.check_arity(&name, args, 1)?;
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                        let f_val = self.to_float_val(val, &kind, &format!("{}()", name))?;
+                        let f_val = self.coerce_to_float(val, &kind, &format!("{}()", name))?;
                         let rt_name = format!("ore_math_{}", name.strip_prefix("math_").unwrap_or(&name));
                         let val = self.call_rt(&rt_name, &[f_val.into()], &name)?;
                         return Ok((val, ValKind::Float));
@@ -623,8 +623,8 @@ impl<'ctx> CodeGen<'ctx> {
                         self.check_arity("pow()", args, 2)?;
                         let (base, bk) = self.compile_expr_with_kind(&args[0], func)?;
                         let (exp, ek) = self.compile_expr_with_kind(&args[1], func)?;
-                        let base_f = self.to_float_val(base, &bk, "pow()")?;
-                        let exp_f = self.to_float_val(exp, &ek, "pow()")?;
+                        let base_f = self.coerce_to_float(base, &bk, "pow()")?;
+                        let exp_f = self.coerce_to_float(exp, &ek, "pow()")?;
                         let val = self.call_rt("ore_math_pow", &[base_f.into(), exp_f.into()], "pow")?;
                         return Ok((val, ValKind::Float));
                     }
@@ -632,8 +632,8 @@ impl<'ctx> CodeGen<'ctx> {
                         self.check_arity("atan2()", args, 2)?;
                         let (y, yk) = self.compile_expr_with_kind(&args[0], func)?;
                         let (x, xk) = self.compile_expr_with_kind(&args[1], func)?;
-                        let y_f = self.to_float_val(y, &yk, "atan2()")?;
-                        let x_f = self.to_float_val(x, &xk, "atan2()")?;
+                        let y_f = self.coerce_to_float(y, &yk, "atan2()")?;
+                        let x_f = self.coerce_to_float(x, &xk, "atan2()")?;
                         let val = self.call_rt("ore_math_atan2", &[y_f.into(), x_f.into()], "atan2")?;
                         return Ok((val, ValKind::Float));
                     }
