@@ -1,0 +1,25 @@
+fn main
+  -- Float comparison operators
+  print 3.14 >= 3.0
+  print 3.14 <= 3.0
+  print 3.14 != 3.0
+  print 3.0 != 3.0
+
+  -- Float modulo
+  print 7.0 % 3.0
+
+  -- round with decimals
+  print round(3.14159, 2)
+
+  -- float format method
+  print 3.14159.format(2)
+  print 2.0.format(3)
+
+  -- mixed int/float arithmetic
+  x := 3 + 1.5
+  print x
+  y := 2.5 * 4
+  print y
+  print 10 / 3.0
+  print 5.0 > 3
+  print 2 <= 2.0

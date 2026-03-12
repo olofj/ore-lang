@@ -1199,6 +1199,27 @@ fn math_functions() {
 }
 
 #[test]
+fn math_float_ops() {
+    let out = run_ore("math/float_ops.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "true",   // 3.14 >= 3.0
+        "false",  // 3.14 <= 3.0
+        "true",   // 3.14 != 3.0
+        "false",  // 3.0 != 3.0
+        "1.0",    // 7.0 % 3.0
+        "3.14",   // round(3.14159, 2)
+        "3.14",   // 3.14159.format(2)
+        "2.000",  // 2.0.format(3)
+        "4.5",    // 3 + 1.5
+        "10.0",   // 2.5 * 4
+        "3.3333333333333335", // 10 / 3.0
+        "true",   // 5.0 > 3
+        "true",   // 2 <= 2.0
+    ]);
+}
+
+#[test]
 fn lists_string_ops() {
     let out = run_ore("lists/string_ops.ore");
     let lines: Vec<&str> = out.lines().collect();

@@ -695,6 +695,8 @@ fn map_runtime_functions(
     map_fn!("ore_math_pi", ore_runtime::ore_math_pi);
     map_fn!("ore_math_e", ore_runtime::ore_math_e);
     map_fn!("ore_math_atan2", ore_runtime::ore_math_atan2);
+    map_fn!("ore_float_round_to", ore_runtime::ore_float_round_to);
+    map_fn!("ore_float_format", ore_runtime::ore_float_format);
     // String parsing
     map_fn!("ore_str_parse_int", ore_runtime::ore_str_parse_int);
     map_fn!("ore_str_parse_float", ore_runtime::ore_str_parse_float);

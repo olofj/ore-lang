@@ -2582,6 +2582,16 @@ pub extern "C" fn ore_math_pi() -> f64 { std::f64::consts::PI }
 pub extern "C" fn ore_math_e() -> f64 { std::f64::consts::E }
 #[no_mangle]
 pub extern "C" fn ore_math_atan2(y: f64, x: f64) -> f64 { y.atan2(x) }
+#[no_mangle]
+pub extern "C" fn ore_float_round_to(x: f64, decimals: i64) -> f64 {
+    let factor = 10_f64.powi(decimals as i32);
+    (x * factor).round() / factor
+}
+#[no_mangle]
+pub extern "C" fn ore_float_format(x: f64, decimals: i64) -> *mut OreStr {
+    let s = format!("{:.prec$}", x, prec = decimals as usize);
+    ore_str_new(s.as_ptr(), s.len() as u32)
+}
 
 // ── Concurrency ──
 
