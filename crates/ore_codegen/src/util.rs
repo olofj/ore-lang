@@ -473,4 +473,32 @@ impl<'ctx> CodeGen<'ctx> {
         self.call_result_to_value(result)
     }
 
+    /// Save break/continue targets and set new ones for a loop body.
+    /// Returns the saved targets to pass to `restore_loop_targets()`.
+    pub(crate) fn set_loop_targets(
+        &mut self,
+        end_bb: inkwell::basic_block::BasicBlock<'ctx>,
+        inc_bb: inkwell::basic_block::BasicBlock<'ctx>,
+    ) -> (Option<inkwell::basic_block::BasicBlock<'ctx>>, Option<inkwell::basic_block::BasicBlock<'ctx>>) {
+        let saved = (self.break_target, self.continue_target);
+        self.break_target = Some(end_bb);
+        self.continue_target = Some(inc_bb);
+        saved
+    }
+
+    /// Restore break/continue targets after a loop body, and add a branch
+    /// to `fallthrough_bb` if the current block has no terminator.
+    pub(crate) fn restore_loop_targets(
+        &mut self,
+        saved: (Option<inkwell::basic_block::BasicBlock<'ctx>>, Option<inkwell::basic_block::BasicBlock<'ctx>>),
+        fallthrough_bb: inkwell::basic_block::BasicBlock<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        self.break_target = saved.0;
+        self.continue_target = saved.1;
+        if self.current_block()?.get_terminator().is_none() {
+            bld!(self.builder.build_unconditional_branch(fallthrough_bb))?;
+        }
+        Ok(())
+    }
+
 }

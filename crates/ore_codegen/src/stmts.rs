@@ -363,17 +363,9 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Body
         self.builder.position_at_end(body_bb);
-        let saved_break = self.break_target;
-        let saved_continue = self.continue_target;
-        self.break_target = Some(end_bb);
-        self.continue_target = Some(inc_bb);
+        let saved = self.set_loop_targets(end_bb, inc_bb);
         self.compile_block_stmts(body, func)?;
-        self.break_target = saved_break;
-        self.continue_target = saved_continue;
-
-        if self.current_block()?.get_terminator().is_none() {
-            bld!(self.builder.build_unconditional_branch(inc_bb))?;
-        }
+        self.restore_loop_targets(saved, inc_bb)?;
 
         // Increment by step value
         self.builder.position_at_end(inc_bb);
@@ -499,17 +491,9 @@ impl<'ctx> CodeGen<'ctx> {
         let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
         bld!(self.builder.build_store(elem_alloca, typed_val))?;
 
-        let saved_break = self.break_target;
-        let saved_continue = self.continue_target;
-        self.break_target = Some(end_bb);
-        self.continue_target = Some(inc_bb);
+        let saved = self.set_loop_targets(end_bb, inc_bb);
         self.compile_block_stmts(body, func)?;
-        self.break_target = saved_break;
-        self.continue_target = saved_continue;
-
-        if self.current_block()?.get_terminator().is_none() {
-            bld!(self.builder.build_unconditional_branch(inc_bb))?;
-        }
+        self.restore_loop_targets(saved, inc_bb)?;
 
         // Increment index
         self.builder.position_at_end(inc_bb);
@@ -621,17 +605,9 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
-        let saved_break = self.break_target;
-        let saved_continue = self.continue_target;
-        self.break_target = Some(end_bb);
-        self.continue_target = Some(inc_bb);
+        let saved = self.set_loop_targets(end_bb, inc_bb);
         self.compile_block_stmts(body, func)?;
-        self.break_target = saved_break;
-        self.continue_target = saved_continue;
-
-        if self.current_block()?.get_terminator().is_none() {
-            bld!(self.builder.build_unconditional_branch(inc_bb))?;
-        }
+        self.restore_loop_targets(saved, inc_bb)?;
 
         self.builder.position_at_end(inc_bb);
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
@@ -714,17 +690,9 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
-        let saved_break = self.break_target;
-        let saved_continue = self.continue_target;
-        self.break_target = Some(end_bb);
-        self.continue_target = Some(inc_bb);
+        let saved = self.set_loop_targets(end_bb, inc_bb);
         self.compile_block_stmts(body, func)?;
-        self.break_target = saved_break;
-        self.continue_target = saved_continue;
-
-        if self.current_block()?.get_terminator().is_none() {
-            bld!(self.builder.build_unconditional_branch(inc_bb))?;
-        }
+        self.restore_loop_targets(saved, inc_bb)?;
 
         self.builder.position_at_end(inc_bb);
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
@@ -753,16 +721,9 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_conditional_branch(cond_val, body_bb, end_bb))?;
 
         self.builder.position_at_end(body_bb);
-        let saved_break = self.break_target;
-        let saved_continue = self.continue_target;
-        self.break_target = Some(end_bb);
-        self.continue_target = Some(cond_bb);
+        let saved = self.set_loop_targets(end_bb, cond_bb);
         self.compile_block_stmts(body, func)?;
-        self.break_target = saved_break;
-        self.continue_target = saved_continue;
-        if self.current_block()?.get_terminator().is_none() {
-            bld!(self.builder.build_unconditional_branch(cond_bb))?;
-        }
+        self.restore_loop_targets(saved, cond_bb)?;
 
         self.builder.position_at_end(end_bb);
         Ok(())
@@ -779,16 +740,9 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_unconditional_branch(body_bb))?;
 
         self.builder.position_at_end(body_bb);
-        let saved_break = self.break_target;
-        let saved_continue = self.continue_target;
-        self.break_target = Some(end_bb);
-        self.continue_target = Some(body_bb);
+        let saved = self.set_loop_targets(end_bb, body_bb);
         self.compile_block_stmts(body, func)?;
-        self.break_target = saved_break;
-        self.continue_target = saved_continue;
-        if self.current_block()?.get_terminator().is_none() {
-            bld!(self.builder.build_unconditional_branch(body_bb))?;
-        }
+        self.restore_loop_targets(saved, body_bb)?;
 
         self.builder.position_at_end(end_bb);
         Ok(())
