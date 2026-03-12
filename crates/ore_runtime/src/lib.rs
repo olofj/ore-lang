@@ -29,12 +29,7 @@ pub extern "C" fn ore_print_bool(b: i8) {
 pub extern "C" fn ore_print_float(f: f64) {
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
-    // Print without trailing zeros but always show at least one decimal
-    if f == f.floor() {
-        let _ = writeln!(handle, "{:.1}", f);
-    } else {
-        let _ = writeln!(handle, "{}", f);
-    }
+    let _ = writeln!(handle, "{}", format_float(f));
 }
 
 // ── No-newline print primitives (for list display) ──
@@ -60,11 +55,7 @@ pub extern "C" fn ore_print_int_no_newline(n: i64) {
 pub extern "C" fn ore_print_float_no_newline(f: f64) {
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
-    if f == f.floor() {
-        let _ = write!(handle, "{:.1}", f);
-    } else {
-        let _ = write!(handle, "{}", f);
-    }
+    let _ = write!(handle, "{}", format_float(f));
 }
 
 #[no_mangle]
@@ -236,12 +227,7 @@ pub extern "C" fn ore_bool_to_str(b: i8) -> *mut OreStr {
 
 #[no_mangle]
 pub extern "C" fn ore_float_to_str(f: f64) -> *mut OreStr {
-    let s = if f == f.floor() && !f.is_infinite() && !f.is_nan() {
-        format!("{:.1}", f)
-    } else {
-        f.to_string()
-    };
-    str_to_ore(s)
+    str_to_ore(format_float(f))
 }
 
 /// Dynamic to_str: converts a payload i64 to string based on a runtime kind tag.
@@ -1300,7 +1286,7 @@ pub extern "C" fn ore_list_print_typed(list: *mut OreList, kind: i64) {
 }
 
 fn format_float(f: f64) -> String {
-    if f == f.floor() {
+    if f == f.floor() && !f.is_infinite() && !f.is_nan() {
         format!("{:.1}", f)
     } else {
         format!("{}", f)
@@ -1644,13 +1630,7 @@ pub extern "C" fn ore_list_join_float(list: *mut OreList, sep: *mut OreStr) -> *
         let sep_str = (*sep).as_str();
         let mut parts: Vec<String> = Vec::new();
         for &bits in src.as_slice() {
-            let f = f64::from_bits(bits as u64);
-            let s = if f == f.floor() && !f.is_infinite() && !f.is_nan() {
-                format!("{:.1}", f)
-            } else {
-                f.to_string()
-            };
-            parts.push(s);
+            parts.push(format_float(f64::from_bits(bits as u64)));
         }
         let joined = parts.join(sep_str);
         str_to_ore(joined)
@@ -2354,10 +2334,7 @@ pub extern "C" fn ore_list_frequencies(list: *mut OreList, elem_kind: i8) -> *mu
         for &val in src.as_slice() {
             let key = match elem_kind {
                 0 => format!("{}", val), // Int
-                1 => {
-                    let f = f64::from_bits(val as u64);
-                    if f == f.floor() { format!("{:.1}", f) } else { format!("{}", f) }
-                }
+                1 => format_float(f64::from_bits(val as u64)),
                 2 => if val != 0 { "true".to_string() } else { "false".to_string() }, // Bool
                 3 => { // Str
                     let s = &*(val as *mut OreStr);
