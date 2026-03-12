@@ -1500,6 +1500,16 @@ impl Parser {
         Ok(MatchArm { pattern, guard, body })
     }
 
+    fn parse_variant_pattern(&mut self, name: String) -> Result<Pattern, ParseError> {
+        let mut bindings = Vec::new();
+        while let Token::Ident(b) = self.peek().clone() {
+            if self.peek() == &Token::Arrow { break; }
+            self.advance();
+            bindings.push(b);
+        }
+        Ok(Pattern::Variant { name, bindings })
+    }
+
     fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
         match self.peek().clone() {
             Token::Ident(name) if name == "_" => {
@@ -1510,55 +1520,10 @@ impl Parser {
                 self.advance();
                 Ok(Pattern::Variant { name: "None".to_string(), bindings: vec![] })
             }
-            Token::Some => {
-                self.advance();
-                let mut bindings = Vec::new();
-                while let Token::Ident(b) = self.peek().clone() {
-                    if self.peek() == &Token::Arrow {
-                        break;
-                    }
-                    self.advance();
-                    bindings.push(b);
-                }
-                Ok(Pattern::Variant { name: "Some".to_string(), bindings })
-            }
-            Token::Ok_ => {
-                self.advance();
-                let mut bindings = Vec::new();
-                while let Token::Ident(b) = self.peek().clone() {
-                    if self.peek() == &Token::Arrow {
-                        break;
-                    }
-                    self.advance();
-                    bindings.push(b);
-                }
-                Ok(Pattern::Variant { name: "Ok".to_string(), bindings })
-            }
-            Token::Err_ => {
-                self.advance();
-                let mut bindings = Vec::new();
-                while let Token::Ident(b) = self.peek().clone() {
-                    if self.peek() == &Token::Arrow {
-                        break;
-                    }
-                    self.advance();
-                    bindings.push(b);
-                }
-                Ok(Pattern::Variant { name: "Err".to_string(), bindings })
-            }
-            Token::Ident(name) => {
-                self.advance();
-                // If followed by identifiers (not Arrow), these are bindings
-                let mut bindings = Vec::new();
-                while let Token::Ident(b) = self.peek().clone() {
-                    if self.peek() == &Token::Arrow {
-                        break;
-                    }
-                    self.advance();
-                    bindings.push(b);
-                }
-                Ok(Pattern::Variant { name, bindings })
-            }
+            Token::Some => { self.advance(); self.parse_variant_pattern("Some".to_string()) }
+            Token::Ok_ => { self.advance(); self.parse_variant_pattern("Ok".to_string()) }
+            Token::Err_ => { self.advance(); self.parse_variant_pattern("Err".to_string()) }
+            Token::Ident(name) => { self.advance(); self.parse_variant_pattern(name) }
             Token::Int(n) => {
                 self.advance();
                 // Check for range pattern: 1..10
