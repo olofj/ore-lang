@@ -200,8 +200,7 @@ impl<'ctx> CodeGen<'ctx> {
             "readln" | "input" => {
                 if args.len() == 1 {
                     let (prompt, _) = self.compile_expr_with_kind(&args[0], func)?;
-                    let print_fn = self.rt("ore_str_print_no_newline")?;
-                    bld!(self.builder.build_call(print_fn, &[prompt.into()], ""))?;
+                    self.call_rt("ore_str_print_no_newline", &[prompt.into()], "")?;
                 }
                 let val = self.call_rt("ore_readln", &[], "readln")?;
                 Ok(Some((val, ValKind::Str)))
@@ -377,15 +376,12 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 let start = self.compile_expr(&args[0], func)?;
                 let end = self.compile_expr(&args[1], func)?;
-                let result = if args.len() == 3 {
+                let val = if args.len() == 3 {
                     let step = self.compile_expr(&args[2], func)?;
-                    let rt = self.rt("ore_range_step")?;
-                    bld!(self.builder.build_call(rt, &[start.into(), end.into(), step.into()], "range"))?
+                    self.call_rt("ore_range_step", &[start.into(), end.into(), step.into()], "range")?
                 } else {
-                    let rt = self.rt("ore_range")?;
-                    bld!(self.builder.build_call(rt, &[start.into(), end.into()], "range"))?
+                    self.call_rt("ore_range", &[start.into(), end.into()], "range")?
                 };
-                let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Int);
                 Ok(Some((val, ValKind::list_of(ValKind::Int))))
             }
@@ -417,8 +413,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let line = self.current_line;
                     self.compile_string_literal(&format!("assertion failed at line {}", line))?
                 };
-                let rt = self.rt("ore_assert_fail")?;
-                bld!(self.builder.build_call(rt, &[msg.into()], ""))?;
+                self.call_rt("ore_assert_fail", &[msg.into()], "")?;
                 bld!(self.builder.build_unreachable())?;
 
                 self.builder.position_at_end(pass_bb);
