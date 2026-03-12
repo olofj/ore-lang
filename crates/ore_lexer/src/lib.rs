@@ -368,42 +368,10 @@ impl<'a> Lexer<'a> {
             b'0'..=b'9' => self.lex_number()?,
             b'"' => self.lex_string()?,
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.lex_ident_or_keyword(),
-            b'+' => {
-                self.advance();
-                if self.peek() == Some(b'=') {
-                    self.advance();
-                    self.emit(Token::PlusEq, start);
-                } else {
-                    self.emit(Token::Plus, start);
-                }
-            }
-            b'*' => {
-                self.advance();
-                if self.peek() == Some(b'=') {
-                    self.advance();
-                    self.emit(Token::StarEq, start);
-                } else {
-                    self.emit(Token::Star, start);
-                }
-            }
-            b'/' => {
-                self.advance();
-                if self.peek() == Some(b'=') {
-                    self.advance();
-                    self.emit(Token::SlashEq, start);
-                } else {
-                    self.emit(Token::Slash, start);
-                }
-            }
-            b'%' => {
-                self.advance();
-                if self.peek() == Some(b'=') {
-                    self.advance();
-                    self.emit(Token::PercentEq, start);
-                } else {
-                    self.emit(Token::Percent, start);
-                }
-            }
+            b'+' => self.lex_maybe_eq(start, Token::Plus, Token::PlusEq),
+            b'*' => self.lex_maybe_eq(start, Token::Star, Token::StarEq),
+            b'/' => self.lex_maybe_eq(start, Token::Slash, Token::SlashEq),
+            b'%' => self.lex_maybe_eq(start, Token::Percent, Token::PercentEq),
             b'(' => { self.advance(); self.emit(Token::LParen, start); }
             b')' => { self.advance(); self.emit(Token::RParen, start); }
             b'{' => { self.advance(); self.emit(Token::LBrace, start); }
@@ -495,6 +463,17 @@ impl<'a> Lexer<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Lex an operator that may be followed by `=` for a compound assignment.
+    fn lex_maybe_eq(&mut self, start: usize, base: Token, compound: Token) {
+        self.advance();
+        if self.peek() == Some(b'=') {
+            self.advance();
+            self.emit(compound, start);
+        } else {
+            self.emit(base, start);
+        }
     }
 
     fn lex_number(&mut self) -> Result<(), LexError> {
