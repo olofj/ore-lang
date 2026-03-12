@@ -3,15 +3,21 @@ use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
 use inkwell::IntPredicate;
 
 impl<'ctx> CodeGen<'ctx> {
+    /// Compile a string literal, print it (with or without newline), and release it.
+    fn print_str_literal(&mut self, s: &str, newline: bool) -> Result<(), CodeGenError> {
+        let str_val = self.compile_string_literal(s)?;
+        let rt = if newline { "ore_str_print" } else { "ore_str_print_no_newline" };
+        self.call_rt(rt, &[str_val.into()], "")?;
+        self.call_rt("ore_str_release", &[str_val.into()], "")?;
+        Ok(())
+    }
+
     pub(crate) fn compile_typed_list_print(
         &mut self,
         list_ptr: PointerValue<'ctx>,
         elem_kind: &ValKind,
     ) -> Result<(), CodeGenError> {
-        // Print "[" using ore_str_print
-        let open_bracket = self.compile_string_literal("[")?;
-        self.call_rt("ore_str_print_no_newline", &[open_bracket.into()], "")?;
-        self.call_rt("ore_str_release", &[open_bracket.into()], "")?;
+        self.print_str_literal("[", false)?;
 
         let len = self.call_rt("ore_list_len", &[list_ptr.into()], "len")?.into_int_value();
         // Cache list_get for use in loop body
@@ -44,9 +50,7 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_conditional_branch(is_first, elem_bb, sep_bb))?;
 
         self.builder.position_at_end(sep_bb);
-        let sep = self.compile_string_literal(", ")?;
-        self.call_rt("ore_str_print_no_newline", &[sep.into()], "")?;
-        self.call_rt("ore_str_release", &[sep.into()], "")?;
+        self.print_str_literal(", ", false)?;
         bld!(self.builder.build_unconditional_branch(elem_bb))?;
 
         self.builder.position_at_end(elem_bb);
@@ -81,10 +85,7 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_unconditional_branch(loop_check))?;
 
         self.builder.position_at_end(loop_end);
-        // Print "]\n"
-        let close_str = self.compile_string_literal("]")?;
-        self.call_rt("ore_str_print", &[close_str.into()], "")?;
-        self.call_rt("ore_str_release", &[close_str.into()], "")?;
+        self.print_str_literal("]", true)?;
 
         Ok(())
     }
