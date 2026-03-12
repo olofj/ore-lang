@@ -212,24 +212,20 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    /// Built-in Option type: { i8, i64 } where tag=0 is None, tag=1 is Some
-    /// Built-in Option type: { i8 tag, i8 kind, i64 payload }
-    /// tag: 0=None, 1=Some; kind: ValKind discriminant of the payload
-    pub(crate) fn option_type(&self) -> inkwell::types::StructType<'ctx> {
+    /// Tagged union layout shared by Option and Result: { i8 tag, i8 kind, i64 payload }
+    /// Option: tag 0=None, 1=Some.  Result: tag 0=Ok, 1=Err.
+    pub(crate) fn tagged_union_type(&self) -> inkwell::types::StructType<'ctx> {
         self.context.struct_type(
             &[self.context.i8_type().into(), self.context.i8_type().into(), self.context.i64_type().into()],
             false,
         )
     }
 
-    /// Built-in Result type: { i8 tag, i8 kind, i64 payload }
-    /// tag: 0=Ok, 1=Err; kind: ValKind discriminant of the payload
-    pub(crate) fn result_type(&self) -> inkwell::types::StructType<'ctx> {
-        self.context.struct_type(
-            &[self.context.i8_type().into(), self.context.i8_type().into(), self.context.i64_type().into()],
-            false,
-        )
-    }
+    /// Alias for readability at Option call sites.
+    pub(crate) fn option_type(&self) -> inkwell::types::StructType<'ctx> { self.tagged_union_type() }
+
+    /// Alias for readability at Result call sites.
+    pub(crate) fn result_type(&self) -> inkwell::types::StructType<'ctx> { self.tagged_union_type() }
 
     pub(crate) fn valkind_to_tag(&self, kind: &ValKind) -> u8 {
         match kind {
@@ -601,8 +597,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Void => self.context.i64_type().into(),
             ValKind::Record(name) => self.records[name].struct_type.into(),
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
-            ValKind::Option => self.option_type().into(),
-            ValKind::Result => self.result_type().into(),
+            ValKind::Option | ValKind::Result => self.tagged_union_type().into(),
             ValKind::List(_) | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
         }
     }
