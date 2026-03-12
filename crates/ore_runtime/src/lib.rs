@@ -163,32 +163,24 @@ pub extern "C" fn ore_str_concat(a: *mut OreStr, b: *mut OreStr) -> *mut OreStr 
     }
 }
 
-#[no_mangle]
-pub extern "C" fn ore_str_print(s: *mut OreStr) {
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
+fn print_ore_str(handle: &mut impl std::io::Write, s: *mut OreStr) {
     if s.is_null() {
         let _ = writeln!(handle);
     } else {
-        unsafe {
-            let _ = writeln!(handle, "{}", (*s).as_str());
-        }
+        unsafe { let _ = writeln!(handle, "{}", (*s).as_str()); }
     }
+}
+
+#[no_mangle]
+pub extern "C" fn ore_str_print(s: *mut OreStr) {
+    print_ore_str(&mut std::io::stdout().lock(), s);
 }
 
 // ── Stderr printing ──
 
 #[no_mangle]
 pub extern "C" fn ore_eprint_str(s: *mut OreStr) {
-    let stderr = std::io::stderr();
-    let mut handle = stderr.lock();
-    if s.is_null() {
-        let _ = writeln!(handle);
-    } else {
-        unsafe {
-            let _ = writeln!(handle, "{}", (*s).as_str());
-        }
-    }
+    print_ore_str(&mut std::io::stderr().lock(), s);
 }
 
 #[no_mangle]
@@ -1788,30 +1780,31 @@ pub extern "C" fn ore_list_chunks(list: *mut OreList, n: i64) -> *mut OreList {
     result
 }
 
+unsafe fn int_list_fold(list: *mut OreList, init: i64, op: fn(i64, i64) -> i64) -> i64 {
+    let mut acc = init;
+    for &val in (&*list).as_slice() { acc = op(acc, val); }
+    acc
+}
+
+unsafe fn float_list_fold(list: *mut OreList, init: f64, op: fn(f64, f64) -> f64) -> f64 {
+    let mut acc = init;
+    for &val in (&*list).as_slice() { acc = op(acc, f64::from_bits(val as u64)); }
+    acc
+}
+
 /// Sum all i64 elements in a list.
 #[no_mangle]
 pub extern "C" fn ore_list_sum(list: *mut OreList) -> i64 {
-    unsafe {
-        let src = &*list;
-        let mut total: i64 = 0;
-        for &val in src.as_slice() {
-            total += val;
-        }
-        total
-    }
+    unsafe { int_list_fold(list, 0, |a, b| a + b) }
 }
 
 /// Average of integers, returned as float.
 #[no_mangle]
 pub extern "C" fn ore_list_average(list: *mut OreList) -> f64 {
     unsafe {
-        let src = &*list;
-        if src.len == 0 { return 0.0; }
-        let mut total: i64 = 0;
-        for &val in src.as_slice() {
-            total += val;
-        }
-        total as f64 / src.len as f64
+        let len = (&*list).len;
+        if len == 0 { return 0.0; }
+        int_list_fold(list, 0, |a, b| a + b) as f64 / len as f64
     }
 }
 
@@ -1819,38 +1812,20 @@ pub extern "C" fn ore_list_average(list: *mut OreList) -> f64 {
 #[no_mangle]
 pub extern "C" fn ore_list_average_float(list: *mut OreList) -> f64 {
     unsafe {
-        let src = &*list;
-        if src.len == 0 { return 0.0; }
-        let mut total: f64 = 0.0;
-        for &val in src.as_slice() {
-            total += f64::from_bits(val as u64);
-        }
-        total / src.len as f64
+        let len = (&*list).len;
+        if len == 0 { return 0.0; }
+        float_list_fold(list, 0.0, |a, b| a + b) / len as f64
     }
 }
 
 #[no_mangle]
 pub extern "C" fn ore_list_sum_float(list: *mut OreList) -> f64 {
-    unsafe {
-        let src = &*list;
-        let mut total: f64 = 0.0;
-        for &val in src.as_slice() {
-            total += f64::from_bits(val as u64);
-        }
-        total
-    }
+    unsafe { float_list_fold(list, 0.0, |a, b| a + b) }
 }
 
 #[no_mangle]
 pub extern "C" fn ore_list_product_float(list: *mut OreList) -> f64 {
-    unsafe {
-        let src = &*list;
-        let mut total: f64 = 1.0;
-        for &val in src.as_slice() {
-            total *= f64::from_bits(val as u64);
-        }
-        total
-    }
+    unsafe { float_list_fold(list, 1.0, |a, b| a * b) }
 }
 
 unsafe fn list_extremum_float(list: *mut OreList, is_better: fn(f64, f64) -> bool) -> f64 {
@@ -1877,14 +1852,7 @@ pub extern "C" fn ore_list_max_float(list: *mut OreList) -> f64 {
 /// Product of all i64 elements in a list.
 #[no_mangle]
 pub extern "C" fn ore_list_product(list: *mut OreList) -> i64 {
-    unsafe {
-        let src = &*list;
-        let mut total: i64 = 1;
-        for &val in src.as_slice() {
-            total *= val;
-        }
-        total
-    }
+    unsafe { int_list_fold(list, 1, |a, b| a * b) }
 }
 
 /// Flat map: applies func to each element (must return a list), concatenates results.
@@ -2423,29 +2391,29 @@ pub extern "C" fn ore_float_format(x: f64, decimals: i64) -> *mut OreStr {
 
 static THREADS: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new());
 
+fn register_thread(handle: std::thread::JoinHandle<()>) {
+    THREADS.lock().unwrap().push(handle);
+}
+
 #[no_mangle]
 pub extern "C" fn ore_spawn(func: extern "C" fn()) {
-    let handle = std::thread::spawn(move || func());
-    THREADS.lock().unwrap().push(handle);
+    register_thread(std::thread::spawn(move || func()));
 }
 
 /// Spawn a function that takes a single i64 argument (used for passing channels, etc.)
 #[no_mangle]
 pub extern "C" fn ore_spawn_with_arg(func: extern "C" fn(i64), arg: i64) {
-    let handle = std::thread::spawn(move || func(arg));
-    THREADS.lock().unwrap().push(handle);
+    register_thread(std::thread::spawn(move || func(arg)));
 }
 
 #[no_mangle]
 pub extern "C" fn ore_spawn_with_2args(func: extern "C" fn(i64, i64), a: i64, b: i64) {
-    let handle = std::thread::spawn(move || func(a, b));
-    THREADS.lock().unwrap().push(handle);
+    register_thread(std::thread::spawn(move || func(a, b)));
 }
 
 #[no_mangle]
 pub extern "C" fn ore_spawn_with_3args(func: extern "C" fn(i64, i64, i64), a: i64, b: i64, c: i64) {
-    let handle = std::thread::spawn(move || func(a, b, c));
-    THREADS.lock().unwrap().push(handle);
+    register_thread(std::thread::spawn(move || func(a, b, c)));
 }
 
 #[no_mangle]
@@ -2598,20 +2566,20 @@ pub extern "C" fn ore_assert(cond: i8, msg: *const u8, line: i64) {
 
 // ── Time functions ────────────────────────────────────────────
 
-#[no_mangle]
-pub extern "C" fn ore_time_now() -> i64 {
+fn unix_epoch_duration() -> std::time::Duration {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
+        .unwrap_or_default()
+}
+
+#[no_mangle]
+pub extern "C" fn ore_time_now() -> i64 {
+    unix_epoch_duration().as_secs() as i64
 }
 
 #[no_mangle]
 pub extern "C" fn ore_time_ms() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0)
+    unix_epoch_duration().as_millis() as i64
 }
 
 // ── Process ──────────────────────────────────────────────────
