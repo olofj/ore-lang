@@ -808,8 +808,8 @@ impl<'ctx> CodeGen<'ctx> {
                     // Fill in default parameter values for missing args
                     if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
                         let num_args = compiled_args.len();
-                        for i in num_args..defaults.len() {
-                            if let Some(ref default_expr) = defaults[i] {
+                        for default in defaults.iter().skip(num_args) {
+                            if let Some(ref default_expr) = default {
                                 compiled_args.push(self.compile_expr(default_expr, func)?.into());
                             }
                         }
@@ -1136,8 +1136,8 @@ impl<'ctx> CodeGen<'ctx> {
                     // Fill in default parameter values for missing args
                     if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
                         let num_args = compiled_args.len();
-                        for i in num_args..defaults.len() {
-                            if let Some(ref default_expr) = defaults[i] {
+                        for default in defaults.iter().skip(num_args) {
+                            if let Some(ref default_expr) = default {
                                 compiled_args.push(self.compile_expr(default_expr, current_fn)?.into());
                             }
                         }

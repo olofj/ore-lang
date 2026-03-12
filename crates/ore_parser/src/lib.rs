@@ -77,11 +77,8 @@ impl Parser {
 
     /// Skip newlines, indents, and dedents (for inside brackets/braces)
     fn skip_whitespace_tokens(&mut self) {
-        loop {
-            match self.peek() {
-                Token::Newline | Token::Indent | Token::Dedent => { self.advance(); }
-                _ => break,
-            }
+        while let Token::Newline | Token::Indent | Token::Dedent = self.peek() {
+            self.advance();
         }
     }
 

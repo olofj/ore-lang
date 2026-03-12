@@ -304,15 +304,13 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         // Bool methods
-        if obj_kind == ValKind::Bool {
-            if method == "to_int" {
-                let i_val = bld!(self.builder.build_int_z_extend(
-                    obj_val.into_int_value(),
-                    self.context.i64_type(),
-                    "b2i"
-                ))?;
-                return Ok((i_val.into(), ValKind::Int));
-            }
+        if obj_kind == ValKind::Bool && method == "to_int" {
+            let i_val = bld!(self.builder.build_int_z_extend(
+                obj_val.into_int_value(),
+                self.context.i64_type(),
+                "b2i"
+            ))?;
+            return Ok((i_val.into(), ValKind::Int));
         }
 
         // Int methods

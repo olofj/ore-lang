@@ -129,8 +129,8 @@ fn fixup_multiline_pipes(tokens: Vec<Spanned>) -> Vec<Spanned> {
             if j < len && matches!(tokens[j].token, Token::Pipe | Token::Dot) {
                 // Remove the Newline and all Indent tokens
                 remove[i] = true;
-                for k in (i + 1)..j {
-                    remove[k] = true;
+                for r in &mut remove[(i + 1)..j] {
+                    *r = true;
                 }
                 pending_dedent_removes += indent_count;
                 i = j; // skip to Pipe/Dot
