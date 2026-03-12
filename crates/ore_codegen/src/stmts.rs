@@ -372,6 +372,34 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
 
+    /// Resolve the element kind for a list iterable, using all available sources.
+    /// Priority: list_element_kinds > last_list_elem_kind > ValKind variant > default Int.
+    fn resolve_list_elem_kind(&mut self, iterable: &Expr, list_kind: &ValKind) -> ValKind {
+        let explicit = if let Expr::Ident(name) = iterable {
+            self.list_element_kinds.get(name).cloned()
+        } else {
+            None
+        };
+        if let Some(ek) = explicit {
+            return ek;
+        }
+        self.last_list_elem_kind.clone()
+            .or_else(|| match list_kind {
+                ValKind::List(Some(ek)) => Some(*ek.clone()),
+                _ => None,
+            })
+            .unwrap_or(ValKind::Int)
+    }
+
+    /// Check if an iterable expression refers to a known map variable.
+    fn is_map_iterable(&self, iterable: &Expr) -> bool {
+        if let Expr::Ident(name) = iterable {
+            self.map_value_kinds.contains_key(name)
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn compile_for_each(
         &mut self,
         var: &str,
@@ -379,43 +407,16 @@ impl<'ctx> CodeGen<'ctx> {
         body: &Block,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
-        // Check if the iterable is a map — if so, iterate over its keys
-        let is_map = if let Expr::Ident(name) = iterable {
-            self.map_value_kinds.contains_key(name)
-        } else {
-            false
-        };
-
-        if is_map {
-            // For maps: get keys list and iterate over it
+        if self.is_map_iterable(iterable) {
             let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
             let list_ptr = self.call_rt("ore_map_keys", &[map_ptr.into()], "keys")?.into_pointer_value();
             return self.compile_for_each_over_list(var, list_ptr, ValKind::Str, body, func);
         }
 
-        // Determine element kind from the iterable
-        let elem_kind = if let Expr::Ident(name) = iterable {
-            self.list_element_kinds.get(name).cloned().unwrap_or(ValKind::Int)
-        } else {
-            ValKind::Int
-        };
-
         let (list_val, list_kind) = self.compile_expr_with_kind(iterable, func)?;
-        // Priority: list_element_kinds (most up-to-date) > last_list_elem_kind > ValKind variant > default
-        let final_elem_kind = if elem_kind != ValKind::Int {
-            // list_element_kinds had a non-default value — use it (most up-to-date)
-            elem_kind
-        } else {
-            self.last_list_elem_kind.clone()
-                .or_else(|| match &list_kind {
-                    ValKind::List(Some(ek)) => Some(*ek.clone()),
-                    _ => None,
-                })
-                .unwrap_or(elem_kind)
-        };
+        let elem_kind = self.resolve_list_elem_kind(iterable, &list_kind);
         let list_ptr = list_val.into_pointer_value();
-
-        self.compile_for_each_over_list(var, list_ptr, final_elem_kind, body, func)
+        self.compile_for_each_over_list(var, list_ptr, elem_kind, body, func)
     }
 
     /// Allocate a local variable with the correct LLVM type for a given ValKind.
@@ -521,36 +522,13 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(), CodeGenError> {
         let i64_type = self.context.i64_type();
 
-        // Detect if iterable is a map or a list
-        let is_map = if let Expr::Ident(name) = iterable {
-            self.map_value_kinds.contains_key(name)
-        } else {
-            false
-        };
-
-        if is_map {
+        if self.is_map_iterable(iterable) {
             return self.compile_for_each_kv_map(key_var, val_var, iterable, body, func);
         }
 
         // List enumeration: for i, x in list
-        let elem_kind = if let Expr::Ident(name) = iterable {
-            self.list_element_kinds.get(name).cloned().unwrap_or(ValKind::Int)
-        } else {
-            ValKind::Int
-        };
-
         let (list_val, list_kind) = self.compile_expr_with_kind(iterable, func)?;
-        let final_elem_kind = if elem_kind != ValKind::Int {
-            elem_kind
-        } else {
-            self.last_list_elem_kind.clone()
-                .or_else(|| match &list_kind {
-                    ValKind::List(Some(ek)) => Some(*ek.clone()),
-                    _ => None,
-                })
-                .unwrap_or(elem_kind)
-        };
-        let elem_kind = final_elem_kind;
+        let elem_kind = self.resolve_list_elem_kind(iterable, &list_kind);
         let list_ptr = list_val.into_pointer_value();
 
         let len_val = self.call_rt("ore_list_len", &[list_ptr.into()], "len")?.into_int_value();
