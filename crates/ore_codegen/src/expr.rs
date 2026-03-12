@@ -919,47 +919,17 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::OptionSome(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
-                let opt_ty = self.option_type();
-                let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_some"))?;
-                let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
-                bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(1, false)))?;
-                let kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 1, "kind_ptr"))?;
-                let kind_tag = self.valkind_to_tag(&kind);
-                bld!(self.builder.build_store(kind_ptr, self.context.i8_type().const_int(kind_tag as u64, false)))?;
-                let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
-                let i64_val = self.value_to_i64(val)?;
-                bld!(self.builder.build_store(val_ptr, i64_val))?;
-                let result = bld!(self.builder.build_load(opt_ty, alloca, "some_val"))?;
+                let result = self.build_tagged_wrapper(self.option_type(), 1, &kind, val, "opt_some", "some_val")?;
                 Ok((result, ValKind::Option))
             }
             Expr::ResultOk(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
-                let res_ty = self.result_type();
-                let alloca = bld!(self.builder.build_alloca(res_ty, "res_ok"))?;
-                let tag_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 0, "tag_ptr"))?;
-                bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(0, false)))?;
-                let kind_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 1, "kind_ptr"))?;
-                let kind_tag = self.valkind_to_tag(&kind);
-                bld!(self.builder.build_store(kind_ptr, self.context.i8_type().const_int(kind_tag as u64, false)))?;
-                let val_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 2, "val_ptr"))?;
-                let i64_val = self.value_to_i64(val)?;
-                bld!(self.builder.build_store(val_ptr, i64_val))?;
-                let result = bld!(self.builder.build_load(res_ty, alloca, "ok_val"))?;
+                let result = self.build_tagged_wrapper(self.result_type(), 0, &kind, val, "res_ok", "ok_val")?;
                 Ok((result, ValKind::Result))
             }
             Expr::ResultErr(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
-                let res_ty = self.result_type();
-                let alloca = bld!(self.builder.build_alloca(res_ty, "res_err"))?;
-                let tag_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 0, "tag_ptr"))?;
-                bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(1, false)))?;
-                let kind_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 1, "kind_ptr"))?;
-                let kind_tag = self.valkind_to_tag(&kind);
-                bld!(self.builder.build_store(kind_ptr, self.context.i8_type().const_int(kind_tag as u64, false)))?;
-                let val_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 2, "val_ptr"))?;
-                let i64_val = self.value_to_i64(val)?;
-                bld!(self.builder.build_store(val_ptr, i64_val))?;
-                let result = bld!(self.builder.build_load(res_ty, alloca, "err_val"))?;
+                let result = self.build_tagged_wrapper(self.result_type(), 1, &kind, val, "res_err", "err_val")?;
                 Ok((result, ValKind::Result))
             }
             Expr::Try(inner) => {
