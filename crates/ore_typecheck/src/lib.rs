@@ -174,19 +174,23 @@ impl TypeChecker {
         }
     }
 
+    /// Register a function's parameter types, return type, and required param count.
+    fn register_fn(&mut self, fndef: &FnDef) -> (Vec<Type>, Type) {
+        let params: Vec<Type> = fndef.params.iter().map(|p| self.resolve_type_expr(&p.ty)).collect();
+        let ret = fndef.ret_type.as_ref().map(|t| self.resolve_type_expr(t)).unwrap_or(Type::Unit);
+        let required = fndef.params.iter().filter(|p| p.default.is_none()).count();
+        self.functions.insert(fndef.name.clone(), (params.clone(), ret.clone()));
+        if required < params.len() {
+            self.fn_required_params.insert(fndef.name.clone(), required);
+        }
+        (params, ret)
+    }
+
     /// Register all top-level definitions before checking bodies
     fn register_items(&mut self, program: &Program) {
         for item in &program.items {
             match item {
-                Item::FnDef(fndef) => {
-                    let params: Vec<Type> = fndef.params.iter().map(|p| self.resolve_type_expr(&p.ty)).collect();
-                    let ret = fndef.ret_type.as_ref().map(|t| self.resolve_type_expr(t)).unwrap_or(Type::Unit);
-                    let required = fndef.params.iter().filter(|p| p.default.is_none()).count();
-                    self.functions.insert(fndef.name.clone(), (params.clone(), ret));
-                    if required < params.len() {
-                        self.fn_required_params.insert(fndef.name.clone(), required);
-                    }
-                }
+                Item::FnDef(fndef) => { self.register_fn(fndef); }
                 Item::TypeDef(td) => {
                     let fields: Vec<(String, Type)> = td.fields.iter()
                         .map(|f| (f.name.clone(), self.resolve_type_expr(&f.ty)))
@@ -472,11 +476,7 @@ impl TypeChecker {
                 Type::Int
             }
             Stmt::LocalFn(fndef) => {
-                // Register the local function and check its body
-                let params: Vec<Type> = fndef.params.iter().map(|p| self.resolve_type_expr(&p.ty)).collect();
-                let ret = fndef.ret_type.as_ref().map(|t| self.resolve_type_expr(t)).unwrap_or(Type::Unit);
-                self.functions.insert(fndef.name.clone(), (params.clone(), ret.clone()));
-                self.fn_required_params.insert(fndef.name.clone(), fndef.params.iter().filter(|p| p.default.is_none()).count());
+                let (params, ret) = self.register_fn(fndef);
                 let mut fn_env = Env::new();
                 for (param, ty) in fndef.params.iter().zip(params.iter()) {
                     fn_env.insert(param.name.clone(), ty.clone(), false);
