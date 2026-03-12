@@ -1,8 +1,63 @@
 use super::*;
-use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
+use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
 use inkwell::IntPredicate;
 
+/// Loop control structure returned by `build_indexed_loop`.
+struct IndexedLoop<'ctx> {
+    idx_alloca: PointerValue<'ctx>,
+    inc_bb: inkwell::basic_block::BasicBlock<'ctx>,
+    end_bb: inkwell::basic_block::BasicBlock<'ctx>,
+    cond_bb: inkwell::basic_block::BasicBlock<'ctx>,
+}
+
 impl<'ctx> CodeGen<'ctx> {
+    /// Build the skeleton of an indexed loop: idx alloca, cond/body/inc/end blocks,
+    /// and branch to the condition block. Returns the loop structure; the caller
+    /// should position at body_bb and emit body code, then call `finish_indexed_loop`.
+    fn build_indexed_loop(
+        &mut self,
+        len_val: IntValue<'ctx>,
+        prefix: &str,
+        func: FunctionValue<'ctx>,
+    ) -> Result<IndexedLoop<'ctx>, CodeGenError> {
+        let i64_type = self.context.i64_type();
+        let idx_alloca = bld!(self.builder.build_alloca(i64_type, "idx"))?;
+        bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
+
+        let cond_bb = self.context.append_basic_block(func, &format!("{prefix}_cond"));
+        let body_bb = self.context.append_basic_block(func, &format!("{prefix}_body"));
+        let inc_bb = self.context.append_basic_block(func, &format!("{prefix}_inc"));
+        let end_bb = self.context.append_basic_block(func, &format!("{prefix}_end"));
+
+        bld!(self.builder.build_unconditional_branch(cond_bb))?;
+
+        self.builder.position_at_end(cond_bb);
+        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+        let cmp = bld!(self.builder.build_int_compare(IntPredicate::SLT, idx, len_val, &format!("{prefix}_cmp")))?;
+        bld!(self.builder.build_conditional_branch(cmp, body_bb, end_bb))?;
+
+        self.builder.position_at_end(body_bb);
+        Ok(IndexedLoop { idx_alloca, inc_bb, end_bb, cond_bb })
+    }
+
+    /// Load the current index from the loop alloca.
+    fn loop_index(&self, lp: &IndexedLoop<'ctx>) -> Result<IntValue<'ctx>, CodeGenError> {
+        let i64_type = self.context.i64_type();
+        Ok(bld!(self.builder.build_load(i64_type, lp.idx_alloca, "idx"))?.into_int_value())
+    }
+
+    /// Emit the increment block and position at end_bb. Must be called after the
+    /// body block code has been emitted (including compile_block_stmts).
+    fn finish_indexed_loop(&mut self, lp: &IndexedLoop<'ctx>) -> Result<(), CodeGenError> {
+        let i64_type = self.context.i64_type();
+        self.builder.position_at_end(lp.inc_bb);
+        let idx = bld!(self.builder.build_load(i64_type, lp.idx_alloca, "idx"))?.into_int_value();
+        let next = bld!(self.builder.build_int_add(idx, i64_type.const_int(1, false), "inc"))?;
+        bld!(self.builder.build_store(lp.idx_alloca, next))?;
+        bld!(self.builder.build_unconditional_branch(lp.cond_bb))?;
+        self.builder.position_at_end(lp.end_bb);
+        Ok(())
+    }
     /// Track list element kind and map value kind for a variable binding.
     /// `consume` = true uses .take() (for new bindings), false uses .clone() (for reassignment).
     fn track_variable_kinds(&mut self, name: &str, kind: &ValKind, consume: bool) {
@@ -456,52 +511,22 @@ impl<'ctx> CodeGen<'ctx> {
         body: &Block,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
-        let i64_type = self.context.i64_type();
-
-        // Get list length
         let len_val = self.call_rt("ore_list_len", &[list_ptr.into()], "len")?.into_int_value();
 
-        // Index variable
-        let idx_alloca = bld!(self.builder.build_alloca(i64_type, "idx"))?;
-        bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
-
-        // Element variable — use appropriate type based on element kind
         let (elem_alloca, elem_ty) = self.alloca_for_kind(var, &elem_kind)?;
         self.variables.insert(var.to_string(), VarInfo { ptr: elem_alloca, ty: elem_ty, kind: elem_kind.clone(), is_mutable: false });
 
-        let cond_bb = self.context.append_basic_block(func, "foreach_cond");
-        let body_bb = self.context.append_basic_block(func, "foreach_body");
-        let inc_bb = self.context.append_basic_block(func, "foreach_inc");
-        let end_bb = self.context.append_basic_block(func, "foreach_end");
-
-        bld!(self.builder.build_unconditional_branch(cond_bb))?;
-
-        // Condition: idx < len
-        self.builder.position_at_end(cond_bb);
-        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let cmp = bld!(self.builder.build_int_compare(IntPredicate::SLT, idx, len_val, "foreach_cmp"))?;
-        bld!(self.builder.build_conditional_branch(cmp, body_bb, end_bb))?;
-
-        // Body: load element, execute body
-        self.builder.position_at_end(body_bb);
-        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+        let lp = self.build_indexed_loop(len_val, "foreach", func)?;
+        let idx = self.loop_index(&lp)?;
         let raw_val = self.call_rt("ore_list_get", &[list_ptr.into(), idx.into()], "elem")?;
-        // Convert raw i64 from list back to the correct type
         let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
         bld!(self.builder.build_store(elem_alloca, typed_val))?;
 
-        let saved = self.set_loop_targets(end_bb, inc_bb);
+        let saved = self.set_loop_targets(lp.end_bb, lp.inc_bb);
         self.compile_block_stmts(body, func)?;
-        self.restore_loop_targets(saved, inc_bb)?;
+        self.restore_loop_targets(saved, lp.inc_bb)?;
 
-        // Increment index
-        self.builder.position_at_end(inc_bb);
-        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let next = bld!(self.builder.build_int_add(idx, i64_type.const_int(1, false), "inc"))?;
-        bld!(self.builder.build_store(idx_alloca, next))?;
-        bld!(self.builder.build_unconditional_branch(cond_bb))?;
-
-        self.builder.position_at_end(end_bb);
+        self.finish_indexed_loop(&lp)?;
         Ok(())
     }
 
@@ -513,8 +538,6 @@ impl<'ctx> CodeGen<'ctx> {
         body: &Block,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
-        let i64_type = self.context.i64_type();
-
         if self.is_map_iterable(iterable) {
             return self.compile_for_each_kv_map(key_var, val_var, iterable, body, func);
         }
@@ -526,44 +549,24 @@ impl<'ctx> CodeGen<'ctx> {
 
         let len_val = self.call_rt("ore_list_len", &[list_ptr.into()], "len")?.into_int_value();
 
-        // Index variable (exposed as key_var)
-        let idx_alloca = bld!(self.builder.build_alloca(i64_type, key_var))?;
-        bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
-        self.variables.insert(key_var.to_string(), VarInfo { ptr: idx_alloca, ty: i64_type.into(), kind: ValKind::Int, is_mutable: false });
-
-        // Element variable — use alloca_for_kind for all types (Record, Enum, Str, Float, etc.)
         let (elem_alloca, elem_ty) = self.alloca_for_kind(val_var, &elem_kind)?;
         self.variables.insert(val_var.to_string(), VarInfo { ptr: elem_alloca, ty: elem_ty, kind: elem_kind.clone(), is_mutable: false });
 
-        let cond_bb = self.context.append_basic_block(func, "forenum_cond");
-        let body_bb = self.context.append_basic_block(func, "forenum_body");
-        let inc_bb = self.context.append_basic_block(func, "forenum_inc");
-        let end_bb = self.context.append_basic_block(func, "forenum_end");
+        let lp = self.build_indexed_loop(len_val, "forenum", func)?;
+        // Expose the loop index as key_var
+        let i64_type = self.context.i64_type();
+        self.variables.insert(key_var.to_string(), VarInfo { ptr: lp.idx_alloca, ty: i64_type.into(), kind: ValKind::Int, is_mutable: false });
 
-        bld!(self.builder.build_unconditional_branch(cond_bb))?;
-
-        self.builder.position_at_end(cond_bb);
-        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let cmp = bld!(self.builder.build_int_compare(IntPredicate::SLT, idx, len_val, "forenum_cmp"))?;
-        bld!(self.builder.build_conditional_branch(cmp, body_bb, end_bb))?;
-
-        self.builder.position_at_end(body_bb);
-        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+        let idx = self.loop_index(&lp)?;
         let raw_val = self.call_rt("ore_list_get", &[list_ptr.into(), idx.into()], "elem")?;
         let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
         bld!(self.builder.build_store(elem_alloca, typed_val))?;
 
-        let saved = self.set_loop_targets(end_bb, inc_bb);
+        let saved = self.set_loop_targets(lp.end_bb, lp.inc_bb);
         self.compile_block_stmts(body, func)?;
-        self.restore_loop_targets(saved, inc_bb)?;
+        self.restore_loop_targets(saved, lp.inc_bb)?;
 
-        self.builder.position_at_end(inc_bb);
-        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let next = bld!(self.builder.build_int_add(idx, i64_type.const_int(1, false), "inc"))?;
-        bld!(self.builder.build_store(idx_alloca, next))?;
-        bld!(self.builder.build_unconditional_branch(cond_bb))?;
-
-        self.builder.position_at_end(end_bb);
+        self.finish_indexed_loop(&lp)?;
         Ok(())
     }
 
@@ -575,7 +578,6 @@ impl<'ctx> CodeGen<'ctx> {
         body: &Block,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
-        let i64_type = self.context.i64_type();
         let ptr_type = self.context.ptr_type(inkwell::AddressSpace::default());
 
         let val_kind = if let Expr::Ident(name) = iterable {
@@ -585,13 +587,8 @@ impl<'ctx> CodeGen<'ctx> {
         };
 
         let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
-
         let keys_list = self.call_rt("ore_map_keys", &[map_ptr.into()], "keys")?.into_pointer_value();
-
         let len_val = self.call_rt("ore_list_len", &[keys_list.into()], "len")?.into_int_value();
-
-        let idx_alloca = bld!(self.builder.build_alloca(i64_type, "idx"))?;
-        bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
 
         let key_alloca = bld!(self.builder.build_alloca(ptr_type, key_var))?;
         self.variables.insert(key_var.to_string(), VarInfo { ptr: key_alloca, ty: ptr_type.into(), kind: ValKind::Str, is_mutable: false });
@@ -599,20 +596,8 @@ impl<'ctx> CodeGen<'ctx> {
         let (val_alloca, val_ty) = self.alloca_for_kind(val_var, &val_kind)?;
         self.variables.insert(val_var.to_string(), VarInfo { ptr: val_alloca, ty: val_ty, kind: val_kind.clone(), is_mutable: false });
 
-        let cond_bb = self.context.append_basic_block(func, "forkv_cond");
-        let body_bb = self.context.append_basic_block(func, "forkv_body");
-        let inc_bb = self.context.append_basic_block(func, "forkv_inc");
-        let end_bb = self.context.append_basic_block(func, "forkv_end");
-
-        bld!(self.builder.build_unconditional_branch(cond_bb))?;
-
-        self.builder.position_at_end(cond_bb);
-        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let cmp = bld!(self.builder.build_int_compare(IntPredicate::SLT, idx, len_val, "forkv_cmp"))?;
-        bld!(self.builder.build_conditional_branch(cmp, body_bb, end_bb))?;
-
-        self.builder.position_at_end(body_bb);
-        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
+        let lp = self.build_indexed_loop(len_val, "forkv", func)?;
+        let idx = self.loop_index(&lp)?;
 
         let key_raw = self.call_rt("ore_list_get", &[keys_list.into(), idx.into()], "key_raw")?.into_int_value();
         let key_ptr = self.i64_to_ptr(key_raw)?;
@@ -629,17 +614,11 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
-        let saved = self.set_loop_targets(end_bb, inc_bb);
+        let saved = self.set_loop_targets(lp.end_bb, lp.inc_bb);
         self.compile_block_stmts(body, func)?;
-        self.restore_loop_targets(saved, inc_bb)?;
+        self.restore_loop_targets(saved, lp.inc_bb)?;
 
-        self.builder.position_at_end(inc_bb);
-        let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
-        let next = bld!(self.builder.build_int_add(idx, i64_type.const_int(1, false), "inc"))?;
-        bld!(self.builder.build_store(idx_alloca, next))?;
-        bld!(self.builder.build_unconditional_branch(cond_bb))?;
-
-        self.builder.position_at_end(end_bb);
+        self.finish_indexed_loop(&lp)?;
         Ok(())
     }
 
