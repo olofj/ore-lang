@@ -170,14 +170,8 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub(crate) fn compile_string_literal(&mut self, s: &str) -> Result<PointerValue<'ctx>, CodeGenError> {
         let ptr = self.builder_string_const(s);
-        let str_new = self.rt("ore_str_new")?;
         let len = self.context.i32_type().const_int(s.len() as u64, false);
-        let result = bld!(self.builder.build_call(str_new, &[ptr.into(), len.into()], "str"))?;
-        match result.try_as_basic_value() {
-            inkwell::values::ValueKind::Basic(BasicValueEnum::PointerValue(p)) => Ok(p),
-            inkwell::values::ValueKind::Basic(v) => Ok(v.into_pointer_value()),
-            _ => Err(self.err("ore_str_new did not return a pointer")),
-        }
+        Ok(self.call_rt("ore_str_new", &[ptr.into(), len.into()], "str")?.into_pointer_value())
     }
 
     /// Create a global constant string and return a pointer to its data.
@@ -257,8 +251,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Retain the final result before releasing temps
         if !final_ptr.is_null() {
-            let retain_fn = self.rt("ore_str_retain")?;
-            bld!(self.builder.build_call(retain_fn, &[final_ptr.into()], ""))?;
+            self.call_rt("ore_str_retain", &[final_ptr.into()], "")?;
         }
 
         // Release all temporaries
@@ -277,9 +270,8 @@ impl<'ctx> CodeGen<'ctx> {
         match kind {
             ValKind::Str => {
                 // Already a string pointer, retain it
-                let retain_fn = self.rt("ore_str_retain")?;
                 let ptr = val.into_pointer_value();
-                bld!(self.builder.build_call(retain_fn, &[ptr.into()], ""))?;
+                self.call_rt("ore_str_retain", &[ptr.into()], "")?;
                 Ok(ptr)
             }
             ValKind::Int => {
