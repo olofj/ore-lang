@@ -35,9 +35,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((list_val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
             }
             "push" => {
-                if args.len() != 1 {
-                    return Err(self.err("push takes exactly 1 argument"));
-                }
+                self.check_arity("push", &args, 1)?;
                 let (arg, arg_kind) = self.compile_expr_with_kind(&args[0], func)?;
                 let list_push = self.rt("ore_list_push")?;
                 // For enums/records, heap-allocate and push pointer as i64
@@ -84,9 +82,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((typed_val, elem_kind))
             }
             "insert" => {
-                if args.len() != 2 {
-                    return Err(self.err("insert takes 2 arguments (index, value)"));
-                }
+                self.check_arity("insert", &args, 2)?;
                 let idx = self.compile_expr(&args[0], func)?;
                 let (val, _) = self.compile_expr_with_kind(&args[1], func)?;
                 let i64_val = self.value_to_i64(val)?;
@@ -95,9 +91,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((list_val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
             }
             "remove_at" => {
-                if args.len() != 1 {
-                    return Err(self.err("remove_at takes 1 argument (index)"));
-                }
+                self.check_arity("remove_at", &args, 1)?;
                 let idx = self.compile_expr(&args[0], func)?;
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let rt = self.rt("ore_list_remove_at")?;
@@ -115,9 +109,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             "get" => {
-                if args.len() != 1 {
-                    return Err(self.err("get takes exactly 1 argument"));
-                }
+                self.check_arity("get", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let idx = self.compile_expr(&args[0], func)?;
                 let list_get = self.rt("ore_list_get")?;
@@ -127,9 +119,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((typed_val, elem_kind))
             }
             "set" => {
-                if args.len() != 2 {
-                    return Err(self.err("set takes 2 arguments (index, value)"));
-                }
+                self.check_arity("set", &args, 2)?;
                 let idx = self.compile_expr(&args[0], func)?;
                 let val = self.compile_expr(&args[1], func)?;
                 let val_i64 = self.value_to_i64(val)?;
@@ -138,9 +128,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((list_val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
             }
             "get_or" => {
-                if args.len() != 2 {
-                    return Err(self.err("get_or takes 2 arguments (index, default)"));
-                }
+                self.check_arity("get_or", &args, 2)?;
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let idx = self.compile_expr(&args[0], func)?;
                 let default = self.compile_expr(&args[1], func)?;
@@ -152,9 +140,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((typed_val, elem_kind))
             }
             "map" | "filter" | "flat_map" | "take_while" | "drop_while" => {
-                if args.len() != 1 {
-                    return Err(self.err(format!("{} takes exactly 1 argument", method)));
-                }
+                self.check_arity(method, &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 self.last_lambda_return_kind = None;
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
@@ -179,9 +165,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::List(ret_elem.map(Box::new))))
             }
             "partition" => {
-                if args.len() != 1 {
-                    return Err(self.err("partition takes exactly 1 argument"));
-                }
+                self.check_arity("partition", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -194,9 +178,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(ValKind::List(inner_elem))))
             }
             "find_index" => {
-                if args.len() != 1 {
-                    return Err(self.err("find_index takes exactly 1 argument"));
-                }
+                self.check_arity("find_index", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -207,9 +189,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Int))
             }
             "fold" => {
-                if args.len() != 2 {
-                    return Err(self.err("fold takes 2 arguments: initial value and function"));
-                }
+                self.check_arity("fold", &args, 2)?;
                 let (init_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 // fold lambda receives (acc, elem) — both as Int/i64
@@ -222,9 +202,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Int))
             }
             "each" => {
-                if args.len() != 1 {
-                    return Err(self.err("each takes exactly 1 argument"));
-                }
+                self.check_arity("each", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -238,9 +216,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
             "tap" => {
-                if args.len() != 1 {
-                    return Err(self.err("tap takes 1 argument"));
-                }
+                self.check_arity("tap", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -251,9 +227,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::List(elem_kind.map(Box::new))))
             }
             "map_with_index" => {
-                if args.len() != 1 {
-                    return Err(self.err("map_with_index takes 1 argument"));
-                }
+                self.check_arity("map_with_index", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -268,9 +242,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::List(ret_elem.map(Box::new))))
             }
             "each_with_index" => {
-                if args.len() != 1 {
-                    return Err(self.err("each_with_index takes 1 argument"));
-                }
+                self.check_arity("each_with_index", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -280,9 +252,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
             "par_map" => {
-                if args.len() != 1 {
-                    return Err(self.err("par_map takes exactly 1 argument"));
-                }
+                self.check_arity("par_map", &args, 1)?;
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &[ValKind::Int], method, func, false)?;
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let rt = self.rt("ore_list_par_map")?;
@@ -295,9 +265,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::List(ret_elem.map(Box::new))))
             }
             "par_each" => {
-                if args.len() != 1 {
-                    return Err(self.err("par_each takes exactly 1 argument"));
-                }
+                self.check_arity("par_each", &args, 1)?;
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &[ValKind::Int], method, func, false)?;
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let rt = self.rt("ore_list_par_each")?;
@@ -330,9 +298,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "sort_by" => {
                 // sort_by(key_fn) - sort by a key extracted from each element
-                if args.len() != 1 {
-                    return Err(self.err("sort_by takes 1 argument (key function)"));
-                }
+                self.check_arity("sort_by", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -344,9 +310,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((sorted_val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
             }
             "min_by" | "max_by" => {
-                if args.len() != 1 {
-                    return Err(self.err(format!("{} takes 1 argument (key function)", method)));
-                }
+                self.check_arity(method, &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -373,9 +337,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((rev_val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
             }
             "contains" => {
-                if args.len() != 1 {
-                    return Err(self.err("contains takes exactly 1 argument"));
-                }
+                self.check_arity("contains", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let (val, _) = self.compile_expr_with_kind(&args[0], func)?;
                 let result = if matches!(elem_kind, ValKind::Str) {
@@ -428,9 +390,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "scan" => {
                 // scan(init, fn(acc, elem) -> acc) -> list of all acc values
-                if args.len() != 2 {
-                    return Err(self.err("scan takes 2 arguments (init, fn)"));
-                }
+                self.check_arity("scan", &args, 2)?;
                 let init_val = self.compile_expr(&args[0], func)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
@@ -446,9 +406,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "find" => {
                 // find(fn(elem) -> bool) — returns element or 0
-                if args.len() != 1 {
-                    return Err(self.err("find takes 1 argument"));
-                }
+                self.check_arity("find", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -473,9 +431,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "join" => {
                 // join(separator_str)
-                if args.len() != 1 {
-                    return Err(self.err("join takes 1 argument (separator)"));
-                }
+                self.check_arity("join", &args, 1)?;
                 let sep = self.compile_expr(&args[0], func)?;
                 // Use join_str for string lists, join for int lists
                 let elem_kind = self.last_list_elem_kind.clone();
@@ -490,9 +446,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Str))
             }
             "take" | "skip" | "step" => {
-                if args.len() != 1 {
-                    return Err(self.err(format!("{} takes 1 argument (count)", method)));
-                }
+                self.check_arity(method, &args, 1)?;
                 let n = self.compile_expr(&args[0], func)?;
                 let runtime_fn_name = format!("ore_list_{}", method);
                 let rt = self.rt(&runtime_fn_name)?;
@@ -536,9 +490,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Float))
             }
             "any" | "all" => {
-                if args.len() != 1 {
-                    return Err(self.err(format!("{} takes 1 argument (predicate)", method)));
-                }
+                self.check_arity(method, &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -551,9 +503,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "zip" => {
-                if args.len() != 1 {
-                    return Err(self.err("zip takes 1 argument (other list)"));
-                }
+                self.check_arity("zip", &args, 1)?;
                 let other = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_list_zip")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), other.into()], "zip"))?;
@@ -562,9 +512,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(ValKind::List(None))))
             }
             "zip_with" => {
-                if args.len() != 2 {
-                    return Err(self.err("zip_with takes 2 arguments (other_list, fn)"));
-                }
+                self.check_arity("zip_with", &args, 2)?;
                 let other = self.compile_expr(&args[0], func)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let ek = elem_kind.unwrap_or(ValKind::Int);
@@ -588,9 +536,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(ValKind::List(None))))
             }
             "slice" => {
-                if args.len() != 2 {
-                    return Err(self.err("slice takes 2 arguments (start, end)"));
-                }
+                self.check_arity("slice", &args, 2)?;
                 let start = self.compile_expr(&args[0], func)?;
                 let end = self.compile_expr(&args[1], func)?;
                 let rt = self.rt("ore_list_slice")?;
@@ -599,9 +545,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
             }
             "index_of" => {
-                if args.len() != 1 {
-                    return Err(self.err("index_of takes 1 argument"));
-                }
+                self.check_arity("index_of", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let val = self.compile_expr(&args[0], func)?;
                 let result = if matches!(elem_kind, ValKind::Str) {
@@ -623,9 +567,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(elem_kind)))
             }
             "unique_by" => {
-                if args.len() != 1 {
-                    return Err(self.err("unique_by takes 1 argument (key function)"));
-                }
+                self.check_arity("unique_by", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -642,9 +584,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::List(None)))
             }
             "window" => {
-                if args.len() != 1 {
-                    return Err(self.err("window takes 1 argument (size)"));
-                }
+                self.check_arity("window", &args, 1)?;
                 let n = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_list_window")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), n.into()], "lwin"))?;
@@ -653,9 +593,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(ValKind::List(None))))
             }
             "chunks" => {
-                if args.len() != 1 {
-                    return Err(self.err("chunks takes 1 argument (size)"));
-                }
+                self.check_arity("chunks", &args, 1)?;
                 let n = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_list_chunks")?;
                 let result = bld!(self.builder.build_call(rt, &[list_val.into(), n.into()], "lchk"))?;
@@ -751,9 +689,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let val = self.call_result_to_value(result)?;
                     return Ok((val, ValKind::Int));
                 }
-                if args.len() != 1 {
-                    return Err(self.err("count takes 0 or 1 arguments"));
-                }
+                self.check_arity("count", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -768,9 +704,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Int))
             }
             "count_by" | "group_by" => {
-                if args.len() != 1 {
-                    return Err(self.err(format!("{} takes 1 argument (key function)", method)));
-                }
+                self.check_arity(method, &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -794,9 +728,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val.into(), ValKind::Map))
             }
             "to_map" => {
-                if args.len() != 1 {
-                    return Err(self.err("to_map takes 1 argument (key function)"));
-                }
+                self.check_arity("to_map", &args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, func, false)?;
@@ -830,9 +762,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val.into(), ValKind::Map))
             }
             "intersperse" => {
-                if args.len() != 1 {
-                    return Err(self.err("intersperse takes 1 argument"));
-                }
+                self.check_arity("intersperse", &args, 1)?;
                 let (sep_val, sep_kind) = self.compile_expr_with_kind(&args[0], func)?;
                 let sep_i64: IntValue = match sep_kind {
                     ValKind::Str | ValKind::List(_) | ValKind::Map => {

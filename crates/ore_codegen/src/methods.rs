@@ -340,9 +340,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Int));
                 }
                 "max" => {
-                    if args.len() != 1 {
-                        return Err(self.err("Int.max() takes 1 argument"));
-                    }
+                    self.check_arity("Int.max()", &args, 1)?;
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_int_value();
                     let b = other.into_int_value();
@@ -351,9 +349,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Int));
                 }
                 "min" => {
-                    if args.len() != 1 {
-                        return Err(self.err("Int.min() takes 1 argument"));
-                    }
+                    self.check_arity("Int.min()", &args, 1)?;
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_int_value();
                     let b = other.into_int_value();
@@ -362,9 +358,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Int));
                 }
                 "clamp" => {
-                    if args.len() != 2 {
-                        return Err(self.err("Int.clamp() takes 2 arguments (min, max)"));
-                    }
+                    self.check_arity("Int.clamp()", &args, 2)?;
                     let (lo_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let (hi_val, _) = self.compile_expr_with_kind(&args[1], func)?;
                     let x = obj_val.into_int_value();
@@ -377,9 +371,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Int));
                 }
                 "pow" => {
-                    if args.len() != 1 {
-                        return Err(self.err("Int.pow() takes 1 argument"));
-                    }
+                    self.check_arity("Int.pow()", &args, 1)?;
                     let (exp_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let rt = self.rt("ore_int_pow")?;
                     let result = bld!(self.builder.build_call(rt, &[obj_val.into(), exp_val.into()], "pow"))?;
@@ -473,9 +465,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((val, ValKind::Float));
                 }
                 "max" => {
-                    if args.len() != 1 {
-                        return Err(self.err("Float.max() takes 1 argument"));
-                    }
+                    self.check_arity("Float.max()", &args, 1)?;
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_float_value();
                     let b = other.into_float_value();
@@ -484,9 +474,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Float));
                 }
                 "min" => {
-                    if args.len() != 1 {
-                        return Err(self.err("Float.min() takes 1 argument"));
-                    }
+                    self.check_arity("Float.min()", &args, 1)?;
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_float_value();
                     let b = other.into_float_value();
@@ -495,9 +483,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Float));
                 }
                 "clamp" => {
-                    if args.len() != 2 {
-                        return Err(self.err("Float.clamp() takes 2 arguments (min, max)"));
-                    }
+                    self.check_arity("Float.clamp()", &args, 2)?;
                     let (lo_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let (hi_val, _) = self.compile_expr_with_kind(&args[1], func)?;
                     let x = obj_val.into_float_value();
@@ -510,9 +496,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Float));
                 }
                 "pow" => {
-                    if args.len() != 1 {
-                        return Err(self.err("Float.pow() takes 1 argument"));
-                    }
+                    self.check_arity("Float.pow()", &args, 1)?;
                     let (exp, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let pow_fn = self.module.get_function("llvm.pow.f64").unwrap_or_else(|| {
                         let f64_type = self.context.f64_type();
@@ -533,9 +517,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((val, ValKind::Str));
                 }
                 "format" => {
-                    if args.len() != 1 {
-                        return Err(self.err("Float.format() takes 1 argument (decimals)"));
-                    }
+                    self.check_arity("Float.format()", &args, 1)?;
                     let (dec_val, dec_kind) = self.compile_expr_with_kind(&args[0], func)?;
                     let dec_i = match dec_kind {
                         ValKind::Int => dec_val.into_int_value(),
@@ -580,9 +562,7 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         match method {
             "send" => {
-                if args.len() != 1 {
-                    return Err(self.err("channel.send() takes 1 argument"));
-                }
+                self.check_arity("channel.send()", &args, 1)?;
                 let val = self.compile_expr(&args[0], func)?;
                 let i64_val = self.value_to_i64(val)?;
                 let rt = self.rt("ore_channel_send")?;

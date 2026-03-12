@@ -727,9 +727,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "map" => {
                 // opt.map(fn) -> applies fn to inner value if Some, returns Option
-                if args.len() != 1 {
-                    return Err(self.err("map takes 1 argument (function)"));
-                }
+                self.check_arity("map", &args, 1)?;
                 let is_some = bld!(self.builder.build_int_compare(
                     IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
                 ))?;
@@ -855,9 +853,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "map" => {
                 // result.map(fn) -> applies fn to inner value if Ok, returns Result
-                if args.len() != 1 {
-                    return Err(self.err("map takes 1 argument (function)"));
-                }
+                self.check_arity("map", &args, 1)?;
                 let is_ok = bld!(self.builder.build_int_compare(
                     IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
                 ))?;

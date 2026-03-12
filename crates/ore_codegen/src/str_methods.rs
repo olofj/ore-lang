@@ -29,9 +29,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((is_zero.into(), ValKind::Bool))
             }
             "contains" => {
-                if args.len() != 1 {
-                    return Err(self.err("contains takes 1 argument"));
-                }
+                self.check_arity("contains", &args, 1)?;
                 let needle = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_contains")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "scontains"))?;
@@ -74,9 +72,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.last_list_elem_kind = Some(ValKind::Str);
                     return Ok((val, ValKind::list_of(ValKind::Str)));
                 }
-                if args.len() != 1 {
-                    return Err(self.err("split takes 0 or 1 arguments"));
-                }
+                self.check_arity("split", &args, 1)?;
                 let delim = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_split")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), delim.into()], "ssplit"))?;
@@ -97,9 +93,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Float))
             }
             "replace" => {
-                if args.len() != 2 {
-                    return Err(self.err("replace takes 2 arguments (from, to)"));
-                }
+                self.check_arity("replace", &args, 2)?;
                 let from = self.compile_expr(&args[0], func)?;
                 let to = self.compile_expr(&args[1], func)?;
                 let rt = self.rt("ore_str_replace")?;
@@ -108,9 +102,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Str))
             }
             "starts_with" => {
-                if args.len() != 1 {
-                    return Err(self.err("starts_with takes 1 argument"));
-                }
+                self.check_arity("starts_with", &args, 1)?;
                 let prefix = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_starts_with")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), prefix.into()], "ssw"))?;
@@ -122,9 +114,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "ends_with" => {
-                if args.len() != 1 {
-                    return Err(self.err("ends_with takes 1 argument"));
-                }
+                self.check_arity("ends_with", &args, 1)?;
                 let suffix = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_ends_with")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), suffix.into()], "sew"))?;
@@ -154,9 +144,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Str))
             }
             "substr" => {
-                if args.len() != 2 {
-                    return Err(self.err("substr takes 2 arguments (start, len)"));
-                }
+                self.check_arity("substr", &args, 2)?;
                 let start = self.compile_expr(&args[0], func)?;
                 let len = self.compile_expr(&args[1], func)?;
                 let rt = self.rt("ore_str_substr")?;
@@ -172,9 +160,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "char_at" => {
-                if args.len() != 1 {
-                    return Err(self.err("char_at takes 1 argument (index)"));
-                }
+                self.check_arity("char_at", &args, 1)?;
                 let idx = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_char_at")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), idx.into()], "charat"))?;
@@ -182,9 +168,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Str))
             }
             "index_of" | "find" => {
-                if args.len() != 1 {
-                    return Err(self.err("index_of/find takes 1 argument"));
-                }
+                self.check_arity("index_of/find", &args, 1)?;
                 let needle = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_index_of")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "sidx"))?;
@@ -192,9 +176,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Int))
             }
             "slice" => {
-                if args.len() != 2 {
-                    return Err(self.err("slice takes 2 arguments (start, end)"));
-                }
+                self.check_arity("slice", &args, 2)?;
                 let start = self.compile_expr(&args[0], func)?;
                 let end = self.compile_expr(&args[1], func)?;
                 let rt = self.rt("ore_str_slice")?;
@@ -221,9 +203,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Float))
             }
             "repeat" => {
-                if args.len() != 1 {
-                    return Err(self.err("repeat takes 1 argument"));
-                }
+                self.check_arity("repeat", &args, 1)?;
                 let count = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_repeat")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), count.into()], "srep"))?;
@@ -231,9 +211,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Str))
             }
             "count" => {
-                if args.len() != 1 {
-                    return Err(self.err("count takes 1 argument"));
-                }
+                self.check_arity("count", &args, 1)?;
                 let needle = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_count")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), needle.into()], "scount"))?;
@@ -241,9 +219,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Int))
             }
             "strip_prefix" | "strip_suffix" => {
-                if args.len() != 1 {
-                    return Err(self.err(format!("{} takes 1 argument", method)));
-                }
+                self.check_arity(method, &args, 1)?;
                 let arg = self.compile_expr(&args[0], func)?;
                 let fn_name = format!("ore_str_{}", method);
                 let rt = self.rt(&fn_name)?;
