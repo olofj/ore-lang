@@ -625,6 +625,21 @@ impl<'ctx> CodeGen<'ctx> {
         ret_elem
     }
 
+    /// Get the current list element kind, defaulting to Int.
+    pub(crate) fn list_elem_kind(&self) -> ValKind {
+        self.last_list_elem_kind.clone().unwrap_or(ValKind::Int)
+    }
+
+    /// Build a ValKind::List wrapping the current tracked element kind.
+    pub(crate) fn current_list_kind(&self) -> ValKind {
+        ValKind::List(self.last_list_elem_kind.clone().map(Box::new))
+    }
+
+    /// Get the current map value kind, defaulting to Int.
+    pub(crate) fn map_val_kind(&self) -> ValKind {
+        self.last_map_val_kind.clone().unwrap_or(ValKind::Int)
+    }
+
     /// Normalize a bool IntValue to i8, handling any bit width (i1, i8, i64).
     pub(crate) fn bool_to_i8(&mut self, int_val: IntValue<'ctx>) -> Result<IntValue<'ctx>, CodeGenError> {
         let bw = int_val.get_type().get_bit_width();

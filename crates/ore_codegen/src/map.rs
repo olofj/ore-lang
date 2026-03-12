@@ -28,7 +28,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // Determine value kind from map tracking
                 // Check if the map object is a variable with a tracked value kind
-                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                let val_kind = self.map_val_kind();
                 match &val_kind {
                     ValKind::Str => {
                         // Convert i64 back to pointer
@@ -67,7 +67,7 @@ impl<'ctx> CodeGen<'ctx> {
             "values" => {
                 let val = self.call_rt("ore_map_values", &[map_val.into()], "mvalues")?;
                 // Track the value kind from the map
-                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                let val_kind = self.map_val_kind();
                 self.last_list_elem_kind = Some(val_kind.clone());
                 Ok((val, ValKind::list_of(val_kind)))
             }
@@ -84,7 +84,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "each" => {
                 self.check_arity("map.each()", args, 1)?;
-                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                let val_kind = self.map_val_kind();
                 let kinds = [ValKind::Str, val_kind];
                 let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.each()", false)?;
 
@@ -94,7 +94,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "map" => {
                 self.check_arity("map.map()", args, 1)?;
-                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                let val_kind = self.map_val_kind();
                 let kinds = [ValKind::Str, val_kind];
                 let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.map()", false)?;
 
@@ -103,7 +103,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "filter" => {
                 self.check_arity("map.filter()", args, 1)?;
-                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                let val_kind = self.map_val_kind();
                 let kinds = [ValKind::Str, val_kind];
                 let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.filter()", false)?;
 
@@ -116,7 +116,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (default_val, _default_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let default_i64 = self.value_to_i64(default_val)?;
                 let i64_val = self.call_rt("ore_map_get_or", &[map_val.into(), key.into(), default_i64.into()], "mgetor")?;
-                let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
+                let val_kind = self.map_val_kind();
                 match &val_kind {
                     ValKind::Str => {
                         let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
