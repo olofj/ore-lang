@@ -42,6 +42,10 @@ impl Parser {
         self.tokens.get(self.pos).map(|s| s.line).unwrap_or(0)
     }
 
+    fn at_block_end(&self) -> bool {
+        matches!(self.peek(), Token::Dedent | Token::Eof)
+    }
+
     fn advance(&mut self) -> &Token {
         let tok = self.tokens.get(self.pos).map(|s| &s.token).unwrap_or(&Token::Eof);
         if self.pos < self.tokens.len() {
@@ -183,7 +187,7 @@ impl Parser {
         let mut methods = Vec::new();
         loop {
             self.skip_newlines();
-            if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+            if self.at_block_end() {
                 break;
             }
             methods.push(self.parse_fn_def()?);
@@ -207,7 +211,7 @@ impl Parser {
         let mut methods = Vec::new();
         loop {
             self.skip_newlines();
-            if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+            if self.at_block_end() {
                 break;
             }
             methods.push(self.parse_trait_method()?);
@@ -259,7 +263,7 @@ impl Parser {
         let mut variants = Vec::new();
         loop {
             self.skip_newlines();
-            if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+            if self.at_block_end() {
                 break;
             }
             variants.push(self.parse_variant()?);
@@ -466,7 +470,7 @@ impl Parser {
 
         loop {
             self.skip_newlines();
-            if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+            if self.at_block_end() {
                 break;
             }
             let line = self.peek_line();
@@ -1158,9 +1162,9 @@ impl Parser {
                 self.skip_newlines();
                 self.expect(&Token::Indent)?;
                 let mut arms = Vec::new();
-                while self.peek() != &Token::Dedent && self.peek() != &Token::Eof {
+                while !self.at_block_end() {
                     self.skip_newlines();
-                    if self.peek() == &Token::Dedent {
+                    if self.at_block_end() {
                         break;
                     }
                     let mut pattern = self.parse_pattern()?;
@@ -1455,7 +1459,7 @@ impl Parser {
         let mut arms = Vec::new();
         loop {
             self.skip_newlines();
-            if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+            if self.at_block_end() {
                 break;
             }
             arms.push(self.parse_match_arm()?);
