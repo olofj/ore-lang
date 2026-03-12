@@ -99,8 +99,6 @@ pub struct CodeGen<'ctx> {
     pub(crate) lambda_counter: u32,
     /// Maps lambda function name -> capture info (only for closures with captures)
     pub(crate) lambda_captures: HashMap<String, CaptureInfo<'ctx>>,
-    /// Maps type name -> list of method names (for method call resolution)
-    pub(crate) method_map: HashMap<String, Vec<String>>,
     /// Maps variable name -> alloca for runtime kind tag (used for dynamic dispatch in Option/Result payloads)
     pub(crate) dynamic_kind_tags: HashMap<String, PointerValue<'ctx>>,
     /// Maps variable name -> element ValKind for typed lists
@@ -177,7 +175,6 @@ impl<'ctx> CodeGen<'ctx> {
             str_counter: 0,
             lambda_counter: 0,
             lambda_captures: HashMap::new(),
-            method_map: HashMap::new(),
             dynamic_kind_tags: HashMap::new(),
             list_element_kinds: HashMap::new(),
             last_list_elem_kind: None,
@@ -328,15 +325,10 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Declare impl block and impl-trait methods (mangled names: TypeName_methodName)
         for (type_name, methods) in Self::impl_items(&program.items) {
-            let mut method_names = Vec::new();
             for method in methods {
-                method_names.push(method.name.clone());
                 let mangled_fn = Self::mangle_impl_method(type_name, method);
                 self.declare_function(&mangled_fn)?;
             }
-            self.method_map.entry(type_name.clone())
-                .or_default()
-                .extend(method_names);
         }
 
         // Compile regular functions (skip generic ones)
