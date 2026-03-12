@@ -74,12 +74,20 @@ pub(crate) struct CaptureInfo<'ctx> {
     pub(crate) types: Vec<inkwell::types::BasicTypeEnum<'ctx>>,
 }
 
+/// Info about a local variable: its alloca, LLVM type, semantic kind, and mutability.
+#[derive(Clone)]
+pub(crate) struct VarInfo<'ctx> {
+    pub ptr: PointerValue<'ctx>,
+    pub ty: inkwell::types::BasicTypeEnum<'ctx>,
+    pub kind: ValKind,
+    pub is_mutable: bool,
+}
+
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
     pub module: Module<'ctx>,
     pub builder: Builder<'ctx>,
-    /// Maps variable names to (pointer, pointee type, kind, mutable)
-    pub(crate) variables: HashMap<String, (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>, ValKind, bool)>,
+    pub(crate) variables: HashMap<String, VarInfo<'ctx>>,
     pub(crate) functions: HashMap<String, (FunctionValue<'ctx>, ValKind)>,
     pub(crate) records: HashMap<String, RecordInfo<'ctx>>,
     pub(crate) enums: HashMap<String, EnumInfo<'ctx>>,
@@ -783,8 +791,8 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List(None),
             Expr::MapLit(_) => ValKind::Map,
             Expr::Ident(name) => {
-                if let Some((_, _, kind, _)) = self.variables.get(name) {
-                    kind.clone()
+                if let Some(var_info) = self.variables.get(name) {
+                    var_info.kind.clone()
                 } else {
                     ValKind::Int
                 }
@@ -974,7 +982,7 @@ impl<'ctx> CodeGen<'ctx> {
             let kind = self.type_expr_to_kind(&param.ty);
             let alloca = bld!(self.builder.build_alloca(ty, &param.name))?;
             bld!(self.builder.build_store(alloca, val))?;
-            self.variables.insert(param.name.clone(), (alloca, ty, kind.clone(), false));
+            self.variables.insert(param.name.clone(), VarInfo { ptr: alloca, ty, kind: kind.clone(), is_mutable: false });
             // Track element kinds for List[T] and Map value kinds from type annotations
             if kind.is_list() {
                 if let TypeExpr::Generic(_, args) = &param.ty {
@@ -983,7 +991,7 @@ impl<'ctx> CodeGen<'ctx> {
                         self.list_element_kinds.insert(param.name.clone(), elem_kind.clone());
                         // Also update the variable's ValKind to carry the element kind
                         if let Some(entry) = self.variables.get_mut(&param.name) {
-                            entry.2 = ValKind::list_of(elem_kind);
+                            entry.kind = ValKind::list_of(elem_kind);
                         }
                     }
                 }

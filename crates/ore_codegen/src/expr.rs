@@ -63,7 +63,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                 }
 
-                let (ptr, ty, kind, _) = self.variables.get(name).ok_or_else(|| {
+                let var = self.variables.get(name).ok_or_else(|| {
                     let mut msg = format!("undefined variable '{}'", name);
                     let candidates: Vec<&str> = self.variables.keys().map(|s| s.as_str()).collect();
                     if let Some(suggestion) = Self::find_similar(name, &candidates) {
@@ -71,8 +71,8 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     CodeGenError { line: None, msg }
                 })?;
-                let val = bld!(self.builder.build_load(*ty, *ptr, name))?;
-                let kind = kind.clone();
+                let val = bld!(self.builder.build_load(var.ty, var.ptr, name))?;
+                let kind = var.kind.clone();
                 // Restore list element kind tracking for method dispatch
                 if kind.is_list() {
                     if let Some(elem_kind) = self.list_element_kinds.get(name) {
@@ -761,8 +761,8 @@ impl<'ctx> CodeGen<'ctx> {
                     Ok((val, ret_kind))
                 } else {
                     // Check if it's a variable holding a function pointer (closure)
-                    if let Some((ptr, _ty, _kind, _mutable)) = self.variables.get(&name).cloned() {
-                        let fn_ptr_val = bld!(self.builder.build_load(self.ptr_type(), ptr, "fn_ptr"))?;
+                    if let Some(var) = self.variables.get(&name).cloned() {
+                        let fn_ptr_val = bld!(self.builder.build_load(self.ptr_type(), var.ptr, "fn_ptr"))?;
                         let fn_ptr = fn_ptr_val.into_pointer_value();
 
                         // Check for closure (env_ptr stored alongside)
@@ -775,8 +775,8 @@ impl<'ctx> CodeGen<'ctx> {
                         }
 
                         if has_env {
-                            let (env_ptr, _, _, _) = self.variables[&env_var_name].clone();
-                            let env_val = bld!(self.builder.build_load(self.ptr_type(), env_ptr, "env"))?;
+                            let env_var = self.variables[&env_var_name].clone();
+                            let env_val = bld!(self.builder.build_load(self.ptr_type(), env_var.ptr, "env"))?;
                             let mut all_args = vec![env_val.into()];
                             all_args.extend(compiled_args);
 

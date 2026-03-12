@@ -161,7 +161,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let val = bld!(self.builder.build_load(field_ty, field_ptr, binding))?;
                         let alloca = bld!(self.builder.build_alloca(field_ty, binding))?;
                         bld!(self.builder.build_store(alloca, val))?;
-                        self.variables.insert(binding.clone(), (alloca, field_ty, field_kind.clone(), false));
+                        self.variables.insert(binding.clone(), VarInfo { ptr: alloca, ty: field_ty, kind: field_kind.clone(), is_mutable: false });
                     }
 
                     // Guard condition
@@ -296,7 +296,7 @@ impl<'ctx> CodeGen<'ctx> {
                         // Store kind tag for dynamic dispatch in string interpolation
                         let kind_alloca = bld!(self.builder.build_alloca(self.context.i8_type(), &format!("{}_kind", bindings[0])))?;
                         bld!(self.builder.build_store(kind_alloca, kind_i8))?;
-                        self.variables.insert(bindings[0].clone(), (alloca, self.context.i64_type().into(), ValKind::Int, false));
+                        self.variables.insert(bindings[0].clone(), VarInfo { ptr: alloca, ty: self.context.i64_type().into(), kind: ValKind::Int, is_mutable: false });
                         self.dynamic_kind_tags.insert(bindings[0].clone(), kind_alloca);
                     }
 
@@ -389,7 +389,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let ty = self.kind_to_llvm_type(subject_kind);
                         let alloca = bld!(self.builder.build_alloca(ty, name))?;
                         bld!(self.builder.build_store(alloca, subject_val))?;
-                        self.variables.insert(name.clone(), (alloca, ty, subject_kind.clone(), false));
+                        self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: subject_kind.clone(), is_mutable: false });
                         Some(saved)
                     } else {
                         None
@@ -576,7 +576,7 @@ impl<'ctx> CodeGen<'ctx> {
                         bld!(self.builder.build_store(alloca, payload))?;
                         let kind_alloca = bld!(self.builder.build_alloca(self.context.i8_type(), &format!("{}_kind", bindings[0])))?;
                         bld!(self.builder.build_store(kind_alloca, kind_i8))?;
-                        self.variables.insert(bindings[0].clone(), (alloca, self.context.i64_type().into(), ValKind::Int, false));
+                        self.variables.insert(bindings[0].clone(), VarInfo { ptr: alloca, ty: self.context.i64_type().into(), kind: ValKind::Int, is_mutable: false });
                         self.dynamic_kind_tags.insert(bindings[0].clone(), kind_alloca);
                     }
 

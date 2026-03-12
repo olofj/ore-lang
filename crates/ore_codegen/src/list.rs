@@ -689,7 +689,7 @@ impl<'ctx> CodeGen<'ctx> {
             // Loop variable
             let var_alloca = bld!(self.builder.build_alloca(i64_type, var))?;
             bld!(self.builder.build_store(var_alloca, start_val))?;
-            self.variables.insert(var.to_string(), (var_alloca, i64_type.into(), ValKind::Int, false));
+            self.variables.insert(var.to_string(), VarInfo { ptr: var_alloca, ty: i64_type.into(), kind: ValKind::Int, is_mutable: false });
 
             let cond_bb = self.context.append_basic_block(func, "comp_cond");
             let body_bb = self.context.append_basic_block(func, "comp_body");
@@ -770,7 +770,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 _ => (bld!(self.builder.build_alloca(i64_type, var))?, i64_type.into()),
             };
-            self.variables.insert(var.to_string(), (var_alloca, var_ty, elem_kind.clone(), false));
+            self.variables.insert(var.to_string(), VarInfo { ptr: var_alloca, ty: var_ty, kind: elem_kind.clone(), is_mutable: false });
 
             let cond_bb = self.context.append_basic_block(func, "comp_cond");
             let body_bb = self.context.append_basic_block(func, "comp_body");

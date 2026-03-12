@@ -223,10 +223,10 @@ impl<'ctx> CodeGen<'ctx> {
         let mut capture_types = Vec::new();
         let mut capture_kinds = Vec::new();
         for fv in &free_vars {
-            if let Some((_ptr, ty, kind, _)) = self.variables.get(fv) {
+            if let Some(v) = self.variables.get(fv) {
                 capture_names.push(fv.clone());
-                capture_types.push(*ty);
-                capture_kinds.push(kind.clone());
+                capture_types.push(v.ty);
+                capture_kinds.push(v.kind.clone());
             }
         }
         let has_captures = !capture_names.is_empty();
@@ -277,7 +277,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = bld!(self.builder.build_load(field_ty, field_ptr, cap_name))?;
                 let alloca = bld!(self.builder.build_alloca(field_ty, cap_name))?;
                 bld!(self.builder.build_store(alloca, val))?;
-                self.variables.insert(cap_name.clone(), (alloca, field_ty, capture_kinds[i].clone(), false));
+                self.variables.insert(cap_name.clone(), VarInfo { ptr: alloca, ty: field_ty, kind: capture_kinds[i].clone(), is_mutable: false });
             }
         }
 
@@ -293,7 +293,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let ptr_val = self.i64_to_ptr(val.into_int_value())?;
                     let alloca = bld!(self.builder.build_alloca(ptr_ty, param_name))?;
                     bld!(self.builder.build_store(alloca, ptr_val))?;
-                    self.variables.insert(param_name.clone(), (alloca, ptr_ty.as_basic_type_enum(), kind, false));
+                    self.variables.insert(param_name.clone(), VarInfo { ptr: alloca, ty: ptr_ty.as_basic_type_enum(), kind, is_mutable: false });
                 }
                 ValKind::Float => {
                     // Float list elements are stored as i64 (bit pattern); bitcast to f64
@@ -301,13 +301,13 @@ impl<'ctx> CodeGen<'ctx> {
                     let f_val = bld!(self.builder.build_bit_cast(val, f64_ty, &format!("{}_f", param_name)))?;
                     let alloca = bld!(self.builder.build_alloca(f64_ty, param_name))?;
                     bld!(self.builder.build_store(alloca, f_val))?;
-                    self.variables.insert(param_name.clone(), (alloca, f64_ty.as_basic_type_enum(), kind, false));
+                    self.variables.insert(param_name.clone(), VarInfo { ptr: alloca, ty: f64_ty.as_basic_type_enum(), kind, is_mutable: false });
                 }
                 _ => {
                     let ty = val.get_type();
                     let alloca = bld!(self.builder.build_alloca(ty, param_name))?;
                     bld!(self.builder.build_store(alloca, val))?;
-                    self.variables.insert(param_name.clone(), (alloca, ty, kind, false));
+                    self.variables.insert(param_name.clone(), VarInfo { ptr: alloca, ty, kind, is_mutable: false });
                 }
             }
         }
@@ -363,10 +363,10 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(struct_type, "captures"))?;
 
         for (i, cap_name) in names.iter().enumerate() {
-            let (var_ptr, var_ty, _kind, _) = self.variables.get(cap_name).ok_or_else(|| CodeGenError {
+            let v = self.variables.get(cap_name).ok_or_else(|| CodeGenError {
                 line: Some(self.current_line), msg: format!("captured variable '{}' not found in scope", cap_name),
             })?;
-            let val = bld!(self.builder.build_load(*var_ty, *var_ptr, cap_name))?;
+            let val = bld!(self.builder.build_load(v.ty, v.ptr, cap_name))?;
             let field_ptr = bld!(self.builder.build_struct_gep(
                 struct_type, alloca, i as u32, &format!("cap_store_{}", cap_name)
             ))?;

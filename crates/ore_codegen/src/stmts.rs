@@ -16,7 +16,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let ty = val.get_type();
                 let alloca = self.build_entry_alloca(func, ty, name)?;
                 bld!(self.builder.build_store(alloca, val))?;
-                self.variables.insert(name.clone(), (alloca, ty, kind.clone(), *mutable));
+                self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: kind.clone(), is_mutable: *mutable });
                 // Track element kind for typed lists
                 if let ValKind::List(Some(ref ek)) = kind {
                     self.list_element_kinds.insert(name.clone(), *ek.clone());
@@ -55,12 +55,12 @@ impl<'ctx> CodeGen<'ctx> {
                             let pt = self.context.ptr_type(inkwell::AddressSpace::default());
                             let alloca = bld!(self.builder.build_alloca(pt, name))?;
                             bld!(self.builder.build_store(alloca, ptr))?;
-                            self.variables.insert(name.clone(), (alloca, pt.into(), ValKind::Str, false));
+                            self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty: pt.into(), kind: ValKind::Str, is_mutable: false });
                         }
                         _ => {
                             let alloca = bld!(self.builder.build_alloca(i64_type, name))?;
                             bld!(self.builder.build_store(alloca, raw_val))?;
-                            self.variables.insert(name.clone(), (alloca, i64_type.into(), elem_kind.clone(), false));
+                            self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty: i64_type.into(), kind: elem_kind.clone(), is_mutable: false });
                         }
                     }
                 }
@@ -68,7 +68,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Stmt::Assign { name, value } => {
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
-                let (ptr, _, _, is_mut) = self.variables.get(name).ok_or_else(|| {
+                let var_info = self.variables.get(name).ok_or_else(|| {
                     let mut msg = format!("undefined variable '{}'", name);
                     let candidates: Vec<&str> = self.variables.keys().map(|s| s.as_str()).collect();
                     if let Some(suggestion) = Self::find_similar(name, &candidates) {
@@ -76,12 +76,12 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     CodeGenError { line: None, msg }
                 })?;
-                if !is_mut {
+                if !var_info.is_mutable {
                     return Err(CodeGenError {
                         line: Some(self.current_line), msg: format!("cannot assign to immutable variable '{}'", name),
                     });
                 }
-                bld!(self.builder.build_store(*ptr, val))?;
+                bld!(self.builder.build_store(var_info.ptr, val))?;
                 // Update element kind tracking for lists and maps on reassignment
                 if let ValKind::List(Some(ref ek)) = kind {
                     self.list_element_kinds.insert(name.clone(), *ek.clone());
@@ -346,7 +346,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Alloca for loop variable
         let var_alloca = bld!(self.builder.build_alloca(i64_type, var))?;
         bld!(self.builder.build_store(var_alloca, start_val))?;
-        self.variables.insert(var.to_string(), (var_alloca, i64_type.into(), ValKind::Int, false));
+        self.variables.insert(var.to_string(), VarInfo { ptr: var_alloca, ty: i64_type.into(), kind: ValKind::Int, is_mutable: false });
 
         let cond_bb = self.context.append_basic_block(func, "for_cond");
         let body_bb = self.context.append_basic_block(func, "for_body");
@@ -476,7 +476,7 @@ impl<'ctx> CodeGen<'ctx> {
                 (alloca, i64_type.into())
             }
         };
-        self.variables.insert(var.to_string(), (elem_alloca, elem_ty, elem_kind.clone(), false));
+        self.variables.insert(var.to_string(), VarInfo { ptr: elem_alloca, ty: elem_ty, kind: elem_kind.clone(), is_mutable: false });
 
         let cond_bb = self.context.append_basic_block(func, "foreach_cond");
         let body_bb = self.context.append_basic_block(func, "foreach_body");
@@ -570,7 +570,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Index variable (exposed as key_var)
         let idx_alloca = bld!(self.builder.build_alloca(i64_type, key_var))?;
         bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
-        self.variables.insert(key_var.to_string(), (idx_alloca, i64_type.into(), ValKind::Int, false));
+        self.variables.insert(key_var.to_string(), VarInfo { ptr: idx_alloca, ty: i64_type.into(), kind: ValKind::Int, is_mutable: false });
 
         // Element variable
         let (elem_alloca, elem_ty): (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>) = match &elem_kind {
@@ -588,7 +588,7 @@ impl<'ctx> CodeGen<'ctx> {
                 (alloca, i64_type.into())
             }
         };
-        self.variables.insert(val_var.to_string(), (elem_alloca, elem_ty, elem_kind.clone(), false));
+        self.variables.insert(val_var.to_string(), VarInfo { ptr: elem_alloca, ty: elem_ty, kind: elem_kind.clone(), is_mutable: false });
 
         let cond_bb = self.context.append_basic_block(func, "forenum_cond");
         let body_bb = self.context.append_basic_block(func, "forenum_body");
@@ -670,7 +670,7 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
 
         let key_alloca = bld!(self.builder.build_alloca(ptr_type, key_var))?;
-        self.variables.insert(key_var.to_string(), (key_alloca, ptr_type.into(), ValKind::Str, false));
+        self.variables.insert(key_var.to_string(), VarInfo { ptr: key_alloca, ty: ptr_type.into(), kind: ValKind::Str, is_mutable: false });
 
         let (val_alloca, val_ty): (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>) = match &val_kind {
             ValKind::Str => {
@@ -682,7 +682,7 @@ impl<'ctx> CodeGen<'ctx> {
                 (alloca, i64_type.into())
             }
         };
-        self.variables.insert(val_var.to_string(), (val_alloca, val_ty, val_kind.clone(), false));
+        self.variables.insert(val_var.to_string(), VarInfo { ptr: val_alloca, ty: val_ty, kind: val_kind.clone(), is_mutable: false });
 
         let cond_bb = self.context.append_basic_block(func, "forkv_cond");
         let body_bb = self.context.append_basic_block(func, "forkv_body");
