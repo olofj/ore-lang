@@ -418,6 +418,42 @@ impl<'ctx> CodeGen<'ctx> {
         self.compile_for_each_over_list(var, list_ptr, final_elem_kind, body, func)
     }
 
+    /// Allocate a local variable with the correct LLVM type for a given ValKind.
+    /// Returns (alloca pointer, LLVM type).
+    fn alloca_for_kind(
+        &mut self,
+        name: &str,
+        kind: &ValKind,
+    ) -> Result<(PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>), CodeGenError> {
+        match kind {
+            ValKind::Record(rname) => {
+                let st = self.records[rname].struct_type;
+                let alloca = bld!(self.builder.build_alloca(st, name))?;
+                Ok((alloca, st.into()))
+            }
+            ValKind::Enum(ename) => {
+                let et = self.enums[ename].enum_type;
+                let alloca = bld!(self.builder.build_alloca(et, name))?;
+                Ok((alloca, et.into()))
+            }
+            ValKind::Str => {
+                let pt = self.context.ptr_type(inkwell::AddressSpace::default());
+                let alloca = bld!(self.builder.build_alloca(pt, name))?;
+                Ok((alloca, pt.into()))
+            }
+            ValKind::Float => {
+                let f64_type = self.context.f64_type();
+                let alloca = bld!(self.builder.build_alloca(f64_type, name))?;
+                Ok((alloca, f64_type.into()))
+            }
+            _ => {
+                let i64_type = self.context.i64_type();
+                let alloca = bld!(self.builder.build_alloca(i64_type, name))?;
+                Ok((alloca, i64_type.into()))
+            }
+        }
+    }
+
     pub(crate) fn compile_for_each_over_list(
         &mut self,
         var: &str,
@@ -436,32 +472,7 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
 
         // Element variable — use appropriate type based on element kind
-        let (elem_alloca, elem_ty): (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>) = match &elem_kind {
-            ValKind::Record(name) => {
-                let st = self.records[name].struct_type;
-                let alloca = bld!(self.builder.build_alloca(st, var))?;
-                (alloca, st.into())
-            }
-            ValKind::Enum(name) => {
-                let et = self.enums[name].enum_type;
-                let alloca = bld!(self.builder.build_alloca(et, var))?;
-                (alloca, et.into())
-            }
-            ValKind::Str => {
-                let pt = self.context.ptr_type(inkwell::AddressSpace::default());
-                let alloca = bld!(self.builder.build_alloca(pt, var))?;
-                (alloca, pt.into())
-            }
-            ValKind::Float => {
-                let f64_type = self.context.f64_type();
-                let alloca = bld!(self.builder.build_alloca(f64_type, var))?;
-                (alloca, f64_type.into())
-            }
-            _ => {
-                let alloca = bld!(self.builder.build_alloca(i64_type, var))?;
-                (alloca, i64_type.into())
-            }
-        };
+        let (elem_alloca, elem_ty) = self.alloca_for_kind(var, &elem_kind)?;
         self.variables.insert(var.to_string(), VarInfo { ptr: elem_alloca, ty: elem_ty, kind: elem_kind.clone(), is_mutable: false });
 
         let cond_bb = self.context.append_basic_block(func, "foreach_cond");
@@ -509,7 +520,6 @@ impl<'ctx> CodeGen<'ctx> {
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
         let i64_type = self.context.i64_type();
-        let ptr_type = self.context.ptr_type(inkwell::AddressSpace::default());
 
         // Detect if iterable is a map or a list
         let is_map = if let Expr::Ident(name) = iterable {
@@ -550,22 +560,8 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
         self.variables.insert(key_var.to_string(), VarInfo { ptr: idx_alloca, ty: i64_type.into(), kind: ValKind::Int, is_mutable: false });
 
-        // Element variable
-        let (elem_alloca, elem_ty): (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>) = match &elem_kind {
-            ValKind::Str => {
-                let alloca = bld!(self.builder.build_alloca(ptr_type, val_var))?;
-                (alloca, ptr_type.into())
-            }
-            ValKind::Record(name) => {
-                let st = self.records[name].struct_type;
-                let alloca = bld!(self.builder.build_alloca(st, val_var))?;
-                (alloca, st.into())
-            }
-            _ => {
-                let alloca = bld!(self.builder.build_alloca(i64_type, val_var))?;
-                (alloca, i64_type.into())
-            }
-        };
+        // Element variable — use alloca_for_kind for all types (Record, Enum, Str, Float, etc.)
+        let (elem_alloca, elem_ty) = self.alloca_for_kind(val_var, &elem_kind)?;
         self.variables.insert(val_var.to_string(), VarInfo { ptr: elem_alloca, ty: elem_ty, kind: elem_kind.clone(), is_mutable: false });
 
         let cond_bb = self.context.append_basic_block(func, "forenum_cond");
@@ -583,21 +579,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(body_bb);
         let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
         let raw_val = self.call_rt("ore_list_get", &[list_ptr.into(), idx.into()], "elem")?;
-        match &elem_kind {
-            ValKind::Record(name) => {
-                let st = self.records[name].struct_type;
-                let p = self.i64_to_ptr(raw_val.into_int_value())?;
-                let sv = bld!(self.builder.build_load(st, p, "rec_elem"))?;
-                bld!(self.builder.build_store(elem_alloca, sv))?;
-            }
-            ValKind::Str => {
-                let p = self.i64_to_ptr(raw_val.into_int_value())?;
-                bld!(self.builder.build_store(elem_alloca, p))?;
-            }
-            _ => {
-                bld!(self.builder.build_store(elem_alloca, raw_val))?;
-            }
-        }
+        let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
+        bld!(self.builder.build_store(elem_alloca, typed_val))?;
 
         let saved = self.set_loop_targets(end_bb, inc_bb);
         self.compile_block_stmts(body, func)?;
