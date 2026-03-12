@@ -271,6 +271,15 @@ impl<'ctx> CodeGen<'ctx> {
         }).collect()
     }
 
+    /// Iterate over impl block and impl-trait items, yielding (type_name, methods).
+    fn impl_items(items: &[Item]) -> impl Iterator<Item = (&String, &Vec<FnDef>)> {
+        items.iter().filter_map(|item| match item {
+            Item::ImplBlock { type_name, methods } => Some((type_name, methods)),
+            Item::ImplTrait { type_name, methods, .. } => Some((type_name, methods)),
+            _ => None,
+        })
+    }
+
     /// Build a mangled FnDef from an impl method, resolving Self types and prepending `self` param.
     fn mangle_impl_method(type_name: &str, method: &FnDef) -> FnDef {
         let resolved_params = Self::resolve_self_in_params(&method.params, type_name);
@@ -320,12 +329,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         // Declare impl block and impl-trait methods (mangled names: TypeName_methodName)
-        for item in &program.items {
-            let (type_name, methods) = match item {
-                Item::ImplBlock { type_name, methods } => (type_name, methods),
-                Item::ImplTrait { type_name, methods, .. } => (type_name, methods),
-                _ => continue,
-            };
+        for (type_name, methods) in Self::impl_items(&program.items) {
             let mut method_names = Vec::new();
             for method in methods {
                 method_names.push(method.name.clone());
@@ -347,12 +351,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         // Compile impl block and impl-trait methods
-        for item in &program.items {
-            let (type_name, methods) = match item {
-                Item::ImplBlock { type_name, methods } => (type_name, methods),
-                Item::ImplTrait { type_name, methods, .. } => (type_name, methods),
-                _ => continue,
-            };
+        for (type_name, methods) in Self::impl_items(&program.items) {
             for method in methods {
                 let mangled_fn = Self::mangle_impl_method(type_name, method);
                 self.compile_function(&mangled_fn)?;
