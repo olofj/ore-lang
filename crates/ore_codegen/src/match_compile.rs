@@ -579,7 +579,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Compare a tag value against an expected constant, returning an i1 bool.
-    fn check_tag(&self, tag: IntValue<'ctx>, expected: u8, label: &str) -> Result<IntValue<'ctx>, CodeGenError> {
+    pub(crate) fn check_tag(&self, tag: IntValue<'ctx>, expected: u8, label: &str) -> Result<IntValue<'ctx>, CodeGenError> {
         Ok(bld!(self.builder.build_int_compare(
             IntPredicate::EQ, tag, self.context.i8_type().const_int(expected as u64, false), label
         ))?)

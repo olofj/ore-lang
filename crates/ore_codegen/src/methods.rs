@@ -52,51 +52,58 @@ impl<'ctx> CodeGen<'ctx> {
         Ok((result, field_kind))
     }
 
+    /// Shared scaffolding for ?. operations: branch on Some/None, execute `some_body` in
+    /// the Some branch, return None in the None branch, merge with phi.
+    /// `some_body` receives the raw i64 inner value and returns the Some-branch result.
+    fn compile_option_branch(
+        &mut self,
+        obj_val: BasicValueEnum<'ctx>,
+        func: FunctionValue<'ctx>,
+        prefix: &str,
+        some_body: impl FnOnce(&mut Self, BasicValueEnum<'ctx>) -> Result<BasicValueEnum<'ctx>, CodeGenError>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let opt_ty = self.option_type();
+        let alloca = bld!(self.builder.build_alloca(opt_ty, prefix))?;
+        bld!(self.builder.build_store(alloca, obj_val))?;
+
+        let tag = self.load_tag(opt_ty, alloca)?;
+        let is_some = self.check_tag(tag, 1, "is_some")?;
+
+        let some_bb = self.context.append_basic_block(func, &format!("{}_some", prefix));
+        let none_bb = self.context.append_basic_block(func, &format!("{}_none", prefix));
+        let merge_bb = self.context.append_basic_block(func, &format!("{}_merge", prefix));
+        bld!(self.builder.build_conditional_branch(is_some, some_bb, none_bb))?;
+
+        // Some branch
+        self.builder.position_at_end(some_bb);
+        let inner = self.load_tagged_value(opt_ty, alloca)?;
+        let some_result = some_body(self, inner)?;
+        let some_wrapped = self.build_tagged_union(self.option_type(), 1, Some(some_result), &format!("{}_some_res", prefix))?;
+        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+        let some_end = self.current_block()?;
+
+        // None branch
+        self.builder.position_at_end(none_bb);
+        let none_result = self.build_tagged_union(self.option_type(), 0, None, &format!("{}_none_res", prefix))?;
+        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+        self.builder.position_at_end(merge_bb);
+        let phi = bld!(self.builder.build_phi(self.option_type(), &format!("{}_result", prefix)))?;
+        phi.add_incoming(&[(&some_wrapped, some_end), (&none_result, none_bb)]);
+        Ok((phi.as_basic_value(), ValKind::Option))
+    }
+
     pub(crate) fn compile_optional_chain(
         &mut self,
         object: &Expr,
-        _field: &str, // TODO: actually perform field access on inner value
+        _field: &str,
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
         if obj_kind != ValKind::Option {
             return Err(self.err("?. operator requires an Option value"));
         }
-
-        let opt_ty = self.option_type();
-        let alloca = bld!(self.builder.build_alloca(opt_ty, "optchain"))?;
-        bld!(self.builder.build_store(alloca, obj_val))?;
-
-        let tag = self.load_tag(opt_ty, alloca)?;
-        let is_some = bld!(self.builder.build_int_compare(
-            IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
-        ))?;
-
-        let some_bb = self.context.append_basic_block(func, "optchain_some");
-        let none_bb = self.context.append_basic_block(func, "optchain_none");
-        let merge_bb = self.context.append_basic_block(func, "optchain_merge");
-
-        bld!(self.builder.build_conditional_branch(is_some, some_bb, none_bb))?;
-
-        // Some branch: unwrap, field access, wrap in Some
-        self.builder.position_at_end(some_bb);
-        let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
-        let inner_i64 = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?.into_int_value();
-
-        // Wrap the field value in Some (pass through raw i64 payload)
-        let some_result = self.build_tagged_union(opt_ty, 1, Some(inner_i64.into()), "some_res")?;
-        bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-        // None branch: return None
-        self.builder.position_at_end(none_bb);
-        let none_result = self.build_tagged_union(opt_ty, 0, None, "none_res")?;
-        bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-        self.builder.position_at_end(merge_bb);
-        let phi = bld!(self.builder.build_phi(opt_ty, "optchain_result"))?;
-        phi.add_incoming(&[(&some_result, some_bb), (&none_result, none_bb)]);
-
-        Ok((phi.as_basic_value(), ValKind::Option))
+        self.compile_option_branch(obj_val, func, "optchain", |_, inner| Ok(inner))
     }
 
     pub(crate) fn compile_optional_method_call(
@@ -110,46 +117,13 @@ impl<'ctx> CodeGen<'ctx> {
         if obj_kind != ValKind::Option {
             return Err(self.err("?. operator requires an Option value"));
         }
-
-        let opt_ty = self.option_type();
-        let alloca = bld!(self.builder.build_alloca(opt_ty, "optmethod"))?;
-        bld!(self.builder.build_store(alloca, obj_val))?;
-
-        let tag = self.load_tag(opt_ty, alloca)?;
-        let is_some = bld!(self.builder.build_int_compare(
-            IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
-        ))?;
-
-        let some_bb = self.context.append_basic_block(func, "optmethod_some");
-        let none_bb = self.context.append_basic_block(func, "optmethod_none");
-        let merge_bb = self.context.append_basic_block(func, "optmethod_merge");
-
-        bld!(self.builder.build_conditional_branch(is_some, some_bb, none_bb))?;
-
-        // Some branch: unwrap, call method, wrap result in Some
-        self.builder.position_at_end(some_bb);
-        let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
-        let inner_val = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
-        // TODO: use kind tag from option struct to determine actual inner type
-        let inner_kind = ValKind::Int;
-        let (result_val, _result_kind) = self.call_method_on_value(inner_val, &inner_kind, method, args, func)?;
-
-        // Wrap result in Some
-        let result_i64 = self.value_to_i64(result_val)?;
-        let some_result = self.build_tagged_union(opt_ty, 1, Some(result_i64.into()), "some_res")?;
-        bld!(self.builder.build_unconditional_branch(merge_bb))?;
-        let some_end = self.current_block()?;
-
-        // None branch
-        self.builder.position_at_end(none_bb);
-        let none_result = self.build_tagged_union(opt_ty, 0, None, "none_res")?;
-        bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-        self.builder.position_at_end(merge_bb);
-        let phi = bld!(self.builder.build_phi(opt_ty, "optmethod_result"))?;
-        phi.add_incoming(&[(&some_result, some_end), (&none_result, none_bb)]);
-
-        Ok((phi.as_basic_value(), ValKind::Option))
+        let method = method.to_string();
+        let args = args.to_vec();
+        self.compile_option_branch(obj_val, func, "optmethod", |s, inner| {
+            let inner_kind = ValKind::Int;
+            let (result_val, _) = s.call_method_on_value(inner, &inner_kind, &method, &args, func)?;
+            Ok(s.value_to_i64(result_val)?.into())
+        })
     }
 
     pub(crate) fn call_method_on_value(
