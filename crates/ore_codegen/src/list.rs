@@ -260,12 +260,7 @@ impl<'ctx> CodeGen<'ctx> {
                     bld!(self.builder.build_call(rt, &[list_val.into(), i64_val], "lcontains"))?
                 };
                 let i8_val = self.call_result_to_value(result)?.into_int_value();
-                let bool_val = bld!(self.builder.build_int_compare(
-                    inkwell::IntPredicate::NE,
-                    i8_val,
-                    self.context.i8_type().const_int(0, false),
-                    "tobool"
-                ))?;
+                let bool_val = self.i8_to_bool(i8_val)?;
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "reduce" => {

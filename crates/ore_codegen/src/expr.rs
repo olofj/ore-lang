@@ -648,17 +648,15 @@ impl<'ctx> CodeGen<'ctx> {
                 match op {
                     BinOp::Eq => {
                         let i8_val = self.call_rt("ore_str_eq", &[l.into(), r.into()], "seq")?.into_int_value();
-                        let bool_val = bld!(self.builder.build_int_compare(
-                            IntPredicate::NE, i8_val,
-                            self.context.i8_type().const_int(0, false), "tobool"
-                        ))?;
+                        let bool_val = self.i8_to_bool(i8_val)?;
                         Ok(bool_val.into())
                     }
                     BinOp::NotEq => {
                         let i8_val = self.call_rt("ore_str_eq", &[l.into(), r.into()], "seq")?.into_int_value();
+                        // EQ against 0 means "not equal"
                         let bool_val = bld!(self.builder.build_int_compare(
                             IntPredicate::EQ, i8_val,
-                            self.context.i8_type().const_int(0, false), "tobool"
+                            self.context.i8_type().const_int(0, false), "sneq"
                         ))?;
                         Ok(bool_val.into())
                     }

@@ -57,12 +57,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("contains", args, 1)?;
                 let key = self.compile_map_key(&args[0], func)?;
                 let i8_val = self.call_rt("ore_map_contains", &[map_val.into(), key.into()], "mcontains")?.into_int_value();
-                let bool_val = bld!(self.builder.build_int_compare(
-                    inkwell::IntPredicate::NE,
-                    i8_val,
-                    self.context.i8_type().const_int(0, false),
-                    "tobool"
-                ))?;
+                let bool_val = self.i8_to_bool(i8_val)?;
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "len" => {

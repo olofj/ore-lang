@@ -28,12 +28,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("contains", args, 1)?;
                 let needle = self.compile_expr(&args[0], func)?;
                 let i8_val = self.call_rt("ore_str_contains", &[str_val.into(), needle.into()], "scontains")?.into_int_value();
-                let bool_val = bld!(self.builder.build_int_compare(
-                    inkwell::IntPredicate::NE,
-                    i8_val,
-                    self.context.i8_type().const_int(0, false),
-                    "tobool"
-                ))?;
+                let bool_val = self.i8_to_bool(i8_val)?;
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "trim" | "trim_start" | "trim_end" => {
@@ -84,10 +79,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let arg = self.compile_expr(&args[0], func)?;
                 let rt_name = format!("ore_str_{}", method);
                 let i8_val = self.call_rt(&rt_name, &[str_val.into(), arg.into()], method)?.into_int_value();
-                let bool_val = bld!(self.builder.build_int_compare(
-                    inkwell::IntPredicate::NE, i8_val,
-                    self.context.i8_type().const_int(0, false), "tobool"
-                ))?;
+                let bool_val = self.i8_to_bool(i8_val)?;
                 Ok((bool_val.into(), ValKind::Bool))
             }
             "to_upper" | "capitalize" | "to_lower" | "reverse" => {

@@ -507,10 +507,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // Create string constant and compare
                 let str_val = self.compile_string_literal(s)?;
                 let i8_val = self.call_rt("ore_str_eq", &[subject.into(), str_val.into()], "seq")?.into_int_value();
-                bld!(self.builder.build_int_compare(
-                    IntPredicate::NE, i8_val,
-                    self.context.i8_type().const_int(0, false), "tobool"
-                ))
+                self.i8_to_bool(i8_val)
             }
             Pattern::Range(start, end) => {
                 let i64_type = self.context.i64_type();

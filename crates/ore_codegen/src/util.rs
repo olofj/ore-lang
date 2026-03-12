@@ -3,6 +3,14 @@ use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
 use inkwell::IntPredicate;
 
 impl<'ctx> CodeGen<'ctx> {
+    /// Convert an i8 value to a bool (i1) by comparing != 0.
+    pub(crate) fn i8_to_bool(&self, val: IntValue<'ctx>) -> Result<IntValue<'ctx>, CodeGenError> {
+        Ok(bld!(self.builder.build_int_compare(
+            IntPredicate::NE, val,
+            self.context.i8_type().const_int(0, false), "tobool"
+        ))?)
+    }
+
     /// Generate a helpful "unknown method" error with available methods listed.
     pub(crate) fn unknown_method_error(type_name: &str, method: &str, available: &[&str]) -> CodeGenError {
         let mut msg = format!("unknown {} method '{}'. Available: {}", type_name, method, available.join(", "));

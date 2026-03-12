@@ -231,12 +231,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("file_exists", args, 1)?;
                 let path_val = self.compile_expr(&args[0], func)?;
                 let i8_val = self.call_rt("ore_file_exists", &[path_val.into()], "file_exists")?.into_int_value();
-                let bool_val = bld!(self.builder.build_int_compare(
-                    IntPredicate::NE,
-                    i8_val,
-                    self.context.i8_type().const_int(0, false),
-                    "tobool"
-                ))?;
+                let bool_val = self.i8_to_bool(i8_val)?;
                 Ok(Some((bool_val.into(), ValKind::Bool)))
             }
             "env_get" => {
