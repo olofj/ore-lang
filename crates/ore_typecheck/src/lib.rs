@@ -537,9 +537,9 @@ impl TypeChecker {
                         if lt == Type::Float || rt == Type::Float {
                             Type::Float
                         } else if lt == Type::Int || lt == Type::Any {
-                            lt.clone()
+                            lt
                         } else {
-                            rt.clone()
+                            rt
                         }
                     }
                     BinOp::Eq | BinOp::NotEq | BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq => {
