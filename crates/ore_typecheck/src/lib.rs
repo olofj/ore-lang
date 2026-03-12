@@ -78,13 +78,6 @@ impl Env {
         }
     }
 
-    fn child(parent: Env) -> Self {
-        Env {
-            vars: HashMap::new(),
-            parent: Some(Box::new(parent)),
-        }
-    }
-
     fn lookup(&self, name: &str) -> Option<&(Type, bool)> {
         self.vars.get(name).or_else(|| self.parent.as_ref().and_then(|p| p.lookup(name)))
     }
@@ -95,7 +88,10 @@ impl Env {
 
     /// Create a child scope, taking ownership of the parent.
     fn push_scope(parent: &mut Env) -> Env {
-        Env::child(std::mem::replace(parent, Env::new()))
+        Env {
+            vars: HashMap::new(),
+            parent: Some(Box::new(std::mem::replace(parent, Env::new()))),
+        }
     }
 
     /// Restore the parent scope from a child.
