@@ -74,7 +74,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = bld!(self.builder.build_load(*ty, *ptr, name))?;
                 let kind = kind.clone();
                 // Restore list element kind tracking for method dispatch
-                if kind == ValKind::List {
+                if kind.is_list() {
                     if let Some(elem_kind) = self.list_element_kinds.get(name) {
                         self.last_list_elem_kind = Some(elem_kind.clone());
                     }
@@ -101,7 +101,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let rhs_elem_kind = self.last_list_elem_kind.clone();
 
                 // List concatenation: list + list
-                if lk == ValKind::List && *op == BinOp::Add {
+                if lk.is_list() && *op == BinOp::Add {
                     let rt = self.rt("ore_list_concat")?;
                     let result = bld!(self.builder.build_call(rt, &[lhs.into(), rhs.into()], "lcat"))?;
                     let val = self.call_result_to_value(result)?;
@@ -111,7 +111,7 @@ impl<'ctx> CodeGen<'ctx> {
                     } else if lhs_elem_kind.is_some() {
                         self.last_list_elem_kind = lhs_elem_kind;
                     }
-                    return Ok((val, ValKind::List));
+                    return Ok((val, ValKind::List(None)));
                 }
 
                 // String repetition: str * int
@@ -188,7 +188,7 @@ impl<'ctx> CodeGen<'ctx> {
                         return Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void));
                     }
                     // Check for typed list printing
-                    if kind == ValKind::List {
+                    if kind.is_list() {
                         if let Some(elem_kind) = self.list_element_kinds.get(name).cloned() {
                             match elem_kind {
                                 ValKind::Int => {} // Fall through to default int list print
@@ -202,7 +202,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                 }
                 // Check for typed list printing via last_list_elem_kind (for method calls etc.)
-                if kind == ValKind::List {
+                if kind.is_list() {
                     if let Some(elem_kind) = self.last_list_elem_kind.take() {
                         if elem_kind != ValKind::Int {
                             self.compile_typed_list_print(val.into_pointer_value(), &elem_kind)?;
@@ -413,7 +413,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_read_lines"))?;
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Str);
-                        return Ok((val, ValKind::List));
+                        return Ok((val, ValKind::List(None)));
                     }
                     "file_write" | "file_append" => {
                         if args.len() != 2 {
@@ -468,7 +468,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[], "args"))?;
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Str);
-                        return Ok((val, ValKind::List));
+                        return Ok((val, ValKind::List(None)));
                     }
                     "eprint" => {
                         if args.len() != 1 {
@@ -647,7 +647,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[val_i64.into(), count.into()], "repeat"))?;
                         let list_val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(kind);
-                        return Ok((list_val, ValKind::List));
+                        return Ok((list_val, ValKind::List(None)));
                     }
                     "range" => {
                         if args.len() < 2 || args.len() > 3 {
@@ -665,7 +665,7 @@ impl<'ctx> CodeGen<'ctx> {
                         };
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Int);
-                        return Ok((val, ValKind::List));
+                        return Ok((val, ValKind::List(None)));
                     }
                     "len" => {
                         if args.len() != 1 {
@@ -678,7 +678,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 let result = bld!(self.builder.build_call(rt, &[val.into()], "slen"))?;
                                 return Ok((self.call_result_to_value(result)?, ValKind::Int));
                             }
-                            ValKind::List => {
+                            ValKind::List(_) => {
                                 let rt = self.rt("ore_list_len")?;
                                 let result = bld!(self.builder.build_call(rt, &[val.into()], "llen"))?;
                                 return Ok((self.call_result_to_value(result)?, ValKind::Int));
@@ -726,7 +726,7 @@ impl<'ctx> CodeGen<'ctx> {
                             ValKind::Float => "Float",
                             ValKind::Bool => "Bool",
                             ValKind::Str => "Str",
-                            ValKind::List => "List",
+                            ValKind::List(_) => "List",
                             ValKind::Map => "Map",
                             ValKind::Option => "Option",
                             ValKind::Result => "Result",
@@ -877,7 +877,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
                     let val = self.call_result_to_value(result)?;
                     // Propagate list element kind from function return type annotation
-                    if ret_kind == ValKind::List {
+                    if ret_kind.is_list() {
                         if let Some(ek) = self.fn_return_list_elem_kind.get(&name) {
                             self.last_list_elem_kind = Some(ek.clone());
                         }

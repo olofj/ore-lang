@@ -20,9 +20,29 @@ pub enum ValKind {
     Enum(String),
     Option,
     Result,
-    List,
+    List(Option<Box<ValKind>>),
     Map,
     Channel,
+}
+
+impl ValKind {
+    /// Check if this is any List variant regardless of element kind
+    pub fn is_list(&self) -> bool {
+        matches!(self, ValKind::List(_))
+    }
+
+    /// Extract the element kind from a List variant, if known
+    pub fn list_elem_kind(&self) -> Option<&ValKind> {
+        match self {
+            ValKind::List(Some(k)) => Some(k),
+            _ => None,
+        }
+    }
+
+    /// Create a List with a known element kind
+    pub fn list_of(kind: ValKind) -> ValKind {
+        ValKind::List(Some(Box::new(kind)))
+    }
 }
 
 pub(crate) struct RecordInfo<'ctx> {
@@ -203,7 +223,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(_) => 6,
             ValKind::Option => 7,
             ValKind::Result => 8,
-            ValKind::List => 9,
+            ValKind::List(_) => 9,
             ValKind::Map => 10,
             ValKind::Channel => 11,
         }
@@ -770,7 +790,7 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::IntLit(_) => ValKind::Int,
             Expr::FloatLit(_) => ValKind::Float,
             Expr::BoolLit(_) => ValKind::Bool,
-            Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List,
+            Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List(None),
             Expr::MapLit(_) => ValKind::Map,
             Expr::Ident(name) => {
                 if let Some((_, _, kind, _)) = self.variables.get(name) {
@@ -790,7 +810,7 @@ impl<'ctx> CodeGen<'ctx> {
                     "contains" | "starts_with" | "ends_with"
                     | "is_empty" | "is_some" | "is_none" | "is_ok" | "is_err" => ValKind::Bool,
                     "split" | "keys" | "values" | "entries"
-                    | "map" | "filter" | "take" | "drop" | "sort" | "flatten" => ValKind::List,
+                    | "map" | "filter" | "take" | "drop" | "sort" | "flatten" => ValKind::List(None),
                     _ => ValKind::Int,
                 }
             }
@@ -836,7 +856,7 @@ impl<'ctx> CodeGen<'ctx> {
                 "Str" => ValKind::Str,
                 "Option" => ValKind::Option,
                 "Result" => ValKind::Result,
-                "List" => ValKind::List,
+                "List" => ValKind::List(None),
                 "Map" => ValKind::Map,
                 "Channel" => ValKind::Channel,
                 other => {
@@ -856,7 +876,7 @@ impl<'ctx> CodeGen<'ctx> {
             TypeExpr::Generic(name, _args) => {
                 // For now, treat generic types by their base name
                 match name.as_str() {
-                    "List" => ValKind::List,
+                    "List" => ValKind::List(None),
                     "Map" => ValKind::Map,
                     "Option" => ValKind::Option,
                     "Result" => ValKind::Result,
@@ -883,7 +903,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option => self.option_type().into(),
             ValKind::Result => self.result_type().into(),
-            ValKind::List | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
+            ValKind::List(_) | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
         }
     }
 
@@ -898,7 +918,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option => self.option_type().into(),
             ValKind::Result => self.result_type().into(),
-            ValKind::List | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
+            ValKind::List(_) | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
         }
     }
 
@@ -962,7 +982,7 @@ impl<'ctx> CodeGen<'ctx> {
             bld!(self.builder.build_store(alloca, val))?;
             self.variables.insert(param.name.clone(), (alloca, ty, kind.clone(), false));
             // Track element kinds for List[T] and Map value kinds from type annotations
-            if kind == ValKind::List {
+            if kind.is_list() {
                 if let TypeExpr::Generic(_, args) = &param.ty {
                     if let Some(elem_ty) = args.first() {
                         let elem_kind = self.type_expr_to_kind(elem_ty);
@@ -1054,7 +1074,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 // Could be Str, List, Map — check the expression
                                 match expr {
                                     Expr::StringLit(_) | Expr::StringInterp(_) => ValKind::Str,
-                                    Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List,
+                                    Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List(None),
                                     Expr::MapLit(_) => ValKind::Map,
                                     _ => ValKind::Str, // Best guess for pointer values
                                 }

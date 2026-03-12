@@ -289,7 +289,7 @@ impl<'ctx> CodeGen<'ctx> {
             let kind = param_kinds.and_then(|k| k.get(i).cloned()).unwrap_or(ValKind::Int);
             // For pointer-based types (Str, List, Map), convert i64 param to pointer
             match &kind {
-                ValKind::Str | ValKind::List | ValKind::Map => {
+                ValKind::Str | ValKind::List(_) | ValKind::Map => {
                     let ptr_ty = self.ptr_type();
                     let ptr_val = bld!(self.builder.build_int_to_ptr(
                         val.into_int_value(), ptr_ty, &format!("{}_ptr", param_name)
@@ -328,7 +328,7 @@ impl<'ctx> CodeGen<'ctx> {
                         "bool_to_i64"
                     ))?.into()
                 }
-                ValKind::Str | ValKind::List | ValKind::Map if result.is_pointer_value() => {
+                ValKind::Str | ValKind::List(_) | ValKind::Map if result.is_pointer_value() => {
                     bld!(self.builder.build_ptr_to_int(
                         result.into_pointer_value(),
                         self.context.i64_type(),

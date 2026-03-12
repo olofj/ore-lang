@@ -23,7 +23,7 @@ impl<'ctx> CodeGen<'ctx> {
                             val.into_int_value(), self.context.i64_type(), "bool_to_i64"
                         ))?
                     }
-                    ValKind::Str | ValKind::List | ValKind::Map => {
+                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
                         bld!(self.builder.build_ptr_to_int(
                             val.into_pointer_value(), self.context.i64_type(), "ptr_to_i64"
                         ))?
@@ -56,11 +56,11 @@ impl<'ctx> CodeGen<'ctx> {
                         ))?;
                         Ok((ptr.into(), ValKind::Str))
                     }
-                    ValKind::List => {
+                    ValKind::List(_) => {
                         let ptr = bld!(self.builder.build_int_to_ptr(
                             i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
                         ))?;
-                        Ok((ptr.into(), ValKind::List))
+                        Ok((ptr.into(), ValKind::List(None)))
                     }
                     _ => Ok((i64_val, val_kind))
                 }
@@ -102,7 +102,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mkeys"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
-                Ok((val, ValKind::List))
+                Ok((val, ValKind::List(None)))
             }
             "values" => {
                 let rt = self.rt("ore_map_values")?;
@@ -111,7 +111,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // Track the value kind from the map
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 self.last_list_elem_kind = Some(val_kind);
-                Ok((val, ValKind::List))
+                Ok((val, ValKind::List(None)))
             }
             "merge" => {
                 if args.len() != 1 {
@@ -218,7 +218,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let key = self.compile_map_key(&args[0], func)?;
                 let (default_val, default_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let default_i64 = match default_kind {
-                    ValKind::Str | ValKind::List | ValKind::Map => {
+                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
                         bld!(self.builder.build_ptr_to_int(
                             default_val.into_pointer_value(), self.context.i64_type(), "def2i"
                         ))?
@@ -236,11 +236,11 @@ impl<'ctx> CodeGen<'ctx> {
                         ))?;
                         Ok((ptr.into(), ValKind::Str))
                     }
-                    ValKind::List => {
+                    ValKind::List(_) => {
                         let ptr = bld!(self.builder.build_int_to_ptr(
                             i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
                         ))?;
-                        Ok((ptr.into(), ValKind::List))
+                        Ok((ptr.into(), ValKind::List(None)))
                     }
                     _ => Ok((i64_val, val_kind))
                 }
@@ -249,8 +249,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let rt = self.rt("ore_map_entries")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mentries"))?;
                 let val = self.call_result_to_value(result)?;
-                self.last_list_elem_kind = Some(ValKind::List);
-                Ok((val, ValKind::List))
+                self.last_list_elem_kind = Some(ValKind::List(None));
+                Ok((val, ValKind::List(None)))
             }
             _ => Err(Self::unknown_method_error("Map", method, &[
                 "get", "set", "contains", "len", "remove", "keys", "values",
@@ -296,7 +296,7 @@ impl<'ctx> CodeGen<'ctx> {
                         "bool_to_i64"
                     ))?
                 }
-                ValKind::Str | ValKind::List | ValKind::Map => {
+                ValKind::Str | ValKind::List(_) | ValKind::Map => {
                     bld!(self.builder.build_ptr_to_int(
                         val.into_pointer_value(),
                         self.context.i64_type(),

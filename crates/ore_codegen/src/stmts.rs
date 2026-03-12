@@ -32,7 +32,7 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_store(alloca, val))?;
                 self.variables.insert(name.clone(), (alloca, ty, kind.clone(), *mutable));
                 // Track element kind for typed lists
-                if kind == ValKind::List {
+                if kind.is_list() {
                     if let Some(ek) = self.last_list_elem_kind.take() {
                         self.list_element_kinds.insert(name.clone(), ek);
                     }
@@ -95,7 +95,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 bld!(self.builder.build_store(*ptr, val))?;
                 // Update element kind tracking for lists and maps on reassignment
-                if kind == ValKind::List {
+                if kind.is_list() {
                     if let Some(ek) = self.last_list_elem_kind.clone() {
                         self.list_element_kinds.insert(name.clone(), ek);
                     }
@@ -112,7 +112,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let idx_val = self.compile_expr(index, func)?;
                 let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
                 match obj_kind {
-                    ValKind::List => {
+                    ValKind::List(_) => {
                         let rt = self.rt("ore_list_set")?;
                         bld!(self.builder.build_call(rt, &[obj_val.into(), idx_val.into(), val.into()], ""))?;
                     }

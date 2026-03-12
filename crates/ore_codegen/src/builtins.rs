@@ -126,7 +126,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let pf = self.rt("ore_print_float")?;
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
-            ValKind::List => {
+            ValKind::List(_) => {
                 let pf = self.rt("ore_list_print")?;
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }

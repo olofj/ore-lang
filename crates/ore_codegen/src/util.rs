@@ -49,7 +49,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Float => {
                 bld!(self.builder.build_bit_cast(val, self.context.i64_type(), "ftoi64")).map(|v| v.into_int_value())
             }
-            ValKind::Str | ValKind::List | ValKind::Map => {
+            ValKind::Str | ValKind::List(_) | ValKind::Map => {
                 bld!(self.builder.build_ptr_to_int(
                     val.into_pointer_value(), self.context.i64_type(), "ptoi64"
                 ))
@@ -61,7 +61,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub(crate) fn coerce_from_i64(&mut self, val: BasicValueEnum<'ctx>, kind: &ValKind) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
         match kind {
-            ValKind::Str | ValKind::List | ValKind::Map => {
+            ValKind::Str | ValKind::List(_) | ValKind::Map => {
                 let ptr = bld!(self.builder.build_int_to_ptr(
                     val.into_int_value(), self.context.ptr_type(inkwell::AddressSpace::default()), "i64toptr"
                 ))?;
@@ -104,7 +104,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = bld!(self.builder.build_load(st, ptr, "load_rec"))?;
                 Ok(val)
             }
-            ValKind::Str | ValKind::List | ValKind::Map => {
+            ValKind::Str | ValKind::List(_) | ValKind::Map => {
                 let ptr = bld!(self.builder.build_int_to_ptr(
                     raw.into_int_value(),
                     self.context.ptr_type(inkwell::AddressSpace::default()), "i2p"
@@ -242,7 +242,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Enum(name) => TypeExpr::Named(name.clone()),
             ValKind::Option => TypeExpr::Named("Option".to_string()),
             ValKind::Result => TypeExpr::Named("Result".to_string()),
-            ValKind::List => TypeExpr::Named("List".to_string()),
+            ValKind::List(_) => TypeExpr::Named("List".to_string()),
             ValKind::Map => TypeExpr::Named("Map".to_string()),
             ValKind::Channel => TypeExpr::Named("Channel".to_string()),
         }
@@ -263,7 +263,7 @@ impl<'ctx> CodeGen<'ctx> {
                 ValKind::Enum(n) => name.push_str(n),
                 ValKind::Option => name.push_str("Option"),
                 ValKind::Result => name.push_str("Result"),
-                ValKind::List => name.push_str("List"),
+                ValKind::List(_) => name.push_str("List"),
                 ValKind::Map => name.push_str("Map"),
                 ValKind::Channel => name.push_str("Channel"),
             }

@@ -56,14 +56,14 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "words"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
-                Ok((val, ValKind::List))
+                Ok((val, ValKind::List(None)))
             }
             "lines" => {
                 let rt = self.rt("ore_str_lines")?;
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "lines"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
-                Ok((val, ValKind::List))
+                Ok((val, ValKind::List(None)))
             }
             "split" => {
                 if args.is_empty() {
@@ -72,7 +72,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let result = bld!(self.builder.build_call(rt, &[str_val.into()], "ssplit"))?;
                     let val = self.call_result_to_value(result)?;
                     self.last_list_elem_kind = Some(ValKind::Str);
-                    return Ok((val, ValKind::List));
+                    return Ok((val, ValKind::List(None)));
                 }
                 if args.len() != 1 {
                     return Err(CodeGenError { line: Some(self.current_line), msg: "split takes 0 or 1 arguments".into() });
@@ -82,7 +82,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[str_val.into(), delim.into()], "ssplit"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
-                Ok((val, ValKind::List))
+                Ok((val, ValKind::List(None)))
             }
             "to_int" => {
                 let rt = self.rt("ore_str_to_int")?;
@@ -169,7 +169,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[str_val.into()], "schars"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
-                Ok((val, ValKind::List))
+                Ok((val, ValKind::List(None)))
             }
             "char_at" => {
                 if args.len() != 1 {

@@ -214,7 +214,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Dispatch to appropriate method handler based on kind
         match kind {
             ValKind::Str => self.compile_str_method(val.into_pointer_value().into(), method, args, func),
-            ValKind::List => self.compile_list_method(val.into_pointer_value().into(), method, args, func),
+            ValKind::List(_) => self.compile_list_method(val.into_pointer_value().into(), method, args, func),
             ValKind::Int => {
                 match method {
                     "abs" => {
@@ -249,7 +249,7 @@ impl<'ctx> CodeGen<'ctx> {
         let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
 
         // Handle list built-in methods
-        if obj_kind == ValKind::List {
+        if obj_kind.is_list() {
             let result = self.compile_list_method(obj_val, method, args, func)?;
             // After push, update the variable's element kind tracking
             if method == "push" {
@@ -608,7 +608,7 @@ impl<'ctx> CodeGen<'ctx> {
         let idx_val = self.compile_expr(index, func)?;
 
         match obj_kind {
-            ValKind::List => {
+            ValKind::List(_) => {
                 let list_get = self.rt("ore_list_get")?;
                 let result = bld!(self.builder.build_call(
                     list_get,
@@ -642,7 +642,7 @@ impl<'ctx> CodeGen<'ctx> {
                 };
                 // If the value is a pointer type (Str, List, Map), convert i64 -> ptr
                 match val_kind {
-                    ValKind::Str | ValKind::List | ValKind::Map => {
+                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
                         let ptr = bld!(self.builder.build_int_to_ptr(
                             val.into_int_value(),
                             self.context.ptr_type(inkwell::AddressSpace::default()),
