@@ -1365,9 +1365,7 @@ pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u
 #[no_mangle]
 pub extern "C" fn ore_list_find_index(list: *mut OreList, func: *const u8, env: *mut u8) -> i64 {
     unsafe {
-        let src = &*list;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for (i, &val) in (&*list).as_slice().iter().enumerate() {
             if call_closure(func, env, val) != 0 {
                 return i as i64;
             }
@@ -1470,12 +1468,9 @@ pub extern "C" fn ore_list_tap(list: *mut OreList, func: *const u8, env: *mut u8
 #[no_mangle]
 pub extern "C" fn ore_list_map_with_index(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
     unsafe {
-        let src = &*list;
         let result = ore_list_new();
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
-            let mapped = call_closure2(func, env, i as i64, val);
-            ore_list_push(result, mapped);
+        for (i, &val) in (&*list).as_slice().iter().enumerate() {
+            ore_list_push(result, call_closure2(func, env, i as i64, val));
         }
         result
     }
@@ -1485,9 +1480,7 @@ pub extern "C" fn ore_list_map_with_index(list: *mut OreList, func: *const u8, e
 #[no_mangle]
 pub extern "C" fn ore_list_each_with_index(list: *mut OreList, func: *const u8, env: *mut u8) {
     unsafe {
-        let src = &*list;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for (i, &val) in (&*list).as_slice().iter().enumerate() {
             call_closure2(func, env, i as i64, val);
         }
     }
@@ -2013,12 +2006,11 @@ pub extern "C" fn ore_list_zip(a: *mut OreList, b: *mut OreList) -> *mut OreList
 #[no_mangle]
 pub extern "C" fn ore_list_enumerate(list: *mut OreList) -> *mut OreList {
     unsafe {
-        let src = &*list;
         let result = ore_list_new();
-        for i in 0..src.len as usize {
+        for (i, &val) in (&*list).as_slice().iter().enumerate() {
             let pair = ore_list_new();
             ore_list_push(pair, i as i64);
-            ore_list_push(pair, *src.data.add(i));
+            ore_list_push(pair, val);
             ore_list_push(result, pair as i64);
         }
         result
@@ -2404,13 +2396,12 @@ pub extern "C" fn ore_list_frequencies(list: *mut OreList, elem_kind: i8) -> *mu
 #[no_mangle]
 pub extern "C" fn ore_list_intersperse(list: *mut OreList, sep: i64) -> *mut OreList {
     unsafe {
-        let src = &*list;
         let result = ore_list_new();
-        for i in 0..src.len as usize {
+        for (i, &val) in (&*list).as_slice().iter().enumerate() {
             if i > 0 {
                 ore_list_push(result, sep);
             }
-            ore_list_push(result, *src.data.add(i));
+            ore_list_push(result, val);
         }
         result
     }
