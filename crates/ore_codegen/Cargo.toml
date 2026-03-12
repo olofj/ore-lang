@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 ore_parser = { path = "../ore_parser" }
-ore_types = { path = "../ore_types" }
 inkwell = { workspace = true }
 
 [dev-dependencies]

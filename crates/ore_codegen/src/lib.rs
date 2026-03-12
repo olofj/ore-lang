@@ -7,7 +7,6 @@ use std::collections::{HashMap, HashSet};
 
 use ore_parser::ast::*;
 
-
 /// Tracks whether a compiled value is a string pointer (needs RC) or a plain value
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValKind {
