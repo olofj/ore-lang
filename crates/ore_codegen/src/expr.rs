@@ -1021,17 +1021,7 @@ impl<'ctx> CodeGen<'ctx> {
         // issues when function calls appear in conditional branches.
         // Place alloca in entry block for proper stack allocation.
         let result_alloca = {
-            let entry = func.get_first_basic_block().unwrap();
-            let current = self.current_block()?;
-            if let Some(first_instr) = entry.get_first_instruction() {
-                self.builder.position_before(&first_instr);
-            } else {
-                self.builder.position_at_end(entry);
-            }
-            let a = bld!(self.builder.build_alloca(self.context.i64_type(), "sc_tmp"))
-                .map_err(|e| CodeGenError { line: None, msg: format!("sc alloca: {e}") })?;
-            self.builder.position_at_end(current);
-            a
+            self.build_entry_alloca(func, self.context.i64_type(), "sc_tmp")?
         };
 
         let (lhs, _lk) = self.compile_expr_with_kind(left, func)?;

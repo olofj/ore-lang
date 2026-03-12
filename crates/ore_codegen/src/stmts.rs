@@ -14,20 +14,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.last_map_val_kind = None;
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
                 let ty = val.get_type();
-                // Always create allocas in the entry block to avoid LLVM
-                // backend issues with dynamic stack allocations in non-entry blocks
-                let alloca = {
-                    let entry = func.get_first_basic_block().unwrap();
-                    let current = self.current_block()?;
-                    if let Some(first_instr) = entry.get_first_instruction() {
-                        self.builder.position_before(&first_instr);
-                    } else {
-                        self.builder.position_at_end(entry);
-                    }
-                    let a = bld!(self.builder.build_alloca(ty, name))?;
-                    self.builder.position_at_end(current);
-                    a
-                };
+                let alloca = self.build_entry_alloca(func, ty, name)?;
                 bld!(self.builder.build_store(alloca, val))?;
                 self.variables.insert(name.clone(), (alloca, ty, kind.clone(), *mutable));
                 // Track element kind for typed lists
