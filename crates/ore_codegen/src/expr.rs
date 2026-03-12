@@ -476,7 +476,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Compile RHS
         self.builder.position_at_end(rhs_block);
-        let (rhs, rk) = self.compile_expr_with_kind(right, func)?;
+        let (rhs, _rk) = self.compile_expr_with_kind(right, func)?;
         let rhs_i64 = if rhs.is_int_value() {
             let rv = rhs.into_int_value();
             if rv.get_type().get_bit_width() != 64 {
