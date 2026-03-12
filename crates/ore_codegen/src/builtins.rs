@@ -244,9 +244,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("env_set", args, 2)?;
                 let key = self.compile_expr(&args[0], func)?;
                 let value = self.compile_expr(&args[1], func)?;
-                let rt = self.rt("ore_env_set")?;
-                bld!(self.builder.build_call(rt, &[key.into(), value.into()], ""))?;
-                Ok(Some((self.context.i64_type().const_int(0, false).into(), ValKind::Int)))
+                self.call_rt("ore_env_set", &[key.into(), value.into()], "")?;
+                Ok(Some(self.void_result()))
             }
             "args" => {
                 let val = self.call_rt("ore_args", &[], "args")?;
@@ -262,16 +261,14 @@ impl<'ctx> CodeGen<'ctx> {
                     ValKind::Bool => "ore_eprint_bool",
                     _ => "ore_eprint_int",
                 };
-                let rt = self.rt(rt_name)?;
-                bld!(self.builder.build_call(rt, &[val.into()], ""))?;
+                self.call_rt(rt_name, &[val.into()], "")?;
                 Ok(Some(self.void_result()))
             }
             "exit" => {
                 self.check_arity("exit", args, 1)?;
                 let code = self.compile_expr(&args[0], func)?;
-                let rt = self.rt("ore_exit")?;
-                bld!(self.builder.build_call(rt, &[code.into()], ""))?;
-                Ok(Some((self.context.i64_type().const_int(0, false).into(), ValKind::Int)))
+                self.call_rt("ore_exit", &[code.into()], "")?;
+                Ok(Some(self.void_result()))
             }
             "exec" => {
                 self.check_arity("exec", args, 1)?;
@@ -336,21 +333,8 @@ impl<'ctx> CodeGen<'ctx> {
             "type_of" | "typeof" => {
                 self.check_arity(name, args, 1)?;
                 let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                let type_name = match kind {
-                    ValKind::Int => "Int",
-                    ValKind::Float => "Float",
-                    ValKind::Bool => "Bool",
-                    ValKind::Str => "Str",
-                    ValKind::List(_) => "List",
-                    ValKind::Map => "Map",
-                    ValKind::Option => "Option",
-                    ValKind::Result => "Result",
-                    ValKind::Void => "Void",
-                    ValKind::Record(ref n) => n.as_str(),
-                    ValKind::Enum(ref n) => n.as_str(),
-                    ValKind::Channel => "Channel",
-                };
-                let str_val = self.compile_string_literal(type_name)?;
+                let type_name = Self::valkind_to_name(&kind);
+                let str_val = self.compile_string_literal(&type_name)?;
                 Ok(Some((str_val.into(), ValKind::Str)))
             }
             "rand_int" => {
