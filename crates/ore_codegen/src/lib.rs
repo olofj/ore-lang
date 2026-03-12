@@ -70,8 +70,6 @@ pub(crate) struct CaptureInfo<'ctx> {
     pub(crate) struct_type: inkwell::types::StructType<'ctx>,
     /// Names of captured variables (in struct field order)
     pub(crate) names: Vec<String>,
-    /// LLVM types of captured variables (in struct field order)
-    pub(crate) types: Vec<inkwell::types::BasicTypeEnum<'ctx>>,
 }
 
 /// Info about a local variable: its alloca, LLVM type, semantic kind, and mutability.

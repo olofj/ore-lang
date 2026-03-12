@@ -242,12 +242,10 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Build the captures struct type and store CaptureInfo if needed
         let captures_struct_type = if has_captures {
-            let field_types: Vec<inkwell::types::BasicTypeEnum<'ctx>> = capture_types.clone();
-            let st = self.context.struct_type(&field_types, false);
+            let st = self.context.struct_type(&capture_types, false);
             self.lambda_captures.insert(name.clone(), CaptureInfo {
                 struct_type: st,
                 names: capture_names.clone(),
-                types: capture_types.clone(),
             });
             Some(st)
         } else {
@@ -314,27 +312,10 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
-        let (result, kind) = self.compile_expr_with_kind(body, lambda_fn)?;
-        let return_kind = kind.clone();
+        let (result, return_kind) = self.compile_expr_with_kind(body, lambda_fn)?;
 
         if self.current_block()?.get_terminator().is_none() {
-            // Coerce result to i64 if needed (e.g. bool i1 from comparisons, ptr from Str)
-            let ret_val = match kind {
-                ValKind::Bool => {
-                    bld!(self.builder.build_int_z_extend(
-                        result.into_int_value(),
-                        self.context.i64_type(),
-                        "bool_to_i64"
-                    ))?.into()
-                }
-                ValKind::Str | ValKind::List(_) | ValKind::Map if result.is_pointer_value() => {
-                    self.ptr_to_i64(result.into_pointer_value())?.into()
-                }
-                ValKind::Float if result.is_float_value() => {
-                    bld!(self.builder.build_bit_cast(result, self.context.i64_type(), "f64_to_i64"))?
-                }
-                _ => result,
-            };
+            let ret_val: BasicValueEnum = self.value_to_i64(result)?.into();
             bld!(self.builder.build_return(Some(&ret_val)))?;
         }
 
@@ -360,7 +341,6 @@ impl<'ctx> CodeGen<'ctx> {
         })?;
         let struct_type = cap_info.struct_type;
         let names = cap_info.names.clone();
-        let types = cap_info.types.clone();
 
         let alloca = bld!(self.builder.build_alloca(struct_type, "captures"))?;
 
@@ -372,8 +352,6 @@ impl<'ctx> CodeGen<'ctx> {
             let field_ptr = bld!(self.builder.build_struct_gep(
                 struct_type, alloca, i as u32, &format!("cap_store_{}", cap_name)
             ))?;
-            // If types don't exactly match (e.g. i64 vs i64), just store directly
-            let _ = types[i]; // ensure we have the type
             bld!(self.builder.build_store(field_ptr, val))?;
         }
 
