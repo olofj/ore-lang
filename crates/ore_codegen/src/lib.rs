@@ -977,7 +977,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.variables.clear();
 
         for (i, param) in fndef.params.iter().enumerate() {
-            let val = func.get_nth_param(i as u32).unwrap();
+            let val = func.get_nth_param(i as u32).ok_or_else(|| self.err(format!("missing parameter '{}' at index {}", param.name, i)))?;
             let ty = val.get_type();
             let kind = self.type_expr_to_kind(&param.ty);
             let alloca = bld!(self.builder.build_alloca(ty, &param.name))?;

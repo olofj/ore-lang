@@ -537,4 +537,30 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
 
+    /// Convert a raw i64 value from a runtime function to the correct LLVM representation
+    /// based on its ValKind. Heap types (Str, List, Map) need i64→pointer conversion.
+    pub(crate) fn coerce_list_element(
+        &mut self,
+        val: BasicValueEnum<'ctx>,
+        kind: ValKind,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        match &kind {
+            ValKind::Str | ValKind::List(_) | ValKind::Map => {
+                let ptr = self.i64_to_ptr(val.into_int_value())?;
+                Ok((ptr.into(), kind))
+            }
+            _ => Ok((val, kind)),
+        }
+    }
+
+    /// Take the last lambda return kind and update last_list_elem_kind.
+    /// Returns the resolved element kind for list construction.
+    pub(crate) fn propagate_lambda_elem_kind(&mut self) -> Option<ValKind> {
+        let ret_elem = self.last_lambda_return_kind.take().or(self.last_list_elem_kind.clone());
+        if let Some(ref rk) = ret_elem {
+            self.last_list_elem_kind = Some(rk.clone());
+        }
+        ret_elem
+    }
+
 }

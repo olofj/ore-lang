@@ -89,13 +89,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let idx = self.compile_expr(&args[0], func)?;
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 let raw_val = self.call_rt("ore_list_remove_at", &[list_val.into(), idx.into()], "removed")?;
-                match &elem_kind {
-                    ValKind::Str => {
-                        let ptr = self.i64_to_ptr(raw_val.into_int_value())?;
-                        Ok((ptr.into(), ValKind::Str))
-                    }
-                    _ => Ok((raw_val, elem_kind))
-                }
+                self.coerce_list_element(raw_val, elem_kind)
             }
             "get" => {
                 self.check_arity("get", args, 1)?;
@@ -204,10 +198,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &kinds, method, false)?;
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let val = self.call_rt("ore_list_map_with_index", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "mwi")?;
-                let ret_elem = self.last_lambda_return_kind.take().or(self.last_list_elem_kind.clone());
-                if let Some(ref rk) = ret_elem {
-                    self.last_list_elem_kind = Some(rk.clone());
-                }
+                let ret_elem = self.propagate_lambda_elem_kind();
                 Ok((val, ValKind::List(ret_elem.map(Box::new))))
             }
             "each_with_index" => {
@@ -225,10 +216,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (lambda_fn, env_ptr) = self.resolve_list_lambda_arg(&args[0], &[ValKind::Int], method, false)?;
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let val = self.call_rt("ore_list_par_map", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "par_map")?;
-                let ret_elem = self.last_lambda_return_kind.take().or(self.last_list_elem_kind.clone());
-                if let Some(ref rk) = ret_elem {
-                    self.last_list_elem_kind = Some(rk.clone());
-                }
+                let ret_elem = self.propagate_lambda_elem_kind();
                 Ok((val, ValKind::List(ret_elem.map(Box::new))))
             }
             "par_each" => {
@@ -278,14 +266,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let fn_name = if method == "min_by" { "ore_list_min_by" } else { "ore_list_max_by" };
                 let val = self.call_rt(fn_name, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "mby")?;
-                let ek = elem_kind.unwrap_or(ValKind::Int);
-                match &ek {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        let ptr = self.i64_to_ptr(val.into_int_value())?;
-                        Ok((ptr.into(), ek))
-                    }
-                    _ => Ok((val, ek))
-                }
+                self.coerce_list_element(val, elem_kind.unwrap_or(ValKind::Int))
             }
             "reverse" => {
                 let rev_val = self.call_rt("ore_list_reverse_new", &[list_val.into()], "reversed")?;
@@ -356,14 +337,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
                 let default_val = self.context.i64_type().const_int(0, false);
                 let val = self.call_rt("ore_list_find", &[list_val.into(), fn_ptr.into(), env_ptr.into(), default_val.into()], "find")?;
-                let ek = elem_kind.unwrap_or(ValKind::Int);
-                match ek {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        let ptr = self.i64_to_ptr(val.into_int_value())?;
-                        Ok((ptr.into(), ek))
-                    }
-                    _ => Ok((val, ek))
-                }
+                self.coerce_list_element(val, elem_kind.unwrap_or(ValKind::Int))
             }
             "join" => {
                 // join(separator_str)
@@ -502,13 +476,7 @@ impl<'ctx> CodeGen<'ctx> {
                 };
                 let val = self.call_rt("ore_list_get", &[list_val.into(), idx.into()], method)?;
                 let ek = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                match ek {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        let ptr = self.i64_to_ptr(val.into_int_value())?;
-                        Ok((ptr.into(), ek))
-                    }
-                    _ => Ok((val, ek))
-                }
+                self.coerce_list_element(val, ek)
             }
             "min" | "max" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
