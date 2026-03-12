@@ -356,13 +356,25 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_rt("ore_chr", &[int_val.into()], "chr")?;
                 Ok(Some((val, ValKind::Str)))
             }
-            "type_of" => {
-                self.check_arity("type_of", args, 1)?;
+            "type_of" | "typeof" => {
+                self.check_arity(name, args, 1)?;
                 let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                let kind_tag = self.valkind_to_tag(&kind);
-                let kind_val = self.context.i8_type().const_int(kind_tag as u64, false);
-                let val = self.call_rt("ore_type_of", &[kind_val.into()], "typeof")?;
-                Ok(Some((val, ValKind::Str)))
+                let type_name = match kind {
+                    ValKind::Int => "Int",
+                    ValKind::Float => "Float",
+                    ValKind::Bool => "Bool",
+                    ValKind::Str => "Str",
+                    ValKind::List(_) => "List",
+                    ValKind::Map => "Map",
+                    ValKind::Option => "Option",
+                    ValKind::Result => "Result",
+                    ValKind::Void => "Void",
+                    ValKind::Record(ref n) => n.as_str(),
+                    ValKind::Enum(ref n) => n.as_str(),
+                    ValKind::Channel => "Channel",
+                };
+                let str_val = self.compile_string_literal(type_name)?;
+                Ok(Some((str_val.into(), ValKind::Str)))
             }
             "rand_int" => {
                 self.check_arity("rand_int", args, 2)?;
@@ -450,26 +462,6 @@ impl<'ctx> CodeGen<'ctx> {
 
                 self.builder.position_at_end(pass_bb);
                 Ok(Some(self.void_result()))
-            }
-            "typeof" => {
-                self.check_arity("typeof", args, 1)?;
-                let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
-                let type_name = match kind {
-                    ValKind::Int => "Int",
-                    ValKind::Float => "Float",
-                    ValKind::Bool => "Bool",
-                    ValKind::Str => "Str",
-                    ValKind::List(_) => "List",
-                    ValKind::Map => "Map",
-                    ValKind::Option => "Option",
-                    ValKind::Result => "Result",
-                    ValKind::Void => "Void",
-                    ValKind::Record(ref n) => n.as_str(),
-                    ValKind::Enum(ref n) => n.as_str(),
-                    ValKind::Channel => "Channel",
-                };
-                let str_val = self.compile_string_literal(type_name)?;
-                Ok(Some((str_val.into(), ValKind::Str)))
             }
             // Math functions
             "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "floor" | "ceil" | "round" | "math_abs" | "math_floor" | "math_ceil" | "math_round" => {
