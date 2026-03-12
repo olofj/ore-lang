@@ -446,32 +446,17 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
             }
-            "sum" => {
+            "sum" | "product" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                if matches!(elem_kind, ValKind::Float) {
-                    let rt = self.rt("ore_list_sum_float")?;
-                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sumf"))?;
-                    let val = self.call_result_to_value(result)?;
-                    Ok((val, ValKind::Float))
+                let (rt_name, result_kind) = if matches!(elem_kind, ValKind::Float) {
+                    (format!("ore_list_{}_float", method), ValKind::Float)
                 } else {
-                    let rt = self.rt("ore_list_sum")?;
-                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "sum"))?;
-                    let val = self.call_result_to_value(result)?;
-                    Ok((val, ValKind::Int))
-                }
-            }
-            "product" => {
-                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                if matches!(elem_kind, ValKind::Float) {
-                    let rt = self.rt("ore_list_product_float")?;
-                    let result = bld!(self.builder.build_call(rt, &[list_val.into()], "prodf"))?;
-                    let val = self.call_result_to_value(result)?;
-                    return Ok((val, ValKind::Float));
-                }
-                let rt = self.rt("ore_list_product")?;
-                let result = bld!(self.builder.build_call(rt, &[list_val.into()], "product"))?;
+                    (format!("ore_list_{}", method), ValKind::Int)
+                };
+                let rt = self.rt(&rt_name)?;
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], method))?;
                 let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                Ok((val, result_kind))
             }
             "average" => {
                 let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
@@ -593,10 +578,14 @@ impl<'ctx> CodeGen<'ctx> {
                 self.last_list_elem_kind = Some(ValKind::List(None));
                 Ok((val, ValKind::list_of(ValKind::List(None))))
             }
-            "first" => {
+            "first" | "last" => {
                 let rt = self.rt("ore_list_get")?;
-                let zero = self.context.i64_type().const_int(0, false);
-                let result = bld!(self.builder.build_call(rt, &[list_val.into(), zero.into()], "first"))?;
+                let idx = if method == "first" {
+                    self.context.i64_type().const_int(0, false)
+                } else {
+                    self.context.i64_type().const_int((-1i64) as u64, true)
+                };
+                let result = bld!(self.builder.build_call(rt, &[list_val.into(), idx.into()], method))?;
                 let val = self.call_result_to_value(result)?;
                 let ek = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
                 match ek {
@@ -607,65 +596,17 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => Ok((val, ek))
                 }
             }
-            "last" => {
-                let rt = self.rt("ore_list_get")?;
-                let neg_one = self.context.i64_type().const_int((-1i64) as u64, true);
-                let result = bld!(self.builder.build_call(rt, &[list_val.into(), neg_one.into()], "last"))?;
+            "min" | "max" => {
+                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                let (rt_name, result_kind) = match elem_kind {
+                    ValKind::Float => (format!("ore_list_{}_float", method), ValKind::Float),
+                    ValKind::Str => (format!("ore_list_{}_str", method), ValKind::Str),
+                    _ => (format!("ore_list_{}", method), ValKind::Int),
+                };
+                let rt = self.rt(&rt_name)?;
+                let result = bld!(self.builder.build_call(rt, &[list_val.into()], method))?;
                 let val = self.call_result_to_value(result)?;
-                let ek = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                match ek {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        let ptr = self.i64_to_ptr(val.into_int_value())?;
-                        Ok((ptr.into(), ek))
-                    }
-                    _ => Ok((val, ek))
-                }
-            }
-            "min" => {
-                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                match elem_kind {
-                    ValKind::Float => {
-                        let rt = self.rt("ore_list_min_float")?;
-                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lminf"))?;
-                        let val = self.call_result_to_value(result)?;
-                        Ok((val, ValKind::Float))
-                    }
-                    ValKind::Str => {
-                        let rt = self.rt("ore_list_min_str")?;
-                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmins"))?;
-                        let val = self.call_result_to_value(result)?;
-                        Ok((val, ValKind::Str))
-                    }
-                    _ => {
-                        let rt = self.rt("ore_list_min")?;
-                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmin"))?;
-                        let val = self.call_result_to_value(result)?;
-                        Ok((val, ValKind::Int))
-                    }
-                }
-            }
-            "max" => {
-                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
-                match elem_kind {
-                    ValKind::Float => {
-                        let rt = self.rt("ore_list_max_float")?;
-                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmaxf"))?;
-                        let val = self.call_result_to_value(result)?;
-                        Ok((val, ValKind::Float))
-                    }
-                    ValKind::Str => {
-                        let rt = self.rt("ore_list_max_str")?;
-                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmaxs"))?;
-                        let val = self.call_result_to_value(result)?;
-                        Ok((val, ValKind::Str))
-                    }
-                    _ => {
-                        let rt = self.rt("ore_list_max")?;
-                        let result = bld!(self.builder.build_call(rt, &[list_val.into()], "lmax"))?;
-                        let val = self.call_result_to_value(result)?;
-                        Ok((val, ValKind::Int))
-                    }
-                }
+                Ok((val, result_kind))
             }
             "count" => {
                 // count() with no args returns list length, count(pred) counts matching
