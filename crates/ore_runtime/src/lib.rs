@@ -643,30 +643,26 @@ pub extern "C" fn ore_str_split_whitespace(s: *mut OreStr) -> *mut OreList {
     list
 }
 
-#[no_mangle]
-pub extern "C" fn ore_list_min(list: *mut OreList) -> i64 {
+fn list_extremum_int(list: *mut OreList, is_better: fn(i64, i64) -> bool) -> i64 {
     if list.is_null() { return 0; }
     let l = unsafe { &*list };
     if l.len == 0 { return 0; }
-    let mut min = unsafe { *l.data };
+    let mut best = unsafe { *l.data };
     for i in 1..l.len {
         let val = unsafe { *l.data.offset(i as isize) };
-        if val < min { min = val; }
+        if is_better(val, best) { best = val; }
     }
-    min
+    best
+}
+
+#[no_mangle]
+pub extern "C" fn ore_list_min(list: *mut OreList) -> i64 {
+    list_extremum_int(list, |a, b| a < b)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_list_max(list: *mut OreList) -> i64 {
-    if list.is_null() { return 0; }
-    let l = unsafe { &*list };
-    if l.len == 0 { return 0; }
-    let mut max = unsafe { *l.data };
-    for i in 1..l.len {
-        let val = unsafe { *l.data.offset(i as isize) };
-        if val > max { max = val; }
-    }
-    max
+    list_extremum_int(list, |a, b| a > b)
 }
 
 #[no_mangle]
@@ -1383,44 +1379,32 @@ pub extern "C" fn ore_list_fold(list: *mut OreList, init: i64, func: *const u8, 
     }
 }
 
+unsafe fn list_extremum_str(list: *mut OreList, is_better: fn(&str, &str) -> bool) -> *mut OreStr {
+    let src = &*list;
+    if src.len == 0 { return ore_str_new(std::ptr::null(), 0); }
+    let mut best_val = *src.data;
+    let mut best_str = (&*(best_val as *mut OreStr)).as_str();
+    for i in 1..src.len as usize {
+        let val = *src.data.add(i);
+        let s = (&*(val as *mut OreStr)).as_str();
+        if is_better(s, best_str) {
+            best_val = val;
+            best_str = s;
+        }
+    }
+    best_val as *mut OreStr
+}
+
 /// min for string lists (lexicographic comparison)
 #[no_mangle]
 pub extern "C" fn ore_list_min_str(list: *mut OreList) -> *mut OreStr {
-    unsafe {
-        let src = &*list;
-        if src.len == 0 { return ore_str_new(std::ptr::null(), 0); }
-        let mut min_val = *src.data;
-        let mut min_str = (&*(min_val as *mut OreStr)).as_str();
-        for i in 1..src.len as usize {
-            let val = *src.data.add(i);
-            let s = (&*(val as *mut OreStr)).as_str();
-            if s < min_str {
-                min_val = val;
-                min_str = s;
-            }
-        }
-        min_val as *mut OreStr
-    }
+    unsafe { list_extremum_str(list, |a, b| a < b) }
 }
 
 /// max for string lists (lexicographic comparison)
 #[no_mangle]
 pub extern "C" fn ore_list_max_str(list: *mut OreList) -> *mut OreStr {
-    unsafe {
-        let src = &*list;
-        if src.len == 0 { return ore_str_new(std::ptr::null(), 0); }
-        let mut max_val = *src.data;
-        let mut max_str = (&*(max_val as *mut OreStr)).as_str();
-        for i in 1..src.len as usize {
-            let val = *src.data.add(i);
-            let s = (&*(val as *mut OreStr)).as_str();
-            if s > max_str {
-                max_val = val;
-                max_str = s;
-            }
-        }
-        max_val as *mut OreStr
-    }
+    unsafe { list_extremum_str(list, |a, b| a > b) }
 }
 
 /// unique_by: deduplicate using a key function that returns a string key
@@ -1906,32 +1890,25 @@ pub extern "C" fn ore_list_product_float(list: *mut OreList) -> f64 {
     }
 }
 
+unsafe fn list_extremum_float(list: *mut OreList, is_better: fn(f64, f64) -> bool) -> f64 {
+    let src = &*list;
+    if src.len == 0 { return 0.0; }
+    let mut best = f64::from_bits(*src.data as u64);
+    for i in 1..src.len as usize {
+        let v = f64::from_bits(*src.data.add(i) as u64);
+        if is_better(v, best) { best = v; }
+    }
+    best
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_min_float(list: *mut OreList) -> f64 {
-    unsafe {
-        let src = &*list;
-        if src.len == 0 { return 0.0; }
-        let mut min = f64::from_bits(*src.data as u64);
-        for i in 1..src.len as usize {
-            let v = f64::from_bits(*src.data.add(i) as u64);
-            if v < min { min = v; }
-        }
-        min
-    }
+    unsafe { list_extremum_float(list, |a, b| a < b) }
 }
 
 #[no_mangle]
 pub extern "C" fn ore_list_max_float(list: *mut OreList) -> f64 {
-    unsafe {
-        let src = &*list;
-        if src.len == 0 { return 0.0; }
-        let mut max = f64::from_bits(*src.data as u64);
-        for i in 1..src.len as usize {
-            let v = f64::from_bits(*src.data.add(i) as u64);
-            if v > max { max = v; }
-        }
-        max
-    }
+    unsafe { list_extremum_float(list, |a, b| a > b) }
 }
 
 /// Product of all i64 elements in a list.
