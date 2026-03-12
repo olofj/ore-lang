@@ -313,7 +313,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn last_is_newline_or_indent(&self) -> bool {
-        self.tokens.last().map_or(true, |t| {
+        self.tokens.last().is_none_or(|t| {
             matches!(t.token, Token::Newline | Token::Indent | Token::Dedent)
         })
     }
@@ -504,7 +504,7 @@ impl<'a> Lexer<'a> {
         while let Some(ch) = self.peek() {
             match ch {
                 b'0'..=b'9' | b'_' => { self.advance(); }
-                b'.' if !is_float && self.peek2().map_or(false, |c| c.is_ascii_digit()) => {
+                b'.' if !is_float && self.peek2().is_some_and(|c| c.is_ascii_digit()) => {
                     is_float = true;
                     self.advance();
                 }

@@ -11,7 +11,7 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         match method {
             "set" => {
-                self.check_arity("set", &args, 2)?;
+                self.check_arity("set", args, 2)?;
                 let key = self.compile_map_key(&args[0], func)?;
                 let (val, val_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let i64_val = match val_kind {
@@ -33,7 +33,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((map_val, ValKind::Map))
             }
             "get" => {
-                self.check_arity("get", &args, 1)?;
+                self.check_arity("get", args, 1)?;
                 let key = self.compile_map_key(&args[0], func)?;
                 let rt = self.rt("ore_map_get")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mget"))?;
@@ -56,7 +56,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             "contains" => {
-                self.check_arity("contains", &args, 1)?;
+                self.check_arity("contains", args, 1)?;
                 let key = self.compile_map_key(&args[0], func)?;
                 let rt = self.rt("ore_map_contains")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mcontains"))?;
@@ -76,7 +76,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Int))
             }
             "remove" => {
-                self.check_arity("remove", &args, 1)?;
+                self.check_arity("remove", args, 1)?;
                 let key = self.compile_map_key(&args[0], func)?;
                 let rt = self.rt("ore_map_remove")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), key.into()], "mremove"))?;
@@ -100,7 +100,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(val_kind)))
             }
             "merge" => {
-                self.check_arity("merge", &args, 1)?;
+                self.check_arity("merge", args, 1)?;
                 let other = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_map_merge")?;
                 let result = bld!(self.builder.build_call(rt, &[map_val.into(), other.into()], "mmerge"))?;
@@ -113,7 +113,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((map_val, ValKind::Map))
             }
             "each" => {
-                self.check_arity("map.each()", &args, 1)?;
+                self.check_arity("map.each()", args, 1)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
@@ -138,7 +138,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
             "map" => {
-                self.check_arity("map.map()", &args, 1)?;
+                self.check_arity("map.map()", args, 1)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
@@ -164,7 +164,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Map))
             }
             "filter" => {
-                self.check_arity("map.filter()", &args, 1)?;
+                self.check_arity("map.filter()", args, 1)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
@@ -190,7 +190,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Map))
             }
             "get_or" => {
-                self.check_arity("get_or", &args, 2)?;
+                self.check_arity("get_or", args, 2)?;
                 let key = self.compile_map_key(&args[0], func)?;
                 let (default_val, default_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let default_i64 = match default_kind {

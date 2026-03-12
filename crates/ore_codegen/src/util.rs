@@ -219,11 +219,10 @@ impl<'ctx> CodeGen<'ctx> {
         let mut best: Option<(&str, usize)> = None;
         for &c in candidates {
             let d = Self::edit_distance(name, c);
-            if d <= 2 && d > 0 {
-                if best.is_none() || d < best.unwrap().1 {
+            if d <= 2 && d > 0
+                && (best.is_none() || d < best.unwrap().1) {
                     best = Some((c, d));
                 }
-            }
         }
         best.map(|(s, _)| s)
     }

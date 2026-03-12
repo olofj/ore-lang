@@ -501,7 +501,7 @@ pub extern "C" fn ore_str_pad_left(s: *mut OreStr, width: i64, pad_char: *mut Or
     if str_val.len() >= width {
         return ore_str_new(str_val.as_ptr(), str_val.len() as u32);
     }
-    let padding: String = std::iter::repeat(pad_ch).take(width - str_val.len()).collect();
+    let padding: String = std::iter::repeat_n(pad_ch, width - str_val.len()).collect();
     let result = format!("{}{}", padding, str_val);
     ore_str_new(result.as_ptr(), result.len() as u32)
 }
@@ -516,7 +516,7 @@ pub extern "C" fn ore_str_pad_right(s: *mut OreStr, width: i64, pad_char: *mut O
     if str_val.len() >= width {
         return ore_str_new(str_val.as_ptr(), str_val.len() as u32);
     }
-    let padding: String = std::iter::repeat(pad_ch).take(width - str_val.len()).collect();
+    let padding: String = std::iter::repeat_n(pad_ch, width - str_val.len()).collect();
     let result = format!("{}{}", str_val, padding);
     ore_str_new(result.as_ptr(), result.len() as u32)
 }
@@ -2908,7 +2908,7 @@ pub extern "C" fn ore_env_set(key: *mut OreStr, value: *mut OreStr) {
 use std::cell::Cell;
 
 thread_local! {
-    static RNG_STATE: Cell<u64> = Cell::new(0);
+    static RNG_STATE: Cell<u64> = const { Cell::new(0) };
 }
 
 fn next_rand() -> u64 {

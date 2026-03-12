@@ -94,7 +94,7 @@ fn print_error_with_context(error: &str, file: &Path) {
     if let Some(line) = line_num {
         if let Ok(source) = std::fs::read_to_string(file) {
             let lines: Vec<&str> = source.lines().collect();
-            let start = if line > 2 { line - 2 } else { 0 };
+            let start = line.saturating_sub(2);
             let end = (line + 1).min(lines.len());
             eprintln!();
             for i in start..end {
@@ -189,7 +189,7 @@ fn main() {
             let source = format!("fn main\n  print {}\n", expr);
             let tmp = std::env::temp_dir().join("ore_eval.ore");
             std::fs::write(&tmp, &source).expect("failed to write temp file");
-            if let Err(_) = run_file(&tmp, false) {
+            if run_file(&tmp, false).is_err() {
                 // Try as statement (no print wrapper)
                 let source2 = format!("fn main\n  {}\n", expr);
                 std::fs::write(&tmp, &source2).expect("failed to write temp file");

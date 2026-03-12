@@ -305,16 +305,13 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Bool methods
         if obj_kind == ValKind::Bool {
-            match method {
-                "to_int" => {
-                    let i_val = bld!(self.builder.build_int_z_extend(
-                        obj_val.into_int_value(),
-                        self.context.i64_type(),
-                        "b2i"
-                    ))?;
-                    return Ok((i_val.into(), ValKind::Int));
-                }
-                _ => {}
+            if method == "to_int" {
+                let i_val = bld!(self.builder.build_int_z_extend(
+                    obj_val.into_int_value(),
+                    self.context.i64_type(),
+                    "b2i"
+                ))?;
+                return Ok((i_val.into(), ValKind::Int));
             }
         }
 
@@ -340,7 +337,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Int));
                 }
                 "max" => {
-                    self.check_arity("Int.max()", &args, 1)?;
+                    self.check_arity("Int.max()", args, 1)?;
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_int_value();
                     let b = other.into_int_value();
@@ -349,7 +346,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Int));
                 }
                 "min" => {
-                    self.check_arity("Int.min()", &args, 1)?;
+                    self.check_arity("Int.min()", args, 1)?;
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_int_value();
                     let b = other.into_int_value();
@@ -358,7 +355,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Int));
                 }
                 "clamp" => {
-                    self.check_arity("Int.clamp()", &args, 2)?;
+                    self.check_arity("Int.clamp()", args, 2)?;
                     let (lo_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let (hi_val, _) = self.compile_expr_with_kind(&args[1], func)?;
                     let x = obj_val.into_int_value();
@@ -371,7 +368,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Int));
                 }
                 "pow" => {
-                    self.check_arity("Int.pow()", &args, 1)?;
+                    self.check_arity("Int.pow()", args, 1)?;
                     let (exp_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let rt = self.rt("ore_int_pow")?;
                     let result = bld!(self.builder.build_call(rt, &[obj_val.into(), exp_val.into()], "pow"))?;
@@ -465,7 +462,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((val, ValKind::Float));
                 }
                 "max" => {
-                    self.check_arity("Float.max()", &args, 1)?;
+                    self.check_arity("Float.max()", args, 1)?;
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_float_value();
                     let b = other.into_float_value();
@@ -474,7 +471,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Float));
                 }
                 "min" => {
-                    self.check_arity("Float.min()", &args, 1)?;
+                    self.check_arity("Float.min()", args, 1)?;
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_float_value();
                     let b = other.into_float_value();
@@ -483,7 +480,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Float));
                 }
                 "clamp" => {
-                    self.check_arity("Float.clamp()", &args, 2)?;
+                    self.check_arity("Float.clamp()", args, 2)?;
                     let (lo_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let (hi_val, _) = self.compile_expr_with_kind(&args[1], func)?;
                     let x = obj_val.into_float_value();
@@ -496,7 +493,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((result, ValKind::Float));
                 }
                 "pow" => {
-                    self.check_arity("Float.pow()", &args, 1)?;
+                    self.check_arity("Float.pow()", args, 1)?;
                     let (exp, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let pow_fn = self.module.get_function("llvm.pow.f64").unwrap_or_else(|| {
                         let f64_type = self.context.f64_type();
@@ -517,7 +514,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((val, ValKind::Str));
                 }
                 "format" => {
-                    self.check_arity("Float.format()", &args, 1)?;
+                    self.check_arity("Float.format()", args, 1)?;
                     let (dec_val, dec_kind) = self.compile_expr_with_kind(&args[0], func)?;
                     let dec_i = match dec_kind {
                         ValKind::Int => dec_val.into_int_value(),
@@ -562,7 +559,7 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         match method {
             "send" => {
-                self.check_arity("channel.send()", &args, 1)?;
+                self.check_arity("channel.send()", args, 1)?;
                 let val = self.compile_expr(&args[0], func)?;
                 let i64_val = self.value_to_i64(val)?;
                 let rt = self.rt("ore_channel_send")?;

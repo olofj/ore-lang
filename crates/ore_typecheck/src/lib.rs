@@ -82,6 +82,12 @@ pub struct TypeChecker {
     current_line: usize,
 }
 
+impl Default for TypeChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeChecker {
     pub fn new() -> Self {
         TypeChecker {
@@ -564,7 +570,7 @@ impl TypeChecker {
                             // (the pipe operator prepends the first argument at codegen time)
                             // Also allow fewer args when defaults exist (min_required..=params.len())
                             let valid = (args.len() >= min_required && args.len() <= params.len())
-                                || (args.len() + 1 >= min_required && args.len() + 1 <= params.len());
+                                || (args.len() + 1 >= min_required && args.len() < params.len());
                             if !valid {
                                 self.err(format!(
                                     "function '{}' expects {}{} args, got {}",

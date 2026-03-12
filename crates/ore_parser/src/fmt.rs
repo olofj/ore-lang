@@ -335,7 +335,7 @@ impl Formatter {
                 // Check if this is a compact if/then/else (single expr in each branch)
                 let is_compact = then_block.stmts.len() == 1
                     && matches!(&then_block.stmts[0].stmt, Stmt::Expr(e) if !matches!(e, Expr::IfElse { .. } | Expr::BlockExpr(_)))
-                    && else_block.as_ref().map_or(false, |eb| {
+                    && else_block.as_ref().is_some_and(|eb| {
                         eb.stmts.len() == 1 && matches!(&eb.stmts[0].stmt, Stmt::Expr(_))
                     });
 

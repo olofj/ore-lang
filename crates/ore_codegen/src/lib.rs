@@ -304,7 +304,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let resolved_params = Self::resolve_self_in_params(&method.params, type_name);
                 let resolved_ret = method.ret_type.as_ref().map(|r| Self::resolve_self_type(r, type_name));
                 // Prepend implicit `self` parameter if not already declared
-                let has_self = resolved_params.first().map_or(false, |p| p.name == "self");
+                let has_self = resolved_params.first().is_some_and(|p| p.name == "self");
                 let params = if has_self {
                     resolved_params
                 } else {
@@ -351,7 +351,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let mangled_name = format!("{}_{}", type_name, method.name);
                 let resolved_params = Self::resolve_self_in_params(&method.params, type_name);
                 let resolved_ret = method.ret_type.as_ref().map(|r| Self::resolve_self_type(r, type_name));
-                let has_self = resolved_params.first().map_or(false, |p| p.name == "self");
+                let has_self = resolved_params.first().is_some_and(|p| p.name == "self");
                 let params = if has_self {
                     resolved_params
                 } else {
@@ -456,7 +456,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Enum layout: { i8 (tag), [ceil(max_payload_size/8) x i64] (data) }
         // Using i64 array ensures 8-byte alignment for float fields
         let i8_type = self.context.i8_type();
-        let num_i64s = (max_payload_size + 7) / 8;
+        let num_i64s = max_payload_size.div_ceil(8);
         let data_array = self.context.i64_type().array_type(num_i64s as u32);
         let enum_type = self.context.struct_type(
             &[i8_type.into(), data_array.into()],
@@ -473,12 +473,12 @@ impl<'ctx> CodeGen<'ctx> {
     pub(crate) fn type_size_bytes(&self, ty: &inkwell::types::BasicTypeEnum<'ctx>) -> u64 {
         match ty {
             inkwell::types::BasicTypeEnum::IntType(t) => {
-                (t.get_bit_width() as u64 + 7) / 8
+                (t.get_bit_width() as u64).div_ceil(8)
             }
             inkwell::types::BasicTypeEnum::FloatType(_) => 8, // f64
             inkwell::types::BasicTypeEnum::PointerType(_) => 8, // 64-bit pointer
             inkwell::types::BasicTypeEnum::StructType(t) => {
-                t.get_field_types().iter().map(|f| self.type_size_bytes(&f)).sum()
+                t.get_field_types().iter().map(|f| self.type_size_bytes(f)).sum()
             }
             inkwell::types::BasicTypeEnum::ArrayType(t) => {
                 let elem_size = self.type_size_bytes(&t.get_element_type());

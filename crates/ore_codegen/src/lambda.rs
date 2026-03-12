@@ -329,7 +329,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.ptr_to_i64(result.into_pointer_value())?.into()
                 }
                 ValKind::Float if result.is_float_value() => {
-                    bld!(self.builder.build_bit_cast(result, self.context.i64_type(), "f64_to_i64"))?.into()
+                    bld!(self.builder.build_bit_cast(result, self.context.i64_type(), "f64_to_i64"))?
                 }
                 _ => result,
             };

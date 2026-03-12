@@ -227,7 +227,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Stmt::LocalFn(fndef) => {
                 // Compile local function with mangled name
-                let mangled = if let Some(parent) = func.get_name().to_str().ok() {
+                let mangled = if let Ok(parent) = func.get_name().to_str() {
                     format!("{}__{}", parent, fndef.name)
                 } else {
                     fndef.name.clone()

@@ -198,7 +198,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         // Patch any remaining guard failure blocks to jump to default_bb
-        for (_, fail_bb) in &tag_to_guard_fail {
+        for fail_bb in tag_to_guard_fail.values() {
             self.builder.position_at_end(*fail_bb);
             if self.current_block()?.get_terminator().is_none() {
                 bld!(self.builder.build_unconditional_branch(default_bb))?;
@@ -452,8 +452,8 @@ impl<'ctx> CodeGen<'ctx> {
 
         // If no wildcard, the current block is the fallthrough from the last else.
         // Branch to merge with a dummy value so the phi has an incoming for every predecessor.
-        if !has_wildcard {
-            if self.current_block()?.get_terminator().is_none() {
+        if !has_wildcard
+            && self.current_block()?.get_terminator().is_none() {
                 if !branch_results.is_empty() {
                     let undef = branch_results[0].0.get_type().const_zero();
                     let default_bb = self.current_block()?;
@@ -463,7 +463,6 @@ impl<'ctx> CodeGen<'ctx> {
                     bld!(self.builder.build_unconditional_branch(merge_bb))?;
                 }
             }
-        }
 
         self.builder.position_at_end(merge_bb);
 
@@ -727,7 +726,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "map" => {
                 // opt.map(fn) -> applies fn to inner value if Some, returns Option
-                self.check_arity("map", &args, 1)?;
+                self.check_arity("map", args, 1)?;
                 let is_some = bld!(self.builder.build_int_compare(
                     IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
                 ))?;
@@ -853,7 +852,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "map" => {
                 // result.map(fn) -> applies fn to inner value if Ok, returns Result
-                self.check_arity("map", &args, 1)?;
+                self.check_arity("map", args, 1)?;
                 let is_ok = bld!(self.builder.build_int_compare(
                     IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
                 ))?;

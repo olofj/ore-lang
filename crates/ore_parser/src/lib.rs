@@ -509,7 +509,7 @@ impl Parser {
         match self.peek() {
             Token::Fn => {
                 let fndef = self.parse_fn_def()?;
-                return Ok(Stmt::LocalFn(fndef));
+                Ok(Stmt::LocalFn(fndef))
             }
             Token::Return => {
                 self.advance();
@@ -803,18 +803,16 @@ impl Parser {
                                     args,
                                 };
                             }
+                        } else if optional {
+                            lhs = Expr::OptionalChain {
+                                object: Box::new(lhs),
+                                field,
+                            };
                         } else {
-                            if optional {
-                                lhs = Expr::OptionalChain {
-                                    object: Box::new(lhs),
-                                    field,
-                                };
-                            } else {
-                                lhs = Expr::FieldAccess {
-                                    object: Box::new(lhs),
-                                    field,
-                                };
-                            }
+                            lhs = Expr::FieldAccess {
+                                object: Box::new(lhs),
+                                field,
+                            };
                         }
                         continue;
                     }
@@ -1350,7 +1348,7 @@ impl Parser {
                     // Check if this is record construction: Name(field: expr, ...)
                     // Peek: Ident followed by Colon
                     self.skip_whitespace_tokens();
-                    if name.chars().next().map_or(false, |c| c.is_uppercase()) {
+                    if name.chars().next().is_some_and(|c| c.is_uppercase()) {
                         if let Token::Ident(_) = self.peek() {
                             if let Some(Token::Colon) = self.tokens.get(self.pos + 1).map(|s| &s.token) {
                                 // Record construction
