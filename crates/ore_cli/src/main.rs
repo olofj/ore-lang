@@ -583,7 +583,6 @@ fn map_runtime_functions(
     map_fn!("ore_list_insert", ore_runtime::ore_list_insert);
     map_fn!("ore_list_remove_at", ore_runtime::ore_list_remove_at);
     map_fn!("ore_list_scan", ore_runtime::ore_list_scan);
-    map_fn!("ore_list_find", ore_runtime::ore_list_find);
     map_fn!("ore_list_join", ore_runtime::ore_list_join);
     map_fn!("ore_list_join_str", ore_runtime::ore_list_join_str);
     map_fn!("ore_list_join_float", ore_runtime::ore_list_join_float);
