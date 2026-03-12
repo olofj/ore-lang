@@ -437,6 +437,19 @@ impl TypeChecker {
                 self.infer_expr(e, env);
                 Type::Int
             }
+            Stmt::LocalFn(fndef) => {
+                // Register the local function and check its body
+                let params: Vec<Type> = fndef.params.iter().map(|p| self.resolve_type_expr(&p.ty)).collect();
+                let ret = fndef.ret_type.as_ref().map(|t| self.resolve_type_expr(t)).unwrap_or(Type::Unit);
+                self.functions.insert(fndef.name.clone(), (params.clone(), ret.clone()));
+                self.fn_required_params.insert(fndef.name.clone(), fndef.params.iter().filter(|p| p.default.is_none()).count());
+                let mut fn_env = Env::new();
+                for (param, ty) in fndef.params.iter().zip(params.iter()) {
+                    fn_env.insert(param.name.clone(), ty.clone(), false);
+                }
+                self.check_block(&fndef.body, &mut fn_env, &ret);
+                Type::Unit
+            }
         }
     }
 

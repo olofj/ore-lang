@@ -235,6 +235,46 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => Err(CodeGenError { line: Some(self.current_line), msg: "spawn requires a function call".into() }),
                 }
             }
+            Stmt::LocalFn(fndef) => {
+                // Compile local function with mangled name
+                let mangled = if let Some(parent) = func.get_name().to_str().ok() {
+                    format!("{}__{}", parent, fndef.name)
+                } else {
+                    fndef.name.clone()
+                };
+                let mut mangled_fndef = fndef.clone();
+                let original_name = fndef.name.clone();
+                mangled_fndef.name = mangled.clone();
+
+                // Save parent function state
+                let saved_vars = self.variables.clone();
+                let saved_insert_block = self.builder.get_insert_block();
+                let saved_list_elem_kind = self.last_list_elem_kind.clone();
+                let saved_break = self.break_target;
+                let saved_continue = self.continue_target;
+
+                self.declare_function(&mangled_fndef)?;
+                self.compile_function(&mangled_fndef)?;
+
+                // Restore parent function state
+                self.variables = saved_vars;
+                if let Some(block) = saved_insert_block {
+                    self.builder.position_at_end(block);
+                }
+                self.last_list_elem_kind = saved_list_elem_kind;
+                self.break_target = saved_break;
+                self.continue_target = saved_continue;
+
+                // Also register under the original name so calls resolve
+                if let Some(f) = self.module.get_function(&mangled) {
+                    let ret_kind = match fndef.ret_type.as_ref() {
+                        Some(te) => self.type_expr_to_kind(te),
+                        None => ValKind::Void,
+                    };
+                    self.functions.insert(original_name, (f, ret_kind));
+                }
+                Ok(None)
+            }
         }
     }
 

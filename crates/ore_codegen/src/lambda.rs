@@ -182,6 +182,12 @@ fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<S
             collect_free_vars(object, bound, free, seen);
             collect_free_vars(value, bound, free, seen);
         }
+        Stmt::LocalFn(fndef) => {
+            // Collect free vars from the local function's body
+            for s in fndef.body.iter_stmts() {
+                collect_free_vars_stmt(s, bound, free, seen);
+            }
+        }
     }
 }
 

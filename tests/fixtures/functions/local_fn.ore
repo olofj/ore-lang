@@ -1,0 +1,19 @@
+fn main
+  fn double x:Int -> Int
+    x * 2
+
+  fn greet name:Str -> Str
+    "Hello, {name}!"
+
+  print double(5)
+  print double(21)
+  print greet("world")
+
+  -- Local function in pipeline
+  print 7 | double
+
+  -- Local function calling another local function
+  fn quad x:Int -> Int
+    double(double(x))
+
+  print quad(3)

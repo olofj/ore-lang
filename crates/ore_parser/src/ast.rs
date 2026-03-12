@@ -170,6 +170,7 @@ pub enum Stmt {
     Break,
     Continue,
     Spawn(Expr),
+    LocalFn(FnDef),
 }
 
 #[derive(Debug, Clone, PartialEq)]

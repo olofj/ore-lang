@@ -485,6 +485,10 @@ impl Parser {
 
     fn parse_stmt(&mut self) -> Result<Stmt, ParseError> {
         match self.peek() {
+            Token::Fn => {
+                let fndef = self.parse_fn_def()?;
+                return Ok(Stmt::LocalFn(fndef));
+            }
             Token::Return => {
                 self.advance();
                 if matches!(self.peek(), Token::Newline | Token::Dedent | Token::Eof) {

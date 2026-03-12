@@ -1367,6 +1367,19 @@ fn function_defaults() {
 }
 
 #[test]
+fn function_local_fn() {
+    let out = run_ore("functions/local_fn.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "10",              // double(5)
+        "42",              // double(21)
+        "Hello, world!",   // greet("world")
+        "14",              // 7 | double
+        "12",              // quad(3) = double(double(3)) = double(6) = 12
+    ]);
+}
+
+#[test]
 fn lists_find_fold() {
     let out = run_ore("lists/find_fold.ore");
     let lines: Vec<&str> = out.lines().collect();

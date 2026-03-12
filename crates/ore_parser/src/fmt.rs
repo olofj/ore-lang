@@ -269,6 +269,9 @@ impl Formatter {
                 self.format_expr(expr, level);
                 self.out.push('\n');
             }
+            Stmt::LocalFn(fndef) => {
+                self.format_fn_def(fndef, level);
+            }
         }
     }
 
