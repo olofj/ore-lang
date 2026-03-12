@@ -86,10 +86,10 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
                 collect_free_vars(e, bound, free, seen);
             }
         }
-        Expr::FieldAccess { object, .. } => {
+        Expr::FieldAccess { object, .. } | Expr::OptionalChain { object, .. } => {
             collect_free_vars(object, bound, free, seen);
         }
-        Expr::MethodCall { object, args, .. } => {
+        Expr::MethodCall { object, args, .. } | Expr::OptionalMethodCall { object, args, .. } => {
             collect_free_vars(object, bound, free, seen);
             for arg in args {
                 collect_free_vars(arg, bound, free, seen);
@@ -119,15 +119,6 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
             collect_free_vars(object, bound, free, seen);
             collect_free_vars(index, bound, free, seen);
         }
-        Expr::OptionalChain { object, .. } => {
-            collect_free_vars(object, bound, free, seen);
-        }
-        Expr::OptionalMethodCall { object, args, .. } => {
-            collect_free_vars(object, bound, free, seen);
-            for arg in args {
-                collect_free_vars(arg, bound, free, seen);
-            }
-        }
         Expr::Assert { cond, .. } => {
             collect_free_vars(cond, bound, free, seen);
         }
@@ -139,13 +130,10 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
 
 fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<String>, seen: &mut HashSet<String>) {
     match stmt {
-        Stmt::Let { value, .. } => collect_free_vars(value, bound, free, seen),
-        Stmt::LetDestructure { value, .. } => collect_free_vars(value, bound, free, seen),
-        Stmt::Assign { value, .. } => collect_free_vars(value, bound, free, seen),
-        Stmt::Expr(e) => collect_free_vars(e, bound, free, seen),
-        Stmt::Return(Some(e)) => collect_free_vars(e, bound, free, seen),
+        Stmt::Let { value, .. } | Stmt::LetDestructure { value, .. }
+        | Stmt::Assign { value, .. } => collect_free_vars(value, bound, free, seen),
+        Stmt::Expr(e) | Stmt::Spawn(e) | Stmt::Return(Some(e)) => collect_free_vars(e, bound, free, seen),
         Stmt::Return(None) | Stmt::Break | Stmt::Continue => {}
-        Stmt::Spawn(e) => collect_free_vars(e, bound, free, seen),
         Stmt::ForIn { start, end, body, .. } => {
             collect_free_vars(start, bound, free, seen);
             collect_free_vars(end, bound, free, seen);
