@@ -177,38 +177,20 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => Err(self.err("abs requires Int or Float")),
                 }
             }
-            "min" => {
-                self.check_arity("min", args, 2)?;
+            "min" | "max" => {
+                self.check_arity(name, args, 2)?;
                 let (a, ak) = self.compile_expr_with_kind(&args[0], func)?;
                 let (b, _) = self.compile_expr_with_kind(&args[1], func)?;
+                let is_min = name == "min";
                 if ak == ValKind::Float {
-                    let cmp = bld!(self.builder.build_float_compare(
-                        inkwell::FloatPredicate::OLT, a.into_float_value(), b.into_float_value(), "cmp"
-                    ))?;
-                    let result = bld!(self.builder.build_select(cmp, a, b, "min"))?;
+                    let fpred = if is_min { inkwell::FloatPredicate::OLT } else { inkwell::FloatPredicate::OGT };
+                    let cmp = bld!(self.builder.build_float_compare(fpred, a.into_float_value(), b.into_float_value(), "cmp"))?;
+                    let result = bld!(self.builder.build_select(cmp, a, b, name))?;
                     return Ok(Some((result, ValKind::Float)));
                 }
-                let cmp = bld!(self.builder.build_int_compare(
-                    inkwell::IntPredicate::SLT, a.into_int_value(), b.into_int_value(), "cmp"
-                ))?;
-                let result = bld!(self.builder.build_select(cmp, a, b, "min"))?;
-                Ok(Some((result, ValKind::Int)))
-            }
-            "max" => {
-                self.check_arity("max", args, 2)?;
-                let (a, ak) = self.compile_expr_with_kind(&args[0], func)?;
-                let (b, _) = self.compile_expr_with_kind(&args[1], func)?;
-                if ak == ValKind::Float {
-                    let cmp = bld!(self.builder.build_float_compare(
-                        inkwell::FloatPredicate::OGT, a.into_float_value(), b.into_float_value(), "cmp"
-                    ))?;
-                    let result = bld!(self.builder.build_select(cmp, a, b, "max"))?;
-                    return Ok(Some((result, ValKind::Float)));
-                }
-                let cmp = bld!(self.builder.build_int_compare(
-                    inkwell::IntPredicate::SGT, a.into_int_value(), b.into_int_value(), "cmp"
-                ))?;
-                let result = bld!(self.builder.build_select(cmp, a, b, "max"))?;
+                let ipred = if is_min { inkwell::IntPredicate::SLT } else { inkwell::IntPredicate::SGT };
+                let cmp = bld!(self.builder.build_int_compare(ipred, a.into_int_value(), b.into_int_value(), "cmp"))?;
+                let result = bld!(self.builder.build_select(cmp, a, b, name))?;
                 Ok(Some((result, ValKind::Int)))
             }
             "channel" => {
@@ -484,30 +466,19 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_rt(&rt_name, &[f_val.into()], name)?;
                 Ok(Some((val, ValKind::Float)))
             }
-            "pow" => {
-                self.check_arity("pow()", args, 2)?;
-                let (base, bk) = self.compile_expr_with_kind(&args[0], func)?;
-                let (exp, ek) = self.compile_expr_with_kind(&args[1], func)?;
-                let base_f = self.coerce_to_float(base, &bk, "pow()")?;
-                let exp_f = self.coerce_to_float(exp, &ek, "pow()")?;
-                let val = self.call_rt("ore_math_pow", &[base_f.into(), exp_f.into()], "pow")?;
+            "pow" | "atan2" => {
+                self.check_arity(name, args, 2)?;
+                let (a, ak) = self.compile_expr_with_kind(&args[0], func)?;
+                let (b, bk) = self.compile_expr_with_kind(&args[1], func)?;
+                let a_f = self.coerce_to_float(a, &ak, name)?;
+                let b_f = self.coerce_to_float(b, &bk, name)?;
+                let rt_name = format!("ore_math_{}", name);
+                let val = self.call_rt(&rt_name, &[a_f.into(), b_f.into()], name)?;
                 Ok(Some((val, ValKind::Float)))
             }
-            "atan2" => {
-                self.check_arity("atan2()", args, 2)?;
-                let (y, yk) = self.compile_expr_with_kind(&args[0], func)?;
-                let (x, xk) = self.compile_expr_with_kind(&args[1], func)?;
-                let y_f = self.coerce_to_float(y, &yk, "atan2()")?;
-                let x_f = self.coerce_to_float(x, &xk, "atan2()")?;
-                let val = self.call_rt("ore_math_atan2", &[y_f.into(), x_f.into()], "atan2")?;
-                Ok(Some((val, ValKind::Float)))
-            }
-            "pi" => {
-                let val = self.call_rt("ore_math_pi", &[], "pi")?;
-                Ok(Some((val, ValKind::Float)))
-            }
-            "euler" | "e" => {
-                let val = self.call_rt("ore_math_e", &[], "euler")?;
+            "pi" | "euler" | "e" => {
+                let rt_name = if name == "pi" { "ore_math_pi" } else { "ore_math_e" };
+                let val = self.call_rt(rt_name, &[], name)?;
                 Ok(Some((val, ValKind::Float)))
             }
             _ => Ok(None),
