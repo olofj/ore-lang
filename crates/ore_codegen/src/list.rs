@@ -94,8 +94,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone();
                 self.last_lambda_return_kind = None;
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, true)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, true)?;
+
                 let runtime_fn_name = format!("ore_list_{}", method);
                 let val = self.call_rt(&runtime_fn_name, &[list_val.into(), fn_ptr.into(), env_ptr.into()], method)?;
                 // For map, update element kind based on lambda return type
@@ -112,8 +112,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("partition", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_partition", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "part")?;
                 let inner_elem = elem_kind.map(Box::new);
                 self.last_list_elem_kind = Some(ValKind::List(inner_elem.clone()));
@@ -123,8 +123,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("find_index", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_find_index", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "fidx")?;
                 Ok((val, ValKind::Int))
             }
@@ -134,8 +134,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone();
                 // fold lambda receives (acc, elem) — both as Int/i64
                 let kinds = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[1], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[1], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_fold", &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "fold")?;
                 Ok((val, ValKind::Int))
             }
@@ -143,8 +143,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("each", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let runtime_fn = self.rt("ore_list_each")?;
                 bld!(self.builder.build_call(
                     runtime_fn,
@@ -157,8 +157,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("tap", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_tap", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "tap")?;
                 Ok((val, ValKind::List(elem_kind.map(Box::new))))
             }
@@ -166,8 +166,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("map_with_index", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_map_with_index", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "mwi")?;
                 let ret_elem = self.propagate_lambda_elem_kind();
                 Ok((val, ValKind::List(ret_elem.map(Box::new))))
@@ -176,24 +176,24 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("each_with_index", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let rt = self.rt("ore_list_each_with_index")?;
                 bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
                 Ok(self.void_result())
             }
             "par_map" => {
                 self.check_arity("par_map", args, 1)?;
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &[ValKind::Int], method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &[ValKind::Int], method, false)?;
+
                 let val = self.call_rt("ore_list_par_map", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "par_map")?;
                 let ret_elem = self.propagate_lambda_elem_kind();
                 Ok((val, ValKind::List(ret_elem.map(Box::new))))
             }
             "par_each" => {
                 self.check_arity("par_each", args, 1)?;
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &[ValKind::Int], method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &[ValKind::Int], method, false)?;
+
                 let rt = self.rt("ore_list_par_each")?;
                 bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
                 Ok(self.void_result())
@@ -213,8 +213,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone();
                 let ek = elem_kind.unwrap_or(ValKind::Int);
                 let kinds = vec![ek.clone(), ek];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let sorted_val = self.call_rt("ore_list_sort_by", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "sorted")?;
                 Ok((sorted_val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
             }
@@ -223,8 +223,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("sort_by", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 // Determine which runtime to use based on key return type
                 let sorted_val = self.call_rt("ore_list_sort_by_key", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "sorted")?;
                 Ok((sorted_val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
@@ -233,8 +233,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity(method, args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let fn_name = if method == "min_by" { "ore_list_min_by" } else { "ore_list_max_by" };
                 let val = self.call_rt(fn_name, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "mby")?;
                 self.coerce_list_element(val, elem_kind.unwrap_or(ValKind::Int))
@@ -271,8 +271,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone();
                 let fn_arg = if args.len() == 1 { &args[0] } else { &args[1] };
                 let kinds = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(fn_arg, &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(fn_arg, &kinds, method, false)?;
+
                 if args.len() == 1 {
                     let val = self.call_rt("ore_list_reduce1", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "reduce")?;
                     Ok((val, ValKind::Int))
@@ -288,8 +288,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let init_val = self.compile_expr(&args[0], func)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![ValKind::Int, elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[1], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[1], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_scan", &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "scan")?;
                 self.last_list_elem_kind = Some(ValKind::Int);
                 Ok((val, ValKind::list_of(ValKind::Int)))
@@ -299,8 +299,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("find", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let default_val = self.context.i64_type().const_int(0, false);
                 let val = self.call_rt("ore_list_find", &[list_val.into(), fn_ptr.into(), env_ptr.into(), default_val.into()], "find")?;
                 self.coerce_list_element(val, elem_kind.unwrap_or(ValKind::Int))
@@ -346,8 +346,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity(method, args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let runtime_fn_name = format!("ore_list_{}", method);
                 let val = self.call_rt(&runtime_fn_name, &[list_val.into(), fn_ptr.into(), env_ptr.into()], method)?;
                 let bool_val = bld!(self.builder.build_int_truncate(val.into_int_value(), self.context.bool_type(), &format!("{}_bool", method)))?;
@@ -366,8 +366,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.last_list_elem_kind.clone();
                 let ek = elem_kind.unwrap_or(ValKind::Int);
                 let kinds = vec![ek.clone(), ek];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[1], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[1], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_zip_with", &[list_val.into(), other.into(), fn_ptr.into(), env_ptr.into()], "zipw")?;
                 if let Some(rk) = self.last_lambda_return_kind.take() {
                     self.last_list_elem_kind = Some(rk);
@@ -411,8 +411,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("unique_by", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_unique_by", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "uniqby")?;
                 Ok((val, ValKind::List(self.last_list_elem_kind.clone().map(Box::new))))
             }
@@ -457,8 +457,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("count", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_count", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "count")?;
                 Ok((val, ValKind::Int))
             }
@@ -466,9 +466,9 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity(method, args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
                 let lambda_ret_kind = self.last_lambda_return_kind.take();
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+
                 // Use _int variant for count_by when lambda returns non-string
                 let rt_name = if method == "count_by" && lambda_ret_kind.as_ref() != Some(&ValKind::Str) {
                     "ore_list_count_by_int".to_string()
@@ -484,8 +484,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("to_map", args, 1)?;
                 let elem_kind = self.last_list_elem_kind.clone();
                 let kinds = vec![elem_kind.clone().unwrap_or(ValKind::Int)];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
+
                 let val = self.call_rt("ore_list_to_map", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "tomap")?;
                 let vk = elem_kind.unwrap_or(ValKind::Int);
                 self.last_map_val_kind = Some(vk);

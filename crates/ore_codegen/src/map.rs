@@ -86,8 +86,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("map.each()", args, 1)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 let kinds = [ValKind::Str, val_kind];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.each()", false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.each()", false)?;
+
                 let rt = self.rt("ore_map_each")?;
                 bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
                 Ok(self.void_result())
@@ -96,8 +96,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("map.map()", args, 1)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 let kinds = [ValKind::Str, val_kind];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.map()", false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.map()", false)?;
+
                 let val = self.call_rt("ore_map_map_values", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mmap")?;
                 Ok((val, ValKind::Map))
             }
@@ -105,8 +105,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("map.filter()", args, 1)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 let kinds = [ValKind::Str, val_kind];
-                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.filter()", false)?;
-                let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.filter()", false)?;
+
                 let val = self.call_rt("ore_map_filter", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mfilter")?;
                 Ok((val, ValKind::Map))
             }

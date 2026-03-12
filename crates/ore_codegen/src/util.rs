@@ -238,13 +238,15 @@ impl<'ctx> CodeGen<'ctx> {
     /// Resolve a lambda or function reference argument into (FunctionValue, fn_ptr, env_ptr).
     /// `param_kinds` specifies the types passed to the lambda parameters.
     /// If `track_return_kind` is true, sets `self.last_lambda_return_kind` from named function refs.
+    /// Resolve a lambda or function reference argument, returning a (fn_ptr, env_ptr) pair
+    /// suitable for passing to runtime higher-order functions.
     pub(crate) fn resolve_lambda_arg(
         &mut self,
         arg: &Expr,
         param_kinds: &[ValKind],
         method_name: &str,
         track_return_kind: bool,
-    ) -> Result<(FunctionValue<'ctx>, PointerValue<'ctx>), CodeGenError> {
+    ) -> Result<(PointerValue<'ctx>, PointerValue<'ctx>), CodeGenError> {
         let lambda_fn = match arg {
             Expr::Lambda { params, body } => {
                 self.compile_lambda_with_kinds(params, body, Some(param_kinds))?
@@ -264,7 +266,8 @@ impl<'ctx> CodeGen<'ctx> {
         } else {
             self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
         };
-        Ok((lambda_fn, env_ptr))
+        let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+        Ok((fn_ptr, env_ptr))
     }
 
     /// Extract the name of a lambda function as a String.
