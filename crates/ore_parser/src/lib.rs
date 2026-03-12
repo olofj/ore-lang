@@ -71,13 +71,10 @@ impl Parser {
     }
 
     fn error(&self, msg: String) -> ParseError {
-        let spanned = self.tokens.get(self.pos);
-        ParseError {
-            msg,
-            offset: spanned.map(|s| s.offset).unwrap_or(0),
-            line: spanned.map(|s| s.line).unwrap_or(0),
-            col: spanned.map(|s| s.col).unwrap_or(0),
-        }
+        let (offset, line, col) = self.tokens.get(self.pos)
+            .map(|s| (s.offset, s.line, s.col))
+            .unwrap_or_default();
+        ParseError { msg, offset, line, col }
     }
 
     fn skip_newlines(&mut self) {
