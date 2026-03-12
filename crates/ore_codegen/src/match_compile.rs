@@ -251,18 +251,33 @@ impl<'ctx> CodeGen<'ctx> {
         arms: &[MatchArm],
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let opt_ty = self.option_type();
+        let variant_tags = &[("None", 0u8), ("Some", 1u8)];
+        let has_payload = |tag: u8| tag == 1; // Only Some carries a payload
+        self.compile_tagged_union_match(subject_val, arms, func, self.option_type(), "opt", "Option", variant_tags, has_payload)
+    }
 
-        // Store subject so we can GEP into it
-        let subject_alloca = bld!(self.builder.build_alloca(opt_ty, "opt_match"))?;
+    /// Unified match compilation for tagged union types (Option and Result).
+    /// `variant_tags` maps variant names to their tag values.
+    /// `has_payload` determines whether a given tag carries a payload to bind.
+    fn compile_tagged_union_match(
+        &mut self,
+        subject_val: BasicValueEnum<'ctx>,
+        arms: &[MatchArm],
+        func: FunctionValue<'ctx>,
+        union_ty: inkwell::types::StructType<'ctx>,
+        prefix: &str,
+        type_name: &str,
+        variant_tags: &[(&str, u8)],
+        has_payload: impl Fn(u8) -> bool,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let subject_alloca = bld!(self.builder.build_alloca(union_ty, &format!("{}_match", prefix)))?;
         bld!(self.builder.build_store(subject_alloca, subject_val))?;
 
-        // Load tag
-        let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, subject_alloca, 0, "tag_ptr"))?;
+        let tag_ptr = bld!(self.builder.build_struct_gep(union_ty, subject_alloca, 0, "tag_ptr"))?;
         let tag_val = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
 
-        let merge_bb = self.context.append_basic_block(func, "opt_merge");
-        let default_bb = self.context.append_basic_block(func, "opt_default");
+        let merge_bb = self.context.append_basic_block(func, &format!("{}_merge", prefix));
+        let default_bb = self.context.append_basic_block(func, &format!("{}_default", prefix));
         let mut case_blocks: Vec<(inkwell::values::IntValue<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
         let mut branch_results: Vec<(BasicValueEnum<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
         let mut result_kind = ValKind::Void;
@@ -271,29 +286,25 @@ impl<'ctx> CodeGen<'ctx> {
         for arm in arms {
             match &arm.pattern {
                 Pattern::Variant { name, bindings } => {
-                    let vtag: u8 = match name.as_str() {
-                        "None" => 0,
-                        "Some" => 1,
-                        _ => return Err(self.err(format!("unknown Option variant '{}'", name))),
-                    };
+                    let vtag = variant_tags.iter()
+                        .find(|(n, _)| *n == name.as_str())
+                        .map(|(_, t)| *t)
+                        .ok_or_else(|| self.err(format!("unknown {} variant '{}'", type_name, name)))?;
 
-                    let case_bb = self.context.append_basic_block(func, &format!("opt_{}", name));
+                    let case_bb = self.context.append_basic_block(func, &format!("{}_{}", prefix, name));
                     let tag_const = self.context.i8_type().const_int(vtag as u64, false);
                     case_blocks.push((tag_const, case_bb));
 
                     self.builder.position_at_end(case_bb);
                     let saved_vars = self.variables.clone();
 
-                    // If Some, bind the payload
-                    if vtag == 1 && !bindings.is_empty() {
-                        // Read the kind tag to know the payload type
-                        let kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, subject_alloca, 1, "kind_ptr"))?;
+                    if has_payload(vtag) && !bindings.is_empty() {
+                        let kind_ptr = bld!(self.builder.build_struct_gep(union_ty, subject_alloca, 1, "kind_ptr"))?;
                         let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_ptr, "kind_tag"))?.into_int_value();
-                        let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, subject_alloca, 2, "val_ptr"))?;
+                        let val_ptr = bld!(self.builder.build_struct_gep(union_ty, subject_alloca, 2, "val_ptr"))?;
                         let payload = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, &bindings[0]))?;
                         let alloca = bld!(self.builder.build_alloca(self.context.i64_type(), &bindings[0]))?;
                         bld!(self.builder.build_store(alloca, payload))?;
-                        // Store kind tag for dynamic dispatch in string interpolation
                         let kind_alloca = bld!(self.builder.build_alloca(self.context.i8_type(), &format!("{}_kind", bindings[0])))?;
                         bld!(self.builder.build_store(kind_alloca, kind_i8))?;
                         self.variables.insert(bindings[0].clone(), VarInfo { ptr: alloca, ty: self.context.i64_type().into(), kind: ValKind::Int, is_mutable: false });
@@ -308,17 +319,15 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     let end_bb = self.current_block()?;
                     branch_results.push((arm_val, end_bb));
-
                     self.variables = saved_vars;
                 }
                 Pattern::Wildcard => {
                     wildcard_arm = Some(arm);
                 }
-                _ => return Err(self.err("literal patterns not supported in Option match")),
+                _ => return Err(self.err(format!("literal patterns not supported in {} match", type_name))),
             }
         }
 
-        // Handle wildcard/default
         self.builder.position_at_end(default_bb);
         if let Some(arm) = wildcard_arm {
             let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
@@ -332,7 +341,6 @@ impl<'ctx> CodeGen<'ctx> {
             bld!(self.builder.build_unreachable())?;
         }
 
-        // Build the switch from the original block
         let switch_bb = tag_ptr.as_instruction_value().unwrap().get_parent().unwrap();
         self.builder.position_at_end(switch_bb);
         bld!(self.builder.build_switch(
@@ -341,13 +349,12 @@ impl<'ctx> CodeGen<'ctx> {
             &case_blocks.iter().map(|(v, bb)| (*v, *bb)).collect::<Vec<_>>()
         ))?;
 
-        // Build merge phi
         self.builder.position_at_end(merge_bb);
         if branch_results.is_empty() {
             return Ok(self.void_result());
         }
 
-        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "opt_val"))?;
+        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), &format!("{}_val", prefix)))?;
         for (val, bb) in &branch_results {
             phi.add_incoming(&[(val, *bb)]);
         }
@@ -536,100 +543,9 @@ impl<'ctx> CodeGen<'ctx> {
         arms: &[MatchArm],
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let res_ty = self.result_type();
-
-        let subject_alloca = bld!(self.builder.build_alloca(res_ty, "res_match"))?;
-        bld!(self.builder.build_store(subject_alloca, subject_val))?;
-
-        let tag_ptr = bld!(self.builder.build_struct_gep(res_ty, subject_alloca, 0, "tag_ptr"))?;
-        let tag_val = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
-
-        let merge_bb = self.context.append_basic_block(func, "res_merge");
-        let default_bb = self.context.append_basic_block(func, "res_default");
-        let mut case_blocks: Vec<(inkwell::values::IntValue<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
-        let mut branch_results: Vec<(BasicValueEnum<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
-        let mut result_kind = ValKind::Void;
-        let mut wildcard_arm: Option<&MatchArm> = None;
-
-        for arm in arms {
-            match &arm.pattern {
-                Pattern::Variant { name, bindings } => {
-                    let vtag: u8 = match name.as_str() {
-                        "Ok" => 0,
-                        "Err" => 1,
-                        _ => return Err(self.err(format!("unknown Result variant '{}'", name))),
-                    };
-
-                    let case_bb = self.context.append_basic_block(func, &format!("res_{}", name));
-                    let tag_const = self.context.i8_type().const_int(vtag as u64, false);
-                    case_blocks.push((tag_const, case_bb));
-
-                    self.builder.position_at_end(case_bb);
-                    let saved_vars = self.variables.clone();
-
-                    if !bindings.is_empty() {
-                        let kind_ptr = bld!(self.builder.build_struct_gep(res_ty, subject_alloca, 1, "kind_ptr"))?;
-                        let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_ptr, "kind_tag"))?.into_int_value();
-                        let val_ptr = bld!(self.builder.build_struct_gep(res_ty, subject_alloca, 2, "val_ptr"))?;
-                        let payload = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, &bindings[0]))?;
-                        let alloca = bld!(self.builder.build_alloca(self.context.i64_type(), &bindings[0]))?;
-                        bld!(self.builder.build_store(alloca, payload))?;
-                        let kind_alloca = bld!(self.builder.build_alloca(self.context.i8_type(), &format!("{}_kind", bindings[0])))?;
-                        bld!(self.builder.build_store(kind_alloca, kind_i8))?;
-                        self.variables.insert(bindings[0].clone(), VarInfo { ptr: alloca, ty: self.context.i64_type().into(), kind: ValKind::Int, is_mutable: false });
-                        self.dynamic_kind_tags.insert(bindings[0].clone(), kind_alloca);
-                    }
-
-                    let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
-                    result_kind = arm_kind;
-
-                    if self.current_block()?.get_terminator().is_none() {
-                        bld!(self.builder.build_unconditional_branch(merge_bb))?;
-                    }
-                    let end_bb = self.current_block()?;
-                    branch_results.push((arm_val, end_bb));
-
-                    self.variables = saved_vars;
-                }
-                Pattern::Wildcard => {
-                    wildcard_arm = Some(arm);
-                }
-                _ => return Err(self.err("literal patterns not supported in Result match")),
-            }
-        }
-
-        self.builder.position_at_end(default_bb);
-        if let Some(arm) = wildcard_arm {
-            let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
-            result_kind = arm_kind;
-            if self.current_block()?.get_terminator().is_none() {
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-            }
-            let end_bb = self.current_block()?;
-            branch_results.push((arm_val, end_bb));
-        } else {
-            bld!(self.builder.build_unreachable())?;
-        }
-
-        let switch_bb = tag_ptr.as_instruction_value().unwrap().get_parent().unwrap();
-        self.builder.position_at_end(switch_bb);
-        bld!(self.builder.build_switch(
-            tag_val,
-            default_bb,
-            &case_blocks.iter().map(|(v, bb)| (*v, *bb)).collect::<Vec<_>>()
-        ))?;
-
-        self.builder.position_at_end(merge_bb);
-        if branch_results.is_empty() {
-            return Ok(self.void_result());
-        }
-
-        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "res_val"))?;
-        for (val, bb) in &branch_results {
-            phi.add_incoming(&[(val, *bb)]);
-        }
-
-        Ok((phi.as_basic_value(), result_kind))
+        let variant_tags = &[("Ok", 0u8), ("Err", 1u8)];
+        let has_payload = |_tag: u8| true; // Both Ok and Err carry payloads
+        self.compile_tagged_union_match(subject_val, arms, func, self.result_type(), "res", "Result", variant_tags, has_payload)
     }
 
     pub(crate) fn compile_try_result(
