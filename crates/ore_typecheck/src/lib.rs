@@ -423,10 +423,7 @@ impl TypeChecker {
                 Type::Unit
             }
             Stmt::While { cond, body } => {
-                let ct = self.infer_expr(cond, env);
-                if ct != Type::Bool && ct != Type::Any {
-                    self.err(format!("while condition must be Bool, got {}", ct));
-                }
+                self.check_bool_expr(cond, env, "while");
                 let mut child = Env::push_scope(env);
                 self.check_block(body, &mut child, ret_ty);
                 Env::pop_scope(child, env);
@@ -491,6 +488,13 @@ impl TypeChecker {
         let ty = self.infer_expr(expr, env);
         if ty != Type::Int && ty != Type::Any {
             self.err(format!("{} must be Int, got {}", ctx, ty));
+        }
+    }
+
+    fn check_bool_expr(&mut self, expr: &Expr, env: &mut Env, ctx: &str) {
+        let ty = self.infer_expr(expr, env);
+        if ty != Type::Bool && ty != Type::Any {
+            self.err(format!("{} condition must be Bool, got {}", ctx, ty));
         }
     }
 
@@ -659,10 +663,7 @@ impl TypeChecker {
             }
 
             Expr::IfElse { cond, then_block, else_block } => {
-                let ct = self.infer_expr(cond, env);
-                if ct != Type::Bool && ct != Type::Any {
-                    self.err(format!("if condition must be Bool, got {}", ct));
-                }
+                self.check_bool_expr(cond, env, "if");
                 let mut then_env = Env::push_scope(env);
                 let then_ty = self.check_block(then_block, &mut then_env, &Type::Any);
                 Env::pop_scope(then_env, env);
@@ -676,10 +677,7 @@ impl TypeChecker {
             }
 
             Expr::ColonMatch { cond, then_expr, else_expr } => {
-                let ct = self.infer_expr(cond, env);
-                if ct != Type::Bool && ct != Type::Any {
-                    self.err(format!("colon-match condition must be Bool, got {}", ct));
-                }
+                self.check_bool_expr(cond, env, "colon-match");
                 let then_ty = self.infer_expr(then_expr, env);
                 if let Some(else_e) = else_expr {
                     self.infer_expr(else_e, env);
@@ -789,7 +787,7 @@ impl TypeChecker {
                         }
                     }
                 }
-                self.infer_method_return(&obj_ty, method, args.len())
+                self.infer_method_return(&obj_ty, method)
             }
 
             Expr::ListLit(elems) => {
@@ -870,10 +868,7 @@ impl TypeChecker {
                 Type::Option(Box::new(Type::Any))
             }
             Expr::Assert { cond, .. } => {
-                let ct = self.infer_expr(cond, env);
-                if ct != Type::Bool && ct != Type::Any {
-                    self.err(format!("assert condition must be Bool, got {}", ct));
-                }
+                self.check_bool_expr(cond, env, "assert");
                 Type::Unit
             }
             Expr::AssertEq { left, right, .. } | Expr::AssertNe { left, right, .. } => {
@@ -946,7 +941,7 @@ impl TypeChecker {
         }
     }
 
-    fn infer_method_return(&self, obj_ty: &Type, method: &str, _arg_count: usize) -> Type {
+    fn infer_method_return(&self, obj_ty: &Type, method: &str) -> Type {
         match obj_ty {
             Type::Str => match method {
                 "len" | "to_int" | "parse_int" | "count" => Type::Int,
