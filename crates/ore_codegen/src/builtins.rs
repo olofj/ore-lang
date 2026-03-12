@@ -109,17 +109,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             ValKind::Bool => {
                 let pf = self.rt("ore_print_bool")?;
-                let int_val = val.into_int_value();
-                let ext = {
-                    let bw = int_val.get_type().get_bit_width();
-                    if bw < 8 {
-                        bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?
-                    } else if bw > 8 {
-                        bld!(self.builder.build_int_truncate(int_val, self.context.i8_type(), "trunc"))?
-                    } else {
-                        int_val
-                    }
-                };
+                let ext = self.bool_to_i8(val.into_int_value())?;
                 bld!(self.builder.build_call(pf, &[ext.into()], ""))?;
             }
             ValKind::Float => {
@@ -134,15 +124,12 @@ impl<'ctx> CodeGen<'ctx> {
                 let pf = self.rt("ore_map_print")?;
                 bld!(self.builder.build_call(pf, &[val.into()], ""))?;
             }
-            ValKind::Record(ref name) => {
-                let s = self.record_to_str(val, name)?;
-                let pf = self.rt("ore_str_print")?;
-                bld!(self.builder.build_call(pf, &[s.into()], ""))?;
-                let release = self.rt("ore_str_release")?;
-                bld!(self.builder.build_call(release, &[s.into()], ""))?;
-            }
-            ValKind::Enum(ref name) => {
-                let s = self.enum_to_str(val, name)?;
+            ValKind::Record(ref name) | ValKind::Enum(ref name) => {
+                let s = if matches!(kind, ValKind::Record(_)) {
+                    self.record_to_str(val, name)?
+                } else {
+                    self.enum_to_str(val, name)?
+                };
                 let pf = self.rt("ore_str_print")?;
                 bld!(self.builder.build_call(pf, &[s.into()], ""))?;
                 let release = self.rt("ore_str_release")?;

@@ -322,17 +322,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(self.call_rt("ore_float_to_str", &[val.into()], "ftos")?.into_pointer_value())
             }
             ValKind::Bool => {
-                let int_val = val.into_int_value();
-                let ext = {
-                    let bw = int_val.get_type().get_bit_width();
-                    if bw < 8 {
-                        bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?
-                    } else if bw > 8 {
-                        bld!(self.builder.build_int_truncate(int_val, self.context.i8_type(), "trunc"))?
-                    } else {
-                        int_val
-                    }
-                };
+                let ext = self.bool_to_i8(val.into_int_value())?;
                 Ok(self.call_rt("ore_bool_to_str", &[ext.into()], "btos")?.into_pointer_value())
             }
             ValKind::Record(ref name) => {

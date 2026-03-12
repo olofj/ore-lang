@@ -563,4 +563,16 @@ impl<'ctx> CodeGen<'ctx> {
         ret_elem
     }
 
+    /// Normalize a bool IntValue to i8, handling any bit width (i1, i8, i64).
+    pub(crate) fn bool_to_i8(&mut self, int_val: IntValue<'ctx>) -> Result<IntValue<'ctx>, CodeGenError> {
+        let bw = int_val.get_type().get_bit_width();
+        if bw < 8 {
+            Ok(bld!(self.builder.build_int_z_extend(int_val, self.context.i8_type(), "zext"))?)
+        } else if bw > 8 {
+            Ok(bld!(self.builder.build_int_truncate(int_val, self.context.i8_type(), "trunc"))?)
+        } else {
+            Ok(int_val)
+        }
+    }
+
 }
