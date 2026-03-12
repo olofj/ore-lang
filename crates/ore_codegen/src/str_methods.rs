@@ -174,6 +174,18 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(self.call_rt("ore_str_new", &[ptr.into(), len.into()], "str")?.into_pointer_value())
     }
 
+    /// Concatenate two OreStr pointers and release both inputs.
+    pub(crate) fn str_concat_release(
+        &mut self,
+        a: PointerValue<'ctx>,
+        b: PointerValue<'ctx>,
+    ) -> Result<PointerValue<'ctx>, CodeGenError> {
+        let result = self.call_rt("ore_str_concat", &[a.into(), b.into()], "cat")?.into_pointer_value();
+        self.call_rt("ore_str_release", &[a.into()], "")?;
+        self.call_rt("ore_str_release", &[b.into()], "")?;
+        Ok(result)
+    }
+
     /// Create a global constant string and return a pointer to its data.
     pub(crate) fn builder_string_const(&mut self, s: &str) -> PointerValue<'ctx> {
         let bytes = s.as_bytes();
@@ -307,51 +319,29 @@ impl<'ctx> CodeGen<'ctx> {
         let field_names = info.field_names.clone();
         let field_kinds = info.field_kinds.clone();
 
-        let str_new = self.rt("ore_str_new")?;
-        let concat_fn = self.rt("ore_str_concat")?;
-        let release_fn = self.rt("ore_str_release")?;
-
         // Store the struct to an alloca so we can GEP into it
         let alloca = bld!(self.builder.build_alloca(struct_type, "rec_tmp"))?;
         bld!(self.builder.build_store(alloca, val))?;
 
-        // Helper: call ore_str_new and get pointer
-        let make_str = |cg: &mut Self, s: &str| -> Result<PointerValue<'ctx>, CodeGenError> {
-            let ptr = cg.builder_string_const(s);
-            let len = cg.context.i32_type().const_int(s.len() as u64, false);
-            let result = bld!(cg.builder.build_call(str_new, &[ptr.into(), len.into()], "s"))?;
-            Ok(cg.call_result_to_value(result)?.into_pointer_value())
-        };
-
-        // Helper: concat two strings, releasing both inputs
-        let concat_and_release = |cg: &mut Self, a: PointerValue<'ctx>, b: PointerValue<'ctx>| -> Result<PointerValue<'ctx>, CodeGenError> {
-            let result = bld!(cg.builder.build_call(concat_fn, &[a.into(), b.into()], "cat"))?;
-            let p = cg.call_result_to_value(result)?.into_pointer_value();
-            bld!(cg.builder.build_call(release_fn, &[a.into()], ""))?;
-            bld!(cg.builder.build_call(release_fn, &[b.into()], ""))?;
-            Ok(p)
-        };
-
         // Start with "TypeName("
-        let prefix = format!("{}(", type_name);
-        let mut current = make_str(self, &prefix)?;
+        let mut current = self.compile_string_literal(&format!("{}(", type_name))?;
 
         for (i, (fname, fkind)) in field_names.iter().zip(field_kinds.iter()).enumerate() {
             let label = if i == 0 { format!("{}: ", fname) } else { format!(", {}: ", fname) };
-            let label_str = make_str(self, &label)?;
-            current = concat_and_release(self, current, label_str)?;
+            let label_str = self.compile_string_literal(&label)?;
+            current = self.str_concat_release(current, label_str)?;
 
             // Extract field value and convert to string
             let field_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, i as u32, &format!("f_{}", fname)))?;
             let field_ty = struct_type.get_field_type_at_index(i as u32).unwrap();
             let field_val = bld!(self.builder.build_load(field_ty, field_ptr, fname))?;
             let field_str = self.value_to_str(field_val, fkind.clone())?;
-            current = concat_and_release(self, current, field_str)?;
+            current = self.str_concat_release(current, field_str)?;
         }
 
         // Append ")"
-        let suffix_str = make_str(self, ")")?;
-        current = concat_and_release(self, current, suffix_str)?;
+        let suffix_str = self.compile_string_literal(")")?;
+        current = self.str_concat_release(current, suffix_str)?;
 
         Ok(current)
     }
@@ -366,10 +356,6 @@ impl<'ctx> CodeGen<'ctx> {
         let variants: Vec<_> = enum_info.variants.iter().map(|v| {
             (v.name.clone(), v.tag, v.field_names.clone(), v.field_kinds.clone(), v.payload_type)
         }).collect();
-
-        let str_new = self.rt("ore_str_new")?;
-        let concat_fn = self.rt("ore_str_concat")?;
-        let release_fn = self.rt("ore_str_release")?;
 
         // Store enum to alloca
         let alloca = bld!(self.builder.build_alloca(enum_type, "enum_tmp"))?;
@@ -393,52 +379,29 @@ impl<'ctx> CodeGen<'ctx> {
             self.builder.position_at_end(bb);
 
             if field_names.is_empty() {
-                let name_ptr = self.builder_string_const(vname);
-                let name_str = bld!(self.builder.build_call(str_new, &[name_ptr.into(), self.context.i32_type().const_int(vname.len() as u64, false).into()], "s"))?;
-                let name_val = self.call_result_to_value(name_str)?.into_pointer_value();
+                let name_val = self.compile_string_literal(vname)?;
                 bld!(self.builder.build_store(result_alloca, name_val))?;
             } else {
-                let prefix = format!("{}(", vname);
-                let prefix_ptr = self.builder_string_const(&prefix);
-                let prefix_len = self.context.i32_type().const_int(prefix.len() as u64, false);
-                let prefix_str = bld!(self.builder.build_call(str_new, &[prefix_ptr.into(), prefix_len.into()], "s"))?;
-                let mut current = self.call_result_to_value(prefix_str)?.into_pointer_value();
+                let mut current = self.compile_string_literal(&format!("{}(", vname))?;
 
                 let data_ptr = bld!(self.builder.build_struct_gep(enum_type, alloca, 1, "data_ptr"))?;
                 let payload_ptr = bld!(self.builder.build_pointer_cast(data_ptr, self.ptr_type(), "payload"))?;
 
                 for (i, (fname, fkind)) in field_names.iter().zip(field_kinds.iter()).enumerate() {
                     let label = if i == 0 { format!("{}: ", fname) } else { format!(", {}: ", fname) };
-                    let label_ptr = self.builder_string_const(&label);
-                    let label_len = self.context.i32_type().const_int(label.len() as u64, false);
-                    let label_str = bld!(self.builder.build_call(str_new, &[label_ptr.into(), label_len.into()], "s"))?;
-                    let label_val = self.call_result_to_value(label_str)?.into_pointer_value();
-                    let next = bld!(self.builder.build_call(concat_fn, &[current.into(), label_val.into()], "cat"))?;
-                    let next_ptr = self.call_result_to_value(next)?.into_pointer_value();
-                    bld!(self.builder.build_call(release_fn, &[current.into()], ""))?;
-                    bld!(self.builder.build_call(release_fn, &[label_val.into()], ""))?;
-                    current = next_ptr;
+                    let label_str = self.compile_string_literal(&label)?;
+                    current = self.str_concat_release(current, label_str)?;
 
                     let field_ptr = bld!(self.builder.build_struct_gep(*payload_type, payload_ptr, i as u32, &format!("f_{}", fname)))?;
                     let field_ty = payload_type.get_field_type_at_index(i as u32).unwrap();
                     let field_val = bld!(self.builder.build_load(field_ty, field_ptr, fname))?;
                     let field_str = self.value_to_str(field_val, fkind.clone())?;
-
-                    let next2 = bld!(self.builder.build_call(concat_fn, &[current.into(), field_str.into()], "cat"))?;
-                    let next2_ptr = self.call_result_to_value(next2)?.into_pointer_value();
-                    bld!(self.builder.build_call(release_fn, &[current.into()], ""))?;
-                    bld!(self.builder.build_call(release_fn, &[field_str.into()], ""))?;
-                    current = next2_ptr;
+                    current = self.str_concat_release(current, field_str)?;
                 }
 
-                let suffix_ptr = self.builder_string_const(")");
-                let suffix_str = bld!(self.builder.build_call(str_new, &[suffix_ptr.into(), self.context.i32_type().const_int(1, false).into()], "s"))?;
-                let suffix_val = self.call_result_to_value(suffix_str)?.into_pointer_value();
-                let final_str = bld!(self.builder.build_call(concat_fn, &[current.into(), suffix_val.into()], "cat"))?;
-                let final_ptr = self.call_result_to_value(final_str)?.into_pointer_value();
-                bld!(self.builder.build_call(release_fn, &[current.into()], ""))?;
-                bld!(self.builder.build_call(release_fn, &[suffix_val.into()], ""))?;
-                bld!(self.builder.build_store(result_alloca, final_ptr))?;
+                let suffix_str = self.compile_string_literal(")")?;
+                current = self.str_concat_release(current, suffix_str)?;
+                bld!(self.builder.build_store(result_alloca, current))?;
             }
 
             bld!(self.builder.build_unconditional_branch(merge_bb))?;
@@ -447,9 +410,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Default block
         self.builder.position_at_end(default_bb);
-        let unknown_s = self.builder_string_const("<unknown>");
-        let unknown_str = bld!(self.builder.build_call(str_new, &[unknown_s.into(), self.context.i32_type().const_int(9, false).into()], "s"))?;
-        let unknown_ptr = self.call_result_to_value(unknown_str)?.into_pointer_value();
+        let unknown_ptr = self.compile_string_literal("<unknown>")?;
         bld!(self.builder.build_store(result_alloca, unknown_ptr))?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
 
