@@ -97,9 +97,7 @@ impl<'ctx> CodeGen<'ctx> {
         ))?;
 
         for (name, expr) in fields {
-            let idx = variant_field_names.iter().position(|n| n == name).ok_or_else(|| CodeGenError {
-                line: Some(self.current_line), msg: format!("unknown field '{}' on variant '{}'", name, variant_name),
-            })?;
+            let idx = variant_field_names.iter().position(|n| n == name).ok_or_else(|| self.err(format!("unknown field '{}' on variant '{}'", name, variant_name)))?;
             let val = self.compile_expr(expr, func)?;
             let field_ptr = bld!(self.builder.build_struct_gep(payload_type, payload_ptr, idx as u32, &format!("{}.{}", variant_name, name)))?;
             bld!(self.builder.build_store(field_ptr, val))?;
@@ -169,9 +167,7 @@ impl<'ctx> CodeGen<'ctx> {
         for arm in arms {
             match &arm.pattern {
                 Pattern::Variant { name, bindings } => {
-                    let variant = variant_infos.iter().find(|v| v.0 == *name).ok_or_else(|| CodeGenError {
-                        line: Some(self.current_line), msg: format!("unknown variant '{}' in match", name),
-                    })?;
+                    let variant = variant_infos.iter().find(|v| v.0 == *name).ok_or_else(|| self.err(format!("unknown variant '{}' in match", name)))?;
                     let (_, vtag, payload_type, _field_names, field_kinds) = variant;
 
                     // If this tag already has a case block (duplicate variant with guard),

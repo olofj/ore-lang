@@ -628,10 +628,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub(crate) fn compile_function(&mut self, fndef: &FnDef) -> Result<(), CodeGenError> {
-        let (func, _ret_kind) = self.functions.get(&fndef.name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line),
-            msg: format!("undefined function '{}' (not declared before compilation)", fndef.name),
-        })?;
+        let (func, _ret_kind) = self.functions.get(&fndef.name).ok_or_else(|| self.err(format!("undefined function '{}' (not declared before compilation)", fndef.name)))?;
         let func = *func;
         let entry = self.context.append_basic_block(func, "entry");
         self.builder.position_at_end(entry);
@@ -695,9 +692,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Some(val) = last_val {
                     bld!(self.builder.build_return(Some(&val)))?;
                 } else {
-                    return Err(CodeGenError {
-                        line: Some(self.current_line), msg: format!("function '{}' must return a value", fndef.name),
-                    });
+                    return Err(self.err(format!("function '{}' must return a value", fndef.name)));
                 }
             } else {
                 bld!(self.builder.build_return(None))?;

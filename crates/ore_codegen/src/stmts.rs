@@ -131,9 +131,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
                 let var_info = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?;
                 if !var_info.is_mutable {
-                    return Err(CodeGenError {
-                        line: Some(self.current_line), msg: format!("cannot assign to immutable variable '{}'", name),
-                    });
+                    return Err(self.err(format!("cannot assign to immutable variable '{}'", name)));
                 }
                 bld!(self.builder.build_store(var_info.ptr, val))?;
                 self.track_variable_kinds(name, &kind, false);
@@ -165,12 +163,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
                 match obj_kind {
                     ValKind::Record(ref name) => {
-                        let rec_info = self.records.get(name).ok_or_else(|| CodeGenError {
-                            line: Some(self.current_line), msg: format!("undefined record type '{}'", name),
-                        })?;
-                        let field_idx = rec_info.field_names.iter().position(|f| f == field).ok_or_else(|| CodeGenError {
-                            line: Some(self.current_line), msg: format!("unknown field '{}' on record '{}'", field, name),
-                        })?;
+                        let rec_info = self.records.get(name).ok_or_else(|| self.err(format!("undefined record type '{}'", name)))?;
+                        let field_idx = rec_info.field_names.iter().position(|f| f == field).ok_or_else(|| self.err(format!("unknown field '{}' on record '{}'", field, name)))?;
                         let struct_type = rec_info.struct_type;
                         let field_ptr = bld!(self.builder.build_struct_gep(
                             struct_type, obj_val.into_pointer_value(), field_idx as u32, &format!("fld_{}", field)
