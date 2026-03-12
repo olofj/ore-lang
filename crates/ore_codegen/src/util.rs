@@ -308,7 +308,7 @@ impl<'ctx> CodeGen<'ctx> {
         let mut best: Option<(&str, usize)> = None;
         for &c in candidates {
             let d = Self::edit_distance(name, c);
-            if d > 0 && d <= 2 && best.as_ref().map_or(true, |(_, bd)| d < *bd) {
+            if d > 0 && d <= 2 && best.as_ref().is_none_or(|(_, bd)| d < *bd) {
                 best = Some((c, d));
             }
         }
