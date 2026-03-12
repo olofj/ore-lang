@@ -578,6 +578,106 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(result)
     }
 
+    /// Compare a tag value against an expected constant, returning an i1 bool.
+    fn check_tag(&self, tag: IntValue<'ctx>, expected: u8, label: &str) -> Result<IntValue<'ctx>, CodeGenError> {
+        Ok(bld!(self.builder.build_int_compare(
+            IntPredicate::EQ, tag, self.context.i8_type().const_int(expected as u64, false), label
+        ))?)
+    }
+
+    /// Resolve a lambda or function reference from an expression.
+    fn resolve_fn_arg(&mut self, arg: &Expr) -> Result<FunctionValue<'ctx>, CodeGenError> {
+        match arg {
+            Expr::Lambda { params, body } => self.compile_lambda(params, body),
+            Expr::Ident(name) => {
+                self.module.get_function(name).ok_or_else(|| {
+                    self.err(format!("unknown function '{}'", name))
+                })
+            }
+            _ => Err(self.err("expected a function or lambda")),
+        }
+    }
+
+    /// Shared implementation for Option.unwrap_or / Result.unwrap_or.
+    /// `ok_tag` is the tag value that means "has value" (1 for Option/Some, 0 for Result/Ok).
+    fn compile_unwrap_or(
+        &mut self,
+        union_ty: inkwell::types::StructType<'ctx>,
+        alloca: PointerValue<'ctx>,
+        tag: IntValue<'ctx>,
+        ok_tag: u8,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+        prefix: &str,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        if args.is_empty() {
+            return Err(self.err("unwrap_or requires a default argument"));
+        }
+        let (default_val, default_kind) = self.compile_expr_with_kind(&args[0], func)?;
+        let is_ok = self.check_tag(tag, ok_tag, &format!("{}_ok", prefix))?;
+        let inner = self.load_tagged_value(union_ty, alloca)?;
+
+        let ok_bb = self.context.append_basic_block(func, &format!("{}_ok", prefix));
+        let else_bb = self.context.append_basic_block(func, &format!("{}_else", prefix));
+        let merge_bb = self.context.append_basic_block(func, &format!("{}_merge", prefix));
+
+        bld!(self.builder.build_conditional_branch(is_ok, ok_bb, else_bb))?;
+
+        self.builder.position_at_end(ok_bb);
+        let ok_result = self.coerce_from_i64(inner, &default_kind)?;
+        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+        self.builder.position_at_end(else_bb);
+        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+        self.builder.position_at_end(merge_bb);
+        let phi = bld!(self.builder.build_phi(ok_result.get_type(), &format!("{}_val", prefix)))?;
+        phi.add_incoming(&[(&ok_result, ok_bb), (&default_val, else_bb)]);
+
+        Ok((phi.as_basic_value(), default_kind))
+    }
+
+    /// Shared implementation for Option.map / Result.map.
+    /// `ok_tag` is the tag for the "has value" variant; `wrap_tag` is what to wrap the mapped result in.
+    /// `passthrough_val` is the original value to pass through the other branch.
+    fn compile_tagged_map(
+        &mut self,
+        union_ty: inkwell::types::StructType<'ctx>,
+        alloca: PointerValue<'ctx>,
+        tag: IntValue<'ctx>,
+        ok_tag: u8,
+        wrap_tag: u8,
+        passthrough_val: BasicValueEnum<'ctx>,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+        ret_kind: ValKind,
+        prefix: &str,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        self.check_arity("map", args, 1)?;
+        let is_ok = self.check_tag(tag, ok_tag, &format!("{}_ok", prefix))?;
+        let ok_bb = self.context.append_basic_block(func, &format!("{}_ok", prefix));
+        let else_bb = self.context.append_basic_block(func, &format!("{}_else", prefix));
+        let merge_bb = self.context.append_basic_block(func, &format!("{}_merge", prefix));
+        bld!(self.builder.build_conditional_branch(is_ok, ok_bb, else_bb))?;
+
+        self.builder.position_at_end(ok_bb);
+        let inner = self.load_tagged_value(union_ty, alloca)?;
+        let lambda_fn = self.resolve_fn_arg(&args[0])?;
+        let map_result = bld!(self.builder.build_call(lambda_fn, &[inner.into()], "mapped"))?;
+        let mapped_val = self.call_result_to_value(map_result)?;
+        let ok_result = self.build_tagged_union(union_ty, wrap_tag, Some(mapped_val), &format!("{}_res", prefix))?;
+        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+        let ok_end = self.current_block()?;
+
+        self.builder.position_at_end(else_bb);
+        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+        self.builder.position_at_end(merge_bb);
+        let phi = bld!(self.builder.build_phi(union_ty, &format!("{}_result", prefix)))?;
+        phi.add_incoming(&[(&ok_result, ok_end), (&passthrough_val, else_bb)]);
+        Ok((phi.as_basic_value(), ret_kind))
+    }
+
     pub(crate) fn compile_option_method(
         &mut self,
         opt_val: BasicValueEnum<'ctx>,
@@ -588,103 +688,19 @@ impl<'ctx> CodeGen<'ctx> {
         let opt_ty = self.option_type();
         let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_m"))?;
         bld!(self.builder.build_store(alloca, opt_val))?;
-
         let tag = self.load_tag(opt_ty, alloca)?;
 
         match method {
-            "unwrap_or" => {
-                // Returns inner value if Some, else the provided default
-                if args.is_empty() {
-                    return Err(self.err("unwrap_or requires a default argument"));
-                }
-                let (default_val, default_kind) = self.compile_expr_with_kind(&args[0], func)?;
-                let is_some = bld!(self.builder.build_int_compare(
-                    IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
-                ))?;
-                let inner = self.load_tagged_value(opt_ty, alloca)?;
-
-                let some_bb = self.context.append_basic_block(func, "unwrap_some");
-                let none_bb = self.context.append_basic_block(func, "unwrap_none");
-                let merge_bb = self.context.append_basic_block(func, "unwrap_merge");
-
-                bld!(self.builder.build_conditional_branch(is_some, some_bb, none_bb))?;
-
-                self.builder.position_at_end(some_bb);
-                let some_result = self.coerce_from_i64(inner, &default_kind)?;
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-                self.builder.position_at_end(none_bb);
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-                self.builder.position_at_end(merge_bb);
-                let phi = bld!(self.builder.build_phi(some_result.get_type(), "unwrap_val"))?;
-                phi.add_incoming(&[(&some_result, some_bb), (&default_val, none_bb)]);
-
-                Ok((phi.as_basic_value(), default_kind))
-            }
+            "unwrap_or" => self.compile_unwrap_or(opt_ty, alloca, tag, 1, args, func, "unwrap"),
             "unwrap" => {
-                // Just return inner value (unsafe - crashes on None in real use, but useful)
                 let inner = self.load_tagged_value(opt_ty, alloca)?;
                 Ok((inner, ValKind::Int))
             }
-            "is_some" => {
-                let is_some = bld!(self.builder.build_int_compare(
-                    IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
-                ))?;
-                Ok((is_some.into(), ValKind::Bool))
-            }
-            "is_none" => {
-                let is_none = bld!(self.builder.build_int_compare(
-                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_none"
-                ))?;
-                Ok((is_none.into(), ValKind::Bool))
-            }
+            "is_some" => Ok((self.check_tag(tag, 1, "is_some")?.into(), ValKind::Bool)),
+            "is_none" => Ok((self.check_tag(tag, 0, "is_none")?.into(), ValKind::Bool)),
             "map" => {
-                // opt.map(fn) -> applies fn to inner value if Some, returns Option
-                self.check_arity("map", args, 1)?;
-                let is_some = bld!(self.builder.build_int_compare(
-                    IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
-                ))?;
-                let some_bb = self.context.append_basic_block(func, "optmap_some");
-                let none_bb = self.context.append_basic_block(func, "optmap_none");
-                let merge_bb = self.context.append_basic_block(func, "optmap_merge");
-                bld!(self.builder.build_conditional_branch(is_some, some_bb, none_bb))?;
-
-                // Some branch: unwrap, apply function, wrap result
-                self.builder.position_at_end(some_bb);
-                let inner = self.load_tagged_value(opt_ty, alloca)?;
-
-                // Compile the lambda/function and call it with inner value
-                let lambda_fn = match &args[0] {
-                    Expr::Lambda { params, body } => {
-                        self.compile_lambda(params, body)?
-                    }
-                    Expr::Ident(name) => {
-                        self.module.get_function(name).ok_or_else(|| {
-                            self.err(format!("unknown function '{}'", name))
-                        })?
-                    }
-                    _ => return Err(self.err("map requires a function or lambda")),
-                };
-
-                let map_result = bld!(self.builder.build_call(lambda_fn, &[inner.into()], "mapped"))?;
-                let mapped_val = self.call_result_to_value(map_result)?;
-
-                // Wrap result in Some
-                let opt_ty = self.option_type();
-                let some_result = self.build_tagged_union(opt_ty, 1, Some(mapped_val), "some_res")?;
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-                let some_end = self.current_block()?;
-
-                // None branch
-                self.builder.position_at_end(none_bb);
-                let none_result = self.build_tagged_union(opt_ty, 0, None, "none_res")?;
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-                self.builder.position_at_end(merge_bb);
-                let phi = bld!(self.builder.build_phi(opt_ty, "optmap_result"))?;
-                phi.add_incoming(&[(&some_result, some_end), (&none_result, none_bb)]);
-                Ok((phi.as_basic_value(), ValKind::Option))
+                let none = self.build_tagged_union(opt_ty, 0, None, "none_res")?;
+                self.compile_tagged_map(opt_ty, alloca, tag, 1, 1, none, args, func, ValKind::Option, "optmap")
             }
             _ => Err(Self::unknown_method_error("Option", method, &["unwrap_or", "unwrap", "map", "is_some", "is_none"])),
         }
@@ -700,103 +716,18 @@ impl<'ctx> CodeGen<'ctx> {
         let result_ty = self.result_type();
         let alloca = bld!(self.builder.build_alloca(result_ty, "res_m"))?;
         bld!(self.builder.build_store(alloca, result_val))?;
-
         let tag = self.load_tag(result_ty, alloca)?;
 
         match method {
-            "unwrap_or" => {
-                if args.is_empty() {
-                    return Err(self.err("unwrap_or requires a default argument"));
-                }
-                let (default_val, default_kind) = self.compile_expr_with_kind(&args[0], func)?;
-                // tag 0 = Ok
-                let is_ok = bld!(self.builder.build_int_compare(
-                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
-                ))?;
-                let inner = self.load_tagged_value(result_ty, alloca)?;
-
-                let ok_bb = self.context.append_basic_block(func, "result_ok");
-                let err_bb = self.context.append_basic_block(func, "result_err");
-                let merge_bb = self.context.append_basic_block(func, "result_merge");
-
-                bld!(self.builder.build_conditional_branch(is_ok, ok_bb, err_bb))?;
-
-                self.builder.position_at_end(ok_bb);
-                let ok_result = self.coerce_from_i64(inner, &default_kind)?;
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-                self.builder.position_at_end(err_bb);
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-                self.builder.position_at_end(merge_bb);
-                let phi = bld!(self.builder.build_phi(ok_result.get_type(), "result_val"))?;
-                phi.add_incoming(&[(&ok_result, ok_bb), (&default_val, err_bb)]);
-
-                Ok((phi.as_basic_value(), default_kind))
-            }
-            "is_ok" => {
-                let is_ok = bld!(self.builder.build_int_compare(
-                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
-                ))?;
-                Ok((is_ok.into(), ValKind::Bool))
-            }
-            "is_err" => {
-                let is_err = bld!(self.builder.build_int_compare(
-                    IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_err"
-                ))?;
-                Ok((is_err.into(), ValKind::Bool))
-            }
+            "unwrap_or" => self.compile_unwrap_or(result_ty, alloca, tag, 0, args, func, "result"),
+            "is_ok" => Ok((self.check_tag(tag, 0, "is_ok")?.into(), ValKind::Bool)),
+            "is_err" => Ok((self.check_tag(tag, 1, "is_err")?.into(), ValKind::Bool)),
             "unwrap" => {
                 let inner = self.load_tagged_value(result_ty, alloca)?;
-                // Default coercion to Int — same as Option.unwrap()
                 let coerced = self.coerce_from_i64(inner, &ValKind::Int)?;
                 Ok((coerced, ValKind::Int))
             }
-            "map" => {
-                // result.map(fn) -> applies fn to inner value if Ok, returns Result
-                self.check_arity("map", args, 1)?;
-                let is_ok = bld!(self.builder.build_int_compare(
-                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
-                ))?;
-                let ok_bb = self.context.append_basic_block(func, "resmap_ok");
-                let err_bb = self.context.append_basic_block(func, "resmap_err");
-                let merge_bb = self.context.append_basic_block(func, "resmap_merge");
-                bld!(self.builder.build_conditional_branch(is_ok, ok_bb, err_bb))?;
-
-                // Ok branch: unwrap, apply function, wrap result
-                self.builder.position_at_end(ok_bb);
-                let inner = self.load_tagged_value(result_ty, alloca)?;
-
-                let lambda_fn = match &args[0] {
-                    Expr::Lambda { params, body } => {
-                        self.compile_lambda(params, body)?
-                    }
-                    Expr::Ident(name) => {
-                        self.module.get_function(name).ok_or_else(|| {
-                            self.err(format!("unknown function '{}'", name))
-                        })?
-                    }
-                    _ => return Err(self.err("map requires a function or lambda")),
-                };
-
-                let map_result = bld!(self.builder.build_call(lambda_fn, &[inner.into()], "mapped"))?;
-                let mapped_val = self.call_result_to_value(map_result)?;
-
-                // Wrap result in Ok
-                let res_ty = self.result_type();
-                let ok_result = self.build_tagged_union(res_ty, 0, Some(mapped_val), "ok_res")?;
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-                let ok_end = self.current_block()?;
-
-                // Err branch: pass through unchanged
-                self.builder.position_at_end(err_bb);
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-
-                self.builder.position_at_end(merge_bb);
-                let phi = bld!(self.builder.build_phi(res_ty, "resmap_result"))?;
-                phi.add_incoming(&[(&ok_result, ok_end), (&result_val, err_bb)]);
-                Ok((phi.as_basic_value(), ValKind::Result))
-            }
+            "map" => self.compile_tagged_map(result_ty, alloca, tag, 0, 0, result_val, args, func, ValKind::Result, "resmap"),
             _ => Err(Self::unknown_method_error("Result", method, &["unwrap_or", "unwrap", "map", "is_ok", "is_err"])),
         }
     }
