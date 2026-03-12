@@ -4,6 +4,30 @@ use ore_parser::ast::*;
 use ore_types::Type;
 use std::collections::HashMap;
 
+/// Pipeline method names resolved at codegen time, not type-check time.
+const PIPELINE_METHODS: &[&str] = &[
+    "map", "filter", "each", "reduce", "fold", "scan", "join",
+    "sort", "sort_by", "sort_by_key", "reverse", "unique", "dedup",
+    "take", "skip", "take_while", "drop_while", "step",
+    "flatten", "flat_map", "zip", "zip_with", "enumerate",
+    "window", "chunks", "intersperse", "partition", "group_by",
+    "count_by", "frequencies", "to_map", "first", "last",
+    "sum", "product", "min", "max", "average", "any", "all",
+    "find", "find_index", "index_of", "contains",
+    "push", "pop", "insert", "remove_at", "clear", "set", "get", "get_or",
+    "len", "is_empty", "slice",
+    "to_upper", "to_lower", "trim", "trim_start", "trim_end",
+    "split", "replace", "starts_with", "ends_with", "repeat",
+    "capitalize", "count", "strip_prefix", "strip_suffix",
+    "substr", "chars", "char_at", "pad_left", "pad_right", "words", "lines",
+    "to_int", "to_float", "to_str", "parse_int", "parse_float",
+    "abs", "floor", "ceil", "round", "sqrt", "pow", "clamp",
+    "unwrap_or", "typeof", "merge", "keys", "values", "entries",
+    "par_map", "par_each", "send", "recv", "tap",
+    "map_with_index", "each_with_index",
+    "__range",
+];
+
 #[derive(Debug)]
 pub struct TypeError {
     pub msg: String,
@@ -67,6 +91,16 @@ impl Env {
 
     fn insert(&mut self, name: String, ty: Type, mutable: bool) {
         self.vars.insert(name, (ty, mutable));
+    }
+
+    /// Create a child scope, taking ownership of the parent.
+    fn push_scope(parent: &mut Env) -> Env {
+        Env::child(std::mem::replace(parent, Env::new()))
+    }
+
+    /// Restore the parent scope from a child.
+    fn pop_scope(child: Env, parent: &mut Env) {
+        *parent = *child.parent.unwrap();
     }
 }
 
@@ -384,10 +418,10 @@ impl TypeChecker {
                 if let Some(s) = step {
                     self.check_int_expr(s, env, "for-in step");
                 }
-                let mut child = Env::child(std::mem::replace(env, Env::new()));
+                let mut child = Env::push_scope(env);
                 child.insert(var.clone(), Type::Int, false);
                 self.check_block(body, &mut child, ret_ty);
-                *env = *child.parent.unwrap();
+                Env::pop_scope(child, env);
                 Type::Unit
             }
             Stmt::While { cond, body } => {
@@ -395,9 +429,9 @@ impl TypeChecker {
                 if ct != Type::Bool && ct != Type::Any {
                     self.err(format!("while condition must be Bool, got {}", ct));
                 }
-                let mut child = Env::child(std::mem::replace(env, Env::new()));
+                let mut child = Env::push_scope(env);
                 self.check_block(body, &mut child, ret_ty);
-                *env = *child.parent.unwrap();
+                Env::pop_scope(child, env);
                 Type::Unit
             }
             Stmt::ForEach { var, iterable, body } => {
@@ -406,25 +440,25 @@ impl TypeChecker {
                     Type::List(elem) => *elem.clone(),
                     _ => Type::Any,
                 };
-                let mut child = Env::child(std::mem::replace(env, Env::new()));
+                let mut child = Env::push_scope(env);
                 child.insert(var.clone(), elem_ty, false);
                 self.check_block(body, &mut child, ret_ty);
-                *env = *child.parent.unwrap();
+                Env::pop_scope(child, env);
                 Type::Unit
             }
             Stmt::ForEachKV { key_var, val_var, iterable, body } => {
                 let _iter_ty = self.infer_expr(iterable, env);
-                let mut child = Env::child(std::mem::replace(env, Env::new()));
+                let mut child = Env::push_scope(env);
                 child.insert(key_var.clone(), Type::Str, false);
                 child.insert(val_var.clone(), Type::Any, false);
                 self.check_block(body, &mut child, ret_ty);
-                *env = *child.parent.unwrap();
+                Env::pop_scope(child, env);
                 Type::Unit
             }
             Stmt::Loop { body } => {
-                let mut child = Env::child(std::mem::replace(env, Env::new()));
+                let mut child = Env::push_scope(env);
                 self.check_block(body, &mut child, ret_ty);
-                *env = *child.parent.unwrap();
+                Env::pop_scope(child, env);
                 Type::Unit
             }
             Stmt::Break => Type::Unit,
@@ -608,30 +642,6 @@ impl TypeChecker {
                             return ty.clone();
                         }
 
-                        // Pipeline method names used as standalone functions (e.g., list | map(f))
-                        // These are resolved at codegen time, so skip them here
-                        const PIPELINE_METHODS: &[&str] = &[
-                            "map", "filter", "each", "reduce", "fold", "scan", "join",
-                            "sort", "sort_by", "sort_by_key", "reverse", "unique", "dedup",
-                            "take", "skip", "take_while", "drop_while", "step",
-                            "flatten", "flat_map", "zip", "zip_with", "enumerate",
-                            "window", "chunks", "intersperse", "partition", "group_by",
-                            "count_by", "frequencies", "to_map", "first", "last",
-                            "sum", "product", "min", "max", "average", "any", "all",
-                            "find", "find_index", "index_of", "contains",
-                            "push", "pop", "insert", "remove_at", "clear", "set", "get", "get_or",
-                            "len", "is_empty", "slice",
-                            "to_upper", "to_lower", "trim", "trim_start", "trim_end",
-                            "split", "replace", "starts_with", "ends_with", "repeat",
-                            "capitalize", "count", "strip_prefix", "strip_suffix",
-                            "substr", "chars", "char_at", "pad_left", "pad_right", "words", "lines",
-                            "to_int", "to_float", "to_str", "parse_int", "parse_float",
-                            "abs", "floor", "ceil", "round", "sqrt", "pow", "clamp",
-                            "unwrap_or", "typeof", "merge", "keys", "values", "entries",
-                            "par_map", "par_each", "send", "recv", "tap",
-                            "map_with_index", "each_with_index",
-                            "__range",
-                        ];
                         if !PIPELINE_METHODS.contains(&name.as_str()) && !name.starts_with("__") {
                             self.err(format!("undefined function '{}'", name));
                         }
@@ -659,14 +669,14 @@ impl TypeChecker {
                 if ct != Type::Bool && ct != Type::Any {
                     self.err(format!("if condition must be Bool, got {}", ct));
                 }
-                let mut then_env = Env::child(std::mem::replace(env, Env::new()));
+                let mut then_env = Env::push_scope(env);
                 let then_ty = self.check_block(then_block, &mut then_env, &Type::Any);
-                *env = *then_env.parent.unwrap();
+                Env::pop_scope(then_env, env);
 
                 if let Some(else_blk) = else_block {
-                    let mut else_env = Env::child(std::mem::replace(env, Env::new()));
+                    let mut else_env = Env::push_scope(env);
                     let _else_ty = self.check_block(else_blk, &mut else_env, &Type::Any);
-                    *env = *else_env.parent.unwrap();
+                    Env::pop_scope(else_env, env);
                 }
                 then_ty
             }
@@ -703,22 +713,22 @@ impl TypeChecker {
             }
 
             Expr::BlockExpr(block) => {
-                let mut child = Env::child(std::mem::replace(env, Env::new()));
+                let mut child = Env::push_scope(env);
                 let mut last_ty = Type::Unit;
                 for spanned in &block.stmts {
                     last_ty = self.check_stmt(&spanned.stmt, &mut child, &Type::Any);
                 }
-                *env = *child.parent.unwrap();
+                Env::pop_scope(child, env);
                 last_ty
             }
             Expr::Lambda { params, body } => {
-                let mut child = Env::child(std::mem::replace(env, Env::new()));
+                let mut child = Env::push_scope(env);
                 let param_types: Vec<Type> = params.iter().map(|_| Type::Any).collect();
                 for (name, ty) in params.iter().zip(param_types.iter()) {
                     child.insert(name.clone(), ty.clone(), false);
                 }
                 let ret = self.infer_expr(body, &mut child);
-                *env = *child.parent.unwrap();
+                Env::pop_scope(child, env);
                 Type::Fn {
                     params: param_types,
                     ret: Box::new(ret),
