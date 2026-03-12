@@ -59,6 +59,13 @@ impl Parser {
         }
     }
 
+    fn expect_ident(&mut self, ctx: &str) -> Result<String, ParseError> {
+        match self.peek().clone() {
+            Token::Ident(n) => { self.advance(); Ok(n) }
+            _ => Err(self.error(format!("expected {} name", ctx))),
+        }
+    }
+
     fn error(&self, msg: String) -> ParseError {
         let spanned = self.tokens.get(self.pos);
         ParseError {
@@ -160,18 +167,12 @@ impl Parser {
 
     fn parse_impl_block(&mut self) -> Result<Item, ParseError> {
         self.expect(&Token::Impl)?;
-        let first_name = match self.peek().clone() {
-            Token::Ident(n) => { self.advance(); n }
-            _ => return Err(self.error("expected type or trait name after impl".into())),
-        };
+        let first_name = self.expect_ident("type or trait")?;
 
         // Check for "impl Trait for Type"
         let (trait_name, type_name) = if self.peek() == &Token::For {
             self.advance(); // consume 'for'
-            let tn = match self.peek().clone() {
-                Token::Ident(n) => { self.advance(); n }
-                _ => return Err(self.error("expected type name after 'for'".into())),
-            };
+            let tn = self.expect_ident("type")?;
             (Some(first_name), tn)
         } else {
             (None, first_name)
@@ -200,10 +201,7 @@ impl Parser {
 
     fn parse_trait_def(&mut self) -> Result<Item, ParseError> {
         self.expect(&Token::Trait)?;
-        let name = match self.peek().clone() {
-            Token::Ident(n) => { self.advance(); n }
-            _ => return Err(self.error("expected trait name".into())),
-        };
+        let name = self.expect_ident("trait")?;
         self.skip_newlines();
         self.expect(&Token::Indent)?;
         let mut methods = Vec::new();
@@ -223,10 +221,7 @@ impl Parser {
     /// Parse a trait method signature: fn name params -> RetType (no body)
     fn parse_trait_method(&mut self) -> Result<TraitMethod, ParseError> {
         self.expect(&Token::Fn)?;
-        let name = match self.peek().clone() {
-            Token::Ident(n) => { self.advance(); n }
-            _ => return Err(self.error("expected method name".into())),
-        };
+        let name = self.expect_ident("method")?;
         let mut params = Vec::new();
         let mut ret_type = None;
         loop {
@@ -248,10 +243,7 @@ impl Parser {
 
     fn parse_type_or_enum(&mut self) -> Result<Item, ParseError> {
         self.expect(&Token::Type)?;
-        let name = match self.peek().clone() {
-            Token::Ident(n) => { self.advance(); n }
-            _ => return Err(self.error("expected type name".into())),
-        };
+        let name = self.expect_ident("type")?;
 
         // Parse optional type parameters
         let type_params = self.parse_optional_type_params()?;
@@ -279,18 +271,12 @@ impl Parser {
     }
 
     fn parse_variant(&mut self) -> Result<Variant, ParseError> {
-        let name = match self.peek().clone() {
-            Token::Ident(n) => { self.advance(); n }
-            _ => return Err(self.error("expected variant name".into())),
-        };
+        let name = self.expect_ident("variant")?;
         let mut fields = Vec::new();
         if self.peek() == &Token::LParen {
             self.advance();
             while self.peek() != &Token::RParen {
-                let field_name = match self.peek().clone() {
-                    Token::Ident(n) => { self.advance(); n }
-                    _ => return Err(self.error("expected field name".into())),
-                };
+                let field_name = self.expect_ident("field")?;
                 self.expect(&Token::Colon)?;
                 let ty = self.parse_type_expr()?;
                 fields.push(FieldDef { name: field_name, ty });
@@ -311,10 +297,7 @@ impl Parser {
         let mut fields = Vec::new();
         while self.peek() != &Token::RBrace {
             self.skip_whitespace_tokens();
-            let field_name = match self.peek().clone() {
-                Token::Ident(n) => { self.advance(); n }
-                _ => return Err(self.error("expected field name".into())),
-            };
+            let field_name = self.expect_ident("field")?;
             self.expect(&Token::Colon)?;
             let ty = self.parse_type_expr()?;
             fields.push(FieldDef { name: field_name, ty });
@@ -414,10 +397,7 @@ impl Parser {
     }
 
     fn parse_type_param(&mut self) -> Result<TypeParam, ParseError> {
-        let name = match self.peek().clone() {
-            Token::Ident(n) => { self.advance(); n }
-            _ => return Err(self.error("expected type parameter name".into())),
-        };
+        let name = self.expect_ident("type parameter")?;
         // Check for trait bound: T: TraitName
         let bound = if self.peek() == &Token::Colon {
             self.advance(); // consume ':'
@@ -542,17 +522,11 @@ impl Parser {
             }
             Token::For => {
                 self.advance();
-                let var = match self.peek().clone() {
-                    Token::Ident(n) => { self.advance(); n }
-                    _ => return Err(self.error("expected variable name after for".into())),
-                };
+                let var = self.expect_ident("variable")?;
                 // Check for key-value destructuring: for k, v in map
                 if self.peek() == &Token::Comma {
                     self.advance(); // consume ','
-                    let val_var = match self.peek().clone() {
-                        Token::Ident(n) => { self.advance(); n }
-                        _ => return Err(self.error("expected value variable name after ','".into())),
-                    };
+                    let val_var = self.expect_ident("value variable")?;
                     self.expect(&Token::In)?;
                     let iterable = self.parse_expr(0)?;
                     self.skip_newlines();
@@ -642,10 +616,7 @@ impl Parser {
             }
             Token::Mut => {
                 self.advance();
-                let name = match self.peek().clone() {
-                    Token::Ident(n) => { self.advance(); n }
-                    _ => return Err(self.error("expected variable name after mut".into())),
-                };
+                let name = self.expect_ident("variable")?;
                 self.expect(&Token::ColonEq)?;
                 let value = self.parse_expr(0)?;
                 Ok(Stmt::Let { name, mutable: true, value })
@@ -684,10 +655,7 @@ impl Parser {
                 // Could be: binding (x := ...), assignment (x = ...),
                 // index assign (x[i] = ...), field assign (x.f = ...), or expression
                 let saved = self.pos;
-                let name = match self.peek().clone() {
-                    Token::Ident(n) => { self.advance(); n }
-                    _ => unreachable!(),
-                };
+                let name = self.expect_ident("variable")?;
 
                 match self.peek() {
                     Token::ColonEq => {
@@ -1360,10 +1328,7 @@ impl Parser {
                                 self.skip_whitespace_tokens();
                                 while self.peek() != &Token::RParen {
                                     self.skip_whitespace_tokens();
-                                    let field_name = match self.peek().clone() {
-                                        Token::Ident(f) => { self.advance(); f }
-                                        _ => return Err(self.error("expected field name".into())),
-                                    };
+                                    let field_name = self.expect_ident("field")?;
                                     self.expect(&Token::Colon)?;
                                     let val = self.parse_expr(0)?;
                                     fields.push((field_name, val));
