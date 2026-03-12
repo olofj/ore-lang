@@ -679,7 +679,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // Compile the lambda/function and call it with inner value
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
-                        self.compile_lambda(params, body, func)?
+                        self.compile_lambda(params, body)?
                     }
                     Expr::Ident(name) => {
                         self.module.get_function(name).ok_or_else(|| {
@@ -793,7 +793,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
-                        self.compile_lambda(params, body, func)?
+                        self.compile_lambda(params, body)?
                     }
                     Expr::Ident(name) => {
                         self.module.get_function(name).ok_or_else(|| {

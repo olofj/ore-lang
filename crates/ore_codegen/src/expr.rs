@@ -40,7 +40,7 @@ impl<'ctx> CodeGen<'ctx> {
                 })
             }
             Expr::Lambda { params, body } => {
-                let lambda_fn = self.compile_lambda(params, body, func)?;
+                let lambda_fn = self.compile_lambda(params, body)?;
                 // Return the function pointer
                 let ptr = lambda_fn.as_global_value().as_pointer_value();
                 Ok((ptr.into(), ValKind::Int)) // Kind is approximate; lambdas are function pointers
@@ -1015,7 +1015,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::Lambda { params, body } => {
                 let arg_val = self.compile_expr(arg, current_fn)?;
-                let lambda_fn = self.compile_lambda(params, body, current_fn)?;
+                let lambda_fn = self.compile_lambda(params, body)?;
                 let lambda_name = Self::get_lambda_name(lambda_fn);
 
                 let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> = Vec::new();

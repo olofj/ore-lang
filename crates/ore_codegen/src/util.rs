@@ -192,12 +192,11 @@ impl<'ctx> CodeGen<'ctx> {
         arg: &Expr,
         param_kinds: &[ValKind],
         method_name: &str,
-        func: FunctionValue<'ctx>,
         track_return_kind: bool,
     ) -> Result<(FunctionValue<'ctx>, PointerValue<'ctx>), CodeGenError> {
         let lambda_fn = match arg {
             Expr::Lambda { params, body } => {
-                self.compile_lambda_with_kinds(params, body, func, Some(param_kinds))?
+                self.compile_lambda_with_kinds(params, body, Some(param_kinds))?
             }
             Expr::Ident(name) => {
                 let (f, ret_kind) = self.resolve_function(name)?;

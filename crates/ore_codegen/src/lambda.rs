@@ -196,16 +196,14 @@ impl<'ctx> CodeGen<'ctx> {
         &mut self,
         params: &[String],
         body: &Expr,
-        _parent_fn: FunctionValue<'ctx>,
     ) -> Result<FunctionValue<'ctx>, CodeGenError> {
-        self.compile_lambda_with_kinds(params, body, _parent_fn, None)
+        self.compile_lambda_with_kinds(params, body, None)
     }
 
     pub(crate) fn compile_lambda_with_kinds(
         &mut self,
         params: &[String],
         body: &Expr,
-        _parent_fn: FunctionValue<'ctx>,
         param_kinds: Option<&[ValKind]>,
     ) -> Result<FunctionValue<'ctx>, CodeGenError> {
         let name = format!("__lambda_{}", self.lambda_counter);
@@ -267,8 +265,11 @@ impl<'ctx> CodeGen<'ctx> {
 
         // If we have captures, extract them from the env_ptr (first param)
         if has_captures {
-            let env_ptr = lambda_fn.get_nth_param(0).unwrap().into_pointer_value();
-            let st = captures_struct_type.unwrap();
+            let env_ptr = lambda_fn.get_nth_param(0)
+                .ok_or_else(|| CodeGenError { line: Some(self.current_line), msg: "lambda missing env_ptr parameter".into() })?
+                .into_pointer_value();
+            let st = captures_struct_type
+                .ok_or_else(|| CodeGenError { line: Some(self.current_line), msg: "lambda has captures but no struct type".into() })?;
             for (i, cap_name) in capture_names.iter().enumerate() {
                 let field_ptr = bld!(self.builder.build_struct_gep(
                     st, env_ptr, i as u32, &format!("cap_{}", cap_name)
@@ -284,7 +285,8 @@ impl<'ctx> CodeGen<'ctx> {
         // Bind lambda parameters (offset by 1 if captures exist)
         let param_offset: u32 = if has_captures { 1 } else { 0 };
         for (i, param_name) in params.iter().enumerate() {
-            let val = lambda_fn.get_nth_param(i as u32 + param_offset).unwrap();
+            let val = lambda_fn.get_nth_param(i as u32 + param_offset)
+                .ok_or_else(|| CodeGenError { line: Some(self.current_line), msg: format!("lambda missing parameter '{}'", param_name) })?;
             let kind = param_kinds.and_then(|k| k.get(i).cloned()).unwrap_or(ValKind::Int);
             // For pointer-based types (Str, List, Map), convert i64 param to pointer
             match &kind {

@@ -104,7 +104,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
                         let kinds = vec![ValKind::Str, val_kind.clone()];
-                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                        self.compile_lambda_with_kinds(params, body, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
@@ -129,7 +129,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
                         let kinds = vec![ValKind::Str, val_kind.clone()];
-                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                        self.compile_lambda_with_kinds(params, body, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
@@ -153,7 +153,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {
                         let kinds = vec![ValKind::Str, val_kind.clone()];
-                        self.compile_lambda_with_kinds(params, body, func, Some(&kinds))?
+                        self.compile_lambda_with_kinds(params, body, Some(&kinds))?
                     }
                     Expr::Ident(name) => {
                         let (f, _) = self.resolve_function(name)?;
