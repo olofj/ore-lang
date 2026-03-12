@@ -149,8 +149,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
 
                 let val = self.call_rt("ore_list_map_with_index", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "mwi")?;
-                let ret_elem = self.propagate_lambda_elem_kind();
-                Ok((val, ValKind::List(ret_elem.map(Box::new))))
+                let ret_elem = self.last_lambda_return_kind.take().unwrap_or(elem_kind.clone());
+                Ok((val, ValKind::list_of(ret_elem)))
             }
             "each_with_index" => {
                 self.check_arity("each_with_index", args, 1)?;
@@ -165,8 +165,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &[ValKind::Int], method, false)?;
 
                 let val = self.call_rt("ore_list_par_map", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "par_map")?;
-                let ret_elem = self.propagate_lambda_elem_kind();
-                Ok((val, ValKind::List(ret_elem.map(Box::new))))
+                let ret_elem = self.last_lambda_return_kind.take().unwrap_or(elem_kind.clone());
+                Ok((val, ValKind::list_of(ret_elem)))
             }
             "par_each" => {
                 self.check_arity("par_each", args, 1)?;

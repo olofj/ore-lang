@@ -627,24 +627,9 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    /// Take the last lambda return kind and update last_list_elem_kind.
-    /// Returns the resolved element kind for list construction.
-    pub(crate) fn propagate_lambda_elem_kind(&mut self) -> Option<ValKind> {
-        let ret_elem = self.last_lambda_return_kind.take().or(self.last_list_elem_kind.clone());
-        if let Some(ref rk) = ret_elem {
-            self.last_list_elem_kind = Some(rk.clone());
-        }
-        ret_elem
-    }
-
     /// Get the current list element kind, defaulting to Int.
     pub(crate) fn list_elem_kind(&self) -> ValKind {
         self.last_list_elem_kind.clone().unwrap_or(ValKind::Int)
-    }
-
-    /// Build a ValKind::List wrapping the current tracked element kind.
-    pub(crate) fn current_list_kind(&self) -> ValKind {
-        ValKind::List(self.last_list_elem_kind.clone().map(Box::new))
     }
 
     /// Get the current map value kind, defaulting to Int.

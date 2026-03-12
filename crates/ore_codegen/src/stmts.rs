@@ -409,22 +409,17 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Resolve the element kind for a list iterable, using all available sources.
-    /// Priority: list_element_kinds > last_list_elem_kind > ValKind variant > default Int.
+    /// Priority: list_element_kinds > ValKind variant > last_list_elem_kind > default Int.
     fn resolve_list_elem_kind(&mut self, iterable: &Expr, list_kind: &ValKind) -> ValKind {
-        let explicit = if let Expr::Ident(name) = iterable {
-            self.list_element_kinds.get(name).cloned()
-        } else {
-            None
-        };
-        if let Some(ek) = explicit {
-            return ek;
+        if let Expr::Ident(name) = iterable {
+            if let Some(ek) = self.list_element_kinds.get(name).cloned() {
+                return ek;
+            }
         }
-        self.last_list_elem_kind.clone()
-            .or_else(|| match list_kind {
-                ValKind::List(Some(ek)) => Some(ek.as_ref().clone()),
-                _ => None,
-            })
-            .unwrap_or(ValKind::Int)
+        match list_kind {
+            ValKind::List(Some(ek)) => ek.as_ref().clone(),
+            _ => self.last_list_elem_kind.clone().unwrap_or(ValKind::Int),
+        }
     }
 
     /// Check if an iterable expression refers to a known map variable.
