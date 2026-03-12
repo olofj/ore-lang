@@ -139,7 +139,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Str => self.compile_str_method(val.into_pointer_value().into(), method, args, func),
             ValKind::List(ref ek) => {
                 let elem_kind = ek.as_ref().map(|k| k.as_ref().clone()).unwrap_or(ValKind::Int);
-                self.compile_list_method(val.into_pointer_value().into(), method, args, func, elem_kind)
+                self.compile_list_method(val.into_pointer_value().into(), method, args, func, &elem_kind)
             }
             ValKind::Int => {
                 match method {
@@ -188,7 +188,7 @@ impl<'ctx> CodeGen<'ctx> {
             // Also seed the side-channel for callers that still read it
             self.last_list_elem_kind = Some(elem_kind.clone());
 
-            let result = self.compile_list_method(obj_val, method, args, func, elem_kind)?;
+            let result = self.compile_list_method(obj_val, method, args, func, &elem_kind)?;
             // After push, update the variable's element kind tracking
             if method == "push" {
                 if let Expr::Ident(var_name) = object {

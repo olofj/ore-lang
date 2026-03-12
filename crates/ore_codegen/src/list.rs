@@ -9,7 +9,7 @@ impl<'ctx> CodeGen<'ctx> {
         method: &str,
         args: &[Expr],
         func: FunctionValue<'ctx>,
-        elem_kind: ValKind,
+        elem_kind: &ValKind,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         match method {
             "len" => {
@@ -38,10 +38,9 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((list_val, ValKind::list_of(arg_kind)))
             }
             "pop" => {
-                let elem_kind = elem_kind.clone();
                 let raw_val = self.call_rt("ore_list_pop", &[list_val.into()], "pop")?;
-                let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
-                Ok((typed_val, elem_kind))
+                let typed_val = self.list_elem_from_i64(raw_val, elem_kind)?;
+                Ok((typed_val, elem_kind.clone()))
             }
             "insert" => {
                 self.check_arity("insert", args, 2)?;
@@ -54,17 +53,15 @@ impl<'ctx> CodeGen<'ctx> {
             "remove_at" => {
                 self.check_arity("remove_at", args, 1)?;
                 let idx = self.compile_expr(&args[0], func)?;
-                let elem_kind = elem_kind.clone();
                 let raw_val = self.call_rt("ore_list_remove_at", &[list_val.into(), idx.into()], "removed")?;
-                self.coerce_list_element(raw_val, elem_kind)
+                self.coerce_list_element(raw_val, elem_kind.clone())
             }
             "get" => {
                 self.check_arity("get", args, 1)?;
-                let elem_kind = elem_kind.clone();
                 let idx = self.compile_expr(&args[0], func)?;
                 let raw_val = self.call_rt("ore_list_get", &[list_val.into(), idx.into()], "get")?;
-                let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
-                Ok((typed_val, elem_kind))
+                let typed_val = self.list_elem_from_i64(raw_val, elem_kind)?;
+                Ok((typed_val, elem_kind.clone()))
             }
             "set" => {
                 self.check_arity("set", args, 2)?;
@@ -76,13 +73,12 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "get_or" => {
                 self.check_arity("get_or", args, 2)?;
-                let elem_kind = elem_kind.clone();
                 let idx = self.compile_expr(&args[0], func)?;
                 let default = self.compile_expr(&args[1], func)?;
                 let default_i64 = self.value_to_i64(default)?;
                 let raw_val = self.call_rt("ore_list_get_or", &[list_val.into(), idx.into(), default_i64.into()], "getor")?;
-                let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
-                Ok((typed_val, elem_kind))
+                let typed_val = self.list_elem_from_i64(raw_val, elem_kind)?;
+                Ok((typed_val, elem_kind.clone()))
             }
             "map" | "filter" | "flat_map" | "take_while" | "drop_while" => {
                 self.check_arity(method, args, 1)?;
@@ -177,14 +173,13 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "sort" => {
                 if args.is_empty() {
-                    let elem_kind = elem_kind.clone();
                     let rt_name = match elem_kind {
                         ValKind::Str => "ore_list_sort_str",
                         ValKind::Float => "ore_list_sort_float",
                         _ => "ore_list_sort",
                     };
                     let sorted_val = self.call_rt(rt_name, &[list_val.into()], "sorted")?;
-                    return Ok((sorted_val, ValKind::list_of(elem_kind)));
+                    return Ok((sorted_val, ValKind::list_of(elem_kind.clone())));
                 }
                 // sort(comparator) - sort_by
                 let ek = elem_kind.clone();
@@ -218,7 +213,6 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "contains" => {
                 self.check_arity("contains", args, 1)?;
-                let elem_kind = elem_kind.clone();
                 let (val, _) = self.compile_expr_with_kind(&args[0], func)?;
                 let i8_val = if matches!(elem_kind, ValKind::Str) {
                     self.call_rt("ore_list_contains_str", &[list_val.into(), val.into()], "lcontains")?
@@ -288,7 +282,6 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(elem_kind.clone())))
             }
             "sum" | "product" => {
-                let elem_kind = elem_kind.clone();
                 let (rt_name, result_kind) = if matches!(elem_kind, ValKind::Float) {
                     (format!("ore_list_{}_float", method), ValKind::Float)
                 } else {
@@ -298,7 +291,6 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, result_kind))
             }
             "average" => {
-                let elem_kind = elem_kind.clone();
                 let rt_name = if matches!(elem_kind, ValKind::Float) { "ore_list_average_float" } else { "ore_list_average" };
                 let val = self.call_rt(rt_name, &[list_val.into()], "avg")?;
                 Ok((val, ValKind::Float))
@@ -343,17 +335,15 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "index_of" => {
                 self.check_arity("index_of", args, 1)?;
-                let elem_kind = elem_kind.clone();
                 let val = self.compile_expr(&args[0], func)?;
                 let rt_name = if matches!(elem_kind, ValKind::Str) { "ore_list_index_of_str" } else { "ore_list_index_of" };
                 let v = self.call_rt(rt_name, &[list_val.into(), val.into()], "lidx")?;
                 Ok((v, ValKind::Int))
             }
             "unique" => {
-                let elem_kind = elem_kind.clone();
                 let rt_name = if matches!(elem_kind, ValKind::Str) { "ore_list_unique_str" } else { "ore_list_unique" };
                 let val = self.call_rt(rt_name, &[list_val.into()], "luniq")?;
-                Ok((val, ValKind::list_of(elem_kind)))
+                Ok((val, ValKind::list_of(elem_kind.clone())))
             }
             "unique_by" => {
                 self.check_arity("unique_by", args, 1)?;
@@ -385,7 +375,6 @@ impl<'ctx> CodeGen<'ctx> {
                 self.coerce_list_element(val, ek)
             }
             "min" | "max" => {
-                let elem_kind = elem_kind.clone();
                 let (rt_name, result_kind) = match elem_kind {
                     ValKind::Float => (format!("ore_list_{}_float", method), ValKind::Float),
                     ValKind::Str => (format!("ore_list_{}_str", method), ValKind::Str),
@@ -439,7 +428,6 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(elem_kind.clone())))
             }
             "frequencies" => {
-                let elem_kind = elem_kind.clone();
                 let kind_val = self.context.i8_type().const_int(match elem_kind {
                     ValKind::Int => 0,
                     ValKind::Float => 1,
