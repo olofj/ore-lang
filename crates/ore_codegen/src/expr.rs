@@ -451,7 +451,7 @@ impl<'ctx> CodeGen<'ctx> {
                 lv
             }
         } else {
-            return Err(CodeGenError { line: None, msg: "short-circuit: expected boolean operand".to_string() });
+            return Err(self.err("short-circuit: expected boolean operand"));
         };
 
         let rhs_block = self.context.append_basic_block(func, "sc_rhs");
@@ -482,7 +482,7 @@ impl<'ctx> CodeGen<'ctx> {
                 rv
             }
         } else {
-            return Err(CodeGenError { line: None, msg: "short-circuit: expected boolean operand for RHS".to_string() });
+            return Err(self.err("short-circuit: expected boolean operand for RHS"));
         };
         bld!(self.builder.build_store(result_alloca, rhs_i64))?;
         bld!(self.builder.build_unconditional_branch(merge_block))?;

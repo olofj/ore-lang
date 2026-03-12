@@ -264,10 +264,10 @@ impl<'ctx> CodeGen<'ctx> {
         // If we have captures, extract them from the env_ptr (first param)
         if has_captures {
             let env_ptr = lambda_fn.get_nth_param(0)
-                .ok_or_else(|| CodeGenError { line: Some(self.current_line), msg: "lambda missing env_ptr parameter".into() })?
+                .ok_or_else(|| self.err("lambda missing env_ptr parameter"))?
                 .into_pointer_value();
             let st = captures_struct_type
-                .ok_or_else(|| CodeGenError { line: Some(self.current_line), msg: "lambda has captures but no struct type".into() })?;
+                .ok_or_else(|| self.err("lambda has captures but no struct type"))?;
             for (i, cap_name) in capture_names.iter().enumerate() {
                 let field_ptr = bld!(self.builder.build_struct_gep(
                     st, env_ptr, i as u32, &format!("cap_{}", cap_name)
@@ -284,7 +284,7 @@ impl<'ctx> CodeGen<'ctx> {
         let param_offset: u32 = if has_captures { 1 } else { 0 };
         for (i, param_name) in params.iter().enumerate() {
             let val = lambda_fn.get_nth_param(i as u32 + param_offset)
-                .ok_or_else(|| CodeGenError { line: Some(self.current_line), msg: format!("lambda missing parameter '{}'", param_name) })?;
+                .ok_or_else(|| self.err(format!("lambda missing parameter '{}'", param_name)))?;
             let kind = param_kinds.and_then(|k| k.get(i).cloned()).unwrap_or(ValKind::Int);
             // For pointer-based types (Str, List, Map), convert i64 param to pointer
             match &kind {
@@ -336,8 +336,8 @@ impl<'ctx> CodeGen<'ctx> {
         &mut self,
         lambda_name: &str,
     ) -> Result<PointerValue<'ctx>, CodeGenError> {
-        let cap_info = self.lambda_captures.get(lambda_name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("no capture info for lambda '{}'", lambda_name),
+        let cap_info = self.lambda_captures.get(lambda_name).ok_or_else(|| {
+            self.err(format!("no capture info for lambda '{}'", lambda_name))
         })?;
         let struct_type = cap_info.struct_type;
         let names = cap_info.names.clone();
@@ -345,8 +345,8 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(struct_type, "captures"))?;
 
         for (i, cap_name) in names.iter().enumerate() {
-            let v = self.variables.get(cap_name).ok_or_else(|| CodeGenError {
-                line: Some(self.current_line), msg: format!("captured variable '{}' not found in scope", cap_name),
+            let v = self.variables.get(cap_name).ok_or_else(|| {
+                self.err(format!("captured variable '{}' not found in scope", cap_name))
             })?;
             let val = bld!(self.builder.build_load(v.ty, v.ptr, cap_name))?;
             let field_ptr = bld!(self.builder.build_struct_gep(
