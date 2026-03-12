@@ -268,8 +268,8 @@ impl<'ctx> CodeGen<'ctx> {
     /// Iterate over impl block and impl-trait items, yielding (type_name, methods).
     fn impl_items(items: &[Item]) -> impl Iterator<Item = (&String, &Vec<FnDef>)> {
         items.iter().filter_map(|item| match item {
-            Item::ImplBlock { type_name, methods } => Some((type_name, methods)),
-            Item::ImplTrait { type_name, methods, .. } => Some((type_name, methods)),
+            Item::ImplBlock { type_name, methods }
+            | Item::ImplTrait { type_name, methods, .. } => Some((type_name, methods)),
             _ => None,
         })
     }
@@ -440,8 +440,8 @@ impl<'ctx> CodeGen<'ctx> {
             inkwell::types::BasicTypeEnum::IntType(t) => {
                 (t.get_bit_width() as u64).div_ceil(8)
             }
-            inkwell::types::BasicTypeEnum::FloatType(_) => 8, // f64
-            inkwell::types::BasicTypeEnum::PointerType(_) => 8, // 64-bit pointer
+            inkwell::types::BasicTypeEnum::FloatType(_)
+            | inkwell::types::BasicTypeEnum::PointerType(_) => 8, // f64 or 64-bit pointer
             inkwell::types::BasicTypeEnum::StructType(t) => {
                 t.get_field_types().iter().map(|f| self.type_size_bytes(f)).sum()
             }
@@ -570,15 +570,13 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub(crate) fn kind_to_llvm_type(&self, kind: &ValKind) -> inkwell::types::BasicTypeEnum<'ctx> {
         match kind {
-            ValKind::Int => self.context.i64_type().into(),
+            ValKind::Int | ValKind::Void => self.context.i64_type().into(),
             ValKind::Float => self.context.f64_type().into(),
             ValKind::Bool => self.context.bool_type().into(),
-            ValKind::Str => self.ptr_type().into(),
-            ValKind::Void => self.context.i64_type().into(),
+            ValKind::Str | ValKind::List(_) | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
             ValKind::Record(name) => self.records[name].struct_type.into(),
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option | ValKind::Result => self.tagged_union_type().into(),
-            ValKind::List(_) | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
         }
     }
 
