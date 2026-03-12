@@ -16,17 +16,15 @@ impl<'ctx> CodeGen<'ctx> {
 
     /// Get the current insert block, returning a proper error instead of panicking.
     pub(crate) fn current_block(&self) -> Result<inkwell::basic_block::BasicBlock<'ctx>, CodeGenError> {
-        self.builder.get_insert_block().ok_or_else(|| CodeGenError {
-            line: Some(self.current_line),
-            msg: "LLVM builder has no current insert block".into(),
+        self.builder.get_insert_block().ok_or_else(|| {
+            self.err("LLVM builder has no current insert block")
         })
     }
 
     /// Get the current function from the builder's insert block.
     pub(crate) fn current_fn(&self) -> Result<FunctionValue<'ctx>, CodeGenError> {
-        self.current_block()?.get_parent().ok_or_else(|| CodeGenError {
-            line: Some(self.current_line),
-            msg: "current block has no parent function".into(),
+        self.current_block()?.get_parent().ok_or_else(|| {
+            self.err("current block has no parent function")
         })
     }
 
@@ -184,10 +182,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 f
             }
-            _ => return Err(CodeGenError {
-                line: Some(self.current_line),
-                msg: format!("{} argument must be a function", method_name),
-            }),
+            _ => return Err(self.err(format!("{} argument must be a function", method_name))),
         };
         let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
         let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
@@ -196,6 +191,40 @@ impl<'ctx> CodeGen<'ctx> {
             self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
         };
         Ok((lambda_fn, env_ptr))
+    }
+
+    /// Extract the name of a lambda function as a String.
+    pub(crate) fn get_lambda_name(lambda_fn: FunctionValue<'ctx>) -> String {
+        lambda_fn.get_name().to_str().unwrap_or("__unknown_lambda").to_string()
+    }
+
+    /// Build an alloca in the entry block of `func`, preserving the current insert position.
+    pub(crate) fn build_entry_alloca(
+        &self,
+        func: FunctionValue<'ctx>,
+        ty: impl inkwell::types::BasicType<'ctx>,
+        name: &str,
+    ) -> Result<PointerValue<'ctx>, CodeGenError> {
+        let entry = func.get_first_basic_block().ok_or_else(|| self.err("function has no entry block"))?;
+        let current = self.current_block()?;
+        if let Some(first_instr) = entry.get_first_instruction() {
+            self.builder.position_before(&first_instr);
+        } else {
+            self.builder.position_at_end(entry);
+        }
+        let alloca = bld!(self.builder.build_alloca(ty, name))?;
+        self.builder.position_at_end(current);
+        Ok(alloca)
+    }
+
+    /// Convert a pointer value to i64.
+    pub(crate) fn ptr_to_i64(&self, ptr: PointerValue<'ctx>) -> Result<IntValue<'ctx>, CodeGenError> {
+        Ok(bld!(self.builder.build_ptr_to_int(ptr, self.context.i64_type(), "p2i"))?)
+    }
+
+    /// Convert an i64 value to a pointer.
+    pub(crate) fn i64_to_ptr(&self, val: IntValue<'ctx>) -> Result<PointerValue<'ctx>, CodeGenError> {
+        Ok(bld!(self.builder.build_int_to_ptr(val, self.ptr_type(), "i2p"))?)
     }
 
     /// Find the most similar string from candidates (edit distance <= 2).
@@ -313,7 +342,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         let generic_fn = self.generic_fns.get(generic_name).cloned().ok_or_else(|| {
-            CodeGenError { line: Some(self.current_line), msg: format!("no generic function '{}'", generic_name) }
+            self.err(format!("no generic function '{}'", generic_name))
         })?;
 
         // Build substitution map: type_param_name -> concrete TypeExpr
@@ -371,9 +400,8 @@ impl<'ctx> CodeGen<'ctx> {
             self.builder.position_at_end(bb);
         }
 
-        let (f, k) = self.functions.get(&mangled).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line),
-            msg: format!("monomorphized function '{}' not found after compilation", mangled),
+        let (f, k) = self.functions.get(&mangled).ok_or_else(|| {
+            self.err(format!("monomorphized function '{}' not found after compilation", mangled))
         })?.clone();
         Ok((f, k))
     }

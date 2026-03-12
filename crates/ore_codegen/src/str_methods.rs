@@ -30,7 +30,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "contains" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "contains takes 1 argument".into() });
+                    return Err(self.err("contains takes 1 argument"));
                 }
                 let needle = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_contains")?;
@@ -75,7 +75,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Ok((val, ValKind::list_of(ValKind::Str)));
                 }
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "split takes 0 or 1 arguments".into() });
+                    return Err(self.err("split takes 0 or 1 arguments"));
                 }
                 let delim = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_split")?;
@@ -98,7 +98,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "replace" => {
                 if args.len() != 2 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "replace takes 2 arguments (from, to)".into() });
+                    return Err(self.err("replace takes 2 arguments (from, to)"));
                 }
                 let from = self.compile_expr(&args[0], func)?;
                 let to = self.compile_expr(&args[1], func)?;
@@ -109,7 +109,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "starts_with" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "starts_with takes 1 argument".into() });
+                    return Err(self.err("starts_with takes 1 argument"));
                 }
                 let prefix = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_starts_with")?;
@@ -123,7 +123,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "ends_with" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "ends_with takes 1 argument".into() });
+                    return Err(self.err("ends_with takes 1 argument"));
                 }
                 let suffix = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_ends_with")?;
@@ -155,7 +155,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "substr" => {
                 if args.len() != 2 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "substr takes 2 arguments (start, len)".into() });
+                    return Err(self.err("substr takes 2 arguments (start, len)"));
                 }
                 let start = self.compile_expr(&args[0], func)?;
                 let len = self.compile_expr(&args[1], func)?;
@@ -173,7 +173,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "char_at" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "char_at takes 1 argument (index)".into() });
+                    return Err(self.err("char_at takes 1 argument (index)"));
                 }
                 let idx = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_char_at")?;
@@ -183,7 +183,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "index_of" | "find" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "index_of/find takes 1 argument".into() });
+                    return Err(self.err("index_of/find takes 1 argument"));
                 }
                 let needle = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_index_of")?;
@@ -193,7 +193,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "slice" => {
                 if args.len() != 2 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "slice takes 2 arguments (start, end)".into() });
+                    return Err(self.err("slice takes 2 arguments (start, end)"));
                 }
                 let start = self.compile_expr(&args[0], func)?;
                 let end = self.compile_expr(&args[1], func)?;
@@ -222,7 +222,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "repeat" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "repeat takes 1 argument".into() });
+                    return Err(self.err("repeat takes 1 argument"));
                 }
                 let count = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_repeat")?;
@@ -232,7 +232,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "count" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "count takes 1 argument".into() });
+                    return Err(self.err("count takes 1 argument"));
                 }
                 let needle = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_str_count")?;
@@ -242,7 +242,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "strip_prefix" | "strip_suffix" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: format!("{} takes 1 argument", method) });
+                    return Err(self.err(format!("{} takes 1 argument", method)));
                 }
                 let arg = self.compile_expr(&args[0], func)?;
                 let fn_name = format!("ore_str_{}", method);
@@ -253,7 +253,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "pad_left" | "pad_right" => {
                 if args.len() < 1 || args.len() > 2 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: format!("{} takes 1-2 arguments (width, [pad_char])", method) });
+                    return Err(self.err(format!("{} takes 1-2 arguments (width, [pad_char])", method)));
                 }
                 let width = self.compile_expr(&args[0], func)?;
                 let pad_char = if args.len() > 1 {
@@ -310,7 +310,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // Should be pointer but handle gracefully
                 Ok(v.into_pointer_value())
             }
-            _ => Err(CodeGenError { line: Some(self.current_line), msg: "ore_str_new did not return a pointer".into() }),
+            _ => Err(self.err("ore_str_new did not return a pointer")),
         }
     }
 
@@ -464,9 +464,7 @@ impl<'ctx> CodeGen<'ctx> {
         val: BasicValueEnum<'ctx>,
         type_name: &str,
     ) -> Result<PointerValue<'ctx>, CodeGenError> {
-        let info = self.records.get(type_name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("undefined type '{}' for display", type_name),
-        })?;
+        let info = self.records.get(type_name).ok_or_else(|| self.err(format!("undefined type '{}' for display", type_name)))?;
         let struct_type = info.struct_type;
         let field_names = info.field_names.clone();
         let field_kinds = info.field_kinds.clone();
@@ -525,9 +523,7 @@ impl<'ctx> CodeGen<'ctx> {
         val: BasicValueEnum<'ctx>,
         enum_name: &str,
     ) -> Result<PointerValue<'ctx>, CodeGenError> {
-        let enum_info = self.enums.get(enum_name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("undefined enum '{}' for display", enum_name),
-        })?;
+        let enum_info = self.enums.get(enum_name).ok_or_else(|| self.err(format!("undefined enum '{}' for display", enum_name)))?;
         let enum_type = enum_info.enum_type;
         let variants: Vec<_> = enum_info.variants.iter().map(|v| {
             (v.name.clone(), v.tag, v.field_names.clone(), v.field_kinds.clone(), v.payload_type)

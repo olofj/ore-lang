@@ -161,7 +161,7 @@ impl<'ctx> CodeGen<'ctx> {
                     BasicValueEnum::FloatValue(v) => {
                         Ok((bld!(self.builder.build_float_neg(v, "fneg"))?.into(), kind))
                     }
-                    _ => Err(CodeGenError { line: Some(self.current_line), msg: "cannot negate this type".into() }),
+                    _ => Err(self.err("cannot negate this type")),
                 }
             }
             Expr::UnaryNot(inner) => {
@@ -170,7 +170,7 @@ impl<'ctx> CodeGen<'ctx> {
                     BasicValueEnum::IntValue(v) => {
                         Ok((bld!(self.builder.build_not(v, "not"))?.into(), ValKind::Bool))
                     }
-                    _ => Err(CodeGenError { line: Some(self.current_line), msg: "cannot apply 'not' to this type".into() }),
+                    _ => Err(self.err("cannot apply 'not' to this type")),
                 }
             }
             Expr::Print(inner) => {
@@ -305,14 +305,14 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::Call { func: callee, args } => {
                 let name = match callee.as_ref() {
                     Expr::Ident(n) => n.clone(),
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: "only named function calls supported".into() }),
+                    _ => return Err(self.err("only named function calls supported")),
                 };
 
                 // Built-in stdlib functions
                 match name.as_str() {
                     "abs" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "abs takes 1 argument".into() });
+                            return Err(self.err("abs takes 1 argument"));
                         }
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         match kind {
@@ -335,12 +335,12 @@ impl<'ctx> CodeGen<'ctx> {
                                 let result = bld!(self.builder.build_select(is_neg, neg, x, "abs"))?;
                                 return Ok((result, ValKind::Float));
                             }
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "abs requires Int or Float".into() }),
+                            _ => return Err(self.err("abs requires Int or Float")),
                         }
                     }
                     "min" => {
                         if args.len() != 2 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "min takes 2 arguments".into() });
+                            return Err(self.err("min takes 2 arguments"));
                         }
                         let (a, ak) = self.compile_expr_with_kind(&args[0], func)?;
                         let (b, _) = self.compile_expr_with_kind(&args[1], func)?;
@@ -359,7 +359,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "max" => {
                         if args.len() != 2 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "max takes 2 arguments".into() });
+                            return Err(self.err("max takes 2 arguments"));
                         }
                         let (a, ak) = self.compile_expr_with_kind(&args[0], func)?;
                         let (b, _) = self.compile_expr_with_kind(&args[1], func)?;
@@ -397,7 +397,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "file_read" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "file_read takes 1 argument".into() });
+                            return Err(self.err("file_read takes 1 argument"));
                         }
                         let path_val = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_file_read")?;
@@ -407,7 +407,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "file_read_lines" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "file_read_lines takes 1 argument".into() });
+                            return Err(self.err("file_read_lines takes 1 argument"));
                         }
                         let path_val = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_file_read_lines")?;
@@ -418,7 +418,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "file_write" | "file_append" => {
                         if args.len() != 2 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: format!("{} takes 2 arguments", name) });
+                            return Err(self.err(format!("{} takes 2 arguments", name)));
                         }
                         let path_val = self.compile_expr(&args[0], func)?;
                         let content_val = self.compile_expr(&args[1], func)?;
@@ -430,7 +430,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "file_exists" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "file_exists takes 1 argument".into() });
+                            return Err(self.err("file_exists takes 1 argument"));
                         }
                         let path_val = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_file_exists")?;
@@ -446,7 +446,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "env_get" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "env_get takes 1 argument (key)".into() });
+                            return Err(self.err("env_get takes 1 argument (key)"));
                         }
                         let key = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_env_get")?;
@@ -456,7 +456,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "env_set" => {
                         if args.len() != 2 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "env_set takes 2 arguments (key, value)".into() });
+                            return Err(self.err("env_set takes 2 arguments (key, value)"));
                         }
                         let key = self.compile_expr(&args[0], func)?;
                         let value = self.compile_expr(&args[1], func)?;
@@ -473,7 +473,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "eprint" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "eprint takes 1 argument".into() });
+                            return Err(self.err("eprint takes 1 argument"));
                         }
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         match kind {
@@ -498,7 +498,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "exit" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "exit takes 1 argument (exit code)".into() });
+                            return Err(self.err("exit takes 1 argument (exit code)"));
                         }
                         let code = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_exit")?;
@@ -507,7 +507,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "exec" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "exec takes 1 argument (command string)".into() });
+                            return Err(self.err("exec takes 1 argument (command string)"));
                         }
                         let cmd_val = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_exec")?;
@@ -517,7 +517,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "str" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "str takes 1 argument".into() });
+                            return Err(self.err("str takes 1 argument"));
                         }
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         let str_val = self.value_to_str(val, kind)?;
@@ -525,7 +525,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "int" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "int takes 1 argument".into() });
+                            return Err(self.err("int takes 1 argument"));
                         }
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         match kind {
@@ -544,12 +544,12 @@ impl<'ctx> CodeGen<'ctx> {
                                 let v = self.call_result_to_value(result)?;
                                 return Ok((v, ValKind::Int));
                             }
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "int() cannot convert this type".into() }),
+                            _ => return Err(self.err("int() cannot convert this type")),
                         }
                     }
                     "float" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "float takes 1 argument".into() });
+                            return Err(self.err("float takes 1 argument"));
                         }
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         match kind {
@@ -564,12 +564,12 @@ impl<'ctx> CodeGen<'ctx> {
                                 let v = self.call_result_to_value(result)?;
                                 return Ok((v, ValKind::Float));
                             }
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "float() cannot convert this type".into() }),
+                            _ => return Err(self.err("float() cannot convert this type")),
                         }
                     }
                     "ord" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "ord takes 1 argument (string)".into() });
+                            return Err(self.err("ord takes 1 argument (string)"));
                         }
                         let str_val = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_ord")?;
@@ -579,7 +579,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "chr" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "chr takes 1 argument (int)".into() });
+                            return Err(self.err("chr takes 1 argument (int)"));
                         }
                         let int_val = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_chr")?;
@@ -589,7 +589,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "type_of" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "type_of takes 1 argument".into() });
+                            return Err(self.err("type_of takes 1 argument"));
                         }
                         let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         let kind_tag = self.valkind_to_tag(&kind);
@@ -601,7 +601,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "rand_int" => {
                         if args.len() != 2 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "rand_int takes 2 arguments (low, high)".into() });
+                            return Err(self.err("rand_int takes 2 arguments (low, high)"));
                         }
                         let low = self.compile_expr(&args[0], func)?;
                         let high = self.compile_expr(&args[1], func)?;
@@ -619,7 +619,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "json_parse" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "json_parse takes 1 argument".into() });
+                            return Err(self.err("json_parse takes 1 argument"));
                         }
                         let str_val = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_json_parse")?;
@@ -629,7 +629,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "json_stringify" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "json_stringify takes 1 argument".into() });
+                            return Err(self.err("json_stringify takes 1 argument"));
                         }
                         let map_val = self.compile_expr(&args[0], func)?;
                         let rt = self.rt("ore_json_stringify")?;
@@ -639,7 +639,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "repeat" => {
                         if args.len() != 2 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "repeat takes 2 arguments (value, count)".into() });
+                            return Err(self.err("repeat takes 2 arguments (value, count)"));
                         }
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         let val_i64 = self.value_to_i64(val)?;
@@ -653,7 +653,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "range" => {
                         if args.len() < 2 || args.len() > 3 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "range takes 2-3 arguments (start, end, [step])".into() });
+                            return Err(self.err("range takes 2-3 arguments (start, end, [step])"));
                         }
                         let start = self.compile_expr(&args[0], func)?;
                         let end = self.compile_expr(&args[1], func)?;
@@ -671,7 +671,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "len" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "len() takes 1 argument".into() });
+                            return Err(self.err("len() takes 1 argument"));
                         }
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         match kind {
@@ -690,12 +690,12 @@ impl<'ctx> CodeGen<'ctx> {
                                 let result = bld!(self.builder.build_call(rt, &[val.into()], "mlen"))?;
                                 return Ok((self.call_result_to_value(result)?, ValKind::Int));
                             }
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "len() not supported on this type".into() }),
+                            _ => return Err(self.err("len() not supported on this type")),
                         }
                     }
                     "assert" => {
                         if args.is_empty() || args.len() > 2 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "assert takes 1-2 arguments (condition, optional message)".into() });
+                            return Err(self.err("assert takes 1-2 arguments (condition, optional message)"));
                         }
                         let (cond, _) = self.compile_expr_with_kind(&args[0], func)?;
                         let cond_bool = cond.into_int_value();
@@ -720,7 +720,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "typeof" => {
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "typeof takes 1 argument".into() });
+                            return Err(self.err("typeof takes 1 argument"));
                         }
                         let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         let type_name = match kind {
@@ -748,12 +748,12 @@ impl<'ctx> CodeGen<'ctx> {
                             let f_val = match kind {
                                 ValKind::Float => val.into_float_value(),
                                 ValKind::Int => bld!(self.builder.build_signed_int_to_float(val.into_int_value(), self.context.f64_type(), "itof"))?,
-                                _ => return Err(CodeGenError { line: Some(self.current_line), msg: "round() requires numeric first argument".into() }),
+                                _ => return Err(self.err("round() requires numeric first argument")),
                             };
                             let (dec_val, dec_kind) = self.compile_expr_with_kind(&args[1], func)?;
                             let dec_i = match dec_kind {
                                 ValKind::Int => dec_val.into_int_value(),
-                                _ => return Err(CodeGenError { line: Some(self.current_line), msg: "round() second argument must be Int (decimals)".into() }),
+                                _ => return Err(self.err("round() second argument must be Int (decimals)")),
                             };
                             let rt = self.rt("ore_float_round_to")?;
                             let result = bld!(self.builder.build_call(rt, &[f_val.into(), dec_i.into()], "round_to"))?;
@@ -761,13 +761,13 @@ impl<'ctx> CodeGen<'ctx> {
                             return Ok((val, ValKind::Float));
                         }
                         if args.len() != 1 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: format!("{}() takes 1 argument", name) });
+                            return Err(self.err(format!("{}() takes 1 argument", name)));
                         }
                         let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
                         let f_val = match kind {
                             ValKind::Float => val.into_float_value(),
                             ValKind::Int => bld!(self.builder.build_signed_int_to_float(val.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: format!("{}() requires numeric argument", name) }),
+                            _ => return Err(self.err(format!("{}() requires numeric argument", name))),
                         };
                         let rt_name = format!("ore_math_{}", name.strip_prefix("math_").unwrap_or(&name));
                         let rt = self.rt(&rt_name)?;
@@ -777,19 +777,19 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "pow" => {
                         if args.len() != 2 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "pow() takes 2 arguments (base, exp)".into() });
+                            return Err(self.err("pow() takes 2 arguments (base, exp)"));
                         }
                         let (base, bk) = self.compile_expr_with_kind(&args[0], func)?;
                         let (exp, ek) = self.compile_expr_with_kind(&args[1], func)?;
                         let base_f = match bk {
                             ValKind::Float => base.into_float_value(),
                             ValKind::Int => bld!(self.builder.build_signed_int_to_float(base.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "pow() requires numeric arguments".into() }),
+                            _ => return Err(self.err("pow() requires numeric arguments")),
                         };
                         let exp_f = match ek {
                             ValKind::Float => exp.into_float_value(),
                             ValKind::Int => bld!(self.builder.build_signed_int_to_float(exp.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "pow() requires numeric arguments".into() }),
+                            _ => return Err(self.err("pow() requires numeric arguments")),
                         };
                         let rt = self.rt("ore_math_pow")?;
                         let result = bld!(self.builder.build_call(rt, &[base_f.into(), exp_f.into()], "pow"))?;
@@ -798,19 +798,19 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     "atan2" => {
                         if args.len() != 2 {
-                            return Err(CodeGenError { line: Some(self.current_line), msg: "atan2() takes 2 arguments (y, x)".into() });
+                            return Err(self.err("atan2() takes 2 arguments (y, x)"));
                         }
                         let (y, yk) = self.compile_expr_with_kind(&args[0], func)?;
                         let (x, xk) = self.compile_expr_with_kind(&args[1], func)?;
                         let y_f = match yk {
                             ValKind::Float => y.into_float_value(),
                             ValKind::Int => bld!(self.builder.build_signed_int_to_float(y.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "atan2() requires numeric arguments".into() }),
+                            _ => return Err(self.err("atan2() requires numeric arguments")),
                         };
                         let x_f = match xk {
                             ValKind::Float => x.into_float_value(),
                             ValKind::Int => bld!(self.builder.build_signed_int_to_float(x.into_int_value(), self.context.f64_type(), "itof"))?,
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "atan2() requires numeric arguments".into() }),
+                            _ => return Err(self.err("atan2() requires numeric arguments")),
                         };
                         let rt = self.rt("ore_math_atan2")?;
                         let result = bld!(self.builder.build_call(rt, &[y_f.into(), x_f.into()], "atan2"))?;
@@ -1065,7 +1065,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Some(target) = self.break_target {
                     bld!(self.builder.build_unconditional_branch(target))?;
                 } else {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "break outside of loop".into() });
+                    return Err(self.err("break outside of loop"));
                 }
                 Ok((self.context.i64_type().const_int(0, false).into(), ValKind::Void))
             }
@@ -1195,7 +1195,7 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::Call { func, args } => {
                 let name = match func.as_ref() {
                     Expr::Ident(n) => n.clone(),
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: "pipeline target must be a function".into() }),
+                    _ => return Err(self.err("pipeline target must be a function")),
                 };
                 if self.functions.contains_key(&name) || self.module.get_function(&name).is_some() {
                     let arg_val = self.compile_expr(arg, current_fn)?;
@@ -1257,7 +1257,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 Ok((val, ValKind::Int))
             }
-            _ => Err(CodeGenError { line: Some(self.current_line), msg: "unsupported pipeline target".into() }),
+            _ => Err(self.err("unsupported pipeline target")),
         }
     }
 
@@ -1327,7 +1327,7 @@ impl<'ctx> CodeGen<'ctx> {
                     BinOp::LtEq => bld!(self.builder.build_float_compare(FloatPredicate::OLE, l, r, "fle"))?.into(),
                     BinOp::GtEq => bld!(self.builder.build_float_compare(FloatPredicate::OGE, l, r, "fge"))?.into(),
                     BinOp::Mod => bld!(self.builder.build_float_rem(l, r, "fmod"))?.into(),
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: format!("unsupported float op {:?}", op) }),
+                    _ => return Err(self.err(format!("unsupported float op {:?}", op))),
                 };
                 Ok(result)
             }
@@ -1377,7 +1377,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let bool_val = bld!(self.builder.build_int_compare(pred, cmp_val, zero, "scmpres"))?;
                         Ok(bool_val.into())
                     }
-                    _ => Err(CodeGenError { line: Some(self.current_line), msg: format!("unsupported pointer op {:?}", op) }),
+                    _ => Err(self.err(format!("unsupported pointer op {:?}", op))),
                 }
             }
             // Int-Float promotion: promote the int side to float
@@ -1396,7 +1396,7 @@ impl<'ctx> CodeGen<'ctx> {
                     BinOp::NotEq => bld!(self.builder.build_float_compare(FloatPredicate::ONE, l_f, r, "fne"))?.into(),
                     BinOp::LtEq => bld!(self.builder.build_float_compare(FloatPredicate::OLE, l_f, r, "fle"))?.into(),
                     BinOp::GtEq => bld!(self.builder.build_float_compare(FloatPredicate::OGE, l_f, r, "fge"))?.into(),
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: format!("unsupported mixed int/float op {:?}", op) }),
+                    _ => return Err(self.err(format!("unsupported mixed int/float op {:?}", op))),
                 };
                 Ok(result)
             }
@@ -1415,11 +1415,11 @@ impl<'ctx> CodeGen<'ctx> {
                     BinOp::NotEq => bld!(self.builder.build_float_compare(FloatPredicate::ONE, l, r_f, "fne"))?.into(),
                     BinOp::LtEq => bld!(self.builder.build_float_compare(FloatPredicate::OLE, l, r_f, "fle"))?.into(),
                     BinOp::GtEq => bld!(self.builder.build_float_compare(FloatPredicate::OGE, l, r_f, "fge"))?.into(),
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: format!("unsupported mixed float/int op {:?}", op) }),
+                    _ => return Err(self.err(format!("unsupported mixed float/int op {:?}", op))),
                 };
                 Ok(result)
             }
-            _ => Err(CodeGenError { line: Some(self.current_line), msg: "type mismatch in binary operation".into() }),
+            _ => Err(self.err("type mismatch in binary operation")),
         }
     }
 
@@ -1434,7 +1434,7 @@ impl<'ctx> CodeGen<'ctx> {
             BinOp::Or => bld!(self.builder.build_or(l, r, "bor")),
             BinOp::Eq => bld!(self.builder.build_int_compare(IntPredicate::EQ, l, r, "beq")),
             BinOp::NotEq => bld!(self.builder.build_int_compare(IntPredicate::NE, l, r, "bne")),
-            _ => return Err(CodeGenError { line: Some(self.current_line), msg: format!("unsupported bool op {:?}", op) }),
+            _ => return Err(self.err(format!("unsupported bool op {:?}", op))),
         }?;
         Ok(result.into())
     }

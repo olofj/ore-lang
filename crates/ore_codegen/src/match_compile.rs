@@ -9,18 +9,18 @@ impl<'ctx> CodeGen<'ctx> {
         fields: &[(String, Expr)],
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let enum_name = self.variant_to_enum.get(variant_name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("unknown variant '{}'", variant_name),
+        let enum_name = self.variant_to_enum.get(variant_name).ok_or_else(|| {
+            self.err(format!("unknown variant '{}'", variant_name))
         })?.clone();
 
-        let enum_info = self.enums.get(&enum_name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("undefined enum '{}'", enum_name),
+        let enum_info = self.enums.get(&enum_name).ok_or_else(|| {
+            self.err(format!("undefined enum '{}'", enum_name))
         })?;
         let enum_type = enum_info.enum_type;
 
         // Find the variant
-        let variant = enum_info.variants.iter().find(|v| v.name == variant_name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("unknown variant '{}'", variant_name),
+        let variant = enum_info.variants.iter().find(|v| v.name == variant_name).ok_or_else(|| {
+            self.err(format!("unknown variant '{}'", variant_name))
         })?;
         let tag = variant.tag;
         let payload_type = variant.payload_type;
@@ -81,11 +81,11 @@ impl<'ctx> CodeGen<'ctx> {
 
         let enum_name = match &subject_kind {
             ValKind::Enum(name) => name.clone(),
-            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "match subject must be an enum type".into() }),
+            _ => return Err(self.err("match subject must be an enum type")),
         };
 
-        let enum_info = self.enums.get(&enum_name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("undefined enum '{}'", enum_name),
+        let enum_info = self.enums.get(&enum_name).ok_or_else(|| {
+            self.err(format!("undefined enum '{}'", enum_name))
         })?;
         let enum_type = enum_info.enum_type;
 
@@ -193,7 +193,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Pattern::Wildcard => {
                     wildcard_arm = Some(arm);
                 }
-                _ => return Err(CodeGenError { line: Some(self.current_line), msg: "literal patterns not supported in enum match".into() }),
+                _ => return Err(self.err("literal patterns not supported in enum match")),
             }
         }
 
@@ -274,7 +274,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let vtag: u8 = match name.as_str() {
                         "None" => 0,
                         "Some" => 1,
-                        _ => return Err(CodeGenError { line: Some(self.current_line), msg: format!("unknown Option variant '{}'", name) }),
+                        _ => return Err(self.err(format!("unknown Option variant '{}'", name))),
                     };
 
                     let case_bb = self.context.append_basic_block(func, &format!("opt_{}", name));
@@ -314,7 +314,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Pattern::Wildcard => {
                     wildcard_arm = Some(arm);
                 }
-                _ => return Err(CodeGenError { line: Some(self.current_line), msg: "literal patterns not supported in Option match".into() }),
+                _ => return Err(self.err("literal patterns not supported in Option match")),
             }
         }
 
@@ -529,7 +529,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 Ok(result)
             }
-            _ => Err(CodeGenError { line: Some(self.current_line), msg: "unsupported pattern in literal match".into() }),
+            _ => Err(self.err("unsupported pattern in literal match")),
         }
     }
 
@@ -560,7 +560,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let vtag: u8 = match name.as_str() {
                         "Ok" => 0,
                         "Err" => 1,
-                        _ => return Err(CodeGenError { line: Some(self.current_line), msg: format!("unknown Result variant '{}'", name) }),
+                        _ => return Err(self.err(format!("unknown Result variant '{}'", name))),
                     };
 
                     let case_bb = self.context.append_basic_block(func, &format!("res_{}", name));
@@ -597,7 +597,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Pattern::Wildcard => {
                     wildcard_arm = Some(arm);
                 }
-                _ => return Err(CodeGenError { line: Some(self.current_line), msg: "literal patterns not supported in Result match".into() }),
+                _ => return Err(self.err("literal patterns not supported in Result match")),
             }
         }
 
@@ -681,7 +681,7 @@ impl<'ctx> CodeGen<'ctx> {
             "unwrap_or" => {
                 // Returns inner value if Some, else the provided default
                 if args.is_empty() {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "unwrap_or requires a default argument".into() });
+                    return Err(self.err("unwrap_or requires a default argument"));
                 }
                 let (default_val, default_kind) = self.compile_expr_with_kind(&args[0], func)?;
                 let is_some = bld!(self.builder.build_int_compare(
@@ -728,7 +728,7 @@ impl<'ctx> CodeGen<'ctx> {
             "map" => {
                 // opt.map(fn) -> applies fn to inner value if Some, returns Option
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "map takes 1 argument (function)".into() });
+                    return Err(self.err("map takes 1 argument (function)"));
                 }
                 let is_some = bld!(self.builder.build_int_compare(
                     IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
@@ -748,11 +748,11 @@ impl<'ctx> CodeGen<'ctx> {
                         self.compile_lambda(params, body, func)?
                     }
                     Expr::Ident(name) => {
-                        self.module.get_function(name).ok_or_else(|| CodeGenError {
-                            line: Some(self.current_line), msg: format!("unknown function '{}'", name),
+                        self.module.get_function(name).ok_or_else(|| {
+                            self.err(format!("unknown function '{}'", name))
                         })?
                     }
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: "map requires a function or lambda".into() }),
+                    _ => return Err(self.err("map requires a function or lambda")),
                 };
 
                 let map_result = bld!(self.builder.build_call(lambda_fn, &[inner.into()], "mapped"))?;
@@ -807,7 +807,7 @@ impl<'ctx> CodeGen<'ctx> {
         match method {
             "unwrap_or" => {
                 if args.is_empty() {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "unwrap_or requires a default argument".into() });
+                    return Err(self.err("unwrap_or requires a default argument"));
                 }
                 let (default_val, default_kind) = self.compile_expr_with_kind(&args[0], func)?;
                 // tag 0 = Ok
@@ -856,7 +856,7 @@ impl<'ctx> CodeGen<'ctx> {
             "map" => {
                 // result.map(fn) -> applies fn to inner value if Ok, returns Result
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "map takes 1 argument (function)".into() });
+                    return Err(self.err("map takes 1 argument (function)"));
                 }
                 let is_ok = bld!(self.builder.build_int_compare(
                     IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
@@ -875,11 +875,11 @@ impl<'ctx> CodeGen<'ctx> {
                         self.compile_lambda(params, body, func)?
                     }
                     Expr::Ident(name) => {
-                        self.module.get_function(name).ok_or_else(|| CodeGenError {
-                            line: Some(self.current_line), msg: format!("unknown function '{}'", name),
+                        self.module.get_function(name).ok_or_else(|| {
+                            self.err(format!("unknown function '{}'", name))
                         })?
                     }
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: "map requires a function or lambda".into() }),
+                    _ => return Err(self.err("map requires a function or lambda")),
                 };
 
                 let map_result = bld!(self.builder.build_call(lambda_fn, &[inner.into()], "mapped"))?;

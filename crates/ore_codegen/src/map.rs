@@ -12,7 +12,7 @@ impl<'ctx> CodeGen<'ctx> {
         match method {
             "set" => {
                 if args.len() != 2 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "set takes 2 arguments (key, value)".into() });
+                    return Err(self.err("set takes 2 arguments (key, value)"));
                 }
                 let key = self.compile_map_key(&args[0], func)?;
                 let (val, val_kind) = self.compile_expr_with_kind(&args[1], func)?;
@@ -38,7 +38,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "get" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "get takes 1 argument (key)".into() });
+                    return Err(self.err("get takes 1 argument (key)"));
                 }
                 let key = self.compile_map_key(&args[0], func)?;
                 let rt = self.rt("ore_map_get")?;
@@ -67,7 +67,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "contains" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "contains takes 1 argument (key)".into() });
+                    return Err(self.err("contains takes 1 argument (key)"));
                 }
                 let key = self.compile_map_key(&args[0], func)?;
                 let rt = self.rt("ore_map_contains")?;
@@ -89,7 +89,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "remove" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "remove takes 1 argument (key)".into() });
+                    return Err(self.err("remove takes 1 argument (key)"));
                 }
                 let key = self.compile_map_key(&args[0], func)?;
                 let rt = self.rt("ore_map_remove")?;
@@ -115,7 +115,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "merge" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "merge takes 1 argument (other map)".into() });
+                    return Err(self.err("merge takes 1 argument (other map)"));
                 }
                 let other = self.compile_expr(&args[0], func)?;
                 let rt = self.rt("ore_map_merge")?;
@@ -130,7 +130,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "each" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "map.each() takes 1 argument (lambda)".into() });
+                    return Err(self.err("map.each() takes 1 argument (lambda)"));
                 }
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 let lambda_fn = match &args[0] {
@@ -142,7 +142,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let (f, _) = self.resolve_function(name)?;
                         f
                     }
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: "map.each() requires a lambda".into() }),
+                    _ => return Err(self.err("map.each() requires a lambda")),
                 };
                 let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
@@ -157,7 +157,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "map" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "map.map() takes 1 argument (lambda)".into() });
+                    return Err(self.err("map.map() takes 1 argument (lambda)"));
                 }
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 let lambda_fn = match &args[0] {
@@ -169,7 +169,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let (f, _) = self.resolve_function(name)?;
                         f
                     }
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: "map.map() requires a lambda".into() }),
+                    _ => return Err(self.err("map.map() requires a lambda")),
                 };
                 let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
@@ -185,7 +185,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "filter" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "map.filter() takes 1 argument (lambda)".into() });
+                    return Err(self.err("map.filter() takes 1 argument (lambda)"));
                 }
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 let lambda_fn = match &args[0] {
@@ -197,7 +197,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let (f, _) = self.resolve_function(name)?;
                         f
                     }
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: "map.filter() requires a lambda".into() }),
+                    _ => return Err(self.err("map.filter() requires a lambda")),
                 };
                 let lambda_name = lambda_fn.get_name().to_str().unwrap().to_string();
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
@@ -213,7 +213,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "get_or" => {
                 if args.len() != 2 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "get_or takes 2 arguments (key, default)".into() });
+                    return Err(self.err("get_or takes 2 arguments (key, default)"));
                 }
                 let key = self.compile_map_key(&args[0], func)?;
                 let (default_val, default_kind) = self.compile_expr_with_kind(&args[1], func)?;

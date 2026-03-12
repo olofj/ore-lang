@@ -1,6 +1,5 @@
 use super::*;
 use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
-use inkwell::types::{BasicTypeEnum};
 use inkwell::IntPredicate;
 
 impl<'ctx> CodeGen<'ctx> {
@@ -133,7 +132,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let rt = self.rt("ore_map_set")?;
                         bld!(self.builder.build_call(rt, &[obj_val.into(), map_key.into(), val.into()], ""))?;
                     }
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: "index assignment only supported on lists and maps".into() }),
+                    _ => return Err(self.err("index assignment only supported on lists and maps")),
                 }
                 Ok(None)
             }
@@ -154,7 +153,7 @@ impl<'ctx> CodeGen<'ctx> {
                         ))?;
                         bld!(self.builder.build_store(field_ptr, val))?;
                     }
-                    _ => return Err(CodeGenError { line: Some(self.current_line), msg: format!("field assignment not supported on {:?}", obj_kind) }),
+                    _ => return Err(self.err(format!("field assignment not supported on {:?}", obj_kind))),
                 }
                 Ok(None)
             }
@@ -195,7 +194,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Some(target) = self.break_target {
                     bld!(self.builder.build_unconditional_branch(target))?;
                 } else {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "break outside of loop".into() });
+                    return Err(self.err("break outside of loop"));
                 }
                 Ok(None)
             }
@@ -203,7 +202,7 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Some(target) = self.continue_target {
                     bld!(self.builder.build_unconditional_branch(target))?;
                 } else {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "continue outside of loop".into() });
+                    return Err(self.err("continue outside of loop"));
                 }
                 Ok(None)
             }
@@ -212,7 +211,7 @@ impl<'ctx> CodeGen<'ctx> {
                     Expr::Call { func: callee, args } => {
                         let name = match callee.as_ref() {
                             Expr::Ident(n) => n.clone(),
-                            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "spawn requires a named function call".into() }),
+                            _ => return Err(self.err("spawn requires a named function call")),
                         };
                         let (target_fn, _) = self.resolve_function(&name)?;
                         let fn_ptr = target_fn.as_global_value().as_pointer_value();
@@ -231,7 +230,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 1 => "ore_spawn_with_arg",
                                 2 => "ore_spawn_with_2args",
                                 3 => "ore_spawn_with_3args",
-                                n => return Err(CodeGenError { line: Some(self.current_line), msg: format!("spawn supports at most 3 arguments, got {}", n) }),
+                                n => return Err(self.err(format!("spawn supports at most 3 arguments, got {}", n))),
                             };
                             let ore_spawn = self.rt(spawn_fn_name)?;
                             let call_args: Vec<_> = i64_args.iter().map(|a| (*a).into()).collect();
@@ -239,7 +238,7 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                         Ok(None)
                     }
-                    _ => Err(CodeGenError { line: Some(self.current_line), msg: "spawn requires a function call".into() }),
+                    _ => Err(self.err("spawn requires a function call")),
                 }
             }
             Stmt::LocalFn(fndef) => {
@@ -829,19 +828,6 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
 
-    pub(crate) fn build_entry_alloca(&self, func: FunctionValue<'ctx>, ty: BasicTypeEnum<'ctx>, name: &str) -> Result<PointerValue<'ctx>, CodeGenError> {
-        let entry_bb = func.get_first_basic_block().unwrap();
-        let current_bb = self.current_block()?;
-        if let Some(first_instr) = entry_bb.get_first_instruction() {
-            self.builder.position_before(&first_instr);
-        } else {
-            self.builder.position_at_end(entry_bb);
-        }
-        let alloca = bld!(self.builder.build_alloca(ty, name))?;
-        self.builder.position_at_end(current_bb);
-        Ok(alloca)
-    }
-
     pub(crate) fn compile_if_else_with_kind(
         &mut self,
         cond: &Expr,
@@ -852,7 +838,7 @@ impl<'ctx> CodeGen<'ctx> {
         let cond_val = self.compile_expr(cond, func)?;
         let cond_int = match cond_val {
             BasicValueEnum::IntValue(v) => v,
-            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "condition must be a boolean".into() }),
+            _ => return Err(self.err("condition must be a boolean")),
         };
 
         let i64_type = self.context.i64_type();
@@ -899,7 +885,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Remove the merge block contents and recompile.
         // Actually, we need to insert stores before the branches. Use a different strategy:
         // Build an alloca in the entry block, then patch stores into then/else before their terminators.
-        let result_alloca = self.build_entry_alloca(func, i64_type.into(), "if_result")?;
+        let result_alloca = self.build_entry_alloca(func, i64_type, "if_result")?;
 
         // Insert store in then block before its terminator
         if let Some(term) = then_end_bb.get_terminator() {
@@ -934,7 +920,7 @@ impl<'ctx> CodeGen<'ctx> {
         let cond_val = self.compile_expr(cond, func)?;
         let cond_int = match cond_val {
             BasicValueEnum::IntValue(v) => v,
-            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "condition must be a boolean".into() }),
+            _ => return Err(self.err("condition must be a boolean")),
         };
 
         let then_bb = self.context.append_basic_block(func, "cthen");

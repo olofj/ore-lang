@@ -9,18 +9,14 @@ impl<'ctx> CodeGen<'ctx> {
         fields: &[(String, Expr)],
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let info = self.records.get(type_name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("undefined type '{}'", type_name),
-        })?;
+        let info = self.records.get(type_name).ok_or_else(|| self.err(format!("undefined type '{}'", type_name)))?;
         let struct_type = info.struct_type;
         let field_names = info.field_names.clone();
 
         let alloca = bld!(self.builder.build_alloca(struct_type, type_name))?;
 
         for (name, expr) in fields {
-            let idx = field_names.iter().position(|n| n == name).ok_or_else(|| CodeGenError {
-                line: Some(self.current_line), msg: format!("unknown field '{}' on type '{}'", name, type_name),
-            })?;
+            let idx = field_names.iter().position(|n| n == name).ok_or_else(|| self.err(format!("unknown field '{}' on type '{}'", name, type_name)))?;
             let val = self.compile_expr(expr, func)?;
             let field_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, idx as u32, &format!("{}.{}", type_name, name)))?;
             bld!(self.builder.build_store(field_ptr, val))?;
@@ -39,16 +35,12 @@ impl<'ctx> CodeGen<'ctx> {
         let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
         let type_name = match &obj_kind {
             ValKind::Record(name) => name.clone(),
-            _ => return Err(CodeGenError { line: Some(self.current_line), msg: "field access on non-record type".into() }),
+            _ => return Err(self.err("field access on non-record type")),
         };
 
-        let info = self.records.get(&type_name).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("undefined type '{}'", type_name),
-        })?;
+        let info = self.records.get(&type_name).ok_or_else(|| self.err(format!("undefined type '{}'", type_name)))?;
         let struct_type = info.struct_type;
-        let idx = info.field_names.iter().position(|n| n == field).ok_or_else(|| CodeGenError {
-            line: Some(self.current_line), msg: format!("unknown field '{}' on type '{}'", field, type_name),
-        })?;
+        let idx = info.field_names.iter().position(|n| n == field).ok_or_else(|| self.err(format!("unknown field '{}' on type '{}'", field, type_name)))?;
         let field_kind = info.field_kinds[idx].clone();
 
         // Store the struct to an alloca so we can GEP into it
@@ -68,7 +60,7 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
         if obj_kind != ValKind::Option {
-            return Err(CodeGenError { line: Some(self.current_line), msg: "?. operator requires an Option value".into() });
+            return Err(self.err("?. operator requires an Option value"));
         }
 
         let opt_ty = self.option_type();
@@ -142,7 +134,7 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
         if obj_kind != ValKind::Option {
-            return Err(CodeGenError { line: Some(self.current_line), msg: "?. operator requires an Option value".into() });
+            return Err(self.err("?. operator requires an Option value"));
         }
 
         let opt_ty = self.option_type();
@@ -235,7 +227,7 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => Err(Self::unknown_method_error("Int", method, &["abs", "to_float", "to_str", "pow", "clamp", "min", "max"])),
                 }
             }
-            _ => Err(CodeGenError { line: Some(self.current_line), msg: format!("cannot call method '{}' on {:?} in optional chain", method, kind) }),
+            _ => Err(self.err(format!("cannot call method '{}' on {:?} in optional chain", method, kind))),
         }
     }
 
@@ -349,7 +341,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 "max" => {
                     if args.len() != 1 {
-                        return Err(CodeGenError { line: Some(self.current_line), msg: "Int.max() takes 1 argument".into() });
+                        return Err(self.err("Int.max() takes 1 argument"));
                     }
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_int_value();
@@ -360,7 +352,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 "min" => {
                     if args.len() != 1 {
-                        return Err(CodeGenError { line: Some(self.current_line), msg: "Int.min() takes 1 argument".into() });
+                        return Err(self.err("Int.min() takes 1 argument"));
                     }
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_int_value();
@@ -371,7 +363,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 "clamp" => {
                     if args.len() != 2 {
-                        return Err(CodeGenError { line: Some(self.current_line), msg: "Int.clamp() takes 2 arguments (min, max)".into() });
+                        return Err(self.err("Int.clamp() takes 2 arguments (min, max)"));
                     }
                     let (lo_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let (hi_val, _) = self.compile_expr_with_kind(&args[1], func)?;
@@ -386,7 +378,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 "pow" => {
                     if args.len() != 1 {
-                        return Err(CodeGenError { line: Some(self.current_line), msg: "Int.pow() takes 1 argument".into() });
+                        return Err(self.err("Int.pow() takes 1 argument"));
                     }
                     let (exp_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let rt = self.rt("ore_int_pow")?;
@@ -482,7 +474,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 "max" => {
                     if args.len() != 1 {
-                        return Err(CodeGenError { line: Some(self.current_line), msg: "Float.max() takes 1 argument".into() });
+                        return Err(self.err("Float.max() takes 1 argument"));
                     }
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_float_value();
@@ -493,7 +485,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 "min" => {
                     if args.len() != 1 {
-                        return Err(CodeGenError { line: Some(self.current_line), msg: "Float.min() takes 1 argument".into() });
+                        return Err(self.err("Float.min() takes 1 argument"));
                     }
                     let (other, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let a = obj_val.into_float_value();
@@ -504,7 +496,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 "clamp" => {
                     if args.len() != 2 {
-                        return Err(CodeGenError { line: Some(self.current_line), msg: "Float.clamp() takes 2 arguments (min, max)".into() });
+                        return Err(self.err("Float.clamp() takes 2 arguments (min, max)"));
                     }
                     let (lo_val, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let (hi_val, _) = self.compile_expr_with_kind(&args[1], func)?;
@@ -519,7 +511,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 "pow" => {
                     if args.len() != 1 {
-                        return Err(CodeGenError { line: Some(self.current_line), msg: "Float.pow() takes 1 argument".into() });
+                        return Err(self.err("Float.pow() takes 1 argument"));
                     }
                     let (exp, _) = self.compile_expr_with_kind(&args[0], func)?;
                     let pow_fn = self.module.get_function("llvm.pow.f64").unwrap_or_else(|| {
@@ -542,12 +534,12 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 "format" => {
                     if args.len() != 1 {
-                        return Err(CodeGenError { line: Some(self.current_line), msg: "Float.format() takes 1 argument (decimals)".into() });
+                        return Err(self.err("Float.format() takes 1 argument (decimals)"));
                     }
                     let (dec_val, dec_kind) = self.compile_expr_with_kind(&args[0], func)?;
                     let dec_i = match dec_kind {
                         ValKind::Int => dec_val.into_int_value(),
-                        _ => return Err(CodeGenError { line: Some(self.current_line), msg: "Float.format() argument must be Int (decimals)".into() }),
+                        _ => return Err(self.err("Float.format() argument must be Int (decimals)")),
                     };
                     let rt = self.rt("ore_float_format")?;
                     let result = bld!(self.builder.build_call(rt, &[obj_val.into(), dec_i.into()], "ffmt"))?;
@@ -560,7 +552,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         let type_name = match &obj_kind {
             ValKind::Record(name) => name.clone(),
-            _ => return Err(CodeGenError { line: Some(self.current_line), msg: format!("method call on unsupported type: {:?}", obj_kind) }),
+            _ => return Err(self.err(format!("method call on unsupported type: {:?}", obj_kind))),
         };
 
         // Look up the mangled function name
@@ -589,7 +581,7 @@ impl<'ctx> CodeGen<'ctx> {
         match method {
             "send" => {
                 if args.len() != 1 {
-                    return Err(CodeGenError { line: Some(self.current_line), msg: "channel.send() takes 1 argument".into() });
+                    return Err(self.err("channel.send() takes 1 argument"));
                 }
                 let val = self.compile_expr(&args[0], func)?;
                 let i64_val = self.value_to_i64(val)?;
@@ -664,7 +656,7 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => Ok((val, val_kind))
                 }
             }
-            _ => Err(CodeGenError { line: Some(self.current_line), msg: "indexing only supported on lists and maps".into() }),
+            _ => Err(self.err("indexing only supported on lists and maps")),
         }
     }
 

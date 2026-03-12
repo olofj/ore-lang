@@ -193,6 +193,20 @@ impl<'ctx> CodeGen<'ctx> {
         self.context.ptr_type(inkwell::AddressSpace::default())
     }
 
+    /// Shorthand for creating a CodeGenError at the current source line.
+    pub(crate) fn err(&self, msg: impl Into<String>) -> CodeGenError {
+        CodeGenError { line: Some(self.current_line), msg: msg.into() }
+    }
+
+    /// Check that `args` has exactly `expected` elements, or return an error.
+    pub(crate) fn check_arity(&self, name: &str, args: &[Expr], expected: usize) -> Result<(), CodeGenError> {
+        if args.len() != expected {
+            Err(self.err(format!("{} takes {} argument(s)", name, expected)))
+        } else {
+            Ok(())
+        }
+    }
+
     /// Built-in Option type: { i8, i64 } where tag=0 is None, tag=1 is Some
     /// Built-in Option type: { i8 tag, i8 kind, i64 payload }
     /// tag: 0=None, 1=Some; kind: ValKind discriminant of the payload
