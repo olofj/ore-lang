@@ -596,16 +596,7 @@ impl<'ctx> CodeGen<'ctx> {
         let key_alloca = bld!(self.builder.build_alloca(ptr_type, key_var))?;
         self.variables.insert(key_var.to_string(), VarInfo { ptr: key_alloca, ty: ptr_type.into(), kind: ValKind::Str, is_mutable: false });
 
-        let (val_alloca, val_ty): (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>) = match &val_kind {
-            ValKind::Str => {
-                let alloca = bld!(self.builder.build_alloca(ptr_type, val_var))?;
-                (alloca, ptr_type.into())
-            }
-            _ => {
-                let alloca = bld!(self.builder.build_alloca(i64_type, val_var))?;
-                (alloca, i64_type.into())
-            }
-        };
+        let (val_alloca, val_ty) = self.alloca_for_kind(val_var, &val_kind)?;
         self.variables.insert(val_var.to_string(), VarInfo { ptr: val_alloca, ty: val_ty, kind: val_kind.clone(), is_mutable: false });
 
         let cond_bb = self.context.append_basic_block(func, "forkv_cond");
