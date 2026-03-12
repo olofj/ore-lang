@@ -381,19 +381,22 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
 
-    pub(crate) fn register_record(&mut self, td: &TypeDef) -> Result<(), CodeGenError> {
-        let mut field_types = Vec::new();
-        let mut field_kinds = Vec::new();
-        let mut field_names = Vec::new();
-
-        for f in &td.fields {
+    /// Collect LLVM types, ValKinds, and names from a list of field definitions.
+    fn collect_fields(&self, fields: &[FieldDef]) -> (Vec<inkwell::types::BasicTypeEnum<'ctx>>, Vec<ValKind>, Vec<String>) {
+        let mut types = Vec::new();
+        let mut kinds = Vec::new();
+        let mut names = Vec::new();
+        for f in fields {
             let kind = self.type_expr_to_kind(&f.ty);
-            let llvm_ty = self.kind_to_llvm_type(&kind);
-            field_types.push(llvm_ty);
-            field_kinds.push(kind);
-            field_names.push(f.name.clone());
+            types.push(self.kind_to_llvm_type(&kind));
+            kinds.push(kind);
+            names.push(f.name.clone());
         }
+        (types, kinds, names)
+    }
 
+    pub(crate) fn register_record(&mut self, td: &TypeDef) -> Result<(), CodeGenError> {
+        let (field_types, field_kinds, field_names) = self.collect_fields(&td.fields);
         let struct_type = self.context.struct_type(&field_types, false);
         self.records.insert(td.name.clone(), RecordInfo {
             struct_type,
@@ -408,20 +411,9 @@ impl<'ctx> CodeGen<'ctx> {
         let mut max_payload_size: u64 = 0;
 
         for (i, v) in ed.variants.iter().enumerate() {
-            let mut field_types = Vec::new();
-            let mut field_kinds = Vec::new();
-            let mut field_names = Vec::new();
-
-            for f in &v.fields {
-                let kind = self.type_expr_to_kind(&f.ty);
-                let llvm_ty = self.kind_to_llvm_type(&kind);
-                field_types.push(llvm_ty);
-                field_kinds.push(kind);
-                field_names.push(f.name.clone());
-            }
+            let (field_types, field_kinds, field_names) = self.collect_fields(&v.fields);
 
             let payload_type = self.context.struct_type(&field_types, false);
-            // Compute payload size in bytes (manual estimation)
             let payload_size: u64 = field_types.iter().map(|ty| self.type_size_bytes(ty)).sum();
             if payload_size > max_payload_size {
                 max_payload_size = payload_size;
