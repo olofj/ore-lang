@@ -14,18 +14,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("set", args, 2)?;
                 let key = self.compile_map_key(&args[0], func)?;
                 let (val, val_kind) = self.compile_expr_with_kind(&args[1], func)?;
-                let i64_val = match val_kind {
-                    ValKind::Int => val.into_int_value(),
-                    ValKind::Bool => {
-                        bld!(self.builder.build_int_z_extend(
-                            val.into_int_value(), self.context.i64_type(), "bool_to_i64"
-                        ))?
-                    }
-                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        self.ptr_to_i64(val.into_pointer_value())?
-                    }
-                    _ => val.into_int_value(),
-                };
+                let i64_val = self.value_to_i64(val)?;
                 let rt = self.rt("ore_map_set")?;
                 bld!(self.builder.build_call(rt, &[map_val.into(), key.into(), i64_val.into()], ""))?;
                 // Track value kind for later retrieval
@@ -152,7 +141,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             _ => Err(Self::unknown_method_error("Map", method, &[
                 "get", "set", "contains", "len", "remove", "keys", "values",
-                "merge", "clear", "each", "map", "filter", "get_or",
+                "merge", "clear", "each", "map", "filter", "get_or", "entries",
             ])),
         }
     }
@@ -184,21 +173,7 @@ impl<'ctx> CodeGen<'ctx> {
             // Compute kind tag for runtime type tracking
             let kind_tag = self.valkind_to_tag(&val_kind);
             let kind_const = self.context.i8_type().const_int(kind_tag as u64, false);
-            // Convert value to i64 for storage
-            let i64_val = match val_kind {
-                ValKind::Int => val.into_int_value(),
-                ValKind::Bool => {
-                    bld!(self.builder.build_int_z_extend(
-                        val.into_int_value(),
-                        self.context.i64_type(),
-                        "bool_to_i64"
-                    ))?
-                }
-                ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                    self.ptr_to_i64(val.into_pointer_value())?
-                }
-                _ => val.into_int_value(),
-            };
+            let i64_val = self.value_to_i64(val)?;
             bld!(self.builder.build_call(
                 map_set_typed,
                 &[map_ptr.into(), key_val.into(), i64_val.into(), kind_const.into()],
