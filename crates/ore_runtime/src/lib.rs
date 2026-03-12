@@ -1,3 +1,7 @@
+// All extern "C" functions in this crate take raw pointers from LLVM-generated code.
+// They cannot be marked `unsafe` since they're called from C FFI.
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
+
 use std::io::Write;
 use std::sync::Mutex;
 

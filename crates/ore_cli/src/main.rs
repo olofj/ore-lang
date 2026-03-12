@@ -97,6 +97,7 @@ fn print_error_with_context(error: &str, file: &Path) {
             let start = line.saturating_sub(2);
             let end = (line + 1).min(lines.len());
             eprintln!();
+            #[allow(clippy::needless_range_loop)]
             for i in start..end {
                 if i + 1 == line {
                     if use_color {
