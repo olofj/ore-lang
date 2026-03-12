@@ -96,26 +96,13 @@ impl<'ctx> CodeGen<'ctx> {
         let _ = inner_kind_tag;
         let _ = inner_expr;
 
-        // Build a new Some option with the field value
-        // For now, we just pass through the i64 payload as the field result
-        // This works for record fields stored as i64
-        let result_alloca = bld!(self.builder.build_alloca(opt_ty, "optres"))?;
-        let res_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, result_alloca, 0, "res_tag"))?;
-        bld!(self.builder.build_store(res_tag_ptr, self.context.i8_type().const_int(1, false)))?;
-        let res_kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, result_alloca, 1, "res_kind"))?;
-        // Store Int kind for now (we don't know the actual kind of the field)
-        bld!(self.builder.build_store(res_kind_ptr, self.context.i8_type().const_int(0, false)))?;
-        let res_val_ptr = bld!(self.builder.build_struct_gep(opt_ty, result_alloca, 2, "res_val"))?;
-        bld!(self.builder.build_store(res_val_ptr, inner_i64))?;
-        let some_result = bld!(self.builder.build_load(opt_ty, result_alloca, "some_res"))?;
+        // Wrap the field value in Some
+        let some_result = self.build_tagged_union(opt_ty, 1, Some(inner_i64.into()), "some_res")?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
 
         // None branch: return None
         self.builder.position_at_end(none_bb);
-        let none_alloca = bld!(self.builder.build_alloca(opt_ty, "none_res"))?;
-        let none_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, none_alloca, 0, "none_tag"))?;
-        bld!(self.builder.build_store(none_tag_ptr, self.context.i8_type().const_int(0, false)))?;
-        let none_result = bld!(self.builder.build_load(opt_ty, none_alloca, "none_res"))?;
+        let none_result = self.build_tagged_union(opt_ty, 0, None, "none_res")?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
 
         self.builder.position_at_end(merge_bb);
@@ -182,10 +169,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // None branch
         self.builder.position_at_end(none_bb);
-        let none_alloca = bld!(self.builder.build_alloca(opt_ty, "none_res"))?;
-        let none_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, none_alloca, 0, "none_tag"))?;
-        bld!(self.builder.build_store(none_tag_ptr, self.context.i8_type().const_int(0, false)))?;
-        let none_result = bld!(self.builder.build_load(opt_ty, none_alloca, "none_res"))?;
+        let none_result = self.build_tagged_union(opt_ty, 0, None, "none_res")?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
 
         self.builder.position_at_end(merge_bb);

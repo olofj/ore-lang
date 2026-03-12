@@ -575,6 +575,28 @@ impl<'ctx> CodeGen<'ctx> {
         Ok((extracted, ValKind::Int))
     }
 
+    /// Build a tagged union value (Option or Result) with the given tag and payload.
+    pub(crate) fn build_tagged_union(
+        &mut self,
+        union_ty: inkwell::types::StructType<'ctx>,
+        tag: u8,
+        payload: Option<BasicValueEnum<'ctx>>,
+        name: &str,
+    ) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        let alloca = bld!(self.builder.build_alloca(union_ty, name))?;
+        let tag_ptr = bld!(self.builder.build_struct_gep(union_ty, alloca, 0, "tag"))?;
+        bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(tag as u64, false)))?;
+        if let Some(val) = payload {
+            let kind_ptr = bld!(self.builder.build_struct_gep(union_ty, alloca, 1, "kind"))?;
+            bld!(self.builder.build_store(kind_ptr, self.context.i8_type().const_int(0, false)))?;
+            let val_ptr = bld!(self.builder.build_struct_gep(union_ty, alloca, 2, "val"))?;
+            let i64_val = self.value_to_i64(val)?;
+            bld!(self.builder.build_store(val_ptr, i64_val))?;
+        }
+        let result = bld!(self.builder.build_load(union_ty, alloca, name))?;
+        Ok(result)
+    }
+
     pub(crate) fn compile_option_method(
         &mut self,
         opt_val: BasicValueEnum<'ctx>,
@@ -671,24 +693,13 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // Wrap result in Some
                 let opt_ty = self.option_type();
-                let res_alloca = bld!(self.builder.build_alloca(opt_ty, "optres"))?;
-                let res_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, res_alloca, 0, "res_tag"))?;
-                bld!(self.builder.build_store(res_tag_ptr, self.context.i8_type().const_int(1, false)))?;
-                let res_kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, res_alloca, 1, "res_kind"))?;
-                bld!(self.builder.build_store(res_kind_ptr, self.context.i8_type().const_int(0, false)))?;
-                let res_val_ptr = bld!(self.builder.build_struct_gep(opt_ty, res_alloca, 2, "res_val"))?;
-                let mapped_i64 = self.value_to_i64(mapped_val)?;
-                bld!(self.builder.build_store(res_val_ptr, mapped_i64))?;
-                let some_result = bld!(self.builder.build_load(opt_ty, res_alloca, "some_res"))?;
+                let some_result = self.build_tagged_union(opt_ty, 1, Some(mapped_val), "some_res")?;
                 bld!(self.builder.build_unconditional_branch(merge_bb))?;
                 let some_end = self.current_block()?;
 
                 // None branch
                 self.builder.position_at_end(none_bb);
-                let none_alloca = bld!(self.builder.build_alloca(opt_ty, "none_res"))?;
-                let none_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, none_alloca, 0, "none_tag"))?;
-                bld!(self.builder.build_store(none_tag_ptr, self.context.i8_type().const_int(0, false)))?;
-                let none_result = bld!(self.builder.build_load(opt_ty, none_alloca, "none_res"))?;
+                let none_result = self.build_tagged_union(opt_ty, 0, None, "none_res")?;
                 bld!(self.builder.build_unconditional_branch(merge_bb))?;
 
                 self.builder.position_at_end(merge_bb);
@@ -796,15 +807,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // Wrap result in Ok
                 let res_ty = self.result_type();
-                let res_alloca = bld!(self.builder.build_alloca(res_ty, "resres"))?;
-                let res_tag_ptr = bld!(self.builder.build_struct_gep(res_ty, res_alloca, 0, "res_tag"))?;
-                bld!(self.builder.build_store(res_tag_ptr, self.context.i8_type().const_int(0, false)))?;
-                let res_kind_ptr = bld!(self.builder.build_struct_gep(res_ty, res_alloca, 1, "res_kind"))?;
-                bld!(self.builder.build_store(res_kind_ptr, self.context.i8_type().const_int(0, false)))?;
-                let res_val_ptr = bld!(self.builder.build_struct_gep(res_ty, res_alloca, 2, "res_val"))?;
-                let mapped_i64 = self.value_to_i64(mapped_val)?;
-                bld!(self.builder.build_store(res_val_ptr, mapped_i64))?;
-                let ok_result = bld!(self.builder.build_load(res_ty, res_alloca, "ok_res"))?;
+                let ok_result = self.build_tagged_union(res_ty, 0, Some(mapped_val), "ok_res")?;
                 bld!(self.builder.build_unconditional_branch(merge_bb))?;
                 let ok_end = self.current_block()?;
 
