@@ -10,16 +10,12 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(), CodeGenError> {
         // Print "[" using ore_str_print
         let open_bracket = self.compile_string_literal("[")?;
-        let str_print = self.rt("ore_str_print_no_newline")?;
-        bld!(self.builder.build_call(str_print, &[open_bracket.into()], ""))?;
-        let release = self.rt("ore_str_release")?;
-        bld!(self.builder.build_call(release, &[open_bracket.into()], ""))?;
+        self.call_rt("ore_str_print_no_newline", &[open_bracket.into()], "")?;
+        self.call_rt("ore_str_release", &[open_bracket.into()], "")?;
 
-        let list_len = self.rt("ore_list_len")?;
+        let len = self.call_rt("ore_list_len", &[list_ptr.into()], "len")?.into_int_value();
+        // Cache list_get for use in loop body
         let list_get = self.rt("ore_list_get")?;
-
-        let len_result = bld!(self.builder.build_call(list_len, &[list_ptr.into()], "len"))?;
-        let len = self.call_result_to_value(len_result)?.into_int_value();
 
         let current_fn = self.current_fn()?;
 
@@ -49,8 +45,8 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(sep_bb);
         let sep = self.compile_string_literal(", ")?;
-        bld!(self.builder.build_call(str_print, &[sep.into()], ""))?;
-        bld!(self.builder.build_call(release, &[sep.into()], ""))?;
+        self.call_rt("ore_str_print_no_newline", &[sep.into()], "")?;
+        self.call_rt("ore_str_release", &[sep.into()], "")?;
         bld!(self.builder.build_unconditional_branch(elem_bb))?;
 
         self.builder.position_at_end(elem_bb);
@@ -64,21 +60,18 @@ impl<'ctx> CodeGen<'ctx> {
         match elem_kind {
             ValKind::Str => {
                 let elem_ptr = self.i64_to_ptr(elem_i64)?;
-                bld!(self.builder.build_call(str_print, &[elem_ptr.into()], ""))?;
+                self.call_rt("ore_str_print_no_newline", &[elem_ptr.into()], "")?;
             }
             ValKind::Float => {
                 let f = bld!(self.builder.build_bit_cast(elem_i64, self.context.f64_type(), "f"))?.into_float_value();
-                let print_float = self.rt("ore_print_float_no_newline")?;
-                bld!(self.builder.build_call(print_float, &[f.into()], ""))?;
+                self.call_rt("ore_print_float_no_newline", &[f.into()], "")?;
             }
             ValKind::Bool => {
                 let b = bld!(self.builder.build_int_truncate(elem_i64, self.context.i8_type(), "b"))?;
-                let print_bool = self.rt("ore_print_bool_no_newline")?;
-                bld!(self.builder.build_call(print_bool, &[b.into()], ""))?;
+                self.call_rt("ore_print_bool_no_newline", &[b.into()], "")?;
             }
             _ => {
-                let print_int = self.rt("ore_print_int_no_newline")?;
-                bld!(self.builder.build_call(print_int, &[elem_i64.into()], ""))?;
+                self.call_rt("ore_print_int_no_newline", &[elem_i64.into()], "")?;
             }
         }
 
@@ -90,9 +83,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(loop_end);
         // Print "]\n"
         let close_str = self.compile_string_literal("]")?;
-        let print_str_fn = self.rt("ore_str_print")?;
-        bld!(self.builder.build_call(print_str_fn, &[close_str.into()], ""))?;
-        bld!(self.builder.build_call(release, &[close_str.into()], ""))?;
+        self.call_rt("ore_str_print", &[close_str.into()], "")?;
+        self.call_rt("ore_str_release", &[close_str.into()], "")?;
 
         Ok(())
     }
@@ -104,25 +96,20 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(), CodeGenError> {
         match kind {
             ValKind::Str => {
-                let pf = self.rt("ore_str_print")?;
-                bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+                self.call_rt("ore_str_print", &[val.into()], "")?;
             }
             ValKind::Bool => {
-                let pf = self.rt("ore_print_bool")?;
                 let ext = self.bool_to_i8(val.into_int_value())?;
-                bld!(self.builder.build_call(pf, &[ext.into()], ""))?;
+                self.call_rt("ore_print_bool", &[ext.into()], "")?;
             }
             ValKind::Float => {
-                let pf = self.rt("ore_print_float")?;
-                bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+                self.call_rt("ore_print_float", &[val.into()], "")?;
             }
             ValKind::List(_) => {
-                let pf = self.rt("ore_list_print")?;
-                bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+                self.call_rt("ore_list_print", &[val.into()], "")?;
             }
             ValKind::Map => {
-                let pf = self.rt("ore_map_print")?;
-                bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+                self.call_rt("ore_map_print", &[val.into()], "")?;
             }
             ValKind::Record(ref name) | ValKind::Enum(ref name) => {
                 let s = if matches!(kind, ValKind::Record(_)) {
@@ -130,14 +117,11 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.enum_to_str(val, name)?
                 };
-                let pf = self.rt("ore_str_print")?;
-                bld!(self.builder.build_call(pf, &[s.into()], ""))?;
-                let release = self.rt("ore_str_release")?;
-                bld!(self.builder.build_call(release, &[s.into()], ""))?;
+                self.call_rt("ore_str_print", &[s.into()], "")?;
+                self.call_rt("ore_str_release", &[s.into()], "")?;
             }
             _ => {
-                let pf = self.rt("ore_print_int")?;
-                bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+                self.call_rt("ore_print_int", &[val.into()], "")?;
             }
         }
         Ok(())
