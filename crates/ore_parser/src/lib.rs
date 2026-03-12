@@ -1514,6 +1514,27 @@ impl Parser {
         Ok(Pattern::Variant { name, bindings })
     }
 
+    /// Parse an integer literal, possibly followed by `..end` to form a range pattern.
+    fn parse_int_or_range(&mut self, start: i64) -> Result<Pattern, ParseError> {
+        if self.peek() != &Token::DotDot {
+            return Ok(Pattern::IntLit(start));
+        }
+        self.advance(); // consume ..
+        match self.peek().clone() {
+            Token::Int(end) => { self.advance(); Ok(Pattern::Range(start, end)) }
+            Token::Minus => {
+                self.advance();
+                if let Token::Int(end) = self.peek().clone() {
+                    self.advance();
+                    Ok(Pattern::Range(start, -end))
+                } else {
+                    Err(self.error("expected integer after '-' in range pattern".into()))
+                }
+            }
+            _ => Err(self.error("expected integer after '..' in range pattern".into())),
+        }
+    }
+
     fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
         match self.peek().clone() {
             Token::Ident(name) if name == "_" => {
@@ -1530,28 +1551,7 @@ impl Parser {
             Token::Ident(name) => { self.advance(); self.parse_variant_pattern(name) }
             Token::Int(n) => {
                 self.advance();
-                // Check for range pattern: 1..10
-                if self.peek() == &Token::DotDot {
-                    self.advance();
-                    match self.peek().clone() {
-                        Token::Int(end) => {
-                            self.advance();
-                            Ok(Pattern::Range(n, end))
-                        }
-                        Token::Minus => {
-                            self.advance();
-                            if let Token::Int(end) = self.peek().clone() {
-                                self.advance();
-                                Ok(Pattern::Range(n, -end))
-                            } else {
-                                Err(self.error("expected integer after '-' in range pattern".into()))
-                            }
-                        }
-                        _ => Err(self.error("expected integer after '..' in range pattern".into())),
-                    }
-                } else {
-                    Ok(Pattern::IntLit(n))
-                }
+                self.parse_int_or_range(n)
             }
             Token::Float(f) => {
                 self.advance();
@@ -1570,34 +1570,11 @@ impl Parser {
                 Ok(Pattern::StringLit(s))
             }
             Token::Minus => {
-                // Negative literal: -3 or range: -3..10
                 self.advance();
                 match self.peek().clone() {
                     Token::Int(n) => {
                         self.advance();
-                        let neg = -n;
-                        // Check for range pattern: -3..10
-                        if self.peek() == &Token::DotDot {
-                            self.advance();
-                            match self.peek().clone() {
-                                Token::Int(end) => {
-                                    self.advance();
-                                    Ok(Pattern::Range(neg, end))
-                                }
-                                Token::Minus => {
-                                    self.advance();
-                                    if let Token::Int(end) = self.peek().clone() {
-                                        self.advance();
-                                        Ok(Pattern::Range(neg, -end))
-                                    } else {
-                                        Err(self.error("expected integer after '-' in range pattern".into()))
-                                    }
-                                }
-                                _ => Err(self.error("expected integer after '..' in range pattern".into())),
-                            }
-                        } else {
-                            Ok(Pattern::IntLit(neg))
-                        }
+                        self.parse_int_or_range(-n)
                     }
                     Token::Float(f) => {
                         self.advance();
