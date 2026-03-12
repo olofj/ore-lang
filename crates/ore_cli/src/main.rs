@@ -446,11 +446,7 @@ fn run_repl() {
             let mut codegen = ore_codegen::CodeGen::new(&context, &format!("repl_{}", line_num));
             codegen.compile_program(&program).map_err(|e| e.to_string())?;
 
-            let ee = codegen.module
-                .create_jit_execution_engine(inkwell::OptimizationLevel::None)
-                .map_err(|e| format!("JIT error: {}", e))?;
-
-            map_runtime_functions(&ee, &codegen.module);
+            let ee = create_jit(&codegen, false)?;
 
             unsafe {
                 let main_fn: JitFunction<MainFunc> = ee
@@ -466,6 +462,23 @@ fn run_repl() {
             eprintln!("error: {}", e);
         }
     }
+}
+
+/// Create a JIT execution engine and map all runtime functions.
+fn create_jit<'ctx>(
+    codegen: &ore_codegen::CodeGen<'ctx>,
+    optimize: bool,
+) -> Result<inkwell::execution_engine::ExecutionEngine<'ctx>, String> {
+    let opt_level = if optimize {
+        inkwell::OptimizationLevel::Aggressive
+    } else {
+        inkwell::OptimizationLevel::None
+    };
+    let ee = codegen.module
+        .create_jit_execution_engine(opt_level)
+        .map_err(|e| format!("JIT error: {}", e))?;
+    map_runtime_functions(&ee, &codegen.module);
+    Ok(ee)
 }
 
 /// Map all ore_runtime functions to the JIT execution engine.
@@ -718,17 +731,7 @@ fn map_runtime_functions(
 fn run_file(path: &std::path::Path, optimize: bool) -> Result<(), String> {
     let context = Context::create();
     let codegen = compile_source(path, &context)?;
-
-    let opt_level = if optimize {
-        inkwell::OptimizationLevel::Aggressive
-    } else {
-        inkwell::OptimizationLevel::None
-    };
-    let ee = codegen.module
-        .create_jit_execution_engine(opt_level)
-        .map_err(|e| format!("JIT error: {}", e))?;
-
-    map_runtime_functions(&ee, &codegen.module);
+    let ee = create_jit(&codegen, optimize)?;
 
     unsafe {
         let main_fn: JitFunction<MainFunc> = ee
@@ -750,11 +753,7 @@ fn test_file(path: &Path) -> Result<(), String> {
         return Ok(());
     }
 
-    let ee = codegen.module
-        .create_jit_execution_engine(inkwell::OptimizationLevel::None)
-        .map_err(|e| format!("JIT error: {}", e))?;
-
-    map_runtime_functions(&ee, &codegen.module);
+    let ee = create_jit(&codegen, false)?;
 
     // Enable test mode so asserts set a flag instead of exiting
     ore_runtime::ore_assert_set_test_mode(true);
