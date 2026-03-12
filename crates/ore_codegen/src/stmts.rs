@@ -314,10 +314,8 @@ impl<'ctx> CodeGen<'ctx> {
             Stmt::Expr(expr) | Stmt::Let { value: expr, .. } | Stmt::Assign { value: expr, .. } => {
                 self.prescan_expr_for_map_kinds(expr);
             }
-            Stmt::While { body, .. } | Stmt::Loop { body, .. } => {
-                self.prescan_map_value_kinds(body);
-            }
-            Stmt::ForIn { body, .. } | Stmt::ForEach { body, .. } | Stmt::ForEachKV { body, .. } => {
+            Stmt::While { body, .. } | Stmt::Loop { body, .. }
+            | Stmt::ForIn { body, .. } | Stmt::ForEach { body, .. } | Stmt::ForEachKV { body, .. } => {
                 self.prescan_map_value_kinds(body);
             }
             _ => {}
