@@ -161,10 +161,8 @@ impl<'ctx> CodeGen<'ctx> {
                     if let Some(kind_alloca) = self.dynamic_kind_tags.get(name).copied() {
                         let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_alloca, "dyn_kind"))?.into_int_value();
                         let str_ptr = self.call_rt("ore_dynamic_to_str", &[val.into(), kind_i8.into()], "dyntos")?.into_pointer_value();
-                        let pf = self.rt("ore_str_print")?;
-                        bld!(self.builder.build_call(pf, &[str_ptr.into()], ""))?;
-                        let release = self.rt("ore_str_release")?;
-                        bld!(self.builder.build_call(release, &[str_ptr.into()], ""))?;
+                        self.call_rt("ore_str_print", &[str_ptr.into()], "")?;
+                        self.call_rt("ore_str_release", &[str_ptr.into()], "")?;
                         return Ok(self.void_result());
                     }
                     // Check for typed list printing
@@ -193,8 +191,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // Check for string-valued map printing
                 if kind == ValKind::Map {
                     if let Some(ValKind::Str) = self.last_map_val_kind.take() {
-                        let pf = self.rt("ore_map_print_str")?;
-                        bld!(self.builder.build_call(pf, &[val.into()], ""))?;
+                        self.call_rt("ore_map_print_str", &[val.into()], "")?;
                         return Ok(self.void_result());
                     }
                 }
@@ -203,17 +200,15 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::Sleep(inner) => {
                 let val = self.compile_expr(inner, func)?;
-                let ore_sleep = self.rt("ore_sleep")?;
-                bld!(self.builder.build_call(ore_sleep, &[val.into()], ""))?;
+                self.call_rt("ore_sleep", &[val.into()], "")?;
                 Ok(self.void_result())
             }
             Expr::Assert { cond, message } => {
                 let cond_val = self.compile_expr(cond, func)?;
-                let ore_assert = self.rt("ore_assert")?;
                 let msg_str = message.as_deref().unwrap_or("assertion failed");
                 let msg_ptr = self.build_c_string_global(msg_str, &format!("assert_msg_{}", self.current_line))?;
                 let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
-                bld!(self.builder.build_call(ore_assert, &[cond_val.into(), msg_ptr.into(), line_val.into()], ""))?;
+                self.call_rt("ore_assert", &[cond_val.into(), msg_ptr.into(), line_val.into()], "")?;
                 Ok(self.void_result())
             }
             Expr::AssertEq { left, right, message } => {
@@ -588,8 +583,7 @@ impl<'ctx> CodeGen<'ctx> {
         let ok_bb = self.context.append_basic_block(current_fn, "div_ok");
         bld!(self.builder.build_conditional_branch(is_zero, err_bb, ok_bb))?;
         self.builder.position_at_end(err_bb);
-        let rt = self.rt("ore_div_by_zero")?;
-        bld!(self.builder.build_call(rt, &[], ""))?;
+        self.call_rt("ore_div_by_zero", &[], "")?;
         bld!(self.builder.build_unreachable())?;
         self.builder.position_at_end(ok_bb);
         Ok(())
@@ -744,8 +738,7 @@ impl<'ctx> CodeGen<'ctx> {
             (ValKind::Str, _) | (_, ValKind::Str) => &format!("ore_assert_{}_str", op),
             _ => &format!("ore_assert_{}_int", op),
         };
-        let assert_fn = self.rt(fn_name)?;
-        bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
+        self.call_rt(fn_name, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], "")?;
         Ok(self.void_result())
     }
 
