@@ -55,7 +55,7 @@ impl<'ctx> CodeGen<'ctx> {
     pub(crate) fn compile_optional_chain(
         &mut self,
         object: &Expr,
-        field: &str,
+        _field: &str, // TODO: actually perform field access on inner value
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
@@ -84,19 +84,7 @@ impl<'ctx> CodeGen<'ctx> {
         let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
         let inner_i64 = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?.into_int_value();
 
-        // Perform field access on the inner value
-        let inner_expr = Expr::FieldAccess {
-            object: Box::new(object.clone()),
-            field: field.to_string(),
-        };
-        // Instead, use the inner value directly - reinterpret as the record type
-        // For simplicity, wrap the result in Some
-        let kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 1, "kind_ptr"))?;
-        let inner_kind_tag = bld!(self.builder.build_load(self.context.i8_type(), kind_ptr, "ikind"))?.into_int_value();
-        let _ = inner_kind_tag;
-        let _ = inner_expr;
-
-        // Wrap the field value in Some
+        // Wrap the field value in Some (pass through raw i64 payload)
         let some_result = self.build_tagged_union(opt_ty, 1, Some(inner_i64.into()), "some_res")?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
 
@@ -144,12 +132,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(some_bb);
         let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
         let inner_val = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
-        let kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 1, "kind_ptr"))?;
-        let inner_kind_tag = bld!(self.builder.build_load(self.context.i8_type(), kind_ptr, "ikind"))?.into_int_value();
-
-        // Determine inner ValKind from tag and call method on the inner value
-        // For now, try calling method on inner as Int (most common case)
-        let _ = inner_kind_tag;
+        // TODO: use kind tag from option struct to determine actual inner type
         let inner_kind = ValKind::Int;
         let (result_val, result_kind) = self.call_method_on_value(inner_val, &inner_kind, method, args, func)?;
 
