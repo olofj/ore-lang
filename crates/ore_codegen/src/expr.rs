@@ -1086,22 +1086,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(result.into())
             }
             (BasicValueEnum::FloatValue(l), BasicValueEnum::FloatValue(r)) => {
-                use inkwell::FloatPredicate;
-                let result: BasicValueEnum<'ctx> = match op {
-                    BinOp::Add => bld!(self.builder.build_float_add(l, r, "fadd"))?.into(),
-                    BinOp::Sub => bld!(self.builder.build_float_sub(l, r, "fsub"))?.into(),
-                    BinOp::Mul => bld!(self.builder.build_float_mul(l, r, "fmul"))?.into(),
-                    BinOp::Div => bld!(self.builder.build_float_div(l, r, "fdiv"))?.into(),
-                    BinOp::Lt => bld!(self.builder.build_float_compare(FloatPredicate::OLT, l, r, "flt"))?.into(),
-                    BinOp::Gt => bld!(self.builder.build_float_compare(FloatPredicate::OGT, l, r, "fgt"))?.into(),
-                    BinOp::Eq => bld!(self.builder.build_float_compare(FloatPredicate::OEQ, l, r, "feq"))?.into(),
-                    BinOp::NotEq => bld!(self.builder.build_float_compare(FloatPredicate::ONE, l, r, "fne"))?.into(),
-                    BinOp::LtEq => bld!(self.builder.build_float_compare(FloatPredicate::OLE, l, r, "fle"))?.into(),
-                    BinOp::GtEq => bld!(self.builder.build_float_compare(FloatPredicate::OGE, l, r, "fge"))?.into(),
-                    BinOp::Mod => bld!(self.builder.build_float_rem(l, r, "fmod"))?.into(),
-                    _ => return Err(self.err(format!("unsupported float op {:?}", op))),
-                };
-                Ok(result)
+                self.compile_float_binop(op, l, r)
             }
             (BasicValueEnum::PointerValue(l), BasicValueEnum::PointerValue(r)) => {
                 // String comparison via ore_str_eq
@@ -1147,44 +1132,38 @@ impl<'ctx> CodeGen<'ctx> {
             // Int-Float promotion: promote the int side to float
             (BasicValueEnum::IntValue(l), BasicValueEnum::FloatValue(r)) => {
                 let l_f = bld!(self.builder.build_signed_int_to_float(l, self.context.f64_type(), "itof"))?;
-                use inkwell::FloatPredicate;
-                let result: BasicValueEnum<'ctx> = match op {
-                    BinOp::Add => bld!(self.builder.build_float_add(l_f, r, "fadd"))?.into(),
-                    BinOp::Sub => bld!(self.builder.build_float_sub(l_f, r, "fsub"))?.into(),
-                    BinOp::Mul => bld!(self.builder.build_float_mul(l_f, r, "fmul"))?.into(),
-                    BinOp::Div => bld!(self.builder.build_float_div(l_f, r, "fdiv"))?.into(),
-                    BinOp::Mod => bld!(self.builder.build_float_rem(l_f, r, "fmod"))?.into(),
-                    BinOp::Lt => bld!(self.builder.build_float_compare(FloatPredicate::OLT, l_f, r, "flt"))?.into(),
-                    BinOp::Gt => bld!(self.builder.build_float_compare(FloatPredicate::OGT, l_f, r, "fgt"))?.into(),
-                    BinOp::Eq => bld!(self.builder.build_float_compare(FloatPredicate::OEQ, l_f, r, "feq"))?.into(),
-                    BinOp::NotEq => bld!(self.builder.build_float_compare(FloatPredicate::ONE, l_f, r, "fne"))?.into(),
-                    BinOp::LtEq => bld!(self.builder.build_float_compare(FloatPredicate::OLE, l_f, r, "fle"))?.into(),
-                    BinOp::GtEq => bld!(self.builder.build_float_compare(FloatPredicate::OGE, l_f, r, "fge"))?.into(),
-                    _ => return Err(self.err(format!("unsupported mixed int/float op {:?}", op))),
-                };
-                Ok(result)
+                self.compile_float_binop(op, l_f, r)
             }
             (BasicValueEnum::FloatValue(l), BasicValueEnum::IntValue(r)) => {
                 let r_f = bld!(self.builder.build_signed_int_to_float(r, self.context.f64_type(), "itof"))?;
-                use inkwell::FloatPredicate;
-                let result: BasicValueEnum<'ctx> = match op {
-                    BinOp::Add => bld!(self.builder.build_float_add(l, r_f, "fadd"))?.into(),
-                    BinOp::Sub => bld!(self.builder.build_float_sub(l, r_f, "fsub"))?.into(),
-                    BinOp::Mul => bld!(self.builder.build_float_mul(l, r_f, "fmul"))?.into(),
-                    BinOp::Div => bld!(self.builder.build_float_div(l, r_f, "fdiv"))?.into(),
-                    BinOp::Mod => bld!(self.builder.build_float_rem(l, r_f, "fmod"))?.into(),
-                    BinOp::Lt => bld!(self.builder.build_float_compare(FloatPredicate::OLT, l, r_f, "flt"))?.into(),
-                    BinOp::Gt => bld!(self.builder.build_float_compare(FloatPredicate::OGT, l, r_f, "fgt"))?.into(),
-                    BinOp::Eq => bld!(self.builder.build_float_compare(FloatPredicate::OEQ, l, r_f, "feq"))?.into(),
-                    BinOp::NotEq => bld!(self.builder.build_float_compare(FloatPredicate::ONE, l, r_f, "fne"))?.into(),
-                    BinOp::LtEq => bld!(self.builder.build_float_compare(FloatPredicate::OLE, l, r_f, "fle"))?.into(),
-                    BinOp::GtEq => bld!(self.builder.build_float_compare(FloatPredicate::OGE, l, r_f, "fge"))?.into(),
-                    _ => return Err(self.err(format!("unsupported mixed float/int op {:?}", op))),
-                };
-                Ok(result)
+                self.compile_float_binop(op, l, r_f)
             }
             _ => Err(self.err("type mismatch in binary operation")),
         }
+    }
+
+    fn compile_float_binop(
+        &mut self,
+        op: BinOp,
+        l: inkwell::values::FloatValue<'ctx>,
+        r: inkwell::values::FloatValue<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        use inkwell::FloatPredicate;
+        let result: BasicValueEnum<'ctx> = match op {
+            BinOp::Add => bld!(self.builder.build_float_add(l, r, "fadd"))?.into(),
+            BinOp::Sub => bld!(self.builder.build_float_sub(l, r, "fsub"))?.into(),
+            BinOp::Mul => bld!(self.builder.build_float_mul(l, r, "fmul"))?.into(),
+            BinOp::Div => bld!(self.builder.build_float_div(l, r, "fdiv"))?.into(),
+            BinOp::Mod => bld!(self.builder.build_float_rem(l, r, "fmod"))?.into(),
+            BinOp::Lt => bld!(self.builder.build_float_compare(FloatPredicate::OLT, l, r, "flt"))?.into(),
+            BinOp::Gt => bld!(self.builder.build_float_compare(FloatPredicate::OGT, l, r, "fgt"))?.into(),
+            BinOp::Eq => bld!(self.builder.build_float_compare(FloatPredicate::OEQ, l, r, "feq"))?.into(),
+            BinOp::NotEq => bld!(self.builder.build_float_compare(FloatPredicate::ONE, l, r, "fne"))?.into(),
+            BinOp::LtEq => bld!(self.builder.build_float_compare(FloatPredicate::OLE, l, r, "fle"))?.into(),
+            BinOp::GtEq => bld!(self.builder.build_float_compare(FloatPredicate::OGE, l, r, "fge"))?.into(),
+            _ => return Err(self.err(format!("unsupported float op {:?}", op))),
+        };
+        Ok(result)
     }
 
     pub(crate) fn compile_bool_binop(
