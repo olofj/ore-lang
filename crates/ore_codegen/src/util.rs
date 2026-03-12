@@ -227,6 +227,7 @@ impl<'ctx> CodeGen<'ctx> {
         best.map(|(s, _)| s)
     }
 
+    #[allow(clippy::needless_range_loop)]
     pub(crate) fn edit_distance(a: &str, b: &str) -> usize {
         let a: Vec<char> = a.chars().collect();
         let b: Vec<char> = b.chars().collect();

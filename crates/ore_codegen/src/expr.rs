@@ -746,10 +746,8 @@ impl<'ctx> CodeGen<'ctx> {
                     // Fill in default parameter values for missing args
                     if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
                         let num_args = compiled_args.len();
-                        for default in defaults.iter().skip(num_args) {
-                            if let Some(ref default_expr) = default {
-                                compiled_args.push(self.compile_expr(default_expr, func)?.into());
-                            }
+                        for default_expr in defaults.iter().skip(num_args).flatten() {
+                            compiled_args.push(self.compile_expr(default_expr, func)?.into());
                         }
                     }
                     let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
@@ -1044,10 +1042,8 @@ impl<'ctx> CodeGen<'ctx> {
                     // Fill in default parameter values for missing args
                     if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
                         let num_args = compiled_args.len();
-                        for default in defaults.iter().skip(num_args) {
-                            if let Some(ref default_expr) = default {
-                                compiled_args.push(self.compile_expr(default_expr, current_fn)?.into());
-                            }
+                        for default_expr in defaults.iter().skip(num_args).flatten() {
+                            compiled_args.push(self.compile_expr(default_expr, current_fn)?.into());
                         }
                     }
 

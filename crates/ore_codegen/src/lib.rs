@@ -943,12 +943,10 @@ impl<'ctx> CodeGen<'ctx> {
         self.functions.insert(fndef.name.clone(), (func, ret_kind));
 
         // Track element kind for functions returning List[T] or Map[K, V]
-        if let Some(ret_ty) = &fndef.ret_type {
-            if let TypeExpr::Generic(base, args) = ret_ty {
-                if base == "List" && !args.is_empty() {
-                    let elem_kind = self.type_expr_to_kind(&args[0]);
-                    self.fn_return_list_elem_kind.insert(fndef.name.clone(), elem_kind);
-                }
+        if let Some(TypeExpr::Generic(base, args)) = &fndef.ret_type {
+            if base == "List" && !args.is_empty() {
+                let elem_kind = self.type_expr_to_kind(&args[0]);
+                self.fn_return_list_elem_kind.insert(fndef.name.clone(), elem_kind);
             }
         }
 
