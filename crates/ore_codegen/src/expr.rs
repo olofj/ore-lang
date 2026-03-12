@@ -224,33 +224,10 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok(self.void_result())
             }
             Expr::AssertEq { left, right, message } => {
-                let (left_val, left_kind) = self.compile_expr_with_kind(left, func)?;
-                let (right_val, right_kind) = self.compile_expr_with_kind(right, func)?;
-                let msg_str = message.as_deref().unwrap_or("assert_eq failed");
-                let msg_ptr = self.build_c_string_global(msg_str, &format!("assert_eq_msg_{}", self.current_line))?;
-                let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
-                let fn_name = match (&left_kind, &right_kind) {
-                    (ValKind::Float, _) | (_, ValKind::Float) => "ore_assert_eq_float",
-                    (ValKind::Str, _) | (_, ValKind::Str) => "ore_assert_eq_str",
-                    _ => "ore_assert_eq_int",
-                };
-                let assert_fn = self.rt(fn_name)?;
-                bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
-                Ok(self.void_result())
+                self.compile_assert_cmp(left, right, message.as_deref(), "eq", func)
             }
             Expr::AssertNe { left, right, message } => {
-                let (left_val, left_kind) = self.compile_expr_with_kind(left, func)?;
-                let (right_val, right_kind) = self.compile_expr_with_kind(right, func)?;
-                let msg_str = message.as_deref().unwrap_or("assert_ne failed");
-                let msg_ptr = self.build_c_string_global(msg_str, &format!("assert_ne_msg_{}", self.current_line))?;
-                let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
-                let fn_name = match (&left_kind, &right_kind) {
-                    (ValKind::Str, _) | (_, ValKind::Str) => "ore_assert_ne_str",
-                    _ => "ore_assert_ne_int",
-                };
-                let assert_fn = self.rt(fn_name)?;
-                bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
-                Ok(self.void_result())
+                self.compile_assert_cmp(left, right, message.as_deref(), "ne", func)
             }
             Expr::Call { func: callee, args } => {
                 let name = match callee.as_ref() {
@@ -795,6 +772,30 @@ impl<'ctx> CodeGen<'ctx> {
             _ => return Err(self.err(format!("unsupported bool op {:?}", op))),
         }?;
         Ok(result.into())
+    }
+
+    fn compile_assert_cmp(
+        &mut self,
+        left: &Expr,
+        right: &Expr,
+        message: Option<&str>,
+        op: &str, // "eq" or "ne"
+        func: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let (left_val, left_kind) = self.compile_expr_with_kind(left, func)?;
+        let (right_val, right_kind) = self.compile_expr_with_kind(right, func)?;
+        let default_msg = format!("assert_{} failed", op);
+        let msg_str = message.unwrap_or(&default_msg);
+        let msg_ptr = self.build_c_string_global(msg_str, &format!("assert_{}_msg_{}", op, self.current_line))?;
+        let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
+        let fn_name = match (&left_kind, &right_kind) {
+            (ValKind::Float, _) | (_, ValKind::Float) if op == "eq" => "ore_assert_eq_float",
+            (ValKind::Str, _) | (_, ValKind::Str) => &format!("ore_assert_{}_str", op),
+            _ => &format!("ore_assert_{}_int", op),
+        };
+        let assert_fn = self.rt(fn_name)?;
+        bld!(self.builder.build_call(assert_fn, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], ""))?;
+        Ok(self.void_result())
     }
 
 }
