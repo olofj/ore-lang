@@ -1551,14 +1551,7 @@ unsafe fn call_closure2(func: *const u8, env: *mut u8, a: i64, b: i64) -> i64 {
 
 #[no_mangle]
 pub extern "C" fn ore_list_reduce(list: *mut OreList, init: i64, func: *const u8, env: *mut u8) -> i64 {
-    unsafe {
-        let src = &*list;
-        let mut acc = init;
-        for &val in src.as_slice() {
-            acc = call_closure2(func, env, acc, val);
-        }
-        acc
-    }
+    ore_list_fold(list, init, func, env)
 }
 
 /// Reduce without init — uses first element as initial, starts from index 1.
@@ -2273,8 +2266,7 @@ pub extern "C" fn ore_map_map_values(
         for (key, &val) in &map.inner {
             let key_str = str_to_ore(key);
             let new_val = call_closure2(func, env_ptr, key_str as i64, val);
-            let key_str2 = str_to_ore(key);
-            ore_map_set(result, key_str2, new_val);
+            ore_map_set(result, key_str, new_val);
         }
     }
     result
