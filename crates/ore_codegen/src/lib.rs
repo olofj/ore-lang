@@ -266,6 +266,31 @@ impl<'ctx> CodeGen<'ctx> {
         }).collect()
     }
 
+    /// Build a mangled FnDef from an impl method, resolving Self types and prepending `self` param.
+    fn mangle_impl_method(type_name: &str, method: &FnDef) -> FnDef {
+        let resolved_params = Self::resolve_self_in_params(&method.params, type_name);
+        let resolved_ret = method.ret_type.as_ref().map(|r| Self::resolve_self_type(r, type_name));
+        let has_self = resolved_params.first().is_some_and(|p| p.name == "self");
+        let params = if has_self {
+            resolved_params
+        } else {
+            let mut p = vec![Param {
+                name: "self".to_string(),
+                ty: TypeExpr::Named(type_name.to_string()),
+                default: None,
+            }];
+            p.extend(resolved_params);
+            p
+        };
+        FnDef {
+            name: format!("{}_{}", type_name, method.name),
+            type_params: method.type_params.clone(),
+            params,
+            ret_type: resolved_ret,
+            body: method.body.clone(),
+        }
+    }
+
     pub fn compile_program(&mut self, program: &Program) -> Result<(), CodeGenError> {
         self.declare_runtime_functions();
 
@@ -298,34 +323,10 @@ impl<'ctx> CodeGen<'ctx> {
             };
             let mut method_names = Vec::new();
             for method in methods {
-                let mangled_name = format!("{}_{}", type_name, method.name);
                 method_names.push(method.name.clone());
-                // Resolve Self -> type_name in params and return type
-                let resolved_params = Self::resolve_self_in_params(&method.params, type_name);
-                let resolved_ret = method.ret_type.as_ref().map(|r| Self::resolve_self_type(r, type_name));
-                // Prepend implicit `self` parameter if not already declared
-                let has_self = resolved_params.first().is_some_and(|p| p.name == "self");
-                let params = if has_self {
-                    resolved_params
-                } else {
-                    let mut p = vec![Param {
-                        name: "self".to_string(),
-                        ty: TypeExpr::Named(type_name.clone()),
-                        default: None,
-                    }];
-                    p.extend(resolved_params);
-                    p
-                };
-                let mangled_fn = FnDef {
-                    name: mangled_name,
-                    type_params: method.type_params.clone(),
-                    params,
-                    ret_type: resolved_ret,
-                    body: method.body.clone(),
-                };
+                let mangled_fn = Self::mangle_impl_method(type_name, method);
                 self.declare_function(&mangled_fn)?;
             }
-            // Merge with existing methods if any
             self.method_map.entry(type_name.clone())
                 .or_default()
                 .extend(method_names);
@@ -348,28 +349,7 @@ impl<'ctx> CodeGen<'ctx> {
                 _ => continue,
             };
             for method in methods {
-                let mangled_name = format!("{}_{}", type_name, method.name);
-                let resolved_params = Self::resolve_self_in_params(&method.params, type_name);
-                let resolved_ret = method.ret_type.as_ref().map(|r| Self::resolve_self_type(r, type_name));
-                let has_self = resolved_params.first().is_some_and(|p| p.name == "self");
-                let params = if has_self {
-                    resolved_params
-                } else {
-                    let mut p = vec![Param {
-                        name: "self".to_string(),
-                        ty: TypeExpr::Named(type_name.clone()),
-                        default: None,
-                    }];
-                    p.extend(resolved_params);
-                    p
-                };
-                let mangled_fn = FnDef {
-                    name: mangled_name,
-                    type_params: method.type_params.clone(),
-                    params,
-                    ret_type: resolved_ret,
-                    body: method.body.clone(),
-                };
+                let mangled_fn = Self::mangle_impl_method(type_name, method);
                 self.compile_function(&mangled_fn)?;
             }
         }
