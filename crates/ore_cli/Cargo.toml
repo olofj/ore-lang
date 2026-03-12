@@ -10,7 +10,6 @@ path = "src/main.rs"
 [dependencies]
 ore_lexer = { path = "../ore_lexer" }
 ore_parser = { path = "../ore_parser" }
-ore_types = { path = "../ore_types" }
 ore_typecheck = { path = "../ore_typecheck" }
 ore_codegen = { path = "../ore_codegen" }
 ore_runtime = { path = "../ore_runtime" }
