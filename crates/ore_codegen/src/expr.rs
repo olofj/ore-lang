@@ -452,8 +452,7 @@ impl<'ctx> CodeGen<'ctx> {
         let lhs_bool = if lhs.is_int_value() {
             let lv = lhs.into_int_value();
             if lv.get_type().get_bit_width() != 1 {
-                bld!(self.builder.build_int_truncate(lv, self.context.bool_type(), "tobool"))
-                    .map_err(|e| CodeGenError { line: None, msg: format!("short-circuit trunc: {e}") })?
+                bld!(self.builder.build_int_truncate(lv, self.context.bool_type(), "tobool"))?
             } else {
                 lv
             }
@@ -470,14 +469,12 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_store(
             result_alloca,
             self.context.i64_type().const_int(short_val, false)
-        )).map_err(|e| CodeGenError { line: None, msg: format!("sc store1: {e}") })?;
+        ))?;
 
         if op == BinOp::And {
-            bld!(self.builder.build_conditional_branch(lhs_bool, rhs_block, merge_block))
-                .map_err(|e| CodeGenError { line: None, msg: format!("sc branch: {e}") })?;
+            bld!(self.builder.build_conditional_branch(lhs_bool, rhs_block, merge_block))?;
         } else {
-            bld!(self.builder.build_conditional_branch(lhs_bool, merge_block, rhs_block))
-                .map_err(|e| CodeGenError { line: None, msg: format!("sc branch: {e}") })?;
+            bld!(self.builder.build_conditional_branch(lhs_bool, merge_block, rhs_block))?;
         }
 
         // Compile RHS
@@ -485,27 +482,20 @@ impl<'ctx> CodeGen<'ctx> {
         let (rhs, _rk) = self.compile_expr_with_kind(right, func)?;
         let rhs_i64 = if rhs.is_int_value() {
             let rv = rhs.into_int_value();
-            if rv.get_type().get_bit_width() == 1 {
-                bld!(self.builder.build_int_z_extend(rv, self.context.i64_type(), "rhs_ext"))
-                    .map_err(|e| CodeGenError { line: None, msg: format!("sc rhs ext: {e}") })?
-            } else if rv.get_type().get_bit_width() != 64 {
-                bld!(self.builder.build_int_z_extend(rv, self.context.i64_type(), "rhs_ext"))
-                    .map_err(|e| CodeGenError { line: None, msg: format!("sc rhs ext: {e}") })?
+            if rv.get_type().get_bit_width() != 64 {
+                bld!(self.builder.build_int_z_extend(rv, self.context.i64_type(), "rhs_ext"))?
             } else {
                 rv
             }
         } else {
             return Err(CodeGenError { line: None, msg: "short-circuit: expected boolean operand for RHS".to_string() });
         };
-        bld!(self.builder.build_store(result_alloca, rhs_i64))
-            .map_err(|e| CodeGenError { line: None, msg: format!("sc store2: {e}") })?;
-        bld!(self.builder.build_unconditional_branch(merge_block))
-            .map_err(|e| CodeGenError { line: None, msg: format!("sc merge: {e}") })?;
+        bld!(self.builder.build_store(result_alloca, rhs_i64))?;
+        bld!(self.builder.build_unconditional_branch(merge_block))?;
 
         // Load result from alloca
         self.builder.position_at_end(merge_block);
-        let result = bld!(self.builder.build_load(self.context.i64_type(), result_alloca, "sc_result"))
-            .map_err(|e| CodeGenError { line: None, msg: format!("sc load: {e}") })?;
+        let result = bld!(self.builder.build_load(self.context.i64_type(), result_alloca, "sc_result"))?;
 
         Ok((result, ValKind::Bool))
     }
