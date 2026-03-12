@@ -111,7 +111,8 @@ impl<'ctx> CodeGen<'ctx> {
                     } else if lhs_elem_kind.is_some() {
                         self.last_list_elem_kind = lhs_elem_kind;
                     }
-                    return Ok((val, ValKind::List(None)));
+                    let elem = self.last_list_elem_kind.clone();
+                    return Ok((val, ValKind::List(elem.map(Box::new))));
                 }
 
                 // String repetition: str * int
@@ -413,7 +414,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[path_val.into()], "file_read_lines"))?;
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Str);
-                        return Ok((val, ValKind::List(None)));
+                        return Ok((val, ValKind::list_of(ValKind::Str)));
                     }
                     "file_write" | "file_append" => {
                         if args.len() != 2 {
@@ -468,7 +469,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let result = bld!(self.builder.build_call(rt, &[], "args"))?;
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Str);
-                        return Ok((val, ValKind::List(None)));
+                        return Ok((val, ValKind::list_of(ValKind::Str)));
                     }
                     "eprint" => {
                         if args.len() != 1 {
@@ -646,8 +647,9 @@ impl<'ctx> CodeGen<'ctx> {
                         let rt = self.rt("ore_list_repeat")?;
                         let result = bld!(self.builder.build_call(rt, &[val_i64.into(), count.into()], "repeat"))?;
                         let list_val = self.call_result_to_value(result)?;
+                        let kind_for_list = kind.clone();
                         self.last_list_elem_kind = Some(kind);
-                        return Ok((list_val, ValKind::List(None)));
+                        return Ok((list_val, ValKind::list_of(kind_for_list)));
                     }
                     "range" => {
                         if args.len() < 2 || args.len() > 3 {
@@ -665,7 +667,7 @@ impl<'ctx> CodeGen<'ctx> {
                         };
                         let val = self.call_result_to_value(result)?;
                         self.last_list_elem_kind = Some(ValKind::Int);
-                        return Ok((val, ValKind::List(None)));
+                        return Ok((val, ValKind::list_of(ValKind::Int)));
                     }
                     "len" => {
                         if args.len() != 1 {

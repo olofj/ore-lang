@@ -60,7 +60,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let ptr = bld!(self.builder.build_int_to_ptr(
                             i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
                         ))?;
-                        Ok((ptr.into(), ValKind::List(None)))
+                        Ok((ptr.into(), val_kind))
                     }
                     _ => Ok((i64_val, val_kind))
                 }
@@ -102,7 +102,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mkeys"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::Str);
-                Ok((val, ValKind::List(None)))
+                Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "values" => {
                 let rt = self.rt("ore_map_values")?;
@@ -110,8 +110,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_result_to_value(result)?;
                 // Track the value kind from the map
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
-                self.last_list_elem_kind = Some(val_kind);
-                Ok((val, ValKind::List(None)))
+                self.last_list_elem_kind = Some(val_kind.clone());
+                Ok((val, ValKind::list_of(val_kind)))
             }
             "merge" => {
                 if args.len() != 1 {
@@ -240,7 +240,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let ptr = bld!(self.builder.build_int_to_ptr(
                             i64_val.into_int_value(), self.ptr_type(), "i64_to_ptr"
                         ))?;
-                        Ok((ptr.into(), ValKind::List(None)))
+                        Ok((ptr.into(), val_kind))
                     }
                     _ => Ok((i64_val, val_kind))
                 }
@@ -250,7 +250,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let result = bld!(self.builder.build_call(rt, &[map_val.into()], "mentries"))?;
                 let val = self.call_result_to_value(result)?;
                 self.last_list_elem_kind = Some(ValKind::List(None));
-                Ok((val, ValKind::List(None)))
+                Ok((val, ValKind::list_of(ValKind::List(None))))
             }
             _ => Err(Self::unknown_method_error("Map", method, &[
                 "get", "set", "contains", "len", "remove", "keys", "values",

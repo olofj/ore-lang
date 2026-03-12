@@ -873,10 +873,16 @@ impl<'ctx> CodeGen<'ctx> {
                 // Function types are treated as opaque pointers in codegen
                 ValKind::Int
             }
-            TypeExpr::Generic(name, _args) => {
-                // For now, treat generic types by their base name
+            TypeExpr::Generic(name, args) => {
+                // Extract element/value kinds from generic type args
                 match name.as_str() {
-                    "List" => ValKind::List(None),
+                    "List" => {
+                        if let Some(elem_ty) = args.first() {
+                            ValKind::list_of(self.type_expr_to_kind(elem_ty))
+                        } else {
+                            ValKind::List(None)
+                        }
+                    }
                     "Map" => ValKind::Map,
                     "Option" => ValKind::Option,
                     "Result" => ValKind::Result,
@@ -986,7 +992,11 @@ impl<'ctx> CodeGen<'ctx> {
                 if let TypeExpr::Generic(_, args) = &param.ty {
                     if let Some(elem_ty) = args.first() {
                         let elem_kind = self.type_expr_to_kind(elem_ty);
-                        self.list_element_kinds.insert(param.name.clone(), elem_kind);
+                        self.list_element_kinds.insert(param.name.clone(), elem_kind.clone());
+                        // Also update the variable's ValKind to carry the element kind
+                        if let Some(entry) = self.variables.get_mut(&param.name) {
+                            entry.2 = ValKind::list_of(elem_kind);
+                        }
                     }
                 }
             }

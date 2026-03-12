@@ -32,7 +32,9 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_store(alloca, val))?;
                 self.variables.insert(name.clone(), (alloca, ty, kind.clone(), *mutable));
                 // Track element kind for typed lists
-                if kind.is_list() {
+                if let ValKind::List(Some(ref ek)) = kind {
+                    self.list_element_kinds.insert(name.clone(), *ek.clone());
+                } else if kind.is_list() {
                     if let Some(ek) = self.last_list_elem_kind.take() {
                         self.list_element_kinds.insert(name.clone(), ek);
                     }
@@ -47,9 +49,12 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Stmt::LetDestructure { names, value } => {
                 self.last_list_elem_kind = None;
-                let (val, _kind) = self.compile_expr_with_kind(value, func)?;
+                let (val, vk) = self.compile_expr_with_kind(value, func)?;
                 let list_ptr = val.into_pointer_value();
-                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                let elem_kind = match &vk {
+                    ValKind::List(Some(ek)) => *ek.clone(),
+                    _ => self.last_list_elem_kind.clone().unwrap_or(ValKind::Int),
+                };
                 let list_get_fn = self.rt("ore_list_get")?;
                 let i64_type = self.context.i64_type();
 
@@ -95,7 +100,9 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 bld!(self.builder.build_store(*ptr, val))?;
                 // Update element kind tracking for lists and maps on reassignment
-                if kind.is_list() {
+                if let ValKind::List(Some(ref ek)) = kind {
+                    self.list_element_kinds.insert(name.clone(), *ek.clone());
+                } else if kind.is_list() {
                     if let Some(ek) = self.last_list_elem_kind.clone() {
                         self.list_element_kinds.insert(name.clone(), ek);
                     }
@@ -426,9 +433,19 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Int
         };
 
-        let (list_val, _) = self.compile_expr_with_kind(iterable, func)?;
-        // Use last_list_elem_kind if set by the expression (e.g. method calls)
-        let final_elem_kind = self.last_list_elem_kind.clone().unwrap_or(elem_kind);
+        let (list_val, list_kind) = self.compile_expr_with_kind(iterable, func)?;
+        // Priority: list_element_kinds (most up-to-date) > last_list_elem_kind > ValKind variant > default
+        let final_elem_kind = if elem_kind != ValKind::Int {
+            // list_element_kinds had a non-default value — use it (most up-to-date)
+            elem_kind
+        } else {
+            self.last_list_elem_kind.clone()
+                .or_else(|| match &list_kind {
+                    ValKind::List(Some(ek)) => Some(*ek.clone()),
+                    _ => None,
+                })
+                .unwrap_or(elem_kind)
+        };
         let list_ptr = list_val.into_pointer_value();
 
         self.compile_for_each_over_list(var, list_ptr, final_elem_kind, body, func)
@@ -557,8 +574,17 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Int
         };
 
-        let (list_val, _) = self.compile_expr_with_kind(iterable, func)?;
-        let final_elem_kind = self.last_list_elem_kind.clone().unwrap_or(elem_kind);
+        let (list_val, list_kind) = self.compile_expr_with_kind(iterable, func)?;
+        let final_elem_kind = if elem_kind != ValKind::Int {
+            elem_kind
+        } else {
+            self.last_list_elem_kind.clone()
+                .or_else(|| match &list_kind {
+                    ValKind::List(Some(ek)) => Some(*ek.clone()),
+                    _ => None,
+                })
+                .unwrap_or(elem_kind)
+        };
         let elem_kind = final_elem_kind;
         let list_ptr = list_val.into_pointer_value();
 

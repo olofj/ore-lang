@@ -250,11 +250,20 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Handle list built-in methods
         if obj_kind.is_list() {
+            // Bridge: seed last_list_elem_kind from ValKind variant only if not already set
+            // (the Ident handler may have set it from list_element_kinds, which is more accurate)
+            if self.last_list_elem_kind.is_none() {
+                if let ValKind::List(Some(ref ek)) = obj_kind {
+                    self.last_list_elem_kind = Some(*ek.clone());
+                }
+            }
             let result = self.compile_list_method(obj_val, method, args, func)?;
             // After push, update the variable's element kind tracking
             if method == "push" {
                 if let Expr::Ident(var_name) = object {
-                    if let Some(ek) = self.last_list_elem_kind.clone() {
+                    if let ValKind::List(Some(ref ek)) = result.1 {
+                        self.list_element_kinds.insert(var_name.clone(), *ek.clone());
+                    } else if let Some(ek) = self.last_list_elem_kind.clone() {
                         self.list_element_kinds.insert(var_name.clone(), ek);
                     }
                 }
@@ -608,7 +617,7 @@ impl<'ctx> CodeGen<'ctx> {
         let idx_val = self.compile_expr(index, func)?;
 
         match obj_kind {
-            ValKind::List(_) => {
+            ValKind::List(ref ek) => {
                 let list_get = self.rt("ore_list_get")?;
                 let result = bld!(self.builder.build_call(
                     list_get,
@@ -616,7 +625,9 @@ impl<'ctx> CodeGen<'ctx> {
                     "list_get"
                 ))?;
                 let val = self.call_result_to_value(result)?;
-                let elem_kind = self.last_list_elem_kind.clone().unwrap_or(ValKind::Int);
+                let elem_kind = self.last_list_elem_kind.clone()
+                    .or_else(|| ek.as_ref().map(|k| *k.clone()))
+                    .unwrap_or(ValKind::Int);
                 let typed_val = self.list_elem_from_i64(val, &elem_kind)?;
                 Ok((typed_val, elem_kind))
             }
