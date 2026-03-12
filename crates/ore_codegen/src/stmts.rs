@@ -74,14 +74,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Stmt::Assign { name, value } => {
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
-                let var_info = self.variables.get(name).ok_or_else(|| {
-                    let mut msg = format!("undefined variable '{}'", name);
-                    let candidates: Vec<&str> = self.variables.keys().map(|s| s.as_str()).collect();
-                    if let Some(suggestion) = Self::find_similar(name, &candidates) {
-                        msg.push_str(&format!("; did you mean '{}'?", suggestion));
-                    }
-                    CodeGenError { line: None, msg }
-                })?;
+                let var_info = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?;
                 if !var_info.is_mutable {
                     return Err(CodeGenError {
                         line: Some(self.current_line), msg: format!("cannot assign to immutable variable '{}'", name),

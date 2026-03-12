@@ -138,13 +138,24 @@ impl<'ctx> CodeGen<'ctx> {
         if let Some(f) = self.module.get_function(name) {
             return Ok((f, ValKind::Void));
         }
-        // Suggest similar function names
-        let mut msg = format!("undefined function '{}'", name);
-        let candidates: Vec<&str> = self.functions.keys().map(|s| s.as_str()).collect();
-        if let Some(suggestion) = Self::find_similar(name, &candidates) {
+        Err(self.undefined_fn_error(name))
+    }
+
+    /// Build an "undefined X 'name'" error with a "did you mean?" suggestion.
+    pub(crate) fn undefined_var_error(&self, name: &str) -> CodeGenError {
+        self.undefined_error("variable", name, &self.variables.keys().map(|s| s.as_str()).collect::<Vec<_>>())
+    }
+
+    pub(crate) fn undefined_fn_error(&self, name: &str) -> CodeGenError {
+        self.undefined_error("function", name, &self.functions.keys().map(|s| s.as_str()).collect::<Vec<_>>())
+    }
+
+    fn undefined_error(&self, kind: &str, name: &str, candidates: &[&str]) -> CodeGenError {
+        let mut msg = format!("undefined {} '{}'", kind, name);
+        if let Some(suggestion) = Self::find_similar(name, candidates) {
             msg.push_str(&format!("; did you mean '{}'?", suggestion));
         }
-        Err(CodeGenError { line: None, msg })
+        CodeGenError { line: None, msg }
     }
 
     /// Return (i64_zero, ValKind::Void) — used as the return value for void expressions.

@@ -63,14 +63,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                 }
 
-                let var = self.variables.get(name).ok_or_else(|| {
-                    let mut msg = format!("undefined variable '{}'", name);
-                    let candidates: Vec<&str> = self.variables.keys().map(|s| s.as_str()).collect();
-                    if let Some(suggestion) = Self::find_similar(name, &candidates) {
-                        msg.push_str(&format!("; did you mean '{}'?", suggestion));
-                    }
-                    CodeGenError { line: None, msg }
-                })?;
+                let var = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?;
                 let val = bld!(self.builder.build_load(var.ty, var.ptr, name))?;
                 let kind = var.kind.clone();
                 // Restore list element kind tracking for method dispatch
@@ -328,12 +321,7 @@ impl<'ctx> CodeGen<'ctx> {
                             Ok((val, ValKind::Int))
                         }
                     } else {
-                        let mut msg = format!("undefined function '{}'", name);
-                        let candidates: Vec<&str> = self.functions.keys().map(|s| s.as_str()).collect();
-                        if let Some(suggestion) = Self::find_similar(&name, &candidates) {
-                            msg.push_str(&format!("; did you mean '{}'?", suggestion));
-                        }
-                        Err(CodeGenError { line: None, msg })
+                        Err(self.undefined_fn_error(&name))
                     }
                 }
             }
