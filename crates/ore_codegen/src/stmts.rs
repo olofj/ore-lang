@@ -100,7 +100,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let list_ptr = val.into_pointer_value();
                 let elem_kind = match &vk {
                     ValKind::List(Some(ek)) => *ek.clone(),
-                    _ => self.last_list_elem_kind.clone().unwrap_or(ValKind::Int),
+                    _ => self.list_elem_kind(),
                 };
                 let list_get_fn = self.rt("ore_list_get")?;
                 let i64_type = self.context.i64_type();
