@@ -145,8 +145,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
                 match obj_kind {
                     ValKind::List(_) => {
-                        let rt = self.rt("ore_list_set")?;
-                        bld!(self.builder.build_call(rt, &[obj_val.into(), idx_val.into(), val.into()], ""))?;
+                        self.call_rt("ore_list_set", &[obj_val.into(), idx_val.into(), val.into()], "")?;
                     }
                     ValKind::Map => {
                         // Convert non-string keys to strings for map
@@ -155,8 +154,7 @@ impl<'ctx> CodeGen<'ctx> {
                         } else {
                             self.value_to_str(idx_val, ValKind::Int)?.into()
                         };
-                        let rt = self.rt("ore_map_set")?;
-                        bld!(self.builder.build_call(rt, &[obj_val.into(), map_key.into(), val.into()], ""))?;
+                        self.call_rt("ore_map_set", &[obj_val.into(), map_key.into(), val.into()], "")?;
                     }
                     _ => return Err(self.err("index assignment only supported on lists and maps")),
                 }
@@ -243,8 +241,7 @@ impl<'ctx> CodeGen<'ctx> {
                         let fn_ptr = target_fn.as_global_value().as_pointer_value();
 
                         if args.is_empty() {
-                            let ore_spawn = self.rt("ore_spawn")?;
-                            bld!(self.builder.build_call(ore_spawn, &[fn_ptr.into()], ""))?;
+                            self.call_rt("ore_spawn", &[fn_ptr.into()], "")?;
                         } else {
                             let mut i64_args: Vec<BasicValueEnum> = vec![fn_ptr.into()];
                             for arg in args {
@@ -258,9 +255,8 @@ impl<'ctx> CodeGen<'ctx> {
                                 3 => "ore_spawn_with_3args",
                                 n => return Err(self.err(format!("spawn supports at most 3 arguments, got {}", n))),
                             };
-                            let ore_spawn = self.rt(spawn_fn_name)?;
                             let call_args: Vec<_> = i64_args.iter().map(|a| (*a).into()).collect();
-                            bld!(self.builder.build_call(ore_spawn, &call_args, ""))?;
+                            self.call_rt(spawn_fn_name, &call_args, "")?;
                         }
                         Ok(None)
                     }
