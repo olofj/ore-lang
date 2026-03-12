@@ -1029,74 +1029,44 @@ pub extern "C" fn ore_list_len(list: *mut OreList) -> i64 {
 
 #[no_mangle]
 pub extern "C" fn ore_list_print(list: *mut OreList) {
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    unsafe {
-        let list = &*list;
-        let _ = write!(handle, "[");
-        for i in 0..list.len as usize {
-            if i > 0 {
-                let _ = write!(handle, ", ");
-            }
-            let _ = write!(handle, "{}", *list.data.add(i));
-        }
-        let _ = writeln!(handle, "]");
+    ore_list_print_typed(list, 0); // 0 = Int
+}
+
+unsafe fn list_copy_and_sort(list: *mut OreList, cmp: impl FnMut(&i64, &i64) -> std::cmp::Ordering) -> *mut OreList {
+    let src = &*list;
+    let new_list = ore_list_new();
+    for i in 0..src.len as usize {
+        ore_list_push(new_list, *src.data.add(i));
     }
+    let new = &mut *new_list;
+    let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
+    slice.sort_by(cmp);
+    new_list
 }
 
 #[no_mangle]
 pub extern "C" fn ore_list_sort(list: *mut OreList) -> *mut OreList {
-    unsafe {
-        let src = &*list;
-        let new_list = ore_list_new();
-        for i in 0..src.len as usize {
-            ore_list_push(new_list, *src.data.add(i));
-        }
-        let new = &mut *new_list;
-        let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
-        slice.sort();
-        new_list
-    }
+    unsafe { list_copy_and_sort(list, |a, b| a.cmp(b)) }
 }
 
 /// Sort a list of strings lexicographically.
 #[no_mangle]
 pub extern "C" fn ore_list_sort_str(list: *mut OreList) -> *mut OreList {
-    unsafe {
-        let src = &*list;
-        let new_list = ore_list_new();
-        for i in 0..src.len as usize {
-            ore_list_push(new_list, *src.data.add(i));
-        }
-        let new = &mut *new_list;
-        let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
-        slice.sort_by(|a, b| {
-            let sa = &*(*a as *mut OreStr);
-            let sb = &*(*b as *mut OreStr);
-            sa.as_str().cmp(sb.as_str())
-        });
-        new_list
-    }
+    unsafe { list_copy_and_sort(list, |a, b| {
+        let sa = &*(*a as *mut OreStr);
+        let sb = &*(*b as *mut OreStr);
+        sa.as_str().cmp(sb.as_str())
+    })}
 }
 
 /// Sort a list of floats.
 #[no_mangle]
 pub extern "C" fn ore_list_sort_float(list: *mut OreList) -> *mut OreList {
-    unsafe {
-        let src = &*list;
-        let new_list = ore_list_new();
-        for i in 0..src.len as usize {
-            ore_list_push(new_list, *src.data.add(i));
-        }
-        let new = &mut *new_list;
-        let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
-        slice.sort_by(|a, b| {
-            let fa = f64::from_bits(*a as u64);
-            let fb = f64::from_bits(*b as u64);
-            fa.partial_cmp(&fb).unwrap_or(std::cmp::Ordering::Equal)
-        });
-        new_list
-    }
+    unsafe { list_copy_and_sort(list, |a, b| {
+        let fa = f64::from_bits(*a as u64);
+        let fb = f64::from_bits(*b as u64);
+        fa.partial_cmp(&fb).unwrap_or(std::cmp::Ordering::Equal)
+    })}
 }
 
 /// Remove consecutive duplicate elements.
@@ -1123,22 +1093,33 @@ pub extern "C" fn ore_list_sort_by(
     cmp: extern "C" fn(i64, i64, *mut u8) -> i64,
     env_ptr: *mut u8,
 ) -> *mut OreList {
-    unsafe {
-        let src = &*list;
-        let new_list = ore_list_new();
-        for i in 0..src.len as usize {
-            ore_list_push(new_list, *src.data.add(i));
+    unsafe { list_copy_and_sort(list, |a, b| {
+        let result = cmp(*a, *b, env_ptr);
+        if result < 0 { std::cmp::Ordering::Less }
+        else if result > 0 { std::cmp::Ordering::Greater }
+        else { std::cmp::Ordering::Equal }
+    })}
+}
+
+unsafe fn list_extremum_by(
+    list: *mut OreList,
+    key_fn: extern "C" fn(i64, *mut u8) -> i64,
+    env_ptr: *mut u8,
+    is_better: fn(i64, i64) -> bool,
+) -> i64 {
+    let src = &*list;
+    if src.len == 0 { return 0; }
+    let mut best_elem = *src.data;
+    let mut best_key = key_fn(best_elem, env_ptr);
+    for i in 1..src.len as usize {
+        let elem = *src.data.add(i);
+        let key = key_fn(elem, env_ptr);
+        if is_better(key, best_key) {
+            best_key = key;
+            best_elem = elem;
         }
-        let new = &mut *new_list;
-        let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
-        slice.sort_by(|a, b| {
-            let result = cmp(*a, *b, env_ptr);
-            if result < 0 { std::cmp::Ordering::Less }
-            else if result > 0 { std::cmp::Ordering::Greater }
-            else { std::cmp::Ordering::Equal }
-        });
-        new_list
     }
+    best_elem
 }
 
 /// Find the element with the minimum key value.
@@ -1148,21 +1129,7 @@ pub extern "C" fn ore_list_min_by(
     key_fn: extern "C" fn(i64, *mut u8) -> i64,
     env_ptr: *mut u8,
 ) -> i64 {
-    unsafe {
-        let src = &*list;
-        if src.len == 0 { return 0; }
-        let mut best_elem = *src.data;
-        let mut best_key = key_fn(best_elem, env_ptr);
-        for i in 1..src.len as usize {
-            let elem = *src.data.add(i);
-            let key = key_fn(elem, env_ptr);
-            if key < best_key {
-                best_key = key;
-                best_elem = elem;
-            }
-        }
-        best_elem
-    }
+    unsafe { list_extremum_by(list, key_fn, env_ptr, |a, b| a < b) }
 }
 
 /// Find the element with the maximum key value.
@@ -1172,21 +1139,7 @@ pub extern "C" fn ore_list_max_by(
     key_fn: extern "C" fn(i64, *mut u8) -> i64,
     env_ptr: *mut u8,
 ) -> i64 {
-    unsafe {
-        let src = &*list;
-        if src.len == 0 { return 0; }
-        let mut best_elem = *src.data;
-        let mut best_key = key_fn(best_elem, env_ptr);
-        for i in 1..src.len as usize {
-            let elem = *src.data.add(i);
-            let key = key_fn(elem, env_ptr);
-            if key > best_key {
-                best_key = key;
-                best_elem = elem;
-            }
-        }
-        best_elem
-    }
+    unsafe { list_extremum_by(list, key_fn, env_ptr, |a, b| a > b) }
 }
 
 /// Sort list in-place by a key function that returns an i64.
@@ -1295,22 +1248,7 @@ pub extern "C" fn ore_list_contains_str(list: *mut OreList, value: *mut OreStr) 
 
 #[no_mangle]
 pub extern "C" fn ore_list_print_str(list: *mut OreList) {
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    unsafe {
-        let list = &*list;
-        let _ = write!(handle, "[");
-        for i in 0..list.len as usize {
-            if i > 0 {
-                let _ = write!(handle, ", ");
-            }
-            let s = *list.data.add(i) as *mut OreStr;
-            if !s.is_null() {
-                let _ = write!(handle, "{}", (*s).as_str());
-            }
-        }
-        let _ = writeln!(handle, "]");
-    }
+    ore_list_print_typed(list, 3); // 3 = Str
 }
 
 /// Print a list with typed elements.
@@ -1354,34 +1292,12 @@ fn format_float(f: f64) -> String {
 
 #[no_mangle]
 pub extern "C" fn ore_list_print_float(list: *mut OreList) {
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    unsafe {
-        let list = &*list;
-        let _ = write!(handle, "[");
-        for i in 0..list.len as usize {
-            if i > 0 { let _ = write!(handle, ", "); }
-            let val = *list.data.add(i);
-            let _ = write!(handle, "{}", format_float(f64::from_bits(val as u64)));
-        }
-        let _ = writeln!(handle, "]");
-    }
+    ore_list_print_typed(list, 1); // 1 = Float
 }
 
 #[no_mangle]
 pub extern "C" fn ore_list_print_bool(list: *mut OreList) {
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    unsafe {
-        let list = &*list;
-        let _ = write!(handle, "[");
-        for i in 0..list.len as usize {
-            if i > 0 { let _ = write!(handle, ", "); }
-            let val = *list.data.add(i);
-            let _ = write!(handle, "{}", if val != 0 { "true" } else { "false" });
-        }
-        let _ = writeln!(handle, "]");
-    }
+    ore_list_print_typed(list, 2); // 2 = Bool
 }
 
 /// Call a closure: if env is null, call as fn(i64)->i64; otherwise fn(env, i64)->i64.
