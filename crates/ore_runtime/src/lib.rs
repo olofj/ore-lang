@@ -2680,16 +2680,12 @@ pub extern "C" fn ore_int_pow(base: i64, exp: i64) -> i64 {
 
 #[no_mangle]
 pub extern "C" fn ore_str_parse_int(s: *mut OreStr) -> i64 {
-    let ore_str = unsafe { &*s };
-    let text = ore_str.as_str();
-    text.trim().parse::<i64>().unwrap_or(0)
+    ore_str_to_int(s)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_str_parse_float(s: *mut OreStr) -> f64 {
-    let ore_str = unsafe { &*s };
-    let text = ore_str.as_str();
-    text.trim().parse::<f64>().unwrap_or(0.0)
+    ore_str_to_float(s)
 }
 
 // ── Assert ──
