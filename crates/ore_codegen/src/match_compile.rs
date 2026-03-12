@@ -2,7 +2,53 @@ use super::*;
 use inkwell::values::{BasicValue, BasicValueEnum, FunctionValue, IntValue};
 use inkwell::IntPredicate;
 
+type BranchResults<'ctx> = Vec<(BasicValueEnum<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)>;
+
 impl<'ctx> CodeGen<'ctx> {
+    /// Compile the wildcard/default arm of a match, or emit unreachable if none.
+    fn compile_default_arm(
+        &mut self,
+        default_bb: inkwell::basic_block::BasicBlock<'ctx>,
+        merge_bb: inkwell::basic_block::BasicBlock<'ctx>,
+        wildcard_arm: Option<&MatchArm>,
+        branch_results: &mut BranchResults<'ctx>,
+        result_kind: &mut ValKind,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        self.builder.position_at_end(default_bb);
+        if let Some(arm) = wildcard_arm {
+            let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
+            *result_kind = arm_kind;
+            if self.current_block()?.get_terminator().is_none() {
+                bld!(self.builder.build_unconditional_branch(merge_bb))?;
+            }
+            let end_bb = self.current_block()?;
+            branch_results.push((arm_val, end_bb));
+        } else {
+            bld!(self.builder.build_unreachable())?;
+        }
+        Ok(())
+    }
+
+    /// Build the phi node merge block for a match expression.
+    fn build_match_phi(
+        &mut self,
+        merge_bb: inkwell::basic_block::BasicBlock<'ctx>,
+        branch_results: &BranchResults<'ctx>,
+        result_kind: ValKind,
+        label: &str,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        self.builder.position_at_end(merge_bb);
+        if branch_results.is_empty() {
+            return Ok(self.void_result());
+        }
+        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), label))?;
+        for (val, bb) in branch_results {
+            phi.add_incoming(&[(val, *bb)]);
+        }
+        Ok((phi.as_basic_value(), result_kind))
+    }
+
     pub(crate) fn compile_variant_construct(
         &mut self,
         variant_name: &str,
@@ -203,44 +249,18 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
-        // Handle wildcard/default
-        self.builder.position_at_end(default_bb);
-        if let Some(arm) = wildcard_arm {
-            let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
-            result_kind = arm_kind;
-            if self.current_block()?.get_terminator().is_none() {
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-            }
-            let end_bb = self.current_block()?;
-            branch_results.push((arm_val, end_bb));
-        } else {
-            // Unreachable default
-            bld!(self.builder.build_unreachable())?;
-        }
+        self.compile_default_arm(default_bb, merge_bb, wildcard_arm, &mut branch_results, &mut result_kind, func)?;
 
         // Build the switch
-        // Position back at the block before the switch
         let switch_bb = tag_val.as_instruction_value().unwrap().get_parent().unwrap();
         self.builder.position_at_end(switch_bb);
-        let switch = bld!(self.builder.build_switch(
+        bld!(self.builder.build_switch(
             tag_val,
             default_bb,
             &case_blocks.iter().map(|(v, bb)| (*v, *bb)).collect::<Vec<_>>()
         ))?;
-        let _ = switch;
 
-        // Build merge phi
-        self.builder.position_at_end(merge_bb);
-        if branch_results.is_empty() {
-            return Ok(self.void_result());
-        }
-
-        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "match_val"))?;
-        for (val, bb) in &branch_results {
-            phi.add_incoming(&[(val, *bb)]);
-        }
-
-        Ok((phi.as_basic_value(), result_kind))
+        self.build_match_phi(merge_bb, &branch_results, result_kind, "match_val")
     }
 
     pub(crate) fn compile_option_match(
@@ -326,18 +346,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
-        self.builder.position_at_end(default_bb);
-        if let Some(arm) = wildcard_arm {
-            let (arm_val, arm_kind) = self.compile_expr_with_kind(&arm.body, func)?;
-            result_kind = arm_kind;
-            if self.current_block()?.get_terminator().is_none() {
-                bld!(self.builder.build_unconditional_branch(merge_bb))?;
-            }
-            let end_bb = self.current_block()?;
-            branch_results.push((arm_val, end_bb));
-        } else {
-            bld!(self.builder.build_unreachable())?;
-        }
+        self.compile_default_arm(default_bb, merge_bb, wildcard_arm, &mut branch_results, &mut result_kind, func)?;
 
         let switch_bb = tag_val.as_instruction_value().unwrap().get_parent().unwrap();
         self.builder.position_at_end(switch_bb);
@@ -347,17 +356,7 @@ impl<'ctx> CodeGen<'ctx> {
             &case_blocks.iter().map(|(v, bb)| (*v, *bb)).collect::<Vec<_>>()
         ))?;
 
-        self.builder.position_at_end(merge_bb);
-        if branch_results.is_empty() {
-            return Ok(self.void_result());
-        }
-
-        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), &format!("{}_val", prefix)))?;
-        for (val, bb) in &branch_results {
-            phi.add_incoming(&[(val, *bb)]);
-        }
-
-        Ok((phi.as_basic_value(), result_kind))
+        self.build_match_phi(merge_bb, &branch_results, result_kind, &format!("{}_val", prefix))
     }
 
     pub(crate) fn compile_literal_match(
@@ -469,18 +468,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
 
-        self.builder.position_at_end(merge_bb);
-
-        if branch_results.is_empty() {
-            return Ok(self.void_result());
-        }
-
-        let phi = bld!(self.builder.build_phi(branch_results[0].0.get_type(), "lmatch_val"))?;
-        for (val, bb) in &branch_results {
-            phi.add_incoming(&[(val, *bb)]);
-        }
-
-        Ok((phi.as_basic_value(), result_kind))
+        self.build_match_phi(merge_bb, &branch_results, result_kind, "lmatch_val")
     }
 
     pub(crate) fn compile_pattern_cmp(
