@@ -93,9 +93,7 @@ impl<'ctx> CodeGen<'ctx> {
         let subject_alloca = bld!(self.builder.build_alloca(enum_type, "match_subject"))?;
         bld!(self.builder.build_store(subject_alloca, subject_val))?;
 
-        // Load the tag
-        let tag_ptr = bld!(self.builder.build_struct_gep(enum_type, subject_alloca, 0, "tag_ptr"))?;
-        let tag_val = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?;
+        let tag_val = self.load_tag(enum_type, subject_alloca)?;
 
         let merge_bb = self.context.append_basic_block(func, "match_merge");
 
@@ -225,7 +223,7 @@ impl<'ctx> CodeGen<'ctx> {
         let switch_bb = tag_val.as_instruction_value().unwrap().get_parent().unwrap();
         self.builder.position_at_end(switch_bb);
         let switch = bld!(self.builder.build_switch(
-            tag_val.into_int_value(),
+            tag_val,
             default_bb,
             &case_blocks.iter().map(|(v, bb)| (*v, *bb)).collect::<Vec<_>>()
         ))?;
@@ -274,8 +272,7 @@ impl<'ctx> CodeGen<'ctx> {
         let subject_alloca = bld!(self.builder.build_alloca(union_ty, &format!("{}_match", prefix)))?;
         bld!(self.builder.build_store(subject_alloca, subject_val))?;
 
-        let tag_ptr = bld!(self.builder.build_struct_gep(union_ty, subject_alloca, 0, "tag_ptr"))?;
-        let tag_val = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+        let tag_val = self.load_tag(union_ty, subject_alloca)?;
 
         let merge_bb = self.context.append_basic_block(func, &format!("{}_merge", prefix));
         let default_bb = self.context.append_basic_block(func, &format!("{}_default", prefix));
@@ -342,7 +339,7 @@ impl<'ctx> CodeGen<'ctx> {
             bld!(self.builder.build_unreachable())?;
         }
 
-        let switch_bb = tag_ptr.as_instruction_value().unwrap().get_parent().unwrap();
+        let switch_bb = tag_val.as_instruction_value().unwrap().get_parent().unwrap();
         self.builder.position_at_end(switch_bb);
         bld!(self.builder.build_switch(
             tag_val,
@@ -557,8 +554,7 @@ impl<'ctx> CodeGen<'ctx> {
         let res_ty = self.result_type();
         let alloca = bld!(self.builder.build_alloca(res_ty, "try_res"))?;
         bld!(self.builder.build_store(alloca, val))?;
-        let tag_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 0, "tag_ptr"))?;
-        let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+        let tag = self.load_tag(res_ty, alloca)?;
         let is_err = bld!(self.builder.build_int_compare(
             IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_err"
         ))?;
@@ -571,8 +567,7 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_return(Some(&err_ret)))?;
         // Ok branch: extract the value
         self.builder.position_at_end(ok_bb);
-        let val_ptr = bld!(self.builder.build_struct_gep(res_ty, alloca, 2, "val_ptr"))?;
-        let extracted = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "unwrapped"))?;
+        let extracted = self.load_tagged_value(res_ty, alloca)?;
         Ok((extracted, ValKind::Int))
     }
 
@@ -609,9 +604,7 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_m"))?;
         bld!(self.builder.build_store(alloca, opt_val))?;
 
-        let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
-        let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
-        let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
+        let tag = self.load_tag(opt_ty, alloca)?;
 
         match method {
             "unwrap_or" => {
@@ -623,7 +616,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let is_some = bld!(self.builder.build_int_compare(
                     IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
                 ))?;
-                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+                let inner = self.load_tagged_value(opt_ty, alloca)?;
 
                 let some_bb = self.context.append_basic_block(func, "unwrap_some");
                 let none_bb = self.context.append_basic_block(func, "unwrap_none");
@@ -646,7 +639,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "unwrap" => {
                 // Just return inner value (unsafe - crashes on None in real use, but useful)
-                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "unwrapped"))?;
+                let inner = self.load_tagged_value(opt_ty, alloca)?;
                 Ok((inner, ValKind::Int))
             }
             "is_some" => {
@@ -674,7 +667,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // Some branch: unwrap, apply function, wrap result
                 self.builder.position_at_end(some_bb);
-                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+                let inner = self.load_tagged_value(opt_ty, alloca)?;
 
                 // Compile the lambda/function and call it with inner value
                 let lambda_fn = match &args[0] {
@@ -723,9 +716,7 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(result_ty, "res_m"))?;
         bld!(self.builder.build_store(alloca, result_val))?;
 
-        let tag_ptr = bld!(self.builder.build_struct_gep(result_ty, alloca, 0, "tag_ptr"))?;
-        let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
-        let val_ptr = bld!(self.builder.build_struct_gep(result_ty, alloca, 2, "val_ptr"))?;
+        let tag = self.load_tag(result_ty, alloca)?;
 
         match method {
             "unwrap_or" => {
@@ -737,7 +728,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let is_ok = bld!(self.builder.build_int_compare(
                     IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_ok"
                 ))?;
-                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+                let inner = self.load_tagged_value(result_ty, alloca)?;
 
                 let ok_bb = self.context.append_basic_block(func, "result_ok");
                 let err_bb = self.context.append_basic_block(func, "result_err");
@@ -771,7 +762,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((is_err.into(), ValKind::Bool))
             }
             "unwrap" => {
-                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+                let inner = self.load_tagged_value(result_ty, alloca)?;
                 // Default coercion to Int — same as Option.unwrap()
                 let coerced = self.coerce_from_i64(inner, &ValKind::Int)?;
                 Ok((coerced, ValKind::Int))
@@ -789,7 +780,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // Ok branch: unwrap, apply function, wrap result
                 self.builder.position_at_end(ok_bb);
-                let inner = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
+                let inner = self.load_tagged_value(result_ty, alloca)?;
 
                 let lambda_fn = match &args[0] {
                     Expr::Lambda { params, body } => {

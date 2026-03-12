@@ -508,6 +508,26 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(bld!(self.builder.build_load(struct_type, alloca, load_name))?)
     }
 
+    /// Load the tag (index 0, i8) from a tagged union (enum, Option, Result).
+    pub(crate) fn load_tag(
+        &self,
+        struct_type: inkwell::types::StructType<'ctx>,
+        alloca: inkwell::values::PointerValue<'ctx>,
+    ) -> Result<IntValue<'ctx>, CodeGenError> {
+        let tag_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, 0, "tag_ptr"))?;
+        Ok(bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value())
+    }
+
+    /// Load the value (index 2, i64) from a tagged union (Option, Result).
+    pub(crate) fn load_tagged_value(
+        &self,
+        struct_type: inkwell::types::StructType<'ctx>,
+        alloca: inkwell::values::PointerValue<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        let val_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, 2, "val_ptr"))?;
+        Ok(bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "val"))?)
+    }
+
     /// Look up a runtime function, call it, and extract the return value.
     pub(crate) fn call_rt(
         &self,

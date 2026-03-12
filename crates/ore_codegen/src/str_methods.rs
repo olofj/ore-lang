@@ -419,9 +419,7 @@ impl<'ctx> CodeGen<'ctx> {
         // Result alloca (must be before the switch)
         let result_alloca = bld!(self.builder.build_alloca(self.ptr_type(), "enum_str_result"))?;
 
-        // Read tag
-        let tag_ptr = bld!(self.builder.build_struct_gep(enum_type, alloca, 0, "tag_ptr"))?;
-        let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+        let tag = self.load_tag(enum_type, alloca)?;
 
         let current_fn = self.current_fn()?;
 

@@ -397,9 +397,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // Store the option value so we can extract from it
                 let alloca = bld!(self.builder.build_alloca(opt_ty, "try_opt"))?;
                 bld!(self.builder.build_store(alloca, val))?;
-                // Load tag
-                let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
-                let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+                let tag = self.load_tag(opt_ty, alloca)?;
                 let is_none = bld!(self.builder.build_int_compare(
                     IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_none"
                 ))?;

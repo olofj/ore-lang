@@ -67,8 +67,7 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(opt_ty, "optchain"))?;
         bld!(self.builder.build_store(alloca, obj_val))?;
 
-        let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
-        let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+        let tag = self.load_tag(opt_ty, alloca)?;
         let is_some = bld!(self.builder.build_int_compare(
             IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
         ))?;
@@ -116,8 +115,7 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(opt_ty, "optmethod"))?;
         bld!(self.builder.build_store(alloca, obj_val))?;
 
-        let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
-        let tag = bld!(self.builder.build_load(self.context.i8_type(), tag_ptr, "tag"))?.into_int_value();
+        let tag = self.load_tag(opt_ty, alloca)?;
         let is_some = bld!(self.builder.build_int_compare(
             IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_some"
         ))?;
