@@ -674,8 +674,7 @@ pub extern "C" fn ore_list_count(
     if list.is_null() { return 0; }
     let l = unsafe { &*list };
     let mut count = 0i64;
-    for i in 0..l.len {
-        let val = unsafe { *l.data.offset(i as isize) };
+    for &val in unsafe { l.as_slice() } {
         if pred(val, env_ptr) != 0 {
             count += 1;
         }
@@ -688,13 +687,12 @@ pub extern "C" fn ore_list_flatten(list: *mut OreList) -> *mut OreList {
     let result = ore_list_new();
     if list.is_null() { return result; }
     let l = unsafe { &*list };
-    for i in 0..l.len {
-        let inner = unsafe { *l.data.offset(i as isize) } as *mut OreList;
+    for &val in unsafe { l.as_slice() } {
+        let inner = val as *mut OreList;
         if !inner.is_null() {
             let inner_l = unsafe { &*inner };
-            for j in 0..inner_l.len {
-                let val = unsafe { *inner_l.data.offset(j as isize) };
-                ore_list_push(result, val);
+            for &inner_val in unsafe { inner_l.as_slice() } {
+                ore_list_push(result, inner_val);
             }
         }
     }
@@ -733,8 +731,7 @@ pub extern "C" fn ore_list_unique(list: *mut OreList) -> *mut OreList {
     if list.is_null() { return result; }
     let l = unsafe { &*list };
     let mut seen = std::collections::HashSet::new();
-    for i in 0..l.len {
-        let val = unsafe { *l.data.offset(i as isize) };
+    for &val in unsafe { l.as_slice() } {
         if seen.insert(val) {
             ore_list_push(result, val);
         }
@@ -905,6 +902,30 @@ pub struct OreList {
     pub data: *mut i64,
 }
 
+impl OreList {
+    /// Return the list contents as a slice.
+    /// # Safety
+    /// The caller must ensure `self` is a valid, initialized OreList.
+    pub unsafe fn as_slice(&self) -> &[i64] {
+        if self.data.is_null() || self.len == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(self.data, self.len as usize)
+        }
+    }
+
+    /// Return the list contents as a mutable slice.
+    /// # Safety
+    /// The caller must ensure `self` is a valid, initialized OreList.
+    pub unsafe fn as_mut_slice(&mut self) -> &mut [i64] {
+        if self.data.is_null() || self.len == 0 {
+            &mut []
+        } else {
+            std::slice::from_raw_parts_mut(self.data, self.len as usize)
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn ore_list_new() -> *mut OreList {
     unsafe {
@@ -1035,12 +1056,11 @@ pub extern "C" fn ore_list_print(list: *mut OreList) {
 unsafe fn list_copy_and_sort(list: *mut OreList, cmp: impl FnMut(&i64, &i64) -> std::cmp::Ordering) -> *mut OreList {
     let src = &*list;
     let new_list = ore_list_new();
-    for i in 0..src.len as usize {
-        ore_list_push(new_list, *src.data.add(i));
+    for &val in src.as_slice() {
+        ore_list_push(new_list, val);
     }
     let new = &mut *new_list;
-    let slice = std::slice::from_raw_parts_mut(new.data, new.len as usize);
-    slice.sort_by(cmp);
+    new.as_mut_slice().sort_by(cmp);
     new_list
 }
 
@@ -1076,8 +1096,7 @@ pub extern "C" fn ore_list_dedup(list: *mut OreList) -> *mut OreList {
         let src = &*list;
         let result = ore_list_new();
         let mut prev: Option<i64> = None;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             if prev != Some(val) {
                 ore_list_push(result, val);
                 prev = Some(val);
@@ -1154,8 +1173,7 @@ pub extern "C" fn ore_list_sort_by_key(
         let src = &*list;
         let new_list = ore_list_new();
         let mut keyed: Vec<(i64, i64)> = Vec::with_capacity(src.len as usize);
-        for i in 0..src.len as usize {
-            let elem = *src.data.add(i);
+        for &elem in src.as_slice() {
             keyed.push((key_fn(elem, env_ptr), elem));
         }
         keyed.sort_by_key(|&(k, _)| k);
@@ -1177,8 +1195,7 @@ pub extern "C" fn ore_list_sort_by_key_str(
         let src = &*list;
         let new_list = ore_list_new();
         let mut keyed: Vec<(String, i64)> = Vec::with_capacity(src.len as usize);
-        for i in 0..src.len as usize {
-            let elem = *src.data.add(i);
+        for &elem in src.as_slice() {
             let key_str = key_fn(elem, env_ptr);
             let s = if !key_str.is_null() { (*key_str).as_str().to_string() } else { String::new() };
             keyed.push((s, elem));
@@ -1196,8 +1213,7 @@ pub extern "C" fn ore_list_sort_by_key_str(
 pub extern "C" fn ore_list_reverse(list: *mut OreList) {
     unsafe {
         let list = &mut *list;
-        let slice = std::slice::from_raw_parts_mut(list.data, list.len as usize);
-        slice.reverse();
+        list.as_mut_slice().reverse();
     }
 }
 
@@ -1207,11 +1223,11 @@ pub extern "C" fn ore_list_concat(a: *mut OreList, b: *mut OreList) -> *mut OreL
         let a = &*a;
         let b = &*b;
         let result = ore_list_new();
-        for i in 0..a.len as usize {
-            ore_list_push(result, *a.data.add(i));
+        for &val in a.as_slice() {
+            ore_list_push(result, val);
         }
-        for i in 0..b.len as usize {
-            ore_list_push(result, *b.data.add(i));
+        for &val in b.as_slice() {
+            ore_list_push(result, val);
         }
         result
     }
@@ -1221,8 +1237,8 @@ pub extern "C" fn ore_list_concat(a: *mut OreList, b: *mut OreList) -> *mut OreL
 pub extern "C" fn ore_list_contains(list: *mut OreList, value: i64) -> i8 {
     unsafe {
         let list = &*list;
-        for i in 0..list.len as usize {
-            if *list.data.add(i) == value {
+        for &val in list.as_slice() {
+            if val == value {
                 return 1;
             }
         }
@@ -1236,8 +1252,8 @@ pub extern "C" fn ore_list_contains_str(list: *mut OreList, value: *mut OreStr) 
     unsafe {
         let list = &*list;
         let target = (*value).as_str();
-        for i in 0..list.len as usize {
-            let ptr = *list.data.add(i) as *mut OreStr;
+        for &val in list.as_slice() {
+            let ptr = val as *mut OreStr;
             if !ptr.is_null() && (*ptr).as_str() == target {
                 return 1;
             }
@@ -1316,8 +1332,7 @@ pub extern "C" fn ore_list_map(list: *mut OreList, func: *const u8, env: *mut u8
     unsafe {
         let src = &*list;
         let result = ore_list_new();
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             ore_list_push(result, call_closure(func, env, val));
         }
         result
@@ -1329,8 +1344,7 @@ pub extern "C" fn ore_list_filter(list: *mut OreList, func: *const u8, env: *mut
     unsafe {
         let src = &*list;
         let result = ore_list_new();
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             if call_closure(func, env, val) != 0 {
                 ore_list_push(result, val);
             }
@@ -1343,8 +1357,7 @@ pub extern "C" fn ore_list_filter(list: *mut OreList, func: *const u8, env: *mut
 pub extern "C" fn ore_list_each(list: *mut OreList, func: *const u8, env: *mut u8) {
     unsafe {
         let src = &*list;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             call_closure(func, env, val);
         }
     }
@@ -1371,8 +1384,7 @@ pub extern "C" fn ore_list_fold(list: *mut OreList, init: i64, func: *const u8, 
     unsafe {
         let src = &*list;
         let mut acc = init;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             acc = call_closure2(func, env, acc, val);
         }
         acc
@@ -1414,8 +1426,7 @@ pub extern "C" fn ore_list_unique_by(list: *mut OreList, func: *const u8, env: *
         let src = &*list;
         let result = ore_list_new();
         let mut seen = std::collections::HashSet::new();
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             let key_val = call_closure(func, env, val);
             // Key is expected to be a string pointer
             let key_str = &*(key_val as *mut OreStr);
@@ -1435,8 +1446,7 @@ pub extern "C" fn ore_list_unique_str(list: *mut OreList) -> *mut OreList {
         let src = &*list;
         let result = ore_list_new();
         let mut seen = std::collections::HashSet::new();
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             let s = &*(val as *mut OreStr);
             let key = s.as_str().to_string();
             if seen.insert(key) {
@@ -1452,8 +1462,7 @@ pub extern "C" fn ore_list_unique_str(list: *mut OreList) -> *mut OreList {
 pub extern "C" fn ore_list_tap(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
     unsafe {
         let src = &*list;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             call_closure(func, env, val);
         }
     }
@@ -1492,12 +1501,10 @@ pub extern "C" fn ore_list_each_with_index(list: *mut OreList, func: *const u8, 
 pub extern "C" fn ore_list_par_map(list: *mut OreList, func: *const u8, env: *mut u8) -> *mut OreList {
     unsafe {
         let src = &*list;
-        let len = src.len as usize;
-        if len == 0 {
+        if src.len == 0 {
             return ore_list_new();
         }
-        // Collect elements
-        let elements: Vec<i64> = (0..len).map(|i| *src.data.add(i)).collect();
+        let elements: Vec<i64> = src.as_slice().to_vec();
         // Func and env are both Send because they're raw pointers to immutable data
         let func_usize = func as usize;
         let env_usize = env as usize;
@@ -1521,8 +1528,7 @@ pub extern "C" fn ore_list_par_map(list: *mut OreList, func: *const u8, env: *mu
 pub extern "C" fn ore_list_par_each(list: *mut OreList, func: *const u8, env: *mut u8) {
     unsafe {
         let src = &*list;
-        let len = src.len as usize;
-        let elements: Vec<i64> = (0..len).map(|i| *src.data.add(i)).collect();
+        let elements: Vec<i64> = src.as_slice().to_vec();
         let func_usize = func as usize;
         let env_usize = env as usize;
         let handles: Vec<_> = elements.into_iter().map(|val| {
@@ -1569,8 +1575,8 @@ pub extern "C" fn ore_list_reduce(list: *mut OreList, init: i64, func: *const u8
     unsafe {
         let src = &*list;
         let mut acc = init;
-        for i in 0..src.len as usize {
-            acc = call_closure2(func, env, acc, *src.data.add(i));
+        for &val in src.as_slice() {
+            acc = call_closure2(func, env, acc, val);
         }
         acc
     }
@@ -1595,8 +1601,7 @@ pub extern "C" fn ore_list_reduce1(list: *mut OreList, func: *const u8, env: *mu
 pub extern "C" fn ore_list_find(list: *mut OreList, func: *const u8, env: *mut u8, default: i64) -> i64 {
     unsafe {
         let src = &*list;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             if call_closure(func, env, val) != 0 {
                 return val;
             }
@@ -1612,8 +1617,8 @@ pub extern "C" fn ore_list_join(list: *mut OreList, sep: *mut OreStr) -> *mut Or
         let src = &*list;
         let sep_str = (*sep).as_str();
         let mut parts: Vec<String> = Vec::new();
-        for i in 0..src.len as usize {
-            parts.push(format!("{}", *src.data.add(i)));
+        for &val in src.as_slice() {
+            parts.push(format!("{}", val));
         }
         let joined = parts.join(sep_str);
         ore_str_new(joined.as_ptr(), joined.len() as u32)
@@ -1627,8 +1632,8 @@ pub extern "C" fn ore_list_join_str(list: *mut OreList, sep: *mut OreStr) -> *mu
         let src = &*list;
         let sep_str = (*sep).as_str();
         let mut parts: Vec<&str> = Vec::new();
-        for i in 0..src.len as usize {
-            let s = *src.data.add(i) as *mut OreStr;
+        for &val in src.as_slice() {
+            let s = val as *mut OreStr;
             if !s.is_null() {
                 parts.push((*s).as_str());
             }
@@ -1645,8 +1650,7 @@ pub extern "C" fn ore_list_join_float(list: *mut OreList, sep: *mut OreStr) -> *
         let src = &*list;
         let sep_str = (*sep).as_str();
         let mut parts: Vec<String> = Vec::new();
-        for i in 0..src.len as usize {
-            let bits = *src.data.add(i);
+        for &bits in src.as_slice() {
             let f = f64::from_bits(bits as u64);
             let s = if f == f.floor() && !f.is_infinite() && !f.is_nan() {
                 format!("{:.1}", f)
@@ -1667,8 +1671,8 @@ pub extern "C" fn ore_list_take(list: *mut OreList, n: i64) -> *mut OreList {
         let src = &*list;
         let result = ore_list_new();
         let count = (n.max(0) as usize).min(src.len as usize);
-        for i in 0..count {
-            ore_list_push(result, *src.data.add(i));
+        for &val in &src.as_slice()[..count] {
+            ore_list_push(result, val);
         }
         result
     }
@@ -1681,8 +1685,8 @@ pub extern "C" fn ore_list_skip(list: *mut OreList, n: i64) -> *mut OreList {
         let src = &*list;
         let result = ore_list_new();
         let start = (n.max(0) as usize).min(src.len as usize);
-        for i in start..src.len as usize {
-            ore_list_push(result, *src.data.add(i));
+        for &val in &src.as_slice()[start..] {
+            ore_list_push(result, val);
         }
         result
     }
@@ -1702,8 +1706,7 @@ pub extern "C" fn ore_list_scan(
         let src = &*list;
         let mut acc = init;
         ore_list_push(result, acc);
-        for i in 0..src.len as usize {
-            let elem = *src.data.add(i);
+        for &elem in src.as_slice() {
             acc = call_closure2(func, env, acc, elem);
             ore_list_push(result, acc);
         }
@@ -1721,8 +1724,7 @@ pub extern "C" fn ore_list_take_while(
     let result = ore_list_new();
     unsafe {
         let src = &*list;
-        for i in 0..src.len as usize {
-            let elem = *src.data.add(i);
+        for &elem in src.as_slice() {
             if call_closure(func, env_ptr, elem) == 0 {
                 break;
             }
@@ -1743,8 +1745,7 @@ pub extern "C" fn ore_list_drop_while(
     unsafe {
         let src = &*list;
         let mut dropping = true;
-        for i in 0..src.len as usize {
-            let elem = *src.data.add(i);
+        for &elem in src.as_slice() {
             if dropping && call_closure(func, env_ptr, elem) != 0 {
                 continue;
             }
@@ -1767,8 +1768,7 @@ pub extern "C" fn ore_list_partition(
     let not_matching = ore_list_new();
     unsafe {
         let src = &*list;
-        for i in 0..src.len as usize {
-            let elem = *src.data.add(i);
+        for &elem in src.as_slice() {
             let result = call_closure(func, env_ptr, elem);
             if result != 0 {
                 ore_list_push(matching, elem);
@@ -1831,8 +1831,8 @@ pub extern "C" fn ore_list_sum(list: *mut OreList) -> i64 {
     unsafe {
         let src = &*list;
         let mut total: i64 = 0;
-        for i in 0..src.len as usize {
-            total += *src.data.add(i);
+        for &val in src.as_slice() {
+            total += val;
         }
         total
     }
@@ -1845,8 +1845,8 @@ pub extern "C" fn ore_list_average(list: *mut OreList) -> f64 {
         let src = &*list;
         if src.len == 0 { return 0.0; }
         let mut total: i64 = 0;
-        for i in 0..src.len as usize {
-            total += *src.data.add(i);
+        for &val in src.as_slice() {
+            total += val;
         }
         total as f64 / src.len as f64
     }
@@ -1859,8 +1859,8 @@ pub extern "C" fn ore_list_average_float(list: *mut OreList) -> f64 {
         let src = &*list;
         if src.len == 0 { return 0.0; }
         let mut total: f64 = 0.0;
-        for i in 0..src.len as usize {
-            total += f64::from_bits(*src.data.add(i) as u64);
+        for &val in src.as_slice() {
+            total += f64::from_bits(val as u64);
         }
         total / src.len as f64
     }
@@ -1871,8 +1871,8 @@ pub extern "C" fn ore_list_sum_float(list: *mut OreList) -> f64 {
     unsafe {
         let src = &*list;
         let mut total: f64 = 0.0;
-        for i in 0..src.len as usize {
-            total += f64::from_bits(*src.data.add(i) as u64);
+        for &val in src.as_slice() {
+            total += f64::from_bits(val as u64);
         }
         total
     }
@@ -1883,8 +1883,8 @@ pub extern "C" fn ore_list_product_float(list: *mut OreList) -> f64 {
     unsafe {
         let src = &*list;
         let mut total: f64 = 1.0;
-        for i in 0..src.len as usize {
-            total *= f64::from_bits(*src.data.add(i) as u64);
+        for &val in src.as_slice() {
+            total *= f64::from_bits(val as u64);
         }
         total
     }
@@ -1917,8 +1917,8 @@ pub extern "C" fn ore_list_product(list: *mut OreList) -> i64 {
     unsafe {
         let src = &*list;
         let mut total: i64 = 1;
-        for i in 0..src.len as usize {
-            total *= *src.data.add(i);
+        for &val in src.as_slice() {
+            total *= val;
         }
         total
     }
@@ -1930,13 +1930,12 @@ pub extern "C" fn ore_list_flat_map(list: *mut OreList, func: *const u8, env: *m
     unsafe {
         let src = &*list;
         let result = ore_list_new();
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             let sub_list = call_closure(func, env, val) as *mut OreList;
             if !sub_list.is_null() {
                 let sub = &*sub_list;
-                for j in 0..sub.len as usize {
-                    ore_list_push(result, *sub.data.add(j));
+                for &sub_val in sub.as_slice() {
+                    ore_list_push(result, sub_val);
                 }
             }
         }
@@ -1949,8 +1948,7 @@ pub extern "C" fn ore_list_flat_map(list: *mut OreList, func: *const u8, env: *m
 pub extern "C" fn ore_list_any(list: *mut OreList, func: *const u8, env: *mut u8) -> i8 {
     unsafe {
         let src = &*list;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             if call_closure(func, env, val) != 0 {
                 return 1;
             }
@@ -1964,8 +1962,7 @@ pub extern "C" fn ore_list_any(list: *mut OreList, func: *const u8, env: *mut u8
 pub extern "C" fn ore_list_all(list: *mut OreList, func: *const u8, env: *mut u8) -> i8 {
     unsafe {
         let src = &*list;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             if call_closure(func, env, val) == 0 {
                 return 0;
             }
@@ -2048,8 +2045,7 @@ pub extern "C" fn ore_list_count_by(list: *mut OreList, func: *const u8, env: *m
     unsafe {
         let src = &*list;
         let result = ore_map_new();
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             let key_val = call_closure(func, env, val);
             let key_str = &*(key_val as *mut OreStr);
             let key = key_str.as_str().to_string();
@@ -2069,8 +2065,7 @@ pub extern "C" fn ore_list_count_by_int(list: *mut OreList, func: *const u8, env
     unsafe {
         let src = &*list;
         let result = ore_map_new();
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             let key_val = call_closure(func, env, val);
             let key = key_val.to_string();
             let map = &mut *result;
@@ -2089,8 +2084,7 @@ pub extern "C" fn ore_list_group_by(list: *mut OreList, func: *const u8, env: *m
     unsafe {
         let src = &*list;
         let result = ore_map_new();
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             let key_val = call_closure(func, env, val);
             let key_str = &*(key_val as *mut OreStr);
             let key = key_str.as_str().to_string();
@@ -2368,8 +2362,7 @@ pub extern "C" fn ore_list_to_map(list: *mut OreList, func: *const u8, env: *mut
         let src = &*list;
         let result = ore_map_new();
         let map = &mut *result;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             let key_val = call_closure(func, env, val);
             let key_str = &*(key_val as *mut OreStr);
             let key = key_str.as_str().to_string();
@@ -2388,8 +2381,7 @@ pub extern "C" fn ore_list_frequencies(list: *mut OreList, elem_kind: i8) -> *mu
         let src = &*list;
         let result = ore_map_new();
         let map = &mut *result;
-        for i in 0..src.len as usize {
-            let val = *src.data.add(i);
+        for &val in src.as_slice() {
             let key = match elem_kind {
                 0 => format!("{}", val), // Int
                 1 => {
