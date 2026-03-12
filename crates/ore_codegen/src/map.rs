@@ -101,24 +101,9 @@ impl<'ctx> CodeGen<'ctx> {
             "each" => {
                 self.check_arity("map.each()", args, 1)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
-                let lambda_fn = match &args[0] {
-                    Expr::Lambda { params, body } => {
-                        let kinds = vec![ValKind::Str, val_kind.clone()];
-                        self.compile_lambda_with_kinds(params, body, Some(&kinds))?
-                    }
-                    Expr::Ident(name) => {
-                        let (f, _) = self.resolve_function(name)?;
-                        f
-                    }
-                    _ => return Err(self.err("map.each() requires a lambda")),
-                };
-                let lambda_name = Self::get_lambda_name(lambda_fn);
+                let kinds = [ValKind::Str, val_kind];
+                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.each()", false)?;
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
-                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
-                    self.build_captures_struct(&lambda_name)?
-                } else {
-                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
-                };
                 let rt = self.rt("ore_map_each")?;
                 bld!(self.builder.build_call(rt, &[map_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
                 Ok(self.void_result())
@@ -126,48 +111,18 @@ impl<'ctx> CodeGen<'ctx> {
             "map" => {
                 self.check_arity("map.map()", args, 1)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
-                let lambda_fn = match &args[0] {
-                    Expr::Lambda { params, body } => {
-                        let kinds = vec![ValKind::Str, val_kind.clone()];
-                        self.compile_lambda_with_kinds(params, body, Some(&kinds))?
-                    }
-                    Expr::Ident(name) => {
-                        let (f, _) = self.resolve_function(name)?;
-                        f
-                    }
-                    _ => return Err(self.err("map.map() requires a lambda")),
-                };
-                let lambda_name = Self::get_lambda_name(lambda_fn);
+                let kinds = [ValKind::Str, val_kind];
+                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.map()", false)?;
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
-                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
-                    self.build_captures_struct(&lambda_name)?
-                } else {
-                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
-                };
                 let val = self.call_rt("ore_map_map_values", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mmap")?;
                 Ok((val, ValKind::Map))
             }
             "filter" => {
                 self.check_arity("map.filter()", args, 1)?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
-                let lambda_fn = match &args[0] {
-                    Expr::Lambda { params, body } => {
-                        let kinds = vec![ValKind::Str, val_kind.clone()];
-                        self.compile_lambda_with_kinds(params, body, Some(&kinds))?
-                    }
-                    Expr::Ident(name) => {
-                        let (f, _) = self.resolve_function(name)?;
-                        f
-                    }
-                    _ => return Err(self.err("map.filter() requires a lambda")),
-                };
-                let lambda_name = Self::get_lambda_name(lambda_fn);
+                let kinds = [ValKind::Str, val_kind];
+                let (lambda_fn, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.filter()", false)?;
                 let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
-                let env_ptr = if self.lambda_captures.contains_key(&lambda_name) {
-                    self.build_captures_struct(&lambda_name)?
-                } else {
-                    self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
-                };
                 let val = self.call_rt("ore_map_filter", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mfilter")?;
                 Ok((val, ValKind::Map))
             }

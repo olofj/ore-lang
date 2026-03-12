@@ -198,7 +198,7 @@ impl<'ctx> CodeGen<'ctx> {
     /// Resolve a lambda or function reference argument into (FunctionValue, fn_ptr, env_ptr).
     /// `param_kinds` specifies the types passed to the lambda parameters.
     /// If `track_return_kind` is true, sets `self.last_lambda_return_kind` from named function refs.
-    pub(crate) fn resolve_list_lambda_arg(
+    pub(crate) fn resolve_lambda_arg(
         &mut self,
         arg: &Expr,
         param_kinds: &[ValKind],
