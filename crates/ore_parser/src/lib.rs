@@ -1160,48 +1160,7 @@ impl Parser {
                 self.advance();
                 let subject = self.parse_expr(0)?;
                 self.skip_newlines();
-                self.expect(&Token::Indent)?;
-                let mut arms = Vec::new();
-                while !self.at_block_end() {
-                    self.skip_newlines();
-                    if self.at_block_end() {
-                        break;
-                    }
-                    let mut pattern = self.parse_pattern()?;
-                    // Check for or-patterns: `pattern | pattern`
-                    if self.peek() == &Token::Pipe {
-                        let mut alternatives = vec![pattern];
-                        while self.peek() == &Token::Pipe {
-                            self.advance();
-                            alternatives.push(self.parse_pattern()?);
-                        }
-                        pattern = Pattern::Or(alternatives);
-                    }
-                    let guard = if self.peek() == &Token::If {
-                        self.advance();
-                        Some(Box::new(self.parse_expr(0)?))
-                    } else {
-                        None
-                    };
-                    self.expect(&Token::Arrow)?;
-                    // Support multiline match arms: if newline+INDENT follows ->, parse a block
-                    let body = if self.peek() == &Token::Newline || self.peek() == &Token::Indent {
-                        self.skip_newlines();
-                        if self.peek() == &Token::Indent {
-                            let block = self.parse_block()?;
-                            Expr::BlockExpr(block)
-                        } else {
-                            self.parse_expr(0)?
-                        }
-                    } else {
-                        self.parse_expr(0)?
-                    };
-                    arms.push(MatchArm { pattern, guard, body });
-                    self.skip_newlines();
-                }
-                if self.peek() == &Token::Dedent {
-                    self.advance();
-                }
+                let arms = self.parse_match_arms()?;
                 Ok(Expr::Match { subject: Box::new(subject), arms })
             }
             Token::If => {
