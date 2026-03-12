@@ -481,6 +481,28 @@ impl Parser {
         Ok(Block { stmts })
     }
 
+    // ── Helpers ──
+
+    fn parse_optional_string_message(&mut self) -> Result<Option<String>, ParseError> {
+        if self.peek() == &Token::Comma {
+            self.advance();
+            match self.peek().clone() {
+                Token::StringLit(s) => { self.advance(); Ok(Some(s)) }
+                _ => Ok(None),
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn parse_assert_args(&mut self) -> Result<(bool, Expr, Option<String>), ParseError> {
+        let has_parens = self.peek() == &Token::LParen;
+        if has_parens { self.advance(); }
+        let expr = self.parse_expr(0)?;
+        let message = self.parse_optional_string_message()?;
+        Ok((has_parens, expr, message))
+    }
+
     // ── Statements ──
 
     fn parse_stmt(&mut self) -> Result<Stmt, ParseError> {
@@ -578,58 +600,25 @@ impl Parser {
             }
             Token::Assert => {
                 self.advance();
-                let has_parens = self.peek() == &Token::LParen;
-                if has_parens { self.advance(); }
-                let cond = self.parse_expr(0)?;
-                let message = if self.peek() == &Token::Comma {
-                    self.advance();
-                    match self.peek().clone() {
-                        Token::StringLit(s) => { self.advance(); Some(s) }
-                        _ => None,
-                    }
-                } else {
-                    None
-                };
+                let (has_parens, cond, message) = self.parse_assert_args()?;
                 if has_parens { self.expect(&Token::RParen)?; }
                 Ok(Stmt::Expr(Expr::Assert { cond: Box::new(cond), message }))
             }
-            Token::AssertEq => {
+            Token::AssertEq | Token::AssertNe => {
+                let is_ne = *self.peek() == Token::AssertNe;
                 self.advance();
                 let has_parens = self.peek() == &Token::LParen;
                 if has_parens { self.advance(); }
                 let left = self.parse_expr(0)?;
                 self.expect(&Token::Comma)?;
                 let right = self.parse_expr(0)?;
-                let message = if self.peek() == &Token::Comma {
-                    self.advance();
-                    match self.peek().clone() {
-                        Token::StringLit(s) => { self.advance(); Some(s) }
-                        _ => None,
-                    }
-                } else {
-                    None
-                };
+                let message = self.parse_optional_string_message()?;
                 if has_parens { self.expect(&Token::RParen)?; }
-                Ok(Stmt::Expr(Expr::AssertEq { left: Box::new(left), right: Box::new(right), message }))
-            }
-            Token::AssertNe => {
-                self.advance();
-                let has_parens = self.peek() == &Token::LParen;
-                if has_parens { self.advance(); }
-                let left = self.parse_expr(0)?;
-                self.expect(&Token::Comma)?;
-                let right = self.parse_expr(0)?;
-                let message = if self.peek() == &Token::Comma {
-                    self.advance();
-                    match self.peek().clone() {
-                        Token::StringLit(s) => { self.advance(); Some(s) }
-                        _ => None,
-                    }
+                if is_ne {
+                    Ok(Stmt::Expr(Expr::AssertNe { left: Box::new(left), right: Box::new(right), message }))
                 } else {
-                    None
-                };
-                if has_parens { self.expect(&Token::RParen)?; }
-                Ok(Stmt::Expr(Expr::AssertNe { left: Box::new(left), right: Box::new(right), message }))
+                    Ok(Stmt::Expr(Expr::AssertEq { left: Box::new(left), right: Box::new(right), message }))
+                }
             }
             Token::Mut => {
                 self.advance();
