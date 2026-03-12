@@ -202,32 +202,13 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub(crate) fn compile_string_literal(&mut self, s: &str) -> Result<PointerValue<'ctx>, CodeGenError> {
-        let bytes = s.as_bytes();
-        let global_name = format!(".str.{}", self.str_counter);
-        self.str_counter += 1;
-
-        let i8_type = self.context.i8_type();
-        let arr_type = i8_type.array_type(bytes.len() as u32);
-        let global = self.module.add_global(arr_type, None, &global_name);
-        global.set_initializer(&i8_type.const_array(
-            &bytes.iter().map(|&b| i8_type.const_int(b as u64, false)).collect::<Vec<_>>(),
-        ));
-        global.set_constant(true);
-
+        let ptr = self.builder_string_const(s);
         let str_new = self.rt("ore_str_new")?;
-        let ptr = bld!(self.builder.build_pointer_cast(
-            global.as_pointer_value(),
-            self.ptr_type(),
-            "strptr"
-        ))?;
-        let len = self.context.i32_type().const_int(bytes.len() as u64, false);
+        let len = self.context.i32_type().const_int(s.len() as u64, false);
         let result = bld!(self.builder.build_call(str_new, &[ptr.into(), len.into()], "str"))?;
         match result.try_as_basic_value() {
             inkwell::values::ValueKind::Basic(BasicValueEnum::PointerValue(p)) => Ok(p),
-            inkwell::values::ValueKind::Basic(v) => {
-                // Should be pointer but handle gracefully
-                Ok(v.into_pointer_value())
-            }
+            inkwell::values::ValueKind::Basic(v) => Ok(v.into_pointer_value()),
             _ => Err(self.err("ore_str_new did not return a pointer")),
         }
     }
