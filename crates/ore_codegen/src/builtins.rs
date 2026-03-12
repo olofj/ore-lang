@@ -1,5 +1,5 @@
 use super::*;
-use inkwell::values::{BasicValueEnum, PointerValue};
+use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
 use inkwell::IntPredicate;
 
 impl<'ctx> CodeGen<'ctx> {
@@ -154,6 +154,385 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
         Ok(())
+    }
+
+    /// Try to compile a call to a built-in stdlib function.
+    /// Returns `Ok(Some(...))` if the name matched a builtin, `Ok(None)` if not.
+    pub(crate) fn compile_builtin_call(
+        &mut self,
+        name: &str,
+        args: &[Expr],
+        func: FunctionValue<'ctx>,
+    ) -> Result<Option<(BasicValueEnum<'ctx>, ValKind)>, CodeGenError> {
+        match name {
+            "abs" => {
+                self.check_arity("abs", args, 1)?;
+                let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                match kind {
+                    ValKind::Int => {
+                        let x = val.into_int_value();
+                        let shift = self.context.i64_type().const_int(63, false);
+                        let sign = bld!(self.builder.build_right_shift(x, shift, true, "sign"))?;
+                        let xored = bld!(self.builder.build_xor(x, sign, "xor"))?;
+                        let result = bld!(self.builder.build_int_sub(xored, sign, "abs"))?;
+                        Ok(Some((result.into(), ValKind::Int)))
+                    }
+                    ValKind::Float => {
+                        let x = val.into_float_value();
+                        let neg = bld!(self.builder.build_float_neg(x, "neg"))?;
+                        let zero = self.context.f64_type().const_float(0.0);
+                        let is_neg = bld!(self.builder.build_float_compare(
+                            inkwell::FloatPredicate::OLT, x, zero, "is_neg"
+                        ))?;
+                        let result = bld!(self.builder.build_select(is_neg, neg, x, "abs"))?;
+                        Ok(Some((result, ValKind::Float)))
+                    }
+                    _ => Err(self.err("abs requires Int or Float")),
+                }
+            }
+            "min" => {
+                self.check_arity("min", args, 2)?;
+                let (a, ak) = self.compile_expr_with_kind(&args[0], func)?;
+                let (b, _) = self.compile_expr_with_kind(&args[1], func)?;
+                if ak == ValKind::Float {
+                    let cmp = bld!(self.builder.build_float_compare(
+                        inkwell::FloatPredicate::OLT, a.into_float_value(), b.into_float_value(), "cmp"
+                    ))?;
+                    let result = bld!(self.builder.build_select(cmp, a, b, "min"))?;
+                    return Ok(Some((result, ValKind::Float)));
+                }
+                let cmp = bld!(self.builder.build_int_compare(
+                    inkwell::IntPredicate::SLT, a.into_int_value(), b.into_int_value(), "cmp"
+                ))?;
+                let result = bld!(self.builder.build_select(cmp, a, b, "min"))?;
+                Ok(Some((result, ValKind::Int)))
+            }
+            "max" => {
+                self.check_arity("max", args, 2)?;
+                let (a, ak) = self.compile_expr_with_kind(&args[0], func)?;
+                let (b, _) = self.compile_expr_with_kind(&args[1], func)?;
+                if ak == ValKind::Float {
+                    let cmp = bld!(self.builder.build_float_compare(
+                        inkwell::FloatPredicate::OGT, a.into_float_value(), b.into_float_value(), "cmp"
+                    ))?;
+                    let result = bld!(self.builder.build_select(cmp, a, b, "max"))?;
+                    return Ok(Some((result, ValKind::Float)));
+                }
+                let cmp = bld!(self.builder.build_int_compare(
+                    inkwell::IntPredicate::SGT, a.into_int_value(), b.into_int_value(), "cmp"
+                ))?;
+                let result = bld!(self.builder.build_select(cmp, a, b, "max"))?;
+                Ok(Some((result, ValKind::Int)))
+            }
+            "channel" => {
+                let val = self.call_rt("ore_channel_new", &[], "ch")?;
+                Ok(Some((val, ValKind::Channel)))
+            }
+            "readln" | "input" => {
+                if args.len() == 1 {
+                    let (prompt, _) = self.compile_expr_with_kind(&args[0], func)?;
+                    let print_fn = self.rt("ore_str_print_no_newline")?;
+                    bld!(self.builder.build_call(print_fn, &[prompt.into()], ""))?;
+                }
+                let val = self.call_rt("ore_readln", &[], "readln")?;
+                Ok(Some((val, ValKind::Str)))
+            }
+            "file_read" => {
+                self.check_arity("file_read", args, 1)?;
+                let path_val = self.compile_expr(&args[0], func)?;
+                let val = self.call_rt("ore_file_read", &[path_val.into()], "file_read")?;
+                Ok(Some((val, ValKind::Str)))
+            }
+            "file_read_lines" => {
+                self.check_arity("file_read_lines", args, 1)?;
+                let path_val = self.compile_expr(&args[0], func)?;
+                let val = self.call_rt("ore_file_read_lines", &[path_val.into()], "file_read_lines")?;
+                self.last_list_elem_kind = Some(ValKind::Str);
+                Ok(Some((val, ValKind::list_of(ValKind::Str))))
+            }
+            "file_write" | "file_append" => {
+                self.check_arity(name, args, 2)?;
+                let path_val = self.compile_expr(&args[0], func)?;
+                let content_val = self.compile_expr(&args[1], func)?;
+                let rt_name = format!("ore_{}", name);
+                let val = self.call_rt(&rt_name, &[path_val.into(), content_val.into()], name)?;
+                Ok(Some((val, ValKind::Bool)))
+            }
+            "file_exists" => {
+                self.check_arity("file_exists", args, 1)?;
+                let path_val = self.compile_expr(&args[0], func)?;
+                let i8_val = self.call_rt("ore_file_exists", &[path_val.into()], "file_exists")?.into_int_value();
+                let bool_val = bld!(self.builder.build_int_compare(
+                    IntPredicate::NE,
+                    i8_val,
+                    self.context.i8_type().const_int(0, false),
+                    "tobool"
+                ))?;
+                Ok(Some((bool_val.into(), ValKind::Bool)))
+            }
+            "env_get" => {
+                self.check_arity("env_get", args, 1)?;
+                let key = self.compile_expr(&args[0], func)?;
+                let val = self.call_rt("ore_env_get", &[key.into()], "env_get")?;
+                Ok(Some((val, ValKind::Str)))
+            }
+            "env_set" => {
+                self.check_arity("env_set", args, 2)?;
+                let key = self.compile_expr(&args[0], func)?;
+                let value = self.compile_expr(&args[1], func)?;
+                let rt = self.rt("ore_env_set")?;
+                bld!(self.builder.build_call(rt, &[key.into(), value.into()], ""))?;
+                Ok(Some((self.context.i64_type().const_int(0, false).into(), ValKind::Int)))
+            }
+            "args" => {
+                let val = self.call_rt("ore_args", &[], "args")?;
+                self.last_list_elem_kind = Some(ValKind::Str);
+                Ok(Some((val, ValKind::list_of(ValKind::Str))))
+            }
+            "eprint" => {
+                self.check_arity("eprint", args, 1)?;
+                let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                let rt_name = match kind {
+                    ValKind::Str => "ore_eprint_str",
+                    ValKind::Float => "ore_eprint_float",
+                    ValKind::Bool => "ore_eprint_bool",
+                    _ => "ore_eprint_int",
+                };
+                let rt = self.rt(rt_name)?;
+                bld!(self.builder.build_call(rt, &[val.into()], ""))?;
+                Ok(Some(self.void_result()))
+            }
+            "exit" => {
+                self.check_arity("exit", args, 1)?;
+                let code = self.compile_expr(&args[0], func)?;
+                let rt = self.rt("ore_exit")?;
+                bld!(self.builder.build_call(rt, &[code.into()], ""))?;
+                Ok(Some((self.context.i64_type().const_int(0, false).into(), ValKind::Int)))
+            }
+            "exec" => {
+                self.check_arity("exec", args, 1)?;
+                let cmd_val = self.compile_expr(&args[0], func)?;
+                let val = self.call_rt("ore_exec", &[cmd_val.into()], "exec")?;
+                Ok(Some((val, ValKind::Str)))
+            }
+            "str" => {
+                self.check_arity("str", args, 1)?;
+                let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                let str_val = self.value_to_str(val, kind)?;
+                Ok(Some((str_val.into(), ValKind::Str)))
+            }
+            "int" => {
+                self.check_arity("int", args, 1)?;
+                let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                match kind {
+                    ValKind::Int => Ok(Some((val, ValKind::Int))),
+                    ValKind::Float => {
+                        let i = bld!(self.builder.build_float_to_signed_int(val.into_float_value(), self.context.i64_type(), "ftoi"))?;
+                        Ok(Some((i.into(), ValKind::Int)))
+                    }
+                    ValKind::Bool => {
+                        let i = bld!(self.builder.build_int_z_extend(val.into_int_value(), self.context.i64_type(), "btoi"))?;
+                        Ok(Some((i.into(), ValKind::Int)))
+                    }
+                    ValKind::Str => {
+                        let v = self.call_rt("ore_str_to_int", &[val.into()], "stoi")?;
+                        Ok(Some((v, ValKind::Int)))
+                    }
+                    _ => Err(self.err("int() cannot convert this type")),
+                }
+            }
+            "float" => {
+                self.check_arity("float", args, 1)?;
+                let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                match kind {
+                    ValKind::Float => Ok(Some((val, ValKind::Float))),
+                    ValKind::Int => {
+                        let f = self.coerce_to_float(val, &kind, "float()")?;
+                        Ok(Some((f.into(), ValKind::Float)))
+                    }
+                    ValKind::Str => {
+                        let v = self.call_rt("ore_str_to_float", &[val.into()], "stof")?;
+                        Ok(Some((v, ValKind::Float)))
+                    }
+                    _ => Err(self.err("float() cannot convert this type")),
+                }
+            }
+            "ord" => {
+                self.check_arity("ord", args, 1)?;
+                let str_val = self.compile_expr(&args[0], func)?;
+                let val = self.call_rt("ore_ord", &[str_val.into()], "ord")?;
+                Ok(Some((val, ValKind::Int)))
+            }
+            "chr" => {
+                self.check_arity("chr", args, 1)?;
+                let int_val = self.compile_expr(&args[0], func)?;
+                let val = self.call_rt("ore_chr", &[int_val.into()], "chr")?;
+                Ok(Some((val, ValKind::Str)))
+            }
+            "type_of" => {
+                self.check_arity("type_of", args, 1)?;
+                let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                let kind_tag = self.valkind_to_tag(&kind);
+                let kind_val = self.context.i8_type().const_int(kind_tag as u64, false);
+                let val = self.call_rt("ore_type_of", &[kind_val.into()], "typeof")?;
+                Ok(Some((val, ValKind::Str)))
+            }
+            "rand_int" => {
+                self.check_arity("rand_int", args, 2)?;
+                let low = self.compile_expr(&args[0], func)?;
+                let high = self.compile_expr(&args[1], func)?;
+                let val = self.call_rt("ore_rand_int", &[low.into(), high.into()], "rand")?;
+                Ok(Some((val, ValKind::Int)))
+            }
+            "time_now" | "time_ms" => {
+                let rt_name = format!("ore_{}", name);
+                let val = self.call_rt(&rt_name, &[], name)?;
+                Ok(Some((val, ValKind::Int)))
+            }
+            "json_parse" => {
+                self.check_arity("json_parse", args, 1)?;
+                let str_val = self.compile_expr(&args[0], func)?;
+                let val = self.call_rt("ore_json_parse", &[str_val.into()], "json_parse")?;
+                Ok(Some((val, ValKind::Map)))
+            }
+            "json_stringify" => {
+                self.check_arity("json_stringify", args, 1)?;
+                let map_val = self.compile_expr(&args[0], func)?;
+                let val = self.call_rt("ore_json_stringify", &[map_val.into()], "json_stringify")?;
+                Ok(Some((val, ValKind::Str)))
+            }
+            "repeat" => {
+                self.check_arity("repeat", args, 2)?;
+                let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                let val_i64 = self.value_to_i64(val)?;
+                let count = self.compile_expr(&args[1], func)?;
+                let list_val = self.call_rt("ore_list_repeat", &[val_i64.into(), count.into()], "repeat")?;
+                let kind_for_list = kind.clone();
+                self.last_list_elem_kind = Some(kind);
+                Ok(Some((list_val, ValKind::list_of(kind_for_list))))
+            }
+            "range" => {
+                if args.len() < 2 || args.len() > 3 {
+                    return Err(self.err("range takes 2-3 arguments (start, end, [step])"));
+                }
+                let start = self.compile_expr(&args[0], func)?;
+                let end = self.compile_expr(&args[1], func)?;
+                let result = if args.len() == 3 {
+                    let step = self.compile_expr(&args[2], func)?;
+                    let rt = self.rt("ore_range_step")?;
+                    bld!(self.builder.build_call(rt, &[start.into(), end.into(), step.into()], "range"))?
+                } else {
+                    let rt = self.rt("ore_range")?;
+                    bld!(self.builder.build_call(rt, &[start.into(), end.into()], "range"))?
+                };
+                let val = self.call_result_to_value(result)?;
+                self.last_list_elem_kind = Some(ValKind::Int);
+                Ok(Some((val, ValKind::list_of(ValKind::Int))))
+            }
+            "len" => {
+                self.check_arity("len()", args, 1)?;
+                let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                match kind {
+                    ValKind::Str => Ok(Some((self.call_rt("ore_str_len", &[val.into()], "slen")?, ValKind::Int))),
+                    ValKind::List(_) => Ok(Some((self.call_rt("ore_list_len", &[val.into()], "llen")?, ValKind::Int))),
+                    ValKind::Map => Ok(Some((self.call_rt("ore_map_len", &[val.into()], "mlen")?, ValKind::Int))),
+                    _ => Err(self.err("len() not supported on this type")),
+                }
+            }
+            "assert" => {
+                if args.is_empty() || args.len() > 2 {
+                    return Err(self.err("assert takes 1-2 arguments (condition, optional message)"));
+                }
+                let (cond, _) = self.compile_expr_with_kind(&args[0], func)?;
+                let cond_bool = cond.into_int_value();
+
+                let pass_bb = self.context.append_basic_block(func, "assert_pass");
+                let fail_bb = self.context.append_basic_block(func, "assert_fail");
+                bld!(self.builder.build_conditional_branch(cond_bool, pass_bb, fail_bb))?;
+
+                self.builder.position_at_end(fail_bb);
+                let msg = if args.len() == 2 {
+                    self.compile_expr(&args[1], func)?.into_pointer_value()
+                } else {
+                    let line = self.current_line;
+                    self.compile_string_literal(&format!("assertion failed at line {}", line))?
+                };
+                let rt = self.rt("ore_assert_fail")?;
+                bld!(self.builder.build_call(rt, &[msg.into()], ""))?;
+                bld!(self.builder.build_unreachable())?;
+
+                self.builder.position_at_end(pass_bb);
+                Ok(Some(self.void_result()))
+            }
+            "typeof" => {
+                self.check_arity("typeof", args, 1)?;
+                let (_, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                let type_name = match kind {
+                    ValKind::Int => "Int",
+                    ValKind::Float => "Float",
+                    ValKind::Bool => "Bool",
+                    ValKind::Str => "Str",
+                    ValKind::List(_) => "List",
+                    ValKind::Map => "Map",
+                    ValKind::Option => "Option",
+                    ValKind::Result => "Result",
+                    ValKind::Void => "Void",
+                    ValKind::Record(ref n) => n.as_str(),
+                    ValKind::Enum(ref n) => n.as_str(),
+                    ValKind::Channel => "Channel",
+                };
+                let str_val = self.compile_string_literal(type_name)?;
+                Ok(Some((str_val.into(), ValKind::Str)))
+            }
+            // Math functions
+            "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "floor" | "ceil" | "round" | "math_abs" | "math_floor" | "math_ceil" | "math_round" => {
+                // round(x, decimals) — 2-arg overload
+                if (name == "round" || name == "math_round") && args.len() == 2 {
+                    let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                    let f_val = self.coerce_to_float(val, &kind, "round()")?;
+                    let (dec_val, dec_kind) = self.compile_expr_with_kind(&args[1], func)?;
+                    let dec_i = match dec_kind {
+                        ValKind::Int => dec_val.into_int_value(),
+                        _ => return Err(self.err("round() second argument must be Int (decimals)")),
+                    };
+                    let val = self.call_rt("ore_float_round_to", &[f_val.into(), dec_i.into()], "round_to")?;
+                    return Ok(Some((val, ValKind::Float)));
+                }
+                self.check_arity(name, args, 1)?;
+                let (val, kind) = self.compile_expr_with_kind(&args[0], func)?;
+                let f_val = self.coerce_to_float(val, &kind, &format!("{}()", name))?;
+                let rt_name = format!("ore_math_{}", name.strip_prefix("math_").unwrap_or(name));
+                let val = self.call_rt(&rt_name, &[f_val.into()], name)?;
+                Ok(Some((val, ValKind::Float)))
+            }
+            "pow" => {
+                self.check_arity("pow()", args, 2)?;
+                let (base, bk) = self.compile_expr_with_kind(&args[0], func)?;
+                let (exp, ek) = self.compile_expr_with_kind(&args[1], func)?;
+                let base_f = self.coerce_to_float(base, &bk, "pow()")?;
+                let exp_f = self.coerce_to_float(exp, &ek, "pow()")?;
+                let val = self.call_rt("ore_math_pow", &[base_f.into(), exp_f.into()], "pow")?;
+                Ok(Some((val, ValKind::Float)))
+            }
+            "atan2" => {
+                self.check_arity("atan2()", args, 2)?;
+                let (y, yk) = self.compile_expr_with_kind(&args[0], func)?;
+                let (x, xk) = self.compile_expr_with_kind(&args[1], func)?;
+                let y_f = self.coerce_to_float(y, &yk, "atan2()")?;
+                let x_f = self.coerce_to_float(x, &xk, "atan2()")?;
+                let val = self.call_rt("ore_math_atan2", &[y_f.into(), x_f.into()], "atan2")?;
+                Ok(Some((val, ValKind::Float)))
+            }
+            "pi" => {
+                let val = self.call_rt("ore_math_pi", &[], "pi")?;
+                Ok(Some((val, ValKind::Float)))
+            }
+            "euler" | "e" => {
+                let val = self.call_rt("ore_math_e", &[], "euler")?;
+                Ok(Some((val, ValKind::Float)))
+            }
+            _ => Ok(None),
+        }
     }
 
 }
