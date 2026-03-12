@@ -430,8 +430,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("channel.send()", args, 1)?;
                 let val = self.compile_expr(&args[0], func)?;
                 let i64_val = self.value_to_i64(val)?;
-                let rt = self.rt("ore_channel_send")?;
-                bld!(self.builder.build_call(rt, &[ch_val.into(), i64_val.into()], ""))?;
+                self.call_rt("ore_channel_send", &[ch_val.into(), i64_val.into()], "")?;
                 Ok(self.void_result())
             }
             "recv" => {
