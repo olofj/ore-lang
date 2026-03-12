@@ -26,8 +26,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((is_zero.into(), ValKind::Bool))
             }
             "clear" => {
-                let rt = self.rt("ore_list_clear")?;
-                bld!(self.builder.build_call(rt, &[list_val.into()], ""))?;
+                self.call_rt("ore_list_clear", &[list_val.into()], "")?;
                 Ok((list_val, self.current_list_kind()))
             }
             "push" => {
@@ -51,8 +50,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let idx = self.compile_expr(&args[0], func)?;
                 let (val, _) = self.compile_expr_with_kind(&args[1], func)?;
                 let i64_val = self.value_to_i64(val)?;
-                let rt = self.rt("ore_list_insert")?;
-                bld!(self.builder.build_call(rt, &[list_val.into(), idx.into(), i64_val.into()], ""))?;
+                self.call_rt("ore_list_insert", &[list_val.into(), idx.into(), i64_val.into()], "")?;
                 Ok((list_val, self.current_list_kind()))
             }
             "remove_at" => {
@@ -75,8 +73,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let idx = self.compile_expr(&args[0], func)?;
                 let val = self.compile_expr(&args[1], func)?;
                 let val_i64 = self.value_to_i64(val)?;
-                let rt = self.rt("ore_list_set")?;
-                bld!(self.builder.build_call(rt, &[list_val.into(), idx.into(), val_i64.into()], ""))?;
+                self.call_rt("ore_list_set", &[list_val.into(), idx.into(), val_i64.into()], "")?;
                 Ok((list_val, self.current_list_kind()))
             }
             "get_or" => {
@@ -140,12 +137,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let kinds = vec![self.list_elem_kind()];
                 let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
 
-                let runtime_fn = self.rt("ore_list_each")?;
-                bld!(self.builder.build_call(
-                    runtime_fn,
-                    &[list_val.into(), fn_ptr.into(), env_ptr.into()],
-                    ""
-                ))?;
+                self.call_rt("ore_list_each", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "")?;
                 Ok(self.void_result())
             }
             "tap" => {
@@ -170,8 +162,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let kinds = vec![ValKind::Int, self.list_elem_kind()];
                 let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, method, false)?;
 
-                let rt = self.rt("ore_list_each_with_index")?;
-                bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
+                self.call_rt("ore_list_each_with_index", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "")?;
                 Ok(self.void_result())
             }
             "par_map" => {
@@ -186,8 +177,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("par_each", args, 1)?;
                 let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &[ValKind::Int], method, false)?;
 
-                let rt = self.rt("ore_list_par_each")?;
-                bld!(self.builder.build_call(rt, &[list_val.into(), fn_ptr.into(), env_ptr.into()], ""))?;
+                self.call_rt("ore_list_par_each", &[list_val.into(), fn_ptr.into(), env_ptr.into()], "")?;
                 Ok(self.void_result())
             }
             "sort" => {
@@ -235,19 +225,12 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("contains", args, 1)?;
                 let elem_kind = self.list_elem_kind();
                 let (val, _) = self.compile_expr_with_kind(&args[0], func)?;
-                let result = if matches!(elem_kind, ValKind::Str) {
-                    let rt = self.rt("ore_list_contains_str")?;
-                    bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lcontains"))?
+                let i8_val = if matches!(elem_kind, ValKind::Str) {
+                    self.call_rt("ore_list_contains_str", &[list_val.into(), val.into()], "lcontains")?
                 } else {
-                    let rt = self.rt("ore_list_contains")?;
-                    let i64_val = if val.is_pointer_value() {
-                        self.ptr_to_i64(val.into_pointer_value())?.into()
-                    } else {
-                        val.into()
-                    };
-                    bld!(self.builder.build_call(rt, &[list_val.into(), i64_val], "lcontains"))?
-                };
-                let i8_val = self.call_result_to_value(result)?.into_int_value();
+                    let i64_val = self.value_to_i64(val)?;
+                    self.call_rt("ore_list_contains", &[list_val.into(), i64_val.into()], "lcontains")?
+                }.into_int_value();
                 let bool_val = self.i8_to_bool(i8_val)?;
                 Ok((bool_val.into(), ValKind::Bool))
             }
@@ -373,14 +356,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("index_of", args, 1)?;
                 let elem_kind = self.list_elem_kind();
                 let val = self.compile_expr(&args[0], func)?;
-                let result = if matches!(elem_kind, ValKind::Str) {
-                    let rt = self.rt("ore_list_index_of_str")?;
-                    bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lidx"))?
-                } else {
-                    let rt = self.rt("ore_list_index_of")?;
-                    bld!(self.builder.build_call(rt, &[list_val.into(), val.into()], "lidx"))?
-                };
-                let v = self.call_result_to_value(result)?;
+                let rt_name = if matches!(elem_kind, ValKind::Str) { "ore_list_index_of_str" } else { "ore_list_index_of" };
+                let v = self.call_rt(rt_name, &[list_val.into(), val.into()], "lidx")?;
                 Ok((v, ValKind::Int))
             }
             "unique" => {
