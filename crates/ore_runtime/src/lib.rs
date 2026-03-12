@@ -118,6 +118,17 @@ pub extern "C" fn ore_str_new(ptr: *const u8, len: u32) -> *mut OreStr {
     }
 }
 
+/// Convert a Rust string to a heap-allocated `OreStr`.
+fn str_to_ore(s: impl AsRef<str>) -> *mut OreStr {
+    let s = s.as_ref();
+    ore_str_new(s.as_ptr(), s.len() as u32)
+}
+
+/// Create an empty `OreStr`.
+fn empty_ore_str() -> *mut OreStr {
+    ore_str_new(std::ptr::null(), 0)
+}
+
 #[no_mangle]
 pub extern "C" fn ore_str_retain(s: *mut OreStr) {
     if s.is_null() { return; }
@@ -212,13 +223,13 @@ pub extern "C" fn ore_eprint_bool(b: i8) {
 #[no_mangle]
 pub extern "C" fn ore_int_to_str(n: i64) -> *mut OreStr {
     let s = n.to_string();
-    ore_str_new(s.as_ptr(), s.len() as u32)
+    str_to_ore(s)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_bool_to_str(b: i8) -> *mut OreStr {
     let s = if b != 0 { "true" } else { "false" };
-    ore_str_new(s.as_ptr(), s.len() as u32)
+    str_to_ore(s)
 }
 
 // ── String utilities ──
@@ -230,7 +241,7 @@ pub extern "C" fn ore_float_to_str(f: f64) -> *mut OreStr {
     } else {
         f.to_string()
     };
-    ore_str_new(s.as_ptr(), s.len() as u32)
+    str_to_ore(s)
 }
 
 /// Dynamic to_str: converts a payload i64 to string based on a runtime kind tag.
@@ -249,12 +260,12 @@ pub extern "C" fn ore_dynamic_to_str(payload: i64, kind: i8) -> *mut OreStr {
                 ptr
             } else {
                 let s = "None";
-                ore_str_new(s.as_ptr(), s.len() as u32)
+                str_to_ore(s)
             }
         }
         _ => {
             let s = format!("<dynamic:{}>", kind);
-            ore_str_new(s.as_ptr(), s.len() as u32)
+            str_to_ore(s)
         }
     }
 }
@@ -301,30 +312,30 @@ pub extern "C" fn ore_str_contains(haystack: *mut OreStr, needle: *mut OreStr) -
 
 #[no_mangle]
 pub extern "C" fn ore_str_trim(s: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let trimmed = unsafe { (*s).as_str().trim() };
-    ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
+    str_to_ore(trimmed)
 }
 
 /// Capitalize first letter of a string.
 #[no_mangle]
 pub extern "C" fn ore_str_capitalize(s: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let str_val = unsafe { (*s).as_str() };
-    if str_val.is_empty() { return ore_str_new(std::ptr::null(), 0); }
+    if str_val.is_empty() { return empty_ore_str(); }
     let mut result = String::with_capacity(str_val.len());
     let mut chars = str_val.chars();
     if let Some(first) = chars.next() {
         result.extend(first.to_uppercase());
         result.push_str(chars.as_str());
     }
-    ore_str_new(result.as_ptr(), result.len() as u32)
+    str_to_ore(result)
 }
 
 /// Get a single character at an index. Returns empty string if out of bounds.
 #[no_mangle]
 pub extern "C" fn ore_str_char_at(s: *mut OreStr, idx: i64) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let str_val = unsafe { (*s).as_str() };
     let i = if idx < 0 {
         (str_val.len() as i64 + idx) as usize
@@ -333,9 +344,9 @@ pub extern "C" fn ore_str_char_at(s: *mut OreStr, idx: i64) -> *mut OreStr {
     };
     if i < str_val.len() {
         let ch = &str_val[i..i+1];
-        ore_str_new(ch.as_ptr(), ch.len() as u32)
+        str_to_ore(ch)
     } else {
-        ore_str_new(std::ptr::null(), 0)
+        empty_ore_str()
     }
 }
 
@@ -353,9 +364,9 @@ pub extern "C" fn ore_chr(code: i64) -> *mut OreStr {
     if let Some(c) = char::from_u32(code as u32) {
         let mut buf = [0u8; 4];
         let s = c.encode_utf8(&mut buf);
-        ore_str_new(s.as_ptr(), s.len() as u32)
+        str_to_ore(s)
     } else {
-        ore_str_new(std::ptr::null(), 0)
+        empty_ore_str()
     }
 }
 
@@ -366,7 +377,7 @@ pub extern "C" fn ore_str_lines(s: *mut OreStr) -> *mut OreList {
     if s.is_null() { return result; }
     let str_val = unsafe { (*s).as_str() };
     for line in str_val.lines() {
-        let line_str = ore_str_new(line.as_ptr(), line.len() as u32);
+        let line_str = str_to_ore(line);
         ore_list_push(result, line_str as i64);
     }
     result
@@ -374,16 +385,16 @@ pub extern "C" fn ore_str_lines(s: *mut OreStr) -> *mut OreList {
 
 #[no_mangle]
 pub extern "C" fn ore_str_trim_start(s: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let trimmed = unsafe { (*s).as_str().trim_start() };
-    ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
+    str_to_ore(trimmed)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_str_trim_end(s: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let trimmed = unsafe { (*s).as_str().trim_end() };
-    ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
+    str_to_ore(trimmed)
 }
 
 #[no_mangle]
@@ -393,7 +404,7 @@ pub extern "C" fn ore_str_split(s: *mut OreStr, delim: *mut OreStr) -> *mut OreL
     let str_val = unsafe { (*s).as_str() };
     let delim_str = if delim.is_null() { " " } else { unsafe { (*delim).as_str() } };
     for part in str_val.split(delim_str) {
-        let part_str = ore_str_new(part.as_ptr(), part.len() as u32);
+        let part_str = str_to_ore(part);
         ore_list_push(result, part_str as i64);
     }
     result
@@ -418,10 +429,10 @@ pub extern "C" fn ore_str_to_float(s: *mut OreStr) -> f64 {
 #[no_mangle]
 pub extern "C" fn ore_str_replace(s: *mut OreStr, from: *mut OreStr, to: *mut OreStr) -> *mut OreStr {
     if s.is_null() || from.is_null() || to.is_null() {
-        return ore_str_new(std::ptr::null(), 0);
+        return empty_ore_str();
     }
     let result = unsafe { (*s).as_str().replace((*from).as_str(), (*to).as_str()) };
-    ore_str_new(result.as_ptr(), result.len() as u32)
+    str_to_ore(result)
 }
 
 #[no_mangle]
@@ -442,23 +453,23 @@ pub extern "C" fn ore_str_ends_with(s: *mut OreStr, suffix: *mut OreStr) -> i8 {
 
 #[no_mangle]
 pub extern "C" fn ore_str_to_upper(s: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let upper = unsafe { (*s).as_str().to_uppercase() };
-    ore_str_new(upper.as_ptr(), upper.len() as u32)
+    str_to_ore(upper)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_str_to_lower(s: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let lower = unsafe { (*s).as_str().to_lowercase() };
-    ore_str_new(lower.as_ptr(), lower.len() as u32)
+    str_to_ore(lower)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_str_reverse(s: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let reversed: String = unsafe { (*s).as_str().chars().rev().collect() };
-    ore_str_new(reversed.as_ptr(), reversed.len() as u32)
+    str_to_ore(reversed)
 }
 
 #[no_mangle]
@@ -474,54 +485,54 @@ pub extern "C" fn ore_list_reverse_new(list: *mut OreList) -> *mut OreList {
 
 #[no_mangle]
 pub extern "C" fn ore_str_substr(s: *mut OreStr, start: i64, len: i64) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let str_val = unsafe { (*s).as_str() };
     let start = start.max(0) as usize;
     let len = len.max(0) as usize;
     if start >= str_val.len() {
-        return ore_str_new(std::ptr::null(), 0);
+        return empty_ore_str();
     }
     let end = (start + len).min(str_val.len());
     let sub = &str_val[start..end];
-    ore_str_new(sub.as_ptr(), sub.len() as u32)
+    str_to_ore(sub)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_str_repeat(s: *mut OreStr, n: i64) -> *mut OreStr {
-    if s.is_null() || n <= 0 { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() || n <= 0 { return empty_ore_str(); }
     let str_val = unsafe { (*s).as_str() };
     let repeated = str_val.repeat(n as usize);
-    ore_str_new(repeated.as_ptr(), repeated.len() as u32)
+    str_to_ore(repeated)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_str_pad_left(s: *mut OreStr, width: i64, pad_char: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let str_val = unsafe { (*s).as_str() };
     let pad = if pad_char.is_null() { " " } else { unsafe { (*pad_char).as_str() } };
     let pad_ch = pad.chars().next().unwrap_or(' ');
     let width = width.max(0) as usize;
     if str_val.len() >= width {
-        return ore_str_new(str_val.as_ptr(), str_val.len() as u32);
+        return str_to_ore(str_val);
     }
     let padding: String = std::iter::repeat_n(pad_ch, width - str_val.len()).collect();
     let result = format!("{}{}", padding, str_val);
-    ore_str_new(result.as_ptr(), result.len() as u32)
+    str_to_ore(result)
 }
 
 #[no_mangle]
 pub extern "C" fn ore_str_pad_right(s: *mut OreStr, width: i64, pad_char: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let str_val = unsafe { (*s).as_str() };
     let pad = if pad_char.is_null() { " " } else { unsafe { (*pad_char).as_str() } };
     let pad_ch = pad.chars().next().unwrap_or(' ');
     let width = width.max(0) as usize;
     if str_val.len() >= width {
-        return ore_str_new(str_val.as_ptr(), str_val.len() as u32);
+        return str_to_ore(str_val);
     }
     let padding: String = std::iter::repeat_n(pad_ch, width - str_val.len()).collect();
     let result = format!("{}{}", str_val, padding);
-    ore_str_new(result.as_ptr(), result.len() as u32)
+    str_to_ore(result)
 }
 
 #[no_mangle]
@@ -532,7 +543,7 @@ pub extern "C" fn ore_str_chars(s: *mut OreStr) -> *mut OreList {
     for ch in str_val.chars() {
         let mut buf = [0u8; 4];
         let ch_str = ch.encode_utf8(&mut buf);
-        let ore_ch = ore_str_new(ch_str.as_ptr(), ch_str.len() as u32);
+        let ore_ch = str_to_ore(ch_str);
         ore_list_push(list, ore_ch as i64);
     }
     list
@@ -551,16 +562,16 @@ pub extern "C" fn ore_str_index_of(s: *mut OreStr, needle: *mut OreStr) -> i64 {
 
 #[no_mangle]
 pub extern "C" fn ore_str_slice(s: *mut OreStr, start: i64, end: i64) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     let str_val = unsafe { (*s).as_str() };
     let len = str_val.len() as i64;
     let s_idx = if start < 0 { (len + start).max(0) as usize } else { (start as usize).min(len as usize) };
     let e_idx = if end < 0 { (len + end).max(0) as usize } else { (end as usize).min(len as usize) };
     if s_idx >= e_idx {
-        return ore_str_new(std::ptr::null(), 0);
+        return empty_ore_str();
     }
     let slice = &str_val[s_idx..e_idx];
-    ore_str_new(slice.as_ptr(), slice.len() as u32)
+    str_to_ore(slice)
 }
 
 /// Take every nth element from a list.
@@ -590,26 +601,26 @@ pub extern "C" fn ore_str_count(s: *mut OreStr, needle: *mut OreStr) -> i64 {
 /// Strip a prefix from a string. Returns original if prefix not found.
 #[no_mangle]
 pub extern "C" fn ore_str_strip_prefix(s: *mut OreStr, prefix: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     if prefix.is_null() { return s; }
     let str_val = unsafe { (*s).as_str() };
     let prefix_str = unsafe { (*prefix).as_str() };
     match str_val.strip_prefix(prefix_str) {
-        Some(rest) => ore_str_new(rest.as_ptr(), rest.len() as u32),
-        None => ore_str_new(str_val.as_ptr(), str_val.len() as u32),
+        Some(rest) => str_to_ore(rest),
+        None => str_to_ore(str_val),
     }
 }
 
 /// Strip a suffix from a string. Returns original if suffix not found.
 #[no_mangle]
 pub extern "C" fn ore_str_strip_suffix(s: *mut OreStr, suffix: *mut OreStr) -> *mut OreStr {
-    if s.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if s.is_null() { return empty_ore_str(); }
     if suffix.is_null() { return s; }
     let str_val = unsafe { (*s).as_str() };
     let suffix_str = unsafe { (*suffix).as_str() };
     match str_val.strip_suffix(suffix_str) {
-        Some(rest) => ore_str_new(rest.as_ptr(), rest.len() as u32),
-        None => ore_str_new(str_val.as_ptr(), str_val.len() as u32),
+        Some(rest) => str_to_ore(rest),
+        None => str_to_ore(str_val),
     }
 }
 
@@ -634,7 +645,7 @@ pub extern "C" fn ore_str_split_whitespace(s: *mut OreStr) -> *mut OreList {
     if s.is_null() { return list; }
     let str_val = unsafe { (*s).as_str() };
     for word in str_val.split_whitespace() {
-        let ore_word = ore_str_new(word.as_ptr(), word.len() as u32);
+        let ore_word = str_to_ore(word);
         ore_list_push(list, ore_word as i64);
     }
     list
@@ -767,7 +778,7 @@ pub extern "C" fn ore_readln() -> *mut OreStr {
             line.pop();
         }
     }
-    ore_str_new(line.as_ptr(), line.len() as u32)
+    str_to_ore(line)
 }
 
 #[no_mangle]
@@ -775,10 +786,10 @@ pub extern "C" fn ore_file_read(path: *mut OreStr) -> *mut OreStr {
     if path.is_null() { return std::ptr::null_mut(); }
     let path_str = unsafe { (*path).as_str() };
     match std::fs::read_to_string(path_str) {
-        Ok(contents) => ore_str_new(contents.as_ptr(), contents.len() as u32),
+        Ok(contents) => str_to_ore(contents),
         Err(e) => {
             eprintln!("error reading file '{}': {}", path_str, e);
-            ore_str_new(std::ptr::null(), 0)
+            empty_ore_str()
         }
     }
 }
@@ -791,7 +802,7 @@ pub extern "C" fn ore_file_read_lines(path: *mut OreStr) -> *mut OreList {
         Ok(contents) => {
             let list = ore_list_new();
             for line in contents.lines() {
-                let s = ore_str_new(line.as_ptr(), line.len() as u32);
+                let s = str_to_ore(line);
                 ore_list_push(list, s as i64);
             }
             list
@@ -1384,7 +1395,7 @@ pub extern "C" fn ore_list_fold(list: *mut OreList, init: i64, func: *const u8, 
 
 unsafe fn list_extremum_str(list: *mut OreList, is_better: fn(&str, &str) -> bool) -> *mut OreStr {
     let slice = (&*list).as_slice();
-    if slice.is_empty() { return ore_str_new(std::ptr::null(), 0); }
+    if slice.is_empty() { return empty_ore_str(); }
     let mut best_val = slice[0];
     let mut best_str = (&*(best_val as *mut OreStr)).as_str();
     for &val in &slice[1..] {
@@ -1606,7 +1617,7 @@ pub extern "C" fn ore_list_join(list: *mut OreList, sep: *mut OreStr) -> *mut Or
             parts.push(format!("{}", val));
         }
         let joined = parts.join(sep_str);
-        ore_str_new(joined.as_ptr(), joined.len() as u32)
+        str_to_ore(joined)
     }
 }
 
@@ -1624,7 +1635,7 @@ pub extern "C" fn ore_list_join_str(list: *mut OreList, sep: *mut OreStr) -> *mu
             }
         }
         let joined = parts.join(sep_str);
-        ore_str_new(joined.as_ptr(), joined.len() as u32)
+        str_to_ore(joined)
     }
 }
 
@@ -1645,7 +1656,7 @@ pub extern "C" fn ore_list_join_float(list: *mut OreList, sep: *mut OreStr) -> *
             parts.push(s);
         }
         let joined = parts.join(sep_str);
-        ore_str_new(joined.as_ptr(), joined.len() as u32)
+        str_to_ore(joined)
     }
 }
 
@@ -2170,7 +2181,7 @@ pub extern "C" fn ore_map_keys(map: *mut OreMap) -> *mut OreList {
         let map = &*map;
         let list = ore_list_new();
         for key in map.inner.keys() {
-            let s = ore_str_new(key.as_ptr(), key.len() as u32);
+            let s = str_to_ore(key);
             ore_list_push(list, s as i64);
         }
         list
@@ -2284,7 +2295,7 @@ pub extern "C" fn ore_map_each(
         keys.sort();
         for key in keys {
             let val = map.inner[key];
-            let key_str = ore_str_new(key.as_ptr(), key.len() as u32);
+            let key_str = str_to_ore(key);
             call_closure2(func, env_ptr, key_str as i64, val);
         }
     }
@@ -2301,9 +2312,9 @@ pub extern "C" fn ore_map_map_values(
     unsafe {
         let map = &*map;
         for (key, &val) in &map.inner {
-            let key_str = ore_str_new(key.as_ptr(), key.len() as u32);
+            let key_str = str_to_ore(key);
             let new_val = call_closure2(func, env_ptr, key_str as i64, val);
-            let key_str2 = ore_str_new(key.as_ptr(), key.len() as u32);
+            let key_str2 = str_to_ore(key);
             ore_map_set(result, key_str2, new_val);
         }
     }
@@ -2322,7 +2333,7 @@ pub extern "C" fn ore_map_filter(
         let map = &*map;
         let result_map = &mut *result;
         for (key, &val) in &map.inner {
-            let key_str = ore_str_new(key.as_ptr(), key.len() as u32);
+            let key_str = str_to_ore(key);
             if call_closure2(func, env_ptr, key_str as i64, val) != 0 {
                 result_map.inner.insert(key.clone(), val);
                 if let Some(&kind) = map.kinds.get(key) {
@@ -2409,7 +2420,7 @@ pub extern "C" fn ore_map_entries(map: *mut OreMap) -> *mut OreList {
         for key in keys {
             let val = map.inner[key];
             let pair = ore_list_new();
-            let key_str = ore_str_new(key.as_ptr(), key.len() as u32);
+            let key_str = str_to_ore(key);
             ore_list_push(pair, key_str as i64);
             ore_list_push(pair, val);
             ore_list_push(result, pair as i64);
@@ -2458,7 +2469,7 @@ pub extern "C" fn ore_float_round_to(x: f64, decimals: i64) -> f64 {
 #[no_mangle]
 pub extern "C" fn ore_float_format(x: f64, decimals: i64) -> *mut OreStr {
     let s = format!("{:.prec$}", x, prec = decimals as usize);
-    ore_str_new(s.as_ptr(), s.len() as u32)
+    str_to_ore(s)
 }
 
 // ── Concurrency ──
@@ -2668,7 +2679,7 @@ pub extern "C" fn ore_exit(code: i64) {
 pub extern "C" fn ore_args() -> *mut OreList {
     let list = ore_list_new();
     for arg in std::env::args() {
-        let s = ore_str_new(arg.as_ptr(), arg.len() as u32);
+        let s = str_to_ore(arg);
         ore_list_push(list, s as i64);
     }
     list
@@ -2677,7 +2688,7 @@ pub extern "C" fn ore_args() -> *mut OreList {
 /// Execute a shell command and return its stdout as a string.
 #[no_mangle]
 pub extern "C" fn ore_exec(cmd: *mut OreStr) -> *mut OreStr {
-    if cmd.is_null() { return ore_str_new(std::ptr::null(), 0); }
+    if cmd.is_null() { return empty_ore_str(); }
     let cmd_str = unsafe { (*cmd).as_str() };
     match std::process::Command::new("sh")
         .arg("-c")
@@ -2687,11 +2698,11 @@ pub extern "C" fn ore_exec(cmd: *mut OreStr) -> *mut OreStr {
         Ok(output) => {
             let stdout = String::from_utf8_lossy(&output.stdout);
             let trimmed = stdout.trim_end_matches('\n');
-            ore_str_new(trimmed.as_ptr(), trimmed.len() as u32)
+            str_to_ore(trimmed)
         }
         Err(e) => {
             eprintln!("exec error: {}", e);
-            ore_str_new(std::ptr::null(), 0)
+            empty_ore_str()
         }
     }
 }
@@ -2713,7 +2724,7 @@ pub extern "C" fn ore_type_of(kind: i8) -> *mut OreStr {
         11 => "Channel",
         _ => "Unknown",
     };
-    ore_str_new(name.as_ptr(), name.len() as u32)
+    str_to_ore(name)
 }
 
 // ── Environment ──────────────────────────────────────────────
@@ -2722,8 +2733,8 @@ pub extern "C" fn ore_type_of(kind: i8) -> *mut OreStr {
 pub extern "C" fn ore_env_get(key: *mut OreStr) -> *mut OreStr {
     let key_str = unsafe { (*key).as_str() };
     match std::env::var(key_str) {
-        Ok(val) => ore_str_new(val.as_ptr(), val.len() as u32),
-        Err(_) => ore_str_new(std::ptr::null(), 0),
+        Ok(val) => str_to_ore(val),
+        Err(_) => empty_ore_str(),
     }
 }
 
@@ -2784,7 +2795,7 @@ fn json_value_to_ore(val: &serde_json::Value) -> (i64, i8) {
             }
         }
         serde_json::Value::String(s) => {
-            let ore_s = ore_str_new(s.as_ptr(), s.len() as u32);
+            let ore_s = str_to_ore(s);
             (ore_s as i64, 3)
         }
         serde_json::Value::Array(arr) => {
@@ -2866,5 +2877,5 @@ pub extern "C" fn ore_json_stringify(map: *mut OreMap) -> *mut OreStr {
         obj.insert(k.clone(), ore_value_to_json(*v, kind));
     }
     let json = serde_json::Value::Object(obj).to_string();
-    ore_str_new(json.as_ptr(), json.len() as u32)
+    str_to_ore(json)
 }
