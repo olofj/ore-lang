@@ -113,13 +113,8 @@ impl<'ctx> CodeGen<'ctx> {
             "get_or" => {
                 self.check_arity("get_or", args, 2)?;
                 let key = self.compile_map_key(&args[0], func)?;
-                let (default_val, default_kind) = self.compile_expr_with_kind(&args[1], func)?;
-                let default_i64 = match default_kind {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
-                        self.ptr_to_i64(default_val.into_pointer_value())?
-                    }
-                    _ => default_val.into_int_value(),
-                };
+                let (default_val, _default_kind) = self.compile_expr_with_kind(&args[1], func)?;
+                let default_i64 = self.value_to_i64(default_val)?;
                 let i64_val = self.call_rt("ore_map_get_or", &[map_val.into(), key.into(), default_i64.into()], "mgetor")?;
                 let val_kind = self.last_map_val_kind.clone().unwrap_or(ValKind::Int);
                 match &val_kind {
