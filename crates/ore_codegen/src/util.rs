@@ -235,11 +235,10 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    /// Resolve a lambda or function reference argument into (FunctionValue, fn_ptr, env_ptr).
-    /// `param_kinds` specifies the types passed to the lambda parameters.
-    /// If `track_return_kind` is true, sets `self.last_lambda_return_kind` from named function refs.
     /// Resolve a lambda or function reference argument, returning a (fn_ptr, env_ptr) pair
     /// suitable for passing to runtime higher-order functions.
+    /// `param_kinds` specifies the types passed to the lambda parameters.
+    /// If `track_return_kind` is true, sets `self.last_lambda_return_kind` from named function refs.
     pub(crate) fn resolve_lambda_arg(
         &mut self,
         arg: &Expr,
@@ -309,10 +308,9 @@ impl<'ctx> CodeGen<'ctx> {
         let mut best: Option<(&str, usize)> = None;
         for &c in candidates {
             let d = Self::edit_distance(name, c);
-            if d <= 2 && d > 0
-                && (best.is_none() || d < best.unwrap().1) {
-                    best = Some((c, d));
-                }
+            if d > 0 && d <= 2 && best.as_ref().map_or(true, |(_, bd)| d < *bd) {
+                best = Some((c, d));
+            }
         }
         best.map(|(s, _)| s)
     }
@@ -336,22 +334,26 @@ impl<'ctx> CodeGen<'ctx> {
         dp[m][n]
     }
 
+    /// Map a ValKind to its string name for mangling and type expression conversion.
+    pub(crate) fn valkind_to_name(kind: &ValKind) -> String {
+        match kind {
+            ValKind::Int => "Int".to_string(),
+            ValKind::Float => "Float".to_string(),
+            ValKind::Bool => "Bool".to_string(),
+            ValKind::Str => "Str".to_string(),
+            ValKind::Void => "Void".to_string(),
+            ValKind::Record(name) | ValKind::Enum(name) => name.clone(),
+            ValKind::Option => "Option".to_string(),
+            ValKind::Result => "Result".to_string(),
+            ValKind::List(_) => "List".to_string(),
+            ValKind::Map => "Map".to_string(),
+            ValKind::Channel => "Channel".to_string(),
+        }
+    }
+
     /// Map a ValKind back to a TypeExpr for monomorphization substitution.
     pub(crate) fn valkind_to_type_expr(kind: &ValKind) -> TypeExpr {
-        match kind {
-            ValKind::Int => TypeExpr::Named("Int".to_string()),
-            ValKind::Float => TypeExpr::Named("Float".to_string()),
-            ValKind::Bool => TypeExpr::Named("Bool".to_string()),
-            ValKind::Str => TypeExpr::Named("Str".to_string()),
-            ValKind::Void => TypeExpr::Named("Void".to_string()),
-            ValKind::Record(name) => TypeExpr::Named(name.clone()),
-            ValKind::Enum(name) => TypeExpr::Named(name.clone()),
-            ValKind::Option => TypeExpr::Named("Option".to_string()),
-            ValKind::Result => TypeExpr::Named("Result".to_string()),
-            ValKind::List(_) => TypeExpr::Named("List".to_string()),
-            ValKind::Map => TypeExpr::Named("Map".to_string()),
-            ValKind::Channel => TypeExpr::Named("Channel".to_string()),
-        }
+        TypeExpr::Named(Self::valkind_to_name(kind))
     }
 
     /// Create a mangled name for a monomorphized function.
@@ -359,20 +361,7 @@ impl<'ctx> CodeGen<'ctx> {
         let mut name = base.to_string();
         for k in concrete_kinds {
             name.push('$');
-            match k {
-                ValKind::Int => name.push_str("Int"),
-                ValKind::Float => name.push_str("Float"),
-                ValKind::Bool => name.push_str("Bool"),
-                ValKind::Str => name.push_str("Str"),
-                ValKind::Void => name.push_str("Void"),
-                ValKind::Record(n) => name.push_str(n),
-                ValKind::Enum(n) => name.push_str(n),
-                ValKind::Option => name.push_str("Option"),
-                ValKind::Result => name.push_str("Result"),
-                ValKind::List(_) => name.push_str("List"),
-                ValKind::Map => name.push_str("Map"),
-                ValKind::Channel => name.push_str("Channel"),
-            }
+            name.push_str(&Self::valkind_to_name(k));
         }
         name
     }
@@ -409,7 +398,6 @@ impl<'ctx> CodeGen<'ctx> {
         &mut self,
         generic_name: &str,
         arg_kinds: &[ValKind],
-        _current_fn: FunctionValue<'ctx>,
     ) -> Result<(FunctionValue<'ctx>, ValKind), CodeGenError> {
         let mangled = Self::mangle_generic_name(generic_name, arg_kinds);
 

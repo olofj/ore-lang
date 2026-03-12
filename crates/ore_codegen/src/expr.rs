@@ -255,7 +255,7 @@ impl<'ctx> CodeGen<'ctx> {
                             compiled_args.push(val.into());
                             arg_kinds.push(kind);
                         }
-                        let (called_fn, ret_kind) = self.monomorphize(&name, &arg_kinds, func)?;
+                        let (called_fn, ret_kind) = self.monomorphize(&name, &arg_kinds)?;
                         let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
                         let val = self.call_result_to_value(result)?;
                         return Ok((val, ret_kind));
@@ -523,7 +523,7 @@ impl<'ctx> CodeGen<'ctx> {
                 compiled_args.push(v.into());
                 arg_kinds.push(k);
             }
-            let (called_fn, ret_kind) = self.monomorphize(name, &arg_kinds, current_fn)?;
+            let (called_fn, ret_kind) = self.monomorphize(name, &arg_kinds)?;
             let result = bld!(self.builder.build_call(called_fn, &compiled_args, "pipe"))?;
             let val = self.call_result_to_value(result)?;
             Ok((val, ret_kind))
