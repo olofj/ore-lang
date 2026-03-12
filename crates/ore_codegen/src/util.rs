@@ -422,4 +422,19 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
+    /// Call a unary f64→f64 LLVM intrinsic (e.g. llvm.floor.f64, llvm.sqrt.f64).
+    pub(crate) fn call_f64_intrinsic(
+        &self,
+        intrinsic: &str,
+        arg: BasicValueEnum<'ctx>,
+        label: &str,
+    ) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        let f64_type = self.context.f64_type();
+        let func = self.module.get_function(intrinsic).unwrap_or_else(|| {
+            self.module.add_function(intrinsic, f64_type.fn_type(&[f64_type.into()], false), None)
+        });
+        let result = bld!(self.builder.build_call(func, &[arg.into()], label))?;
+        self.call_result_to_value(result)
+    }
+
 }

@@ -394,69 +394,16 @@ impl<'ctx> CodeGen<'ctx> {
                     ))?;
                     return Ok((i_val.into(), ValKind::Int));
                 }
-                "round" => {
-                    let round_fn = self.module.get_function("llvm.round.f64").unwrap_or_else(|| {
-                        let f64_type = self.context.f64_type();
-                        self.module.add_function(
-                            "llvm.round.f64",
-                            f64_type.fn_type(&[f64_type.into()], false),
-                            None,
-                        )
-                    });
-                    let result = bld!(self.builder.build_call(round_fn, &[obj_val.into()], "round"))?;
-                    let val = self.call_result_to_value(result)?;
-                    return Ok((val, ValKind::Float));
-                }
-                "floor" => {
-                    let floor_fn = self.module.get_function("llvm.floor.f64").unwrap_or_else(|| {
-                        let f64_type = self.context.f64_type();
-                        self.module.add_function(
-                            "llvm.floor.f64",
-                            f64_type.fn_type(&[f64_type.into()], false),
-                            None,
-                        )
-                    });
-                    let result = bld!(self.builder.build_call(floor_fn, &[obj_val.into()], "floor"))?;
-                    let val = self.call_result_to_value(result)?;
-                    return Ok((val, ValKind::Float));
-                }
-                "ceil" => {
-                    let ceil_fn = self.module.get_function("llvm.ceil.f64").unwrap_or_else(|| {
-                        let f64_type = self.context.f64_type();
-                        self.module.add_function(
-                            "llvm.ceil.f64",
-                            f64_type.fn_type(&[f64_type.into()], false),
-                            None,
-                        )
-                    });
-                    let result = bld!(self.builder.build_call(ceil_fn, &[obj_val.into()], "ceil"))?;
-                    let val = self.call_result_to_value(result)?;
-                    return Ok((val, ValKind::Float));
-                }
-                "abs" => {
-                    let abs_fn = self.module.get_function("llvm.fabs.f64").unwrap_or_else(|| {
-                        let f64_type = self.context.f64_type();
-                        self.module.add_function(
-                            "llvm.fabs.f64",
-                            f64_type.fn_type(&[f64_type.into()], false),
-                            None,
-                        )
-                    });
-                    let result = bld!(self.builder.build_call(abs_fn, &[obj_val.into()], "fabs"))?;
-                    let val = self.call_result_to_value(result)?;
-                    return Ok((val, ValKind::Float));
-                }
-                "sqrt" => {
-                    let sqrt_fn = self.module.get_function("llvm.sqrt.f64").unwrap_or_else(|| {
-                        let f64_type = self.context.f64_type();
-                        self.module.add_function(
-                            "llvm.sqrt.f64",
-                            f64_type.fn_type(&[f64_type.into()], false),
-                            None,
-                        )
-                    });
-                    let result = bld!(self.builder.build_call(sqrt_fn, &[obj_val.into()], "sqrt"))?;
-                    let val = self.call_result_to_value(result)?;
+                "round" | "floor" | "ceil" | "abs" | "sqrt" => {
+                    let (intrinsic, label) = match method {
+                        "round" => ("llvm.round.f64", "round"),
+                        "floor" => ("llvm.floor.f64", "floor"),
+                        "ceil" => ("llvm.ceil.f64", "ceil"),
+                        "abs" => ("llvm.fabs.f64", "fabs"),
+                        "sqrt" => ("llvm.sqrt.f64", "sqrt"),
+                        _ => unreachable!(),
+                    };
+                    let val = self.call_f64_intrinsic(intrinsic, obj_val, label)?;
                     return Ok((val, ValKind::Float));
                 }
                 "max" => {
