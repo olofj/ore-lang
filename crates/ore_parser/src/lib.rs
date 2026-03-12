@@ -82,6 +82,29 @@ impl Parser {
         }
     }
 
+    /// Parse comma-separated expression arguments inside parentheses.
+    /// Assumes '(' has already been consumed.
+    fn parse_call_args(&mut self) -> Result<Vec<Expr>, ParseError> {
+        self.skip_whitespace_tokens();
+        let mut args = Vec::new();
+        if self.peek() != &Token::RParen {
+            args.push(self.parse_expr(0)?);
+            self.skip_whitespace_tokens();
+            while self.peek() == &Token::Comma {
+                self.advance();
+                self.skip_whitespace_tokens();
+                if self.peek() == &Token::RParen {
+                    break; // trailing comma
+                }
+                args.push(self.parse_expr(0)?);
+                self.skip_whitespace_tokens();
+            }
+        }
+        self.skip_whitespace_tokens();
+        self.expect(&Token::RParen)?;
+        Ok(args)
+    }
+
     // ── Program ──
 
     fn parse_program(&mut self) -> Result<Program, ParseError> {
@@ -770,23 +793,7 @@ impl Parser {
                         // Check if this is a method call: field followed by '('
                         if self.peek() == &Token::LParen {
                             self.advance(); // consume '('
-                            self.skip_whitespace_tokens();
-                            let mut args = Vec::new();
-                            if self.peek() != &Token::RParen {
-                                args.push(self.parse_expr(0)?);
-                                self.skip_whitespace_tokens();
-                                while self.peek() == &Token::Comma {
-                                    self.advance();
-                                    self.skip_whitespace_tokens();
-                                    if self.peek() == &Token::RParen {
-                                        break; // trailing comma
-                                    }
-                                    args.push(self.parse_expr(0)?);
-                                    self.skip_whitespace_tokens();
-                                }
-                            }
-                            self.skip_whitespace_tokens();
-                            self.expect(&Token::RParen)?;
+                            let args = self.parse_call_args()?;
                             if optional {
                                 lhs = Expr::OptionalMethodCall {
                                     object: Box::new(lhs),
@@ -1379,23 +1386,7 @@ impl Parser {
                     // Regular function call
                     self.pos = saved;
                     self.advance(); // consume '('
-                    self.skip_whitespace_tokens();
-                    let mut args = Vec::new();
-                    if self.peek() != &Token::RParen {
-                        args.push(self.parse_expr(0)?);
-                        self.skip_whitespace_tokens();
-                        while self.peek() == &Token::Comma {
-                            self.advance();
-                            self.skip_whitespace_tokens();
-                            if self.peek() == &Token::RParen {
-                                break; // trailing comma
-                            }
-                            args.push(self.parse_expr(0)?);
-                            self.skip_whitespace_tokens();
-                        }
-                    }
-                    self.skip_whitespace_tokens();
-                    self.expect(&Token::RParen)?;
+                    let args = self.parse_call_args()?;
                     Ok(Expr::Call {
                         func: Box::new(Expr::Ident(name)),
                         args,
