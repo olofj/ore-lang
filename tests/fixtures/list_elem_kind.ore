@@ -1,0 +1,83 @@
+-- Test list element kind tracking through various operations
+-- This ensures the refactoring of last_list_elem_kind doesn't break type tracking
+
+fn main
+  -- Basic string list operations
+  names := ["alice", "bob", "charlie"]
+  print names.join(", ")
+  print names.len()
+
+  -- Map preserves/changes element kind
+  upper := ["hello", "world"] | map(s => s.to_upper())
+  print upper.join(" ")
+
+  -- Filter preserves element kind
+  long_names := names | filter(n => n.len() > 3)
+  print long_names.join(", ")
+
+  -- List of ints through operations
+  nums := [1, 2, 3, 4, 5]
+  doubled := nums | map(n => n * 2)
+  print doubled | sum()
+  print nums | filter(n => n > 2) | sum()
+
+  -- Pop returns correct element kind
+  mut items := ["x", "y", "z"]
+  last := items.pop()
+  print last
+
+  -- Get returns correct element kind
+  first := names.get(0)
+  print first
+
+  -- Sort preserves element kind for strings
+  sorted := ["banana", "apple", "cherry"] | sort()
+  print sorted.join(", ")
+
+  -- Fold/reduce
+  total := [10, 20, 30] | fold(0, (acc, n) => acc + n)
+  print total
+
+  -- Chained operations preserve kinds
+  result := ["hello", "world", "foo", "bar"]
+    | filter(s => s.len() > 3)
+    | map(s => s.to_upper())
+    | sort()
+    | join(", ")
+  print result
+
+  -- List comprehension element kinds
+  squares := [x * x for x in 1..6]
+  print squares | sum()
+
+  -- String list from comprehension
+  strs := [str(x) for x in 1..4]
+  print strs.join("-")
+
+  -- Float list operations
+  floats := [1.5, 2.5, 3.5]
+  print floats | sum()
+  print floats | map(f => f * 2.0) | sum()
+
+  -- Nested: list returned from function
+  print make_names().join(", ")
+
+  -- Each with string elements
+  ["a", "b", "c"] | each(s => print s)
+
+  -- Contains on string list
+  print ["yes", "no"] | contains("yes")
+
+  -- Index_of on string list
+  print ["red", "green", "blue"].index_of("green")
+
+  -- Unique on string list
+  print ["a", "b", "a", "c", "b"].unique().join(",")
+
+  -- Partition preserves element kind
+  parts := [1, 2, 3, 4, 5, 6] | partition(n => n > 3)
+  print parts.get(0).sum()
+  print parts.get(1).sum()
+
+fn make_names -> List[Str]
+  ["eve", "frank"]

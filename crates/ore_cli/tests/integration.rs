@@ -105,6 +105,19 @@ fn phase7_loops() {
 }
 
 #[test]
+fn list_elem_kind_tracking() {
+    let out = run_ore("list_elem_kind.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "alice, bob, charlie", "3", "HELLO WORLD",
+        "alice, charlie", "30", "12", "z", "alice",
+        "apple, banana, cherry", "60", "HELLO, WORLD",
+        "55", "1-2-3", "7.5", "15.0", "eve, frank",
+        "a", "b", "c", "true", "1", "a,b,c", "15", "6",
+    ]);
+}
+
+#[test]
 fn phase8_option() {
     let out = run_ore("phase_8/option.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
