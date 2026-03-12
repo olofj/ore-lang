@@ -89,21 +89,20 @@ impl<'ctx> CodeGen<'ctx> {
                     return self.compile_short_circuit(*op, left, right, func);
                 }
                 let (lhs, lk) = self.compile_expr_with_kind(left, func)?;
-                let lhs_elem_kind = self.last_list_elem_kind.clone();
-                let (rhs, _rk) = self.compile_expr_with_kind(right, func)?;
-                let rhs_elem_kind = self.last_list_elem_kind.clone();
+                let (rhs, rk) = self.compile_expr_with_kind(right, func)?;
 
                 // List concatenation: list + list
                 if lk.is_list() && *op == BinOp::Add {
                     let val = self.call_rt("ore_list_concat", &[lhs.into(), rhs.into()], "lcat")?;
-                    // Preserve element kind: prefer RHS (the appended elements) if it has a concrete kind
-                    if rhs_elem_kind.is_some() {
-                        self.last_list_elem_kind = rhs_elem_kind;
-                    } else if lhs_elem_kind.is_some() {
-                        self.last_list_elem_kind = lhs_elem_kind;
+                    // Preserve element kind: prefer RHS (the appended elements), fall back to LHS
+                    let elem = match (&rk, &lk) {
+                        (ValKind::List(Some(ek)), _) | (_, ValKind::List(Some(ek))) => Some(ek.clone()),
+                        _ => self.last_list_elem_kind.clone().map(Box::new),
+                    };
+                    if let Some(ref ek) = elem {
+                        self.last_list_elem_kind = Some(ek.as_ref().clone());
                     }
-                    let elem = self.last_list_elem_kind.clone();
-                    return Ok((val, ValKind::List(elem.map(Box::new))));
+                    return Ok((val, ValKind::List(elem)));
                 }
 
                 // String repetition: str * int
@@ -113,7 +112,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
 
                 // If both sides are strings but represented as i64 (e.g. in lambdas), convert to pointers
-                let (lhs, rhs) = if lk == ValKind::Str && _rk == ValKind::Str {
+                let (lhs, rhs) = if lk == ValKind::Str && rk == ValKind::Str {
                     let l = if lhs.is_int_value() {
                         self.i64_to_ptr(lhs.into_int_value())?.into()
                     } else { lhs };
@@ -129,7 +128,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let result_kind = match op {
                     BinOp::Eq | BinOp::NotEq | BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq
                     | BinOp::And | BinOp::Or => ValKind::Bool,
-                    _ => if lk == ValKind::Float || _rk == ValKind::Float { ValKind::Float } else { lk },
+                    _ => if lk == ValKind::Float || rk == ValKind::Float { ValKind::Float } else { lk },
                 };
                 Ok((result, result_kind))
             }
@@ -179,11 +178,15 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                     }
                 }
-                // Check for typed list printing via last_list_elem_kind (for method calls etc.)
+                // Check for typed list printing via ValKind variant or side-channel (for method calls etc.)
                 if kind.is_list() {
-                    if let Some(elem_kind) = self.last_list_elem_kind.take() {
-                        if elem_kind != ValKind::Int {
-                            self.compile_typed_list_print(val.into_pointer_value(), &elem_kind)?;
+                    let elem_kind = match &kind {
+                        ValKind::List(Some(ek)) => Some(ek.as_ref().clone()),
+                        _ => self.last_list_elem_kind.take(),
+                    };
+                    if let Some(ek) = elem_kind {
+                        if ek != ValKind::Int {
+                            self.compile_typed_list_print(val.into_pointer_value(), &ek)?;
                             return Ok(self.void_result());
                         }
                     }
@@ -267,11 +270,16 @@ impl<'ctx> CodeGen<'ctx> {
                     let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
                     let val = self.call_result_to_value(result)?;
                     // Propagate list element kind from function return type annotation
-                    if ret_kind.is_list() {
+                    let ret_kind = if ret_kind.is_list() {
                         if let Some(ek) = self.fn_return_list_elem_kind.get(&name) {
                             self.last_list_elem_kind = Some(ek.clone());
+                            ValKind::list_of(ek.clone())
+                        } else {
+                            ret_kind
                         }
-                    }
+                    } else {
+                        ret_kind
+                    };
                     Ok((val, ret_kind))
                 } else {
                     // Check if it's a variable holding a function pointer (closure)
@@ -468,7 +476,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Compile RHS
         self.builder.position_at_end(rhs_block);
-        let (rhs, _rk) = self.compile_expr_with_kind(right, func)?;
+        let (rhs, rk) = self.compile_expr_with_kind(right, func)?;
         let rhs_i64 = if rhs.is_int_value() {
             let rv = rhs.into_int_value();
             if rv.get_type().get_bit_width() != 64 {
