@@ -608,18 +608,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub(crate) fn kind_to_param_type(&self, kind: &ValKind) -> inkwell::types::BasicMetadataTypeEnum<'ctx> {
-        match kind {
-            ValKind::Int => self.context.i64_type().into(),
-            ValKind::Float => self.context.f64_type().into(),
-            ValKind::Bool => self.context.bool_type().into(),
-            ValKind::Str => self.ptr_type().into(),
-            ValKind::Void => self.context.i64_type().into(),
-            ValKind::Record(name) => self.records[name].struct_type.into(),
-            ValKind::Enum(name) => self.enums[name].enum_type.into(),
-            ValKind::Option => self.option_type().into(),
-            ValKind::Result => self.result_type().into(),
-            ValKind::List(_) | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
-        }
+        self.kind_to_llvm_type(kind).into()
     }
 
     pub(crate) fn declare_function(&mut self, fndef: &FnDef) -> Result<(), CodeGenError> {
