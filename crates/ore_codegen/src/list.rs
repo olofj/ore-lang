@@ -32,9 +32,8 @@ impl<'ctx> CodeGen<'ctx> {
             "push" => {
                 self.check_arity("push", args, 1)?;
                 let (arg, arg_kind) = self.compile_expr_with_kind(&args[0], func)?;
-                let list_push = self.rt("ore_list_push")?;
                 let push_val = self.val_to_list_i64(arg, &arg_kind)?;
-                bld!(self.builder.build_call(list_push, &[list_val.into(), push_val.into()], ""))?;
+                self.call_rt("ore_list_push", &[list_val.into(), push_val.into()], "")?;
                 // Track element kind so join/pop/iteration know the type
                 self.last_list_elem_kind = Some(arg_kind.clone());
                 Ok((list_val, ValKind::list_of(arg_kind)))

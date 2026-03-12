@@ -684,8 +684,7 @@ impl<'ctx> CodeGen<'ctx> {
         if self.current_block()?.get_terminator().is_none() {
             if fndef.name == "main" {
                 // Join all spawned threads before returning from main
-                let join_all = self.rt("ore_thread_join_all")?;
-                bld!(self.builder.build_call(join_all, &[], ""))?;
+                self.call_rt("ore_thread_join_all", &[], "")?;
                 let zero = self.context.i32_type().const_int(0, false);
                 bld!(self.builder.build_return(Some(&zero)))?;
             } else if fndef.ret_type.is_some() {
