@@ -466,8 +466,7 @@ pub extern "C" fn ore_list_reverse_new(list: *mut OreList) -> *mut OreList {
     let result = ore_list_new();
     if list.is_null() { return result; }
     let l = unsafe { &*list };
-    for i in (0..l.len).rev() {
-        let val = unsafe { *l.data.offset(i as isize) };
+    for &val in unsafe { l.as_slice() }.iter().rev() {
         ore_list_push(result, val);
     }
     result
@@ -571,10 +570,8 @@ pub extern "C" fn ore_list_step(list: *mut OreList, n: i64) -> *mut OreList {
     if n <= 0 { return result; }
     unsafe {
         let src = &*list;
-        let mut i = 0;
-        while i < src.len as usize {
-            ore_list_push(result, *src.data.add(i));
-            i += n as usize;
+        for &val in src.as_slice().iter().step_by(n as usize) {
+            ore_list_push(result, val);
         }
     }
     result
@@ -624,8 +621,8 @@ pub extern "C" fn ore_list_slice(list: *mut OreList, start: i64, end: i64) -> *m
     let len = l.len;
     let s_idx = if start < 0 { (len + start).max(0) } else { start.min(len) };
     let e_idx = if end < 0 { (len + end).max(0) } else { end.min(len) };
-    for i in s_idx..e_idx {
-        let val = unsafe { *l.data.offset(i as isize) };
+    let slice = unsafe { l.as_slice() };
+    for &val in &slice[s_idx as usize..e_idx as usize] {
         ore_list_push(result, val);
     }
     result
@@ -702,9 +699,8 @@ pub extern "C" fn ore_list_flatten(list: *mut OreList) -> *mut OreList {
 pub extern "C" fn ore_list_index_of(list: *mut OreList, value: i64) -> i64 {
     if list.is_null() { return -1; }
     let l = unsafe { &*list };
-    for i in 0..l.len {
-        let val = unsafe { *l.data.offset(i as isize) };
-        if val == value { return i; }
+    for (i, &val) in unsafe { l.as_slice() }.iter().enumerate() {
+        if val == value { return i as i64; }
     }
     -1
 }
@@ -715,8 +711,8 @@ pub extern "C" fn ore_list_index_of_str(list: *mut OreList, value: *mut OreStr) 
     if list.is_null() || value.is_null() { return -1; }
     let l = unsafe { &*list };
     let target = unsafe { (*value).as_str() };
-    for i in 0..l.len as usize {
-        let ptr = unsafe { *l.data.add(i) as *mut OreStr };
+    for (i, &val) in unsafe { l.as_slice() }.iter().enumerate() {
+        let ptr = val as *mut OreStr;
         if !ptr.is_null() && unsafe { (*ptr).as_str() } == target {
             return i as i64;
         }
@@ -1274,11 +1270,10 @@ pub extern "C" fn ore_list_print_typed(list: *mut OreList, kind: i64) {
     unsafe {
         let list = &*list;
         let _ = write!(handle, "[");
-        for i in 0..list.len as usize {
+        for (i, &val) in list.as_slice().iter().enumerate() {
             if i > 0 {
                 let _ = write!(handle, ", ");
             }
-            let val = *list.data.add(i);
             match kind {
                 0 => { let _ = write!(handle, "{}", val); }
                 1 => { let _ = write!(handle, "{}", format_float(f64::from_bits(val as u64))); }
@@ -1781,11 +1776,12 @@ pub extern "C" fn ore_list_window(list: *mut OreList, n: i64) -> *mut OreList {
     let n = n as usize;
     unsafe {
         let src = &*list;
-        if (src.len as usize) < n { return result; }
-        for i in 0..=(src.len as usize - n) {
+        let slice = src.as_slice();
+        if slice.len() < n { return result; }
+        for w in slice.windows(n) {
             let window = ore_list_new();
-            for j in 0..n {
-                ore_list_push(window, *src.data.add(i + j));
+            for &val in w {
+                ore_list_push(window, val);
             }
             ore_list_push(result, window as i64);
         }
@@ -1801,15 +1797,12 @@ pub extern "C" fn ore_list_chunks(list: *mut OreList, n: i64) -> *mut OreList {
     let n = n as usize;
     unsafe {
         let src = &*list;
-        let mut i = 0;
-        while i < src.len as usize {
+        for ch in src.as_slice().chunks(n) {
             let chunk = ore_list_new();
-            let end = (i + n).min(src.len as usize);
-            for j in i..end {
-                ore_list_push(chunk, *src.data.add(j));
+            for &val in ch {
+                ore_list_push(chunk, val);
             }
             ore_list_push(result, chunk as i64);
-            i += n;
         }
     }
     result
@@ -1973,10 +1966,9 @@ pub extern "C" fn ore_list_zip_with(
         let a_ref = &*a;
         let b_ref = &*b;
         let result = ore_list_new();
-        let min_len = a_ref.len.min(b_ref.len) as usize;
-        for i in 0..min_len {
-            let av = *a_ref.data.add(i);
-            let bv = *b_ref.data.add(i);
+        let a_slice = a_ref.as_slice();
+        let b_slice = b_ref.as_slice();
+        for (&av, &bv) in a_slice.iter().zip(b_slice.iter()) {
             let combined = call_closure2(func, env, av, bv);
             ore_list_push(result, combined);
         }
@@ -1991,11 +1983,10 @@ pub extern "C" fn ore_list_zip(a: *mut OreList, b: *mut OreList) -> *mut OreList
         let a = &*a;
         let b = &*b;
         let result = ore_list_new();
-        let min_len = a.len.min(b.len) as usize;
-        for i in 0..min_len {
+        for (&av, &bv) in a.as_slice().iter().zip(b.as_slice().iter()) {
             let pair = ore_list_new();
-            ore_list_push(pair, *a.data.add(i));
-            ore_list_push(pair, *b.data.add(i));
+            ore_list_push(pair, av);
+            ore_list_push(pair, bv);
             ore_list_push(result, pair as i64);
         }
         result
@@ -2848,8 +2839,7 @@ fn ore_value_to_json(val: i64, kind: i8) -> serde_json::Value {
         9 => {
             let list = unsafe { &*(val as *mut OreList) };
             let mut arr = Vec::new();
-            for i in 0..list.len {
-                let elem = unsafe { *list.data.offset(i as isize) };
+            for &elem in unsafe { list.as_slice() } {
                 arr.push(serde_json::Value::Number(serde_json::Number::from(elem)));
             }
             serde_json::Value::Array(arr)
