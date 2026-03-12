@@ -24,7 +24,7 @@ fn estimate_pi samples:Int seed_init:Int -> Float
     seed = lcg_next(seed)
     y := to_unit(seed)
     dist := x * x + y * y
-    if dist < 1.0 or dist == 1.0
+    if dist <= 1.0
       inside = inside + 1
   ratio := inside.to_float() / samples.to_float()
   ratio * 4.0

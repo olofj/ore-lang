@@ -34,7 +34,7 @@ fn main
     dv := ((v_rest - v) / tau + i_input) * dt
     v = v + dv
 
-    if v > v_thresh or v == v_thresh
+    if v >= v_thresh
       spike_count = spike_count + 1
       if last_spike >= 0
         isi := step - last_spike
