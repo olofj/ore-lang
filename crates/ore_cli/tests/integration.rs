@@ -12113,3 +12113,85 @@ fn build_and_run_binary() {
     // Clean up
     let _ = std::fs::remove_file(&tmp_bin);
 }
+
+#[test]
+fn runtime_fn_sync_check() {
+    // Phase 20.3: Verify declare_runtime_functions() and map_runtime_functions() are in sync.
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let codegen_path = manifest_dir
+        .parent().unwrap() // crates/
+        .join("ore_codegen/src/lib.rs");
+    let cli_path = manifest_dir.join("src/main.rs");
+
+    let codegen_src = std::fs::read_to_string(&codegen_path)
+        .expect("failed to read ore_codegen/src/lib.rs");
+    let cli_src = std::fs::read_to_string(&cli_path)
+        .expect("failed to read ore_cli/src/main.rs");
+
+    // Extract ore_* function names from declare_runtime_functions
+    let mut declared: Vec<String> = Vec::new();
+    let mut in_declare = false;
+    let mut brace_depth: i32 = 0;
+    for line in codegen_src.lines() {
+        if line.contains("fn declare_runtime_functions") {
+            in_declare = true;
+        }
+        if in_declare {
+            brace_depth += line.matches('{').count() as i32;
+            brace_depth -= line.matches('}').count() as i32;
+            // Match: self.module.add_function("ore_xxx", ...
+            if let Some(start) = line.find("add_function(\"ore_") {
+                let rest = &line[start + "add_function(\"".len()..];
+                if let Some(end) = rest.find('"') {
+                    declared.push(rest[..end].to_string());
+                }
+            }
+            if brace_depth <= 0 && in_declare && brace_depth != 0 {
+                break;
+            }
+            if brace_depth == 0 && in_declare && line.contains('}') {
+                break;
+            }
+        }
+    }
+    declared.sort();
+    declared.dedup();
+
+    // Extract ore_* function names from map_runtime_functions
+    let mut mapped: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut in_map = false;
+    let mut map_brace_depth: i32 = 0;
+    for line in cli_src.lines() {
+        if line.contains("fn map_runtime_functions") {
+            in_map = true;
+        }
+        if in_map {
+            map_brace_depth += line.matches('{').count() as i32;
+            map_brace_depth -= line.matches('}').count() as i32;
+            // Match: map_fn!("ore_xxx", ...
+            if let Some(start) = line.find("map_fn!(\"ore_") {
+                let rest = &line[start + "map_fn!(\"".len()..];
+                if let Some(end) = rest.find('"') {
+                    mapped.insert(rest[..end].to_string());
+                }
+            }
+            if map_brace_depth == 0 && in_map && line.contains('}') {
+                break;
+            }
+        }
+    }
+
+    // Every declared ore_* function must have a map_fn! mapping
+    let mut missing: Vec<String> = Vec::new();
+    for name in &declared {
+        if !mapped.contains(name) {
+            missing.push(name.clone());
+        }
+    }
+
+    assert!(
+        missing.is_empty(),
+        "Runtime functions declared in codegen but missing from map_runtime_functions():\n  {}",
+        missing.join("\n  ")
+    );
+}
