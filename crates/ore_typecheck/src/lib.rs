@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use ore_parser::ast::*;
 use ore_types::Type;
 use std::collections::HashMap;
