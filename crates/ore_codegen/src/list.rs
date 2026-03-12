@@ -425,17 +425,11 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_rt("ore_list_flatten", &[list_val.into()], "lflat")?;
                 Ok((val, ValKind::List(None)))
             }
-            "window" => {
-                self.check_arity("window", args, 1)?;
+            "window" | "chunks" => {
+                self.check_arity(method, args, 1)?;
                 let n = self.compile_expr(&args[0], func)?;
-                let val = self.call_rt("ore_list_window", &[list_val.into(), n.into()], "lwin")?;
-                self.last_list_elem_kind = Some(ValKind::List(None));
-                Ok((val, ValKind::list_of(ValKind::List(None))))
-            }
-            "chunks" => {
-                self.check_arity("chunks", args, 1)?;
-                let n = self.compile_expr(&args[0], func)?;
-                let val = self.call_rt("ore_list_chunks", &[list_val.into(), n.into()], "lchk")?;
+                let rt_name = format!("ore_list_{}", method);
+                let val = self.call_rt(&rt_name, &[list_val.into(), n.into()], method)?;
                 self.last_list_elem_kind = Some(ValKind::List(None));
                 Ok((val, ValKind::list_of(ValKind::List(None))))
             }
