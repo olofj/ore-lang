@@ -134,19 +134,11 @@ impl<'ctx> CodeGen<'ctx> {
         let inner_val = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "inner"))?;
         // TODO: use kind tag from option struct to determine actual inner type
         let inner_kind = ValKind::Int;
-        let (result_val, result_kind) = self.call_method_on_value(inner_val, &inner_kind, method, args, func)?;
+        let (result_val, _result_kind) = self.call_method_on_value(inner_val, &inner_kind, method, args, func)?;
 
         // Wrap result in Some
-        let result_opt_alloca = bld!(self.builder.build_alloca(opt_ty, "optres"))?;
-        let res_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, result_opt_alloca, 0, "res_tag"))?;
-        bld!(self.builder.build_store(res_tag_ptr, self.context.i8_type().const_int(1, false)))?;
-        let res_kind_ptr = bld!(self.builder.build_struct_gep(opt_ty, result_opt_alloca, 1, "res_kind"))?;
-        let rk_tag = self.valkind_to_tag(&result_kind);
-        bld!(self.builder.build_store(res_kind_ptr, self.context.i8_type().const_int(rk_tag as u64, false)))?;
-        let res_val_ptr = bld!(self.builder.build_struct_gep(opt_ty, result_opt_alloca, 2, "res_val"))?;
         let result_i64 = self.value_to_i64(result_val)?;
-        bld!(self.builder.build_store(res_val_ptr, result_i64))?;
-        let some_result = bld!(self.builder.build_load(opt_ty, result_opt_alloca, "some_res"))?;
+        let some_result = self.build_tagged_union(opt_ty, 1, Some(result_i64.into()), "some_res")?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
         let some_end = self.current_block()?;
 
