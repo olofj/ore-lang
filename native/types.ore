@@ -1,0 +1,56 @@
+-- Type system definitions for the Ore native compiler
+-- Port of ore_types (78 LoC Rust)
+
+use ast
+
+-- Semantic types used during type checking
+type OreType
+  IntOreType
+  FloatOreType
+  BoolOreType
+  StrOreType
+  VoidOreType
+  ListOreType(elem: OreType)
+  MapOreType(key: OreType, val: OreType)
+  OptionOreType
+  ResultOreType
+  ChannelOreType
+  RecordOreType(name: Str)
+  EnumOreType(name: Str)
+  FnOreType(params: List, ret: OreType)
+
+-- Convert a semantic type to its string representation
+fn type_to_str t:OreType -> Str
+  match t
+    IntOreType -> "Int"
+    FloatOreType -> "Float"
+    BoolOreType -> "Bool"
+    StrOreType -> "Str"
+    VoidOreType -> "Void"
+    ChannelOreType -> "Channel"
+    OptionOreType -> "Option"
+    ResultOreType -> "Result"
+    RecordOreType name -> name
+    EnumOreType name -> name
+    _ -> "unknown"
+
+-- Convert a TypeExpr (AST node) to a semantic OreType
+fn type_expr_to_ore_type te:TypeExpr -> OreType
+  match te
+    NamedType name ->
+      if name == "Int" then IntOreType
+      else if name == "Float" then FloatOreType
+      else if name == "Bool" then BoolOreType
+      else if name == "Str" then StrOreType
+      else if name == "Void" then VoidOreType
+      else if name == "Option" then OptionOreType
+      else if name == "Result" then ResultOreType
+      else if name == "Channel" then ChannelOreType
+      else if name == "List" then ListOreType(elem: IntOreType)
+      else if name == "Map" then MapOreType(key: StrOreType, val: IntOreType)
+      else RecordOreType(name: name)
+    _ -> IntOreType
+
+-- Check if two types are equal
+fn types_equal a:OreType b:OreType -> Bool
+  type_to_str(a) == type_to_str(b)

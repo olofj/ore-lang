@@ -1,0 +1,44 @@
+-- Tests for native type system
+use ast
+use types
+
+fn test_basic_types
+  assert_eq type_to_str(IntOreType), "Int"
+  assert_eq type_to_str(FloatOreType), "Float"
+  assert_eq type_to_str(BoolOreType), "Bool"
+  assert_eq type_to_str(StrOreType), "Str"
+  assert_eq type_to_str(VoidOreType), "Void"
+  assert_eq type_to_str(ChannelOreType), "Channel"
+  assert_eq type_to_str(OptionOreType), "Option"
+  assert_eq type_to_str(ResultOreType), "Result"
+
+fn test_named_types
+  assert_eq type_to_str(RecordOreType(name: "Point")), "Point"
+  assert_eq type_to_str(EnumOreType(name: "Shape")), "Shape"
+
+fn test_type_expr_conversion
+  t1 := type_expr_to_ore_type(NamedType(name: "Int"))
+  assert_eq type_to_str(t1), "Int"
+
+  t2 := type_expr_to_ore_type(NamedType(name: "Str"))
+  assert_eq type_to_str(t2), "Str"
+
+  t3 := type_expr_to_ore_type(NamedType(name: "Point"))
+  assert_eq type_to_str(t3), "Point"
+
+fn test_type_equality
+  assert types_equal(IntOreType, IntOreType)
+  assert types_equal(StrOreType, StrOreType)
+  assert not types_equal(IntOreType, FloatOreType)
+  assert not types_equal(StrOreType, IntOreType)
+
+fn main
+  test_basic_types()
+  print "  [pass] basic types"
+  test_named_types()
+  print "  [pass] named types"
+  test_type_expr_conversion()
+  print "  [pass] type expr conversion"
+  test_type_equality()
+  print "  [pass] type equality"
+  print "\nAll 4 type tests passed!"
