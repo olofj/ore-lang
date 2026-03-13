@@ -59,7 +59,6 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
     /// Track list element kind and map value kind for a variable binding.
-    /// Updates both the per-variable tracking HashMaps and the VarInfo.kind.
     fn track_variable_kinds(&mut self, name: &str, kind: &ValKind) {
         if let ValKind::List(Some(ref ek)) = kind {
             self.list_element_kinds.insert(name.to_string(), ek.as_ref().clone());
