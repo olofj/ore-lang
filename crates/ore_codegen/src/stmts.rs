@@ -425,33 +425,9 @@ impl<'ctx> CodeGen<'ctx> {
         name: &str,
         kind: &ValKind,
     ) -> Result<(PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>), CodeGenError> {
-        match kind {
-            ValKind::Record(rname) => {
-                let st = self.records[rname].struct_type;
-                let alloca = bld!(self.builder.build_alloca(st, name))?;
-                Ok((alloca, st.into()))
-            }
-            ValKind::Enum(ename) => {
-                let et = self.enums[ename].enum_type;
-                let alloca = bld!(self.builder.build_alloca(et, name))?;
-                Ok((alloca, et.into()))
-            }
-            ValKind::Str => {
-                let pt = self.context.ptr_type(inkwell::AddressSpace::default());
-                let alloca = bld!(self.builder.build_alloca(pt, name))?;
-                Ok((alloca, pt.into()))
-            }
-            ValKind::Float => {
-                let f64_type = self.context.f64_type();
-                let alloca = bld!(self.builder.build_alloca(f64_type, name))?;
-                Ok((alloca, f64_type.into()))
-            }
-            _ => {
-                let i64_type = self.context.i64_type();
-                let alloca = bld!(self.builder.build_alloca(i64_type, name))?;
-                Ok((alloca, i64_type.into()))
-            }
-        }
+        let ty = self.kind_to_llvm_type(kind);
+        let alloca = bld!(self.builder.build_alloca(ty, name))?;
+        Ok((alloca, ty))
     }
 
     /// Compile a for-each loop over a list. If `index_var` is Some, also exposes the
