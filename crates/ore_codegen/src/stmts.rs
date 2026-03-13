@@ -414,15 +414,6 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    /// Check if an iterable expression refers to a known map variable.
-    fn is_map_iterable(&self, iterable: &Expr) -> bool {
-        if let Expr::Ident(name) = iterable {
-            self.map_value_kinds.contains_key(name)
-        } else {
-            false
-        }
-    }
-
     pub(crate) fn compile_for_each(
         &mut self,
         var: &str,
@@ -430,15 +421,14 @@ impl<'ctx> CodeGen<'ctx> {
         body: &Block,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
-        if self.is_map_iterable(iterable) {
-            let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
+        let (val, kind) = self.compile_expr_with_kind(iterable, func)?;
+        if kind.is_map() {
+            let map_ptr = val.into_pointer_value();
             let list_ptr = self.call_rt("ore_map_keys", &[map_ptr.into()], "keys")?.into_pointer_value();
             return self.compile_for_each_over_list(var, list_ptr, ValKind::Str, body, func, None);
         }
-
-        let (list_val, list_kind) = self.compile_expr_with_kind(iterable, func)?;
-        let elem_kind = self.resolve_list_elem_kind(iterable, &list_kind);
-        let list_ptr = list_val.into_pointer_value();
+        let elem_kind = self.resolve_list_elem_kind(iterable, &kind);
+        let list_ptr = val.into_pointer_value();
         self.compile_for_each_over_list(var, list_ptr, elem_kind, body, func, None)
     }
 
@@ -523,34 +513,28 @@ impl<'ctx> CodeGen<'ctx> {
         body: &Block,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
-        if self.is_map_iterable(iterable) {
-            return self.compile_for_each_kv_map(key_var, val_var, iterable, body, func);
+        let (val, kind) = self.compile_expr_with_kind(iterable, func)?;
+        if kind.is_map() {
+            let val_kind = kind.map_val_kind().cloned().unwrap_or(ValKind::Int);
+            let map_ptr = val.into_pointer_value();
+            return self.compile_for_each_kv_map(key_var, val_var, map_ptr, &val_kind, body, func);
         }
-
         // List enumeration: for i, x in list
-        let (list_val, list_kind) = self.compile_expr_with_kind(iterable, func)?;
-        let elem_kind = self.resolve_list_elem_kind(iterable, &list_kind);
-        let list_ptr = list_val.into_pointer_value();
+        let elem_kind = self.resolve_list_elem_kind(iterable, &kind);
+        let list_ptr = val.into_pointer_value();
         self.compile_for_each_over_list(val_var, list_ptr, elem_kind, body, func, Some(key_var))
     }
 
-    pub(crate) fn compile_for_each_kv_map(
+    fn compile_for_each_kv_map(
         &mut self,
         key_var: &str,
         val_var: &str,
-        iterable: &Expr,
+        map_ptr: PointerValue<'ctx>,
+        val_kind: &ValKind,
         body: &Block,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
         let ptr_type = self.context.ptr_type(inkwell::AddressSpace::default());
-
-        let val_kind = if let Expr::Ident(name) = iterable {
-            self.map_value_kinds.get(name).cloned().unwrap_or(ValKind::Int)
-        } else {
-            ValKind::Int
-        };
-
-        let map_ptr = self.compile_expr(iterable, func)?.into_pointer_value();
         let keys_list = self.call_rt("ore_map_keys", &[map_ptr.into()], "keys")?.into_pointer_value();
         let len_val = self.call_rt("ore_list_len", &[keys_list.into()], "len")?.into_int_value();
 
