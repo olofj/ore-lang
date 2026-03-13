@@ -22,7 +22,7 @@ impl CCodeGen {
 
     fn compile_enum_match(&mut self, subject_val: &str, enum_name: &str, arms: &[MatchArm]) -> Result<(String, ValKind), CCodeGenError> {
         let enum_info = self.enums.get(enum_name).ok_or_else(|| self.err(format!("undefined enum '{}'", enum_name)))?;
-        let struct_name = format!("ore_enum_{}", Self::mangle_name(enum_name));
+        let struct_name = format!("struct ore_enum_{}", Self::mangle_name(enum_name));
         let variants: Vec<_> = enum_info.variants.iter().map(|v| {
             (v.name.clone(), v.tag, v.field_names.clone(), v.field_kinds.clone())
         }).collect();
@@ -282,7 +282,7 @@ impl CCodeGen {
     pub(crate) fn compile_variant_construct(&mut self, variant_name: &str, fields: &[(String, Expr)]) -> Result<(String, ValKind), CCodeGenError> {
         let enum_name = self.variant_to_enum.get(variant_name)
             .ok_or_else(|| self.err(format!("unknown variant '{}'", variant_name)))?.clone();
-        let struct_name = format!("ore_enum_{}", Self::mangle_name(&enum_name));
+        let struct_name = format!("struct ore_enum_{}", Self::mangle_name(&enum_name));
         let enum_info = self.enums.get(&enum_name).ok_or_else(|| self.err(format!("undefined enum '{}'", enum_name)))?;
         let variant = enum_info.variants.iter().find(|v| v.name == variant_name)
             .ok_or_else(|| self.err(format!("unknown variant '{}'", variant_name)))?;
@@ -354,7 +354,7 @@ impl CCodeGen {
     }
 
     pub(crate) fn compile_record_construct(&mut self, type_name: &str, fields: &[(String, Expr)]) -> Result<(String, ValKind), CCodeGenError> {
-        let struct_name = format!("ore_rec_{}", Self::mangle_name(type_name));
+        let struct_name = format!("struct ore_rec_{}", Self::mangle_name(type_name));
         let info = self.records.get(type_name).ok_or_else(|| self.err(format!("undefined type '{}'", type_name)))?;
         let field_names = info.field_names.clone();
 

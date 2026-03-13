@@ -266,6 +266,7 @@ impl CCodeGen {
             ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel => "void*".to_string(),
             ValKind::Record(name) => format!("struct ore_rec_{}", Self::mangle_name(name)),
             ValKind::Enum(name) => format!("struct ore_enum_{}", Self::mangle_name(name)),
+            // Note: These always use "struct" prefix since C requires it for struct types
             ValKind::Option | ValKind::Result => "OreTaggedUnion".to_string(),
         }
     }
