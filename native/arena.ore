@@ -31,6 +31,28 @@ fn alloc_pattern pool:List p:Pattern -> Int
 fn get_pattern pool:List id:Int -> Pattern
   pool[id]
 
+-- Allocate an item in the pool, returning its index
+fn alloc_item pool:List i:Item -> Int
+  pool.push(i)
+  pool.len() - 1
+
+-- Get an item from the pool by index
+fn get_item pool:List id:Int -> Item
+  pool[id]
+
+-- Allocate a TypeExpr in the pool, returning its index
+fn alloc_type pool:List t:TypeExpr -> Int
+  pool.push(t)
+  pool.len() - 1
+
+-- Get a TypeExpr from the pool by index
+fn get_type pool:List id:Int -> TypeExpr
+  pool[id]
+
+-- Get a SpannedStmt from a list by index
+fn get_sstmt pool:List id:Int -> SpannedStmt
+  pool[id]
+
 -- Sentinel value for "no node" (replaces Option<Box<Expr>>)
 fn no_node -> Int
   -1

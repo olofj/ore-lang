@@ -147,3 +147,6 @@ type Item
 
 -- Program: top-level list of items
 type Program { items: List }
+
+-- Parse result: program + expression/statement pools for AST inspection
+type ParseResult { program: Program, exprs: List, stmts: List }

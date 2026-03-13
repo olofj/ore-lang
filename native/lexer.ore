@@ -638,3 +638,20 @@ fn fixup_multiline_pipes tokens:List -> List
         i = i + 1
 
   result
+
+-- Lex source and return split format [tokens, lines, cols]
+fn lex_split source:Str -> List
+  tokens := lex(source).unwrap_or([])
+  mut toks := []
+  mut lines := []
+  mut cols := []
+  for i in 0..tokens.len()
+    st := tokens[i]
+    push_token(toks, st.token)
+    lines.push(st.line)
+    cols.push(st.col)
+  mut r := []
+  r.push(toks)
+  r.push(lines)
+  r.push(cols)
+  r

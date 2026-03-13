@@ -131,6 +131,14 @@ fn is_keyword tok:Token -> Bool
     AssertNeTok -> true
     _ -> false
 
+-- Push a token into a pool (typed, required for correct enum storage)
+fn push_token pool:List t:Token
+  pool.push(t)
+
+-- Get a token from a pool by index (typed)
+fn get_token pool:List idx:Int -> Token
+  pool[idx]
+
 fn token_to_str tok:Token -> Str
   match tok
     IntTok v -> "Int({v})"
