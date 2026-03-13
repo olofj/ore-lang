@@ -115,7 +115,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::Int))
             }
             "parse_float" => {
-                let val = self.call_rt("ore_str_parse_float", &[str_val.into()], "parse_float")?;
+                let val = self.call_rt("ore_str_to_float", &[str_val.into()], "parse_float")?;
                 Ok((val, ValKind::Float))
             }
             "repeat" => {

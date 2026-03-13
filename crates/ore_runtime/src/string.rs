@@ -337,10 +337,3 @@ pub extern "C" fn ore_str_split_whitespace(s: *mut OreStr) -> *mut OreList {
     }
     list
 }
-
-// ── String parsing ──
-
-#[no_mangle]
-pub extern "C" fn ore_str_parse_float(s: *mut OreStr) -> f64 {
-    ore_str_to_float(s)
-}
