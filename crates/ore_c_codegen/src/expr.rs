@@ -43,7 +43,11 @@ impl CCodeGen {
                     }
                 }
                 let kind = self.get_var_kind(name);
-                Ok((name.clone(), kind))
+                // Use the mangled C name from VarInfo if available
+                let c_name = self.variables.get(name)
+                    .map(|v| v.c_name.clone())
+                    .unwrap_or_else(|| name.clone());
+                Ok((c_name, kind))
             }
             Expr::BinOp { op, left, right } => {
                 if *op == BinOp::Pipe {
@@ -429,6 +433,14 @@ impl CCodeGen {
                     _ => return Err(self.err("pipeline target must be a function")),
                 };
                 self.compile_pipe_to_named(arg, &name, args)
+            }
+            Expr::Lambda { params, body } => {
+                let (arg_val, _) = self.compile_expr(arg)?;
+                let (fn_ptr, _) = self.compile_lambda(params, body, None)?;
+                // Call the lambda with the piped argument
+                let fn_name = fn_ptr.trim_start_matches("(void*)&");
+                let call = format!("{}({})", fn_name, arg_val);
+                Ok((call, ValKind::Int))
             }
             _ => Err(self.err("unsupported pipeline target")),
         }

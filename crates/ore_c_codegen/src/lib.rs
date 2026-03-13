@@ -288,12 +288,20 @@ impl CCodeGen {
 
     /// Mangle a function name to avoid C keyword/stdlib conflicts.
     fn mangle_fn_name(name: &str) -> String {
-        if Self::C_RESERVED.contains(&name) || name == "main" {
-            // "main" is special - keep as-is since it needs to be the entry point
-            if name == "main" {
-                return name.to_string();
-            }
+        if name == "main" {
+            return name.to_string();
+        }
+        if Self::C_RESERVED.contains(&name) {
             format!("ore_fn_{}", name)
+        } else {
+            name.to_string()
+        }
+    }
+
+    /// Mangle a variable/parameter name to avoid C keyword conflicts.
+    fn mangle_var_name(name: &str) -> String {
+        if Self::C_RESERVED.contains(&name) {
+            format!("ore_v_{}", name)
         } else {
             name.to_string()
         }
@@ -542,7 +550,8 @@ impl CCodeGen {
         for p in &fndef.params {
             let kind = self.type_expr_to_kind(&p.ty);
             let c_type = self.kind_to_c_type_str(&kind);
-            param_strs.push(format!("{} {}", c_type, p.name));
+            let c_param_name = Self::mangle_var_name(&p.name);
+            param_strs.push(format!("{} {}", c_type, c_param_name));
             param_kinds.push(kind);
         }
 
@@ -605,9 +614,10 @@ impl CCodeGen {
         for (i, p) in fndef.params.iter().enumerate() {
             let kind = &fn_info.param_kinds[i];
             let c_type = self.kind_to_c_type_str(kind);
-            param_strs.push(format!("{} {}", c_type, p.name));
+            let c_param_name = Self::mangle_var_name(&p.name);
+            param_strs.push(format!("{} {}", c_type, c_param_name));
             self.variables.insert(p.name.clone(), VarInfo {
-                c_name: p.name.clone(),
+                c_name: c_param_name.clone(),
                 kind: kind.clone(),
                 is_mutable: false,
             });
