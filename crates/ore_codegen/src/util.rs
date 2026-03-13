@@ -130,6 +130,14 @@ impl<'ctx> CodeGen<'ctx> {
             BasicValueEnum::PointerValue(v) => {
                 self.ptr_to_i64(v)
             }
+            BasicValueEnum::StructValue(v) => {
+                // Heap-allocate the struct and return its pointer as i64.
+                // This handles enums and records stored in Option/Result payloads.
+                let ty = v.get_type();
+                let heap_ptr = bld!(self.builder.build_malloc(ty, "heap_struct"))?;
+                bld!(self.builder.build_store(heap_ptr, v))?;
+                self.ptr_to_i64(heap_ptr)
+            }
             _ => Ok(val.into_int_value()),
         }
     }
