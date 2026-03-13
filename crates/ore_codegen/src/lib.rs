@@ -20,7 +20,7 @@ pub enum ValKind {
     Option,
     Result,
     List(Option<Box<ValKind>>),
-    Map,
+    Map(Option<Box<ValKind>>),
     Channel,
 }
 
@@ -41,6 +41,24 @@ impl ValKind {
     /// Create a List with a known element kind
     pub fn list_of(kind: ValKind) -> ValKind {
         ValKind::List(Some(Box::new(kind)))
+    }
+
+    /// Check if this is any Map variant regardless of value kind
+    pub fn is_map(&self) -> bool {
+        matches!(self, ValKind::Map(_))
+    }
+
+    /// Extract the value kind from a Map variant, if known
+    pub fn map_val_kind(&self) -> Option<&ValKind> {
+        match self {
+            ValKind::Map(Some(k)) => Some(k),
+            _ => None,
+        }
+    }
+
+    /// Create a Map with a known value kind
+    pub fn map_of(kind: ValKind) -> ValKind {
+        ValKind::Map(Some(Box::new(kind)))
     }
 }
 
@@ -102,13 +120,8 @@ pub struct CodeGen<'ctx> {
     pub(crate) dynamic_kind_tags: HashMap<String, PointerValue<'ctx>>,
     /// Maps variable name -> element ValKind for typed lists
     pub(crate) list_element_kinds: HashMap<String, ValKind>,
-    /// Temporary: element kind from the last compiled list literal
-    pub(crate) last_list_elem_kind: Option<ValKind>,
-    pub(crate) last_lambda_return_kind: Option<ValKind>,
     /// Maps variable name -> value ValKind for typed maps
     pub(crate) map_value_kinds: HashMap<String, ValKind>,
-    /// Temporary: value kind from the last compiled map literal
-    pub(crate) last_map_val_kind: Option<ValKind>,
     /// Current source line (for error reporting)
     pub(crate) current_line: usize,
     /// Generic function definitions (not yet monomorphized)
@@ -117,6 +130,8 @@ pub struct CodeGen<'ctx> {
     pub(crate) fn_defaults: HashMap<String, Vec<Option<Expr>>>,
     /// Tracks element kind for functions returning List[T]
     pub(crate) fn_return_list_elem_kind: HashMap<String, ValKind>,
+    /// Tracks value kind for functions returning Map[K, V]
+    pub(crate) fn_return_map_val_kind: HashMap<String, ValKind>,
     /// Test function names in order, for `ore test`
     pub test_names: Vec<String>,
 }
@@ -176,14 +191,12 @@ impl<'ctx> CodeGen<'ctx> {
             lambda_captures: HashMap::new(),
             dynamic_kind_tags: HashMap::new(),
             list_element_kinds: HashMap::new(),
-            last_list_elem_kind: None,
-            last_lambda_return_kind: None,
             map_value_kinds: HashMap::new(),
-            last_map_val_kind: None,
             current_line: 0,
             generic_fns: HashMap::new(),
             fn_defaults: HashMap::new(),
             fn_return_list_elem_kind: HashMap::new(),
+            fn_return_map_val_kind: HashMap::new(),
             test_names: Vec::new(),
         }
     }
@@ -233,7 +246,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Option => 7,
             ValKind::Result => 8,
             ValKind::List(_) => 9,
-            ValKind::Map => 10,
+            ValKind::Map(_) => 10,
             ValKind::Channel => 11,
         }
     }
@@ -461,7 +474,7 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::FloatLit(_) => ValKind::Float,
             Expr::BoolLit(_) => ValKind::Bool,
             Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List(None),
-            Expr::MapLit(_) => ValKind::Map,
+            Expr::MapLit(_) => ValKind::Map(None),
             Expr::Ident(name) => {
                 if let Some(var_info) = self.variables.get(name) {
                     var_info.kind.clone()
@@ -527,7 +540,7 @@ impl<'ctx> CodeGen<'ctx> {
                 "Option" => ValKind::Option,
                 "Result" => ValKind::Result,
                 "List" => ValKind::List(None),
-                "Map" => ValKind::Map,
+                "Map" => ValKind::Map(None),
                 "Channel" => ValKind::Channel,
                 other => {
                     if self.records.contains_key(other) {
@@ -553,7 +566,7 @@ impl<'ctx> CodeGen<'ctx> {
                             ValKind::List(None)
                         }
                     }
-                    "Map" => ValKind::Map,
+                    "Map" => ValKind::Map(None),
                     "Option" => ValKind::Option,
                     "Result" => ValKind::Result,
                     other => {
@@ -568,12 +581,67 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
+    /// Infer the list element kind from a function body's return expression.
+    /// Used for functions with plain `List` return type annotations.
+    fn infer_list_return_kind(&self, body: &Block) -> Option<ValKind> {
+        let last = body.stmts.last()?;
+        let expr = match &last.stmt {
+            Stmt::Return(Some(e)) | Stmt::Expr(e) => e,
+            _ => return None,
+        };
+        self.infer_list_elem_from_expr(expr)
+    }
+
+    fn infer_list_elem_from_expr(&self, expr: &Expr) -> Option<ValKind> {
+        // If returning a named variable, check list_element_kinds first (most accurate)
+        if let Expr::Ident(name) = expr {
+            if let Some(ek) = self.list_element_kinds.get(name) {
+                return Some(ek.clone());
+            }
+        }
+        // If returning a method call on a tracked list variable, check its element kind
+        if let Expr::MethodCall { object, .. } = expr {
+            if let Expr::Ident(name) = object.as_ref() {
+                if let Some(ek) = self.list_element_kinds.get(name) {
+                    return Some(ek.clone());
+                }
+            }
+        }
+        // Recurse into if/else branches
+        if let Expr::IfElse { then_block, else_block, .. } = expr {
+            // Try then branch
+            if let Some(last) = then_block.stmts.last() {
+                if let Stmt::Expr(ref e) | Stmt::Return(Some(ref e)) = last.stmt {
+                    if let Some(ek) = self.infer_list_elem_from_expr(e) {
+                        return Some(ek);
+                    }
+                }
+            }
+            // Try else branch
+            if let Some(else_blk) = else_block {
+                if let Some(last) = else_blk.stmts.last() {
+                    if let Stmt::Expr(ref e) | Stmt::Return(Some(ref e)) = last.stmt {
+                        if let Some(ek) = self.infer_list_elem_from_expr(e) {
+                            return Some(ek);
+                        }
+                    }
+                }
+            }
+        }
+        // Infer the kind and extract element type
+        let kind = self.infer_expr_kind(expr);
+        match kind {
+            ValKind::List(Some(ek)) => Some(*ek),
+            _ => None,
+        }
+    }
+
     pub(crate) fn kind_to_llvm_type(&self, kind: &ValKind) -> inkwell::types::BasicTypeEnum<'ctx> {
         match kind {
             ValKind::Int | ValKind::Void => self.context.i64_type().into(),
             ValKind::Float => self.context.f64_type().into(),
             ValKind::Bool => self.context.bool_type().into(),
-            ValKind::Str | ValKind::List(_) | ValKind::Map | ValKind::Channel => self.ptr_type().into(),
+            ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel => self.ptr_type().into(),
             ValKind::Record(name) => self.records[name].struct_type.into(),
             ValKind::Enum(name) => self.enums[name].enum_type.into(),
             ValKind::Option | ValKind::Result => self.tagged_union_type().into(),
@@ -614,6 +682,10 @@ impl<'ctx> CodeGen<'ctx> {
                 let elem_kind = self.type_expr_to_kind(&args[0]);
                 self.fn_return_list_elem_kind.insert(fndef.name.clone(), elem_kind);
             }
+            if base == "Map" && args.len() >= 2 {
+                let val_kind = self.type_expr_to_kind(&args[1]);
+                self.fn_return_map_val_kind.insert(fndef.name.clone(), val_kind);
+            }
         }
 
         // Store default parameter expressions if any exist
@@ -630,6 +702,9 @@ impl<'ctx> CodeGen<'ctx> {
         let entry = self.context.append_basic_block(func, "entry");
         self.builder.position_at_end(entry);
         self.variables.clear();
+        // Note: list_element_kinds and map_value_kinds are intentionally NOT cleared here.
+        // They carry over between functions to provide element kind info for untyped List/Map
+        // parameters (e.g., `fn foo tokens:List` without `List[Str]` annotation).
 
         for (i, param) in fndef.params.iter().enumerate() {
             let val = func.get_nth_param(i as u32).ok_or_else(|| self.err(format!("missing parameter '{}' at index {}", param.name, i)))?;
@@ -651,7 +726,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                 }
             }
-            if kind == ValKind::Map {
+            if kind.is_map() {
                 if let TypeExpr::Generic(_, args) = &param.ty {
                     if args.len() >= 2 {
                         let val_kind = self.type_expr_to_kind(&args[1]);
@@ -667,12 +742,15 @@ impl<'ctx> CodeGen<'ctx> {
         let last_val = self.compile_block_stmts(&fndef.body, func)?;
 
         // Capture element kind for functions returning List without explicit List[T] annotation
+        // by checking the last block's returned ValKind
         if !self.fn_return_list_elem_kind.contains_key(&fndef.name) {
             if let Some(ref ret_ty) = fndef.ret_type {
                 let is_plain_list = matches!(ret_ty, TypeExpr::Named(n) if n == "List");
                 if is_plain_list {
-                    if let Some(ref ek) = self.last_list_elem_kind {
-                        self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek.clone());
+                    // Infer element kind from the function body's last expression
+                    let inferred_ek = self.infer_list_return_kind(&fndef.body);
+                    if let Some(ek) = inferred_ek {
+                        self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek);
                     }
                 }
             }
@@ -733,7 +811,7 @@ impl<'ctx> CodeGen<'ctx> {
                                 match expr {
                                     Expr::StringLit(_) | Expr::StringInterp(_) => ValKind::Str,
                                     Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List(None),
-                                    Expr::MapLit(_) => ValKind::Map,
+                                    Expr::MapLit(_) => ValKind::Map(None),
                                     _ => ValKind::Str, // Best guess for pointer values
                                 }
                             }

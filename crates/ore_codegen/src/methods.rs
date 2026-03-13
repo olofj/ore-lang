@@ -185,21 +185,23 @@ impl<'ctx> CodeGen<'ctx> {
                 if let ValKind::List(Some(ref ek)) = obj_kind { Some(ek.as_ref().clone()) } else { None }
             }).unwrap_or(ValKind::Int);
 
-            // Also seed the side-channel for callers that still read it
-            self.last_list_elem_kind = Some(elem_kind.clone());
-
             let result = self.compile_list_method(obj_val, method, args, func, &elem_kind)?;
             // After push, update the variable's element kind tracking
+            // Don't downgrade a known non-Int kind to Int (Int is the default/unknown kind)
             if method == "push" {
                 if let Expr::Ident(var_name) = object {
                     if let ValKind::List(Some(ref ek)) = result.1 {
-                        self.list_element_kinds.insert(var_name.clone(), ek.as_ref().clone());
+                        let should_update = if ek.as_ref() == &ValKind::Int {
+                            // Only set to Int if there's no existing tracked kind
+                            !self.list_element_kinds.contains_key(var_name)
+                        } else {
+                            true
+                        };
+                        if should_update {
+                            self.list_element_kinds.insert(var_name.clone(), ek.as_ref().clone());
+                        }
                     }
                 }
-            }
-            // Update side-channel from result for downstream readers
-            if let ValKind::List(Some(ref ek)) = result.1 {
-                self.last_list_elem_kind = Some(ek.as_ref().clone());
             }
             return Ok(result);
         }
@@ -210,13 +212,22 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         // Handle map built-in methods
-        if obj_kind == ValKind::Map {
-            let result = self.compile_map_method(obj_val, method, args, func)?;
+        if obj_kind.is_map() {
+            // Resolve value kind: map_value_kinds (named vars) > ValKind variant > default Int
+            let map_vk = if let Expr::Ident(var_name) = object {
+                self.map_value_kinds.get(var_name).cloned()
+            } else {
+                None
+            }.or_else(|| {
+                if let ValKind::Map(Some(ref vk)) = obj_kind { Some(vk.as_ref().clone()) } else { None }
+            }).unwrap_or(ValKind::Int);
+
+            let result = self.compile_map_method(obj_val, method, args, func, &map_vk)?;
             // After set, update the variable's value kind tracking
             if method == "set" {
                 if let Expr::Ident(var_name) = object {
-                    if let Some(vk) = self.last_map_val_kind.clone() {
-                        self.map_value_kinds.insert(var_name.clone(), vk);
+                    if let ValKind::Map(Some(ref vk)) = result.1 {
+                        self.map_value_kinds.insert(var_name.clone(), vk.as_ref().clone());
                     }
                 }
             }
@@ -463,18 +474,17 @@ impl<'ctx> CodeGen<'ctx> {
         match obj_kind {
             ValKind::List(ref ek) => {
                 let val = self.call_rt("ore_list_get", &[obj_val.into(), idx_val.into()], "list_get")?;
-                // Resolve elem kind: list_element_kinds (named vars) > ValKind variant > side-channel > default Int
+                // Resolve elem kind: list_element_kinds (named vars) > ValKind variant > default Int
                 let elem_kind = if let Expr::Ident(var_name) = object {
                     self.list_element_kinds.get(var_name).cloned()
                 } else {
                     None
                 }.or_else(|| ek.as_ref().map(|k| k.as_ref().clone()))
-                    .or_else(|| self.last_list_elem_kind.clone())
                     .unwrap_or(ValKind::Int);
                 let typed_val = self.list_elem_from_i64(val, &elem_kind)?;
                 Ok((typed_val, elem_kind))
             }
-            ValKind::Map => {
+            ValKind::Map(_) => {
                 // Convert non-string keys to strings for map access
                 let map_key = if idx_val.is_pointer_value() {
                     idx_val // already a string pointer
@@ -490,7 +500,7 @@ impl<'ctx> CodeGen<'ctx> {
                 };
                 // If the value is a pointer type (Str, List, Map), convert i64 -> ptr
                 match val_kind {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map => {
+                    ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
                         let ptr = self.i64_to_ptr(val.into_int_value())?;
                         Ok((ptr.into(), val_kind))
                     }

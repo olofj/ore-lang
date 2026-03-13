@@ -60,20 +60,12 @@ impl<'ctx> CodeGen<'ctx> {
     }
     /// Track list element kind and map value kind for a variable binding.
     /// `consume` = true uses .take() (for new bindings), false uses .clone() (for reassignment).
-    fn track_variable_kinds(&mut self, name: &str, kind: &ValKind, consume: bool) {
+    fn track_variable_kinds(&mut self, name: &str, kind: &ValKind) {
         if let ValKind::List(Some(ref ek)) = kind {
             self.list_element_kinds.insert(name.to_string(), ek.as_ref().clone());
-        } else if kind.is_list() {
-            let ek = if consume { self.last_list_elem_kind.take() } else { self.last_list_elem_kind.clone() };
-            if let Some(ek) = ek {
-                self.list_element_kinds.insert(name.to_string(), ek);
-            }
         }
-        if *kind == ValKind::Map {
-            let vk = if consume { self.last_map_val_kind.take() } else { self.last_map_val_kind.clone() };
-            if let Some(vk) = vk {
-                self.map_value_kinds.insert(name.to_string(), vk);
-            }
+        if let ValKind::Map(Some(ref vk)) = kind {
+            self.map_value_kinds.insert(name.to_string(), vk.as_ref().clone());
         }
     }
 
@@ -84,23 +76,20 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<Option<BasicValueEnum<'ctx>>, CodeGenError> {
         match stmt {
             Stmt::Let { name, mutable, value } => {
-                self.last_list_elem_kind = None;
-                self.last_map_val_kind = None;
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
                 let ty = val.get_type();
                 let alloca = self.build_entry_alloca(func, ty, name)?;
                 bld!(self.builder.build_store(alloca, val))?;
                 self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: kind.clone(), is_mutable: *mutable });
-                self.track_variable_kinds(name, &kind, true);
+                self.track_variable_kinds(name, &kind);
                 Ok(None)
             }
             Stmt::LetDestructure { names, value } => {
-                self.last_list_elem_kind = None;
                 let (val, vk) = self.compile_expr_with_kind(value, func)?;
                 let list_ptr = val.into_pointer_value();
                 let elem_kind = match &vk {
                     ValKind::List(Some(ek)) => ek.as_ref().clone(),
-                    _ => self.list_elem_kind(),
+                    _ => ValKind::Int,
                 };
                 let list_get_fn = self.rt("ore_list_get")?;
                 let i64_type = self.context.i64_type();
@@ -134,7 +123,7 @@ impl<'ctx> CodeGen<'ctx> {
                     return Err(self.err(format!("cannot assign to immutable variable '{}'", name)));
                 }
                 bld!(self.builder.build_store(var_info.ptr, val))?;
-                self.track_variable_kinds(name, &kind, false);
+                self.track_variable_kinds(name, &kind);
                 Ok(None)
             }
             Stmt::IndexAssign { object, index, value } => {
@@ -145,7 +134,7 @@ impl<'ctx> CodeGen<'ctx> {
                     ValKind::List(_) => {
                         self.call_rt("ore_list_set", &[obj_val.into(), idx_val.into(), val.into()], "")?;
                     }
-                    ValKind::Map => {
+                    ValKind::Map(_) => {
                         // Convert non-string keys to strings for map
                         let map_key = if idx_val.is_pointer_value() {
                             idx_val
@@ -271,7 +260,6 @@ impl<'ctx> CodeGen<'ctx> {
                 // Save parent function state
                 let saved_vars = self.variables.clone();
                 let saved_insert_block = self.builder.get_insert_block();
-                let saved_list_elem_kind = self.last_list_elem_kind.clone();
                 let saved_break = self.break_target;
                 let saved_continue = self.continue_target;
 
@@ -283,7 +271,6 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Some(block) = saved_insert_block {
                     self.builder.position_at_end(block);
                 }
-                self.last_list_elem_kind = saved_list_elem_kind;
                 self.break_target = saved_break;
                 self.continue_target = saved_continue;
 
@@ -409,8 +396,8 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Resolve the element kind for a list iterable, using all available sources.
-    /// Priority: list_element_kinds > ValKind variant > last_list_elem_kind > default Int.
-    fn resolve_list_elem_kind(&mut self, iterable: &Expr, list_kind: &ValKind) -> ValKind {
+    /// Priority: list_element_kinds > ValKind variant > default Int.
+    fn resolve_list_elem_kind(&self, iterable: &Expr, list_kind: &ValKind) -> ValKind {
         if let Expr::Ident(name) = iterable {
             if let Some(ek) = self.list_element_kinds.get(name).cloned() {
                 return ek;
@@ -418,7 +405,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
         match list_kind {
             ValKind::List(Some(ek)) => ek.as_ref().clone(),
-            _ => self.last_list_elem_kind.clone().unwrap_or(ValKind::Int),
+            _ => ValKind::Int,
         }
     }
 

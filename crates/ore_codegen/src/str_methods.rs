@@ -43,20 +43,17 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => "ore_str_chars",
                 };
                 let val = self.call_rt(rt_name, &[str_val.into()], method)?;
-                self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "split" => {
                 if args.is_empty() {
                     // split() with no args = split on whitespace
                     let val = self.call_rt("ore_str_split_whitespace", &[str_val.into()], "ssplit")?;
-                    self.last_list_elem_kind = Some(ValKind::Str);
                     return Ok((val, ValKind::list_of(ValKind::Str)));
                 }
                 self.check_arity("split", args, 1)?;
                 let delim = self.compile_expr(&args[0], func)?;
                 let val = self.call_rt("ore_str_split", &[str_val.into(), delim.into()], "ssplit")?;
-                self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "to_int" => {

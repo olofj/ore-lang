@@ -8,6 +8,7 @@ impl<'ctx> CodeGen<'ctx> {
         method: &str,
         args: &[Expr],
         func: FunctionValue<'ctx>,
+        val_kind: &ValKind,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         match method {
             "set" => {
@@ -16,9 +17,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let (val, val_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let i64_val = self.value_to_i64(val)?;
                 self.call_rt("ore_map_set", &[map_val.into(), key.into(), i64_val.into()], "")?;
-                // Track value kind for later retrieval
-                self.last_map_val_kind = Some(val_kind);
-                Ok((map_val, ValKind::Map))
+                Ok((map_val, ValKind::map_of(val_kind)))
             }
             "get" => {
                 self.check_arity("get", args, 1)?;
@@ -27,7 +26,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 // Determine value kind from map tracking
                 // Check if the map object is a variable with a tracked value kind
-                self.unwrap_map_value(i64_val)
+                self.unwrap_map_value(i64_val, val_kind)
             }
             "contains" => {
                 self.check_arity("contains", args, 1)?;
@@ -48,52 +47,48 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "keys" => {
                 let val = self.call_rt("ore_map_keys", &[map_val.into()], "mkeys")?;
-                self.last_list_elem_kind = Some(ValKind::Str);
                 Ok((val, ValKind::list_of(ValKind::Str)))
             }
             "values" => {
                 let val = self.call_rt("ore_map_values", &[map_val.into()], "mvalues")?;
                 // Track the value kind from the map
-                let val_kind = self.map_val_kind();
-                self.last_list_elem_kind = Some(val_kind.clone());
+                let val_kind = val_kind.clone();
                 Ok((val, ValKind::list_of(val_kind)))
             }
             "merge" => {
                 self.check_arity("merge", args, 1)?;
                 let other = self.compile_expr(&args[0], func)?;
                 let val = self.call_rt("ore_map_merge", &[map_val.into(), other.into()], "mmerge")?;
-                Ok((val, ValKind::Map))
+                Ok((val, ValKind::Map(Some(Box::new(val_kind.clone())))))
             }
             "clear" => {
                 self.call_rt("ore_map_clear", &[map_val.into()], "")?;
-                Ok((map_val, ValKind::Map))
+                Ok((map_val, ValKind::Map(Some(Box::new(val_kind.clone())))))
             }
             "each" => {
                 self.check_arity("map.each()", args, 1)?;
-                let val_kind = self.map_val_kind();
+                let val_kind = val_kind.clone();
                 let kinds = [ValKind::Str, val_kind];
-                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.each()", false)?;
+                let (fn_ptr, env_ptr, _) = self.resolve_lambda_arg(&args[0], &kinds, "map.each()")?;
 
                 self.call_rt("ore_map_each", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "")?;
                 Ok(self.void_result())
             }
             "map" => {
                 self.check_arity("map.map()", args, 1)?;
-                let val_kind = self.map_val_kind();
-                let kinds = [ValKind::Str, val_kind];
-                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.map()", false)?;
+                let kinds = [ValKind::Str, val_kind.clone()];
+                let (fn_ptr, env_ptr, _) = self.resolve_lambda_arg(&args[0], &kinds, "map.map()")?;
 
                 let val = self.call_rt("ore_map_map_values", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mmap")?;
-                Ok((val, ValKind::Map))
+                Ok((val, ValKind::Map(Some(Box::new(val_kind.clone())))))
             }
             "filter" => {
                 self.check_arity("map.filter()", args, 1)?;
-                let val_kind = self.map_val_kind();
-                let kinds = [ValKind::Str, val_kind];
-                let (fn_ptr, env_ptr) = self.resolve_lambda_arg(&args[0], &kinds, "map.filter()", false)?;
+                let kinds = [ValKind::Str, val_kind.clone()];
+                let (fn_ptr, env_ptr, _) = self.resolve_lambda_arg(&args[0], &kinds, "map.filter()")?;
 
                 let val = self.call_rt("ore_map_filter", &[map_val.into(), fn_ptr.into(), env_ptr.into()], "mfilter")?;
-                Ok((val, ValKind::Map))
+                Ok((val, ValKind::Map(Some(Box::new(val_kind.clone())))))
             }
             "get_or" => {
                 self.check_arity("get_or", args, 2)?;
@@ -101,11 +96,10 @@ impl<'ctx> CodeGen<'ctx> {
                 let (default_val, _default_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let default_i64 = self.value_to_i64(default_val)?;
                 let i64_val = self.call_rt("ore_map_get_or", &[map_val.into(), key.into(), default_i64.into()], "mgetor")?;
-                self.unwrap_map_value(i64_val)
+                self.unwrap_map_value(i64_val, val_kind)
             }
             "entries" => {
                 let val = self.call_rt("ore_map_entries", &[map_val.into()], "mentries")?;
-                self.last_list_elem_kind = Some(ValKind::List(None));
                 Ok((val, ValKind::list_of(ValKind::List(None))))
             }
             _ => Err(Self::unknown_method_error("Map", method, &[
@@ -142,22 +136,21 @@ impl<'ctx> CodeGen<'ctx> {
             self.call_rt("ore_map_set_typed", &[map_ptr.into(), key_val.into(), i64_val.into(), kind_const.into()], "")?;
         }
 
-        self.last_map_val_kind = first_val_kind;
-        Ok((map_ptr.into(), ValKind::Map))
+        Ok((map_ptr.into(), ValKind::Map(first_val_kind.map(Box::new))))
     }
 
     /// Convert a raw i64 map value back to the correct type based on tracked value kind.
     fn unwrap_map_value(
         &mut self,
         i64_val: BasicValueEnum<'ctx>,
+        val_kind: &ValKind,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let val_kind = self.map_val_kind();
-        match &val_kind {
-            ValKind::Str | ValKind::List(_) => {
+        match val_kind {
+            ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
                 let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
-                Ok((ptr.into(), val_kind))
+                Ok((ptr.into(), val_kind.clone()))
             }
-            _ => Ok((i64_val, val_kind))
+            _ => Ok((i64_val, val_kind.clone()))
         }
     }
 

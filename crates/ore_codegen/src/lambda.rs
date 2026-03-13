@@ -182,7 +182,8 @@ impl<'ctx> CodeGen<'ctx> {
         params: &[String],
         body: &Expr,
     ) -> Result<FunctionValue<'ctx>, CodeGenError> {
-        self.compile_lambda_with_kinds(params, body, None)
+        let (f, _) = self.compile_lambda_with_kinds(params, body, None)?;
+        Ok(f)
     }
 
     pub(crate) fn compile_lambda_with_kinds(
@@ -190,7 +191,7 @@ impl<'ctx> CodeGen<'ctx> {
         params: &[String],
         body: &Expr,
         param_kinds: Option<&[ValKind]>,
-    ) -> Result<FunctionValue<'ctx>, CodeGenError> {
+    ) -> Result<(FunctionValue<'ctx>, ValKind), CodeGenError> {
         let name = format!("__lambda_{}", self.lambda_counter);
         self.lambda_counter += 1;
 
@@ -273,7 +274,7 @@ impl<'ctx> CodeGen<'ctx> {
             let kind = param_kinds.and_then(|k| k.get(i).cloned()).unwrap_or(ValKind::Int);
             // For pointer-based types (Str, List, Map), convert i64 param to pointer
             match &kind {
-                ValKind::Str | ValKind::List(_) | ValKind::Map => {
+                ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
                     let ptr_ty = self.ptr_type();
                     let ptr_val = self.i64_to_ptr(val.into_int_value())?;
                     let alloca = bld!(self.builder.build_alloca(ptr_ty, param_name))?;
@@ -310,9 +311,8 @@ impl<'ctx> CodeGen<'ctx> {
             self.builder.position_at_end(bb);
         }
 
-        self.last_lambda_return_kind = Some(return_kind);
         self.functions.insert(name, (lambda_fn, ValKind::Int));
-        Ok(lambda_fn)
+        Ok((lambda_fn, return_kind))
     }
 
     /// Build the captures struct on the stack and fill it with current variable values.

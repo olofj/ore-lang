@@ -109,7 +109,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::List(_) => {
                 self.call_rt("ore_list_print", &[val.into()], "")?;
             }
-            ValKind::Map => {
+            ValKind::Map(_) => {
                 self.call_rt("ore_map_print", &[val.into()], "")?;
             }
             ValKind::Record(ref name) | ValKind::Enum(ref name) => {
@@ -200,7 +200,6 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("file_read_lines", args, 1)?;
                 let path_val = self.compile_expr(&args[0], func)?;
                 let val = self.call_rt("ore_file_read_lines", &[path_val.into()], "file_read_lines")?;
-                self.last_list_elem_kind = Some(ValKind::Str);
                 Ok(Some((val, ValKind::list_of(ValKind::Str))))
             }
             "file_write" | "file_append" => {
@@ -233,7 +232,6 @@ impl<'ctx> CodeGen<'ctx> {
             }
             "args" => {
                 let val = self.call_rt("ore_args", &[], "args")?;
-                self.last_list_elem_kind = Some(ValKind::Str);
                 Ok(Some((val, ValKind::list_of(ValKind::Str))))
             }
             "eprint" => {
@@ -337,7 +335,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("json_parse", args, 1)?;
                 let str_val = self.compile_expr(&args[0], func)?;
                 let val = self.call_rt("ore_json_parse", &[str_val.into()], "json_parse")?;
-                Ok(Some((val, ValKind::Map)))
+                Ok(Some((val, ValKind::Map(None))))
             }
             "json_stringify" => {
                 self.check_arity("json_stringify", args, 1)?;
@@ -351,9 +349,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val_i64 = self.value_to_i64(val)?;
                 let count = self.compile_expr(&args[1], func)?;
                 let list_val = self.call_rt("ore_list_repeat", &[val_i64.into(), count.into()], "repeat")?;
-                let kind_for_list = kind.clone();
-                self.last_list_elem_kind = Some(kind);
-                Ok(Some((list_val, ValKind::list_of(kind_for_list))))
+                Ok(Some((list_val, ValKind::list_of(kind))))
             }
             "range" => {
                 if args.len() < 2 || args.len() > 3 {
@@ -367,7 +363,6 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     self.call_rt("ore_range", &[start.into(), end.into()], "range")?
                 };
-                self.last_list_elem_kind = Some(ValKind::Int);
                 Ok(Some((val, ValKind::list_of(ValKind::Int))))
             }
             "len" => {
@@ -376,7 +371,7 @@ impl<'ctx> CodeGen<'ctx> {
                 match kind {
                     ValKind::Str => Ok(Some((self.call_rt("ore_str_len", &[val.into()], "slen")?, ValKind::Int))),
                     ValKind::List(_) => Ok(Some((self.call_rt("ore_list_len", &[val.into()], "llen")?, ValKind::Int))),
-                    ValKind::Map => Ok(Some((self.call_rt("ore_map_len", &[val.into()], "mlen")?, ValKind::Int))),
+                    ValKind::Map(_) => Ok(Some((self.call_rt("ore_map_len", &[val.into()], "mlen")?, ValKind::Int))),
                     _ => Err(self.err("len() not supported on this type")),
                 }
             }

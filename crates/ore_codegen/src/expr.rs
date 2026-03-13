@@ -66,18 +66,6 @@ impl<'ctx> CodeGen<'ctx> {
                 let var = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?;
                 let val = bld!(self.builder.build_load(var.ty, var.ptr, name))?;
                 let kind = var.kind.clone();
-                // Restore list element kind tracking for method dispatch
-                if kind.is_list() {
-                    if let Some(elem_kind) = self.list_element_kinds.get(name) {
-                        self.last_list_elem_kind = Some(elem_kind.clone());
-                    }
-                }
-                // Restore map value kind tracking for method dispatch
-                if kind == ValKind::Map {
-                    if let Some(val_kind) = self.map_value_kinds.get(name) {
-                        self.last_map_val_kind = Some(val_kind.clone());
-                    }
-                }
                 Ok((val, kind))
             }
             Expr::BinOp { op, left, right } => {
@@ -97,11 +85,8 @@ impl<'ctx> CodeGen<'ctx> {
                     // Preserve element kind: prefer RHS (the appended elements), fall back to LHS
                     let elem = match (&rk, &lk) {
                         (ValKind::List(Some(ek)), _) | (_, ValKind::List(Some(ek))) => Some(ek.clone()),
-                        _ => self.last_list_elem_kind.clone().map(Box::new),
+                        _ => None,
                     };
-                    if let Some(ref ek) = elem {
-                        self.last_list_elem_kind = Some(ek.as_ref().clone());
-                    }
                     return Ok((val, ValKind::List(elem)));
                 }
 
@@ -178,24 +163,27 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                     }
                 }
-                // Check for typed list printing via ValKind variant or side-channel (for method calls etc.)
-                if kind.is_list() {
-                    let elem_kind = match &kind {
-                        ValKind::List(Some(ek)) => Some(ek.as_ref().clone()),
-                        _ => self.last_list_elem_kind.take(),
-                    };
-                    if let Some(ek) = elem_kind {
-                        if ek != ValKind::Int {
-                            self.compile_typed_list_print(val.into_pointer_value(), &ek)?;
-                            return Ok(self.void_result());
-                        }
+                // Check for typed list printing via ValKind variant (for method calls etc.)
+                if let ValKind::List(Some(ref ek)) = kind {
+                    if ek.as_ref() != &ValKind::Int {
+                        self.compile_typed_list_print(val.into_pointer_value(), ek)?;
+                        return Ok(self.void_result());
                     }
                 }
                 // Check for string-valued map printing
-                if kind == ValKind::Map {
-                    if let Some(ValKind::Str) = self.last_map_val_kind.take() {
+                if let ValKind::Map(Some(ref vk)) = kind {
+                    if vk.as_ref() == &ValKind::Str {
                         self.call_rt("ore_map_print_str", &[val.into()], "")?;
                         return Ok(self.void_result());
+                    }
+                }
+                // Also check map_value_kinds for named map variables
+                if kind.is_map() {
+                    if let Expr::Ident(name) = inner.as_ref() {
+                        if let Some(ValKind::Str) = self.map_value_kinds.get(name) {
+                            self.call_rt("ore_map_print_str", &[val.into()], "")?;
+                            return Ok(self.void_result());
+                        }
                     }
                 }
                 self.compile_print(val, kind)?;
@@ -269,11 +257,16 @@ impl<'ctx> CodeGen<'ctx> {
                     self.fill_default_args(&name, &mut compiled_args, func)?;
                     let result = bld!(self.builder.build_call(called_fn, &compiled_args, "call"))?;
                     let val = self.call_result_to_value(result)?;
-                    // Propagate list element kind from function return type annotation
+                    // Propagate list/map element kind from function return type annotation
                     let ret_kind = if ret_kind.is_list() {
                         if let Some(ek) = self.fn_return_list_elem_kind.get(&name) {
-                            self.last_list_elem_kind = Some(ek.clone());
                             ValKind::list_of(ek.clone())
+                        } else {
+                            ret_kind
+                        }
+                    } else if ret_kind.is_map() {
+                        if let Some(vk) = self.fn_return_map_val_kind.get(&name) {
+                            ValKind::map_of(vk.clone())
                         } else {
                             ret_kind
                         }

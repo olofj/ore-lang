@@ -67,7 +67,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Float => {
                 bld!(self.builder.build_bit_cast(val, self.context.i64_type(), "ftoi64")).map(|v| v.into_int_value())
             }
-            ValKind::Str | ValKind::List(_) | ValKind::Map => {
+            ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
                 self.ptr_to_i64(val.into_pointer_value())
             }
             ValKind::Void => Ok(self.context.i64_type().const_int(0, false)),
@@ -77,7 +77,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub(crate) fn coerce_from_i64(&mut self, val: BasicValueEnum<'ctx>, kind: &ValKind) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
         match kind {
-            ValKind::Str | ValKind::List(_) | ValKind::Map => {
+            ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
                 let ptr = self.i64_to_ptr(val.into_int_value())?;
                 Ok(ptr.into())
             }
@@ -112,7 +112,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = bld!(self.builder.build_load(st, ptr, "load_rec"))?;
                 Ok(val)
             }
-            ValKind::Str | ValKind::List(_) | ValKind::Map => {
+            ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
                 let ptr = self.i64_to_ptr(raw.into_int_value())?;
                 Ok(ptr.into())
             }
@@ -176,7 +176,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Bool => {
                 Ok(bld!(self.builder.build_int_z_extend(val.into_int_value(), self.context.i64_type(), "b2i"))?.into())
             }
-            ValKind::Str | ValKind::List(_) | ValKind::Map => {
+            ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
                 Ok(self.ptr_to_i64(val.into_pointer_value())?.into())
             }
             _ => Ok(val),
@@ -247,27 +247,20 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    /// Resolve a lambda or function reference argument, returning a (fn_ptr, env_ptr) pair
-    /// suitable for passing to runtime higher-order functions.
+    /// Resolve a lambda or function reference argument, returning (fn_ptr, env_ptr, return_kind).
     /// `param_kinds` specifies the types passed to the lambda parameters.
-    /// If `track_return_kind` is true, sets `self.last_lambda_return_kind` from named function refs.
     pub(crate) fn resolve_lambda_arg(
         &mut self,
         arg: &Expr,
         param_kinds: &[ValKind],
         method_name: &str,
-        track_return_kind: bool,
-    ) -> Result<(PointerValue<'ctx>, PointerValue<'ctx>), CodeGenError> {
-        let lambda_fn = match arg {
+    ) -> Result<(PointerValue<'ctx>, PointerValue<'ctx>, ValKind), CodeGenError> {
+        let (lambda_fn, ret_kind) = match arg {
             Expr::Lambda { params, body } => {
                 self.compile_lambda_with_kinds(params, body, Some(param_kinds))?
             }
             Expr::Ident(name) => {
-                let (f, ret_kind) = self.resolve_function(name)?;
-                if track_return_kind {
-                    self.last_lambda_return_kind = Some(ret_kind);
-                }
-                f
+                self.resolve_function(name)?
             }
             _ => return Err(self.err(format!("{} argument must be a function", method_name))),
         };
@@ -278,7 +271,7 @@ impl<'ctx> CodeGen<'ctx> {
             self.context.ptr_type(inkwell::AddressSpace::default()).const_null()
         };
         let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
-        Ok((fn_ptr, env_ptr))
+        Ok((fn_ptr, env_ptr, ret_kind))
     }
 
     /// Extract the name of a lambda function as a String.
@@ -358,7 +351,7 @@ impl<'ctx> CodeGen<'ctx> {
             ValKind::Option => "Option".to_string(),
             ValKind::Result => "Result".to_string(),
             ValKind::List(_) => "List".to_string(),
-            ValKind::Map => "Map".to_string(),
+            ValKind::Map(_) => "Map".to_string(),
             ValKind::Channel => "Channel".to_string(),
         }
     }
@@ -619,7 +612,7 @@ impl<'ctx> CodeGen<'ctx> {
         kind: ValKind,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         match &kind {
-            ValKind::Str | ValKind::List(_) | ValKind::Map => {
+            ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
                 let ptr = self.i64_to_ptr(val.into_int_value())?;
                 Ok((ptr.into(), kind))
             }
@@ -627,15 +620,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    /// Get the current list element kind, defaulting to Int.
-    pub(crate) fn list_elem_kind(&self) -> ValKind {
-        self.last_list_elem_kind.clone().unwrap_or(ValKind::Int)
-    }
 
-    /// Get the current map value kind, defaulting to Int.
-    pub(crate) fn map_val_kind(&self) -> ValKind {
-        self.last_map_val_kind.clone().unwrap_or(ValKind::Int)
-    }
 
     /// Normalize a bool IntValue to i8, handling any bit width (i1, i8, i64).
     pub(crate) fn bool_to_i8(&mut self, int_val: IntValue<'ctx>) -> Result<IntValue<'ctx>, CodeGenError> {
