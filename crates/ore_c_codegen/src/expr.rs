@@ -100,20 +100,24 @@ impl CCodeGen {
                     BinOp::Mul => "*",
                     BinOp::Div => {
                         if !is_float {
-                            // Need div-by-zero check for integers
-                            let tmp = self.tmp();
-                            self.emit(&format!("int64_t {} = {};", tmp, r_c));
-                            self.emit(&format!("if ({} == 0) ore_div_by_zero();", tmp));
-                            return Ok((format!("({} / {})", l_c, tmp), result_kind));
+                            // Pre-compute both operands as statements BEFORE any containing expression
+                            let l_tmp = self.tmp();
+                            let r_tmp = self.tmp();
+                            self.emit(&format!("int64_t {} = {};", l_tmp, l_c));
+                            self.emit(&format!("int64_t {} = {};", r_tmp, r_c));
+                            self.emit(&format!("if ({} == 0) ore_div_by_zero();", r_tmp));
+                            return Ok((format!("({} / {})", l_tmp, r_tmp), result_kind));
                         }
                         "/"
                     }
                     BinOp::Mod => {
                         if !is_float {
-                            let tmp = self.tmp();
-                            self.emit(&format!("int64_t {} = {};", tmp, r_c));
-                            self.emit(&format!("if ({} == 0) ore_div_by_zero();", tmp));
-                            return Ok((format!("({} % {})", l_c, tmp), result_kind));
+                            let l_tmp = self.tmp();
+                            let r_tmp = self.tmp();
+                            self.emit(&format!("int64_t {} = {};", l_tmp, l_c));
+                            self.emit(&format!("int64_t {} = {};", r_tmp, r_c));
+                            self.emit(&format!("if ({} == 0) ore_div_by_zero();", r_tmp));
+                            return Ok((format!("({} % {})", l_tmp, r_tmp), result_kind));
                         }
                         // For floats, use fmod
                         return Ok((format!("fmod({}, {})", l_c, r_c), ValKind::Float));
@@ -324,7 +328,11 @@ impl CCodeGen {
                 }
             }
             Expr::Lambda { params, body } => {
-                self.compile_lambda(params, body, None)
+                let (expr, kind) = self.compile_lambda(params, body, None)?;
+                // If it's a closure expression, extract just the function pointer
+                // (captures are only usable through compile_lambda_arg_with_kinds for list methods)
+                let (fn_ptr, _env_ptr) = Self::parse_closure_expr(&expr);
+                Ok((fn_ptr, kind))
             }
             Expr::BlockExpr(block) => {
                 self.compile_block_stmts(block).map(|(v, k)| {
@@ -398,13 +406,42 @@ impl CCodeGen {
         let (cond_val, _) = self.compile_expr(cond)?;
         let result_tmp = self.tmp();
 
-        // Use int64_t as a common type for the result
-        self.emit(&format!("int64_t {} = 0;", result_tmp));
+        // Infer the result kind from the then block to choose the right C type
+        let inferred_kind = if let Some(last) = then_block.stmts.last() {
+            if let Stmt::Expr(e) = &last.stmt {
+                self.infer_expr_kind(e)
+            } else if let Stmt::Return(_) = &last.stmt {
+                ValKind::Void
+            } else {
+                ValKind::Int
+            }
+        } else {
+            ValKind::Int
+        };
+
+        // Use the actual C type for the result variable to avoid type mismatches
+        let use_native_type = !matches!(inferred_kind, ValKind::Int | ValKind::Void);
+
+        if use_native_type {
+            let c_type = self.kind_to_c_type_str(&inferred_kind);
+            if matches!(inferred_kind, ValKind::Option | ValKind::Result | ValKind::Record(_) | ValKind::Enum(_)) {
+                self.emit(&format!("{} {} = {{}};", c_type, result_tmp));
+            } else {
+                self.emit(&format!("{} {} = 0;", c_type, result_tmp));
+            }
+        } else {
+            self.emit(&format!("int64_t {} = 0;", result_tmp));
+        }
+
         self.emit(&format!("if ({}) {{", cond_val));
         self.indent += 1;
         let (then_val, then_kind) = self.compile_block_stmts(then_block)?;
         if let Some(ref tv) = then_val {
-            self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(tv, &then_kind)));
+            if use_native_type {
+                self.emit(&format!("{} = {};", result_tmp, tv));
+            } else {
+                self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(tv, &then_kind)));
+            }
         }
         self.indent -= 1;
 
@@ -413,13 +450,21 @@ impl CCodeGen {
             self.indent += 1;
             let (else_val, else_kind) = self.compile_block_stmts(eb)?;
             if let Some(ref ev) = else_val {
-                self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(ev, &else_kind)));
+                if use_native_type {
+                    self.emit(&format!("{} = {};", result_tmp, ev));
+                } else {
+                    self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(ev, &else_kind)));
+                }
             }
             self.indent -= 1;
         }
         self.emit("}");
 
-        Ok((result_tmp, ValKind::Int))
+        if use_native_type {
+            Ok((result_tmp, inferred_kind))
+        } else {
+            Ok((result_tmp, ValKind::Int))
+        }
     }
 
     pub(crate) fn compile_pipeline(&mut self, arg: &Expr, func_expr: &Expr) -> Result<(String, ValKind), CCodeGenError> {
@@ -436,11 +481,15 @@ impl CCodeGen {
             }
             Expr::Lambda { params, body } => {
                 let (arg_val, _) = self.compile_expr(arg)?;
-                let (fn_ptr, _) = self.compile_lambda(params, body, None)?;
-                // Call the lambda with the piped argument
+                let (raw, ret_kind) = self.compile_lambda(params, body, None)?;
+                let (fn_ptr, env_ptr) = Self::parse_closure_expr(&raw);
                 let fn_name = fn_ptr.trim_start_matches("(void*)&");
-                let call = format!("{}({})", fn_name, arg_val);
-                Ok((call, ValKind::Int))
+                let call = if env_ptr == "NULL" {
+                    format!("{}({})", fn_name, arg_val)
+                } else {
+                    format!("{}({}, {})", fn_name, env_ptr, arg_val)
+                };
+                Ok((call, ret_kind))
             }
             _ => Err(self.err("unsupported pipeline target")),
         }
@@ -465,7 +514,23 @@ impl CCodeGen {
                 }
             }
             let call = format!("{}({})", c_fn_name, arg_strs.join(", "));
-            Ok((call, fn_info.ret_kind.clone()))
+            // Enrich return kind with element/value kind tracking
+            let ret_kind = if fn_info.ret_kind.is_list() {
+                if let Some(ek) = self.fn_return_list_elem_kind.get(name) {
+                    ValKind::list_of(ek.clone())
+                } else {
+                    fn_info.ret_kind.clone()
+                }
+            } else if fn_info.ret_kind.is_map() {
+                if let Some(vk) = self.fn_return_map_val_kind.get(name) {
+                    ValKind::map_of(vk.clone())
+                } else {
+                    fn_info.ret_kind.clone()
+                }
+            } else {
+                fn_info.ret_kind.clone()
+            };
+            Ok((call, ret_kind))
         } else {
             // Try as method call
             let method_call = Expr::MethodCall {

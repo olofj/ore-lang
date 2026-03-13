@@ -856,6 +856,31 @@ impl CCodeGen {
                 }
                 ValKind::Int
             }
+            Expr::OptionSome(_) => ValKind::Option,
+            Expr::OptionNone => ValKind::Option,
+            Expr::ResultOk(_) => ValKind::Result,
+            Expr::ResultErr(_) => ValKind::Result,
+            Expr::Call { func, .. } => {
+                if let Expr::Ident(name) = func.as_ref() {
+                    if let Some(fn_info) = self.functions.get(name) {
+                        return fn_info.ret_kind.clone();
+                    }
+                }
+                ValKind::Int
+            }
+            Expr::RecordConstruct { type_name, .. } => {
+                if self.variant_to_enum.contains_key(type_name) {
+                    if let Some(enum_name) = self.variant_to_enum.get(type_name) {
+                        ValKind::Enum(enum_name.clone())
+                    } else {
+                        ValKind::Int
+                    }
+                } else if self.records.contains_key(type_name) {
+                    ValKind::Record(type_name.clone())
+                } else {
+                    ValKind::Int
+                }
+            }
             _ => ValKind::Int,
         }
     }

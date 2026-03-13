@@ -51,10 +51,10 @@ impl CCodeGen {
                 Ok((self.coerce_from_i64_expr(&raw, elem_kind), elem_kind.clone()))
             }
             "map" | "filter" | "flat_map" | "take_while" | "drop_while" => {
-                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
+                let (fn_ptr, env_ptr, ret_kind) = self.compile_lambda_arg_full(&args[0], &[elem_kind.clone()])?;
                 let rt = format!("ore_list_{}", method);
                 let result = format!("{}({}, {}, {})", rt, list_val, fn_ptr, env_ptr);
-                let result_elem = if method == "map" { ValKind::Int } else { elem_kind.clone() };
+                let result_elem = if method == "map" || method == "flat_map" { ret_kind } else { elem_kind.clone() };
                 Ok((result, ValKind::list_of(result_elem)))
             }
             "each" => {
@@ -205,8 +205,8 @@ impl CCodeGen {
             "zip_with" => {
                 let (other, _) = self.compile_expr(&args[0])?;
                 let ek = elem_kind.clone();
-                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[1], &[ek.clone(), ek])?;
-                Ok((format!("ore_list_zip_with({}, {}, {}, {})", list_val, other, fn_ptr, env_ptr), ValKind::list_of(ValKind::Int)))
+                let (fn_ptr, env_ptr, ret_kind) = self.compile_lambda_arg_full(&args[1], &[ek.clone(), ek])?;
+                Ok((format!("ore_list_zip_with({}, {}, {}, {})", list_val, other, fn_ptr, env_ptr), ValKind::list_of(ret_kind)))
             }
             "unique_by" => {
                 let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
@@ -219,8 +219,8 @@ impl CCodeGen {
                 Ok((self.coerce_from_i64_expr(&raw, elem_kind), elem_kind.clone()))
             }
             "map_with_index" => {
-                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[ValKind::Int, elem_kind.clone()])?;
-                Ok((format!("ore_list_map_with_index({}, {}, {})", list_val, fn_ptr, env_ptr), ValKind::list_of(ValKind::Int)))
+                let (fn_ptr, env_ptr, ret_kind) = self.compile_lambda_arg_full(&args[0], &[ValKind::Int, elem_kind.clone()])?;
+                Ok((format!("ore_list_map_with_index({}, {}, {})", list_val, fn_ptr, env_ptr), ValKind::list_of(ret_kind)))
             }
             "each_with_index" => {
                 let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[ValKind::Int, elem_kind.clone()])?;
@@ -228,8 +228,8 @@ impl CCodeGen {
                 Ok(("0".to_string(), ValKind::Void))
             }
             "par_map" => {
-                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
-                Ok((format!("ore_list_par_map({}, {}, {})", list_val, fn_ptr, env_ptr), ValKind::list_of(ValKind::Int)))
+                let (fn_ptr, env_ptr, ret_kind) = self.compile_lambda_arg_full(&args[0], &[elem_kind.clone()])?;
+                Ok((format!("ore_list_par_map({}, {}, {})", list_val, fn_ptr, env_ptr), ValKind::list_of(ret_kind)))
             }
             "par_each" => {
                 let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
@@ -307,14 +307,25 @@ impl CCodeGen {
     }
 
     /// Compile a lambda arg with known parameter kinds.
+    /// Returns (fn_ptr_expr, env_ptr_expr) — for closures, env_ptr points to captures struct.
     pub(crate) fn compile_lambda_arg_with_kinds(&mut self, arg: &Expr, param_kinds: &[ValKind]) -> Result<(String, String), CCodeGenError> {
+        let (fn_ptr, env_ptr, _ret_kind) = self.compile_lambda_arg_full(arg, param_kinds)?;
+        Ok((fn_ptr, env_ptr))
+    }
+
+    /// Compile a lambda arg and return (fn_ptr, env_ptr, ret_kind).
+    pub(crate) fn compile_lambda_arg_full(&mut self, arg: &Expr, param_kinds: &[ValKind]) -> Result<(String, String, ValKind), CCodeGenError> {
         match arg {
             Expr::Lambda { params, body } => {
-                let (fn_expr, _) = self.compile_lambda(params, body, Some(param_kinds))?;
-                Ok((fn_expr, "NULL".to_string()))
+                let (fn_expr, ret_kind) = self.compile_lambda(params, body, Some(param_kinds))?;
+                let (fn_ptr, env_ptr) = Self::parse_closure_expr(&fn_expr);
+                Ok((fn_ptr, env_ptr, ret_kind))
             }
             Expr::Ident(name) => {
-                Ok((format!("(void*)&{}", Self::mangle_fn_name(name)), "NULL".to_string()))
+                let ret_kind = self.functions.get(name)
+                    .map(|fi| fi.ret_kind.clone())
+                    .unwrap_or(ValKind::Int);
+                Ok((format!("(void*)&{}", Self::mangle_fn_name(name)), "NULL".to_string(), ret_kind))
             }
             _ => Err(self.err("expected a function or lambda")),
         }
