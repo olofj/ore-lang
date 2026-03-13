@@ -97,37 +97,20 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Convert a raw i64 list element back to the correct type.
-    /// For enums/records, the i64 is a pointer to heap-allocated data that needs to be loaded.
+    /// Extends coerce_from_i64 with Enum/Record support (heap-allocated, needs load through pointer).
     pub(crate) fn list_elem_from_i64(&mut self, raw: BasicValueEnum<'ctx>, kind: &ValKind) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
         match kind {
             ValKind::Enum(name) => {
                 let et = self.enums[name].enum_type;
                 let ptr = self.i64_to_ptr(raw.into_int_value())?;
-                let val = bld!(self.builder.build_load(et, ptr, "load_enum"))?;
-                Ok(val)
+                Ok(bld!(self.builder.build_load(et, ptr, "load_enum"))?)
             }
             ValKind::Record(name) => {
                 let st = self.records[name].struct_type;
                 let ptr = self.i64_to_ptr(raw.into_int_value())?;
-                let val = bld!(self.builder.build_load(st, ptr, "load_rec"))?;
-                Ok(val)
+                Ok(bld!(self.builder.build_load(st, ptr, "load_rec"))?)
             }
-            ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
-                let ptr = self.i64_to_ptr(raw.into_int_value())?;
-                Ok(ptr.into())
-            }
-            ValKind::Float => {
-                let f = bld!(self.builder.build_bit_cast(raw, self.context.f64_type(), "i2f"))?;
-                Ok(f)
-            }
-            ValKind::Bool => {
-                let b = bld!(self.builder.build_int_compare(
-                    IntPredicate::NE, raw.into_int_value(),
-                    self.context.i64_type().const_int(0, false), "i2b"
-                ))?;
-                Ok(b.into())
-            }
-            _ => Ok(raw),
+            _ => self.coerce_from_i64(raw, kind),
         }
     }
 
