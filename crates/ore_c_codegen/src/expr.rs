@@ -39,7 +39,7 @@ impl CCodeGen {
                 // Check if it's a function reference
                 if !self.variables.contains_key(name) {
                     if self.functions.contains_key(name) {
-                        return Ok((format!("(void*)&{}", name), ValKind::Int));
+                        return Ok((format!("(void*)&{}", Self::mangle_fn_name(name)), ValKind::Int));
                     }
                 }
                 let kind = self.get_var_kind(name);
@@ -182,6 +182,7 @@ impl CCodeGen {
                 }
                 // Regular function call
                 if let Some(fn_info) = self.functions.get(&name).cloned() {
+                    let c_fn_name = Self::mangle_fn_name(&name);
                     let mut arg_strs = Vec::new();
                     for arg in args {
                         let (a, _) = self.compile_expr(arg)?;
@@ -195,7 +196,7 @@ impl CCodeGen {
                             arg_strs.push(a);
                         }
                     }
-                    let call_str = format!("{}({})", name, arg_strs.join(", "));
+                    let call_str = format!("{}({})", c_fn_name, arg_strs.join(", "));
                     let ret_kind = if fn_info.ret_kind.is_list() {
                         if let Some(ek) = self.fn_return_list_elem_kind.get(&name) {
                             ValKind::list_of(ek.clone())
@@ -435,6 +436,7 @@ impl CCodeGen {
 
     fn compile_pipe_to_named(&mut self, arg: &Expr, name: &str, extra_args: &[Expr]) -> Result<(String, ValKind), CCodeGenError> {
         if self.functions.contains_key(name) {
+            let c_fn_name = Self::mangle_fn_name(name);
             let (arg_val, _) = self.compile_expr(arg)?;
             let fn_info = self.functions[name].clone();
             let mut arg_strs = vec![arg_val];
@@ -450,7 +452,7 @@ impl CCodeGen {
                     arg_strs.push(a);
                 }
             }
-            let call = format!("{}({})", name, arg_strs.join(", "));
+            let call = format!("{}({})", c_fn_name, arg_strs.join(", "));
             Ok((call, fn_info.ret_kind.clone()))
         } else {
             // Try as method call

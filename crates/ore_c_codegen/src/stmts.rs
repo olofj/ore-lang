@@ -135,8 +135,9 @@ impl CCodeGen {
                         Expr::Ident(n) => n.clone(),
                         _ => return Err(self.err("spawn requires a named function call")),
                     };
+                    let c_fn_name = Self::mangle_fn_name(&name);
                     if args.is_empty() {
-                        self.emit(&format!("ore_spawn((void*)&{});", name));
+                        self.emit(&format!("ore_spawn((void*)&{});", c_fn_name));
                     } else {
                         let mut arg_strs = Vec::new();
                         for a in args {
@@ -149,7 +150,7 @@ impl CCodeGen {
                             3 => "ore_spawn_with_3args",
                             n => return Err(self.err(format!("spawn supports at most 3 arguments, got {}", n))),
                         };
-                        self.emit(&format!("{}((void*)&{}, {});", spawn_fn, name, arg_strs.join(", ")));
+                        self.emit(&format!("{}((void*)&{}, {});", spawn_fn, c_fn_name, arg_strs.join(", ")));
                     }
                 } else {
                     return Err(self.err("spawn requires a function call"));

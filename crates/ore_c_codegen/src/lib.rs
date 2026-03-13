@@ -276,6 +276,29 @@ impl CCodeGen {
         name.replace("::", "__").replace("$", "_D_")
     }
 
+    /// C reserved words that may conflict with Ore function names.
+    const C_RESERVED: &'static [&'static str] = &[
+        "auto", "break", "case", "char", "const", "continue", "default", "do",
+        "double", "else", "enum", "extern", "float", "for", "goto", "if",
+        "int", "long", "register", "return", "short", "signed", "sizeof",
+        "static", "struct", "switch", "typedef", "union", "unsigned", "void",
+        "volatile", "while", "abs", "malloc", "free", "printf", "scanf",
+        "exit", "rand", "main",
+    ];
+
+    /// Mangle a function name to avoid C keyword/stdlib conflicts.
+    fn mangle_fn_name(name: &str) -> String {
+        if Self::C_RESERVED.contains(&name) || name == "main" {
+            // "main" is special - keep as-is since it needs to be the entry point
+            if name == "main" {
+                return name.to_string();
+            }
+            format!("ore_fn_{}", name)
+        } else {
+            name.to_string()
+        }
+    }
+
     pub(crate) fn valkind_to_tag(kind: &ValKind) -> u8 {
         match kind {
             ValKind::Int => 0,
@@ -512,6 +535,7 @@ impl CCodeGen {
     /// Declare a function — emit C prototype.
     fn declare_function(&mut self, fndef: &FnDef) -> Result<(), CCodeGenError> {
         let ret_kind = fndef.ret_type.as_ref().map(|t| self.type_expr_to_kind(t)).unwrap_or(ValKind::Void);
+        let c_fn_name = Self::mangle_fn_name(&fndef.name);
 
         let mut param_kinds = Vec::new();
         let mut param_strs = Vec::new();
@@ -531,7 +555,7 @@ impl CCodeGen {
         };
 
         let params_str = if param_strs.is_empty() { "void".to_string() } else { param_strs.join(", ") };
-        let proto = format!("{} {}({})", ret_c_type, fndef.name, params_str);
+        let proto = format!("{} {}({})", ret_c_type, c_fn_name, params_str);
         self.forward_decls.push(format!("{};", proto));
 
         self.functions.insert(fndef.name.clone(), FnInfo {
@@ -564,6 +588,7 @@ impl CCodeGen {
     fn compile_function(&mut self, fndef: &FnDef) -> Result<(), CCodeGenError> {
         let fn_info = self.functions.get(&fndef.name).cloned()
             .ok_or_else(|| self.err(format!("undefined function '{}'", fndef.name)))?;
+        let c_fn_name = Self::mangle_fn_name(&fndef.name);
 
         self.variables.clear();
         self.dynamic_kind_tags.clear();
@@ -609,7 +634,7 @@ impl CCodeGen {
         }
 
         let params_str = if param_strs.is_empty() { "void".to_string() } else { param_strs.join(", ") };
-        self.emit_raw(&format!("{} {}({}) {{", ret_c_type, fndef.name, params_str));
+        self.emit_raw(&format!("{} {}({}) {{", ret_c_type, c_fn_name, params_str));
         self.indent += 1;
 
         // Compile body

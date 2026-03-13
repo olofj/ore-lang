@@ -359,7 +359,7 @@ impl CCodeGen {
         let field_names = info.field_names.clone();
 
         let tmp = self.tmp();
-        self.emit(&format!("struct {} {};", struct_name, tmp));
+        self.emit(&format!("{} {};", struct_name, tmp));
         for (name, expr) in fields {
             let idx = field_names.iter().position(|n| n == name)
                 .ok_or_else(|| self.err(format!("unknown field '{}' on type '{}'", name, type_name)))?;

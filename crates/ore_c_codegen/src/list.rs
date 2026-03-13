@@ -255,7 +255,7 @@ impl CCodeGen {
                 Ok((fn_expr, "NULL".to_string()))
             }
             Expr::Ident(name) => {
-                Ok((format!("(void*)&{}", name), "NULL".to_string()))
+                Ok((format!("(void*)&{}", Self::mangle_fn_name(name)), "NULL".to_string()))
             }
             _ => Err(self.err("expected a function or lambda")),
         }

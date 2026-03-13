@@ -77,12 +77,13 @@ impl CCodeGen {
         if let ValKind::Record(ref type_name) = obj_kind {
             let mangled_name = format!("{}_{}", type_name, method);
             if let Some(fn_info) = self.functions.get(&mangled_name).cloned() {
+                let c_fn_name = Self::mangle_fn_name(&mangled_name);
                 let mut arg_strs = vec![obj_val];
                 for a in args {
                     let (v, _) = self.compile_expr(a)?;
                     arg_strs.push(v);
                 }
-                let call = format!("{}({})", mangled_name, arg_strs.join(", "));
+                let call = format!("{}({})", c_fn_name, arg_strs.join(", "));
                 return Ok((call, fn_info.ret_kind.clone()));
             }
         }
