@@ -54,13 +54,13 @@ impl<'ctx> CodeGen<'ctx> {
 
     /// Shared scaffolding for ?. operations: branch on Some/None, execute `some_body` in
     /// the Some branch, return None in the None branch, merge with phi.
-    /// `some_body` receives the raw i64 inner value and returns the Some-branch result.
+    /// `some_body` receives the raw i64 inner value and returns (result, kind).
     fn compile_option_branch(
         &mut self,
         obj_val: BasicValueEnum<'ctx>,
         func: FunctionValue<'ctx>,
         prefix: &str,
-        some_body: impl FnOnce(&mut Self, BasicValueEnum<'ctx>) -> Result<BasicValueEnum<'ctx>, CodeGenError>,
+        some_body: impl FnOnce(&mut Self, BasicValueEnum<'ctx>) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
         let opt_ty = self.option_type();
         let alloca = bld!(self.builder.build_alloca(opt_ty, prefix))?;
@@ -77,14 +77,14 @@ impl<'ctx> CodeGen<'ctx> {
         // Some branch
         self.builder.position_at_end(some_bb);
         let inner = self.load_tagged_value(opt_ty, alloca)?;
-        let some_result = some_body(self, inner)?;
-        let some_wrapped = self.build_tagged_union(self.option_type(), 1, Some(some_result), &format!("{}_some_res", prefix))?;
+        let (some_result, some_kind) = some_body(self, inner)?;
+        let some_wrapped = self.build_tagged_union(self.option_type(), 1, Some((some_result, &some_kind)), &format!("{}_some_res", prefix))?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
         let some_end = self.current_block()?;
 
         // None branch
         self.builder.position_at_end(none_bb);
-        let none_result = self.build_tagged_union(self.option_type(), 0, None, &format!("{}_none_res", prefix))?;
+        let none_result = self.build_tagged_union(self.option_type(), 0, None::<(BasicValueEnum, &ValKind)>, &format!("{}_none_res", prefix))?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
 
         self.builder.position_at_end(merge_bb);
@@ -103,7 +103,7 @@ impl<'ctx> CodeGen<'ctx> {
         if obj_kind != ValKind::Option {
             return Err(self.err("?. operator requires an Option value"));
         }
-        self.compile_option_branch(obj_val, func, "optchain", |_, inner| Ok(inner))
+        self.compile_option_branch(obj_val, func, "optchain", |_, inner| Ok((inner, ValKind::Int)))
     }
 
     pub(crate) fn compile_optional_method_call(
@@ -121,8 +121,8 @@ impl<'ctx> CodeGen<'ctx> {
         let args = args.to_vec();
         self.compile_option_branch(obj_val, func, "optmethod", |s, inner| {
             let inner_kind = ValKind::Int;
-            let (result_val, _) = s.call_method_on_value(inner, &inner_kind, &method, &args, func)?;
-            Ok(s.value_to_i64(result_val)?.into())
+            let (result_val, result_kind) = s.call_method_on_value(inner, &inner_kind, &method, &args, func)?;
+            Ok((s.value_to_i64(result_val)?.into(), result_kind))
         })
     }
 

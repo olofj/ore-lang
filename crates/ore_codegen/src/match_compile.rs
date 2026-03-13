@@ -561,19 +561,21 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Build a tagged union value (Option or Result) with the given tag and payload.
+    /// `payload_kind` sets the runtime kind tag so dynamic dispatch (e.g. print) works correctly.
     pub(crate) fn build_tagged_union(
         &mut self,
         union_ty: inkwell::types::StructType<'ctx>,
         tag: u8,
-        payload: Option<BasicValueEnum<'ctx>>,
+        payload: Option<(BasicValueEnum<'ctx>, &ValKind)>,
         name: &str,
     ) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
         let alloca = bld!(self.builder.build_alloca(union_ty, name))?;
         let tag_ptr = bld!(self.builder.build_struct_gep(union_ty, alloca, 0, "tag"))?;
         bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(tag as u64, false)))?;
-        if let Some(val) = payload {
+        if let Some((val, kind)) = payload {
             let kind_ptr = bld!(self.builder.build_struct_gep(union_ty, alloca, 1, "kind"))?;
-            bld!(self.builder.build_store(kind_ptr, self.context.i8_type().const_int(0, false)))?;
+            let kind_tag = self.valkind_to_tag(kind);
+            bld!(self.builder.build_store(kind_ptr, self.context.i8_type().const_int(kind_tag as u64, false)))?;
             let val_ptr = bld!(self.builder.build_struct_gep(union_ty, alloca, 2, "val"))?;
             let i64_val = self.value_to_i64(val)?;
             bld!(self.builder.build_store(val_ptr, i64_val))?;
@@ -663,7 +665,7 @@ impl<'ctx> CodeGen<'ctx> {
         let lambda_fn = self.resolve_fn_arg(&args[0])?;
         let map_result = bld!(self.builder.build_call(lambda_fn, &[inner.into()], "mapped"))?;
         let mapped_val = self.call_result_to_value(map_result)?;
-        let ok_result = self.build_tagged_union(union_ty, wrap_tag, Some(mapped_val), &format!("{}_res", prefix))?;
+        let ok_result = self.build_tagged_union(union_ty, wrap_tag, Some((mapped_val, &ValKind::Int)), &format!("{}_res", prefix))?;
         bld!(self.builder.build_unconditional_branch(merge_bb))?;
         let ok_end = self.current_block()?;
 
@@ -698,7 +700,7 @@ impl<'ctx> CodeGen<'ctx> {
             "is_some" => Ok((self.check_tag(tag, 1, "is_some")?.into(), ValKind::Bool)),
             "is_none" => Ok((self.check_tag(tag, 0, "is_none")?.into(), ValKind::Bool)),
             "map" => {
-                let none = self.build_tagged_union(opt_ty, 0, None, "none_res")?;
+                let none = self.build_tagged_union(opt_ty, 0, None::<(BasicValueEnum, &ValKind)>, "none_res")?;
                 self.compile_tagged_map(&tu, none, args, func, ValKind::Option, "optmap")
             }
             _ => Err(Self::unknown_method_error("Option", method, &["unwrap_or", "unwrap", "map", "is_some", "is_none"])),
