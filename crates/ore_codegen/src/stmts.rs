@@ -538,15 +538,8 @@ impl<'ctx> CodeGen<'ctx> {
         bld!(self.builder.build_store(key_alloca, key_ptr))?;
 
         let val_raw = self.call_rt("ore_map_get", &[map_ptr.into(), key_ptr.into()], "val_raw")?;
-        match &val_kind {
-            ValKind::Str => {
-                let val_ptr = self.i64_to_ptr(val_raw.into_int_value())?;
-                bld!(self.builder.build_store(val_alloca, val_ptr))?;
-            }
-            _ => {
-                bld!(self.builder.build_store(val_alloca, val_raw))?;
-            }
-        }
+        let val_typed = self.coerce_from_i64(val_raw, val_kind)?;
+        bld!(self.builder.build_store(val_alloca, val_typed))?;
 
         let saved = self.set_loop_targets(lp.end_bb, lp.inc_bb);
         self.compile_block_stmts(body, func)?;
