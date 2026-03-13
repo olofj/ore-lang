@@ -8,7 +8,7 @@ use std::io::Write;
 /// Internally uses a Rust HashMap wrapped in a Box.
 pub struct OreMap {
     pub(crate) inner: HashMap<String, i64>,
-    /// Value kind tags for each key (0=Int, 1=Float, 2=Bool, 3=Str, 9=List, 10=Map)
+    /// Value kind tags for each key (see kinds.rs for constants)
     pub(crate) kinds: HashMap<String, i8>,
 }
 

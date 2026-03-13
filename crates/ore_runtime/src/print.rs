@@ -1,4 +1,5 @@
 use crate::*;
+use crate::kinds::*;
 use std::io::Write;
 
 // ── Print primitives (with newline) ──
@@ -117,28 +118,28 @@ pub fn format_float(f: f64) -> String {
 
 #[no_mangle]
 pub extern "C" fn ore_list_print(list: *mut OreList) {
-    ore_list_print_typed(list, 0); // 0 = Int
+    ore_list_print_typed(list, KIND_INT as i64);
 }
 
 #[no_mangle]
 pub extern "C" fn ore_list_print_str(list: *mut OreList) {
-    ore_list_print_typed(list, 3); // 3 = Str
+    ore_list_print_typed(list, KIND_STR as i64);
 }
 
 #[no_mangle]
 pub extern "C" fn ore_list_print_float(list: *mut OreList) {
-    ore_list_print_typed(list, 1); // 1 = Float
+    ore_list_print_typed(list, KIND_FLOAT as i64);
 }
 
 #[no_mangle]
 pub extern "C" fn ore_list_print_bool(list: *mut OreList) {
-    ore_list_print_typed(list, 2); // 2 = Bool
+    ore_list_print_typed(list, KIND_BOOL as i64);
 }
 
 /// Print a list with typed elements.
-/// kind: 0=Int, 1=Float, 2=Bool, 3=Str
 #[no_mangle]
 pub extern "C" fn ore_list_print_typed(list: *mut OreList, kind: i64) {
+    let kind = kind as i8;
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
     unsafe {
@@ -149,9 +150,9 @@ pub extern "C" fn ore_list_print_typed(list: *mut OreList, kind: i64) {
                 let _ = write!(handle, ", ");
             }
             match kind {
-                1 => { let _ = write!(handle, "{}", format_float(f64::from_bits(val as u64))); }
-                2 => { let _ = write!(handle, "{}", if val != 0 { "true" } else { "false" }); }
-                3 => {
+                KIND_FLOAT => { let _ = write!(handle, "{}", format_float(f64::from_bits(val as u64))); }
+                KIND_BOOL => { let _ = write!(handle, "{}", if val != 0 { "true" } else { "false" }); }
+                KIND_STR => {
                     let s = val as *mut OreStr;
                     if !s.is_null() {
                         let _ = write!(handle, "{}", (*s).as_str());

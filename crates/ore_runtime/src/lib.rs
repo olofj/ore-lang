@@ -6,6 +6,7 @@ pub mod assert;
 pub mod concurrency;
 pub mod convert;
 pub mod io;
+pub mod kinds;
 pub mod list;
 pub mod map;
 pub mod math;

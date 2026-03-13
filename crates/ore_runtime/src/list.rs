@@ -1,4 +1,5 @@
 use crate::*;
+use crate::kinds::*;
 use std::collections::HashSet;
 
 // ── Lists ──
@@ -1187,7 +1188,7 @@ pub extern "C" fn ore_list_count_by(list: *mut OreList, func: *const u8, env: *m
             let map = &mut *result;
             let count = map.inner.entry(key.clone()).or_insert(0);
             *count += 1;
-            map.kinds.insert(key, 0); // 0 = Int
+            map.kinds.insert(key, KIND_INT);
         }
         result
     }
@@ -1206,7 +1207,7 @@ pub extern "C" fn ore_list_count_by_int(list: *mut OreList, func: *const u8, env
             let map = &mut *result;
             let count = map.inner.entry(key.clone()).or_insert(0);
             *count += 1;
-            map.kinds.insert(key, 0); // 0 = Int
+            map.kinds.insert(key, KIND_INT);
         }
         result
     }
@@ -1228,7 +1229,7 @@ pub extern "C" fn ore_list_group_by(list: *mut OreList, func: *const u8, env: *m
                 ore_list_new() as i64
             });
             ore_list_push(*list_ptr as *mut OreList, val);
-            map.kinds.insert(key, 9); // 9 = List
+            map.kinds.insert(key, KIND_LIST);
         }
         result
     }
@@ -1263,10 +1264,10 @@ pub extern "C" fn ore_list_frequencies(list: *mut OreList, elem_kind: i8) -> *mu
         let map = &mut *result;
         for &val in src.as_slice() {
             let key = match elem_kind {
-                0 => format!("{}", val), // Int
-                1 => format_float(f64::from_bits(val as u64)),
-                2 => if val != 0 { "true".to_string() } else { "false".to_string() }, // Bool
-                3 => { // Str
+                KIND_INT => format!("{}", val),
+                KIND_FLOAT => format_float(f64::from_bits(val as u64)),
+                KIND_BOOL => if val != 0 { "true".to_string() } else { "false".to_string() },
+                KIND_STR => {
                     let s = &*(val as *mut OreStr);
                     s.as_str().to_string()
                 }
@@ -1274,7 +1275,7 @@ pub extern "C" fn ore_list_frequencies(list: *mut OreList, elem_kind: i8) -> *mu
             };
             let count = map.inner.get(&key).copied().unwrap_or(0);
             map.inner.insert(key.clone(), count + 1);
-            map.kinds.insert(key, 0); // 0 = Int
+            map.kinds.insert(key, KIND_INT);
         }
         result
     }

@@ -423,13 +423,8 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((val, ValKind::list_of(elem_kind.clone())))
             }
             "frequencies" => {
-                let kind_val = self.context.i8_type().const_int(match elem_kind {
-                    ValKind::Int => 0,
-                    ValKind::Float => 1,
-                    ValKind::Bool => 2,
-                    ValKind::Str => 3,
-                    _ => 0,
-                }, false);
+                let kind_tag = self.valkind_to_tag(elem_kind);
+                let kind_val = self.context.i8_type().const_int(kind_tag as u64, false);
                 let val = self.call_rt("ore_list_frequencies", &[list_val.into(), kind_val.into()], "freq")?;
                 Ok((val, ValKind::map_of(ValKind::Int)))
             }
