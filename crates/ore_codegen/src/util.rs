@@ -604,23 +604,6 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
 
-    /// Convert a raw i64 value from a runtime function to the correct LLVM representation
-    /// based on its ValKind. Heap types (Str, List, Map) need i64→pointer conversion.
-    pub(crate) fn coerce_list_element(
-        &mut self,
-        val: BasicValueEnum<'ctx>,
-        kind: ValKind,
-    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        match &kind {
-            ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
-                let ptr = self.i64_to_ptr(val.into_int_value())?;
-                Ok((ptr.into(), kind))
-            }
-            _ => Ok((val, kind)),
-        }
-    }
-
-
 
     /// Normalize a bool IntValue to i8, handling any bit width (i1, i8, i64).
     pub(crate) fn bool_to_i8(&mut self, int_val: IntValue<'ctx>) -> Result<IntValue<'ctx>, CodeGenError> {

@@ -527,7 +527,7 @@ impl<'ctx> CodeGen<'ctx> {
         let key_alloca = bld!(self.builder.build_alloca(ptr_type, key_var))?;
         self.variables.insert(key_var.to_string(), VarInfo { ptr: key_alloca, ty: ptr_type.into(), kind: ValKind::Str, is_mutable: false });
 
-        let (val_alloca, val_ty) = self.alloca_for_kind(val_var, &val_kind)?;
+        let (val_alloca, val_ty) = self.alloca_for_kind(val_var, val_kind)?;
         self.variables.insert(val_var.to_string(), VarInfo { ptr: val_alloca, ty: val_ty, kind: val_kind.clone(), is_mutable: false });
 
         let lp = self.build_indexed_loop(len_val, "forkv", func)?;

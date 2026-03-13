@@ -54,7 +54,10 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("remove_at", args, 1)?;
                 let idx = self.compile_expr(&args[0], func)?;
                 let raw_val = self.call_rt("ore_list_remove_at", &[list_val.into(), idx.into()], "removed")?;
-                self.coerce_list_element(raw_val, elem_kind.clone())
+                {
+                let typed_val = self.list_elem_from_i64(raw_val, elem_kind)?;
+                Ok((typed_val, elem_kind.clone()))
+            }
             }
             "get" => {
                 self.check_arity("get", args, 1)?;
@@ -204,7 +207,10 @@ impl<'ctx> CodeGen<'ctx> {
 
                 let fn_name = if method == "min_by" { "ore_list_min_by" } else { "ore_list_max_by" };
                 let val = self.call_rt(fn_name, &[list_val.into(), fn_ptr.into(), env_ptr.into()], "mby")?;
-                self.coerce_list_element(val, elem_kind.clone())
+                {
+                let typed_val = self.list_elem_from_i64(val, elem_kind)?;
+                Ok((typed_val, elem_kind.clone()))
+            }
             }
             "reverse" => {
                 let rev_val = self.call_rt("ore_list_reverse_new", &[list_val.into()], "reversed")?;
@@ -258,7 +264,10 @@ impl<'ctx> CodeGen<'ctx> {
 
                 let default_val = self.context.i64_type().const_int(0, false);
                 let val = self.call_rt("ore_list_find", &[list_val.into(), fn_ptr.into(), env_ptr.into(), default_val.into()], "find")?;
-                self.coerce_list_element(val, elem_kind.clone())
+                {
+                let typed_val = self.list_elem_from_i64(val, elem_kind)?;
+                Ok((typed_val, elem_kind.clone()))
+            }
             }
             "join" => {
                 // join(separator_str)
@@ -370,8 +379,8 @@ impl<'ctx> CodeGen<'ctx> {
                     self.context.i64_type().const_int((-1i64) as u64, true)
                 };
                 let val = self.call_rt("ore_list_get", &[list_val.into(), idx.into()], method)?;
-                let ek = elem_kind.clone();
-                self.coerce_list_element(val, ek)
+                let typed_val = self.list_elem_from_i64(val, elem_kind)?;
+                Ok((typed_val, elem_kind.clone()))
             }
             "min" | "max" => {
                 let (rt_name, result_kind) = match elem_kind {
