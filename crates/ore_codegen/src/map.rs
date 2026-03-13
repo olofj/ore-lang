@@ -145,13 +145,8 @@ impl<'ctx> CodeGen<'ctx> {
         i64_val: BasicValueEnum<'ctx>,
         val_kind: &ValKind,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        match val_kind {
-            ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
-                let ptr = self.i64_to_ptr(i64_val.into_int_value())?;
-                Ok((ptr.into(), val_kind.clone()))
-            }
-            _ => Ok((i64_val, val_kind.clone()))
-        }
+        let typed = self.coerce_from_i64(i64_val, val_kind)?;
+        Ok((typed, val_kind.clone()))
     }
 
     /// Compile a map key expression, converting non-string keys to strings.

@@ -482,14 +482,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let val = self.call_rt("ore_map_get", &[obj_val.into(), map_key.into()], "map_get")?;
                 // obj_kind is already enriched with map_value_kinds via Ident load
                 let val_kind = obj_kind.map_val_kind().cloned().unwrap_or(ValKind::Int);
-                // If the value is a pointer type (Str, List, Map), convert i64 -> ptr
-                match val_kind {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
-                        let ptr = self.i64_to_ptr(val.into_int_value())?;
-                        Ok((ptr.into(), val_kind))
-                    }
-                    _ => Ok((val, val_kind))
-                }
+                let typed = self.coerce_from_i64(val, &val_kind)?;
+                Ok((typed, val_kind))
             }
             _ => Err(self.err("indexing only supported on lists and maps")),
         }
