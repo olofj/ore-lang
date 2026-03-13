@@ -1,0 +1,2366 @@
+-- Native Ore Parser
+-- Port of crates/ore_parser/src/lib.rs
+-- Recursive descent + Pratt parsing for expressions
+-- Uses arena pattern: Expr/Stmt stored in pools, referenced by Int index
+--
+-- State is a List of Lists passed to all functions:
+--   s[0] = tokens (List[SpannedToken])
+--   s[1] = [pos] (single-element list for mutable position)
+--   s[2] = exprs (expression arena pool)
+--   s[3] = stmts (statement arena pool)
+
+use token
+use ast
+use arena
+
+-- ════════════════════════════════════════════════════════════
+-- State accessors
+-- ════════════════════════════════════════════════════════════
+
+fn s_pos s:List -> Int
+  s[1][0]
+
+fn s_set_pos s:List val:Int
+  p := s[1]
+  p[0] = val
+
+fn s_tokens s:List -> List
+  s[0]
+
+fn s_exprs s:List -> List
+  s[2]
+
+fn s_stmts s:List -> List
+  s[3]
+
+fn s_alloc_expr s:List e:Expr -> Int
+  pool := s[2]
+  pool.push(e)
+  pool.len() - 1
+
+fn s_alloc_stmt s:List st:Stmt -> Int
+  pool := s[3]
+  pool.push(st)
+  pool.len() - 1
+
+-- ════════════════════════════════════════════════════════════
+-- Binding power constants
+-- ════════════════════════════════════════════════════════════
+
+fn prefix_bp -> Int
+  17
+
+fn infix_bp op:BinOp -> List
+  match op
+    OrOp -> [3, 4]
+    AndOp -> [5, 6]
+    EqOp -> [7, 8]
+    NotEqOp -> [7, 8]
+    LtOp -> [7, 8]
+    GtOp -> [7, 8]
+    LtEqOp -> [7, 8]
+    GtEqOp -> [7, 8]
+    PipeOp -> [9, 20]
+    AddOp -> [11, 12]
+    SubOp -> [11, 12]
+    MulOp -> [13, 14]
+    DivOp -> [13, 14]
+    ModOp -> [13, 14]
+
+-- ════════════════════════════════════════════════════════════
+-- Token helpers
+-- ════════════════════════════════════════════════════════════
+
+fn p_peek s:List -> Token
+  pos := s_pos(s)
+  toks := s_tokens(s)
+  if pos < toks.len()
+    toks[pos].token
+  else
+    EofTok
+
+fn p_peek_line s:List -> Int
+  pos := s_pos(s)
+  toks := s_tokens(s)
+  if pos < toks.len()
+    toks[pos].line
+  else
+    0
+
+fn p_peek_col s:List -> Int
+  pos := s_pos(s)
+  toks := s_tokens(s)
+  if pos < toks.len()
+    toks[pos].col
+  else
+    0
+
+fn p_peek_at s:List offset:Int -> Token
+  idx := s_pos(s) + offset
+  toks := s_tokens(s)
+  if idx < toks.len()
+    toks[idx].token
+  else
+    EofTok
+
+fn p_advance s:List -> Token
+  tok := p_peek(s)
+  pos := s_pos(s)
+  toks := s_tokens(s)
+  if pos < toks.len()
+    s_set_pos(s, pos + 1)
+  tok
+
+fn p_is_eof tok:Token -> Bool
+  match tok
+    EofTok -> true
+    _ -> false
+
+fn p_is_dedent tok:Token -> Bool
+  match tok
+    DedentTok -> true
+    _ -> false
+
+fn p_is_newline tok:Token -> Bool
+  match tok
+    NewlineTok -> true
+    _ -> false
+
+fn p_is_indent tok:Token -> Bool
+  match tok
+    IndentTok -> true
+    _ -> false
+
+fn p_at_block_end s:List -> Bool
+  t := p_peek(s)
+  p_is_eof(t) or p_is_dedent(t)
+
+fn p_at_tok s:List tok_tag:Str -> Bool
+  t := p_peek(s)
+  match tok_tag
+    "eof" -> p_is_eof(t)
+    "newline" -> p_is_newline(t)
+    "indent" -> p_is_indent(t)
+    "dedent" -> p_is_dedent(t)
+    "fn" ->
+      match t
+        FnTok -> true
+        _ -> false
+    "mut" ->
+      match t
+        MutTok -> true
+        _ -> false
+    "if" ->
+      match t
+        IfTok -> true
+        _ -> false
+    "then" ->
+      match t
+        ThenTok -> true
+        _ -> false
+    "else" ->
+      match t
+        ElseTok -> true
+        _ -> false
+    "true" ->
+      match t
+        TrueTok -> true
+        _ -> false
+    "false" ->
+      match t
+        FalseTok -> true
+        _ -> false
+    "return" ->
+      match t
+        ReturnTok -> true
+        _ -> false
+    "for" ->
+      match t
+        ForTok -> true
+        _ -> false
+    "while" ->
+      match t
+        WhileTok -> true
+        _ -> false
+    "loop" ->
+      match t
+        LoopTok -> true
+        _ -> false
+    "break" ->
+      match t
+        BreakTok -> true
+        _ -> false
+    "in" ->
+      match t
+        InTok -> true
+        _ -> false
+    "type" ->
+      match t
+        TypeTok -> true
+        _ -> false
+    "impl" ->
+      match t
+        ImplTok -> true
+        _ -> false
+    "trait" ->
+      match t
+        TraitTok -> true
+        _ -> false
+    "some" ->
+      match t
+        SomeTok -> true
+        _ -> false
+    "none" ->
+      match t
+        NoneTok -> true
+        _ -> false
+    "ok" ->
+      match t
+        OkTok -> true
+        _ -> false
+    "err" ->
+      match t
+        ErrTok -> true
+        _ -> false
+    "use" ->
+      match t
+        UseTok -> true
+        _ -> false
+    "match" ->
+      match t
+        MatchTok -> true
+        _ -> false
+    "spawn" ->
+      match t
+        SpawnTok -> true
+        _ -> false
+    "continue" ->
+      match t
+        ContinueTok -> true
+        _ -> false
+    "test" ->
+      match t
+        TestTok -> true
+        _ -> false
+    "assert" ->
+      match t
+        AssertTok -> true
+        _ -> false
+    "assert_eq" ->
+      match t
+        AssertEqTok -> true
+        _ -> false
+    "assert_ne" ->
+      match t
+        AssertNeTok -> true
+        _ -> false
+    "+" ->
+      match t
+        PlusTok -> true
+        _ -> false
+    "-" ->
+      match t
+        MinusTok -> true
+        _ -> false
+    "*" ->
+      match t
+        StarTok -> true
+        _ -> false
+    "/" ->
+      match t
+        SlashTok -> true
+        _ -> false
+    "%" ->
+      match t
+        PercentTok -> true
+        _ -> false
+    ":=" ->
+      match t
+        ColonEqTok -> true
+        _ -> false
+    "=" ->
+      match t
+        EqTok -> true
+        _ -> false
+    "==" ->
+      match t
+        EqEqTok -> true
+        _ -> false
+    "!=" ->
+      match t
+        BangEqTok -> true
+        _ -> false
+    "<" ->
+      match t
+        LtTok -> true
+        _ -> false
+    ">" ->
+      match t
+        GtTok -> true
+        _ -> false
+    "<=" ->
+      match t
+        LtEqTok -> true
+        _ -> false
+    ">=" ->
+      match t
+        GtEqTok -> true
+        _ -> false
+    "->" ->
+      match t
+        ArrowTok -> true
+        _ -> false
+    "=>" ->
+      match t
+        FatArrowTok -> true
+        _ -> false
+    "|" ->
+      match t
+        PipeTok -> true
+        _ -> false
+    ":" ->
+      match t
+        ColonTok -> true
+        _ -> false
+    "." ->
+      match t
+        DotTok -> true
+        _ -> false
+    ".." ->
+      match t
+        DotDotTok -> true
+        _ -> false
+    "?" ->
+      match t
+        QuestionMarkTok -> true
+        _ -> false
+    "?." ->
+      match t
+        QuestionDotTok -> true
+        _ -> false
+    "+=" ->
+      match t
+        PlusEqTok -> true
+        _ -> false
+    "-=" ->
+      match t
+        MinusEqTok -> true
+        _ -> false
+    "*=" ->
+      match t
+        StarEqTok -> true
+        _ -> false
+    "/=" ->
+      match t
+        SlashEqTok -> true
+        _ -> false
+    "%=" ->
+      match t
+        PercentEqTok -> true
+        _ -> false
+    "and" ->
+      match t
+        AndTok -> true
+        _ -> false
+    "or" ->
+      match t
+        OrTok -> true
+        _ -> false
+    "not" ->
+      match t
+        NotTok -> true
+        _ -> false
+    "(" ->
+      match t
+        LParenTok -> true
+        _ -> false
+    ")" ->
+      match t
+        RParenTok -> true
+        _ -> false
+    "lbrace" ->
+      match t
+        LBraceTok -> true
+        _ -> false
+    "rbrace" ->
+      match t
+        RBraceTok -> true
+        _ -> false
+    "[" ->
+      match t
+        LBracketTok -> true
+        _ -> false
+    "]" ->
+      match t
+        RBracketTok -> true
+        _ -> false
+    "," ->
+      match t
+        CommaTok -> true
+        _ -> false
+    _ -> false
+
+fn p_expect s:List tok_tag:Str -> Result
+  if p_at_tok(s, tok_tag)
+    p_advance(s)
+    Ok(true)
+  else
+    Err("expected {tok_tag}, got {token_to_str(p_peek(s))} at {p_peek_line(s)}:{p_peek_col(s)}")
+
+fn p_expect_ident s:List ctx:Str -> Result
+  match p_peek(s)
+    IdentTok n ->
+      p_advance(s)
+      Ok(n)
+    _ ->
+      Err("expected {ctx} name, got {token_to_str(p_peek(s))} at {p_peek_line(s)}:{p_peek_col(s)}")
+
+fn p_make_error s:List msg:Str -> Str
+  "parse error at {p_peek_line(s)}:{p_peek_col(s)}: {msg}"
+
+fn p_skip_newlines s:List
+  loop
+    if p_is_newline(p_peek(s))
+      p_advance(s)
+    else
+      break
+
+fn p_skip_ws s:List
+  loop
+    t := p_peek(s)
+    if p_is_newline(t) or p_is_indent(t) or p_is_dedent(t)
+      p_advance(s)
+    else
+      break
+
+-- ════════════════════════════════════════════════════════════
+-- Type expression parsing
+-- ════════════════════════════════════════════════════════════
+
+fn parse_type_expr s:List -> Result
+  base_r := match p_peek(s)
+    IdentTok n ->
+      p_advance(s)
+      if p_at_tok(s, "[")
+        p_advance(s)
+        mut args := []
+        arg_r := parse_type_expr(s)
+        match arg_r
+          Err e ->
+            return Err(e)
+          Ok arg -> args.push(arg)
+        loop
+          if p_at_tok(s, ",")
+            p_advance(s)
+            arg_r2 := parse_type_expr(s)
+            match arg_r2
+              Err e ->
+                return Err(e)
+              Ok arg -> args.push(arg)
+          else
+            break
+        r := p_expect(s, "]")
+        match r
+          Err e ->
+            return Err(e)
+          _ -> Ok(GenericType(name: n, args: args))
+      else
+        Ok(NamedType(name: n))
+    LParenTok ->
+      p_advance(s)
+      mut types := []
+      if not p_at_tok(s, ")")
+        t_r := parse_type_expr(s)
+        match t_r
+          Err e ->
+            return Err(e)
+          Ok t -> types.push(t)
+        loop
+          if p_at_tok(s, ",")
+            p_advance(s)
+            t_r2 := parse_type_expr(s)
+            match t_r2
+              Err e ->
+                return Err(e)
+              Ok t -> types.push(t)
+          else
+            break
+      r_arrow := p_expect(s, "->")
+      match r_arrow
+        Err e ->
+          return Err(e)
+        _ -> true
+      ret_r := parse_type_expr(s)
+      match ret_r
+        Err e ->
+          return Err(e)
+        Ok ret ->
+          r_rp := p_expect(s, ")")
+          match r_rp
+            Err e ->
+              return Err(e)
+            _ -> Ok(FnType(params: types, ret: 0))
+    _ ->
+      Err(p_make_error(s, "expected type name, got {token_to_str(p_peek(s))}"))
+  match base_r
+    Err e -> Err(e)
+    Ok base ->
+      if p_at_tok(s, "?")
+        p_advance(s)
+        Ok(GenericType(name: "Option", args: [base]))
+      else
+        Ok(base)
+
+-- ════════════════════════════════════════════════════════════
+-- Parameter parsing
+-- ════════════════════════════════════════════════════════════
+
+fn parse_param s:List -> Result
+  name_r := p_expect_ident(s, "parameter")
+  match name_r
+    Err e -> Err(e)
+    Ok name ->
+      r := p_expect(s, ":")
+      match r
+        Err e -> Err(e)
+        _ ->
+          ty_r := parse_type_expr(s)
+          match ty_r
+            Err e -> Err(e)
+            Ok ty ->
+              default_id := if p_at_tok(s, "=")
+                p_advance(s)
+                expr_r := parse_expr(s, 0)
+                match expr_r
+                  Err e ->
+                    return Err(e)
+                  Ok eid -> eid
+              else
+                no_node()
+              Ok(ParamDef(name: name, ty: ty, default_expr: default_id))
+
+fn parse_optional_type_params s:List -> Result
+  if not p_at_tok(s, "[")
+    return Ok([])
+  p_advance(s)
+  mut params := []
+  if not p_at_tok(s, "]")
+    tp_r := parse_type_param(s)
+    match tp_r
+      Err e ->
+        return Err(e)
+      Ok tp -> params.push(tp)
+    loop
+      if p_at_tok(s, ",")
+        p_advance(s)
+        tp_r2 := parse_type_param(s)
+        match tp_r2
+          Err e ->
+            return Err(e)
+          Ok tp -> params.push(tp)
+      else
+        break
+  r := p_expect(s, "]")
+  match r
+    Err e -> Err(e)
+    _ -> Ok(params)
+
+fn parse_type_param s:List -> Result
+  name_r := p_expect_ident(s, "type parameter")
+  match name_r
+    Err e -> Err(e)
+    Ok name ->
+      bound := if p_at_tok(s, ":")
+        p_advance(s)
+        b_r := p_expect_ident(s, "trait bound")
+        match b_r
+          Err e ->
+            return Err(e)
+          Ok b -> b
+      else
+        ""
+      Ok(TypeParamDef(name: name, bound: bound))
+
+-- ════════════════════════════════════════════════════════════
+-- Call arguments parsing
+-- ════════════════════════════════════════════════════════════
+
+fn parse_call_args s:List -> Result
+  p_skip_ws(s)
+  mut args := []
+  if not p_at_tok(s, ")")
+    arg_r := parse_expr(s, 0)
+    match arg_r
+      Err e ->
+        return Err(e)
+      Ok eid -> args.push(eid)
+    p_skip_ws(s)
+    loop
+      if p_at_tok(s, ",")
+        p_advance(s)
+        p_skip_ws(s)
+        if p_at_tok(s, ")")
+          break
+        arg_r2 := parse_expr(s, 0)
+        match arg_r2
+          Err e ->
+            return Err(e)
+          Ok eid -> args.push(eid)
+        p_skip_ws(s)
+      else
+        break
+  p_skip_ws(s)
+  r := p_expect(s, ")")
+  match r
+    Err e -> Err(e)
+    _ -> Ok(args)
+
+-- ════════════════════════════════════════════════════════════
+-- Block parsing
+-- ════════════════════════════════════════════════════════════
+
+fn parse_block s:List -> Result
+  r := p_expect(s, "indent")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  mut stmts := []
+  loop
+    p_skip_newlines(s)
+    if p_at_block_end(s)
+      break
+    line := p_peek_line(s)
+    stmt_r := parse_stmt(s)
+    match stmt_r
+      Err e ->
+        return Err(e)
+      Ok sid -> stmts.push(SpannedStmt(stmt_id: sid, line: line))
+  if p_at_tok(s, "dedent")
+    p_advance(s)
+  Ok(Block(stmts: stmts))
+
+-- ════════════════════════════════════════════════════════════
+-- Statement parsing
+-- ════════════════════════════════════════════════════════════
+
+fn parse_stmt s:List -> Result
+  match p_peek(s)
+    FnTok ->
+      fndef_r := parse_fn_def(s)
+      match fndef_r
+        Err e -> Err(e)
+        Ok fndef ->
+          fndef_id := s_exprs(s).len()
+          s_exprs(s).push(fndef)
+          Ok(s_alloc_stmt(s, LocalFnStmt(fn_def: fndef_id)))
+    ReturnTok ->
+      p_advance(s)
+      t := p_peek(s)
+      if p_is_newline(t) or p_is_dedent(t) or p_is_eof(t)
+        Ok(s_alloc_stmt(s, ReturnStmt(value: no_node())))
+      else
+        expr_r := parse_expr(s, 0)
+        match expr_r
+          Err e -> Err(e)
+          Ok eid -> Ok(s_alloc_stmt(s, ReturnStmt(value: eid)))
+    ForTok ->
+      parse_for_stmt(s)
+    WhileTok ->
+      p_advance(s)
+      cond_r := parse_expr(s, 0)
+      match cond_r
+        Err e -> Err(e)
+        Ok cond_id ->
+          p_skip_newlines(s)
+          body_r := parse_block(s)
+          match body_r
+            Err e -> Err(e)
+            Ok body -> Ok(s_alloc_stmt(s, WhileStmt(cond: cond_id, body: body)))
+    LoopTok ->
+      p_advance(s)
+      p_skip_newlines(s)
+      body_r := parse_block(s)
+      match body_r
+        Err e -> Err(e)
+        Ok body -> Ok(s_alloc_stmt(s, LoopStmt(body: body)))
+    BreakTok ->
+      p_advance(s)
+      Ok(s_alloc_stmt(s, BreakStmt))
+    ContinueTok ->
+      p_advance(s)
+      Ok(s_alloc_stmt(s, ContinueStmt))
+    MutTok ->
+      p_advance(s)
+      name_r := p_expect_ident(s, "variable")
+      match name_r
+        Err e -> Err(e)
+        Ok name ->
+          r := p_expect(s, ":=")
+          match r
+            Err e -> Err(e)
+            _ ->
+              val_r := parse_expr(s, 0)
+              match val_r
+                Err e -> Err(e)
+                Ok eid -> Ok(s_alloc_stmt(s, LetStmt(name: name, mutable: true, value: eid)))
+    SpawnTok ->
+      p_advance(s)
+      expr_r := parse_expr(s, 0)
+      match expr_r
+        Err e -> Err(e)
+        Ok eid -> Ok(s_alloc_stmt(s, SpawnStmt(expr: eid)))
+    AssertTok ->
+      parse_assert_stmt(s)
+    AssertEqTok ->
+      parse_assert_eq_stmt(s, false)
+    AssertNeTok ->
+      parse_assert_eq_stmt(s, true)
+    LBracketTok ->
+      parse_bracket_stmt(s)
+    IdentTok _ ->
+      parse_ident_stmt(s)
+    _ ->
+      expr_r := parse_expr(s, 0)
+      match expr_r
+        Err e -> Err(e)
+        Ok eid -> Ok(s_alloc_stmt(s, ExprStmt(expr: eid)))
+
+fn parse_for_stmt s:List -> Result
+  p_advance(s)
+  var_r := p_expect_ident(s, "variable")
+  match var_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  var_name := match var_r
+    Ok n -> n
+    _ -> ""
+  if p_at_tok(s, ",")
+    p_advance(s)
+    val_var_r := p_expect_ident(s, "value variable")
+    match val_var_r
+      Err e ->
+        return Err(e)
+      Ok _ -> true
+    val_var := match val_var_r
+      Ok n -> n
+      _ -> ""
+    r := p_expect(s, "in")
+    match r
+      Err e ->
+        return Err(e)
+      _ -> true
+    iter_r := parse_expr(s, 0)
+    match iter_r
+      Err e ->
+        return Err(e)
+      Ok iter_id ->
+        p_skip_newlines(s)
+        body_r := parse_block(s)
+        match body_r
+          Err e ->
+            return Err(e)
+          Ok body ->
+            return Ok(s_alloc_stmt(s, ForEachKVStmt(key_var: var_name, val_var: val_var, iterable: iter_id, body: body)))
+  r := p_expect(s, "in")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  start_r := parse_expr(s, 3)
+  match start_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  start_id := match start_r
+    Ok id -> id
+    _ -> 0
+  if p_at_tok(s, "..")
+    p_advance(s)
+    end_r := parse_expr(s, 0)
+    match end_r
+      Err e ->
+        return Err(e)
+      Ok _ -> true
+    end_id := match end_r
+      Ok id -> id
+      _ -> 0
+    step_id := match p_peek(s)
+      IdentTok n ->
+        if n == "step"
+          p_advance(s)
+          step_r := parse_expr(s, 0)
+          match step_r
+            Err e ->
+              return Err(e)
+            Ok sid -> sid
+        else
+          no_node()
+      _ -> no_node()
+    p_skip_newlines(s)
+    body_r := parse_block(s)
+    match body_r
+      Err e ->
+        return Err(e)
+      Ok body ->
+        return Ok(s_alloc_stmt(s, ForInStmt(var_name: var_name, start: start_id, end: end_id, step: step_id, body: body)))
+  else
+    p_skip_newlines(s)
+    body_r := parse_block(s)
+    match body_r
+      Err e ->
+        return Err(e)
+      Ok body ->
+        return Ok(s_alloc_stmt(s, ForEachStmt(var_name: var_name, iterable: start_id, body: body)))
+
+fn parse_assert_stmt s:List -> Result
+  p_advance(s)
+  has_parens := p_at_tok(s, "(")
+  if has_parens
+    p_advance(s)
+  cond_r := parse_expr(s, 0)
+  match cond_r
+    Err e ->
+      return Err(e)
+    Ok cond_id ->
+      msg := parse_optional_string_message(s)
+      if has_parens
+        r := p_expect(s, ")")
+        match r
+          Err e ->
+            return Err(e)
+          _ -> true
+      Ok(s_alloc_stmt(s, ExprStmt(expr: s_alloc_expr(s, AssertExpr(cond: cond_id, message: msg)))))
+
+fn parse_assert_eq_stmt s:List is_ne:Bool -> Result
+  p_advance(s)
+  has_parens := p_at_tok(s, "(")
+  if has_parens
+    p_advance(s)
+  left_r := parse_expr(s, 0)
+  match left_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  left_id := match left_r
+    Ok id -> id
+    _ -> 0
+  r := p_expect(s, ",")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  right_r := parse_expr(s, 0)
+  match right_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  right_id := match right_r
+    Ok id -> id
+    _ -> 0
+  msg := parse_optional_string_message(s)
+  if has_parens
+    r2 := p_expect(s, ")")
+    match r2
+      Err e ->
+        return Err(e)
+      _ -> true
+  if is_ne
+    Ok(s_alloc_stmt(s, ExprStmt(expr: s_alloc_expr(s, AssertNeExpr(left: left_id, right: right_id, message: msg)))))
+  else
+    Ok(s_alloc_stmt(s, ExprStmt(expr: s_alloc_expr(s, AssertEqExpr(left: left_id, right: right_id, message: msg)))))
+
+fn parse_optional_string_message s:List -> Str
+  if p_at_tok(s, ",")
+    p_advance(s)
+    match p_peek(s)
+      StringLitTok sv ->
+        p_advance(s)
+        sv
+      _ -> ""
+  else
+    ""
+
+fn parse_bracket_stmt s:List -> Result
+  saved := s_pos(s)
+  p_advance(s)
+  mut names := []
+  mut is_destructure := true
+  loop
+    match p_peek(s)
+      IdentTok n ->
+        p_advance(s)
+        names.push(n)
+      _ ->
+        is_destructure = false
+        break
+    if p_at_tok(s, ",")
+      p_advance(s)
+    else if p_at_tok(s, "]")
+      p_advance(s)
+      break
+    else
+      is_destructure = false
+      break
+  if is_destructure and p_at_tok(s, ":=")
+    p_advance(s)
+    val_r := parse_expr(s, 0)
+    match val_r
+      Err e ->
+        return Err(e)
+      Ok eid ->
+        return Ok(s_alloc_stmt(s, LetDestructureStmt(names: names, value: eid)))
+  s_set_pos(s, saved)
+  expr_r := parse_expr(s, 0)
+  match expr_r
+    Err e -> Err(e)
+    Ok eid -> Ok(s_alloc_stmt(s, ExprStmt(expr: eid)))
+
+fn is_compound_assign_tok t:Token -> Bool
+  match t
+    PlusEqTok -> true
+    MinusEqTok -> true
+    StarEqTok -> true
+    SlashEqTok -> true
+    PercentEqTok -> true
+    _ -> false
+
+fn compound_to_binop t:Token -> BinOp
+  match t
+    PlusEqTok -> AddOp
+    MinusEqTok -> SubOp
+    StarEqTok -> MulOp
+    SlashEqTok -> DivOp
+    _ -> ModOp
+
+fn parse_ident_stmt s:List -> Result
+  saved := s_pos(s)
+  match p_peek(s)
+    IdentTok name ->
+      if name == "print"
+        p_advance(s)
+        expr_r := parse_expr(s, 0)
+        match expr_r
+          Err e ->
+            return Err(e)
+          Ok eid ->
+            return Ok(s_alloc_stmt(s, ExprStmt(expr: s_alloc_expr(s, PrintExpr(inner: eid)))))
+      if name == "sleep"
+        p_advance(s)
+        expr_r := parse_expr(s, 0)
+        match expr_r
+          Err e ->
+            return Err(e)
+          Ok eid ->
+            return Ok(s_alloc_stmt(s, ExprStmt(expr: s_alloc_expr(s, SleepExpr(inner: eid)))))
+      p_advance(s)
+      if p_at_tok(s, ":=")
+        p_advance(s)
+        val_r := parse_expr(s, 0)
+        match val_r
+          Err e ->
+            return Err(e)
+          Ok eid ->
+            return Ok(s_alloc_stmt(s, LetStmt(name: name, mutable: false, value: eid)))
+      if p_at_tok(s, "=")
+        p_advance(s)
+        val_r := parse_expr(s, 0)
+        match val_r
+          Err e ->
+            return Err(e)
+          Ok eid ->
+            return Ok(s_alloc_stmt(s, AssignStmt(name: name, value: eid)))
+      if is_compound_assign_tok(p_peek(s))
+        op := compound_to_binop(p_peek(s))
+        p_advance(s)
+        rhs_r := parse_expr(s, 0)
+        match rhs_r
+          Err e ->
+            return Err(e)
+          Ok rhs_id ->
+            ident_id := s_alloc_expr(s, IdentExpr(name: name))
+            val_id := s_alloc_expr(s, BinOpExpr(op: op, left: ident_id, right: rhs_id))
+            return Ok(s_alloc_stmt(s, AssignStmt(name: name, value: val_id)))
+      -- Backtrack and parse as expression
+      s_set_pos(s, saved)
+      expr_r := parse_expr(s, 0)
+      match expr_r
+        Err e ->
+          return Err(e)
+        Ok eid ->
+          if p_at_tok(s, "=")
+            p_advance(s)
+            val_r := parse_expr(s, 0)
+            match val_r
+              Err e ->
+                return Err(e)
+              Ok val_id ->
+                e := s_exprs(s)[eid]
+                match e
+                  IndexExpr obj idx ->
+                    return Ok(s_alloc_stmt(s, IndexAssignStmt(object: obj, index: idx, value: val_id)))
+                  FieldAccessExpr obj field ->
+                    return Ok(s_alloc_stmt(s, FieldAssignStmt(object: obj, field: field, value: val_id)))
+                  _ ->
+                    return Err(p_make_error(s, "invalid assignment target"))
+          else
+            return Ok(s_alloc_stmt(s, ExprStmt(expr: eid)))
+    _ ->
+      Err(p_make_error(s, "expected identifier"))
+
+-- ════════════════════════════════════════════════════════════
+-- Expression parsing (Pratt parser)
+-- ════════════════════════════════════════════════════════════
+
+fn token_to_binop tok:Token -> Option
+  match tok
+    PlusTok -> Some(AddOp)
+    MinusTok -> Some(SubOp)
+    StarTok -> Some(MulOp)
+    SlashTok -> Some(DivOp)
+    PercentTok -> Some(ModOp)
+    EqEqTok -> Some(EqOp)
+    BangEqTok -> Some(NotEqOp)
+    LtTok -> Some(LtOp)
+    GtTok -> Some(GtOp)
+    LtEqTok -> Some(LtEqOp)
+    GtEqTok -> Some(GtEqOp)
+    AndTok -> Some(AndOp)
+    OrTok -> Some(OrOp)
+    PipeTok -> Some(PipeOp)
+    _ -> None
+
+fn parse_expr s:List min_bp:Int -> Result
+  lhs_r := parse_prefix(s)
+  match lhs_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  mut lhs := match lhs_r
+    Ok id -> id
+    _ -> 0
+
+  loop
+    -- Postfix ? (try operator)
+    if p_at_tok(s, "?")
+      if 20 >= min_bp
+        p_advance(s)
+        lhs = s_alloc_expr(s, TryExpr(inner: lhs))
+        continue
+
+    -- Indexing: expr[expr]
+    if p_at_tok(s, "[")
+      if 19 >= min_bp
+        p_advance(s)
+        idx_r := parse_expr(s, 0)
+        match idx_r
+          Err e ->
+            return Err(e)
+          Ok idx_id ->
+            r := p_expect(s, "]")
+            match r
+              Err e ->
+                return Err(e)
+              _ -> true
+            lhs = s_alloc_expr(s, IndexExpr(object: lhs, index: idx_id))
+            continue
+
+    -- Field access / method call
+    is_dot := p_at_tok(s, ".")
+    is_qdot := p_at_tok(s, "?.")
+    if is_dot or is_qdot
+      optional := is_qdot
+      match p_peek_at(s, 1)
+        IdentTok _ ->
+          if 19 >= min_bp
+            p_advance(s)
+            field := match p_peek(s)
+              IdentTok f ->
+                p_advance(s)
+                f
+              _ -> ""
+            if p_at_tok(s, "(")
+              p_advance(s)
+              args_r := parse_call_args(s)
+              match args_r
+                Err e ->
+                  return Err(e)
+                Ok args ->
+                  if optional
+                    lhs = s_alloc_expr(s, OptionalMethodCallExpr(object: lhs, method: field, args: args))
+                  else
+                    lhs = s_alloc_expr(s, MethodCallExpr(object: lhs, method: field, args: args))
+            else if optional
+              lhs = s_alloc_expr(s, OptionalChainExpr(object: lhs, field: field))
+            else
+              lhs = s_alloc_expr(s, FieldAccessExpr(object: lhs, field: field))
+            continue
+        _ -> true
+
+    -- Binary operators
+    op_result := token_to_binop(p_peek(s))
+    match op_result
+      None ->
+        -- Check for colon operator
+        if p_at_tok(s, ":")
+          match p_peek_at(s, 1)
+            DedentTok -> break
+            EofTok -> break
+            NewlineTok ->
+              match p_peek_at(s, 2)
+                IndentTok ->
+                  if 2 < min_bp
+                    break
+                  p_advance(s)
+                  p_skip_newlines(s)
+                  arms_r := parse_match_arms(s)
+                  match arms_r
+                    Err e ->
+                      return Err(e)
+                    Ok arms ->
+                      lhs = s_alloc_expr(s, MatchExpr(subject: lhs, arms: arms))
+                      continue
+                _ -> break
+            _ ->
+              if 2 < min_bp
+                break
+              p_advance(s)
+              then_r := parse_expr(s, 3)
+              match then_r
+                Err e ->
+                  return Err(e)
+                Ok then_id ->
+                  else_id := if p_at_tok(s, ":")
+                    p_advance(s)
+                    else_r := parse_expr(s, 3)
+                    match else_r
+                      Err e ->
+                        return Err(e)
+                      Ok eid -> eid
+                  else
+                    no_node()
+                  lhs = s_alloc_expr(s, ColonMatchExpr(cond: lhs, then_expr: then_id, else_expr: else_id))
+                  continue
+        else
+          break
+      Some op ->
+        -- Pipe special: | else default
+        match op
+          PipeOp ->
+            match p_peek_at(s, 1)
+              ElseTok ->
+                if 9 < min_bp
+                  break
+                p_advance(s)
+                p_advance(s)
+                default_r := parse_expr(s, 10)
+                match default_r
+                  Err e ->
+                    return Err(e)
+                  Ok def_id ->
+                    lhs = s_alloc_expr(s, MethodCallExpr(object: lhs, method: "unwrap_or", args: [def_id]))
+                    continue
+              _ -> true
+          _ -> true
+        bps := infix_bp(op)
+        l_bp := bps[0]
+        r_bp := bps[1]
+        if l_bp < min_bp
+          break
+        p_advance(s)
+        rhs_r := parse_expr(s, r_bp)
+        match rhs_r
+          Err e ->
+            return Err(e)
+          Ok rhs ->
+            lhs = s_alloc_expr(s, BinOpExpr(op: op, left: lhs, right: rhs))
+  Ok(lhs)
+
+-- ════════════════════════════════════════════════════════════
+-- Prefix / primary expression parsing
+-- ════════════════════════════════════════════════════════════
+
+fn parse_prefix s:List -> Result
+  match p_peek(s)
+    IntTok n ->
+      p_advance(s)
+      Ok(s_alloc_expr(s, IntLitExpr(value: n)))
+    FloatTok f ->
+      p_advance(s)
+      Ok(s_alloc_expr(s, FloatLitExpr(value: f)))
+    TrueTok ->
+      p_advance(s)
+      Ok(s_alloc_expr(s, BoolLitExpr(value: true)))
+    FalseTok ->
+      p_advance(s)
+      Ok(s_alloc_expr(s, BoolLitExpr(value: false)))
+    StringLitTok sv ->
+      p_advance(s)
+      Ok(s_alloc_expr(s, StringLitExpr(value: sv)))
+    StringStartTok sv ->
+      parse_string_interp(s, sv)
+    MinusTok ->
+      p_advance(s)
+      inner_r := parse_expr(s, prefix_bp())
+      match inner_r
+        Err e -> Err(e)
+        Ok eid -> Ok(s_alloc_expr(s, UnaryMinusExpr(inner: eid)))
+    NotTok ->
+      p_advance(s)
+      inner_r := parse_expr(s, prefix_bp())
+      match inner_r
+        Err e -> Err(e)
+        Ok eid -> Ok(s_alloc_expr(s, UnaryNotExpr(inner: eid)))
+    BreakTok ->
+      p_advance(s)
+      Ok(s_alloc_expr(s, BreakExpr))
+    NoneTok ->
+      p_advance(s)
+      Ok(s_alloc_expr(s, OptionNoneExpr))
+    SomeTok ->
+      p_advance(s)
+      r := p_expect(s, "(")
+      match r
+        Err e ->
+          return Err(e)
+        _ -> true
+      inner_r := parse_expr(s, 0)
+      match inner_r
+        Err e -> Err(e)
+        Ok eid ->
+          r2 := p_expect(s, ")")
+          match r2
+            Err e -> Err(e)
+            _ -> Ok(s_alloc_expr(s, OptionSomeExpr(inner: eid)))
+    OkTok ->
+      p_advance(s)
+      r := p_expect(s, "(")
+      match r
+        Err e ->
+          return Err(e)
+        _ -> true
+      inner_r := parse_expr(s, 0)
+      match inner_r
+        Err e -> Err(e)
+        Ok eid ->
+          r2 := p_expect(s, ")")
+          match r2
+            Err e -> Err(e)
+            _ -> Ok(s_alloc_expr(s, ResultOkExpr(inner: eid)))
+    ErrTok ->
+      p_advance(s)
+      r := p_expect(s, "(")
+      match r
+        Err e ->
+          return Err(e)
+        _ -> true
+      inner_r := parse_expr(s, 0)
+      match inner_r
+        Err e -> Err(e)
+        Ok eid ->
+          r2 := p_expect(s, ")")
+          match r2
+            Err e -> Err(e)
+            _ -> Ok(s_alloc_expr(s, ResultErrExpr(inner: eid)))
+    MatchTok ->
+      p_advance(s)
+      subj_r := parse_expr(s, 0)
+      match subj_r
+        Err e -> Err(e)
+        Ok subj_id ->
+          p_skip_newlines(s)
+          arms_r := parse_match_arms(s)
+          match arms_r
+            Err e -> Err(e)
+            Ok arms -> Ok(s_alloc_expr(s, MatchExpr(subject: subj_id, arms: arms)))
+    IfTok ->
+      parse_if_expr(s)
+    LParenTok ->
+      parse_paren_expr(s)
+    LBracketTok ->
+      parse_list_lit(s)
+    LBraceTok ->
+      parse_map_lit(s)
+    AssertTok ->
+      parse_assert_expr(s)
+    AssertEqTok ->
+      parse_assert_eq_expr(s, false)
+    AssertNeTok ->
+      parse_assert_eq_expr(s, true)
+    IdentTok _ ->
+      parse_ident_expr(s)
+    _ ->
+      Err(p_make_error(s, "expected expression, got {token_to_str(p_peek(s))}"))
+
+fn parse_string_interp s:List start:Str -> Result
+  p_advance(s)
+  mut parts := []
+  if start.len() > 0
+    parts.push(LitPart(value: start))
+  expr_r := parse_expr(s, 0)
+  match expr_r
+    Err e ->
+      return Err(e)
+    Ok eid -> parts.push(ExprPart(expr_id: eid))
+  loop
+    match p_peek(s)
+      StringMidTok sv ->
+        p_advance(s)
+        if sv.len() > 0
+          parts.push(LitPart(value: sv))
+        expr_r2 := parse_expr(s, 0)
+        match expr_r2
+          Err e ->
+            return Err(e)
+          Ok eid -> parts.push(ExprPart(expr_id: eid))
+      StringEndTok sv ->
+        p_advance(s)
+        if sv.len() > 0
+          parts.push(LitPart(value: sv))
+        break
+      _ ->
+        return Err(p_make_error(s, "expected string continuation"))
+  Ok(s_alloc_expr(s, StringInterpExpr(parts: parts)))
+
+fn parse_if_expr s:List -> Result
+  p_advance(s)
+  cond_r := parse_expr(s, 0)
+  match cond_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  cond_id := match cond_r
+    Ok id -> id
+    _ -> 0
+  -- Inline form: if cond then expr else expr
+  if p_at_tok(s, "then")
+    p_advance(s)
+    then_r := parse_expr(s, 0)
+    match then_r
+      Err e ->
+        return Err(e)
+      Ok _ -> true
+    then_id := match then_r
+      Ok id -> id
+      _ -> 0
+    line := p_peek_line(s)
+    then_sid := s_alloc_stmt(s, ExprStmt(expr: then_id))
+    then_block := Block(stmts: [SpannedStmt(stmt_id: then_sid, line: line)])
+    p_skip_newlines(s)
+    -- Look ahead past indent/dedent for else
+    mut consumed_indents := 0
+    mut la := s_pos(s)
+    mut depth := 0
+    toks := s_tokens(s)
+    loop
+      if la >= toks.len()
+        break
+      lat := toks[la].token
+      if p_is_indent(lat)
+        depth = depth + 1
+        la = la + 1
+      else if p_is_dedent(lat)
+        depth = depth - 1
+        la = la + 1
+      else if p_is_newline(lat)
+        la = la + 1
+      else
+        break
+    if la < toks.len()
+      match toks[la].token
+        ElseTok ->
+          consumed_indents = depth
+          s_set_pos(s, la)
+        _ -> true
+    if p_at_tok(s, "else")
+      p_advance(s)
+      else_r := parse_expr(s, 0)
+      match else_r
+        Err e ->
+          return Err(e)
+        Ok else_id ->
+          eline := p_peek_line(s)
+          else_sid := s_alloc_stmt(s, ExprStmt(expr: else_id))
+          else_block := Block(stmts: [SpannedStmt(stmt_id: else_sid, line: eline)])
+          p_skip_newlines(s)
+          mut i := 0
+          loop
+            if i >= consumed_indents
+              break
+            if p_at_tok(s, "dedent")
+              p_advance(s)
+              p_skip_newlines(s)
+            i = i + 1
+          return Ok(s_alloc_expr(s, IfElseExpr(cond: cond_id, then_block: then_block, else_block: else_block)))
+    else
+      else_block := Block(stmts: [])
+      return Ok(s_alloc_expr(s, IfElseExpr(cond: cond_id, then_block: then_block, else_block: else_block)))
+  -- Block form
+  p_skip_newlines(s)
+  then_r := parse_block(s)
+  match then_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  then_block := match then_r
+    Ok b -> b
+    _ -> Block(stmts: [])
+  p_skip_newlines(s)
+  if p_at_tok(s, "else")
+    p_advance(s)
+    p_skip_newlines(s)
+    if p_at_tok(s, "if")
+      line := p_peek_line(s)
+      nested_r := parse_expr(s, 0)
+      match nested_r
+        Err e ->
+          return Err(e)
+        Ok nested_id ->
+          nested_sid := s_alloc_stmt(s, ExprStmt(expr: nested_id))
+          else_block := Block(stmts: [SpannedStmt(stmt_id: nested_sid, line: line)])
+          return Ok(s_alloc_expr(s, IfElseExpr(cond: cond_id, then_block: then_block, else_block: else_block)))
+    else
+      else_r := parse_block(s)
+      match else_r
+        Err e ->
+          return Err(e)
+        Ok else_block ->
+          return Ok(s_alloc_expr(s, IfElseExpr(cond: cond_id, then_block: then_block, else_block: else_block)))
+  else
+    else_block := Block(stmts: [])
+    return Ok(s_alloc_expr(s, IfElseExpr(cond: cond_id, then_block: then_block, else_block: else_block)))
+
+fn parse_paren_expr s:List -> Result
+  saved := s_pos(s)
+  p_advance(s)
+  lambda_r := try_parse_lambda(s)
+  match lambda_r
+    Err e ->
+      return Err(e)
+    Ok lam_id ->
+      if has_node(lam_id)
+        return Ok(lam_id)
+  s_set_pos(s, saved)
+  p_advance(s)
+  expr_r := parse_expr(s, 0)
+  match expr_r
+    Err e -> Err(e)
+    Ok eid ->
+      r := p_expect(s, ")")
+      match r
+        Err e -> Err(e)
+        _ -> Ok(eid)
+
+fn try_parse_lambda s:List -> Result
+  saved := s_pos(s)
+  mut params := []
+  match p_peek(s)
+    IdentTok name ->
+      p_advance(s)
+      params.push(name)
+    _ ->
+      s_set_pos(s, saved)
+      return Ok(no_node())
+  loop
+    if p_at_tok(s, ",")
+      p_advance(s)
+      match p_peek(s)
+        IdentTok name ->
+          p_advance(s)
+          params.push(name)
+        _ ->
+          s_set_pos(s, saved)
+          return Ok(no_node())
+    else if p_at_tok(s, "=>")
+      break
+    else if p_at_tok(s, ")")
+      p_advance(s)
+      if p_at_tok(s, "=>")
+        p_advance(s)
+        body_r := parse_lambda_body(s)
+        match body_r
+          Err e ->
+            return Err(e)
+          Ok body_id ->
+            return Ok(s_alloc_expr(s, LambdaExpr(params: params, body: body_id)))
+      s_set_pos(s, saved)
+      return Ok(no_node())
+    else
+      s_set_pos(s, saved)
+      return Ok(no_node())
+  -- (params => body) form
+  r := p_expect(s, "=>")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  body_r := parse_lambda_body(s)
+  match body_r
+    Err e ->
+      return Err(e)
+    Ok body_id ->
+      r2 := p_expect(s, ")")
+      match r2
+        Err e ->
+          return Err(e)
+        _ -> Ok(s_alloc_expr(s, LambdaExpr(params: params, body: body_id)))
+
+fn parse_lambda_body s:List -> Result
+  if p_is_newline(p_peek(s))
+    match p_peek_at(s, 1)
+      IndentTok ->
+        p_skip_newlines(s)
+        block_r := parse_block(s)
+        match block_r
+          Err e ->
+            return Err(e)
+          Ok block ->
+            return Ok(s_alloc_expr(s, BlockExprExpr(block: block)))
+      _ -> true
+  parse_expr(s, 0)
+
+fn parse_list_lit s:List -> Result
+  p_advance(s)
+  p_skip_ws(s)
+  mut elements := []
+  if not p_at_tok(s, "]")
+    elem_r := parse_expr(s, 0)
+    match elem_r
+      Err e ->
+        return Err(e)
+      Ok eid -> elements.push(eid)
+    p_skip_ws(s)
+    -- Check for list comprehension
+    if p_at_tok(s, "for")
+      comp_expr_id := elements[elements.len() - 1]
+      p_advance(s)
+      p_skip_ws(s)
+      var_r := p_expect_ident(s, "variable")
+      match var_r
+        Err e ->
+          return Err(e)
+        Ok _ -> true
+      var_name := match var_r
+        Ok n -> n
+        _ -> ""
+      p_skip_ws(s)
+      r := p_expect(s, "in")
+      match r
+        Err e ->
+          return Err(e)
+        _ -> true
+      p_skip_ws(s)
+      iter_start_r := parse_expr(s, 3)
+      match iter_start_r
+        Err e ->
+          return Err(e)
+        Ok _ -> true
+      iter_start_id := match iter_start_r
+        Ok id -> id
+        _ -> 0
+      p_skip_ws(s)
+      iter_id := if p_at_tok(s, "..")
+        p_advance(s)
+        iter_end_r := parse_expr(s, 3)
+        match iter_end_r
+          Err e ->
+            return Err(e)
+          Ok end_id ->
+            range_fn_id := s_alloc_expr(s, IdentExpr(name: "__range"))
+            s_alloc_expr(s, CallExpr(func: range_fn_id, args: [iter_start_id, end_id]))
+      else
+        iter_start_id
+      p_skip_ws(s)
+      cond_id := if p_at_tok(s, "if")
+        p_advance(s)
+        p_skip_ws(s)
+        cond_r := parse_expr(s, 0)
+        match cond_r
+          Err e ->
+            return Err(e)
+          Ok cid -> cid
+      else
+        no_node()
+      p_skip_ws(s)
+      r2 := p_expect(s, "]")
+      match r2
+        Err e ->
+          return Err(e)
+        _ ->
+          return Ok(s_alloc_expr(s, ListCompExpr(expr: comp_expr_id, var_name: var_name, iterable: iter_id, cond: cond_id)))
+    loop
+      if p_at_tok(s, ",")
+        p_advance(s)
+        p_skip_ws(s)
+        if p_at_tok(s, "]")
+          break
+        elem_r2 := parse_expr(s, 0)
+        match elem_r2
+          Err e ->
+            return Err(e)
+          Ok eid -> elements.push(eid)
+        p_skip_ws(s)
+      else
+        break
+  p_skip_ws(s)
+  r := p_expect(s, "]")
+  match r
+    Err e -> Err(e)
+    _ -> Ok(s_alloc_expr(s, ListLitExpr(elements: elements)))
+
+fn parse_map_lit s:List -> Result
+  p_advance(s)
+  p_skip_ws(s)
+  mut entries := []
+  if not p_at_tok(s, "rbrace")
+    key_r := parse_expr(s, 3)
+    match key_r
+      Err e ->
+        return Err(e)
+      Ok key_id ->
+        r := p_expect(s, ":")
+        match r
+          Err e ->
+            return Err(e)
+          _ -> true
+        val_r := parse_expr(s, 0)
+        match val_r
+          Err e ->
+            return Err(e)
+          Ok val_id -> entries.push([key_id, val_id])
+    p_skip_ws(s)
+    loop
+      if p_at_tok(s, ",")
+        p_advance(s)
+        p_skip_ws(s)
+        if p_at_tok(s, "rbrace")
+          break
+        key_r2 := parse_expr(s, 3)
+        match key_r2
+          Err e ->
+            return Err(e)
+          Ok key_id2 ->
+            r2 := p_expect(s, ":")
+            match r2
+              Err e ->
+                return Err(e)
+              _ -> true
+            val_r2 := parse_expr(s, 0)
+            match val_r2
+              Err e ->
+                return Err(e)
+              Ok val_id -> entries.push([key_id2, val_id])
+        p_skip_ws(s)
+      else
+        break
+  p_skip_ws(s)
+  r := p_expect(s, "rbrace")
+  match r
+    Err e -> Err(e)
+    _ -> Ok(s_alloc_expr(s, MapLitExpr(entries: entries)))
+
+fn parse_assert_expr s:List -> Result
+  p_advance(s)
+  has_parens := p_at_tok(s, "(")
+  if has_parens
+    p_advance(s)
+  cond_r := parse_expr(s, 0)
+  match cond_r
+    Err e ->
+      return Err(e)
+    Ok cond_id ->
+      msg := parse_optional_string_message(s)
+      if has_parens
+        r := p_expect(s, ")")
+        match r
+          Err e ->
+            return Err(e)
+          _ -> true
+      Ok(s_alloc_expr(s, AssertExpr(cond: cond_id, message: msg)))
+
+fn parse_assert_eq_expr s:List is_ne:Bool -> Result
+  p_advance(s)
+  has_parens := p_at_tok(s, "(")
+  if has_parens
+    p_advance(s)
+  left_r := parse_expr(s, 0)
+  match left_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  left_id := match left_r
+    Ok id -> id
+    _ -> 0
+  r := p_expect(s, ",")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  right_r := parse_expr(s, 0)
+  match right_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  right_id := match right_r
+    Ok id -> id
+    _ -> 0
+  msg := parse_optional_string_message(s)
+  if has_parens
+    r2 := p_expect(s, ")")
+    match r2
+      Err e ->
+        return Err(e)
+      _ -> true
+  if is_ne
+    Ok(s_alloc_expr(s, AssertNeExpr(left: left_id, right: right_id, message: msg)))
+  else
+    Ok(s_alloc_expr(s, AssertEqExpr(left: left_id, right: right_id, message: msg)))
+
+fn parse_ident_expr s:List -> Result
+  match p_peek(s)
+    IdentTok name ->
+      p_advance(s)
+      -- print as expression
+      if name == "print"
+        inner_r := parse_expr(s, 0)
+        match inner_r
+          Err e ->
+            return Err(e)
+          Ok eid ->
+            return Ok(s_alloc_expr(s, PrintExpr(inner: eid)))
+      -- Bare lambda: ident => expr
+      if p_at_tok(s, "=>")
+        p_advance(s)
+        body_r := parse_lambda_body(s)
+        match body_r
+          Err e ->
+            return Err(e)
+          Ok body_id ->
+            return Ok(s_alloc_expr(s, LambdaExpr(params: [name], body: body_id)))
+      -- Multi-param bare lambda: a b => expr
+      match p_peek(s)
+        IdentTok _ ->
+          saved := s_pos(s)
+          mut params := [name]
+          mut found_lambda := false
+          loop
+            match p_peek(s)
+              IdentTok p ->
+                p_advance(s)
+                params.push(p)
+                if p_at_tok(s, "=>")
+                  p_advance(s)
+                  body_r := parse_lambda_body(s)
+                  match body_r
+                    Err e ->
+                      return Err(e)
+                    Ok body_id ->
+                      found_lambda = true
+                      return Ok(s_alloc_expr(s, LambdaExpr(params: params, body: body_id)))
+              _ ->
+                break
+          if not found_lambda
+            s_set_pos(s, saved)
+        _ -> true
+      -- Function call or record construction
+      if p_at_tok(s, "(")
+        saved := s_pos(s)
+        p_advance(s)
+        p_skip_ws(s)
+        is_upper := name.char_at(0) >= "A" and name.char_at(0) <= "Z"
+        if is_upper
+          match p_peek(s)
+            IdentTok _ ->
+              match p_peek_at(s, 1)
+                ColonTok ->
+                  -- Record construction
+                  mut fields := []
+                  p_skip_ws(s)
+                  loop
+                    if p_at_tok(s, ")")
+                      break
+                    p_skip_ws(s)
+                    fn_r := p_expect_ident(s, "field")
+                    match fn_r
+                      Err e ->
+                        return Err(e)
+                      Ok field_name ->
+                        r := p_expect(s, ":")
+                        match r
+                          Err e ->
+                            return Err(e)
+                          _ -> true
+                        val_r := parse_expr(s, 0)
+                        match val_r
+                          Err e ->
+                            return Err(e)
+                          Ok val_id -> fields.push([field_name, val_id])
+                    p_skip_ws(s)
+                    if p_at_tok(s, ",")
+                      p_advance(s)
+                      p_skip_ws(s)
+                  p_skip_ws(s)
+                  r2 := p_expect(s, ")")
+                  match r2
+                    Err e ->
+                      return Err(e)
+                    _ ->
+                      return Ok(s_alloc_expr(s, RecordConstructExpr(type_name: name, fields: fields)))
+                _ -> true
+            _ -> true
+        -- Regular function call
+        s_set_pos(s, saved)
+        p_advance(s)
+        args_r := parse_call_args(s)
+        match args_r
+          Err e ->
+            return Err(e)
+          Ok args ->
+            func_id := s_alloc_expr(s, IdentExpr(name: name))
+            return Ok(s_alloc_expr(s, CallExpr(func: func_id, args: args)))
+      else
+        Ok(s_alloc_expr(s, IdentExpr(name: name)))
+    _ ->
+      Err(p_make_error(s, "expected identifier"))
+
+-- ════════════════════════════════════════════════════════════
+-- Match arm parsing
+-- ════════════════════════════════════════════════════════════
+
+fn parse_match_arms s:List -> Result
+  r := p_expect(s, "indent")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  mut arms := []
+  loop
+    p_skip_newlines(s)
+    if p_at_block_end(s)
+      break
+    arm_r := parse_match_arm(s)
+    match arm_r
+      Err e ->
+        return Err(e)
+      Ok arm -> arms.push(arm)
+  if p_at_tok(s, "dedent")
+    p_advance(s)
+  Ok(arms)
+
+fn parse_match_arm s:List -> Result
+  pat_r := parse_pattern(s)
+  match pat_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  mut pattern := match pat_r
+    Ok p -> p
+    _ -> WildcardPat
+  -- Or-patterns
+  if p_at_tok(s, "|")
+    mut alts := [pattern]
+    loop
+      if p_at_tok(s, "|")
+        p_advance(s)
+        alt_r := parse_pattern(s)
+        match alt_r
+          Err e ->
+            return Err(e)
+          Ok alt -> alts.push(alt)
+      else
+        break
+    pattern = OrPat(alternatives: alts)
+  -- Guard
+  guard_id := if p_at_tok(s, "if")
+    p_advance(s)
+    guard_r := parse_expr(s, 0)
+    match guard_r
+      Err e ->
+        return Err(e)
+      Ok gid -> gid
+  else
+    no_node()
+  r := p_expect(s, "->")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  -- Support multiline match arms
+  t := p_peek(s)
+  if p_is_newline(t)
+    p_skip_newlines(s)
+    if p_is_indent(p_peek(s))
+      block_r := parse_block(s)
+      match block_r
+        Err e ->
+          return Err(e)
+        Ok block ->
+          body_id := s_alloc_expr(s, BlockExprExpr(block: block))
+          return Ok(MatchArm(pattern: pattern, guard: guard_id, body: body_id))
+    else
+      body_r := parse_expr(s, 0)
+      match body_r
+        Err e ->
+          return Err(e)
+        Ok body_id ->
+          return Ok(MatchArm(pattern: pattern, guard: guard_id, body: body_id))
+  else if p_is_indent(t)
+    block_r := parse_block(s)
+    match block_r
+      Err e ->
+        return Err(e)
+      Ok block ->
+        body_id := s_alloc_expr(s, BlockExprExpr(block: block))
+        return Ok(MatchArm(pattern: pattern, guard: guard_id, body: body_id))
+  body_r := parse_expr(s, 0)
+  match body_r
+    Err e ->
+      return Err(e)
+    Ok body_id -> Ok(MatchArm(pattern: pattern, guard: guard_id, body: body_id))
+
+fn parse_pattern s:List -> Result
+  match p_peek(s)
+    IdentTok name ->
+      if name == "_"
+        p_advance(s)
+        Ok(WildcardPat)
+      else
+        p_advance(s)
+        parse_variant_pattern(s, name)
+    NoneTok ->
+      p_advance(s)
+      Ok(VariantPat(name: "None", bindings: []))
+    SomeTok ->
+      p_advance(s)
+      parse_variant_pattern(s, "Some")
+    OkTok ->
+      p_advance(s)
+      parse_variant_pattern(s, "Ok")
+    ErrTok ->
+      p_advance(s)
+      parse_variant_pattern(s, "Err")
+    IntTok n ->
+      p_advance(s)
+      parse_int_or_range(s, n)
+    FloatTok f ->
+      p_advance(s)
+      Ok(FloatLitPat(value: f))
+    TrueTok ->
+      p_advance(s)
+      Ok(BoolLitPat(value: true))
+    FalseTok ->
+      p_advance(s)
+      Ok(BoolLitPat(value: false))
+    StringLitTok sv ->
+      p_advance(s)
+      Ok(StringLitPat(value: sv))
+    MinusTok ->
+      p_advance(s)
+      match p_peek(s)
+        IntTok n ->
+          p_advance(s)
+          parse_int_or_range(s, 0 - n)
+        FloatTok f ->
+          p_advance(s)
+          Ok(FloatLitPat(value: 0.0 - f))
+        _ ->
+          Err(p_make_error(s, "expected number after '-' in pattern"))
+    _ ->
+      Err(p_make_error(s, "expected pattern, got {token_to_str(p_peek(s))}"))
+
+fn parse_variant_pattern s:List name:Str -> Result
+  mut bindings := []
+  loop
+    match p_peek(s)
+      IdentTok b ->
+        if p_at_tok(s, "->")
+          break
+        p_advance(s)
+        bindings.push(b)
+      _ ->
+        break
+  Ok(VariantPat(name: name, bindings: bindings))
+
+fn parse_int_or_range s:List start:Int -> Result
+  if not p_at_tok(s, "..")
+    return Ok(IntLitPat(value: start))
+  p_advance(s)
+  match p_peek(s)
+    IntTok end_val ->
+      p_advance(s)
+      Ok(RangePat(start: start, end: end_val))
+    MinusTok ->
+      p_advance(s)
+      match p_peek(s)
+        IntTok end_val ->
+          p_advance(s)
+          Ok(RangePat(start: start, end: 0 - end_val))
+        _ ->
+          Err(p_make_error(s, "expected integer after '-' in range pattern"))
+    _ ->
+      Err(p_make_error(s, "expected integer after '..' in range pattern"))
+
+-- ════════════════════════════════════════════════════════════
+-- Top-level item parsing
+-- ════════════════════════════════════════════════════════════
+
+fn parse_fn_def s:List -> Result
+  r := p_expect(s, "fn")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  name_r := p_expect_ident(s, "function")
+  match name_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  name := match name_r
+    Ok n -> n
+    _ -> ""
+  tp_r := parse_optional_type_params(s)
+  match tp_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  type_params := match tp_r
+    Ok tps -> tps
+    _ -> []
+  mut params := []
+  mut ret_type := NamedType(name: "")
+  mut has_ret := false
+  loop
+    if p_at_tok(s, "->")
+      p_advance(s)
+      rt_r := parse_type_expr(s)
+      match rt_r
+        Err e ->
+          return Err(e)
+        Ok rt ->
+          ret_type = rt
+          has_ret = true
+      break
+    match p_peek(s)
+      IdentTok _ ->
+        p_r := parse_param(s)
+        match p_r
+          Err e ->
+            return Err(e)
+          Ok param -> params.push(param)
+      _ ->
+        break
+  p_skip_newlines(s)
+  body_r := parse_block(s)
+  match body_r
+    Err e ->
+      return Err(e)
+    Ok body ->
+      if has_ret
+        Ok(FnDef(name: name, type_params: type_params, params: params, ret_type: ret_type, body: body))
+      else
+        Ok(FnDef(name: name, type_params: type_params, params: params, ret_type: NamedType(name: ""), body: body))
+
+fn parse_type_or_enum s:List -> Result
+  p_advance(s)
+  name_r := p_expect_ident(s, "type")
+  match name_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  name := match name_r
+    Ok n -> n
+    _ -> ""
+  tp_r := parse_optional_type_params(s)
+  match tp_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  type_params := match tp_r
+    Ok tps -> tps
+    _ -> []
+  if p_at_tok(s, "lbrace")
+    return parse_record_body(s, name, type_params)
+  p_skip_newlines(s)
+  r := p_expect(s, "indent")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  mut variants := []
+  loop
+    p_skip_newlines(s)
+    if p_at_block_end(s)
+      break
+    v_r := parse_variant(s)
+    match v_r
+      Err e ->
+        return Err(e)
+      Ok v -> variants.push(v)
+  if p_at_tok(s, "dedent")
+    p_advance(s)
+  Ok(EnumDefItem(enum_def: EnumDefNode(name: name, variants: variants)))
+
+fn parse_record_body s:List name:Str type_params:List -> Result
+  p_advance(s)
+  p_skip_ws(s)
+  mut fields := []
+  loop
+    if p_at_tok(s, "rbrace")
+      break
+    p_skip_ws(s)
+    fn_r := p_expect_ident(s, "field")
+    match fn_r
+      Err e ->
+        return Err(e)
+      Ok _ -> true
+    field_name := match fn_r
+      Ok n -> n
+      _ -> ""
+    r := p_expect(s, ":")
+    match r
+      Err e ->
+        return Err(e)
+      _ -> true
+    ty_r := parse_type_expr(s)
+    match ty_r
+      Err e ->
+        return Err(e)
+      Ok ty -> fields.push(FieldDef(name: field_name, ty: ty))
+    p_skip_ws(s)
+    if p_at_tok(s, ",")
+      p_advance(s)
+      p_skip_ws(s)
+  p_skip_ws(s)
+  r := p_expect(s, "rbrace")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> Ok(TypeDefItem(type_def: TypeDefNode(name: name, type_params: type_params, fields: fields)))
+
+fn parse_variant s:List -> Result
+  name_r := p_expect_ident(s, "variant")
+  match name_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  name := match name_r
+    Ok n -> n
+    _ -> ""
+  mut fields := []
+  if p_at_tok(s, "(")
+    p_advance(s)
+    loop
+      if p_at_tok(s, ")")
+        break
+      fn_r := p_expect_ident(s, "field")
+      match fn_r
+        Err e ->
+          return Err(e)
+        Ok field_name ->
+          r := p_expect(s, ":")
+          match r
+            Err e ->
+              return Err(e)
+            _ -> true
+          ty_r := parse_type_expr(s)
+          match ty_r
+            Err e ->
+              return Err(e)
+            Ok ty -> fields.push(FieldDef(name: field_name, ty: ty))
+      if p_at_tok(s, ",")
+        p_advance(s)
+    r := p_expect(s, ")")
+    match r
+      Err e ->
+        return Err(e)
+      _ -> true
+  Ok(VariantDef(name: name, fields: fields))
+
+fn parse_use_item s:List -> Result
+  p_advance(s)
+  match p_peek(s)
+    StringLitTok path ->
+      p_advance(s)
+      Ok(UseItem(path: path))
+    IdentTok name ->
+      p_advance(s)
+      Ok(UseItem(path: "{name}.ore"))
+    _ ->
+      Err(p_make_error(s, "expected string path or module name after 'use'"))
+
+fn parse_test_def s:List -> Result
+  p_advance(s)
+  match p_peek(s)
+    StringLitTok sv ->
+      p_advance(s)
+      p_skip_newlines(s)
+      body_r := parse_block(s)
+      match body_r
+        Err e -> Err(e)
+        Ok body -> Ok(TestDefItem(name: sv, body: body))
+    _ ->
+      Err(p_make_error(s, "expected string literal after 'test'"))
+
+fn parse_impl_block s:List -> Result
+  p_advance(s)
+  first_r := p_expect_ident(s, "type or trait")
+  match first_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  first_name := match first_r
+    Ok n -> n
+    _ -> ""
+  mut trait_name := ""
+  mut type_name := first_name
+  match p_peek(s)
+    IdentTok n ->
+      if n == "for"
+        p_advance(s)
+        tn_r := p_expect_ident(s, "type")
+        match tn_r
+          Err e ->
+            return Err(e)
+          Ok tn ->
+            trait_name = first_name
+            type_name = tn
+    _ -> true
+  p_skip_newlines(s)
+  r := p_expect(s, "indent")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  mut methods := []
+  loop
+    p_skip_newlines(s)
+    if p_at_block_end(s)
+      break
+    m_r := parse_fn_def(s)
+    match m_r
+      Err e ->
+        return Err(e)
+      Ok m -> methods.push(m)
+  if p_at_tok(s, "dedent")
+    p_advance(s)
+  if trait_name.len() > 0
+    Ok(ImplTraitItem(trait_name: trait_name, type_name: type_name, methods: methods))
+  else
+    Ok(ImplBlockItem(type_name: type_name, methods: methods))
+
+fn parse_trait_def s:List -> Result
+  p_advance(s)
+  name_r := p_expect_ident(s, "trait")
+  match name_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  name := match name_r
+    Ok n -> n
+    _ -> ""
+  p_skip_newlines(s)
+  r := p_expect(s, "indent")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  mut methods := []
+  loop
+    p_skip_newlines(s)
+    if p_at_block_end(s)
+      break
+    m_r := parse_trait_method(s)
+    match m_r
+      Err e ->
+        return Err(e)
+      Ok m -> methods.push(m)
+  if p_at_tok(s, "dedent")
+    p_advance(s)
+  Ok(TraitDefItem(trait_def: TraitDefNode(name: name, methods: methods)))
+
+fn parse_trait_method s:List -> Result
+  r := p_expect(s, "fn")
+  match r
+    Err e ->
+      return Err(e)
+    _ -> true
+  name_r := p_expect_ident(s, "method")
+  match name_r
+    Err e ->
+      return Err(e)
+    Ok _ -> true
+  name := match name_r
+    Ok n -> n
+    _ -> ""
+  mut params := []
+  mut ret_type := NamedType(name: "")
+  loop
+    if p_at_tok(s, "->")
+      p_advance(s)
+      rt_r := parse_type_expr(s)
+      match rt_r
+        Err e ->
+          return Err(e)
+        Ok rt ->
+          ret_type = rt
+      break
+    match p_peek(s)
+      IdentTok _ ->
+        p_r := parse_param(s)
+        match p_r
+          Err e ->
+            return Err(e)
+          Ok param ->
+            params.push(param)
+      _ ->
+        break
+  Ok(TraitMethodDef(name: name, params: params, ret_type: ret_type))
+
+fn parse_item s:List -> Result
+  match p_peek(s)
+    FnTok ->
+      fndef_r := parse_fn_def(s)
+      match fndef_r
+        Err e -> Err(e)
+        Ok fndef -> Ok(FnDefItem(fn_def: fndef))
+    TypeTok ->
+      parse_type_or_enum(s)
+    ImplTok ->
+      parse_impl_block(s)
+    TraitTok ->
+      parse_trait_def(s)
+    UseTok ->
+      parse_use_item(s)
+    TestTok ->
+      parse_test_def(s)
+    _ ->
+      Err(p_make_error(s, "expected item (fn, type, impl, trait, use, test), got {token_to_str(p_peek(s))}"))
+
+-- ════════════════════════════════════════════════════════════
+-- Main entry point
+-- ════════════════════════════════════════════════════════════
+
+fn parse token_list:List -> Result
+  -- Build state: [tokens, [pos], exprs, stmts]
+  mut s := []
+  s.push(token_list)
+  s.push([0])
+  s.push([])
+  s.push([])
+
+  mut items := []
+  p_skip_newlines(s)
+
+  loop
+    if p_is_eof(p_peek(s))
+      break
+    item_r := parse_item(s)
+    match item_r
+      Err e ->
+        return Err(e)
+      Ok item -> items.push(item)
+    p_skip_newlines(s)
+
+  -- Return [Program, exprs_pool, stmts_pool] so callers can inspect the AST
+  Ok([Program(items: items), s[2], s[3]])

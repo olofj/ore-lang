@@ -1,0 +1,666 @@
+-- Test suite for the native Ore parser
+use token
+use ast
+use arena
+use lexer
+use parser
+
+-- Parse result is [Program, exprs_pool, stmts_pool]
+-- We return all three from parse_src as a list
+
+fn parse_src source:Str -> List
+  tokens := lex(source).unwrap_or([])
+  result := parse(tokens)
+  match result
+    Ok parts -> parts
+    Err e ->
+      print "PARSE ERROR: {e}"
+      print "Source: {source}"
+      assert(false, "parse failed")
+      []
+
+fn test_simple_fn
+  parts := parse_src("fn main\n  x := 42\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  assert_eq prog.items.len(), 1
+  match prog.items[0]
+    FnDefItem fndef ->
+      assert_eq fndef.name, "main"
+      assert_eq fndef.body.stmts.len(), 1
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        LetStmt name mutable value ->
+          assert_eq name, "x"
+          assert_eq mutable, false
+          e := exprs[value]
+          match e
+            IntLitExpr v ->
+              assert_eq v, 42
+            _ ->
+              assert(false, "expected IntLitExpr")
+        _ ->
+          assert(false, "expected LetStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_let_stmts
+  parts := parse_src("fn main\n  x := 42\n  mut y := 10\n  z := \"hello\"\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      assert_eq fndef.body.stmts.len(), 3
+      s2 := stmts[fndef.body.stmts[1].stmt_id]
+      match s2
+        LetStmt name mutable value ->
+          assert_eq name, "y"
+          assert_eq mutable, true
+        _ ->
+          assert(false, "expected LetStmt for y")
+      s3 := stmts[fndef.body.stmts[2].stmt_id]
+      match s3
+        LetStmt name mutable value ->
+          assert_eq name, "z"
+          e := exprs[value]
+          match e
+            StringLitExpr v ->
+              assert_eq v, "hello"
+            _ ->
+              assert(false, "expected StringLitExpr")
+        _ ->
+          assert(false, "expected LetStmt for z")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_binop_precedence
+  parts := parse_src("fn main\n  x := 1 + 2 * 3\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        LetStmt name mutable value ->
+          e := exprs[value]
+          match e
+            BinOpExpr op left right ->
+              assert is_add_op(op), "expected AddOp at top"
+              le := exprs[left]
+              match le
+                IntLitExpr v ->
+                  assert_eq v, 1
+                _ ->
+                  assert(false, "expected IntLitExpr(1)")
+              re := exprs[right]
+              match re
+                BinOpExpr op2 _ _ ->
+                  assert is_mul_op(op2), "expected MulOp"
+                _ ->
+                  assert(false, "expected BinOpExpr on right")
+            _ ->
+              assert(false, "expected BinOpExpr")
+        _ ->
+          assert(false, "expected LetStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn is_add_op op:BinOp -> Bool
+  match op
+    AddOp -> true
+    _ -> false
+
+fn is_mul_op op:BinOp -> Bool
+  match op
+    MulOp -> true
+    _ -> false
+
+fn is_pipe_op op:BinOp -> Bool
+  match op
+    PipeOp -> true
+    _ -> false
+
+fn test_if_else
+  parts := parse_src("fn main\n  if true\n    1\n  else\n    2\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        ExprStmt eid ->
+          e := exprs[eid]
+          match e
+            IfElseExpr cond then_block else_block ->
+              ce := exprs[cond]
+              match ce
+                BoolLitExpr v ->
+                  assert_eq v, true
+                _ ->
+                  assert(false, "expected BoolLitExpr")
+              assert_eq then_block.stmts.len(), 1
+              assert_eq else_block.stmts.len(), 1
+            _ ->
+              assert(false, "expected IfElseExpr")
+        _ ->
+          assert(false, "expected ExprStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_match_variants
+  parts := parse_src("fn main\n  match x\n    1 -> \"one\"\n    _ -> \"other\"\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        ExprStmt eid ->
+          e := exprs[eid]
+          match e
+            MatchExpr subject arms ->
+              assert_eq arms.len(), 2
+              match arms[0].pattern
+                IntLitPat v ->
+                  assert_eq v, 1
+                _ ->
+                  assert(false, "expected IntLitPat")
+              match arms[1].pattern
+                WildcardPat -> true
+                _ ->
+                  assert(false, "expected WildcardPat")
+            _ ->
+              assert(false, "expected MatchExpr")
+        _ ->
+          assert(false, "expected ExprStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_list_literal
+  parts := parse_src("fn main\n  xs := [1, 2, 3]\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        LetStmt name mutable value ->
+          e := exprs[value]
+          match e
+            ListLitExpr elements ->
+              assert_eq elements.len(), 3
+              e1 := exprs[elements[0]]
+              match e1
+                IntLitExpr v ->
+                  assert_eq v, 1
+                _ ->
+                  assert(false, "expected IntLitExpr(1)")
+            _ ->
+              assert(false, "expected ListLitExpr")
+        _ ->
+          assert(false, "expected LetStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_function_calls
+  parts := parse_src("fn main\n  foo(1, 2)\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        ExprStmt eid ->
+          e := exprs[eid]
+          match e
+            CallExpr func args ->
+              fe := exprs[func]
+              match fe
+                IdentExpr name ->
+                  assert_eq name, "foo"
+                _ ->
+                  assert(false, "expected IdentExpr(foo)")
+              assert_eq args.len(), 2
+            _ ->
+              assert(false, "expected CallExpr")
+        _ ->
+          assert(false, "expected ExprStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_for_in_range
+  parts := parse_src("fn main\n  for i in 0..10\n    print i\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        ForInStmt var_name start end step body ->
+          assert_eq var_name, "i"
+          se := exprs[start]
+          match se
+            IntLitExpr v ->
+              assert_eq v, 0
+            _ ->
+              assert(false, "expected IntLitExpr(0) for start")
+          ee := exprs[end]
+          match ee
+            IntLitExpr v ->
+              assert_eq v, 10
+            _ ->
+              assert(false, "expected IntLitExpr(10) for end")
+        _ ->
+          assert(false, "expected ForInStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_string_interp
+  parts := parse_src("fn main\n  x := \"hello {name}\"\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        LetStmt name mutable value ->
+          e := exprs[value]
+          match e
+            StringInterpExpr sparts ->
+              assert sparts.len() >= 2, "expected at least 2 parts"
+              match sparts[0]
+                LitPart v ->
+                  assert_eq v, "hello "
+                _ ->
+                  assert(false, "expected LitPart")
+              match sparts[1]
+                ExprPart expr_id ->
+                  ie := exprs[expr_id]
+                  match ie
+                    IdentExpr n ->
+                      assert_eq n, "name"
+                    _ ->
+                      assert(false, "expected IdentExpr(name)")
+                _ ->
+                  assert(false, "expected ExprPart")
+            _ ->
+              assert(false, "expected StringInterpExpr")
+        _ ->
+          assert(false, "expected LetStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_multi_function_program
+  src := "fn add a:Int b:Int -> Int\n  a + b\n\nfn main\n  x := add(1, 2)\n  print x\n"
+  parts := parse_src(src)
+  prog := parts[0]
+  assert_eq prog.items.len(), 2
+  match prog.items[0]
+    FnDefItem fndef ->
+      assert_eq fndef.name, "add"
+      assert_eq fndef.params.len(), 2
+      assert_eq fndef.params[0].name, "a"
+    _ ->
+      assert(false, "expected FnDefItem for add")
+  match prog.items[1]
+    FnDefItem fndef ->
+      assert_eq fndef.name, "main"
+    _ ->
+      assert(false, "expected FnDefItem for main")
+
+fn test_record_def
+  parts := parse_src("type Point \{ x: Float, y: Float }\n")
+  prog := parts[0]
+  assert_eq prog.items.len(), 1
+  match prog.items[0]
+    TypeDefItem type_def ->
+      assert_eq type_def.name, "Point"
+      assert_eq type_def.fields.len(), 2
+      assert_eq type_def.fields[0].name, "x"
+    _ ->
+      assert(false, "expected TypeDefItem")
+
+fn test_enum_def
+  parts := parse_src("type Color\n  Red\n  Green\n  Blue\n")
+  prog := parts[0]
+  assert_eq prog.items.len(), 1
+  match prog.items[0]
+    EnumDefItem enum_def ->
+      assert_eq enum_def.name, "Color"
+      assert_eq enum_def.variants.len(), 3
+      assert_eq enum_def.variants[0].name, "Red"
+      assert_eq enum_def.variants[1].name, "Green"
+      assert_eq enum_def.variants[2].name, "Blue"
+    _ ->
+      assert(false, "expected EnumDefItem")
+
+fn test_while_loop
+  parts := parse_src("fn main\n  while true\n    print 1\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        WhileStmt cond body ->
+          ce := exprs[cond]
+          match ce
+            BoolLitExpr v ->
+              assert_eq v, true
+            _ ->
+              assert(false, "expected BoolLitExpr(true)")
+        _ ->
+          assert(false, "expected WhileStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_method_call
+  parts := parse_src("fn main\n  xs.len()\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        ExprStmt eid ->
+          e := exprs[eid]
+          match e
+            MethodCallExpr object method args ->
+              oe := exprs[object]
+              match oe
+                IdentExpr name ->
+                  assert_eq name, "xs"
+                _ ->
+                  assert(false, "expected IdentExpr(xs)")
+              assert_eq method, "len"
+              assert_eq args.len(), 0
+            _ ->
+              assert(false, "expected MethodCallExpr")
+        _ ->
+          assert(false, "expected ExprStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_lambda
+  parts := parse_src("fn main\n  f := (x => x + 1)\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        LetStmt name mutable value ->
+          e := exprs[value]
+          match e
+            LambdaExpr params body ->
+              assert_eq params.len(), 1
+              assert_eq params[0], "x"
+            _ ->
+              assert(false, "expected LambdaExpr")
+        _ ->
+          assert(false, "expected LetStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_use_item
+  parts := parse_src("use token\n\nfn main\n  x := 1\n")
+  prog := parts[0]
+  assert_eq prog.items.len(), 2
+  match prog.items[0]
+    UseItem path ->
+      assert_eq path, "token.ore"
+    _ ->
+      assert(false, "expected UseItem")
+
+fn test_unary_minus
+  parts := parse_src("fn main\n  x := -42\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        LetStmt name mutable value ->
+          e := exprs[value]
+          match e
+            UnaryMinusExpr inner ->
+              ie := exprs[inner]
+              match ie
+                IntLitExpr v ->
+                  assert_eq v, 42
+                _ ->
+                  assert(false, "expected IntLitExpr(42)")
+            _ ->
+              assert(false, "expected UnaryMinusExpr")
+        _ ->
+          assert(false, "expected LetStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_option_result
+  parts := parse_src("fn main\n  a := Some(42)\n  b := None\n  c := Ok(1)\n  d := Err(\"fail\")\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      assert_eq fndef.body.stmts.len(), 4
+      s1 := stmts[fndef.body.stmts[0].stmt_id]
+      match s1
+        LetStmt name _ value ->
+          e := exprs[value]
+          match e
+            OptionSomeExpr inner ->
+              ie := exprs[inner]
+              match ie
+                IntLitExpr v ->
+                  assert_eq v, 42
+                _ ->
+                  assert(false, "expected IntLitExpr")
+            _ ->
+              assert(false, "expected OptionSomeExpr")
+        _ ->
+          assert(false, "expected LetStmt")
+      s2 := stmts[fndef.body.stmts[1].stmt_id]
+      match s2
+        LetStmt name _ value ->
+          e := exprs[value]
+          match e
+            OptionNoneExpr -> true
+            _ ->
+              assert(false, "expected OptionNoneExpr")
+        _ ->
+          assert(false, "expected LetStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_assign_and_compound
+  parts := parse_src("fn main\n  mut x := 0\n  x = 5\n  x += 1\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      assert_eq fndef.body.stmts.len(), 3
+      s2 := stmts[fndef.body.stmts[1].stmt_id]
+      match s2
+        AssignStmt name value ->
+          assert_eq name, "x"
+          e := exprs[value]
+          match e
+            IntLitExpr v ->
+              assert_eq v, 5
+            _ ->
+              assert(false, "expected IntLitExpr")
+        _ ->
+          assert(false, "expected AssignStmt")
+      s3 := stmts[fndef.body.stmts[2].stmt_id]
+      match s3
+        AssignStmt name value ->
+          assert_eq name, "x"
+          e := exprs[value]
+          match e
+            BinOpExpr op left right ->
+              assert is_add_op(op), "expected AddOp"
+            _ ->
+              assert(false, "expected BinOpExpr")
+        _ ->
+          assert(false, "expected AssignStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_for_each
+  parts := parse_src("fn main\n  for x in items\n    print x\n")
+  prog := parts[0]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        ForEachStmt var_name iterable body ->
+          assert_eq var_name, "x"
+        _ ->
+          assert(false, "expected ForEachStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_index_expr
+  parts := parse_src("fn main\n  x := xs[0]\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        LetStmt name mutable value ->
+          e := exprs[value]
+          match e
+            IndexExpr object index ->
+              oe := exprs[object]
+              match oe
+                IdentExpr n ->
+                  assert_eq n, "xs"
+                _ ->
+                  assert(false, "expected IdentExpr(xs)")
+              ie := exprs[index]
+              match ie
+                IntLitExpr v ->
+                  assert_eq v, 0
+                _ ->
+                  assert(false, "expected IntLitExpr(0)")
+            _ ->
+              assert(false, "expected IndexExpr")
+        _ ->
+          assert(false, "expected LetStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn test_pipeline
+  parts := parse_src("fn main\n  x := 5 | double\n")
+  prog := parts[0]
+  exprs := parts[1]
+  stmts := parts[2]
+  match prog.items[0]
+    FnDefItem fndef ->
+      s := stmts[fndef.body.stmts[0].stmt_id]
+      match s
+        LetStmt name mutable value ->
+          e := exprs[value]
+          match e
+            BinOpExpr op left right ->
+              assert is_pipe_op(op), "expected PipeOp"
+              le := exprs[left]
+              match le
+                IntLitExpr v ->
+                  assert_eq v, 5
+                _ ->
+                  assert(false, "expected IntLitExpr(5)")
+            _ ->
+              assert(false, "expected BinOpExpr with PipeOp")
+        _ ->
+          assert(false, "expected LetStmt")
+    _ ->
+      assert(false, "expected FnDefItem")
+
+fn main
+  test_simple_fn()
+  print "  [pass] simple fn"
+
+  test_let_stmts()
+  print "  [pass] let stmts"
+
+  test_binop_precedence()
+  print "  [pass] binop precedence"
+
+  test_if_else()
+  print "  [pass] if/else"
+
+  test_match_variants()
+  print "  [pass] match variants"
+
+  test_list_literal()
+  print "  [pass] list literal"
+
+  test_function_calls()
+  print "  [pass] function calls"
+
+  test_for_in_range()
+  print "  [pass] for-in range"
+
+  test_string_interp()
+  print "  [pass] string interp"
+
+  test_multi_function_program()
+  print "  [pass] multi-function program"
+
+  test_record_def()
+  print "  [pass] record def"
+
+  test_enum_def()
+  print "  [pass] enum def"
+
+  test_while_loop()
+  print "  [pass] while loop"
+
+  test_method_call()
+  print "  [pass] method call"
+
+  test_lambda()
+  print "  [pass] lambda"
+
+  test_use_item()
+  print "  [pass] use item"
+
+  test_unary_minus()
+  print "  [pass] unary minus"
+
+  test_option_result()
+  print "  [pass] option/result"
+
+  test_assign_and_compound()
+  print "  [pass] assign and compound"
+
+  test_for_each()
+  print "  [pass] for each"
+
+  test_index_expr()
+  print "  [pass] index expr"
+
+  test_pipeline()
+  print "  [pass] pipeline"
+
+  print "\nAll 22 parser tests passed!"
