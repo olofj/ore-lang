@@ -54,13 +54,13 @@ pub extern "C" fn ore_type_of(kind: i8) -> *mut OreStr {
         KIND_FLOAT => "Float",
         KIND_BOOL => "Bool",
         KIND_STR => "Str",
-        4 => "Record",
-        5 => "Enum",
-        6 => "Option",
-        7 | 8 => "Result",
+        KIND_RECORD => "Record",
+        KIND_ENUM => "Enum",
+        KIND_OPTION => "Option",
+        KIND_RESULT => "Result",
         KIND_LIST => "List",
         KIND_MAP => "Map",
-        11 => "Channel",
+        KIND_CHANNEL => "Channel",
         _ => "Unknown",
     };
     str_to_ore(name)
