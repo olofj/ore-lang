@@ -217,7 +217,6 @@ dependencies = [
  "ore_parser",
  "ore_runtime",
  "ore_typecheck",
- "ore_types",
 ]
 
 [[package]]
@@ -227,7 +226,6 @@ dependencies = [
  "inkwell",
  "ore_lexer",
  "ore_parser",
- "ore_types",
 ]
 
 [[package]]
