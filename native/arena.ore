@@ -1,0 +1,40 @@
+-- Arena-based allocation for AST nodes
+-- All Expr/Stmt nodes stored in mutable List pools, referenced by Int index.
+-- Pools are plain List values — no wrapper records needed.
+
+use ast
+
+-- Allocate an expression in the pool, returning its index (ExprId)
+fn alloc_expr pool:List e:Expr -> Int
+  pool.push(e)
+  pool.len() - 1
+
+-- Get an expression from the pool by index
+fn get_expr pool:List id:Int -> Expr
+  pool[id]
+
+-- Allocate a statement in the pool, returning its index (StmtId)
+fn alloc_stmt pool:List s:Stmt -> Int
+  pool.push(s)
+  pool.len() - 1
+
+-- Get a statement from the pool by index
+fn get_stmt pool:List id:Int -> Stmt
+  pool[id]
+
+-- Allocate a pattern in the pool, returning its index (PatternId)
+fn alloc_pattern pool:List p:Pattern -> Int
+  pool.push(p)
+  pool.len() - 1
+
+-- Get a pattern from the pool by index
+fn get_pattern pool:List id:Int -> Pattern
+  pool[id]
+
+-- Sentinel value for "no node" (replaces Option<Box<Expr>>)
+fn no_node -> Int
+  -1
+
+-- Check if an ID represents a valid node (not "no node")
+fn has_node id:Int -> Bool
+  id >= 0

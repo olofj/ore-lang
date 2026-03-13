@@ -1,0 +1,149 @@
+-- AST Types for the Ore native compiler
+-- Uses arena pattern: nodes stored in pools, referenced by Int index.
+-- Box<Expr> in Rust → Int (ExprId), Option<Box<Expr>> → Int (-1 = none)
+
+-- Type expressions (used in parameter types, return types, field types)
+type TypeExpr
+  NamedType(name: Str)
+  GenericType(name: Str, args: List)
+  FnType(params: List, ret: Int)
+
+-- Binary operators
+type BinOp
+  AddOp
+  SubOp
+  MulOp
+  DivOp
+  ModOp
+  EqOp
+  NotEqOp
+  LtOp
+  GtOp
+  LtEqOp
+  GtEqOp
+  AndOp
+  OrOp
+  PipeOp
+
+-- String interpolation parts
+type StringPart
+  LitPart(value: Str)
+  ExprPart(expr_id: Int)
+
+-- Pattern matching patterns
+type Pattern
+  VariantPat(name: Str, bindings: List)
+  WildcardPat
+  IntLitPat(value: Int)
+  FloatLitPat(value: Float)
+  BoolLitPat(value: Bool)
+  StringLitPat(value: Str)
+  RangePat(start: Int, end: Int)
+  OrPat(alternatives: List)
+
+-- Match arm: pattern + optional guard + body expression
+type MatchArm { pattern: Pattern, guard: Int, body: Int }
+
+-- Parameter definition
+type ParamDef { name: Str, ty: TypeExpr, default_expr: Int }
+
+-- Field definition (for records and enum variants)
+type FieldDef { name: Str, ty: TypeExpr }
+
+-- Type parameter (for generics)
+type TypeParamDef { name: Str, bound: Str }
+
+-- Variant definition (for enums)
+type VariantDef { name: Str, fields: List }
+
+-- Spanned statement (statement + source line number)
+type SpannedStmt { stmt_id: Int, line: Int }
+
+-- Block: list of spanned statement IDs
+type Block { stmts: List }
+
+-- Expressions (all Box<Expr> replaced with Int = ExprId)
+type Expr
+  IntLitExpr(value: Int)
+  FloatLitExpr(value: Float)
+  BoolLitExpr(value: Bool)
+  StringLitExpr(value: Str)
+  IdentExpr(name: Str)
+  BinOpExpr(op: BinOp, left: Int, right: Int)
+  UnaryMinusExpr(inner: Int)
+  UnaryNotExpr(inner: Int)
+  CallExpr(func: Int, args: List)
+  PrintExpr(inner: Int)
+  IfElseExpr(cond: Int, then_block: Block, else_block: Block)
+  ColonMatchExpr(cond: Int, then_expr: Int, else_expr: Int)
+  MatchExpr(subject: Int, arms: List)
+  StringInterpExpr(parts: List)
+  BlockExprExpr(block: Block)
+  LambdaExpr(params: List, body: Int)
+  RecordConstructExpr(type_name: Str, fields: List)
+  FieldAccessExpr(object: Int, field: Str)
+  MethodCallExpr(object: Int, method: Str, args: List)
+  ListLitExpr(elements: List)
+  ListCompExpr(expr: Int, var_name: Str, iterable: Int, cond: Int)
+  MapLitExpr(entries: List)
+  IndexExpr(object: Int, index: Int)
+  BreakExpr
+  OptionNoneExpr
+  OptionSomeExpr(inner: Int)
+  ResultOkExpr(inner: Int)
+  ResultErrExpr(inner: Int)
+  TryExpr(inner: Int)
+  SleepExpr(inner: Int)
+  OptionalChainExpr(object: Int, field: Str)
+  OptionalMethodCallExpr(object: Int, method: Str, args: List)
+  AssertExpr(cond: Int, message: Str)
+  AssertEqExpr(left: Int, right: Int, message: Str)
+  AssertNeExpr(left: Int, right: Int, message: Str)
+
+-- Statements
+type Stmt
+  LetStmt(name: Str, mutable: Bool, value: Int)
+  LetDestructureStmt(names: List, value: Int)
+  AssignStmt(name: Str, value: Int)
+  IndexAssignStmt(object: Int, index: Int, value: Int)
+  FieldAssignStmt(object: Int, field: Str, value: Int)
+  ExprStmt(expr: Int)
+  ReturnStmt(value: Int)
+  ForInStmt(var_name: Str, start: Int, end: Int, step: Int, body: Block)
+  WhileStmt(cond: Int, body: Block)
+  ForEachStmt(var_name: Str, iterable: Int, body: Block)
+  ForEachKVStmt(key_var: Str, val_var: Str, iterable: Int, body: Block)
+  LoopStmt(body: Block)
+  BreakStmt
+  ContinueStmt
+  SpawnStmt(expr: Int)
+  LocalFnStmt(fn_def: Int)
+
+-- Function definition
+type FnDef { name: Str, type_params: List, params: List, ret_type: TypeExpr, body: Block }
+
+-- Enum definition
+type EnumDefNode { name: Str, variants: List }
+
+-- Type (record) definition
+type TypeDefNode { name: Str, type_params: List, fields: List }
+
+-- Trait method signature
+type TraitMethodDef { name: Str, params: List, ret_type: TypeExpr }
+
+-- Trait definition
+type TraitDefNode { name: Str, methods: List }
+
+-- Top-level items
+type Item
+  FnDefItem(fn_def: FnDef)
+  TypeDefItem(type_def: TypeDefNode)
+  EnumDefItem(enum_def: EnumDefNode)
+  ImplBlockItem(type_name: Str, methods: List)
+  TraitDefItem(trait_def: TraitDefNode)
+  ImplTraitItem(trait_name: Str, type_name: Str, methods: List)
+  UseItem(path: Str)
+  TestDefItem(name: Str, body: Block)
+
+-- Program: top-level list of items
+type Program { items: List }

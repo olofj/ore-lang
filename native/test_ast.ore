@@ -1,0 +1,182 @@
+-- Tests for AST types and arena allocation
+use ast
+use arena
+
+fn test_expr_pool
+  mut pool := []
+
+  id1 := alloc_expr(pool, IntLitExpr(value: 42))
+  id2 := alloc_expr(pool, BoolLitExpr(value: true))
+  id3 := alloc_expr(pool, StringLitExpr(value: "hello"))
+  id4 := alloc_expr(pool, BinOpExpr(op: AddOp, left: id1, right: id1))
+
+  assert_eq id1, 0
+  assert_eq id2, 1
+  assert_eq id3, 2
+  assert_eq id4, 3
+
+  e1 := get_expr(pool, id1)
+  match e1
+    IntLitExpr v ->
+      assert_eq v, 42
+    _ ->
+      assert false, "expected IntLitExpr"
+
+  e4 := get_expr(pool, id4)
+  match e4
+    BinOpExpr op left right ->
+      assert_eq left, 0
+      assert_eq right, 0
+    _ ->
+      assert false, "expected BinOpExpr"
+
+fn test_stmt_pool
+  mut epool := []
+  mut pool := []
+
+  val_id := alloc_expr(epool, IntLitExpr(value: 42))
+  let_id := alloc_stmt(pool, LetStmt(name: "x", mutable: false, value: val_id))
+
+  assert_eq let_id, 0
+
+  s := get_stmt(pool, let_id)
+  match s
+    LetStmt name mutable value ->
+      assert_eq name, "x"
+      assert_eq value, 0
+    _ ->
+      assert false, "expected LetStmt"
+
+fn test_pattern_pool
+  mut pool := []
+
+  id1 := alloc_pattern(pool, WildcardPat)
+  id2 := alloc_pattern(pool, IntLitPat(value: 42))
+  id3 := alloc_pattern(pool, VariantPat(name: "Some", bindings: ["x"]))
+
+  assert_eq id1, 0
+  assert_eq id2, 1
+  assert_eq id3, 2
+
+  p := get_pattern(pool, id3)
+  match p
+    VariantPat name bindings ->
+      assert_eq name, "Some"
+      assert_eq bindings.len(), 1
+    _ ->
+      assert false, "expected VariantPat"
+
+fn test_no_node_sentinel
+  assert_eq no_node(), -1
+  assert has_node(0)
+  assert has_node(5)
+  assert not has_node(-1)
+
+fn test_type_expr
+  t1 := NamedType(name: "Int")
+  t2 := GenericType(name: "List", args: [NamedType(name: "Str")])
+
+  match t1
+    NamedType n ->
+      assert_eq n, "Int"
+    _ ->
+      assert false, "expected NamedType"
+
+  match t2
+    GenericType name args ->
+      assert_eq name, "List"
+      assert_eq args.len(), 1
+    _ ->
+      assert false, "expected GenericType"
+
+fn test_match_arm
+  arm := MatchArm(pattern: WildcardPat, guard: no_node(), body: 0)
+  assert_eq arm.guard, -1
+  assert_eq arm.body, 0
+
+fn test_fn_def
+  fd := FnDef(
+    name: "add",
+    type_params: [],
+    params: [
+      ParamDef(name: "a", ty: NamedType(name: "Int"), default_expr: no_node()),
+      ParamDef(name: "b", ty: NamedType(name: "Int"), default_expr: no_node())
+    ],
+    ret_type: NamedType(name: "Int"),
+    body: Block(stmts: [])
+  )
+  assert_eq fd.name, "add"
+  assert_eq fd.params.len(), 2
+
+fn test_program
+  prog := Program(items: [
+    UseItem(path: "token")
+  ])
+  assert_eq prog.items.len(), 1
+
+fn test_all_expr_variants
+  mut pool := []
+
+  alloc_expr(pool, IntLitExpr(value: 0))
+  alloc_expr(pool, FloatLitExpr(value: 3.14))
+  alloc_expr(pool, BoolLitExpr(value: true))
+  alloc_expr(pool, StringLitExpr(value: "test"))
+  alloc_expr(pool, IdentExpr(name: "x"))
+  alloc_expr(pool, BinOpExpr(op: AddOp, left: 0, right: 1))
+  alloc_expr(pool, UnaryMinusExpr(inner: 0))
+  alloc_expr(pool, UnaryNotExpr(inner: 2))
+  alloc_expr(pool, CallExpr(func: 4, args: [0, 1]))
+  alloc_expr(pool, PrintExpr(inner: 0))
+  alloc_expr(pool, BreakExpr)
+  alloc_expr(pool, OptionNoneExpr)
+  alloc_expr(pool, OptionSomeExpr(inner: 0))
+  alloc_expr(pool, ResultOkExpr(inner: 0))
+  alloc_expr(pool, ResultErrExpr(inner: 3))
+  alloc_expr(pool, TryExpr(inner: 13))
+  alloc_expr(pool, ListLitExpr(elements: [0, 1, 2]))
+  alloc_expr(pool, IndexExpr(object: 16, index: 0))
+
+  assert_eq pool.len(), 18
+
+fn test_all_stmt_variants
+  mut pool := []
+
+  alloc_stmt(pool, LetStmt(name: "x", mutable: false, value: 0))
+  alloc_stmt(pool, LetDestructureStmt(names: ["a", "b"], value: 0))
+  alloc_stmt(pool, AssignStmt(name: "x", value: 1))
+  alloc_stmt(pool, ExprStmt(expr: 0))
+  alloc_stmt(pool, ReturnStmt(value: 0))
+  alloc_stmt(pool, BreakStmt)
+  alloc_stmt(pool, ContinueStmt)
+  alloc_stmt(pool, SpawnStmt(expr: 0))
+
+  assert_eq pool.len(), 8
+
+fn test_binop_variants
+  ops := [AddOp, SubOp, MulOp, DivOp, ModOp, EqOp, NotEqOp, LtOp, GtOp, LtEqOp, GtEqOp, AndOp, OrOp, PipeOp]
+  assert_eq ops.len(), 14
+
+fn main
+  test_expr_pool()
+  print "  [pass] expr pool"
+  test_stmt_pool()
+  print "  [pass] stmt pool"
+  test_pattern_pool()
+  print "  [pass] pattern pool"
+  test_no_node_sentinel()
+  print "  [pass] no_node sentinel"
+  test_type_expr()
+  print "  [pass] type expr"
+  test_match_arm()
+  print "  [pass] match arm"
+  test_fn_def()
+  print "  [pass] fn def"
+  test_program()
+  print "  [pass] program"
+  test_all_expr_variants()
+  print "  [pass] all expr variants"
+  test_all_stmt_variants()
+  print "  [pass] all stmt variants"
+  test_binop_variants()
+  print "  [pass] binop variants"
+  print "\nAll 11 AST/arena tests passed!"
