@@ -1,0 +1,103 @@
+-- Tests for the native type checker
+use lexer
+use parser
+use typecheck
+use arena
+
+-- Helper: parse source and run typecheck, return error list
+fn check src:Str -> List
+  split := lex_split(src)
+  mut holder := []
+  ok := parse_to_lists(split, holder)
+  if not ok
+    return ["parse error"]
+  items := s_get_list(holder, 0)
+  exprs := s_get_list(holder, 1)
+  stmts := s_get_list(holder, 2)
+  typecheck(items, exprs, stmts)
+
+fn test_valid_program
+  errors := check("fn main\n  x := 42\n  print x\n")
+  assert_eq errors.len(), 0
+
+fn test_undefined_variable
+  errors := check("fn main\n  print y\n")
+  -- y is not defined, should get an error
+  assert errors.len() > 0
+
+fn test_undefined_function
+  errors := check("fn main\n  foo()\n")
+  -- foo is not defined
+  assert errors.len() > 0
+
+fn test_function_defined_is_ok
+  src := "fn greet name:Str\n  print name\n\nfn main\n  greet(\"hi\")\n"
+  errors := check(src)
+  assert_eq errors.len(), 0
+
+fn test_arity_too_few
+  src := "fn add a:Int b:Int -> Int\n  a + b\n\nfn main\n  add(1)\n"
+  errors := check(src)
+  assert errors.len() > 0
+
+fn test_arity_too_many
+  src := "fn add a:Int b:Int -> Int\n  a + b\n\nfn main\n  add(1, 2, 3)\n"
+  errors := check(src)
+  assert errors.len() > 0
+
+fn test_for_loop_var_in_scope
+  src := "fn main\n  for i in 0..10\n    print i\n"
+  errors := check(src)
+  assert_eq errors.len(), 0
+
+fn test_builtin_ok
+  src := "fn main\n  x := to_str(42)\n  print x\n"
+  errors := check(src)
+  assert_eq errors.len(), 0
+
+fn test_record_type_ok
+  src := "type Point \{ x: Int, y: Int }\n\nfn main\n  p := Point(x: 1, y: 2)\n"
+  errors := check(src)
+  assert_eq errors.len(), 0
+
+fn test_enum_variant_ok
+  src := "type Color\n  Red\n  Blue\n\nfn main\n  c := Red\n"
+  errors := check(src)
+  assert_eq errors.len(), 0
+
+fn test_let_brings_into_scope
+  src := "fn main\n  x := 10\n  y := x + 1\n  print y\n"
+  errors := check(src)
+  assert_eq errors.len(), 0
+
+fn test_pipeline_method_ok
+  src := "fn main\n  xs := [1, 2, 3]\n  xs.map(x => x * 2)\n"
+  errors := check(src)
+  assert_eq errors.len(), 0
+
+fn main
+  test_valid_program()
+  print "  [pass] valid program"
+  test_undefined_variable()
+  print "  [pass] undefined variable detected"
+  test_undefined_function()
+  print "  [pass] undefined function detected"
+  test_function_defined_is_ok()
+  print "  [pass] defined function ok"
+  test_arity_too_few()
+  print "  [pass] arity too few detected"
+  test_arity_too_many()
+  print "  [pass] arity too many detected"
+  test_for_loop_var_in_scope()
+  print "  [pass] for loop var in scope"
+  test_builtin_ok()
+  print "  [pass] builtin functions ok"
+  test_record_type_ok()
+  print "  [pass] record construction ok"
+  test_enum_variant_ok()
+  print "  [pass] enum variant ok"
+  test_let_brings_into_scope()
+  print "  [pass] let brings var into scope"
+  test_pipeline_method_ok()
+  print "  [pass] pipeline method ok"
+  print "\nAll 12 typecheck tests passed!"

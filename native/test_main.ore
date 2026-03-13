@@ -1,0 +1,47 @@
+-- Tests for the CLI driver helper functions
+use main
+
+fn test_c_output_path
+  assert_eq c_output_path("hello.ore"), "hello.c"
+  assert_eq c_output_path("src/main.ore"), "src/main.c"
+  assert_eq c_output_path("noext"), "noext.c"
+
+fn test_bin_output_path
+  assert_eq bin_output_path("hello.ore"), "hello"
+  assert_eq bin_output_path("src/main.ore"), "src/main"
+  assert_eq bin_output_path("noext"), "noext.out"
+
+fn test_parse_source_valid
+  result := parse_source("fn main\n  42\n")
+  -- Should have 3 elements: items, exprs, stmts
+  assert_eq result.len(), 3
+
+fn test_parse_source_error
+  result := parse_source("@@@\n")
+  -- Should have 1 element (error message)
+  assert_eq result.len(), 1
+
+fn test_run_typecheck_valid
+  holder := parse_source("fn main\n  x := 1\n  print x\n")
+  errors := run_typecheck(holder)
+  assert_eq errors.len(), 0
+
+fn test_run_typecheck_errors
+  holder := parse_source("fn main\n  print undefined_var\n")
+  errors := run_typecheck(holder)
+  assert errors.len() > 0
+
+fn main
+  test_c_output_path()
+  print "  [pass] c_output_path"
+  test_bin_output_path()
+  print "  [pass] bin_output_path"
+  test_parse_source_valid()
+  print "  [pass] parse_source valid"
+  test_parse_source_error()
+  print "  [pass] parse_source error"
+  test_run_typecheck_valid()
+  print "  [pass] run_typecheck valid"
+  test_run_typecheck_errors()
+  print "  [pass] run_typecheck errors"
+  print "\nAll 6 main driver tests passed!"

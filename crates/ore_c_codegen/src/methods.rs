@@ -145,6 +145,14 @@ impl CCodeGen {
                 let (dec, _) = self.compile_expr(&args[0])?;
                 Ok((format!("ore_float_format({}, {})", val, dec), ValKind::Str))
             }
+            "clamp" => {
+                let (lo, _) = self.compile_expr(&args[0])?;
+                let (hi, _) = self.compile_expr(&args[1])?;
+                let tmp = self.tmp();
+                let v = val;
+                self.emit(&format!("double {tmp} = ({v} < {lo}) ? {lo} : (({v} > {hi}) ? {hi} : {v});"));
+                Ok((tmp, ValKind::Float))
+            }
             _ => Err(self.err(format!("unknown Float method '{}'", method))),
         }
     }

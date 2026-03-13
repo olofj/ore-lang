@@ -47,19 +47,17 @@ impl CCodeGen {
             }
             Stmt::IndexAssign { object, index, value } => {
                 let (obj_val, obj_kind) = self.compile_expr(object)?;
-                let (idx_val, _) = self.compile_expr(index)?;
-                let (val, _) = self.compile_expr(value)?;
+                let (idx_val, idx_kind) = self.compile_expr(index)?;
+                let (val, val_kind) = self.compile_expr(value)?;
                 match obj_kind {
                     ValKind::List(_) => {
-                        self.emit(&format!("ore_list_set({}, {}, {});", obj_val, idx_val, val));
+                        let i64_val = self.value_to_i64_expr(&val, &val_kind);
+                        self.emit(&format!("ore_list_set({}, {}, {});", obj_val, idx_val, i64_val));
                     }
                     ValKind::Map(_) => {
-                        let key = if idx_val.starts_with("ore_str_") || idx_val.starts_with("\"") {
-                            idx_val
-                        } else {
-                            format!("ore_int_to_str({})", idx_val)
-                        };
-                        self.emit(&format!("ore_map_set({}, {}, {});", obj_val, key, val));
+                        let key = if idx_kind == ValKind::Str { idx_val } else { self.value_to_str_expr(&idx_val, &idx_kind) };
+                        let i64_val = self.value_to_i64_expr(&val, &val_kind);
+                        self.emit(&format!("ore_map_set({}, {}, {});", obj_val, key, i64_val));
                     }
                     _ => return Err(self.err("index assignment only supported on lists and maps")),
                 }

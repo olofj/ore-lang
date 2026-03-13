@@ -1,0 +1,124 @@
+-- Phase 31: Native CLI Driver for the Ore compiler
+-- Usage: ore-native <command> <file>
+-- Commands: run, check, build
+
+use lexer
+use parser
+use typecheck
+use arena
+
+-- Parse a source file into items, exprs, stmts lists
+-- Returns [items, exprs, stmts] on success, or [error_string] on failure
+fn parse_source source:Str -> List
+  split := lex_split(source)
+  mut holder := []
+  ok := parse_to_lists(split, holder)
+  if not ok
+    mut err_result := []
+    msg := "parse error"
+    if holder.len() > 0
+      msg = to_str(holder[0])
+    err_result.push(msg)
+    return err_result
+  holder
+
+-- Run the type checker on parsed data
+-- Returns list of error strings (empty = success)
+fn run_typecheck holder:List -> List
+  items := s_get_list(holder, 0)
+  exprs := s_get_list(holder, 1)
+  stmts := s_get_list(holder, 2)
+  typecheck(items, exprs, stmts)
+
+-- Print type errors to stderr and return count
+fn report_errors errors:List file:Str -> Int
+  for i in 0..errors.len()
+    print "typecheck error in {file}: {errors[i]}"
+  errors.len()
+
+-- Format a file path for output (replace .ore with .c)
+fn c_output_path file:Str -> Str
+  if file.ends_with(".ore")
+    file.substr(0, file.len() - 4) + ".c"
+  else
+    file + ".c"
+
+-- Format a file path for binary output (strip .ore)
+fn bin_output_path file:Str -> Str
+  if file.ends_with(".ore")
+    file.substr(0, file.len() - 4)
+  else
+    file + ".out"
+
+-- Check command: lex, parse, typecheck only
+fn cmd_check file:Str -> Int
+  source := file_read(file).unwrap_or("")
+  if source == ""
+    print "error: could not read file '{file}'"
+    return 1
+  holder := parse_source(source)
+  if holder.len() == 1
+    print "error: {holder[0]}"
+    return 1
+  errors := run_typecheck(holder)
+  if errors.len() > 0
+    report_errors(errors, file)
+    return 1
+  print "ok: {file} passed type checking"
+  0
+
+-- Run command: lex, parse, typecheck, then run via ore
+fn cmd_run file:Str -> Int
+  source := file_read(file).unwrap_or("")
+  if source == ""
+    print "error: could not read file '{file}'"
+    return 1
+  holder := parse_source(source)
+  if holder.len() == 1
+    print "error: {holder[0]}"
+    return 1
+  errors := run_typecheck(holder)
+  if errors.len() > 0
+    report_errors(errors, file)
+    return 1
+  -- Typecheck passed; run the file with the Ore JIT
+  result := exec("ore run " + file)
+  print result
+  0
+
+-- Print usage information
+fn print_usage
+  print "ore-native: Ore compiler (native bootstrap)"
+  print ""
+  print "Usage: ore-native <command> <file>"
+  print ""
+  print "Commands:"
+  print "  check <file>   Type-check the file"
+  print "  run <file>     Type-check and run the file"
+  print "  help           Show this help"
+
+-- Main entry point
+fn main
+  a := args()
+  if a.len() < 2
+    print_usage()
+    exit(1)
+  cmd := a[1]
+  if cmd == "help" or cmd == "--help" or cmd == "-h"
+    print_usage()
+    exit(0)
+  if a.len() < 3
+    print "error: missing file argument"
+    print_usage()
+    exit(1)
+  file := a[2]
+  if cmd == "check"
+    code := cmd_check(file)
+    exit(code)
+  else if cmd == "run"
+    code := cmd_run(file)
+    exit(code)
+  else
+    print "error: unknown command '{cmd}'"
+    print_usage()
+    exit(1)

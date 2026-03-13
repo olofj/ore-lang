@@ -4,24 +4,28 @@ impl CCodeGen {
     pub(crate) fn compile_map_method(&mut self, map_val: &str, method: &str, args: &[Expr], val_kind: &ValKind) -> Result<(String, ValKind), CCodeGenError> {
         match method {
             "set" => {
-                let (key, _) = self.compile_expr(&args[0])?;
+                let (key, kk) = self.compile_expr(&args[0])?;
+                let key = if kk == ValKind::Str { key } else { self.value_to_str_expr(&key, &kk) };
                 let (val, vk) = self.compile_expr(&args[1])?;
                 let i64_val = self.value_to_i64_expr(&val, &vk);
                 self.emit(&format!("ore_map_set({}, {}, {});", map_val, key, i64_val));
                 Ok((map_val.to_string(), ValKind::map_of(vk)))
             }
             "get" => {
-                let (key, _) = self.compile_expr(&args[0])?;
+                let (key, kk) = self.compile_expr(&args[0])?;
+                let key = if kk == ValKind::Str { key } else { self.value_to_str_expr(&key, &kk) };
                 let raw = format!("ore_map_get({}, {})", map_val, key);
                 Ok((self.coerce_from_i64_expr(&raw, val_kind), val_kind.clone()))
             }
             "contains" => {
-                let (key, _) = self.compile_expr(&args[0])?;
+                let (key, kk) = self.compile_expr(&args[0])?;
+                let key = if kk == ValKind::Str { key } else { self.value_to_str_expr(&key, &kk) };
                 Ok((format!("(ore_map_contains({}, {}) != 0)", map_val, key), ValKind::Bool))
             }
             "len" => Ok((format!("ore_map_len({})", map_val), ValKind::Int)),
             "remove" => {
-                let (key, _) = self.compile_expr(&args[0])?;
+                let (key, kk) = self.compile_expr(&args[0])?;
+                let key = if kk == ValKind::Str { key } else { self.value_to_str_expr(&key, &kk) };
                 Ok((format!("ore_map_remove({}, {})", map_val, key), ValKind::Int))
             }
             "keys" => Ok((format!("ore_map_keys({})", map_val), ValKind::list_of(ValKind::Str))),
@@ -36,7 +40,8 @@ impl CCodeGen {
                 Ok((map_val.to_string(), ValKind::Map(Some(Box::new(val_kind.clone())))))
             }
             "get_or" => {
-                let (key, _) = self.compile_expr(&args[0])?;
+                let (key, key_kind) = self.compile_expr(&args[0])?;
+                let key = if key_kind == ValKind::Str { key } else { self.value_to_str_expr(&key, &key_kind) };
                 let (default, _) = self.compile_expr(&args[1])?;
                 let default_i64 = self.value_to_i64_expr(&default, val_kind);
                 let raw = format!("ore_map_get_or({}, {}, {})", map_val, key, default_i64);
