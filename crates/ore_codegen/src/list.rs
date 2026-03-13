@@ -1,5 +1,5 @@
 use super::*;
-use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
+use inkwell::values::{BasicValueEnum, FunctionValue, IntValue};
 use inkwell::IntPredicate;
 
 impl<'ctx> CodeGen<'ctx> {
@@ -570,13 +570,7 @@ impl<'ctx> CodeGen<'ctx> {
             bld!(self.builder.build_store(idx_alloca, i64_type.const_int(0, false)))?;
 
             // Element variable
-            let (var_alloca, var_ty): (PointerValue<'ctx>, inkwell::types::BasicTypeEnum<'ctx>) = match &elem_kind {
-                ValKind::Str => {
-                    let pt = self.context.ptr_type(inkwell::AddressSpace::default());
-                    (bld!(self.builder.build_alloca(pt, var))?, pt.into())
-                }
-                _ => (bld!(self.builder.build_alloca(i64_type, var))?, i64_type.into()),
-            };
+            let (var_alloca, var_ty) = self.alloca_for_kind(var, &elem_kind)?;
             self.variables.insert(var.to_string(), VarInfo { ptr: var_alloca, ty: var_ty, kind: elem_kind.clone(), is_mutable: false });
 
             let cond_bb = self.context.append_basic_block(func, "comp_cond");
@@ -594,16 +588,8 @@ impl<'ctx> CodeGen<'ctx> {
             self.builder.position_at_end(body_bb);
             let idx = bld!(self.builder.build_load(i64_type, idx_alloca, "idx"))?.into_int_value();
             let raw_val = self.call_rt("ore_list_get", &[list_src.into(), idx.into()], "elem")?;
-
-            match &elem_kind {
-                ValKind::Str => {
-                    let ptr = self.i64_to_ptr(raw_val.into_int_value())?;
-                    bld!(self.builder.build_store(var_alloca, ptr))?;
-                }
-                _ => {
-                    bld!(self.builder.build_store(var_alloca, raw_val))?;
-                }
-            }
+            let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
+            bld!(self.builder.build_store(var_alloca, typed_val))?;
 
             if let Some(c) = cond {
                 let filter_bb = self.context.append_basic_block(func, "comp_filter");

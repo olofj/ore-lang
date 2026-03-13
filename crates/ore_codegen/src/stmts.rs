@@ -409,7 +409,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     /// Allocate a local variable with the correct LLVM type for a given ValKind.
     /// Returns (alloca pointer, LLVM type).
-    fn alloca_for_kind(
+    pub(crate) fn alloca_for_kind(
         &mut self,
         name: &str,
         kind: &ValKind,
