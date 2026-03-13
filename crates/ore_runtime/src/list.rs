@@ -7,6 +7,17 @@ use std::collections::HashSet;
 // OreList: heap-allocated growable array of i64 values.
 // Layout: { len: i64, cap: i64, data: *mut i64 }
 
+/// Normalize a possibly-negative index and bounds-check it.
+/// Returns the valid usize index, or exits with an error.
+fn checked_index(index: i64, len: i64) -> usize {
+    let idx = if index < 0 { len + index } else { index };
+    if idx < 0 || idx >= len {
+        eprintln!("index out of bounds: {} (len {})", index, len);
+        std::process::exit(1);
+    }
+    idx as usize
+}
+
 #[repr(C)]
 pub struct OreList {
     pub len: i64,
@@ -113,12 +124,7 @@ pub extern "C" fn ore_list_insert(list: *mut OreList, index: i64, value: i64) {
 pub extern "C" fn ore_list_remove_at(list: *mut OreList, index: i64) -> i64 {
     unsafe {
         let list_ref = &mut *list;
-        let idx = if index < 0 { list_ref.len + index } else { index };
-        if idx < 0 || idx >= list_ref.len {
-            eprintln!("index out of bounds: {} (len {})", index, list_ref.len);
-            std::process::exit(1);
-        }
-        let idx = idx as usize;
+        let idx = checked_index(index, list_ref.len);
         let removed = *list_ref.data.add(idx);
         let len = list_ref.len as usize;
         if idx < len - 1 {
@@ -133,12 +139,8 @@ pub extern "C" fn ore_list_remove_at(list: *mut OreList, index: i64) -> i64 {
 pub extern "C" fn ore_list_get(list: *mut OreList, index: i64) -> i64 {
     unsafe {
         let list = &*list;
-        let idx = if index < 0 { list.len + index } else { index };
-        if idx < 0 || idx >= list.len {
-            eprintln!("index out of bounds: {} (len {})", index, list.len);
-            std::process::exit(1);
-        }
-        *list.data.add(idx as usize)
+        let idx = checked_index(index, list.len);
+        *list.data.add(idx)
     }
 }
 
@@ -147,11 +149,7 @@ pub extern "C" fn ore_list_get_or(list: *mut OreList, index: i64, default: i64) 
     unsafe {
         let list = &*list;
         let idx = if index < 0 { list.len + index } else { index };
-        if idx < 0 || idx >= list.len {
-            default
-        } else {
-            *list.data.add(idx as usize)
-        }
+        if idx < 0 || idx >= list.len { default } else { *list.data.add(idx as usize) }
     }
 }
 
@@ -785,12 +783,8 @@ pub extern "C" fn ore_list_par_each(list: *mut OreList, func: *const u8, env: *m
 pub extern "C" fn ore_list_set(list: *mut OreList, index: i64, value: i64) {
     unsafe {
         let list = &mut *list;
-        let idx = if index < 0 { list.len + index } else { index };
-        if idx < 0 || idx >= list.len {
-            eprintln!("index out of bounds: {} (len {})", index, list.len);
-            std::process::exit(1);
-        }
-        *list.data.add(idx as usize) = value;
+        let idx = checked_index(index, list.len);
+        *list.data.add(idx) = value;
     }
 }
 
