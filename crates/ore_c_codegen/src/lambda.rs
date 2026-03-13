@@ -7,15 +7,13 @@ impl CCodeGen {
         &mut self,
         params: &[String],
         body: &Expr,
-        _param_kinds: std::option::Option<&[ValKind]>,
+        param_kinds: std::option::Option<&[ValKind]>,
     ) -> Result<(String, ValKind), CCodeGenError> {
         let name = format!("__lambda_{}", self.lambda_counter);
         self.lambda_counter += 1;
 
-        // Build function signature: all params are i64
+        // Build function signature: all params are i64 (runtime convention)
         let mut param_strs = Vec::new();
-        // For now, no captures support in initial implementation
-        // TODO: Add closure capture support
         for p in params {
             param_strs.push(format!("int64_t {}", p));
         }
@@ -30,16 +28,44 @@ impl CCodeGen {
         self.variables.clear();
         self.indent = 1;
 
-        for p in params {
-            self.variables.insert(p.clone(), VarInfo {
-                c_name: p.clone(),
-                kind: ValKind::Int,
-                is_mutable: false,
-            });
+        for (i, p) in params.iter().enumerate() {
+            let kind = param_kinds.and_then(|k| k.get(i).cloned()).unwrap_or(ValKind::Int);
+
+            // For pointer-based types, emit a conversion from i64 to the correct type
+            match &kind {
+                ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
+                    let typed_name = format!("{}_typed", p);
+                    self.emit(&format!("void* {} = (void*)(intptr_t){};", typed_name, p));
+                    self.variables.insert(p.clone(), VarInfo {
+                        c_name: typed_name,
+                        kind,
+                        is_mutable: false,
+                    });
+                }
+                ValKind::Float => {
+                    let typed_name = format!("{}_typed", p);
+                    self.emit(&format!("double {} = *(double*)&{};", typed_name, p));
+                    self.variables.insert(p.clone(), VarInfo {
+                        c_name: typed_name,
+                        kind,
+                        is_mutable: false,
+                    });
+                }
+                _ => {
+                    self.variables.insert(p.clone(), VarInfo {
+                        c_name: p.clone(),
+                        kind,
+                        is_mutable: false,
+                    });
+                }
+            }
         }
 
-        let (result, _kind) = self.compile_expr(body)?;
-        self.emit(&format!("return {};", result));
+        let (result, ret_kind) = self.compile_expr(body)?;
+
+        // Convert return value to i64
+        let ret_val = self.value_to_i64_expr(&result, &ret_kind);
+        self.emit(&format!("return {};", ret_val));
 
         // Collect lambda body
         let body_lines = std::mem::take(&mut self.lines);
@@ -60,7 +86,7 @@ impl CCodeGen {
 
         // Register in functions
         self.functions.insert(name.clone(), FnInfo {
-            ret_kind: ValKind::Int,
+            ret_kind: ret_kind,
             param_kinds: vec![ValKind::Int; params.len()],
         });
 

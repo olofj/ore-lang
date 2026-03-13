@@ -43,16 +43,16 @@ impl CCodeGen {
                 Ok((self.coerce_from_i64_expr(&raw, val_kind), val_kind.clone()))
             }
             "each" => {
-                let (fn_ptr, env_ptr) = self.compile_lambda_arg(&args[0])?;
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[ValKind::Str, val_kind.clone()])?;
                 self.emit(&format!("ore_map_each({}, {}, {});", map_val, fn_ptr, env_ptr));
                 Ok(("0".to_string(), ValKind::Void))
             }
             "map" => {
-                let (fn_ptr, env_ptr) = self.compile_lambda_arg(&args[0])?;
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[ValKind::Str, val_kind.clone()])?;
                 Ok((format!("ore_map_map_values({}, {}, {})", map_val, fn_ptr, env_ptr), ValKind::Map(Some(Box::new(val_kind.clone())))))
             }
             "filter" => {
-                let (fn_ptr, env_ptr) = self.compile_lambda_arg(&args[0])?;
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[ValKind::Str, val_kind.clone()])?;
                 Ok((format!("ore_map_filter({}, {}, {})", map_val, fn_ptr, env_ptr), ValKind::Map(Some(Box::new(val_kind.clone())))))
             }
             _ => Err(self.err(format!("unknown Map method '{}'", method))),
