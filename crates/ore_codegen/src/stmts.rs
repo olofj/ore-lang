@@ -103,21 +103,10 @@ impl<'ctx> CodeGen<'ctx> {
                     let idx = i64_type.const_int(i as u64, false);
                     let result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "destr"))?;
                     let raw_val = self.call_result_to_value(result)?;
-
-                    match &elem_kind {
-                        ValKind::Str => {
-                            let ptr = self.i64_to_ptr(raw_val.into_int_value())?;
-                            let pt = self.context.ptr_type(inkwell::AddressSpace::default());
-                            let alloca = bld!(self.builder.build_alloca(pt, name))?;
-                            bld!(self.builder.build_store(alloca, ptr))?;
-                            self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty: pt.into(), kind: ValKind::Str, is_mutable: false });
-                        }
-                        _ => {
-                            let alloca = bld!(self.builder.build_alloca(i64_type, name))?;
-                            bld!(self.builder.build_store(alloca, raw_val))?;
-                            self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty: i64_type.into(), kind: elem_kind.clone(), is_mutable: false });
-                        }
-                    }
+                    let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
+                    let (alloca, ty) = self.alloca_for_kind(name, &elem_kind)?;
+                    bld!(self.builder.build_store(alloca, typed_val))?;
+                    self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: elem_kind.clone(), is_mutable: false });
                 }
                 Ok((None, ValKind::Void))
             }
