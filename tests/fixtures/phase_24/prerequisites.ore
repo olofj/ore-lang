@@ -1,0 +1,67 @@
+-- Phase 24: Ore Language Prerequisites for Self-Hosting
+
+-- Test 1: Map[Str, Int] for symbol tables
+fn test_symbol_table
+  mut symbols := {"x": 1, "y": 2, "z": 3}
+  symbols.set("w", 4)
+  assert_eq symbols.get("x"), 1
+  assert_eq symbols.get("w"), 4
+  assert symbols.contains("y")
+  assert_eq symbols.len(), 4
+
+-- Test 2: Map[Str, Str] for string tables
+fn test_string_table
+  mut table := {"fn": "function", "if": "conditional"}
+  table.set("for", "loop")
+  assert_eq table.get("fn"), "function"
+  assert_eq table.len(), 3
+
+-- Test 3: String char_at, ord, chr for lexer scanning
+fn test_char_scanning
+  source := "hello 42"
+  assert_eq source.char_at(0), "h"
+  assert_eq source.char_at(5), " "
+  assert_eq ord("A"), 65
+  assert_eq chr(65), "A"
+  assert_eq source.len(), 8
+
+-- Test 4: Large list operations for token lists
+fn test_large_lists
+  mut tokens := []
+  for i in 0..100
+    tokens.push(i)
+  assert_eq tokens.len(), 100
+  assert_eq tokens[0], 0
+  assert_eq tokens[99], 99
+
+-- Test 5: String building via join for codegen
+fn test_string_building
+  mut lines := []
+  lines.push("line 1")
+  lines.push("line 2")
+  lines.push("line 3")
+  result := lines.join("\n")
+  assert result.contains("line 2")
+  assert_eq lines.len(), 3
+
+-- Test 6: file_read and file_write
+fn test_file_io
+  file_write("/tmp/ore_test_prereq.txt", "hello ore")
+  content := file_read("/tmp/ore_test_prereq.txt")
+  assert_eq content, "hello ore"
+
+-- Test 7: Nested maps
+fn test_nested_data
+  mut data := {"a": 1, "b": 2}
+  keys := data.keys()
+  assert_eq keys.len(), 2
+
+fn main
+  test_symbol_table()
+  test_string_table()
+  test_char_scanning()
+  test_large_lists()
+  test_string_building()
+  test_file_io()
+  test_nested_data()
+  print "All Phase 24 prerequisites passed!"

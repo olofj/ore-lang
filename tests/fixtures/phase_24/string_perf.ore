@@ -1,0 +1,10 @@
+-- Test string concatenation performance via List[Str].join
+fn main
+  mut lines := []
+  for i in 0..1000
+    lines.push("line {i}")
+  result := lines.join("\n")
+  assert result.len() > 5000
+  assert result.starts_with("line 0")
+  assert result.ends_with("line 999")
+  print "String join performance: {lines.len()} lines, {result.len()} chars"

@@ -1,0 +1,96 @@
+type Token
+  IntTok(value: Int)
+  FloatTok(value: Float)  
+  IdentTok(name: Str)
+  StringTok(value: Str)
+  FnTok
+  IfTok
+  ElseTok
+  WhileTok
+  ForTok
+  InTok
+  ReturnTok
+  LetTok
+  MutTok
+  TrueTok
+  FalseTok
+  PrintTok
+  TypeTok
+  MatchTok
+  BreakTok
+  ContinueTok
+  LoopTok
+  TestTok
+  UseTok
+  SpawnTok
+  SleepTok
+  AssertTok
+  NoneTok
+  SomeTok
+  OkTok
+  ErrTok
+  PlusTok
+  MinusTok
+  StarTok
+  SlashTok
+  PercentTok
+  EqualTok
+  NotEqualTok
+  LessTok
+  GreaterTok
+  LessEqTok
+  GreaterEqTok
+  AndTok
+  OrTok
+  NotTok
+  AssignTok
+  ColonTok
+  CommaTok
+  DotTok
+  PipeTok
+  ArrowTok
+  FatArrowTok
+  LParenTok
+  RParenTok
+  LBracketTok
+  RBracketTok
+  LBraceTok
+  RBraceTok
+  IndentTok
+  DedentTok
+  NewlineTok
+  EofTok
+
+fn token_name tok:Token -> Str
+  match tok
+    IntTok v -> "Int({v})"
+    FloatTok v -> "Float"
+    IdentTok n -> "Ident({n})"
+    StringTok v -> "String"
+    FnTok -> "fn"
+    IfTok -> "if"
+    ElseTok -> "else"
+    PlusTok -> "+"
+    MinusTok -> "-"
+    EofTok -> "EOF"
+    _ -> "other"
+
+fn main
+  t1 := IntTok(value: 42)
+  t2 := IdentTok(name: "hello")
+  t3 := PlusTok
+  t4 := EofTok
+  
+  print token_name(t1)
+  print token_name(t2)
+  print token_name(t3)
+  print token_name(t4)
+  
+  -- Test list of tokens
+  mut tokens := []
+  tokens.push(t1)
+  tokens.push(t3)
+  tokens.push(t4)
+  assert_eq tokens.len(), 3
+  
+  print "Large enum (60 variants) works!"

@@ -1,0 +1,28 @@
+type Expr
+  Lit(value: Int)
+  Add(left: Int, right: Int)
+  Neg(inner: Int)
+  
+fn eval exprs:List pool_id:Int -> Int
+  -- Use indices into a list as our "arena"
+  42
+
+type Result2
+  Ok2(val: Int)
+  Err2(msg: Str)
+  
+fn process r:Result2 -> Str
+  match r
+    Ok2 v ->
+      match v
+        0 -> "zero"
+        1 -> "one"
+        _ -> "other: {v}"
+    Err2 msg -> "error: {msg}"
+
+fn main
+  assert_eq process(Ok2(val: 0)), "zero"
+  assert_eq process(Ok2(val: 1)), "one"
+  assert_eq process(Ok2(val: 42)), "other: 42"
+  assert_eq process(Err2(msg: "fail")), "error: fail"
+  print "Nested match works!"
