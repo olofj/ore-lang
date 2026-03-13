@@ -1,0 +1,211 @@
+-- Test suite for the native Ore lexer
+use token
+use lexer
+
+-- Helper: assert a token at a specific index has the expected string representation
+fn assert_token tokens:List idx:Int expected:Str
+  actual := token_to_str(tokens[idx].token)
+  assert_eq actual, expected
+
+-- Unwrap a Result[List[SpannedToken]] or fail with a message
+fn unwrap_tokens result:Result -> List
+  result.unwrap_or([])
+
+fn test_basic_integer
+  tokens := lex("42").unwrap_or([])
+  assert_eq tokens.len(), 2
+  assert_token(tokens, 0, "Int(42)")
+  assert_token(tokens, 1, "EOF")
+
+fn test_underscore_integer
+  tokens := lex("1_000_000").unwrap_or([])
+  assert_token(tokens, 0, "Int(1000000)")
+
+fn test_operators
+  tokens := lex(":= + - * /").unwrap_or([])
+  assert_token(tokens, 0, ":=")
+  assert_token(tokens, 1, "+")
+  assert_token(tokens, 2, "-")
+  assert_token(tokens, 3, "*")
+  assert_token(tokens, 4, "/")
+
+fn test_comparison_ops
+  tokens := lex("< > <= >= == !=").unwrap_or([])
+  assert_token(tokens, 0, "<")
+  assert_token(tokens, 1, ">")
+  assert_token(tokens, 2, "<=")
+  assert_token(tokens, 3, ">=")
+  assert_token(tokens, 4, "==")
+  assert_token(tokens, 5, "!=")
+
+fn test_keywords
+  tokens := lex("fn mut if else true false return").unwrap_or([])
+  assert_token(tokens, 0, "fn")
+  assert_token(tokens, 1, "mut")
+  assert_token(tokens, 2, "if")
+  assert_token(tokens, 3, "else")
+  assert_token(tokens, 4, "true")
+  assert_token(tokens, 5, "false")
+  assert_token(tokens, 6, "return")
+
+fn test_arrow_and_pipe
+  tokens := lex("-> | =>").unwrap_or([])
+  assert_token(tokens, 0, "->")
+  assert_token(tokens, 1, "|")
+  assert_token(tokens, 2, "=>")
+
+fn test_string_literal
+  tokens := lex("\"hello\"").unwrap_or([])
+  assert_token(tokens, 0, "String(hello)")
+
+fn test_boolean_keywords
+  tokens := lex("and or not").unwrap_or([])
+  assert_token(tokens, 0, "and")
+  assert_token(tokens, 1, "or")
+  assert_token(tokens, 2, "not")
+
+fn test_comment
+  tokens := lex("42 -- this is a comment\n10").unwrap_or([])
+  assert_token(tokens, 0, "Int(42)")
+  assert_token(tokens, 1, "Newline")
+  assert_token(tokens, 2, "Int(10)")
+  assert_token(tokens, 3, "EOF")
+
+fn test_indent_dedent
+  tokens := lex("fn main\n  x := 42\n  y := 10\n").unwrap_or([])
+  assert_token(tokens, 0, "fn")
+  assert_token(tokens, 1, "Ident(main)")
+  assert_token(tokens, 2, "Newline")
+  assert_token(tokens, 3, "Indent")
+  assert_token(tokens, 4, "Ident(x)")
+  assert_token(tokens, 5, ":=")
+  assert_token(tokens, 6, "Int(42)")
+  assert_token(tokens, 7, "Newline")
+  assert_token(tokens, 8, "Ident(y)")
+  assert_token(tokens, 9, ":=")
+  assert_token(tokens, 10, "Int(10)")
+  assert_token(tokens, 11, "Newline")
+  assert_token(tokens, 12, "Dedent")
+  assert_token(tokens, 13, "EOF")
+
+fn test_nested_indent
+  tokens := lex("a\n  b\n    c\n  d\ne\n").unwrap_or([])
+  assert_token(tokens, 0, "Ident(a)")
+  assert_token(tokens, 1, "Newline")
+  assert_token(tokens, 2, "Indent")
+  assert_token(tokens, 3, "Ident(b)")
+  assert_token(tokens, 4, "Newline")
+  assert_token(tokens, 5, "Indent")
+  assert_token(tokens, 6, "Ident(c)")
+  assert_token(tokens, 7, "Newline")
+  assert_token(tokens, 8, "Dedent")
+  assert_token(tokens, 9, "Ident(d)")
+  assert_token(tokens, 10, "Newline")
+  assert_token(tokens, 11, "Dedent")
+  assert_token(tokens, 12, "Ident(e)")
+  assert_token(tokens, 13, "Newline")
+  assert_token(tokens, 14, "EOF")
+
+fn test_delimiters
+  tokens := lex("( ) [ ] \{ } ,").unwrap_or([])
+  assert_token(tokens, 0, "(")
+  assert_token(tokens, 1, ")")
+  assert_token(tokens, 2, "[")
+  assert_token(tokens, 3, "]")
+  assert_token(tokens, 4, "\{")
+  assert_token(tokens, 5, "}")
+  assert_token(tokens, 6, ",")
+
+fn test_dot_and_dotdot
+  tokens := lex(". .. ?. ?").unwrap_or([])
+  assert_token(tokens, 0, ".")
+  assert_token(tokens, 1, "..")
+  assert_token(tokens, 2, "?.")
+  assert_token(tokens, 3, "?")
+
+fn test_string_interpolation
+  tokens := lex("\"hello \{x}!\"").unwrap_or([])
+  assert_token(tokens, 0, "StringStart(hello )")
+  assert_token(tokens, 1, "Ident(x)")
+  assert_token(tokens, 2, "StringEnd(!)")
+
+fn test_multi_interpolation
+  tokens := lex("\"a\{x}b\{y}c\"").unwrap_or([])
+  assert_token(tokens, 0, "StringStart(a)")
+  assert_token(tokens, 1, "Ident(x)")
+  assert_token(tokens, 2, "StringMid(b)")
+  assert_token(tokens, 3, "Ident(y)")
+  assert_token(tokens, 4, "StringEnd(c)")
+
+fn test_compound_assignments
+  tokens := lex("+= -= *= /= %=").unwrap_or([])
+  assert_token(tokens, 0, "+=")
+  assert_token(tokens, 1, "-=")
+  assert_token(tokens, 2, "*=")
+  assert_token(tokens, 3, "/=")
+  assert_token(tokens, 4, "%=")
+
+fn test_all_keywords
+  tokens := lex("type impl trait Some None Ok Err use pub spawn match continue test assert assert_eq assert_ne").unwrap_or([])
+  assert_token(tokens, 0, "type")
+  assert_token(tokens, 1, "impl")
+  assert_token(tokens, 2, "trait")
+  assert_token(tokens, 3, "Some")
+  assert_token(tokens, 4, "None")
+  assert_token(tokens, 5, "Ok")
+  assert_token(tokens, 6, "Err")
+  assert_token(tokens, 7, "use")
+  assert_token(tokens, 8, "pub")
+  assert_token(tokens, 9, "spawn")
+  assert_token(tokens, 10, "match")
+  assert_token(tokens, 11, "continue")
+  assert_token(tokens, 12, "test")
+  assert_token(tokens, 13, "assert")
+  assert_token(tokens, 14, "assert_eq")
+  assert_token(tokens, 15, "assert_ne")
+
+fn test_real_program
+  tokens := lex("fn add a:Int b:Int -> Int\n  a + b\n\nfn main\n  print add(3, 7)\n").unwrap_or([])
+  assert tokens.len() > 15
+  assert_token(tokens, 0, "fn")
+  last_idx := tokens.len() - 1
+  assert_token(tokens, last_idx, "EOF")
+
+fn main
+  test_basic_integer()
+  print "  [pass] basic integer"
+  test_underscore_integer()
+  print "  [pass] underscore integer"
+  test_operators()
+  print "  [pass] operators"
+  test_comparison_ops()
+  print "  [pass] comparison operators"
+  test_keywords()
+  print "  [pass] keywords"
+  test_arrow_and_pipe()
+  print "  [pass] arrow and pipe"
+  test_string_literal()
+  print "  [pass] string literal"
+  test_boolean_keywords()
+  print "  [pass] boolean keywords"
+  test_comment()
+  print "  [pass] comment"
+  test_indent_dedent()
+  print "  [pass] indent/dedent"
+  test_nested_indent()
+  print "  [pass] nested indent"
+  test_delimiters()
+  print "  [pass] delimiters"
+  test_dot_and_dotdot()
+  print "  [pass] dot and dotdot"
+  test_string_interpolation()
+  print "  [pass] string interpolation"
+  test_multi_interpolation()
+  print "  [pass] multi interpolation"
+  test_compound_assignments()
+  print "  [pass] compound assignments"
+  test_all_keywords()
+  print "  [pass] all keywords"
+  test_real_program()
+  print "  [pass] real program"
+  print "\nAll 18 lexer tests passed!"

@@ -1,0 +1,211 @@
+-- Token types for the Ore lexer
+-- Each token variant represents a distinct lexical element
+
+type Token
+  -- Literals
+  IntTok(value: Int)
+  FloatTok(value: Float)
+  IdentTok(name: Str)
+  StringLitTok(value: Str)
+  -- String interpolation segments
+  StringStartTok(value: Str)
+  StringMidTok(value: Str)
+  StringEndTok(value: Str)
+  -- Keywords
+  FnTok
+  MutTok
+  IfTok
+  ThenTok
+  ElseTok
+  TrueTok
+  FalseTok
+  ReturnTok
+  ForTok
+  WhileTok
+  LoopTok
+  BreakTok
+  InTok
+  TypeTok
+  ImplTok
+  TraitTok
+  SomeTok
+  NoneTok
+  OkTok
+  ErrTok
+  UseTok
+  PubTok
+  SpawnTok
+  MatchTok
+  ContinueTok
+  TestTok
+  AssertTok
+  AssertEqTok
+  AssertNeTok
+  -- Operators
+  PlusTok
+  MinusTok
+  StarTok
+  SlashTok
+  PercentTok
+  ColonEqTok
+  EqTok
+  EqEqTok
+  BangEqTok
+  LtTok
+  GtTok
+  LtEqTok
+  GtEqTok
+  ArrowTok
+  FatArrowTok
+  PipeTok
+  ColonTok
+  DotTok
+  DotDotTok
+  QuestionMarkTok
+  QuestionDotTok
+  PlusEqTok
+  MinusEqTok
+  StarEqTok
+  SlashEqTok
+  PercentEqTok
+  AndTok
+  OrTok
+  NotTok
+  -- Delimiters
+  LParenTok
+  RParenTok
+  LBraceTok
+  RBraceTok
+  LBracketTok
+  RBracketTok
+  CommaTok
+  -- Layout
+  NewlineTok
+  IndentTok
+  DedentTok
+  -- Special
+  EofTok
+
+-- A token with source location information
+type SpannedToken { token: Token, line: Int, col: Int }
+
+-- Token tag constants for fast comparison
+-- (Matching on the full enum is correct but these are useful for quick checks)
+fn is_layout tok:Token -> Bool
+  match tok
+    NewlineTok -> true
+    IndentTok -> true
+    DedentTok -> true
+    _ -> false
+
+fn is_keyword tok:Token -> Bool
+  match tok
+    FnTok -> true
+    MutTok -> true
+    IfTok -> true
+    ThenTok -> true
+    ElseTok -> true
+    TrueTok -> true
+    FalseTok -> true
+    ReturnTok -> true
+    ForTok -> true
+    WhileTok -> true
+    LoopTok -> true
+    BreakTok -> true
+    InTok -> true
+    TypeTok -> true
+    ImplTok -> true
+    TraitTok -> true
+    SomeTok -> true
+    NoneTok -> true
+    OkTok -> true
+    ErrTok -> true
+    UseTok -> true
+    PubTok -> true
+    SpawnTok -> true
+    MatchTok -> true
+    ContinueTok -> true
+    TestTok -> true
+    AssertTok -> true
+    AssertEqTok -> true
+    AssertNeTok -> true
+    _ -> false
+
+fn token_to_str tok:Token -> Str
+  match tok
+    IntTok v -> "Int({v})"
+    FloatTok v -> "Float({v})"
+    IdentTok n -> "Ident({n})"
+    StringLitTok v -> "String({v})"
+    StringStartTok v -> "StringStart({v})"
+    StringMidTok v -> "StringMid({v})"
+    StringEndTok v -> "StringEnd({v})"
+    FnTok -> "fn"
+    MutTok -> "mut"
+    IfTok -> "if"
+    ThenTok -> "then"
+    ElseTok -> "else"
+    TrueTok -> "true"
+    FalseTok -> "false"
+    ReturnTok -> "return"
+    ForTok -> "for"
+    WhileTok -> "while"
+    LoopTok -> "loop"
+    BreakTok -> "break"
+    InTok -> "in"
+    TypeTok -> "type"
+    ImplTok -> "impl"
+    TraitTok -> "trait"
+    SomeTok -> "Some"
+    NoneTok -> "None"
+    OkTok -> "Ok"
+    ErrTok -> "Err"
+    UseTok -> "use"
+    PubTok -> "pub"
+    SpawnTok -> "spawn"
+    MatchTok -> "match"
+    ContinueTok -> "continue"
+    TestTok -> "test"
+    AssertTok -> "assert"
+    AssertEqTok -> "assert_eq"
+    AssertNeTok -> "assert_ne"
+    PlusTok -> "+"
+    MinusTok -> "-"
+    StarTok -> "*"
+    SlashTok -> "/"
+    PercentTok -> "%"
+    ColonEqTok -> ":="
+    EqTok -> "="
+    EqEqTok -> "=="
+    BangEqTok -> "!="
+    LtTok -> "<"
+    GtTok -> ">"
+    LtEqTok -> "<="
+    GtEqTok -> ">="
+    ArrowTok -> "->"
+    FatArrowTok -> "=>"
+    PipeTok -> "|"
+    ColonTok -> ":"
+    DotTok -> "."
+    DotDotTok -> ".."
+    QuestionMarkTok -> "?"
+    QuestionDotTok -> "?."
+    PlusEqTok -> "+="
+    MinusEqTok -> "-="
+    StarEqTok -> "*="
+    SlashEqTok -> "/="
+    PercentEqTok -> "%="
+    AndTok -> "and"
+    OrTok -> "or"
+    NotTok -> "not"
+    LParenTok -> "("
+    RParenTok -> ")"
+    LBraceTok -> "\{"
+    RBraceTok -> "}"
+    LBracketTok -> "["
+    RBracketTok -> "]"
+    CommaTok -> ","
+    NewlineTok -> "Newline"
+    IndentTok -> "Indent"
+    DedentTok -> "Dedent"
+    EofTok -> "EOF"

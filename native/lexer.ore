@@ -1,0 +1,640 @@
+-- Ore Lexer: tokenizes source code into a list of SpannedTokens
+-- Direct port of the Rust lexer in ore_lexer/src/lib.rs
+
+use token
+
+-- Lexer state record (passed through all functions)
+type LexerState { source: Str, pos: Int, line: Int, col: Int }
+
+-- Create a new lexer state
+fn new_lexer source:Str -> LexerState
+  LexerState(source: source, pos: 0, line: 1, col: 1)
+
+-- Check if position is within source bounds
+fn has_more ls:LexerState -> Bool
+  ls.pos < ls.source.len()
+
+-- Peek at current character (returns -1 if at end)
+fn peek_char ls:LexerState -> Int
+  if ls.pos >= ls.source.len()
+    -1
+  else
+    ord(ls.source.char_at(ls.pos))
+
+-- Peek at next character (returns -1 if at end)
+fn peek_char2 ls:LexerState -> Int
+  if ls.pos + 1 >= ls.source.len()
+    -1
+  else
+    ord(ls.source.char_at(ls.pos + 1))
+
+-- Check if character is a digit (0-9)
+fn is_digit c:Int -> Bool
+  c >= 48 and c <= 57
+
+-- Check if character is alphabetic or underscore
+fn is_alpha c:Int -> Bool
+  (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
+
+-- Check if character is alphanumeric or underscore
+fn is_alnum c:Int -> Bool
+  is_digit(c) or is_alpha(c)
+
+-- Check if character is whitespace (space or tab, not newline)
+fn is_space c:Int -> Bool
+  c == 32 or c == 9
+
+-- Main lexer entry point
+fn lex source:Str -> Result
+  mut ls := new_lexer(source)
+  mut tokens := []
+  mut indent_stack := [0]
+  mut at_line_start := true
+  mut errors := []
+
+  loop
+    if not has_more(ls)
+      break
+
+    if at_line_start
+      -- Handle indentation
+      indent_result := handle_indentation(ls, tokens, indent_stack)
+      match indent_result
+        Err e ->
+          return Err(e)
+        Ok new_pos ->
+          ls = LexerState(source: ls.source, pos: new_pos, line: ls.line, col: ls.col)
+      at_line_start = false
+
+    ch := peek_char(ls)
+    if ch == -1
+      break
+
+    if ch == 10
+      -- Newline
+      -- Only emit if last token isn't already a layout token
+      if not last_is_layout(tokens)
+        tokens.push(SpannedToken(token: NewlineTok, line: ls.line, col: ls.col))
+      ls = advance(ls)
+      at_line_start = true
+    else if ch == 13
+      -- Carriage return
+      ls = advance(ls)
+    else if ch == 32 or ch == 9
+      -- Whitespace
+      ls = advance(ls)
+    else if ch == 45 and peek_char2(ls) == 45
+      -- Line comment: skip to end of line
+      while has_more(ls) and peek_char(ls) != 10
+        ls = advance(ls)
+    else
+      -- Lex a token
+      ls = lex_token(ls, tokens, errors)
+      if errors.len() > 0
+        return Err(errors[0])
+
+  -- Emit remaining dedents
+  while indent_stack.len() > 1
+    indent_stack.pop()
+    tokens.push(SpannedToken(token: DedentTok, line: ls.line, col: ls.col))
+
+  tokens.push(SpannedToken(token: EofTok, line: ls.line, col: ls.col))
+
+  -- Post-process: fixup multiline pipes
+  tokens = fixup_multiline_pipes(tokens)
+
+  Ok(tokens)
+
+-- Advance the lexer by one character, updating line/col
+fn advance ls:LexerState -> LexerState
+  ch := peek_char(ls)
+  if ch == 10
+    LexerState(source: ls.source, pos: ls.pos + 1, line: ls.line + 1, col: 1)
+  else
+    LexerState(source: ls.source, pos: ls.pos + 1, line: ls.line, col: ls.col + 1)
+
+-- Check if last token is a layout token (Newline/Indent/Dedent)
+fn last_is_layout tokens:List -> Bool
+  if tokens.len() == 0
+    true
+  else
+    tok := tokens.last()
+    match tok.token
+      NewlineTok -> true
+      IndentTok -> true
+      DedentTok -> true
+      _ -> false
+
+-- Check if token is a pipe
+fn is_pipe_tok t:Token -> Bool
+  match t
+    PipeTok -> true
+    _ -> false
+
+-- Check if token is a dot
+fn is_dot_tok t:Token -> Bool
+  match t
+    DotTok -> true
+    _ -> false
+
+-- Handle indentation at the start of a line
+fn handle_indentation ls:LexerState tokens:List indent_stack:List -> Result
+  mut pos := ls.pos
+  mut indent := 0
+  src := ls.source
+
+  while pos < src.len()
+    ch := ord(src.char_at(pos))
+    if ch == 32
+      indent = indent + 1
+      pos = pos + 1
+    else if ch == 9
+      indent = indent + 4
+      pos = pos + 1
+    else
+      break
+
+  -- Skip blank lines and comment-only lines
+  if pos >= src.len()
+    return Ok(pos)
+  ch := ord(src.char_at(pos))
+  if ch == 10 or ch == 13
+    return Ok(pos)
+  if ch == 45 and pos + 1 < src.len() and ord(src.char_at(pos + 1)) == 45
+    return Ok(pos)
+
+  current := indent_stack.last()
+  if indent > current
+    indent_stack.push(indent)
+    tokens.push(SpannedToken(token: IndentTok, line: ls.line, col: 1))
+  else if indent < current
+    while indent < indent_stack.last()
+      indent_stack.pop()
+      tokens.push(SpannedToken(token: DedentTok, line: ls.line, col: 1))
+    if indent != indent_stack.last()
+      return Err("inconsistent indentation at line {ls.line}")
+
+  Ok(pos)
+
+-- Lex a single token, returning updated lexer state
+-- Errors are pushed to the errors list instead of returning Err
+fn lex_token ls:LexerState tokens:List errors:List -> LexerState
+  ch := peek_char(ls)
+  start_line := ls.line
+  start_col := ls.col
+
+  -- Numbers
+  if is_digit(ch)
+    return lex_number(ls, tokens)
+
+  -- Strings
+  if ch == 34
+    return lex_string(ls, tokens, errors)
+
+  -- Identifiers and keywords
+  if is_alpha(ch)
+    return lex_ident(ls, tokens)
+
+  -- Two-character operators first
+  ch2 := peek_char2(ls)
+
+  -- :=
+  if ch == 58 and ch2 == 61
+    tokens.push(SpannedToken(token: ColonEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- ==
+  if ch == 61 and ch2 == 61
+    tokens.push(SpannedToken(token: EqEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- =>
+  if ch == 61 and ch2 == 62
+    tokens.push(SpannedToken(token: FatArrowTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- !=
+  if ch == 33 and ch2 == 61
+    tokens.push(SpannedToken(token: BangEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- <=
+  if ch == 60 and ch2 == 61
+    tokens.push(SpannedToken(token: LtEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- >=
+  if ch == 62 and ch2 == 61
+    tokens.push(SpannedToken(token: GtEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- ->
+  if ch == 45 and ch2 == 62
+    tokens.push(SpannedToken(token: ArrowTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- -=
+  if ch == 45 and ch2 == 61
+    tokens.push(SpannedToken(token: MinusEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- +=
+  if ch == 43 and ch2 == 61
+    tokens.push(SpannedToken(token: PlusEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- *=
+  if ch == 42 and ch2 == 61
+    tokens.push(SpannedToken(token: StarEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- /=
+  if ch == 47 and ch2 == 61
+    tokens.push(SpannedToken(token: SlashEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- %=
+  if ch == 37 and ch2 == 61
+    tokens.push(SpannedToken(token: PercentEqTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- ..
+  if ch == 46 and ch2 == 46
+    tokens.push(SpannedToken(token: DotDotTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- ?.
+  if ch == 63 and ch2 == 46
+    tokens.push(SpannedToken(token: QuestionDotTok, line: start_line, col: start_col))
+    return advance(advance(ls))
+
+  -- Single character operators
+  if ch == 43
+    tokens.push(SpannedToken(token: PlusTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 45
+    tokens.push(SpannedToken(token: MinusTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 42
+    tokens.push(SpannedToken(token: StarTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 47
+    tokens.push(SpannedToken(token: SlashTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 37
+    tokens.push(SpannedToken(token: PercentTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 61
+    tokens.push(SpannedToken(token: EqTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 58
+    tokens.push(SpannedToken(token: ColonTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 46
+    tokens.push(SpannedToken(token: DotTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 124
+    tokens.push(SpannedToken(token: PipeTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 63
+    tokens.push(SpannedToken(token: QuestionMarkTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 60
+    tokens.push(SpannedToken(token: LtTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 62
+    tokens.push(SpannedToken(token: GtTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 40
+    tokens.push(SpannedToken(token: LParenTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 41
+    tokens.push(SpannedToken(token: RParenTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 123
+    tokens.push(SpannedToken(token: LBraceTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 125
+    tokens.push(SpannedToken(token: RBraceTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 91
+    tokens.push(SpannedToken(token: LBracketTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 93
+    tokens.push(SpannedToken(token: RBracketTok, line: start_line, col: start_col))
+    return advance(ls)
+  if ch == 44
+    tokens.push(SpannedToken(token: CommaTok, line: start_line, col: start_col))
+    return advance(ls)
+
+  -- ! alone is not valid
+  if ch == 33
+    errors.push("unexpected '!' at line {start_line}")
+    return advance(ls)
+
+  errors.push("unexpected character '{chr(ch)}' at line {start_line}")
+  advance(ls)
+
+-- Lex a number (integer or float)
+fn lex_number ls:LexerState tokens:List -> LexerState
+  mut pos := ls.pos
+  mut is_float := false
+  src := ls.source
+  start_line := ls.line
+  start_col := ls.col
+
+  while pos < src.len()
+    ch := ord(src.char_at(pos))
+    if is_digit(ch) or ch == 95
+      pos = pos + 1
+    else if ch == 46 and not is_float and pos + 1 < src.len() and is_digit(ord(src.char_at(pos + 1)))
+      is_float = true
+      pos = pos + 1
+    else
+      break
+
+  -- Extract number text (removing underscores)
+  text := src.substr(ls.pos, pos - ls.pos).replace("_", "")
+
+  if is_float
+    tokens.push(SpannedToken(token: FloatTok(value: text.to_float()), line: start_line, col: start_col))
+  else
+    tokens.push(SpannedToken(token: IntTok(value: text.to_int()), line: start_line, col: start_col))
+
+  LexerState(source: src, pos: pos, line: ls.line, col: ls.col + (pos - ls.pos))
+
+-- Lex a string literal (with interpolation support)
+fn lex_string ls:LexerState tokens:List errors:List -> LexerState
+  mut pos := ls.pos + 1  -- skip opening "
+  src := ls.source
+  start_line := ls.line
+  start_col := ls.col
+  mut current_line := ls.line
+  mut current_col := ls.col + 1
+  mut s := ""
+  mut has_interp := false
+
+  -- Check for triple-quoted string
+  if pos + 1 < src.len() and src.char_at(pos) == "\"" and src.char_at(pos + 1) == "\""
+    return lex_triple_string(LexerState(source: src, pos: pos + 2, line: current_line, col: current_col + 2), tokens, errors, start_line, start_col)
+
+  loop
+    if pos >= src.len()
+      errors.push("unterminated string at line {start_line}")
+      return LexerState(source: src, pos: pos, line: current_line, col: current_col)
+
+    ch := ord(src.char_at(pos))
+
+    if ch == 34
+      -- Closing quote
+      pos = pos + 1
+      current_col = current_col + 1
+      break
+
+    if ch == 123
+      -- String interpolation: {
+      if not has_interp
+        tokens.push(SpannedToken(token: StringStartTok(value: s), line: start_line, col: start_col))
+      else
+        tokens.push(SpannedToken(token: StringMidTok(value: s), line: current_line, col: current_col))
+      s = ""
+      has_interp = true
+      pos = pos + 1
+      current_col = current_col + 1
+
+      -- Lex tokens inside {} until matching }
+      mut depth := 1
+      mut inner_ls := LexerState(source: src, pos: pos, line: current_line, col: current_col)
+      while depth > 0
+        if not has_more(inner_ls)
+          errors.push("unterminated interpolation at line {start_line}")
+          return LexerState(source: src, pos: inner_ls.pos, line: inner_ls.line, col: inner_ls.col)
+        ich := peek_char(inner_ls)
+        if ich == 125
+          depth = depth - 1
+          if depth > 0
+            inner_ls = lex_token(inner_ls, tokens, errors)
+            if errors.len() > 0
+              return LexerState(source: src, pos: inner_ls.pos, line: inner_ls.line, col: inner_ls.col)
+          else
+            inner_ls = advance(inner_ls)
+        else if ich == 123
+          depth = depth + 1
+          inner_ls = lex_token(inner_ls, tokens, errors)
+          if errors.len() > 0
+            return LexerState(source: src, pos: inner_ls.pos, line: inner_ls.line, col: inner_ls.col)
+        else if ich == 32 or ich == 9
+          inner_ls = advance(inner_ls)
+        else
+          inner_ls = lex_token(inner_ls, tokens, errors)
+          if errors.len() > 0
+            return LexerState(source: src, pos: inner_ls.pos, line: inner_ls.line, col: inner_ls.col)
+
+      pos = inner_ls.pos
+      current_line = inner_ls.line
+      current_col = inner_ls.col
+
+    else if ch == 92
+      -- Escape sequence
+      pos = pos + 1
+      if pos >= src.len()
+        errors.push("unterminated escape at line {current_line}")
+        return LexerState(source: src, pos: pos, line: current_line, col: current_col)
+      ech := ord(src.char_at(pos))
+      if ech == 110
+        s = s + "\n"
+      else if ech == 116
+        s = s + "\t"
+      else if ech == 114
+        s = s + "\r"
+      else if ech == 48
+        s = s + "\0"
+      else if ech == 92
+        s = s + "\\"
+      else if ech == 34
+        s = s + "\""
+      else if ech == 123
+        s = s + "\{"
+      else
+        errors.push("unknown escape '\\{chr(ech)}' at line {current_line}")
+        return LexerState(source: src, pos: pos, line: current_line, col: current_col)
+      pos = pos + 1
+      current_col = current_col + 2
+    else
+      -- Regular character
+      s = s + src.char_at(pos)
+      if ch == 10
+        current_line = current_line + 1
+        current_col = 1
+      else
+        current_col = current_col + 1
+      pos = pos + 1
+
+  if has_interp
+    tokens.push(SpannedToken(token: StringEndTok(value: s), line: start_line, col: start_col))
+  else
+    tokens.push(SpannedToken(token: StringLitTok(value: s), line: start_line, col: start_col))
+
+  LexerState(source: src, pos: pos, line: current_line, col: current_col)
+
+-- Lex a triple-quoted string
+fn lex_triple_string ls:LexerState tokens:List errors:List start_line:Int start_col:Int -> LexerState
+  mut pos := ls.pos
+  src := ls.source
+  mut current_line := ls.line
+  mut current_col := ls.col
+  mut s := ""
+
+  -- Skip initial newline if present
+  if pos < src.len() and ord(src.char_at(pos)) == 10
+    pos = pos + 1
+    current_line = current_line + 1
+    current_col = 1
+  else if pos < src.len() and ord(src.char_at(pos)) == 13
+    pos = pos + 1
+    if pos < src.len() and ord(src.char_at(pos)) == 10
+      pos = pos + 1
+    current_line = current_line + 1
+    current_col = 1
+
+  loop
+    if pos >= src.len()
+      errors.push("unterminated triple-quoted string at line {start_line}")
+      return LexerState(source: src, pos: pos, line: current_line, col: current_col)
+    ch := ord(src.char_at(pos))
+    if ch == 34 and pos + 2 < src.len() and src.char_at(pos + 1) == "\"" and src.char_at(pos + 2) == "\""
+      pos = pos + 3
+      current_col = current_col + 3
+      break
+    s = s + src.char_at(pos)
+    if ch == 10
+      current_line = current_line + 1
+      current_col = 1
+    else
+      current_col = current_col + 1
+    pos = pos + 1
+
+  -- Trim trailing newline
+  if s.ends_with("\n")
+    s = s.substr(0, s.len() - 1)
+    if s.ends_with("\r")
+      s = s.substr(0, s.len() - 1)
+
+  -- Dedent: find minimum indentation and strip it
+  lines := s.split("\n")
+  mut min_indent := 999999
+  for line in lines
+    trimmed := line.trim()
+    if trimmed.len() > 0
+      indent := line.len() - trimmed.len()
+      if indent < min_indent
+        min_indent = indent
+
+  if min_indent > 0 and min_indent < 999999
+    mut dedented := []
+    for line in lines
+      if line.len() >= min_indent
+        dedented.push(line.substr(min_indent, line.len() - min_indent))
+      else
+        dedented.push(line)
+    s = dedented.join("\n")
+
+  tokens.push(SpannedToken(token: StringLitTok(value: s), line: start_line, col: start_col))
+  LexerState(source: src, pos: pos, line: current_line, col: current_col)
+
+-- Lex an identifier or keyword
+fn lex_ident ls:LexerState tokens:List -> LexerState
+  mut pos := ls.pos
+  src := ls.source
+  start_line := ls.line
+  start_col := ls.col
+
+  while pos < src.len() and is_alnum(ord(src.char_at(pos)))
+    pos = pos + 1
+
+  text := src.substr(ls.pos, pos - ls.pos)
+
+  tok := keyword_lookup(text)
+  tokens.push(SpannedToken(token: tok, line: start_line, col: start_col))
+
+  LexerState(source: src, pos: pos, line: ls.line, col: ls.col + (pos - ls.pos))
+
+-- Look up a keyword or return an identifier token
+fn keyword_lookup text:Str -> Token
+  if text == "fn" then FnTok
+  else if text == "mut" then MutTok
+  else if text == "if" then IfTok
+  else if text == "then" then ThenTok
+  else if text == "else" then ElseTok
+  else if text == "true" then TrueTok
+  else if text == "false" then FalseTok
+  else if text == "return" then ReturnTok
+  else if text == "and" then AndTok
+  else if text == "or" then OrTok
+  else if text == "not" then NotTok
+  else if text == "for" then ForTok
+  else if text == "while" then WhileTok
+  else if text == "loop" then LoopTok
+  else if text == "break" then BreakTok
+  else if text == "in" then InTok
+  else if text == "type" then TypeTok
+  else if text == "impl" then ImplTok
+  else if text == "trait" then TraitTok
+  else if text == "Some" then SomeTok
+  else if text == "None" then NoneTok
+  else if text == "Ok" then OkTok
+  else if text == "Err" then ErrTok
+  else if text == "use" then UseTok
+  else if text == "pub" then PubTok
+  else if text == "spawn" then SpawnTok
+  else if text == "match" then MatchTok
+  else if text == "continue" then ContinueTok
+  else if text == "test" then TestTok
+  else if text == "assert" then AssertTok
+  else if text == "assert_eq" then AssertEqTok
+  else if text == "assert_ne" then AssertNeTok
+  else IdentTok(name: text)
+
+-- Post-processing: remove Newline + Indent tokens before Pipe/Dot
+-- to enable multi-line pipe and dot continuation
+fn fixup_multiline_pipes tokens:List -> List
+  mut result := []
+  mut i := 0
+  mut pending_dedent_removes := 0
+
+  while i < tokens.len()
+    tok := tokens[i]
+    -- Check for Newline [Indent...] (Pipe|Dot) pattern
+    match tok.token
+      NewlineTok ->
+        -- Look ahead for Indent* followed by Pipe or Dot
+        mut j := i + 1
+        mut indent_count := 0
+        while j < tokens.len()
+          match tokens[j].token
+            IndentTok ->
+              indent_count = indent_count + 1
+              j = j + 1
+            _ -> break
+        if j < tokens.len()
+          j_tok := tokens[j].token
+          is_pipe_or_dot := is_pipe_tok(j_tok) or is_dot_tok(j_tok)
+          if is_pipe_or_dot and indent_count > 0
+            -- Skip the Newline and all Indent tokens
+            pending_dedent_removes = pending_dedent_removes + indent_count
+            i = j  -- jump to the Pipe/Dot token
+            continue
+        result.push(tok)
+        i = i + 1
+      DedentTok ->
+        if pending_dedent_removes > 0
+          pending_dedent_removes = pending_dedent_removes - 1
+          i = i + 1
+        else
+          result.push(tok)
+          i = i + 1
+      _ ->
+        result.push(tok)
+        i = i + 1
+
+  result
