@@ -140,53 +140,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::Print(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
-                // Check if printing a dynamic-kind variable (from Result/Option match)
-                if let Expr::Ident(name) = inner.as_ref() {
-                    if let Some(kind_alloca) = self.dynamic_kind_tags.get(name).copied() {
-                        let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_alloca, "dyn_kind"))?.into_int_value();
-                        let str_ptr = self.call_rt("ore_dynamic_to_str", &[val.into(), kind_i8.into()], "dyntos")?.into_pointer_value();
-                        self.call_rt("ore_str_print", &[str_ptr.into()], "")?;
-                        self.call_rt("ore_str_release", &[str_ptr.into()], "")?;
-                        return Ok(self.void_result());
-                    }
-                    // Check for typed list printing
-                    if kind.is_list() {
-                        if let Some(elem_kind) = self.list_element_kinds.get(name).cloned() {
-                            match elem_kind {
-                                ValKind::Int => {} // Fall through to default int list print
-                                _ => {
-                                    // Generate inline typed list print loop
-                                    self.compile_typed_list_print(val.into_pointer_value(), &elem_kind)?;
-                                    return Ok(self.void_result());
-                                }
-                            }
-                        }
-                    }
-                }
-                // Check for typed list printing via ValKind variant (for method calls etc.)
-                if let ValKind::List(Some(ref ek)) = kind {
-                    if ek.as_ref() != &ValKind::Int {
-                        self.compile_typed_list_print(val.into_pointer_value(), ek)?;
-                        return Ok(self.void_result());
-                    }
-                }
-                // Check for string-valued map printing
-                if let ValKind::Map(Some(ref vk)) = kind {
-                    if vk.as_ref() == &ValKind::Str {
-                        self.call_rt("ore_map_print_str", &[val.into()], "")?;
-                        return Ok(self.void_result());
-                    }
-                }
-                // Also check map_value_kinds for named map variables
-                if kind.is_map() {
-                    if let Expr::Ident(name) = inner.as_ref() {
-                        if let Some(ValKind::Str) = self.map_value_kinds.get(name) {
-                            self.call_rt("ore_map_print_str", &[val.into()], "")?;
-                            return Ok(self.void_result());
-                        }
-                    }
-                }
-                self.compile_print(val, kind)?;
+                self.compile_print_expr(val, &kind, inner, func)?;
                 Ok(self.void_result())
             }
             Expr::Sleep(inner) => {
@@ -741,6 +695,51 @@ impl<'ctx> CodeGen<'ctx> {
         };
         self.call_rt(fn_name, &[left_val.into(), right_val.into(), msg_ptr.into(), line_val.into()], "")?;
         Ok(self.void_result())
+    }
+
+    /// Compile a print expression with full type dispatch (dynamic kinds, typed lists, maps).
+    fn compile_print_expr(
+        &mut self,
+        val: BasicValueEnum<'ctx>,
+        kind: &ValKind,
+        inner: &Expr,
+        _func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        // Dynamic-kind variables (from Result/Option match bindings)
+        if let Expr::Ident(name) = inner {
+            if let Some(kind_alloca) = self.dynamic_kind_tags.get(name).copied() {
+                let kind_i8 = bld!(self.builder.build_load(self.context.i8_type(), kind_alloca, "dyn_kind"))?.into_int_value();
+                let str_ptr = self.call_rt("ore_dynamic_to_str", &[val.into(), kind_i8.into()], "dyntos")?.into_pointer_value();
+                self.call_rt("ore_str_print", &[str_ptr.into()], "")?;
+                self.call_rt("ore_str_release", &[str_ptr.into()], "")?;
+                return Ok(());
+            }
+        }
+        // Typed list printing: resolve element kind from tracking or ValKind
+        if kind.is_list() {
+            let elem_kind = if let Expr::Ident(name) = inner {
+                self.list_element_kinds.get(name).cloned()
+            } else {
+                None
+            }.or_else(|| kind.list_elem_kind().cloned());
+            if let Some(ref ek) = elem_kind {
+                if *ek != ValKind::Int {
+                    self.compile_typed_list_print(val.into_pointer_value(), ek)?;
+                    return Ok(());
+                }
+            }
+        }
+        // String-valued map printing: resolve from ValKind or tracking
+        if kind.is_map() {
+            let is_str_map = kind.map_val_kind() == Some(&ValKind::Str)
+                || matches!(inner, Expr::Ident(name) if self.map_value_kinds.get(name) == Some(&ValKind::Str));
+            if is_str_map {
+                self.call_rt("ore_map_print_str", &[val.into()], "")?;
+                return Ok(());
+            }
+        }
+        self.compile_print(val, kind.clone())?;
+        Ok(())
     }
 
     /// Append default parameter values for any missing arguments in a function call.
