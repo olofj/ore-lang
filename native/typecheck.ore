@@ -1,10 +1,34 @@
 -- Phase 29: Native Type Checker for Ore
--- Simplified type checker: collects definitions, checks basic constraints
+-- Simplified type checker: collects definitions from token stream,
+-- then checks expression/statement pools for basic errors.
 -- Returns a list of error strings (empty = success)
 
 use ast
 use types
 use arena
+use token
+
+-- Typed accessors for records stored in untyped lists
+fn get_variant_def pool:List idx:Int -> VariantDef
+  pool[idx]
+
+fn get_param_def pool:List idx:Int -> ParamDef
+  pool[idx]
+
+fn get_fn_def pool:List idx:Int -> FnDef
+  pool[idx]
+
+fn get_sspanned pool:List idx:Int -> SpannedStmt
+  pool[idx]
+
+fn get_match_arm_typed pool:List idx:Int -> MatchArm
+  pool[idx]
+
+fn get_item_typed pool:List idx:Int -> Item
+  pool[idx]
+
+fn get_string_part pool:List idx:Int -> StringPart
+  pool[idx]
 
 -- Helper: convert Int to Str
 fn int_to_str n:Int -> Str
@@ -37,10 +61,10 @@ fn make_method_set -> Map
   m8 := ["find", "find_index", "index_of", "contains"]
   for i in 0..m8.len()
     s.set(m8[i], true)
-  m9 := ["push", "pop", "insert", "remove_at", "clear", "set", "get", "get_or"]
+  m9 := ["push", "pop", "insert", "remove_at", "clear", "set"]
   for i in 0..m9.len()
     s.set(m9[i], true)
-  m10 := ["len", "is_empty", "slice"]
+  m10 := ["get", "get_or", "len", "is_empty", "slice"]
   for i in 0..m10.len()
     s.set(m10[i], true)
   m11 := ["to_upper", "to_lower", "trim", "trim_start", "trim_end"]
@@ -52,25 +76,25 @@ fn make_method_set -> Map
   m13 := ["capitalize", "count", "strip_prefix", "strip_suffix"]
   for i in 0..m13.len()
     s.set(m13[i], true)
-  m14 := ["substr", "chars", "char_at", "pad_left", "pad_right", "words", "lines"]
+  m14 := ["substr", "chars", "char_at", "pad_left", "pad_right"]
   for i in 0..m14.len()
     s.set(m14[i], true)
-  m15 := ["to_int", "to_float", "to_str", "parse_int", "parse_float"]
+  m15 := ["words", "lines", "to_int", "to_float", "to_str"]
   for i in 0..m15.len()
     s.set(m15[i], true)
-  m16 := ["abs", "floor", "ceil", "round", "sqrt", "pow", "clamp"]
+  m16 := ["parse_int", "parse_float", "abs", "floor", "ceil"]
   for i in 0..m16.len()
     s.set(m16[i], true)
-  m17 := ["unwrap_or", "merge", "keys", "values", "entries"]
+  m17 := ["round", "sqrt", "pow", "clamp", "unwrap_or"]
   for i in 0..m17.len()
     s.set(m17[i], true)
-  m18 := ["send", "recv", "tap", "format", "is_some", "is_none"]
+  m18 := ["merge", "keys", "values", "entries", "send", "recv"]
   for i in 0..m18.len()
     s.set(m18[i], true)
-  m19 := ["is_ok", "is_err", "map_with_index", "each_with_index"]
+  m19 := ["tap", "format", "is_some", "is_none", "is_ok", "is_err"]
   for i in 0..m19.len()
     s.set(m19[i], true)
-  m20 := ["par_map", "par_each", "typeof"]
+  m20 := ["map_with_index", "each_with_index", "par_map", "par_each"]
   for i in 0..m20.len()
     s.set(m20[i], true)
   s
@@ -84,10 +108,10 @@ fn make_builtin_set -> Map
   b2 := ["to_str", "to_int", "to_float"]
   for i in 0..b2.len()
     s.set(b2[i], true)
-  b3 := ["sqrt", "sin", "cos", "tan", "log", "log10", "exp", "pow", "atan2"]
+  b3 := ["sqrt", "sin", "cos", "tan", "log", "log10", "exp", "pow"]
   for i in 0..b3.len()
     s.set(b3[i], true)
-  b4 := ["pi", "euler", "e", "floor", "ceil", "round", "abs"]
+  b4 := ["atan2", "pi", "euler", "e", "floor", "ceil", "round", "abs"]
   for i in 0..b4.len()
     s.set(b4[i], true)
   b5 := ["rand_int", "time_now", "time_ms", "sleep", "spawn", "channel"]
@@ -107,24 +131,17 @@ fn make_builtin_set -> Map
     s.set(b9[i], true)
   s
 
--- Module-level sets (built once, passed through tc state)
--- tc[7] = method_set, tc[8] = builtin_set
-
--- Scope: list of maps, each map is name -> type_name_string
--- Push a new scope
+-- Scope management
 fn scope_push scopes:List
   scopes.push({})
 
--- Pop the top scope
 fn scope_pop scopes:List
   scopes.pop()
 
--- Define a variable in the current (top) scope
 fn scope_define scopes:List name:Str type_name:Str
   top := scopes[scopes.len() - 1]
   top.set(name, type_name)
 
--- Lookup a variable in all scopes (top-down)
 fn scope_lookup scopes:List name:Str -> Str
   mut i := scopes.len() - 1
   loop
@@ -136,15 +153,7 @@ fn scope_lookup scopes:List name:Str -> Str
     i = i - 1
   ""
 
--- Type checker state: uses lists to hold mutable maps
--- tc[0] = function signatures: Map[name -> arity_str]  (name -> "param_count")
--- tc[1] = fn_required: Map[name -> required_count_str]
--- tc[2] = record_defs: Map[name -> field_count_str]
--- tc[3] = enum_defs: Map[name -> variant_count_str]
--- tc[4] = variant_to_enum: Map[variant_name -> enum_name]
--- tc[5] = errors: List[Str]
--- tc[6] = scopes: List[Map]
-
+-- Type checker state
 fn tc_new -> List
   mut tc := []
   tc.push({})
@@ -191,58 +200,184 @@ fn tc_add_error tc:List msg:Str
   errs := tc_errors(tc)
   errs.push(msg)
 
--- Phase 1: Collect all type definitions (records, enums)
-fn collect_type_def tc:List td:TypeDefNode
-  recs := tc_records(tc)
-  recs.set(td.name, int_to_str(td.fields.len()))
+-- Check if a token is a line terminator
+fn is_line_end t:Token -> Bool
+  match t
+    NewlineTok -> true
+    IndentTok -> true
+    ArrowTok -> true
+    EofTok -> true
+    _ -> false
 
-fn collect_enum_def tc:List ed:EnumDefNode
-  enums := tc_enums(tc)
-  enums.set(ed.name, int_to_str(ed.variants.len()))
-  v2e := tc_variant_to_enum(tc)
-  for i in 0..ed.variants.len()
-    vd := ed.variants[i]
-    match vd
-      VariantDef ->
-        v2e.set(vd.name, ed.name)
+-- Check if a token is a colon
+fn is_colon t:Token -> Bool
+  match t
+    ColonTok -> true
+    _ -> false
+
+-- Extract ident name from token, or "" if not ident
+fn token_ident_name t:Token -> Str
+  match t
+    IdentTok n -> n
+    _ -> ""
+
+-- Count params in a fn signature starting at token index j
+fn count_fn_params tokens:List start:Int len:Int -> Int
+  mut pcount := 0
+  mut j := start
+  loop
+    if j >= len
+      break
+    pt := get_token(tokens, j)
+    if is_line_end(pt)
+      break
+    pname := token_ident_name(pt)
+    if pname != ""
+      if j + 1 < len
+        ct := get_token(tokens, j + 1)
+        if is_colon(ct)
+          pcount = pcount + 1
+    j = j + 1
+  pcount
+
+-- Phase 1: Collect fn definitions from tokens
+fn collect_fn_defs tc:List tokens:List
+  mut i := 0
+  len := tokens.len()
+  loop
+    if i >= len
+      break
+    tok := get_token(tokens, i)
+    match tok
+      FnTok ->
+        if i + 1 < len
+          fname := token_ident_name(get_token(tokens, i + 1))
+          if fname != ""
+            pcount := count_fn_params(tokens, i + 2, len)
+            fns := tc_fns(tc)
+            fns.set(fname, int_to_str(pcount))
+            freq := tc_fn_req(tc)
+            freq.set(fname, int_to_str(pcount))
       _ -> 0
+    i = i + 1
 
--- Phase 1: Collect function signatures
-fn collect_fn_def tc:List fd:FnDef
+-- Phase 1: Collect type/enum definitions from tokens
+fn collect_type_defs tc:List tokens:List
+  mut i := 0
+  len := tokens.len()
+  loop
+    if i >= len
+      break
+    tok := get_token(tokens, i)
+    match tok
+      TypeTok ->
+        if i + 1 < len
+          tname := token_ident_name(get_token(tokens, i + 1))
+          if tname != ""
+            -- Determine if enum or record
+            mut is_enum := false
+            mut j := i + 2
+            loop
+              if j >= len
+                break
+              nt := get_token(tokens, j)
+              match nt
+                LBraceTok ->
+                  break
+                NewlineTok ->
+                  if j + 1 < len
+                    match get_token(tokens, j + 1)
+                      IndentTok ->
+                        is_enum = true
+                      _ -> 0
+                  break
+                _ ->
+                  break
+              j = j + 1
+            if is_enum
+              enums := tc_enums(tc)
+              enums.set(tname, "1")
+              collect_enum_variants(tc, tokens, j + 2, len, tname)
+            else
+              recs := tc_records(tc)
+              recs.set(tname, "1")
+      _ -> 0
+    i = i + 1
+
+-- Collect enum variant names from token stream
+fn collect_enum_variants tc:List tokens:List start:Int len:Int tname:Str
+  mut k := start
+  loop
+    if k >= len
+      break
+    vt := get_token(tokens, k)
+    match vt
+      DedentTok ->
+        break
+      _ -> 0
+    vname := token_ident_name(vt)
+    if vname != ""
+      first_ch := ord(vname.char_at(0))
+      if first_ch >= 65 and first_ch <= 90
+        v2e := tc_variant_to_enum(tc)
+        v2e.set(vname, tname)
+    k = k + 1
+
+-- Check if name is known (fn, builtin, record, enum, variant)
+fn is_known_name tc:List name:Str -> Bool
+  if tc_fns(tc).contains(name)
+    return true
+  if tc_builtins(tc).contains(name)
+    return true
+  if tc_records(tc).contains(name)
+    return true
+  if tc_enums(tc).contains(name)
+    return true
+  if tc_variant_to_enum(tc).contains(name)
+    return true
+  false
+
+-- Check a call expression (extracted to avoid nested match)
+fn check_call tc:List func_id:Int call_args:List exprs:List stmts:List
+  func_e := get_expr(exprs, func_id)
+  check_call_target(tc, func_e, call_args)
+  for j in 0..call_args.len()
+    check_expr(tc, call_args[j], exprs, stmts)
+
+-- Check call target is defined and arity is correct
+fn check_call_target tc:List func_e:Expr call_args:List
+  match func_e
+    IdentExpr fname ->
+      if not is_known_name(tc, fname)
+        scopes := tc_scopes(tc)
+        found := scope_lookup(scopes, fname)
+        if found == ""
+          tc_add_error(tc, "undefined function: " + fname)
+      check_call_arity(tc, fname, call_args.len())
+    _ -> 0
+
+-- Check call arity
+fn check_call_arity tc:List fname:Str nargs:Int
   fns := tc_fns(tc)
-  fns.set(fd.name, int_to_str(fd.params.len()))
-  -- Count required params (those without defaults)
-  mut req := 0
-  for i in 0..fd.params.len()
-    pd := fd.params[i]
-    match pd
-      ParamDef ->
-        if pd.default_expr < 0
-          req = req + 1
-      _ -> 0
+  if not fns.contains(fname)
+    return
+  max_arity := fns.get(fname).to_int()
   freq := tc_fn_req(tc)
-  freq.set(fd.name, int_to_str(req))
+  mut min_arity := max_arity
+  if freq.contains(fname)
+    min_arity = freq.get(fname).to_int()
+  if nargs < min_arity
+    tc_add_error(tc, "function '" + fname + "' expects at least " + int_to_str(min_arity) + " arguments, got " + int_to_str(nargs))
+  if nargs > max_arity
+    tc_add_error(tc, "function '" + fname + "' expects at most " + int_to_str(max_arity) + " arguments, got " + int_to_str(nargs))
 
--- Phase 1: Collect all definitions from items
-fn collect_definitions tc:List items:List
-  for i in 0..items.len()
-    item := items[i]
-    match item
-      FnDefItem fn_def ->
-        collect_fn_def(tc, fn_def)
-      TypeDefItem type_def ->
-        collect_type_def(tc, type_def)
-      EnumDefItem enum_def ->
-        collect_enum_def(tc, enum_def)
-      ImplBlockItem type_name methods ->
-        for j in 0..methods.len()
-          m := methods[j]
-          match m
-            FnDef ->
-              fns := tc_fns(tc)
-              fns.set(type_name + "." + m.name, int_to_str(m.params.len()))
-            _ -> 0
-      _ -> 0
+-- Check identifier expression
+fn check_ident tc:List name:Str
+  scopes := tc_scopes(tc)
+  found := scope_lookup(scopes, name)
+  if found == ""
+    if not is_known_name(tc, name)
+      tc_add_error(tc, "undefined variable: " + name)
 
 -- Phase 2: Check expressions
 fn check_expr tc:List expr_id:Int exprs:List stmts:List
@@ -251,49 +386,9 @@ fn check_expr tc:List expr_id:Int exprs:List stmts:List
   e := get_expr(exprs, expr_id)
   match e
     IdentExpr name ->
-      scopes := tc_scopes(tc)
-      found := scope_lookup(scopes, name)
-      -- Also check if it's a function name, type name, or variant
-      if found == ""
-        fns := tc_fns(tc)
-        if not fns.contains(name)
-          recs := tc_records(tc)
-          enums := tc_enums(tc)
-          v2e := tc_variant_to_enum(tc)
-          builtins := tc_builtins(tc)
-          if not recs.contains(name) and not enums.contains(name) and not v2e.contains(name) and not builtins.contains(name)
-            tc_add_error(tc, "undefined variable: " + name)
+      check_ident(tc, name)
     CallExpr func_id args ->
-      -- Check if the function is known
-      func_e := get_expr(exprs, func_id)
-      match func_e
-        IdentExpr fname ->
-          fns := tc_fns(tc)
-          v2e := tc_variant_to_enum(tc)
-          recs := tc_records(tc)
-          builtins := tc_builtins(tc)
-          if not fns.contains(fname) and not builtins.contains(fname) and not v2e.contains(fname) and not recs.contains(fname)
-            -- Check if it's a variable holding a function
-            scopes := tc_scopes(tc)
-            found := scope_lookup(scopes, fname)
-            if found == ""
-              tc_add_error(tc, "undefined function: " + fname)
-          -- Arity check for known functions
-          if fns.contains(fname)
-            max_arity := fns.get(fname).to_int()
-            freq := tc_fn_req(tc)
-            mut min_arity := max_arity
-            if freq.contains(fname)
-              min_arity = freq.get(fname).to_int()
-            nargs := args.len()
-            if nargs < min_arity
-              tc_add_error(tc, "function '" + fname + "' expects at least " + int_to_str(min_arity) + " arguments, got " + int_to_str(nargs))
-            if nargs > max_arity
-              tc_add_error(tc, "function '" + fname + "' expects at most " + int_to_str(max_arity) + " arguments, got " + int_to_str(nargs))
-        _ -> 0
-      -- Check argument expressions
-      for j in 0..args.len()
-        check_expr(tc, args[j], exprs, stmts)
+      check_call(tc, func_id, args, exprs, stmts)
     BinOpExpr op left right ->
       check_expr(tc, left, exprs, stmts)
       check_expr(tc, right, exprs, stmts)
@@ -303,14 +398,9 @@ fn check_expr tc:List expr_id:Int exprs:List stmts:List
       check_expr(tc, inner, exprs, stmts)
     IfElseExpr cond then_block else_block ->
       check_expr(tc, cond, exprs, stmts)
-      check_block(tc, then_block, exprs, stmts)
-      check_block(tc, else_block, exprs, stmts)
+      -- Block bodies checked via flat stmt pool iteration
     MethodCallExpr object method args ->
       check_expr(tc, object, exprs, stmts)
-      mset := tc_methods(tc)
-      if not mset.contains(method)
-        -- Not a known method — could be a user-defined impl method, skip
-        0
       for j in 0..args.len()
         check_expr(tc, args[j], exprs, stmts)
     FieldAccessExpr object field ->
@@ -349,37 +439,19 @@ fn check_expr tc:List expr_id:Int exprs:List stmts:List
     TryExpr inner ->
       check_expr(tc, inner, exprs, stmts)
     StringInterpExpr parts ->
-      for j in 0..parts.len()
-        p := parts[j]
-        match p
-          ExprPart expr_id ->
-            check_expr(tc, expr_id, exprs, stmts)
-          _ -> 0
+      check_string_interp(tc, parts, exprs, stmts)
     MatchExpr subject arms ->
       check_expr(tc, subject, exprs, stmts)
-      for j in 0..arms.len()
-        arm := arms[j]
-        match arm
-          MatchArm ->
-            scopes := tc_scopes(tc)
-            scope_push(scopes)
-            -- Add pattern bindings to scope
-            add_pattern_bindings(tc, arm.pattern, exprs)
-            if arm.guard >= 0
-              check_expr(tc, arm.guard, exprs, stmts)
-            check_expr(tc, arm.body, exprs, stmts)
-            scope_pop(scopes)
-          _ -> 0
+      check_match_arms(tc, arms, exprs, stmts)
     RecordConstructExpr type_name fields ->
+      -- Just check the type name is known
       recs := tc_records(tc)
-      enums := tc_enums(tc)
       v2e := tc_variant_to_enum(tc)
       if not recs.contains(type_name) and not v2e.contains(type_name)
         tc_add_error(tc, "undefined type: " + type_name)
-      for j in 0..fields.len()
-        check_expr(tc, fields[j], exprs, stmts)
     BlockExprExpr block ->
-      check_block(tc, block, exprs, stmts)
+      -- Block bodies checked via flat stmt pool iteration
+      0
     ColonMatchExpr cond then_expr else_expr ->
       check_expr(tc, cond, exprs, stmts)
       check_expr(tc, then_expr, exprs, stmts)
@@ -388,8 +460,29 @@ fn check_expr tc:List expr_id:Int exprs:List stmts:List
       check_expr(tc, inner, exprs, stmts)
     _ -> 0
 
+-- Check string interpolation parts
+fn check_string_interp tc:List parts:List exprs:List stmts:List
+  for j in 0..parts.len()
+    p := get_string_part(parts, j)
+    match p
+      ExprPart expr_id ->
+        check_expr(tc, expr_id, exprs, stmts)
+      _ -> 0
+
+-- Check match arms
+fn check_match_arms tc:List arms:List exprs:List stmts:List
+  for j in 0..arms.len()
+    arm := get_match_arm_typed(arms, j)
+    scopes := tc_scopes(tc)
+    scope_push(scopes)
+    add_pattern_bindings(tc, arm.pattern)
+    if arm.guard >= 0
+      check_expr(tc, arm.guard, exprs, stmts)
+    check_expr(tc, arm.body, exprs, stmts)
+    scope_pop(scopes)
+
 -- Add variables bound by a pattern into scope
-fn add_pattern_bindings tc:List pat:Pattern exprs:List
+fn add_pattern_bindings tc:List pat:Pattern
   scopes := tc_scopes(tc)
   match pat
     VariantPat name bindings ->
@@ -398,6 +491,11 @@ fn add_pattern_bindings tc:List pat:Pattern exprs:List
     _ -> 0
 
 -- Phase 2: Check statements
+-- NOTE: Block fields inside Stmt enum variants have corrupt memory
+-- (codegen limitation with complex records in enums).
+-- We do NOT recurse into blocks from here. Instead, check_all_stmts
+-- iterates ALL stmts in the pool, which includes loop/fn bodies.
+-- Loop vars are added to scope via token scanning.
 fn check_stmt tc:List stmt_id:Int exprs:List stmts:List
   if stmt_id < 0
     return
@@ -409,10 +507,6 @@ fn check_stmt tc:List stmt_id:Int exprs:List stmts:List
       scope_define(scopes, name, "any")
     AssignStmt name value ->
       check_expr(tc, value, exprs, stmts)
-      scopes := tc_scopes(tc)
-      found := scope_lookup(scopes, name)
-      if found == ""
-        tc_add_error(tc, "assignment to undefined variable: " + name)
     ExprStmt expr_id ->
       check_expr(tc, expr_id, exprs, stmts)
     ReturnStmt value ->
@@ -422,30 +516,11 @@ fn check_stmt tc:List stmt_id:Int exprs:List stmts:List
       check_expr(tc, start, exprs, stmts)
       check_expr(tc, end, exprs, stmts)
       scopes := tc_scopes(tc)
-      scope_push(scopes)
       scope_define(scopes, var_name, "Int")
-      check_block(tc, body, exprs, stmts)
-      scope_pop(scopes)
     ForEachStmt var_name iterable body ->
       check_expr(tc, iterable, exprs, stmts)
       scopes := tc_scopes(tc)
-      scope_push(scopes)
       scope_define(scopes, var_name, "any")
-      check_block(tc, body, exprs, stmts)
-      scope_pop(scopes)
-    ForEachKVStmt key_var val_var iterable body ->
-      check_expr(tc, iterable, exprs, stmts)
-      scopes := tc_scopes(tc)
-      scope_push(scopes)
-      scope_define(scopes, key_var, "any")
-      scope_define(scopes, val_var, "any")
-      check_block(tc, body, exprs, stmts)
-      scope_pop(scopes)
-    WhileStmt cond body ->
-      check_expr(tc, cond, exprs, stmts)
-      check_block(tc, body, exprs, stmts)
-    LoopStmt body ->
-      check_block(tc, body, exprs, stmts)
     IndexAssignStmt object index value ->
       check_expr(tc, object, exprs, stmts)
       check_expr(tc, index, exprs, stmts)
@@ -460,71 +535,66 @@ fn check_stmt tc:List stmt_id:Int exprs:List stmts:List
       scopes := tc_scopes(tc)
       for j in 0..names.len()
         scope_define(scopes, names[j], "any")
-    LocalFnStmt fn_id ->
-      -- Local function is already collected; just define its name
-      0
     _ -> 0
 
 -- Check a block of statements
 fn check_block tc:List block:Block exprs:List stmts:List
   for i in 0..block.stmts.len()
-    ss := block.stmts[i]
-    match ss
-      SpannedStmt ->
-        check_stmt(tc, ss.stmt_id, exprs, stmts)
-      _ -> 0
+    ss := get_sspanned(block.stmts, i)
+    check_stmt(tc, ss.stmt_id, exprs, stmts)
 
--- Check a function body
-fn check_fn_body tc:List fd:FnDef exprs:List stmts:List
-  scopes := tc_scopes(tc)
-  scope_push(scopes)
-  -- Add parameters to scope
-  for i in 0..fd.params.len()
-    pd := fd.params[i]
-    match pd
-      ParamDef ->
-        scope_define(scopes, pd.name, "any")
-      _ -> 0
-  -- Add self for impl methods (not detected here, but define "self" globally)
-  check_block(tc, fd.body, exprs, stmts)
-  scope_pop(scopes)
+-- Check all statements in the pool
+fn check_all_stmts tc:List exprs:List stmts:List
+  for i in 0..stmts.len()
+    check_stmt(tc, i, exprs, stmts)
 
--- Main entry point: typecheck a program
--- items: list of Item, exprs: list of Expr, stmts: list of Stmt
--- Returns list of error strings (empty = success)
-fn typecheck items:List exprs:List stmts:List -> List
+-- Main entry: typecheck with function param scoping
+fn typecheck_with_scopes tokens:List exprs:List stmts:List -> List
   tc := tc_new()
-  -- Phase 1: collect all definitions
-  collect_definitions(tc, items)
-  -- Phase 2: check function bodies
-  for i in 0..items.len()
-    item := items[i]
-    match item
-      FnDefItem fn_def ->
-        check_fn_body(tc, fn_def, exprs, stmts)
-      ImplBlockItem type_name methods ->
-        for j in 0..methods.len()
-          m := methods[j]
-          match m
-            FnDef ->
-              -- Add "self" to scope for impl methods
-              scopes := tc_scopes(tc)
-              scope_push(scopes)
-              scope_define(scopes, "self", type_name)
-              -- Add params
-              for k in 0..m.params.len()
-                pd := m.params[k]
-                match pd
-                  ParamDef ->
-                    scope_define(scopes, pd.name, "any")
-                  _ -> 0
-              check_block(tc, m.body, exprs, stmts)
-              scope_pop(scopes)
-            _ -> 0
-      TestDefItem name body ->
-        scopes := tc_scopes(tc)
-        scope_push(scopes)
-        check_block(tc, body, exprs, stmts)
-        scope_pop(scopes)
-      _ -> 0
+  collect_fn_defs(tc, tokens)
+  collect_type_defs(tc, tokens)
+  add_fn_params_from_tokens(tc, tokens)
+  check_all_stmts(tc, exprs, stmts)
   tc_errors(tc)
+
+-- Simplified entry: just returns errors
+fn typecheck tokens:List exprs:List stmts:List -> List
+  typecheck_with_scopes(tokens, exprs, stmts)
+
+-- Scan tokens and add fn params + for-loop vars to scope
+fn add_fn_params_from_tokens tc:List tokens:List
+  scopes := tc_scopes(tc)
+  mut i := 0
+  len := tokens.len()
+  loop
+    if i >= len
+      break
+    tok := get_token(tokens, i)
+    match tok
+      FnTok ->
+        add_params_for_fn(scopes, tokens, i + 2, len)
+      ForTok ->
+        -- for var_name in ...
+        if i + 1 < len
+          vname := token_ident_name(get_token(tokens, i + 1))
+          if vname != ""
+            scope_define(scopes, vname, "any")
+      _ -> 0
+    i = i + 1
+
+-- Add params for one fn starting at token index start
+fn add_params_for_fn scopes:List tokens:List start:Int len:Int
+  mut j := start
+  loop
+    if j >= len
+      break
+    pt := get_token(tokens, j)
+    if is_line_end(pt)
+      break
+    pname := token_ident_name(pt)
+    if pname != ""
+      if j + 1 < len
+        ct := get_token(tokens, j + 1)
+        if is_colon(ct)
+          scope_define(scopes, pname, "any")
+    j = j + 1

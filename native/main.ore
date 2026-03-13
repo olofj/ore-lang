@@ -1,49 +1,56 @@
 -- Phase 31: Native CLI Driver for the Ore compiler
 -- Usage: ore-native <command> <file>
--- Commands: run, check, build
+-- Commands: run, check, help
 
 use lexer
 use parser
 use typecheck
 use arena
 
--- Parse a source file into items, exprs, stmts lists
--- Returns [items, exprs, stmts] on success, or [error_string] on failure
+-- Parse a source file, returning [tokens, items, exprs, stmts] on success
+-- or [error_string] on parse failure
 fn parse_source source:Str -> List
   split := lex_split(source)
+  tokens := s_get_list(split, 0)
   mut holder := []
   ok := parse_to_lists(split, holder)
   if not ok
     mut err_result := []
-    msg := "parse error"
+    mut msg := "parse error"
     if holder.len() > 0
-      msg = to_str(holder[0])
+      msg = "{holder[0]}"
     err_result.push(msg)
     return err_result
-  holder
+  -- Return [tokens, items, exprs, stmts]
+  mut result := []
+  result.push(tokens)
+  result.push(s_get_list(holder, 0))
+  result.push(s_get_list(holder, 1))
+  result.push(s_get_list(holder, 2))
+  result
 
 -- Run the type checker on parsed data
--- Returns list of error strings (empty = success)
-fn run_typecheck holder:List -> List
-  items := s_get_list(holder, 0)
-  exprs := s_get_list(holder, 1)
-  stmts := s_get_list(holder, 2)
-  typecheck(items, exprs, stmts)
+-- parsed: [tokens, items, exprs, stmts]
+fn run_typecheck parsed:List -> List
+  tokens := s_get_list(parsed, 0)
+  exprs := s_get_list(parsed, 2)
+  stmts := s_get_list(parsed, 3)
+  typecheck(tokens, exprs, stmts)
 
--- Print type errors to stderr and return count
+-- Print type errors and return count
 fn report_errors errors:List file:Str -> Int
   for i in 0..errors.len()
     print "typecheck error in {file}: {errors[i]}"
   errors.len()
 
--- Format a file path for output (replace .ore with .c)
+-- Format a file path: replace .ore with .c
 fn c_output_path file:Str -> Str
   if file.ends_with(".ore")
     file.substr(0, file.len() - 4) + ".c"
   else
     file + ".c"
 
--- Format a file path for binary output (strip .ore)
+-- Format a file path: strip .ore for binary
 fn bin_output_path file:Str -> Str
   if file.ends_with(".ore")
     file.substr(0, file.len() - 4)
@@ -52,15 +59,15 @@ fn bin_output_path file:Str -> Str
 
 -- Check command: lex, parse, typecheck only
 fn cmd_check file:Str -> Int
-  source := file_read(file).unwrap_or("")
+  source := file_read(file)
   if source == ""
     print "error: could not read file '{file}'"
     return 1
-  holder := parse_source(source)
-  if holder.len() == 1
-    print "error: {holder[0]}"
+  parsed := parse_source(source)
+  if parsed.len() == 1
+    print "error: {parsed[0]}"
     return 1
-  errors := run_typecheck(holder)
+  errors := run_typecheck(parsed)
   if errors.len() > 0
     report_errors(errors, file)
     return 1
@@ -69,15 +76,15 @@ fn cmd_check file:Str -> Int
 
 -- Run command: lex, parse, typecheck, then run via ore
 fn cmd_run file:Str -> Int
-  source := file_read(file).unwrap_or("")
+  source := file_read(file)
   if source == ""
     print "error: could not read file '{file}'"
     return 1
-  holder := parse_source(source)
-  if holder.len() == 1
-    print "error: {holder[0]}"
+  parsed := parse_source(source)
+  if parsed.len() == 1
+    print "error: {parsed[0]}"
     return 1
-  errors := run_typecheck(holder)
+  errors := run_typecheck(parsed)
   if errors.len() > 0
     report_errors(errors, file)
     return 1
@@ -104,7 +111,7 @@ fn main
     print_usage()
     exit(1)
   cmd := a[1]
-  if cmd == "help" or cmd == "--help" or cmd == "-h"
+  if cmd == "help"
     print_usage()
     exit(0)
   if a.len() < 3

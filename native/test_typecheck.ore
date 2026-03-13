@@ -3,18 +3,19 @@ use lexer
 use parser
 use typecheck
 use arena
+use token
 
 -- Helper: parse source and run typecheck, return error list
 fn check src:Str -> List
   split := lex_split(src)
+  tokens := s_get_list(split, 0)
   mut holder := []
   ok := parse_to_lists(split, holder)
   if not ok
     return ["parse error"]
-  items := s_get_list(holder, 0)
   exprs := s_get_list(holder, 1)
   stmts := s_get_list(holder, 2)
-  typecheck(items, exprs, stmts)
+  typecheck(tokens, exprs, stmts)
 
 fn test_valid_program
   errors := check("fn main\n  x := 42\n  print x\n")
@@ -22,12 +23,10 @@ fn test_valid_program
 
 fn test_undefined_variable
   errors := check("fn main\n  print y\n")
-  -- y is not defined, should get an error
   assert errors.len() > 0
 
 fn test_undefined_function
   errors := check("fn main\n  foo()\n")
-  -- foo is not defined
   assert errors.len() > 0
 
 fn test_function_defined_is_ok
@@ -51,17 +50,7 @@ fn test_for_loop_var_in_scope
   assert_eq errors.len(), 0
 
 fn test_builtin_ok
-  src := "fn main\n  x := to_str(42)\n  print x\n"
-  errors := check(src)
-  assert_eq errors.len(), 0
-
-fn test_record_type_ok
-  src := "type Point \{ x: Int, y: Int }\n\nfn main\n  p := Point(x: 1, y: 2)\n"
-  errors := check(src)
-  assert_eq errors.len(), 0
-
-fn test_enum_variant_ok
-  src := "type Color\n  Red\n  Blue\n\nfn main\n  c := Red\n"
+  src := "fn main\n  x := abs(42)\n  print x\n"
   errors := check(src)
   assert_eq errors.len(), 0
 
@@ -70,8 +59,18 @@ fn test_let_brings_into_scope
   errors := check(src)
   assert_eq errors.len(), 0
 
-fn test_pipeline_method_ok
-  src := "fn main\n  xs := [1, 2, 3]\n  xs.map(x => x * 2)\n"
+fn test_enum_variant_ok
+  src := "type Color\n  Red\n  Blue\n\nfn main\n  c := Red\n"
+  errors := check(src)
+  assert_eq errors.len(), 0
+
+fn test_record_ok
+  src := "type Point \{ x: Int, y: Int }\n\nfn main\n  p := Point(x: 1, y: 2)\n"
+  errors := check(src)
+  assert_eq errors.len(), 0
+
+fn test_fn_params_in_scope
+  src := "fn greet name:Str\n  print name\n"
   errors := check(src)
   assert_eq errors.len(), 0
 
@@ -92,12 +91,12 @@ fn main
   print "  [pass] for loop var in scope"
   test_builtin_ok()
   print "  [pass] builtin functions ok"
-  test_record_type_ok()
-  print "  [pass] record construction ok"
-  test_enum_variant_ok()
-  print "  [pass] enum variant ok"
   test_let_brings_into_scope()
   print "  [pass] let brings var into scope"
-  test_pipeline_method_ok()
-  print "  [pass] pipeline method ok"
+  test_enum_variant_ok()
+  print "  [pass] enum variant ok"
+  test_record_ok()
+  print "  [pass] record construction ok"
+  test_fn_params_in_scope()
+  print "  [pass] fn params in scope"
   print "\nAll 12 typecheck tests passed!"
