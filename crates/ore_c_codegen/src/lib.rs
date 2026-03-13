@@ -656,7 +656,22 @@ impl CCodeGen {
             self.emit("return 0;");
         } else if fndef.ret_type.is_some() {
             if let Some(ref expr_str) = last_expr {
-                self.emit(&format!("return {};", expr_str));
+                // Cast to the function's return type if needed to avoid C type mismatch.
+                // Only coerce when the if/else produced int64_t but the function expects
+                // a pointer type (Str, List, Map) or a tagged union (Option, Result).
+                let needs_cast = match &fn_info.ret_kind {
+                    ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel => {
+                        // The expression might be an int64_t from compile_if_else
+                        _last_kind == ValKind::Int
+                    }
+                    _ => false,
+                };
+                if needs_cast {
+                    let ret_expr = self.coerce_from_i64_expr(expr_str, &fn_info.ret_kind);
+                    self.emit(&format!("return {};", ret_expr));
+                } else {
+                    self.emit(&format!("return {};", expr_str));
+                }
             }
         }
 
