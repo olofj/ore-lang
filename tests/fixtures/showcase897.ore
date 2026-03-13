@@ -50,8 +50,8 @@ fn main
 
   for i in range(0, n_pts)
     idx2 := i * 2
-    px := pts[idx2] * 1.0
-    py := pts[idx2 + 1] * 1.0
+    px := pts[idx2]
+    py := pts[idx2 + 1]
     -- Contribution from charge 1
     d1x := px - c1x
     d1y := py - c1y

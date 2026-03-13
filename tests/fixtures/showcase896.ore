@@ -69,8 +69,8 @@ fn main
       print "  {ts}   | {te}  | {tl}      | {ee}"
     -- Exact (nonlinear) via RK4
     res_exact := rk4_pendulum(th_exact, om_exact, gL, dt)
-    th_exact = res_exact[0] * 1.0
-    om_exact = res_exact[1] * 1.0
+    th_exact = res_exact[0]
+    om_exact = res_exact[1]
     -- Linear approximation: analytic solution theta(t) = theta0 * cos(omega0 * t)
     omega0 := sqrt(gL)
     t_next := (step + 1).to_float() * dt
@@ -98,8 +98,8 @@ fn main
       ds := str(diff).substr(0, 8)
       print "  {ts}   | {te}  | {tl}      | {ds}"
     res := rk4_pendulum(th_e2, om_e2, gL, dt)
-    th_e2 = res[0] * 1.0
-    om_e2 = res[1] * 1.0
+    th_e2 = res[0]
+    om_e2 = res[1]
 
   print ""
   print "Summary:"

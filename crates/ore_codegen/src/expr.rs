@@ -65,7 +65,25 @@ impl<'ctx> CodeGen<'ctx> {
 
                 let var = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?;
                 let val = bld!(self.builder.build_load(var.ty, var.ptr, name))?;
-                let kind = var.kind.clone();
+                // Enrich kind with latest tracked element/value kinds (push tracking
+                // updates list_element_kinds/map_value_kinds but not VarInfo.kind)
+                let kind = match &var.kind {
+                    ValKind::List(_) => {
+                        if let Some(ek) = self.list_element_kinds.get(name) {
+                            ValKind::list_of(ek.clone())
+                        } else {
+                            var.kind.clone()
+                        }
+                    }
+                    ValKind::Map(_) => {
+                        if let Some(vk) = self.map_value_kinds.get(name) {
+                            ValKind::map_of(vk.clone())
+                        } else {
+                            var.kind.clone()
+                        }
+                    }
+                    _ => var.kind.clone(),
+                };
                 Ok((val, kind))
             }
             Expr::BinOp { op, left, right } => {

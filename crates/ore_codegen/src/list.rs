@@ -460,15 +460,15 @@ impl<'ctx> CodeGen<'ctx> {
         let list_push = self.rt("ore_list_push")?;
         let list_ptr = self.call_rt("ore_list_new", &[], "list")?.into_pointer_value();
 
-        let mut elem_kind = ValKind::Int;
+        let mut elem_kind: Option<ValKind> = None;
         for elem in elements {
             let (val, kind) = self.compile_expr_with_kind(elem, func)?;
-            elem_kind = kind.clone();
+            elem_kind = Some(kind.clone());
             let push_val = self.val_to_list_i64(val, &kind)?;
             bld!(self.builder.build_call(list_push, &[list_ptr.into(), push_val.into()], ""))?;
         }
 
-        Ok((list_ptr.into(), ValKind::list_of(elem_kind)))
+        Ok((list_ptr.into(), ValKind::List(elem_kind.map(Box::new))))
     }
 
     pub(crate) fn compile_list_comp(
