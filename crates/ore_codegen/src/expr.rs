@@ -351,13 +351,10 @@ impl<'ctx> CodeGen<'ctx> {
                     return self.compile_try_result(val, func);
                 }
                 let opt_ty = self.option_type();
-                // Store the option value so we can extract from it
                 let alloca = bld!(self.builder.build_alloca(opt_ty, "try_opt"))?;
                 bld!(self.builder.build_store(alloca, val))?;
                 let tag = self.load_tag(opt_ty, alloca)?;
-                let is_none = bld!(self.builder.build_int_compare(
-                    IntPredicate::EQ, tag, self.context.i8_type().const_int(0, false), "is_none"
-                ))?;
+                let is_none = self.check_tag(tag, 0, "is_none")?;
                 let some_bb = self.context.append_basic_block(func, "try_some");
                 let none_bb = self.context.append_basic_block(func, "try_none");
                 bld!(self.builder.build_conditional_branch(is_none, none_bb, some_bb))?;
@@ -367,8 +364,7 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_return(Some(&none_ret)))?;
                 // Some branch: extract value
                 self.builder.position_at_end(some_bb);
-                let val_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 2, "val_ptr"))?;
-                let extracted = bld!(self.builder.build_load(self.context.i64_type(), val_ptr, "unwrapped"))?;
+                let extracted = self.load_tagged_value(opt_ty, alloca)?;
                 Ok((extracted, ValKind::Int))
             }
             Expr::OptionalChain { object, field } => {

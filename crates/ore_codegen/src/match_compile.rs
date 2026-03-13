@@ -544,9 +544,7 @@ impl<'ctx> CodeGen<'ctx> {
         let alloca = bld!(self.builder.build_alloca(res_ty, "try_res"))?;
         bld!(self.builder.build_store(alloca, val))?;
         let tag = self.load_tag(res_ty, alloca)?;
-        let is_err = bld!(self.builder.build_int_compare(
-            IntPredicate::EQ, tag, self.context.i8_type().const_int(1, false), "is_err"
-        ))?;
+        let is_err = self.check_tag(tag, 1, "is_err")?;
         let ok_bb = self.context.append_basic_block(func, "try_ok");
         let err_bb = self.context.append_basic_block(func, "try_err");
         bld!(self.builder.build_conditional_branch(is_err, err_bb, ok_bb))?;
