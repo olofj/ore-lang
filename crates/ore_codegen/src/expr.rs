@@ -65,8 +65,7 @@ impl<'ctx> CodeGen<'ctx> {
 
                 let var = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?;
                 let val = bld!(self.builder.build_load(var.ty, var.ptr, name))?;
-                // Enrich kind with latest tracked element/value kinds (push tracking
-                // updates list_element_kinds/map_value_kinds but not VarInfo.kind)
+                // Enrich kind with latest tracked element/value kinds
                 let kind = match &var.kind {
                     ValKind::List(_) => {
                         if let Some(ek) = self.list_element_kinds.get(name) {
@@ -158,7 +157,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::Print(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
-                self.compile_print_expr(val, &kind, inner, func)?;
+                self.compile_print_expr(val, &kind, inner)?;
                 Ok(self.void_result())
             }
             Expr::Sleep(inner) => {
@@ -721,7 +720,6 @@ impl<'ctx> CodeGen<'ctx> {
         val: BasicValueEnum<'ctx>,
         kind: &ValKind,
         inner: &Expr,
-        _func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
         // Dynamic-kind variables (from Result/Option match bindings)
         if let Expr::Ident(name) = inner {
@@ -733,28 +731,17 @@ impl<'ctx> CodeGen<'ctx> {
                 return Ok(());
             }
         }
-        // Typed list printing: resolve element kind from tracking or ValKind
-        if kind.is_list() {
-            let elem_kind = if let Expr::Ident(name) = inner {
-                self.list_element_kinds.get(name).cloned()
-            } else {
-                None
-            }.or_else(|| kind.list_elem_kind().cloned());
-            if let Some(ref ek) = elem_kind {
-                if *ek != ValKind::Int {
-                    self.compile_typed_list_print(val.into_pointer_value(), ek)?;
-                    return Ok(());
-                }
-            }
-        }
-        // String-valued map printing: resolve from ValKind or tracking
-        if kind.is_map() {
-            let is_str_map = kind.map_val_kind() == Some(&ValKind::Str)
-                || matches!(inner, Expr::Ident(name) if self.map_value_kinds.get(name) == Some(&ValKind::Str));
-            if is_str_map {
-                self.call_rt("ore_map_print_str", &[val.into()], "")?;
+        // Typed list printing: kind is already enriched via Ident load
+        if let Some(ek) = kind.list_elem_kind() {
+            if *ek != ValKind::Int {
+                self.compile_typed_list_print(val.into_pointer_value(), ek)?;
                 return Ok(());
             }
+        }
+        // String-valued map printing: kind is already enriched via Ident load
+        if kind.map_val_kind() == Some(&ValKind::Str) {
+            self.call_rt("ore_map_print_str", &[val.into()], "")?;
+            return Ok(());
         }
         self.compile_print(val, kind.clone())?;
         Ok(())
