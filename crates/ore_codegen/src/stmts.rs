@@ -73,7 +73,7 @@ impl<'ctx> CodeGen<'ctx> {
         &mut self,
         stmt: &Stmt,
         func: FunctionValue<'ctx>,
-    ) -> Result<Option<BasicValueEnum<'ctx>>, CodeGenError> {
+    ) -> Result<(Option<BasicValueEnum<'ctx>>, ValKind), CodeGenError> {
         match stmt {
             Stmt::Let { name, mutable, value } => {
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
@@ -82,7 +82,7 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_store(alloca, val))?;
                 self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: kind.clone(), is_mutable: *mutable });
                 self.track_variable_kinds(name, &kind);
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::LetDestructure { names, value } => {
                 let (val, vk) = self.compile_expr_with_kind(value, func)?;
@@ -114,7 +114,7 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                     }
                 }
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::Assign { name, value } => {
                 let (val, kind) = self.compile_expr_with_kind(value, func)?;
@@ -124,7 +124,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
                 bld!(self.builder.build_store(var_info.ptr, val))?;
                 self.track_variable_kinds(name, &kind);
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::IndexAssign { object, index, value } => {
                 let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
@@ -145,7 +145,7 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => return Err(self.err("index assignment only supported on lists and maps")),
                 }
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::FieldAssign { object, field, value } => {
                 let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
@@ -162,40 +162,40 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     _ => return Err(self.err(format!("field assignment not supported on {:?}", obj_kind))),
                 }
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::Expr(expr) => {
-                let (val, _kind) = self.compile_expr_with_kind(expr, func)?;
-                Ok(Some(val))
+                let (val, kind) = self.compile_expr_with_kind(expr, func)?;
+                Ok((Some(val), kind))
             }
             Stmt::Return(Some(expr)) => {
                 let (val, _kind) = self.compile_expr_with_kind(expr, func)?;
                 bld!(self.builder.build_return(Some(&val)))?;
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::Return(None) => {
                 bld!(self.builder.build_return(None))?;
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::ForIn { var, start, end, step, body } => {
                 self.compile_for_in(var, start, end, step.as_ref(), body, func)?;
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::ForEach { var, iterable, body } => {
                 self.compile_for_each(var, iterable, body, func)?;
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::ForEachKV { key_var, val_var, iterable, body } => {
                 self.compile_for_each_kv(key_var, val_var, iterable, body, func)?;
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::While { cond, body } => {
                 self.compile_while(cond, body, func)?;
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::Loop { body } => {
                 self.compile_loop(body, func)?;
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::Break => {
                 if let Some(target) = self.break_target {
@@ -203,7 +203,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     return Err(self.err("break outside of loop"));
                 }
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::Continue => {
                 if let Some(target) = self.continue_target {
@@ -211,7 +211,7 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     return Err(self.err("continue outside of loop"));
                 }
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
             Stmt::Spawn(expr) => {
                 match expr {
@@ -241,7 +241,7 @@ impl<'ctx> CodeGen<'ctx> {
                             let call_args: Vec<_> = i64_args.iter().map(|a| (*a).into()).collect();
                             self.call_rt(spawn_fn_name, &call_args, "")?;
                         }
-                        Ok(None)
+                        Ok((None, ValKind::Void))
                     }
                     _ => Err(self.err("spawn requires a function call")),
                 }
@@ -282,7 +282,7 @@ impl<'ctx> CodeGen<'ctx> {
                     };
                     self.functions.insert(original_name, (f, ret_kind));
                 }
-                Ok(None)
+                Ok((None, ValKind::Void))
             }
         }
     }
@@ -704,7 +704,8 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(merge_bb);
         let result = bld!(self.builder.build_load(i64_type, result_alloca, "ifval"))?;
-        Ok((result, then_kind))
+        // Value was coerced to i64, so kind is Int (original kind info is lost)
+        Ok((result, ValKind::Int))
     }
 
     pub(crate) fn compile_colon_match_with_kind(

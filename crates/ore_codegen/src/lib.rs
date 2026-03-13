@@ -794,39 +794,13 @@ impl<'ctx> CodeGen<'ctx> {
         let mut last_kind = ValKind::Void;
         for spanned in &block.stmts {
             self.current_line = spanned.line;
-            let val = self.compile_stmt(&spanned.stmt, func).map_err(|mut e| {
+            let (val, kind) = self.compile_stmt(&spanned.stmt, func).map_err(|mut e| {
                 if e.line.is_none() { e.line = Some(spanned.line); }
                 e
             })?;
             if val.is_some() {
                 last_val = val;
-                // Determine kind from the last expression statement
-                if let Stmt::Expr(expr) = &spanned.stmt {
-                    // We already compiled it, but we need the kind.
-                    // Use a heuristic based on the value type.
-                    if let Some(v) = &last_val {
-                        last_kind = match v {
-                            BasicValueEnum::PointerValue(_) => {
-                                // Could be Str, List, Map — check the expression
-                                match expr {
-                                    Expr::StringLit(_) | Expr::StringInterp(_) => ValKind::Str,
-                                    Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List(None),
-                                    Expr::MapLit(_) => ValKind::Map(None),
-                                    _ => ValKind::Str, // Best guess for pointer values
-                                }
-                            }
-                            BasicValueEnum::IntValue(iv) => {
-                                if iv.get_type().get_bit_width() == 1 {
-                                    ValKind::Bool
-                                } else {
-                                    ValKind::Int
-                                }
-                            }
-                            BasicValueEnum::FloatValue(_) => ValKind::Float,
-                            _ => ValKind::Int,
-                        };
-                    }
-                }
+                last_kind = kind;
             }
         }
         Ok((last_val, last_kind))
