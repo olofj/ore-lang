@@ -327,11 +327,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.compile_index(object, index, func)
             }
             Expr::OptionNone => {
-                let opt_ty = self.option_type();
-                let alloca = bld!(self.builder.build_alloca(opt_ty, "opt_none"))?;
-                let tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, alloca, 0, "tag_ptr"))?;
-                bld!(self.builder.build_store(tag_ptr, self.context.i8_type().const_int(0, false)))?;
-                let result = bld!(self.builder.build_load(opt_ty, alloca, "none_val"))?;
+                let result = self.build_tagged_union(self.option_type(), 0, None::<(BasicValueEnum, &ValKind)>, "none_val")?;
                 Ok((result, ValKind::Option))
             }
             Expr::OptionSome(inner) => {
@@ -367,10 +363,7 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_conditional_branch(is_none, none_bb, some_bb))?;
                 // None branch: return None from current function
                 self.builder.position_at_end(none_bb);
-                let none_alloca = bld!(self.builder.build_alloca(opt_ty, "ret_none"))?;
-                let none_tag_ptr = bld!(self.builder.build_struct_gep(opt_ty, none_alloca, 0, "ret_tag"))?;
-                bld!(self.builder.build_store(none_tag_ptr, self.context.i8_type().const_int(0, false)))?;
-                let none_ret = bld!(self.builder.build_load(opt_ty, none_alloca, "none_ret"))?;
+                let none_ret = self.build_tagged_union(opt_ty, 0, None::<(BasicValueEnum, &ValKind)>, "none_ret")?;
                 bld!(self.builder.build_return(Some(&none_ret)))?;
                 // Some branch: extract value
                 self.builder.position_at_end(some_bb);
