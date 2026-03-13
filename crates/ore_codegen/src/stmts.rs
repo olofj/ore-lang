@@ -59,13 +59,19 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
     /// Track list element kind and map value kind for a variable binding.
-    /// `consume` = true uses .take() (for new bindings), false uses .clone() (for reassignment).
+    /// Updates both the per-variable tracking HashMaps and the VarInfo.kind.
     fn track_variable_kinds(&mut self, name: &str, kind: &ValKind) {
         if let ValKind::List(Some(ref ek)) = kind {
             self.list_element_kinds.insert(name.to_string(), ek.as_ref().clone());
         }
         if let ValKind::Map(Some(ref vk)) = kind {
             self.map_value_kinds.insert(name.to_string(), vk.as_ref().clone());
+        }
+        // Keep VarInfo.kind in sync so lambda captures and other direct reads see updated kinds
+        if kind.is_list() || kind.is_map() {
+            if let Some(var) = self.variables.get_mut(name) {
+                var.kind = kind.clone();
+            }
         }
     }
 

@@ -192,13 +192,15 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Expr::Ident(var_name) = object {
                     if let ValKind::List(Some(ref ek)) = result.1 {
                         let should_update = if ek.as_ref() == &ValKind::Int {
-                            // Only set to Int if there's no existing tracked kind
                             !self.list_element_kinds.contains_key(var_name)
                         } else {
                             true
                         };
                         if should_update {
                             self.list_element_kinds.insert(var_name.clone(), ek.as_ref().clone());
+                            if let Some(var) = self.variables.get_mut(var_name) {
+                                var.kind = result.1.clone();
+                            }
                         }
                     }
                 }
@@ -228,6 +230,9 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Expr::Ident(var_name) = object {
                     if let ValKind::Map(Some(ref vk)) = result.1 {
                         self.map_value_kinds.insert(var_name.clone(), vk.as_ref().clone());
+                        if let Some(var) = self.variables.get_mut(var_name) {
+                            var.kind = result.1.clone();
+                        }
                     }
                 }
             }
