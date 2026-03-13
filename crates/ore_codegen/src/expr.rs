@@ -336,17 +336,17 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Expr::OptionSome(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
-                let result = self.build_tagged_wrapper(self.option_type(), 1, &kind, val, "opt_some", "some_val")?;
+                let result = self.build_tagged_union(self.option_type(), 1, Some((val, &kind)), "some_val")?;
                 Ok((result, ValKind::Option))
             }
             Expr::ResultOk(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
-                let result = self.build_tagged_wrapper(self.result_type(), 0, &kind, val, "res_ok", "ok_val")?;
+                let result = self.build_tagged_union(self.result_type(), 0, Some((val, &kind)), "ok_val")?;
                 Ok((result, ValKind::Result))
             }
             Expr::ResultErr(inner) => {
                 let (val, kind) = self.compile_expr_with_kind(inner, func)?;
-                let result = self.build_tagged_wrapper(self.result_type(), 1, &kind, val, "res_err", "err_val")?;
+                let result = self.build_tagged_union(self.result_type(), 1, Some((val, &kind)), "err_val")?;
                 Ok((result, ValKind::Result))
             }
             Expr::Try(inner) => {

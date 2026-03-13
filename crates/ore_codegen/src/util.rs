@@ -521,29 +521,6 @@ impl<'ctx> CodeGen<'ctx> {
         self.call_result_to_value(result)
     }
 
-    /// Build a tagged wrapper struct (Option or Result): { i8 tag, i8 kind_tag, i64 value }.
-    pub(crate) fn build_tagged_wrapper(
-        &mut self,
-        struct_type: inkwell::types::StructType<'ctx>,
-        tag: u64,
-        kind: &ValKind,
-        val: BasicValueEnum<'ctx>,
-        alloca_name: &str,
-        load_name: &str,
-    ) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
-        let i8_type = self.context.i8_type();
-        let alloca = bld!(self.builder.build_alloca(struct_type, alloca_name))?;
-        let tag_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, 0, "tag_ptr"))?;
-        bld!(self.builder.build_store(tag_ptr, i8_type.const_int(tag, false)))?;
-        let kind_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, 1, "kind_ptr"))?;
-        let kind_tag = self.valkind_to_tag(kind);
-        bld!(self.builder.build_store(kind_ptr, i8_type.const_int(kind_tag as u64, false)))?;
-        let val_ptr = bld!(self.builder.build_struct_gep(struct_type, alloca, 2, "val_ptr"))?;
-        let i64_val = self.value_to_i64(val)?;
-        bld!(self.builder.build_store(val_ptr, i64_val))?;
-        Ok(bld!(self.builder.build_load(struct_type, alloca, load_name))?)
-    }
-
     /// Load the tag (index 0, i8) from a tagged union (enum, Option, Result).
     pub(crate) fn load_tag(
         &self,
