@@ -176,14 +176,8 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Handle list built-in methods
         if obj_kind.is_list() {
-            // Resolve element kind: list_element_kinds (most accurate for named vars) > ValKind variant > default Int
-            let elem_kind = if let Expr::Ident(var_name) = object {
-                self.list_element_kinds.get(var_name).cloned()
-            } else {
-                None
-            }.or_else(|| {
-                if let ValKind::List(Some(ref ek)) = obj_kind { Some(ek.as_ref().clone()) } else { None }
-            }).unwrap_or(ValKind::Int);
+            // obj_kind is already enriched with list_element_kinds via Ident load
+            let elem_kind = obj_kind.list_elem_kind().cloned().unwrap_or(ValKind::Int);
 
             let result = self.compile_list_method(obj_val, method, args, func, &elem_kind)?;
             // After push, update the variable's element kind tracking
@@ -215,14 +209,8 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Handle map built-in methods
         if obj_kind.is_map() {
-            // Resolve value kind: map_value_kinds (named vars) > ValKind variant > default Int
-            let map_vk = if let Expr::Ident(var_name) = object {
-                self.map_value_kinds.get(var_name).cloned()
-            } else {
-                None
-            }.or_else(|| {
-                if let ValKind::Map(Some(ref vk)) = obj_kind { Some(vk.as_ref().clone()) } else { None }
-            }).unwrap_or(ValKind::Int);
+            // obj_kind is already enriched with map_value_kinds via Ident load
+            let map_vk = obj_kind.map_val_kind().cloned().unwrap_or(ValKind::Int);
 
             let result = self.compile_map_method(obj_val, method, args, func, &map_vk)?;
             // After set, update the variable's value kind tracking
@@ -479,13 +467,8 @@ impl<'ctx> CodeGen<'ctx> {
         match obj_kind {
             ValKind::List(ref ek) => {
                 let val = self.call_rt("ore_list_get", &[obj_val.into(), idx_val.into()], "list_get")?;
-                // Resolve elem kind: list_element_kinds (named vars) > ValKind variant > default Int
-                let elem_kind = if let Expr::Ident(var_name) = object {
-                    self.list_element_kinds.get(var_name).cloned()
-                } else {
-                    None
-                }.or_else(|| ek.as_ref().map(|k| k.as_ref().clone()))
-                    .unwrap_or(ValKind::Int);
+                // obj_kind is already enriched with list_element_kinds via Ident load
+                let elem_kind = ek.as_ref().map(|k| k.as_ref().clone()).unwrap_or(ValKind::Int);
                 let typed_val = self.list_elem_from_i64(val, &elem_kind)?;
                 Ok((typed_val, elem_kind))
             }
@@ -497,12 +480,8 @@ impl<'ctx> CodeGen<'ctx> {
                     self.value_to_str(idx_val, ValKind::Int)?.into()
                 };
                 let val = self.call_rt("ore_map_get", &[obj_val.into(), map_key.into()], "map_get")?;
-                // Look up tracked value kind for this map variable
-                let val_kind = if let Expr::Ident(name) = object {
-                    self.map_value_kinds.get(name).cloned().unwrap_or(ValKind::Int)
-                } else {
-                    ValKind::Int
-                };
+                // obj_kind is already enriched with map_value_kinds via Ident load
+                let val_kind = obj_kind.map_val_kind().cloned().unwrap_or(ValKind::Int);
                 // If the value is a pointer type (Str, List, Map), convert i64 -> ptr
                 match val_kind {
                     ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {

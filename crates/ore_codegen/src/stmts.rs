@@ -400,20 +400,6 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
 
-    /// Resolve the element kind for a list iterable, using all available sources.
-    /// Priority: list_element_kinds > ValKind variant > default Int.
-    fn resolve_list_elem_kind(&self, iterable: &Expr, list_kind: &ValKind) -> ValKind {
-        if let Expr::Ident(name) = iterable {
-            if let Some(ek) = self.list_element_kinds.get(name).cloned() {
-                return ek;
-            }
-        }
-        match list_kind {
-            ValKind::List(Some(ek)) => ek.as_ref().clone(),
-            _ => ValKind::Int,
-        }
-    }
-
     pub(crate) fn compile_for_each(
         &mut self,
         var: &str,
@@ -427,7 +413,7 @@ impl<'ctx> CodeGen<'ctx> {
             let list_ptr = self.call_rt("ore_map_keys", &[map_ptr.into()], "keys")?.into_pointer_value();
             return self.compile_for_each_over_list(var, list_ptr, ValKind::Str, body, func, None);
         }
-        let elem_kind = self.resolve_list_elem_kind(iterable, &kind);
+        let elem_kind = kind.list_elem_kind().cloned().unwrap_or(ValKind::Int);
         let list_ptr = val.into_pointer_value();
         self.compile_for_each_over_list(var, list_ptr, elem_kind, body, func, None)
     }
@@ -520,7 +506,7 @@ impl<'ctx> CodeGen<'ctx> {
             return self.compile_for_each_kv_map(key_var, val_var, map_ptr, &val_kind, body, func);
         }
         // List enumeration: for i, x in list
-        let elem_kind = self.resolve_list_elem_kind(iterable, &kind);
+        let elem_kind = kind.list_elem_kind().cloned().unwrap_or(ValKind::Int);
         let list_ptr = val.into_pointer_value();
         self.compile_for_each_over_list(val_var, list_ptr, elem_kind, body, func, Some(key_var))
     }
