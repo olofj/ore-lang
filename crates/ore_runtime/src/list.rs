@@ -788,11 +788,6 @@ pub extern "C" fn ore_list_set(list: *mut OreList, index: i64, value: i64) {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn ore_list_reduce(list: *mut OreList, init: i64, func: *const u8, env: *mut u8) -> i64 {
-    ore_list_fold(list, init, func, env)
-}
-
 /// Reduce without init — uses first element as initial, starts from index 1.
 #[no_mangle]
 pub extern "C" fn ore_list_reduce1(list: *mut OreList, func: *const u8, env: *mut u8) -> i64 {

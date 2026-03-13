@@ -589,7 +589,6 @@ fn map_runtime_functions(
     map_fn!("ore_list_concat", ore_runtime::ore_list_concat);
     map_fn!("ore_list_par_map", ore_runtime::ore_list_par_map);
     map_fn!("ore_list_par_each", ore_runtime::ore_list_par_each);
-    map_fn!("ore_list_reduce", ore_runtime::ore_list_reduce);
     map_fn!("ore_list_reduce1", ore_runtime::ore_list_reduce1);
     map_fn!("ore_list_pop", ore_runtime::ore_list_pop);
     map_fn!("ore_list_clear", ore_runtime::ore_list_clear);

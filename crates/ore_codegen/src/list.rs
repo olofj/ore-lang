@@ -236,7 +236,7 @@ impl<'ctx> CodeGen<'ctx> {
                     Ok((val, ValKind::Int))
                 } else {
                     let init_val = self.compile_expr(&args[0], func)?;
-                    let val = self.call_rt("ore_list_reduce", &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "reduce")?;
+                    let val = self.call_rt("ore_list_fold", &[list_val.into(), init_val.into(), fn_ptr.into(), env_ptr.into()], "reduce")?;
                     Ok((val, ValKind::Int))
                 }
             }
