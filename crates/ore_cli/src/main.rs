@@ -693,7 +693,6 @@ fn map_runtime_functions(
     map_fn!("ore_float_round_to", ore_runtime::ore_float_round_to);
     map_fn!("ore_float_format", ore_runtime::ore_float_format);
     // String parsing
-    map_fn!("ore_str_parse_int", ore_runtime::ore_str_parse_int);
     map_fn!("ore_str_parse_float", ore_runtime::ore_str_parse_float);
     // I/O
     map_fn!("ore_readln", ore_runtime::ore_readln);

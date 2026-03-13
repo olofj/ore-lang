@@ -76,7 +76,6 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_str_capitalize", ptr_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_ord", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_chr", ptr_type.fn_type(&[i64_type.into()], false), ext);
-        self.module.add_function("ore_str_parse_int", i64_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_str_parse_float", f64_type.fn_type(&[ptr_type.into()], false), ext);
 
         // Assert
