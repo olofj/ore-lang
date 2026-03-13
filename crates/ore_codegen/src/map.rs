@@ -118,13 +118,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         let mut first_val_kind = None;
         for (key, value) in entries {
-            let (raw_key, key_kind) = self.compile_expr_with_kind(key, func)?;
-            // Map keys must be strings — convert non-string keys automatically
-            let key_val = if key_kind == ValKind::Str {
-                raw_key
-            } else {
-                self.value_to_str(raw_key, key_kind)?.into()
-            };
+            let key_val = self.compile_map_key(key, func)?;
             let (val, val_kind) = self.compile_expr_with_kind(value, func)?;
             if first_val_kind.is_none() {
                 first_val_kind = Some(val_kind.clone());
