@@ -23,10 +23,8 @@ impl<'ctx> CodeGen<'ctx> {
                 self.check_arity("get", args, 1)?;
                 let key = self.compile_map_key(&args[0], func)?;
                 let i64_val = self.call_rt("ore_map_get", &[map_val.into(), key.into()], "mget")?;
-
-                // Determine value kind from map tracking
-                // Check if the map object is a variable with a tracked value kind
-                self.unwrap_map_value(i64_val, val_kind)
+                let typed = self.coerce_from_i64(i64_val, val_kind)?;
+                Ok((typed, val_kind.clone()))
             }
             "contains" => {
                 self.check_arity("contains", args, 1)?;
@@ -96,7 +94,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let (default_val, _default_kind) = self.compile_expr_with_kind(&args[1], func)?;
                 let default_i64 = self.value_to_i64(default_val)?;
                 let i64_val = self.call_rt("ore_map_get_or", &[map_val.into(), key.into(), default_i64.into()], "mgetor")?;
-                self.unwrap_map_value(i64_val, val_kind)
+                let typed = self.coerce_from_i64(i64_val, val_kind)?;
+                Ok((typed, val_kind.clone()))
             }
             "entries" => {
                 let val = self.call_rt("ore_map_entries", &[map_val.into()], "mentries")?;
@@ -131,16 +130,6 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         Ok((map_ptr.into(), ValKind::Map(first_val_kind.map(Box::new))))
-    }
-
-    /// Convert a raw i64 map value back to the correct type based on tracked value kind.
-    fn unwrap_map_value(
-        &mut self,
-        i64_val: BasicValueEnum<'ctx>,
-        val_kind: &ValKind,
-    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        let typed = self.coerce_from_i64(i64_val, val_kind)?;
-        Ok((typed, val_kind.clone()))
     }
 
     /// Compile a map key expression, converting non-string keys to strings.
