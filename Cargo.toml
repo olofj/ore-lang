@@ -8,6 +8,7 @@ members = [
     "crates/ore_typecheck",
     "crates/ore_codegen",
     "crates/ore_runtime",
+    "crates/ore_c_codegen",
 ]
 
 [workspace.dependencies]

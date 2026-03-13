@@ -12,6 +12,7 @@ ore_lexer = { path = "../ore_lexer" }
 ore_parser = { path = "../ore_parser" }
 ore_typecheck = { path = "../ore_typecheck" }
 ore_codegen = { path = "../ore_codegen" }
+ore_c_codegen = { path = "../ore_c_codegen" }
 ore_runtime = { path = "../ore_runtime" }
 clap = { version = "4", features = ["derive"] }
 inkwell = { workspace = true }

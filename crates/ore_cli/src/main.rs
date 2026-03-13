@@ -31,6 +31,9 @@ enum Commands {
         /// Enable LLVM optimizations
         #[arg(long)]
         opt: bool,
+        /// Code generation backend: "llvm" (default) or "c"
+        #[arg(long, default_value = "llvm")]
+        backend: String,
     },
     /// Check an Ore source file for errors (parse + type check, no codegen)
     Check {
@@ -135,10 +138,17 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Build { file, output, opt } => {
-            if let Err(e) = build_file(&file, &output, opt) {
-                print_error_with_context(&e, &file);
-                std::process::exit(1);
+        Commands::Build { file, output, opt, backend } => {
+            if backend == "c" {
+                if let Err(e) = build_file_c(&file, &output) {
+                    print_error_with_context(&e, &file);
+                    std::process::exit(1);
+                }
+            } else {
+                if let Err(e) = build_file(&file, &output, opt) {
+                    print_error_with_context(&e, &file);
+                    std::process::exit(1);
+                }
             }
         }
         Commands::Check { file } => {
@@ -858,6 +868,47 @@ fn build_file(path: &Path, output: &Path, optimize: bool) -> Result<(), String> 
     let _ = std::fs::remove_file(&obj_path);
 
     eprintln!("compiled to {}", output.display());
+    Ok(())
+}
+
+fn build_file_c(path: &Path, output: &Path) -> Result<(), String> {
+    let program = parse_and_typecheck(path)?;
+
+    let mut codegen = ore_c_codegen::CCodeGen::new();
+    let c_code = codegen.compile_program(&program).map_err(|e| e.to_string())?;
+
+    // Write C code to temp file
+    let tmp_dir = std::env::temp_dir().join("ore_build");
+    std::fs::create_dir_all(&tmp_dir)
+        .map_err(|e| format!("failed to create temp dir: {}", e))?;
+    let c_path = tmp_dir.join("output.c");
+    std::fs::write(&c_path, &c_code)
+        .map_err(|e| format!("failed to write C file: {}", e))?;
+
+    // Find the ore_runtime staticlib
+    let runtime_lib = find_runtime_staticlib()?;
+
+    // Compile with cc
+    let compiler = std::env::var("CC").unwrap_or_else(|_| "cc".to_string());
+    let status = std::process::Command::new(&compiler)
+        .arg(&c_path)
+        .arg(&runtime_lib)
+        .arg("-o")
+        .arg(output)
+        .arg("-lm")
+        .arg("-lpthread")
+        .arg("-ldl")
+        .status()
+        .map_err(|e| format!("failed to run compiler '{}': {}", compiler, e))?;
+
+    if !status.success() {
+        return Err(format!("C compiler '{}' failed with {}", compiler, status));
+    }
+
+    // Clean up temp C file
+    let _ = std::fs::remove_file(&c_path);
+
+    eprintln!("compiled to {} (via C backend)", output.display());
     Ok(())
 }
 
