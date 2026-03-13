@@ -530,16 +530,13 @@ impl<'ctx> CodeGen<'ctx> {
 
             // Body
             self.builder.position_at_end(body_bb);
-            let push_bb = if let Some(c) = cond {
+            if let Some(c) = cond {
                 let filter_bb = self.context.append_basic_block(func, "comp_filter");
                 let (cond_val, _) = self.compile_expr_with_kind(c, func)?;
                 let bool_val = self.normalize_to_bool(cond_val)?;
                 bld!(self.builder.build_conditional_branch(bool_val, filter_bb, inc_bb))?;
                 self.builder.position_at_end(filter_bb);
-                filter_bb
-            } else {
-                body_bb
-            };
+            }
 
             let (val, kind) = self.compile_expr_with_kind(expr, func)?;
             output_elem_kind = kind.clone();
@@ -558,7 +555,6 @@ impl<'ctx> CodeGen<'ctx> {
             bld!(self.builder.build_unconditional_branch(cond_bb))?;
 
             self.builder.position_at_end(end_bb);
-            let _ = push_bb; // suppress unused warning
         } else {
             // List-based comprehension
             let (list_val, list_kind) = self.compile_expr_with_kind(iterable, func)?;
