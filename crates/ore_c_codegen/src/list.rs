@@ -188,6 +188,59 @@ impl CCodeGen {
                 let (n, _) = self.compile_expr(&args[0])?;
                 Ok((format!("ore_list_{}({}, {})", method, list_val, n), ValKind::list_of(ValKind::List(None))))
             }
+            "count_by" | "group_by" => {
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
+                let rt = if method == "count_by" { "ore_list_count_by" } else { "ore_list_group_by" };
+                let val_kind = if method == "count_by" { ValKind::Int } else { ValKind::list_of(elem_kind.clone()) };
+                Ok((format!("{}({}, {}, {})", rt, list_val, fn_ptr, env_ptr), ValKind::map_of(val_kind)))
+            }
+            "to_map" => {
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
+                Ok((format!("ore_list_to_map({}, {}, {})", list_val, fn_ptr, env_ptr), ValKind::map_of(elem_kind.clone())))
+            }
+            "partition" => {
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
+                Ok((format!("ore_list_partition({}, {}, {})", list_val, fn_ptr, env_ptr), ValKind::list_of(ValKind::list_of(elem_kind.clone()))))
+            }
+            "zip_with" => {
+                let (other, _) = self.compile_expr(&args[0])?;
+                let ek = elem_kind.clone();
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[1], &[ek.clone(), ek])?;
+                Ok((format!("ore_list_zip_with({}, {}, {}, {})", list_val, other, fn_ptr, env_ptr), ValKind::list_of(ValKind::Int)))
+            }
+            "unique_by" => {
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
+                Ok((format!("ore_list_unique_by({}, {}, {})", list_val, fn_ptr, env_ptr), ValKind::list_of(elem_kind.clone())))
+            }
+            "min_by" | "max_by" => {
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
+                let rt = if method == "min_by" { "ore_list_min_by" } else { "ore_list_max_by" };
+                let raw = format!("{}({}, {}, {})", rt, list_val, fn_ptr, env_ptr);
+                Ok((self.coerce_from_i64_expr(&raw, elem_kind), elem_kind.clone()))
+            }
+            "map_with_index" => {
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[ValKind::Int, elem_kind.clone()])?;
+                Ok((format!("ore_list_map_with_index({}, {}, {})", list_val, fn_ptr, env_ptr), ValKind::list_of(ValKind::Int)))
+            }
+            "each_with_index" => {
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[ValKind::Int, elem_kind.clone()])?;
+                self.emit(&format!("ore_list_each_with_index({}, {}, {});", list_val, fn_ptr, env_ptr));
+                Ok(("0".to_string(), ValKind::Void))
+            }
+            "par_map" => {
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
+                Ok((format!("ore_list_par_map({}, {}, {})", list_val, fn_ptr, env_ptr), ValKind::list_of(ValKind::Int)))
+            }
+            "par_each" => {
+                let (fn_ptr, env_ptr) = self.compile_lambda_arg_with_kinds(&args[0], &[elem_kind.clone()])?;
+                self.emit(&format!("ore_list_par_each({}, {}, {});", list_val, fn_ptr, env_ptr));
+                Ok(("0".to_string(), ValKind::Void))
+            }
+            "intersperse" => {
+                let (sep, sep_kind) = self.compile_expr(&args[0])?;
+                let sep_i64 = self.value_to_i64_expr(&sep, &sep_kind);
+                Ok((format!("ore_list_intersperse({}, {})", list_val, sep_i64), ValKind::list_of(elem_kind.clone())))
+            }
             "dedup" => Ok((format!("ore_list_dedup({})", list_val), ValKind::list_of(elem_kind.clone()))),
             "frequencies" => {
                 let kind_tag = Self::valkind_to_tag(elem_kind);

@@ -223,6 +223,13 @@ impl CCodeGen {
                 let rt = if name == "pi" { "ore_math_pi" } else { "ore_math_e" };
                 Ok(Some((format!("{}()", rt), ValKind::Float)))
             }
+            "__range" => {
+                // Internal function used by list comprehension parser
+                self.check_arity("__range", args, 2)?;
+                let (start, _) = self.compile_expr(&args[0])?;
+                let (end, _) = self.compile_expr(&args[1])?;
+                Ok(Some((format!("ore_range({}, {})", start, end), ValKind::list_of(ValKind::Int))))
+            }
             _ => Ok(None),
         }
     }

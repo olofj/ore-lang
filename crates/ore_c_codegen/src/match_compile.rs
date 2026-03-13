@@ -327,6 +327,23 @@ impl CCodeGen {
             "unwrap" => Ok((format!("{}.val", tmp), ValKind::Int)),
             "is_some" => Ok((format!("({}.tag == 1)", tmp), ValKind::Bool)),
             "is_none" => Ok((format!("({}.tag == 0)", tmp), ValKind::Bool)),
+            "map" => {
+                let (fn_ptr, _) = self.compile_lambda_arg(&args[0])?;
+                let fn_name = fn_ptr.trim_start_matches("(void*)&");
+                let result = self.tmp();
+                self.emit(&format!("OreTaggedUnion {};", result));
+                self.emit(&format!("if ({}.tag == 1) {{", tmp));
+                self.indent += 1;
+                self.emit(&format!("int64_t __mapped = {}({}.val);", fn_name, tmp));
+                self.emit(&format!("{} = (OreTaggedUnion){{1, 0, __mapped}};", result));
+                self.indent -= 1;
+                self.emit("} else {");
+                self.indent += 1;
+                self.emit(&format!("{} = (OreTaggedUnion){{0, 0, 0}};", result));
+                self.indent -= 1;
+                self.emit("}");
+                Ok((result, ValKind::Option))
+            }
             _ => Err(self.err(format!("unknown Option method '{}'", method))),
         }
     }
@@ -349,6 +366,23 @@ impl CCodeGen {
             "unwrap" => Ok((format!("{}.val", tmp), ValKind::Int)),
             "is_ok" => Ok((format!("({}.tag == 0)", tmp), ValKind::Bool)),
             "is_err" => Ok((format!("({}.tag == 1)", tmp), ValKind::Bool)),
+            "map" => {
+                let (fn_ptr, _) = self.compile_lambda_arg(&args[0])?;
+                let fn_name = fn_ptr.trim_start_matches("(void*)&");
+                let result = self.tmp();
+                self.emit(&format!("OreTaggedUnion {};", result));
+                self.emit(&format!("if ({}.tag == 0) {{", tmp));
+                self.indent += 1;
+                self.emit(&format!("int64_t __mapped = {}({}.val);", fn_name, tmp));
+                self.emit(&format!("{} = (OreTaggedUnion){{0, 0, __mapped}};", result));
+                self.indent -= 1;
+                self.emit("} else {");
+                self.indent += 1;
+                self.emit(&format!("{} = {};", result, tmp));
+                self.indent -= 1;
+                self.emit("}");
+                Ok((result, ValKind::Result))
+            }
             _ => Err(self.err(format!("unknown Result method '{}'", method))),
         }
     }
