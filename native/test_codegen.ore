@@ -1,0 +1,99 @@
+-- Test suite for the C code generator (Phase 30)
+use lexer
+use parser
+use arena
+use codegen
+
+-- Helper: parse source and return [items, exprs, stmts]
+fn do_parse src:Str -> List
+  split := lex_split(src)
+  mut holder := []
+  ok := parse_to_lists(split, holder)
+  if not ok
+    print "parse error"
+    return []
+  -- holder = [items, exprs, stmts]
+  holder
+
+-- Helper: parse + generate C code
+fn gen src:Str -> Str
+  parsed := do_parse(src)
+  if parsed.len() < 3
+    return "ERROR: parse failed"
+  items := s_get_list(parsed, 0)
+  exprs := s_get_list(parsed, 1)
+  stmts := s_get_list(parsed, 2)
+  generate(items, exprs, stmts)
+
+fn test_simple_main
+  src := "fn main\n  print 42\n"
+  c := gen(src)
+  assert c.contains("ore_print_int"), "should contain ore_print_int"
+  assert c.contains("int main()"), "should contain int main()"
+  assert c.contains("return 0;"), "main should return 0"
+
+fn test_user_function
+  src := "fn add a:Int b:Int -> Int\n  a + b\n\nfn main\n  print add(1, 2)\n"
+  c := gen(src)
+  assert c.contains("int64_t add(int64_t"), "should declare add with int64_t params"
+  assert c.contains("int main()"), "should contain main"
+
+fn test_if_else
+  src := "fn main\n  x := 10\n  if x > 5\n    print 1\n  else\n    print 0\n"
+  c := gen(src)
+  assert c.contains("if ("), "should contain if statement"
+  assert c.contains("else"), "should contain else"
+  assert c.contains("ore_print_int"), "should contain print"
+
+fn test_for_loop
+  src := "fn main\n  for i in 0..10\n    print i\n"
+  c := gen(src)
+  assert c.contains("for (int64_t"), "should contain for loop"
+  assert c.contains("ore_print_int"), "should contain print in loop"
+
+fn test_runtime_decls
+  src := "fn main\n  print 1\n"
+  c := gen(src)
+  assert c.contains("extern void ore_print_int(int64_t)"), "should have print_int decl"
+  assert c.contains("extern void* ore_str_new("), "should have str_new decl"
+  assert c.contains("extern void* ore_list_new("), "should have list_new decl"
+  assert c.contains("extern void* ore_map_new("), "should have map_new decl"
+  assert c.contains("OreTaggedUnion"), "should have tagged union typedef"
+
+fn test_string_lit
+  src := "fn main\n  print \"hello\"\n"
+  c := gen(src)
+  assert c.contains("ore_str_new("), "should contain ore_str_new"
+  assert c.contains("ore_str_print"), "should contain ore_str_print"
+
+fn test_let_and_assign
+  src := "fn main\n  mut x := 10\n  x = 20\n  print x\n"
+  c := gen(src)
+  assert c.contains("int64_t x = "), "should declare x"
+  assert c.contains("x = "), "should assign x"
+
+fn test_list_literal
+  src := "fn main\n  xs := [1, 2, 3]\n  print xs\n"
+  c := gen(src)
+  assert c.contains("ore_list_new()"), "should create list"
+  assert c.contains("ore_list_push("), "should push elements"
+  assert c.contains("ore_list_print("), "should print list"
+
+fn main
+  test_simple_main()
+  print "  [pass] simple main"
+  test_user_function()
+  print "  [pass] user function"
+  test_if_else()
+  print "  [pass] if/else"
+  test_for_loop()
+  print "  [pass] for loop"
+  test_runtime_decls()
+  print "  [pass] runtime declarations"
+  test_string_lit()
+  print "  [pass] string literal"
+  test_let_and_assign()
+  print "  [pass] let and assign"
+  test_list_literal()
+  print "  [pass] list literal"
+  print "\nAll 8 codegen tests passed!"

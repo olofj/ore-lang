@@ -636,6 +636,15 @@ impl<'ctx> CodeGen<'ctx> {
                 let r_f = bld!(self.builder.build_signed_int_to_float(r, self.context.f64_type(), "itof"))?;
                 self.compile_float_binop(op, l, r_f)
             }
+            // Int-Pointer promotion: treat the int as a pointer (e.g., string stored as i64 in list)
+            (BasicValueEnum::IntValue(l), BasicValueEnum::PointerValue(r)) => {
+                let l_ptr = self.i64_to_ptr(l)?;
+                self.compile_binop(op, l_ptr.into(), r.into())
+            }
+            (BasicValueEnum::PointerValue(l), BasicValueEnum::IntValue(r)) => {
+                let r_ptr = self.i64_to_ptr(r)?;
+                self.compile_binop(op, l.into(), r_ptr.into())
+            }
             _ => Err(self.err("type mismatch in binary operation")),
         }
     }
