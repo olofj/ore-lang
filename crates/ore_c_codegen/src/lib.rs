@@ -660,8 +660,9 @@ impl CCodeGen {
                 // Only coerce when the if/else produced int64_t but the function expects
                 // a pointer type (Str, List, Map) or a tagged union (Option, Result).
                 let needs_cast = match &fn_info.ret_kind {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel => {
-                        // The expression might be an int64_t from compile_if_else
+                    ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel
+                    | ValKind::Enum(_) | ValKind::Record(_) | ValKind::Option | ValKind::Result => {
+                        // The expression might be an int64_t from compile_if_else or list_get
                         _last_kind == ValKind::Int
                     }
                     _ => false,
@@ -930,6 +931,19 @@ impl CCodeGen {
             ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel => {
                 format!("(int64_t)(intptr_t)({})", expr)
             }
+            ValKind::Enum(name) => {
+                // Heap-allocate the enum struct, store value, return pointer as i64
+                let c_type = format!("struct ore_enum_{}", Self::mangle_name(name));
+                format!("(int64_t)(intptr_t)memcpy(malloc(sizeof({c_type})), &({expr}), sizeof({c_type}))")
+            }
+            ValKind::Record(name) => {
+                let c_type = format!("struct ore_rec_{}", Self::mangle_name(name));
+                format!("(int64_t)(intptr_t)memcpy(malloc(sizeof({c_type})), &({expr}), sizeof({c_type}))")
+            }
+            ValKind::Option | ValKind::Result => {
+                // Tagged union: copy to heap
+                format!("(int64_t)(intptr_t)memcpy(malloc(sizeof(OreTaggedUnion)), &({expr}), sizeof(OreTaggedUnion))")
+            }
             _ => expr.to_string(),
         }
     }
@@ -942,6 +956,18 @@ impl CCodeGen {
             }
             ValKind::Float => format!("*(double*)&(int64_t){{{}}}", expr),
             ValKind::Bool => format!("(int8_t)(({}) != 0)", expr),
+            ValKind::Enum(name) => {
+                // Dereference heap pointer back to enum struct
+                let c_type = format!("struct ore_enum_{}", Self::mangle_name(name));
+                format!("*({c_type}*)(intptr_t)({expr})")
+            }
+            ValKind::Record(name) => {
+                let c_type = format!("struct ore_rec_{}", Self::mangle_name(name));
+                format!("*({c_type}*)(intptr_t)({expr})")
+            }
+            ValKind::Option | ValKind::Result => {
+                format!("*(OreTaggedUnion*)(intptr_t)({})", expr)
+            }
             _ => expr.to_string(),
         }
     }

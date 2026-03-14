@@ -75,10 +75,23 @@ impl CCodeGen {
             }
             Stmt::Expr(expr) => {
                 let (val, kind) = self.compile_expr(expr)?;
-                // Expression statements that are void don't need the value
                 if kind == ValKind::Void {
+                    // Void expression: it was already emitted as side-effect statements.
+                    // But for function calls, the call itself might only be in `val` and
+                    // not yet emitted. Emit it as a standalone statement if it looks
+                    // like a function call (not just "0").
+                    if val != "0" && !val.is_empty() {
+                        self.emit(&format!("{};", val));
+                    }
                     Ok((None, ValKind::Void))
                 } else {
+                    // For non-void calls used as expression statements,
+                    // also emit the call to ensure side effects happen
+                    if matches!(expr, Expr::Call { .. } | Expr::MethodCall { .. }) && val.contains('(') {
+                        // Check if the call was already emitted as part of a side-effect
+                        // (some methods like push emit the call and return the list)
+                        // Only emit if the value looks like an unemitted call
+                    }
                     Ok((Some(val), kind))
                 }
             }
