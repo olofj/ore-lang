@@ -906,7 +906,7 @@ fn build_file_c(path: &Path, output: &Path) -> Result<(), String> {
     }
 
     // Keep temp C file for debugging
-    // let _ = std::fs::remove_file(&c_path);
+    let _ = std::fs::remove_file(&c_path);
 
     eprintln!("compiled to {} (via C backend)", output.display());
     Ok(())
