@@ -543,6 +543,14 @@ impl CCodeGen {
     }
 
     pub(crate) fn compile_print_expr(&mut self, val: &str, kind: &ValKind, _inner: &Expr) -> Result<(), CCodeGenError> {
+        // Check for dynamic kind tag (from Result/Option match bindings)
+        if let Expr::Ident(name) = _inner {
+            if self.dynamic_kind_tags.contains(name) {
+                let kind_var = format!("{}_kind", name);
+                self.emit(&format!("{{ void* __dstr = ore_dynamic_to_str({}, {}); ore_str_print(__dstr); ore_str_release(__dstr); }}", val, kind_var));
+                return Ok(());
+            }
+        }
         match kind {
             ValKind::Str => { self.emit(&format!("ore_str_print({});", val)); }
             ValKind::Int => { self.emit(&format!("ore_print_int({});", val)); }
@@ -589,7 +597,17 @@ impl CCodeGen {
                 StringPart::Lit(s) => self.compile_string_literal(s),
                 StringPart::Expr(expr) => {
                     let (val, kind) = self.compile_expr(expr)?;
-                    self.value_to_str_expr(&val, &kind)
+                    // Check for dynamic kind tag (from Result/Option match bindings)
+                    if let Expr::Ident(name) = expr {
+                        if self.dynamic_kind_tags.contains(name) {
+                            let kind_var = format!("{}_kind", name);
+                            format!("ore_dynamic_to_str({}, {})", val, kind_var)
+                        } else {
+                            self.value_to_str_expr(&val, &kind)
+                        }
+                    } else {
+                        self.value_to_str_expr(&val, &kind)
+                    }
                 }
             };
             result = Some(match result {
