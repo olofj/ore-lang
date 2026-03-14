@@ -192,9 +192,15 @@ impl CCodeGen {
                 if let Some(fn_info) = self.functions.get(&name).cloned() {
                     let c_fn_name = Self::mangle_fn_name(&name);
                     let mut arg_strs = Vec::new();
-                    for arg in args {
-                        let (a, _) = self.compile_expr(arg)?;
-                        arg_strs.push(a);
+                    for (i, arg) in args.iter().enumerate() {
+                        let (a, ak) = self.compile_expr(arg)?;
+                        // Cast function pointers to int64_t when parameter expects Int
+                        let param_kind = fn_info.param_kinds.get(i);
+                        if param_kind == Some(&ValKind::Int) && a.starts_with("(void*)&") {
+                            arg_strs.push(format!("(int64_t)(intptr_t){}", a));
+                        } else {
+                            arg_strs.push(a);
+                        }
                     }
                     // Fill default args
                     if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
