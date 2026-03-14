@@ -60,3 +60,22 @@ fn no_node -> Int
 -- Check if an ID represents a valid node (not "no node")
 fn has_node id:Int -> Bool
   id >= 0
+
+-- Typed getters for enum types stored in lists
+fn get_string_part pool:List id:Int -> StringPart
+  pool[id]
+
+fn get_match_arm pool:List id:Int -> MatchArm
+  pool[id]
+
+fn get_fn_def pool:List id:Int -> FnDef
+  pool[id]
+
+fn get_field_def pool:List id:Int -> FieldDef
+  pool[id]
+
+fn get_variant_def pool:List id:Int -> VariantDef
+  pool[id]
+
+fn get_param_def pool:List id:Int -> ParamDef
+  pool[id]
