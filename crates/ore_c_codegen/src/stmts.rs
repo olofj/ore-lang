@@ -75,23 +75,22 @@ impl CCodeGen {
             }
             Stmt::Expr(expr) => {
                 let (val, kind) = self.compile_expr(expr)?;
+                let is_call = matches!(expr, Expr::Call { .. } | Expr::MethodCall { .. });
                 if kind == ValKind::Void {
-                    // Void expression: it was already emitted as side-effect statements.
-                    // But for function calls, the call itself might only be in `val` and
-                    // not yet emitted. Emit it as a standalone statement if it looks
-                    // like a function call (not just "0").
+                    // Void expression: emit as standalone statement if it's a call
                     if val != "0" && !val.is_empty() {
                         self.emit(&format!("{};", val));
                     }
                     Ok((None, ValKind::Void))
+                } else if is_call && val.contains('(') {
+                    // Non-void call used as expression statement: emit for side effects,
+                    // then use the result as the last expression value.
+                    // Methods like remove_at return a value but also have side effects.
+                    let tmp = self.tmp();
+                    let c_type = self.kind_to_c_type_str(&kind);
+                    self.emit(&format!("{} {} = {};", c_type, tmp, val));
+                    Ok((Some(tmp), kind))
                 } else {
-                    // For non-void calls used as expression statements,
-                    // also emit the call to ensure side effects happen
-                    if matches!(expr, Expr::Call { .. } | Expr::MethodCall { .. }) && val.contains('(') {
-                        // Check if the call was already emitted as part of a side-effect
-                        // (some methods like push emit the call and return the list)
-                        // Only emit if the value looks like an unemitted call
-                    }
                     Ok((Some(val), kind))
                 }
             }
