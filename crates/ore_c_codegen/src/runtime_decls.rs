@@ -76,6 +76,8 @@ pub fn runtime_declarations() -> Vec<String> {
     d("void ore_assert_ne_int(int64_t, int64_t, void*, int64_t)");
     d("void ore_assert_ne_str(void*, void*, void*, int64_t)");
     d("void ore_assert_fail(void*)");
+    d("void ore_assert_set_test_mode(int8_t)");
+    d("int8_t ore_assert_check_and_reset(void)");
 
     // Lists — basic operations
     d("void* ore_list_new(void)");

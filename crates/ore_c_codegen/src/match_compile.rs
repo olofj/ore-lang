@@ -104,6 +104,7 @@ impl CCodeGen {
         self.emit(&format!("int64_t {} = 0;", result_tmp));
         let mut result_kind = ValKind::Int;
         let mut first = true;
+        let mut closed = false;
 
         for arm in arms {
             let is_wildcard = matches!(&arm.pattern, Pattern::Wildcard);
@@ -146,6 +147,7 @@ impl CCodeGen {
 
                 self.indent -= 1;
                 self.emit("}");
+                closed = true;
                 break;
             }
 
@@ -176,7 +178,7 @@ impl CCodeGen {
             self.indent -= 1;
         }
 
-        if !first {
+        if !first && !closed {
             self.emit("}");
         }
 

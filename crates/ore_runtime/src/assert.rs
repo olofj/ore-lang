@@ -29,13 +29,15 @@ static ASSERT_TEST_MODE: AtomicBool = AtomicBool::new(false);
 static ASSERT_FAILED: AtomicBool = AtomicBool::new(false);
 
 /// Enable/disable test mode for assertions
-pub fn ore_assert_set_test_mode(enabled: bool) {
-    ASSERT_TEST_MODE.store(enabled, Ordering::SeqCst);
+#[no_mangle]
+pub extern "C" fn ore_assert_set_test_mode(enabled: i8) {
+    ASSERT_TEST_MODE.store(enabled != 0, Ordering::SeqCst);
 }
 
 /// Check and reset the assertion failure flag
-pub fn ore_assert_check_and_reset() -> bool {
-    ASSERT_FAILED.swap(false, Ordering::SeqCst)
+#[no_mangle]
+pub extern "C" fn ore_assert_check_and_reset() -> i8 {
+    if ASSERT_FAILED.swap(false, Ordering::SeqCst) { 1 } else { 0 }
 }
 
 // ── Assert helper ──

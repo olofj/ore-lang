@@ -228,6 +228,84 @@ impl CCodeGen {
                     };
                     return Ok((call_str, ret_kind));
                 }
+                // Generic function instantiation
+                if let Some(generic_fn) = self.generic_fns.get(&name).cloned() {
+                    // Infer type params from arguments
+                    let mut arg_kinds = Vec::new();
+                    let mut arg_strs = Vec::new();
+                    for arg in args {
+                        let (a, ak) = self.compile_expr(arg)?;
+                        arg_strs.push(a);
+                        arg_kinds.push(ak);
+                    }
+                    // Build type param -> kind mapping from first parameter
+                    let type_param_names: Vec<String> = generic_fn.type_params.iter().map(|tp| tp.name.clone()).collect();
+                    let mut type_map: HashMap<String, ValKind> = HashMap::new();
+                    for (i, p) in generic_fn.params.iter().enumerate() {
+                        if let Some(ak) = arg_kinds.get(i) {
+                            if let TypeExpr::Named(ref tn) = p.ty {
+                                if type_param_names.contains(tn) {
+                                    type_map.insert(tn.clone(), ak.clone());
+                                }
+                            }
+                        }
+                    }
+                    // Generate mangled name based on concrete types
+                    let type_suffix: Vec<String> = type_param_names.iter()
+                        .map(|tp| type_map.get(tp).map(|k| Self::kind_to_suffix(k)).unwrap_or_else(|| "Int".to_string()))
+                        .collect();
+                    let mono_name = format!("{}__{}", name, type_suffix.join("_"));
+                    // Check if already instantiated
+                    if !self.functions.contains_key(&mono_name) {
+                        // Create monomorphized FnDef with concrete types
+                        let mono_params: Vec<Param> = generic_fn.params.iter().map(|p| {
+                            let ty = if let TypeExpr::Named(ref tn) = p.ty {
+                                if let Some(kind) = type_map.get(tn) {
+                                    TypeExpr::Named(self.kind_to_type_name(kind).to_string())
+                                } else {
+                                    p.ty.clone()
+                                }
+                            } else {
+                                p.ty.clone()
+                            };
+                            Param { name: p.name.clone(), ty, default: p.default.clone() }
+                        }).collect();
+                        let mono_ret = generic_fn.ret_type.as_ref().map(|rt| {
+                            if let TypeExpr::Named(ref tn) = rt {
+                                if let Some(kind) = type_map.get(tn) {
+                                    TypeExpr::Named(self.kind_to_type_name(kind).to_string())
+                                } else {
+                                    rt.clone()
+                                }
+                            } else {
+                                rt.clone()
+                            }
+                        });
+                        let mono_fn = FnDef {
+                            name: mono_name.clone(),
+                            type_params: vec![],
+                            params: mono_params,
+                            ret_type: mono_ret,
+                            body: generic_fn.body.clone(),
+                        };
+                        // Save and restore state around function compilation
+                        let saved_vars = self.variables.clone();
+                        let saved_dynamic = self.dynamic_kind_tags.clone();
+                        let saved_lines = std::mem::take(&mut self.lines);
+                        let saved_indent = self.indent;
+                        self.declare_function(&mono_fn)?;
+                        self.compile_function(&mono_fn)?;
+                        self.lambda_bodies.extend(std::mem::take(&mut self.lines));
+                        self.lines = saved_lines;
+                        self.indent = saved_indent;
+                        self.variables = saved_vars;
+                        self.dynamic_kind_tags = saved_dynamic;
+                    }
+                    let fn_info = self.functions.get(&mono_name).cloned()
+                        .ok_or_else(|| self.err(format!("failed to instantiate generic '{}'", name)))?;
+                    let call_str = format!("{}({})", mono_name, arg_strs.join(", "));
+                    return Ok((call_str, fn_info.ret_kind));
+                }
                 // Variable holding a function pointer
                 if self.variables.contains_key(&name) {
                     let mut arg_strs = Vec::new();

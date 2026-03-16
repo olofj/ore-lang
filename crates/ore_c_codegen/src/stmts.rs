@@ -7,9 +7,10 @@ impl CCodeGen {
             Stmt::Let { name, mutable, value } => {
                 let (val, kind) = self.compile_expr(value)?;
                 let c_type = self.kind_to_c_type_str(&kind);
-                self.emit(&format!("{} {} = {};", c_type, name, val));
+                let c_name = Self::mangle_var_name(name);
+                self.emit(&format!("{} {} = {};", c_type, c_name, val));
                 self.variables.insert(name.clone(), VarInfo {
-                    c_name: name.clone(),
+                    c_name: c_name.clone(),
                     kind: kind.clone(),
                     is_mutable: *mutable,
                 });
@@ -40,8 +41,9 @@ impl CCodeGen {
                 if !var.is_mutable {
                     return Err(self.err(format!("cannot assign to immutable variable '{}'", name)));
                 }
+                let c_name = var.c_name.clone();
                 let (val, kind) = self.compile_expr(value)?;
-                self.emit(&format!("{} = {};", name, val));
+                self.emit(&format!("{} = {};", c_name, val));
                 self.track_variable_kinds(name, &kind);
                 Ok((None, ValKind::Void))
             }

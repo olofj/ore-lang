@@ -769,6 +769,11 @@ impl CCodeGen {
             }
         }
 
+        // Generate a test-runner main if there are tests but no explicit main
+        if !self.test_names.is_empty() && !self.functions.contains_key("main") {
+            self.emit_test_runner_main();
+        }
+
         // Assemble final C code
         Ok(self.assemble())
     }
@@ -995,6 +1000,66 @@ impl CCodeGen {
             }
         }
         out
+    }
+
+    /// Generate a safe C identifier suffix for a ValKind (for monomorphized function names).
+    pub(crate) fn kind_to_suffix(kind: &ValKind) -> String {
+        match kind {
+            ValKind::Int => "Int".to_string(),
+            ValKind::Float => "Float".to_string(),
+            ValKind::Bool => "Bool".to_string(),
+            ValKind::Str => "Str".to_string(),
+            ValKind::Void => "Void".to_string(),
+            ValKind::List(Some(ek)) => format!("List_{}", Self::kind_to_suffix(ek)),
+            ValKind::List(None) => "List".to_string(),
+            ValKind::Map(Some(vk)) => format!("Map_{}", Self::kind_to_suffix(vk)),
+            ValKind::Map(None) => "Map".to_string(),
+            ValKind::Option => "Option".to_string(),
+            ValKind::Result => "Result".to_string(),
+            ValKind::Channel => "Channel".to_string(),
+            ValKind::Record(n) => format!("Rec_{}", n),
+            ValKind::Enum(n) => format!("Enum_{}", n),
+        }
+    }
+
+    /// Map a ValKind back to an Ore type name string (for generic monomorphization).
+    pub(crate) fn kind_to_type_name(&self, kind: &ValKind) -> &str {
+        match kind {
+            ValKind::Int => "Int",
+            ValKind::Float => "Float",
+            ValKind::Bool => "Bool",
+            ValKind::Str => "Str",
+            ValKind::Void => "Int",
+            ValKind::List(_) => "List",
+            ValKind::Map(_) => "Map",
+            ValKind::Option => "Option",
+            ValKind::Result => "Result",
+            ValKind::Channel => "Channel",
+            ValKind::Record(_) => "Int",
+            ValKind::Enum(_) => "Int",
+        }
+    }
+
+    /// Emit a main() that calls all test functions (for test-only files).
+    fn emit_test_runner_main(&mut self) {
+        self.forward_decls.push("int32_t main(void);".to_string());
+        self.emit_raw("int32_t main(void) {");
+        self.indent = 1;
+        self.emit("ore_assert_set_test_mode(1);");
+        self.emit("int passed = 0, failed = 0;");
+        for i in 0..self.test_names.len() {
+            let fn_name = format!("ore_test_{}", i);
+            let test_name = Self::escape_c_string(&self.test_names[i]);
+            self.emit("ore_assert_check_and_reset();");
+            self.emit(&format!("{}();", fn_name));
+            self.emit(&format!("if (ore_assert_check_and_reset()) {{ failed++; ore_str_print(ore_str_new(\"  FAIL: {}\", {})); }}", test_name, test_name.len() + 8));
+            self.emit(&format!("else {{ passed++; ore_str_print(ore_str_new(\"  PASS: {}\", {})); }}", test_name, test_name.len() + 8));
+        }
+        self.emit("ore_assert_set_test_mode(0);");
+        self.emit("if (failed > 0) return 1;");
+        self.emit("return 0;");
+        self.indent = 0;
+        self.emit_raw("}");
     }
 
     /// Track variable kinds for list/map element types.

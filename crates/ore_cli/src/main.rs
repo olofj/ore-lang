@@ -762,7 +762,7 @@ fn test_file(path: &Path) -> Result<(), String> {
     let ee = create_jit(&codegen, false)?;
 
     // Enable test mode so asserts set a flag instead of exiting
-    ore_runtime::ore_assert_set_test_mode(true);
+    ore_runtime::ore_assert_set_test_mode(1);
 
     let mut passed = 0;
     let mut failed = 0;
@@ -779,7 +779,7 @@ fn test_file(path: &Path) -> Result<(), String> {
                 .map_err(|e| format!("test function '{}' not found: {}", fn_name, e))?;
             test_fn.call();
         }
-        if ore_runtime::ore_assert_check_and_reset() {
+        if ore_runtime::ore_assert_check_and_reset() != 0 {
             eprintln!("  FAIL: {}", name);
             failed += 1;
         } else {
@@ -788,7 +788,7 @@ fn test_file(path: &Path) -> Result<(), String> {
         }
     }
 
-    ore_runtime::ore_assert_set_test_mode(false);
+    ore_runtime::ore_assert_set_test_mode(0);
 
     eprintln!("\n{} passed, {} failed, {} total", passed, failed, passed + failed);
     if failed > 0 {
