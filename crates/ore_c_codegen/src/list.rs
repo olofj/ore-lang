@@ -54,7 +54,14 @@ impl CCodeGen {
                 let (fn_ptr, env_ptr, ret_kind) = self.compile_lambda_arg_full(&args[0], &[elem_kind.clone()])?;
                 let rt = format!("ore_list_{}", method);
                 let result = format!("{}({}, {}, {})", rt, list_val, fn_ptr, env_ptr);
-                let result_elem = if method == "map" || method == "flat_map" { ret_kind } else { elem_kind.clone() };
+                let result_elem = if method == "flat_map" {
+                    // flat_map's lambda returns a list; the result element is the inner type
+                    ret_kind.list_elem_kind().cloned().unwrap_or(ret_kind)
+                } else if method == "map" {
+                    ret_kind
+                } else {
+                    elem_kind.clone()
+                };
                 Ok((result, ValKind::list_of(result_elem)))
             }
             "each" => {
