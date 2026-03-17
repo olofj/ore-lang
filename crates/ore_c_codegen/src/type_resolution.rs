@@ -328,7 +328,7 @@ impl CCodeGen {
     }
 
     /// Map a ValKind back to an Ore type name string (for generic monomorphization).
-    pub(crate) fn kind_to_type_name(&self, kind: &ValKind) -> &str {
+    pub(crate) fn kind_to_type_name<'a>(&self, kind: &'a ValKind) -> &'a str {
         match kind {
             ValKind::Int => "Int",
             ValKind::Float => "Float",
@@ -340,8 +340,8 @@ impl CCodeGen {
             ValKind::Option => "Option",
             ValKind::Result => "Result",
             ValKind::Channel => "Channel",
-            ValKind::Record(_) => "Int",
-            ValKind::Enum(_) => "Int",
+            ValKind::Record(name) => name.as_str(),
+            ValKind::Enum(name) => name.as_str(),
         }
     }
 }

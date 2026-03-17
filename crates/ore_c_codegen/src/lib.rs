@@ -760,3 +760,77 @@ impl CCodeGen {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Helper: parse an ore program and compile to C.
+    fn compile_ore_to_c(src: &str) -> String {
+        let tokens = ore_lexer::lex(src).expect("lex failed");
+        let program = ore_parser::parse(tokens).expect("parse failed");
+        let mut cg = CCodeGen::new();
+        cg.compile_program(&program).expect("compile failed")
+    }
+
+    #[test]
+    fn generic_list_accessor_record_cast() {
+        // A generic function that retrieves an element from a list.
+        // When instantiated with a Record type, the coerce_from_i64_expr
+        // must cast through the correct struct pointer type.
+        let src = r#"
+type Point { x:Int, y:Int }
+
+fn get_item[T] items:List[T] idx:Int -> T
+  items[idx]
+
+fn main
+  pts := [Point(x: 1, y: 2)]
+  p := get_item(pts, 0)
+  print p.x
+"#;
+        let c_code = compile_ore_to_c(src);
+        // The monomorphized function should cast through ore_rec_Point*, not some other type
+        assert!(
+            c_code.contains("ore_rec_Point"),
+            "Expected ore_rec_Point in generated C code, got:\n{}",
+            c_code
+        );
+    }
+
+    #[test]
+    fn generic_list_accessor_enum_cast() {
+        let src = r#"
+type Token
+  Number(val: Int)
+  Plus
+
+fn get_item[T] items:List[T] idx:Int -> T
+  items[idx]
+
+fn main
+  tokens := [Plus, Number(val: 1)]
+  t := get_item(tokens, 0)
+  print t
+"#;
+        let c_code = compile_ore_to_c(src);
+        // Should cast through ore_enum_Token*
+        assert!(
+            c_code.contains("ore_enum_Token"),
+            "Expected ore_enum_Token in generated C code, got:\n{}",
+            c_code
+        );
+    }
+
+    #[test]
+    fn kind_to_type_name_returns_record_name() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_type_name(&ValKind::Record("Foo".to_string())), "Foo");
+    }
+
+    #[test]
+    fn kind_to_type_name_returns_enum_name() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_type_name(&ValKind::Enum("Bar".to_string())), "Bar");
+    }
+}
