@@ -12208,3 +12208,62 @@ fn runtime_fn_sync_check() {
         missing.join("\n  ")
     );
 }
+
+// ---------------------------------------------------------------------------
+// Native test files: run `ore test` on each native/test_*.ore file
+// ---------------------------------------------------------------------------
+
+fn native_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent().unwrap()  // crates/
+        .parent().unwrap()  // ore/
+        .join("native")
+}
+
+fn run_ore_test(file: &str) {
+    let path = native_dir().join(file);
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore test");
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !output.status.success() {
+        panic!("ore test failed for {}:\n{}", file, stderr);
+    }
+}
+
+#[test]
+fn native_test_ast() {
+    run_ore_test("test_ast.ore");
+}
+
+#[test]
+fn native_test_codegen() {
+    run_ore_test("test_codegen.ore");
+}
+
+#[test]
+fn native_test_lexer() {
+    run_ore_test("test_lexer.ore");
+}
+
+#[test]
+fn native_test_main() {
+    run_ore_test("test_main.ore");
+}
+
+#[test]
+fn native_test_parser() {
+    run_ore_test("test_parser.ore");
+}
+
+#[test]
+fn native_test_typecheck() {
+    run_ore_test("test_typecheck.ore");
+}
+
+#[test]
+fn native_test_types() {
+    run_ore_test("test_types.ore");
+}
