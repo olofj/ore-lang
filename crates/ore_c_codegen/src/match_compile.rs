@@ -440,12 +440,35 @@ impl CCodeGen {
         let (obj_val, obj_kind) = self.compile_expr(object)?;
         let type_name = match &obj_kind {
             ValKind::Record(name) => name.clone(),
-            _ => return Err(self.err("field access on non-record type")),
+            _ => {
+                // Fallback: infer record type by searching all records for this field
+                self.infer_record_type_by_field(field)
+                    .ok_or_else(|| self.err(format!("field access '{}' on non-record type {:?}", field, obj_kind)))?
+            }
         };
         let info = self.records.get(&type_name).ok_or_else(|| self.err(format!("undefined type '{}'", type_name)))?;
         let idx = info.field_names.iter().position(|n| n == field)
             .ok_or_else(|| self.err(format!("unknown field '{}' on type '{}'", field, type_name)))?;
         let field_kind = info.field_kinds[idx].clone();
-        Ok((format!("{}.{}", obj_val, field), field_kind))
+        // When the object kind was not Record, we need to cast from i64 to the struct
+        let obj_expr = if matches!(&obj_kind, ValKind::Record(_)) {
+            obj_val
+        } else {
+            let c_type = format!("struct ore_rec_{}", Self::mangle_name(&type_name));
+            format!("*({c_type}*)(intptr_t)({obj_val})")
+        };
+        Ok((format!("{}.{}", obj_expr, field), field_kind))
+    }
+
+    /// Search all registered records for one that has the given field name.
+    /// Returns Some(type_name) if exactly one record has it, or the first match if multiple do.
+    fn infer_record_type_by_field(&self, field: &str) -> Option<String> {
+        let mut matches = Vec::new();
+        for (name, info) in &self.records {
+            if info.field_names.iter().any(|f| f == field) {
+                matches.push(name.clone());
+            }
+        }
+        matches.first().cloned()
     }
 }
