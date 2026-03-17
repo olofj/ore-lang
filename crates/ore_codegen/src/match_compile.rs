@@ -363,6 +363,66 @@ impl<'ctx> CodeGen<'ctx> {
         self.build_match_phi(merge_bb, &branch_results, result_kind, &format!("{}_val", prefix))
     }
 
+    /// Compile guard check + body expression + branch to merge for a match arm.
+    /// Positions the builder at `else_bb` afterwards.
+    fn compile_arm_body(
+        &mut self,
+        arm: &MatchArm,
+        func: FunctionValue<'ctx>,
+        else_bb: inkwell::basic_block::BasicBlock<'ctx>,
+        merge_bb: inkwell::basic_block::BasicBlock<'ctx>,
+        guard_label: &str,
+        branch_results: &mut BranchResults<'ctx>,
+    ) -> Result<ValKind, CodeGenError> {
+        if let Some(guard) = &arm.guard {
+            let (guard_val, _) = self.compile_expr_with_kind(guard, func)?;
+            let guard_bool = guard_val.into_int_value();
+            let body_bb = self.context.append_basic_block(func, guard_label);
+            bld!(self.builder.build_conditional_branch(guard_bool, body_bb, else_bb))?;
+            self.builder.position_at_end(body_bb);
+        }
+        let (body_val, bk) = self.compile_expr_with_kind(&arm.body, func)?;
+        if self.current_block()?.get_terminator().is_none() {
+            bld!(self.builder.build_unconditional_branch(merge_bb))?;
+        }
+        let end_bb = self.current_block()?;
+        branch_results.push((body_val, end_bb));
+        self.builder.position_at_end(else_bb);
+        Ok(bk)
+    }
+
+    /// Compile a wildcard or variable-binding arm in a literal match.
+    fn compile_wildcard_literal_arm(
+        &mut self,
+        arm: &MatchArm,
+        subject_val: BasicValueEnum<'ctx>,
+        subject_kind: &ValKind,
+        func: FunctionValue<'ctx>,
+        else_bb: inkwell::basic_block::BasicBlock<'ctx>,
+        merge_bb: inkwell::basic_block::BasicBlock<'ctx>,
+        guard_label: &str,
+        branch_results: &mut BranchResults<'ctx>,
+    ) -> Result<ValKind, CodeGenError> {
+        // Bind variable if it's a named pattern (not wildcard)
+        let saved_vars = if let Pattern::Variant { name, .. } = &arm.pattern {
+            let saved = self.variables.clone();
+            let ty = self.kind_to_llvm_type(subject_kind);
+            let alloca = bld!(self.builder.build_alloca(ty, name))?;
+            bld!(self.builder.build_store(alloca, subject_val))?;
+            self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: subject_kind.clone(), is_mutable: false });
+            Some(saved)
+        } else {
+            None
+        };
+
+        let bk = self.compile_arm_body(arm, func, else_bb, merge_bb, guard_label, branch_results)?;
+
+        if let Some(saved) = saved_vars {
+            self.variables = saved;
+        }
+        Ok(bk)
+    }
+
     pub(crate) fn compile_literal_match(
         &mut self,
         subject_val: BasicValueEnum<'ctx>,
@@ -370,91 +430,36 @@ impl<'ctx> CodeGen<'ctx> {
         arms: &[MatchArm],
         func: FunctionValue<'ctx>,
     ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
-        // Chain of if-else comparisons for literal patterns
-        // Uses phi nodes to handle any result type (including enums/structs)
         let merge_bb = self.context.append_basic_block(func, "lmatch_merge");
 
         let mut result_kind = ValKind::Int;
         let mut has_wildcard = false;
-        let mut branch_results: Vec<(BasicValueEnum<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)> = Vec::new();
+        let mut branch_results: BranchResults<'ctx> = Vec::new();
 
         for (i, arm) in arms.iter().enumerate() {
-            // Always create a separate else block (never reuse merge_bb directly)
-            // because phi nodes require every predecessor to have an incoming value
             let else_bb = self.context.append_basic_block(func, &format!("lmatch_next_{}", i));
 
-            // Check if pattern is a variable binding (identifier that's not a known variant)
             let is_var_binding = matches!(&arm.pattern, Pattern::Variant { name, bindings }
                 if bindings.is_empty() && !self.variant_to_enum.contains_key(name));
 
-            match &arm.pattern {
-                _ if is_var_binding || matches!(&arm.pattern, Pattern::Wildcard) => {
-                    has_wildcard = true;
+            if is_var_binding || matches!(&arm.pattern, Pattern::Wildcard) {
+                has_wildcard = true;
+                result_kind = self.compile_wildcard_literal_arm(
+                    arm, subject_val, subject_kind, func,
+                    else_bb, merge_bb, &format!("lmatch_wguard_{}", i),
+                    &mut branch_results,
+                )?;
+            } else {
+                let cmp = self.compile_pattern_cmp(subject_val, subject_kind, &arm.pattern, func)?;
+                let then_bb = self.context.append_basic_block(func, &format!("lmatch_arm_{}", i));
+                bld!(self.builder.build_conditional_branch(cmp, then_bb, else_bb))?;
+                self.builder.position_at_end(then_bb);
 
-                    // Bind variable if it's a named pattern (not wildcard)
-                    let saved_vars = if let Pattern::Variant { name, .. } = &arm.pattern {
-                        let saved = self.variables.clone();
-                        let ty = self.kind_to_llvm_type(subject_kind);
-                        let alloca = bld!(self.builder.build_alloca(ty, name))?;
-                        bld!(self.builder.build_store(alloca, subject_val))?;
-                        self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: subject_kind.clone(), is_mutable: false });
-                        Some(saved)
-                    } else {
-                        None
-                    };
-
-                    // Wildcard/variable with guard: check guard, fall through if false
-                    if let Some(guard) = &arm.guard {
-                        let (guard_val, _) = self.compile_expr_with_kind(guard, func)?;
-                        let guard_bool = guard_val.into_int_value();
-                        let body_bb = self.context.append_basic_block(func, &format!("lmatch_wguard_{}", i));
-                        bld!(self.builder.build_conditional_branch(guard_bool, body_bb, else_bb))?;
-                        self.builder.position_at_end(body_bb);
-                    }
-                    let (body_val, bk) = self.compile_expr_with_kind(&arm.body, func)?;
-                    result_kind = bk;
-                    if self.current_block()?.get_terminator().is_none() {
-                        bld!(self.builder.build_unconditional_branch(merge_bb))?;
-                    }
-                    let end_bb = self.current_block()?;
-                    branch_results.push((body_val, end_bb));
-
-                    // Restore variables
-                    if let Some(saved) = saved_vars {
-                        self.variables = saved;
-                    }
-
-                    self.builder.position_at_end(else_bb);
-                }
-                _ => {
-                    // Build comparison
-                    let cmp = self.compile_pattern_cmp(subject_val, subject_kind, &arm.pattern, func)?;
-
-                    let then_bb = self.context.append_basic_block(func, &format!("lmatch_arm_{}", i));
-
-                    bld!(self.builder.build_conditional_branch(cmp, then_bb, else_bb))?;
-
-                    self.builder.position_at_end(then_bb);
-
-                    // Guard condition: if guard fails, jump to else_bb
-                    if let Some(guard) = &arm.guard {
-                        let (guard_val, _) = self.compile_expr_with_kind(guard, func)?;
-                        let guard_bool = guard_val.into_int_value();
-                        let body_bb = self.context.append_basic_block(func, &format!("lmatch_guarded_{}", i));
-                        bld!(self.builder.build_conditional_branch(guard_bool, body_bb, else_bb))?;
-                        self.builder.position_at_end(body_bb);
-                    }
-
-                    let (body_val, bk) = self.compile_expr_with_kind(&arm.body, func)?;
-                    result_kind = bk;
-                    if self.current_block()?.get_terminator().is_none() {
-                        bld!(self.builder.build_unconditional_branch(merge_bb))?;
-                    }
-                    let end_bb = self.current_block()?;
-                    branch_results.push((body_val, end_bb));
-
-                    self.builder.position_at_end(else_bb);
-                }
+                result_kind = self.compile_arm_body(
+                    arm, func, else_bb, merge_bb,
+                    &format!("lmatch_guarded_{}", i),
+                    &mut branch_results,
+                )?;
             }
         }
 
