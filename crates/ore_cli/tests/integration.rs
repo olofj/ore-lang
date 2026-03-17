@@ -12209,6 +12209,15 @@ fn runtime_fn_sync_check() {
     );
 }
 
+#[test]
+fn builtins_args() {
+    let out = run_ore("builtins/args.ore");
+    assert!(out.contains("arg count:"));
+    // args() returns std::env::args() which includes the binary, "run", and the file path
+    let count: i64 = out.trim().strip_prefix("arg count: ").unwrap().parse().unwrap();
+    assert!(count >= 1, "expected at least 1 arg, got {}", count);
+}
+
 // ---------------------------------------------------------------------------
 // Native test files: run `ore test` on each native/test_*.ore file
 // ---------------------------------------------------------------------------
