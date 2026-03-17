@@ -350,10 +350,17 @@ impl CCodeGen {
         self.break_labels.push(break_label.clone());
         self.continue_labels.push(continue_label.clone());
 
-        let (cond_val, _) = self.compile_expr(cond)?;
+        // Use for(;;) with condition re-evaluation each iteration.
+        // This is necessary because compile_expr may emit setup code
+        // (e.g. short-circuit evaluation for `and`/`or`) that must run
+        // every iteration, not just once before the loop.
         self.emit(&format!("{}:;", continue_label));
-        self.emit(&format!("while ({}) {{", cond_val));
+        self.emit("for (;;) {");
         self.indent += 1;
+
+        // Evaluate condition at the top of each iteration
+        let (cond_val, _) = self.compile_expr(cond)?;
+        self.emit(&format!("if (!({cond_val})) goto {break_label};"));
 
         self.compile_block_stmts(body)?;
 

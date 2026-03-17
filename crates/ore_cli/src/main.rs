@@ -906,8 +906,7 @@ fn build_file_c(path: &Path, output: &Path) -> Result<(), String> {
         return Err(format!("C compiler '{}' failed with {}:\n{}", compiler, cc_output.status, stderr));
     }
 
-    // Clean up temp C file
-    let _ = std::fs::remove_file(&c_path);
+    // Keep temp C file for debugging (do NOT remove)
 
     eprintln!("compiled to {} (via C backend)", output.display());
     Ok(())
