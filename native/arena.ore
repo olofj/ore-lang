@@ -79,3 +79,6 @@ fn get_variant_def pool:List id:Int -> VariantDef
 
 fn get_param_def pool:List id:Int -> ParamDef
   pool[id]
+
+fn get_type_param_def pool:List id:Int -> TypeParamDef
+  pool[id]

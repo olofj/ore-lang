@@ -1003,12 +1003,12 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
   if gf_list.len() == 0
     cg_error(st, "generic function not found: {fname}")
     return ["0", "int"]
-  gf := gf_list[0]
+  gf := get_fn_def(gf_list, 0)
   -- Extract type parameter names
   tp_list := gf.type_params
   mut tp_names := []
   for i in 0..tp_list.len()
-    tpd := tp_list[i]
+    tpd := get_type_param_def(tp_list, i)
     tp_names.push(tpd.name)
   -- Infer type param -> kind mapping from arguments
   mut type_map_keys := []
@@ -1024,7 +1024,7 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
               type_map_keys.push(ptn)
               type_map_vals.push(str_at(arg_kinds, i))
         _ ->
-          st = st
+          0
   -- Generate mangled name: fname__Suffix1_Suffix2
   mut suffixes := []
   for i in 0..tp_names.len()
@@ -1034,7 +1034,8 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
       if str_at(type_map_keys, j) == tpn
         found_kind = str_at(type_map_vals, j)
     suffixes.push(kind_to_suffix(found_kind))
-  mono_name := "{fname}__{suffixes.join(\"_\")}"
+  uscore := "_"
+  mono_name := "{fname}__{suffixes.join(uscore)}"
   -- Compile monomorphized version if not cached
   if not cg_has_mono(st, mono_name)
     cg_add_mono(st, mono_name)
@@ -1049,7 +1050,7 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
           if resolved != ptn
             new_ty = NamedType(name: resolved)
         _ ->
-          st = st
+          0
       mono_params.push(ParamDef(name: p.name, ty: new_ty, default_expr: p.default_expr))
     -- Resolve return type
     mut mono_ret := gf.ret_type
@@ -1059,7 +1060,7 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
         if resolved != rtn
           mono_ret = NamedType(name: resolved)
       _ ->
-        st = st
+        0
     mono_fn := FnDef(name: mono_name, type_params: [], params: mono_params, ret_type: mono_ret, body: gf.body)
     -- Compile the monomorphized function with save/restore
     -- Save current lines and indent, compile into fresh lines, then move to deferred
@@ -2370,7 +2371,7 @@ fn compile_item st:List exprs:List stmts:List item:Item
       compile_fn_def(st, exprs, stmts, test_fn)
     UseItem path ->
       -- Use items are resolved at the driver level (source merging), skip
-      st = st
+      0
     ImplBlockItem type_name methods ->
       compile_impl_methods(st, exprs, stmts, type_name, methods)
     ImplTraitItem trait_name type_name methods ->
@@ -2418,7 +2419,7 @@ fn generate items:List exprs:List stmts:List -> Str
           cg_set_fn(st, mangled.name, ret_kind)
       _ ->
         -- skip other items in first pass
-        st = st
+        0
   -- Emit header
   emit_runtime_decls(st)
   -- Emit top-level definitions (records, enums)
@@ -2443,7 +2444,7 @@ fn generate items:List exprs:List stmts:List -> Str
       ImplTraitItem trait_name type_name methods ->
         compile_impl_methods(st, exprs, stmts, type_name, methods)
       _ ->
-        st = st
+        0
   fn_lines := cg_list(st, 0)
   -- Reassemble: header + forward decls + deferred mono fns + regular fns
   st[0] = header_lines
