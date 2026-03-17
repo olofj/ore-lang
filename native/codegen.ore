@@ -12,7 +12,8 @@ use types
 --                   forward_decls, top_level, errors,
 --                   record_names, record_field_names, record_field_counts,
 --                   enum_names, enum_variant_names, enum_variant_counts,
---                   variant_to_enum_name, break_labels, continue_labels]
+--                   variant_to_enum_name, break_labels, continue_labels,
+--                   generic_fn_names, generic_fn_defs, mono_cache]
 -- Indices:
 --   0: lines (List[Str])
 --   1: [indent] (List[Int], single element)
@@ -34,6 +35,12 @@ use types
 --  17: variant_to_enum (List[Str]) -- "VariantName:EnumName"
 --  18: break_labels (List[Str])
 --  19: continue_labels (List[Str])
+--  20: generic_fn_names (List[Str]) -- names of generic functions
+--  21: generic_fn_defs (List[FnDef]) -- corresponding FnDef objects
+--  22: mono_cache (List[Str]) -- mangled names of already-monomorphized functions
+--  23: exprs_pool (List, the exprs arena)
+--  24: stmts_pool (List, the stmts arena)
+--  25: deferred_fns (List[Str]) -- lines for monomorphized functions emitted out-of-order
 
 fn cg_new -> List
   mut st := []
@@ -57,6 +64,12 @@ fn cg_new -> List
   st.push([])       -- 17: variant_to_enum
   st.push([])       -- 18: break_labels
   st.push([])       -- 19: continue_labels
+  st.push([])       -- 20: generic_fn_names
+  st.push([])       -- 21: generic_fn_defs
+  st.push([])       -- 22: mono_cache
+  st.push([])       -- 23: exprs_pool (set later)
+  st.push([])       -- 24: stmts_pool (set later)
+  st.push([])       -- 25: deferred_fns
   st
 
 fn cg_list st:List idx:Int -> List
@@ -185,6 +198,37 @@ fn cg_has_fn st:List name:Str -> Bool
       return true
   false
 
+-- ── Generic function tracking ──
+
+fn cg_add_generic_fn st:List name:Str fd:FnDef
+  cg_list(st, 20).push(name)
+  cg_list(st, 21).push(fd)
+
+fn cg_get_generic_fn st:List name:Str -> List
+  names := cg_list(st, 20)
+  defs := cg_list(st, 21)
+  for i in 0..names.len()
+    if str_at(names, i) == name
+      return [defs[i]]
+  []
+
+fn cg_has_generic_fn st:List name:Str -> Bool
+  names := cg_list(st, 20)
+  for i in 0..names.len()
+    if str_at(names, i) == name
+      return true
+  false
+
+fn cg_has_mono st:List mono_name:Str -> Bool
+  cache := cg_list(st, 22)
+  for i in 0..cache.len()
+    if str_at(cache, i) == mono_name
+      return true
+  false
+
+fn cg_add_mono st:List mono_name:Str
+  cg_list(st, 22).push(mono_name)
+
 -- ── Record/Enum tracking ──
 
 fn cg_add_record st:List name:Str fields_str:Str count:Int
@@ -284,6 +328,56 @@ fn type_expr_to_kind_str st:List te:TypeExpr -> Str
     _ ->
       return "int"
   "int"
+
+-- ── Monomorphization helpers ──
+
+fn kind_to_suffix kind:Str -> Str
+  if kind == "int"
+    return "Int"
+  if kind == "float"
+    return "Float"
+  if kind == "bool"
+    return "Bool"
+  if kind == "str"
+    return "Str"
+  if kind == "void"
+    return "Void"
+  if kind == "list"
+    return "List"
+  if kind == "map"
+    return "Map"
+  if kind == "option"
+    return "Option"
+  if kind == "result"
+    return "Result"
+  if kind.starts_with("rec:")
+    n := kind.substr(4, kind.len() - 4)
+    return "Rec_{n}"
+  if kind.starts_with("enum:")
+    n := kind.substr(5, kind.len() - 5)
+    return "Enum_{n}"
+  "Int"
+
+fn kind_str_to_type_name kind:Str -> Str
+  if kind == "int"
+    return "Int"
+  if kind == "float"
+    return "Float"
+  if kind == "bool"
+    return "Bool"
+  if kind == "str"
+    return "Str"
+  if kind == "void"
+    return "Void"
+  if kind == "list"
+    return "List"
+  if kind == "map"
+    return "Map"
+  if kind == "option"
+    return "Option"
+  if kind == "result"
+    return "Result"
+  "Int"
 
 -- ── C reserved word mangling ──
 
@@ -892,11 +986,121 @@ fn compile_fn_call_with_args st:List fname:Str arg_strs:List arg_kinds:List -> L
   en := cg_variant_enum(st, fname)
   if en != ""
     return compile_variant_call(st, fname, en, arg_strs, arg_kinds)
+  -- Check for generic function monomorphization
+  if cg_has_generic_fn(st, fname)
+    return compile_generic_call(st, fname, arg_strs, arg_kinds)
   -- Regular function call
   mn := mangle_fn(fname)
   all_args := arg_strs.join(", ")
   ret_kind := cg_get_fn_ret(st, fname)
   ["{mn}({all_args})", ret_kind]
+
+-- ── Generic function monomorphization ──
+
+fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
+  -- Look up the generic FnDef
+  gf_list := cg_get_generic_fn(st, fname)
+  if gf_list.len() == 0
+    cg_error(st, "generic function not found: {fname}")
+    return ["0", "int"]
+  gf := gf_list[0]
+  -- Extract type parameter names
+  tp_list := gf.type_params
+  mut tp_names := []
+  for i in 0..tp_list.len()
+    tpd := tp_list[i]
+    tp_names.push(tpd.name)
+  -- Infer type param -> kind mapping from arguments
+  mut type_map_keys := []
+  mut type_map_vals := []
+  params := gf.params
+  for i in 0..params.len()
+    if i < arg_kinds.len()
+      p := get_param_def(params, i)
+      match p.ty
+        NamedType ptn ->
+          if list_contains_str(tp_names, ptn)
+            if not list_contains_str(type_map_keys, ptn)
+              type_map_keys.push(ptn)
+              type_map_vals.push(str_at(arg_kinds, i))
+        _ ->
+          st = st
+  -- Generate mangled name: fname__Suffix1_Suffix2
+  mut suffixes := []
+  for i in 0..tp_names.len()
+    tpn := str_at(tp_names, i)
+    mut found_kind := "int"
+    for j in 0..type_map_keys.len()
+      if str_at(type_map_keys, j) == tpn
+        found_kind = str_at(type_map_vals, j)
+    suffixes.push(kind_to_suffix(found_kind))
+  mono_name := "{fname}__{suffixes.join(\"_\")}"
+  -- Compile monomorphized version if not cached
+  if not cg_has_mono(st, mono_name)
+    cg_add_mono(st, mono_name)
+    -- Build monomorphized FnDef with concrete types
+    mut mono_params := []
+    for i in 0..params.len()
+      p := get_param_def(params, i)
+      mut new_ty := p.ty
+      match p.ty
+        NamedType ptn ->
+          resolved := resolve_type_param(ptn, type_map_keys, type_map_vals)
+          if resolved != ptn
+            new_ty = NamedType(name: resolved)
+        _ ->
+          st = st
+      mono_params.push(ParamDef(name: p.name, ty: new_ty, default_expr: p.default_expr))
+    -- Resolve return type
+    mut mono_ret := gf.ret_type
+    match gf.ret_type
+      NamedType rtn ->
+        resolved := resolve_type_param(rtn, type_map_keys, type_map_vals)
+        if resolved != rtn
+          mono_ret = NamedType(name: resolved)
+      _ ->
+        st = st
+    mono_fn := FnDef(name: mono_name, type_params: [], params: mono_params, ret_type: mono_ret, body: gf.body)
+    -- Compile the monomorphized function with save/restore
+    -- Save current lines and indent, compile into fresh lines, then move to deferred
+    saved_lines := cg_list(st, 0)
+    saved_indent := cg_indent(st)
+    saved_var_names := cg_list(st, 4)
+    saved_var_kinds := cg_list(st, 5)
+    st[0] = []
+    cg_set_indent(st, 0)
+    st[4] = []
+    st[5] = []
+    exprs := cg_list(st, 23)
+    stmts := cg_list(st, 24)
+    compile_fn_def(st, exprs, stmts, mono_fn)
+    -- Move compiled lines to deferred_fns
+    mono_lines := cg_list(st, 0)
+    deferred := cg_list(st, 25)
+    for i in 0..mono_lines.len()
+      deferred.push(mono_lines[i])
+    -- Restore original state
+    st[0] = saved_lines
+    cg_set_indent(st, saved_indent)
+    st[4] = saved_var_names
+    st[5] = saved_var_kinds
+  -- Call the monomorphized function
+  mn := mangle_fn(mono_name)
+  all_args := arg_strs.join(", ")
+  ret_kind := cg_get_fn_ret(st, mono_name)
+  ["{mn}({all_args})", ret_kind]
+
+fn resolve_type_param name:Str keys:List vals:List -> Str
+  for i in 0..keys.len()
+    if str_at(keys, i) == name
+      return kind_str_to_type_name(str_at(vals, i))
+  name
+
+fn list_contains_str lst:List s:Str -> Bool
+  for i in 0..lst.len()
+    if str_at(lst, i) == s
+      return true
+  false
 
 -- ── Variant constructor call ──
 
@@ -2179,7 +2383,10 @@ fn compile_item st:List exprs:List stmts:List item:Item
 
 fn generate items:List exprs:List stmts:List -> Str
   mut st := cg_new()
-  -- First pass: collect type definitions
+  -- Store exprs/stmts pools in state for monomorphization
+  st[23] = exprs
+  st[24] = stmts
+  -- First pass: collect type definitions and register functions
   for i in 0..items.len()
     item := get_item(items, i)
     match item
@@ -2188,9 +2395,13 @@ fn generate items:List exprs:List stmts:List -> Str
       EnumDefItem enum_def ->
         compile_enum_def(st, enum_def)
       FnDefItem fn_def ->
-        -- Pre-register functions so calls resolve
-        ret_kind := type_expr_to_kind_str(st, fn_def.ret_type)
-        cg_set_fn(st, fn_def.name, ret_kind)
+        if fn_def.type_params.len() > 0
+          -- Generic function: store for monomorphization, don't compile
+          cg_add_generic_fn(st, fn_def.name, fn_def)
+        else
+          -- Pre-register functions so calls resolve
+          ret_kind := type_expr_to_kind_str(st, fn_def.ret_type)
+          cg_set_fn(st, fn_def.name, ret_kind)
       ImplBlockItem type_name methods ->
         -- Pre-register impl methods
         for j in 0..methods.len()
@@ -2214,19 +2425,17 @@ fn generate items:List exprs:List stmts:List -> Str
   top := cg_list(st, 9)
   for i in 0..top.len()
     emit_raw(st, top[i])
-  -- Emit forward declarations
-  fwd := cg_list(st, 8)
-  if fwd.len() > 0
-    emit_raw(st, "// Forward declarations")
-    for i in 0..fwd.len()
-      emit_raw(st, fwd[i])
-    emit_raw(st, "")
-  -- Second pass: compile functions and other items
+  -- Second pass: compile functions (skip generic — they're monomorphized on demand)
+  -- We compile into a separate list, then prepend forward decls
+  -- Save current lines (header + top-level defs), compile into fresh lines
+  header_lines := cg_list(st, 0)
+  st[0] = []
   for i in 0..items.len()
     item := get_item(items, i)
     match item
       FnDefItem fn_def ->
-        compile_fn_def(st, exprs, stmts, fn_def)
+        if fn_def.type_params.len() == 0
+          compile_fn_def(st, exprs, stmts, fn_def)
       TestDefItem name body ->
         compile_item(st, exprs, stmts, items[i])
       ImplBlockItem type_name methods ->
@@ -2234,7 +2443,23 @@ fn generate items:List exprs:List stmts:List -> Str
       ImplTraitItem trait_name type_name methods ->
         compile_impl_methods(st, exprs, stmts, type_name, methods)
       _ ->
-        -- Type/enum defs already handled
         st = st
+  fn_lines := cg_list(st, 0)
+  -- Reassemble: header + forward decls + deferred mono fns + regular fns
+  st[0] = header_lines
+  -- Emit all forward declarations (including those from monomorphized functions)
+  fwd := cg_list(st, 8)
+  if fwd.len() > 0
+    emit_raw(st, "// Forward declarations")
+    for i in 0..fwd.len()
+      emit_raw(st, fwd[i])
+    emit_raw(st, "")
+  -- Emit monomorphized function bodies
+  deferred := cg_list(st, 25)
+  for i in 0..deferred.len()
+    emit_raw(st, deferred[i])
+  -- Emit regular function bodies
+  for i in 0..fn_lines.len()
+    emit_raw(st, fn_lines[i])
   -- Collect all lines
   cg_lines(st).join("\n")
