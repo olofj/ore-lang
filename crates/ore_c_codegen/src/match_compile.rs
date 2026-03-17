@@ -231,7 +231,13 @@ impl CCodeGen {
                     .collect::<Result<_, _>>()?;
                 Ok(format!("({})", cmps.join(" || ")))
             }
-            _ => Err(self.err("unsupported pattern")),
+            Pattern::FloatLit(f) => {
+                // Format float; ensure it has a decimal point for C
+                let s = if f.fract() == 0.0 { format!("{}.0", f) } else { format!("{}", f) };
+                Ok(format!("({} == {})", subject, s))
+            }
+            Pattern::Wildcard => Ok("1".to_string()),
+            Pattern::Variant { name, .. } => Err(self.err(&format!("unsupported pattern Variant({}) in compile_pattern_cmp", name))),
         }
     }
 
