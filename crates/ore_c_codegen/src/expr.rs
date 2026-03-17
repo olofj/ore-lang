@@ -54,11 +54,10 @@ impl CCodeGen {
                     return self.compile_variant_construct(name, &[]);
                 }
                 // Check if it's a function reference
-                if !self.variables.contains_key(name) {
-                    if self.functions.contains_key(name) {
+                if !self.variables.contains_key(name)
+                    && self.functions.contains_key(name) {
                         return Ok((format!("(void*)&{}", Self::mangle_fn_name(name)), ValKind::Int));
                     }
-                }
                 let kind = self.get_var_kind(name);
                 // Use the mangled C name from VarInfo if available
                 let c_name = self.variables.get(name)
@@ -210,7 +209,7 @@ impl CCodeGen {
                     let c_fn_name = Self::mangle_fn_name(&name);
                     let mut arg_strs = Vec::new();
                     for (i, arg) in args.iter().enumerate() {
-                        let (a, ak) = self.compile_expr(arg)?;
+                        let (a, _ak) = self.compile_expr(arg)?;
                         // Cast function pointers to int64_t when parameter expects Int
                         let param_kind = fn_info.param_kinds.get(i);
                         if param_kind == Some(&ValKind::Int) && a.starts_with("(void*)&") {
@@ -585,7 +584,7 @@ impl CCodeGen {
         }
         // Generate mangled name based on concrete types
         let type_suffix: Vec<String> = type_param_names.iter()
-            .map(|tp| type_map.get(tp).map(|k| Self::kind_to_suffix(k)).unwrap_or_else(|| "Int".to_string()))
+            .map(|tp| type_map.get(tp).map(Self::kind_to_suffix).unwrap_or_else(|| "Int".to_string()))
             .collect();
         let mono_name = format!("{}__{}", name, type_suffix.join("_"));
         // Check if already instantiated
