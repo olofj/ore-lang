@@ -172,24 +172,29 @@ fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<S
     }
 }
 
+/// Result of capture analysis for a lambda.
+struct CaptureAnalysis {
+    names: Vec<String>,
+    kinds: Vec<ValKind>,
+    has_captures: bool,
+    params_str: String,
+    struct_name: Option<String>,
+}
+
 impl CCodeGen {
-    /// Compile a lambda expression, emitting the function body to lambda_bodies.
-    /// Returns (C expression for function pointer, ValKind).
-    /// Supports closures: detects free variables, creates capture struct, passes env_ptr.
-    pub(crate) fn compile_lambda(
+    /// Analyze captures and emit the capture struct definition.
+    ///
+    /// Detects free variables in the lambda body, filters to those in scope,
+    /// builds the C function signature, and emits the captures struct if needed.
+    fn resolve_captures(
         &mut self,
+        lambda_name: &str,
         params: &[String],
         body: &Expr,
-        param_kinds: std::option::Option<&[ValKind]>,
-    ) -> Result<(String, ValKind), CCodeGenError> {
-        let name = format!("__lambda_{}", self.lambda_counter);
-        self.lambda_counter += 1;
-
-        // Detect free variables (captures)
+    ) -> CaptureAnalysis {
         let bound: HashSet<String> = params.iter().cloned().collect();
         let free_vars = find_free_vars(body, &bound);
 
-        // Filter to only variables that exist in the current scope
         let mut capture_names = Vec::new();
         let mut capture_kinds = Vec::new();
         for fv in &free_vars {
@@ -211,9 +216,9 @@ impl CCodeGen {
         let params_str = if param_strs.is_empty() { "void".to_string() } else { param_strs.join(", ") };
 
         // Emit capture struct definition if needed
-        let captures_struct_name = if has_captures {
-            let struct_name = format!("__captures_{}", name);
-            let mut struct_def = format!("struct {} {{\n", struct_name);
+        let struct_name = if has_captures {
+            let sn = format!("__captures_{}", lambda_name);
+            let mut struct_def = format!("struct {} {{\n", sn);
             for (cap_name, cap_kind) in capture_names.iter().zip(capture_kinds.iter()) {
                 let c_type = self.kind_to_c_type_str(cap_kind);
                 struct_def.push_str(&format!("    {} {};\n", c_type, cap_name));
@@ -221,25 +226,28 @@ impl CCodeGen {
             struct_def.push_str("};");
             self.top_level.push(struct_def);
             self.top_level.push(String::new());
-            Some(struct_name)
+            Some(sn)
         } else {
             None
         };
 
-        // Save state
-        let saved_vars = self.variables.clone();
-        let saved_lines = std::mem::take(&mut self.lines);
-        let saved_indent = self.indent;
+        CaptureAnalysis { names: capture_names, kinds: capture_kinds, has_captures, params_str, struct_name }
+    }
 
-        // Set up lambda body compilation
-        self.variables.clear();
-        self.indent = 1;
-
-        // Extract captured variables from env_ptr at the start of the lambda body
-        if has_captures {
-            let struct_name = captures_struct_name.as_ref().unwrap();
+    /// Emit capture extraction and parameter binding at the start of a lambda body.
+    ///
+    /// Generates code to unpack captured variables from the env_ptr and bind
+    /// lambda parameters with appropriate type conversions.
+    fn emit_capture_body_setup(
+        &mut self,
+        captures: &CaptureAnalysis,
+        params: &[String],
+        param_kinds: Option<&[ValKind]>,
+    ) {
+        if captures.has_captures {
+            let struct_name = captures.struct_name.as_ref().unwrap();
             self.emit(&format!("struct {}* __cap = (struct {}*)__env;", struct_name, struct_name));
-            for (cap_name, cap_kind) in capture_names.iter().zip(capture_kinds.iter()) {
+            for (cap_name, cap_kind) in captures.names.iter().zip(captures.kinds.iter()) {
                 let c_type = self.kind_to_c_type_str(cap_kind);
                 self.emit(&format!("{} {} = __cap->{};", c_type, cap_name, cap_name));
                 self.variables.insert(cap_name.clone(), VarInfo {
@@ -253,7 +261,6 @@ impl CCodeGen {
         for (i, p) in params.iter().enumerate() {
             let kind = param_kinds.and_then(|k| k.get(i).cloned()).unwrap_or(ValKind::Int);
 
-            // For pointer-based types, emit a conversion from i64 to the correct type
             match &kind {
                 ValKind::Str | ValKind::List(_) | ValKind::Map(_) => {
                     let typed_name = format!("{}_typed", p);
@@ -282,14 +289,79 @@ impl CCodeGen {
                 }
             }
         }
+    }
+
+    /// Emit the lambda function definition, register it, and build caller-side captures.
+    ///
+    /// Pushes the function body and forward declaration, registers the function,
+    /// and if the lambda has captures, emits the caller-side capture struct
+    /// initialization. Returns the C expression for the function pointer.
+    fn emit_lambda_and_register(
+        &mut self,
+        name: &str,
+        captures: &CaptureAnalysis,
+        params: &[String],
+        body_lines: Vec<String>,
+        ret_kind: &ValKind,
+    ) -> (String, ValKind) {
+        self.lambda_bodies.push(format!("int64_t {}({}) {{", name, captures.params_str));
+        self.lambda_bodies.extend(body_lines);
+        self.lambda_bodies.push("}".to_string());
+        self.lambda_bodies.push(String::new());
+
+        self.forward_decls.push(format!("int64_t {}({});", name, captures.params_str));
+
+        self.functions.insert(name.to_string(), FnInfo {
+            ret_kind: ret_kind.clone(),
+            param_kinds: vec![ValKind::Int; params.len()],
+        });
+
+        if captures.has_captures {
+            self.lambda_captures.insert(name.to_string(), captures.names.iter().zip(captures.kinds.iter()).map(|(n, k)| (n.clone(), k.clone())).collect());
+
+            let struct_name = captures.struct_name.as_ref().unwrap();
+            let cap_var = self.tmp();
+            self.emit(&format!("struct {} {};", struct_name, cap_var));
+            for cap_name in &captures.names {
+                let c_name = self.variables.get(cap_name)
+                    .map(|v| v.c_name.clone())
+                    .unwrap_or_else(|| cap_name.clone());
+                self.emit(&format!("{}.{} = {};", cap_var, cap_name, c_name));
+            }
+            (format!("__closure_{}|{}", name, cap_var), ret_kind.clone())
+        } else {
+            (format!("(void*)&{}", name), ret_kind.clone())
+        }
+    }
+
+    /// Compile a lambda expression, emitting the function body to lambda_bodies.
+    /// Returns (C expression for function pointer, ValKind).
+    /// Supports closures: detects free variables, creates capture struct, passes env_ptr.
+    pub(crate) fn compile_lambda(
+        &mut self,
+        params: &[String],
+        body: &Expr,
+        param_kinds: std::option::Option<&[ValKind]>,
+    ) -> Result<(String, ValKind), CCodeGenError> {
+        let name = format!("__lambda_{}", self.lambda_counter);
+        self.lambda_counter += 1;
+
+        let captures = self.resolve_captures(&name, params, body);
+
+        // Save state and set up lambda body compilation
+        let saved_vars = self.variables.clone();
+        let saved_lines = std::mem::take(&mut self.lines);
+        let saved_indent = self.indent;
+        self.variables.clear();
+        self.indent = 1;
+
+        self.emit_capture_body_setup(&captures, params, param_kinds);
 
         let (result, ret_kind) = self.compile_expr(body)?;
 
-        // Convert return value to i64
         let ret_val = self.value_to_i64_expr(&result, &ret_kind);
         self.emit(&format!("return {};", ret_val));
 
-        // Collect lambda body
         let body_lines = std::mem::take(&mut self.lines);
 
         // Restore state
@@ -297,44 +369,8 @@ impl CCodeGen {
         self.indent = saved_indent;
         self.variables = saved_vars;
 
-        // Emit lambda function to lambda_bodies
-        self.lambda_bodies.push(format!("int64_t {}({}) {{", name, params_str));
-        self.lambda_bodies.extend(body_lines);
-        self.lambda_bodies.push("}".to_string());
-        self.lambda_bodies.push(String::new());
-
-        // Also add forward declaration
-        self.forward_decls.push(format!("int64_t {}({});", name, params_str));
-
-        // Register in functions
-        self.functions.insert(name.clone(), FnInfo {
-            ret_kind: ret_kind.clone(),
-            param_kinds: vec![ValKind::Int; params.len()],
-        });
-
-        // Store capture info for later use when building call sites
-        if has_captures {
-            self.lambda_captures.insert(name.clone(), capture_names.iter().zip(capture_kinds.iter()).map(|(n, k)| (n.clone(), k.clone())).collect());
-        }
-
-        // Build captures struct in the calling scope if needed, and return env_ptr expression
-        if has_captures {
-            let struct_name = captures_struct_name.as_ref().unwrap();
-            let cap_var = self.tmp();
-            self.emit(&format!("struct {} {};", struct_name, cap_var));
-            for (cap_name, cap_kind) in capture_names.iter().zip(capture_kinds.iter()) {
-                let c_name = self.variables.get(cap_name)
-                    .map(|v| v.c_name.clone())
-                    .unwrap_or_else(|| cap_name.clone());
-                let _ = cap_kind;
-                self.emit(&format!("{}.{} = {};", cap_var, cap_name, c_name));
-            }
-            // Store the captures variable name associated with this lambda
-            // The fn_ptr expression includes env info
-            Ok((format!("__closure_{}|{}", name, cap_var), ret_kind))
-        } else {
-            Ok((format!("(void*)&{}", name), ret_kind))
-        }
+        let (expr, kind) = self.emit_lambda_and_register(&name, &captures, params, body_lines, &ret_kind);
+        Ok((expr, kind))
     }
 
     /// Parse a closure expression string into (fn_ptr, env_ptr) parts.
