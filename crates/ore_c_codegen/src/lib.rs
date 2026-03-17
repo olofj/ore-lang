@@ -927,6 +927,28 @@ impl CCodeGen {
                     ValKind::Int
                 }
             }
+            Expr::Index { object, .. } => {
+                let obj_kind = self.infer_expr_kind(object);
+                match obj_kind {
+                    ValKind::List(Some(ek)) => *ek,
+                    ValKind::Map(Some(vk)) => *vk,
+                    _ => ValKind::Int,
+                }
+            }
+            Expr::FieldAccess { object, field } => {
+                let obj_kind = self.infer_expr_kind(object);
+                if let ValKind::Record(ref name) = obj_kind {
+                    if let Some(info) = self.records.get(name) {
+                        for (i, fname) in info.field_names.iter().enumerate() {
+                            if fname == field {
+                                return info.field_kinds[i].clone();
+                            }
+                        }
+                    }
+                }
+                ValKind::Int
+            }
+            Expr::UnaryMinus(inner) | Expr::UnaryNot(inner) => self.infer_expr_kind(inner),
             _ => ValKind::Int,
         }
     }
