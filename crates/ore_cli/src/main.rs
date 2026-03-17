@@ -884,6 +884,8 @@ fn build_file_c(path: &Path, output: &Path) -> Result<(), String> {
     let c_path = tmp_dir.join("output.c");
     std::fs::write(&c_path, &c_code)
         .map_err(|e| format!("failed to write C file: {}", e))?;
+    // Debug: save a copy of the generated C code
+    let _ = std::fs::write(tmp_dir.join("output_debug.c"), &c_code);
 
     // Find the ore_runtime staticlib
     let runtime_lib = find_runtime_staticlib()?;
