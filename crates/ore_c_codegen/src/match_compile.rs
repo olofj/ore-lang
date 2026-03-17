@@ -16,6 +16,19 @@ impl CCodeGen {
             return self.compile_enum_match(&subject_val, enum_name, arms);
         }
 
+        // Infer enum type from variant patterns when subject kind is Int
+        // (e.g. when indexing an untyped list that contains enum values)
+        if !matches!(subject_kind, ValKind::Enum(_)) {
+            if let Some(enum_name) = self.infer_enum_from_arms(arms) {
+                // The subject is a heap pointer to the enum struct, cast it back
+                let c_type = format!("struct ore_enum_{}", Self::mangle_name(&enum_name));
+                let cast_val = format!("*({c_type}*)(intptr_t)({})", subject_val);
+                let tmp = self.tmp();
+                self.emit(&format!("{} {} = {};", c_type, tmp, cast_val));
+                return self.compile_enum_match(&tmp, &enum_name, arms);
+            }
+        }
+
         // Literal match (if/else chain)
         self.compile_literal_match(&subject_val, &subject_kind, arms)
     }
@@ -476,5 +489,18 @@ impl CCodeGen {
             }
         }
         matches.first().cloned()
+    }
+
+    /// Infer enum type from match arms containing variant patterns.
+    /// Returns Some(enum_name) if any arm has a Variant pattern with a known enum variant.
+    fn infer_enum_from_arms(&self, arms: &[MatchArm]) -> Option<String> {
+        for arm in arms {
+            if let Pattern::Variant { name, .. } = &arm.pattern {
+                if let Some(enum_name) = self.variant_to_enum.get(name) {
+                    return Some(enum_name.clone());
+                }
+            }
+        }
+        None
     }
 }
