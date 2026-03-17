@@ -751,37 +751,48 @@ impl CCodeGen {
         }
     }
 
+    /// Emit the concatenation loop for "label: value" field pairs.
+    /// `result` is the tmp var accumulating the string, `obj_prefix` is the
+    /// expression prefix for accessing fields (e.g. "val" or "payload_tmp"),
+    /// and `indent` is the C indentation prefix for emitted lines.
+    fn emit_fields_to_str(
+        &mut self,
+        result: &str,
+        obj_prefix: &str,
+        field_names: &[String],
+        field_kinds: &[ValKind],
+        indent: &str,
+    ) {
+        for (i, (fname, fkind)) in field_names.iter().zip(field_kinds.iter()).enumerate() {
+            if i > 0 {
+                let comma = self.compile_string_literal(", ");
+                let t = self.tmp();
+                self.emit(&format!("{}void* {} = ore_str_concat({}, {});", indent, t, result, comma));
+                self.emit(&format!("{}{} = {};", indent, result, t));
+            }
+            let label = format!("{}: ", fname);
+            let label_str = self.compile_string_literal(&label);
+            let t = self.tmp();
+            self.emit(&format!("{}void* {} = ore_str_concat({}, {});", indent, t, result, label_str));
+            self.emit(&format!("{}{} = {};", indent, result, t));
+            let field_expr = format!("{}.{}", obj_prefix, fname);
+            let fval_str = self.value_to_str_expr(&field_expr, fkind);
+            let t = self.tmp();
+            self.emit(&format!("{}void* {} = ore_str_concat({}, {});", indent, t, result, fval_str));
+            self.emit(&format!("{}{} = {};", indent, result, t));
+        }
+    }
+
     /// Generate code that converts a record value to a display string.
     /// Returns a C expression (tmp variable) holding the result string.
     fn record_to_str_expr(&mut self, val: &str, type_name: &str) -> String {
         let info = self.records.get(type_name).cloned();
         let result = self.tmp();
         if let Some(info) = info {
-            // Start with "TypeName("
             let header = format!("{}(", type_name);
             let header_str = self.compile_string_literal(&header);
             self.emit(&format!("void* {} = {};", result, header_str));
-            for (i, (fname, fkind)) in info.field_names.iter().zip(info.field_kinds.iter()).enumerate() {
-                if i > 0 {
-                    let comma = self.compile_string_literal(", ");
-                    let t = self.tmp();
-                    self.emit(&format!("void* {} = ore_str_concat({}, {});", t, result, comma));
-                    self.emit(&format!("{} = {};", result, t));
-                }
-                // Add "field_name: "
-                let label = format!("{}: ", fname);
-                let label_str = self.compile_string_literal(&label);
-                let t = self.tmp();
-                self.emit(&format!("void* {} = ore_str_concat({}, {});", t, result, label_str));
-                self.emit(&format!("{} = {};", result, t));
-                // Add field value
-                let field_expr = format!("{}.{}", val, fname);
-                let fval_str = self.value_to_str_expr(&field_expr, fkind);
-                let t = self.tmp();
-                self.emit(&format!("void* {} = ore_str_concat({}, {});", t, result, fval_str));
-                self.emit(&format!("{} = {};", result, t));
-            }
-            // Close with ")"
+            self.emit_fields_to_str(&result, val, &info.field_names, &info.field_kinds, "");
             let close = self.compile_string_literal(")");
             let t = self.tmp();
             self.emit(&format!("void* {} = ore_str_concat({}, {});", t, result, close));
@@ -804,11 +815,9 @@ impl CCodeGen {
             for v in &info.variants {
                 self.emit(&format!("case {}: {{", v.tag));
                 if v.field_names.is_empty() {
-                    // Zero-field variant: just the name
                     let name_str = self.compile_string_literal(&v.name);
                     self.emit(&format!("    {} = {};", result, name_str));
                 } else {
-                    // Variant with fields: "VariantName(field: val, ...)"
                     let payload_type = format!("struct ore_payload_{}_{}", Self::mangle_name(type_name), v.name);
                     let payload_tmp = self.tmp();
                     self.emit(&format!("    {} {}; memcpy(&{}, {}.data, sizeof({}));",
@@ -816,24 +825,7 @@ impl CCodeGen {
                     let header = format!("{}(", v.name);
                     let header_str = self.compile_string_literal(&header);
                     self.emit(&format!("    {} = {};", result, header_str));
-                    for (i, (fname, fkind)) in v.field_names.iter().zip(v.field_kinds.iter()).enumerate() {
-                        if i > 0 {
-                            let comma = self.compile_string_literal(", ");
-                            let t = self.tmp();
-                            self.emit(&format!("    void* {} = ore_str_concat({}, {});", t, result, comma));
-                            self.emit(&format!("    {} = {};", result, t));
-                        }
-                        let label = format!("{}: ", fname);
-                        let label_str = self.compile_string_literal(&label);
-                        let t = self.tmp();
-                        self.emit(&format!("    void* {} = ore_str_concat({}, {});", t, result, label_str));
-                        self.emit(&format!("    {} = {};", result, t));
-                        let field_expr = format!("{}.{}", payload_tmp, fname);
-                        let fval_str = self.value_to_str_expr(&field_expr, fkind);
-                        let t = self.tmp();
-                        self.emit(&format!("    void* {} = ore_str_concat({}, {});", t, result, fval_str));
-                        self.emit(&format!("    {} = {};", result, t));
-                    }
+                    self.emit_fields_to_str(&result, &payload_tmp, &v.field_names, &v.field_kinds, "    ");
                     let close = self.compile_string_literal(")");
                     let t = self.tmp();
                     self.emit(&format!("    void* {} = ore_str_concat({}, {});", t, result, close));
