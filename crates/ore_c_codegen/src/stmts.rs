@@ -257,7 +257,11 @@ impl CCodeGen {
         }
 
         let elem_kind = kind.list_elem_kind().cloned().unwrap_or(ValKind::Int);
-        self.compile_for_each_list(var, &val, elem_kind, body)
+        // Hoist iterable into a temporary to avoid re-evaluating the expression
+        // on each iteration (e.g. ore_str_chars(text) called per-iteration)
+        let list_tmp = self.tmp();
+        self.emit(&format!("void* {} = {};", list_tmp, val));
+        self.compile_for_each_list(var, &list_tmp, elem_kind, body)
     }
 
     fn compile_for_each_list(&mut self, var: &str, list_val: &str, elem_kind: ValKind, body: &Block) -> Result<(), CCodeGenError> {
