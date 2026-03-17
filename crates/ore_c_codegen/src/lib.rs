@@ -60,12 +60,14 @@ impl ValKind {
 }
 
 /// Info about a record type
+#[derive(Clone)]
 struct RecordInfo {
     field_names: Vec<String>,
     field_kinds: Vec<ValKind>,
 }
 
 /// Info about a single enum variant
+#[derive(Clone)]
 struct VariantInfo {
     name: String,
     tag: u8,
@@ -74,6 +76,7 @@ struct VariantInfo {
 }
 
 /// Info about an enum type
+#[derive(Clone)]
 struct EnumInfo {
     variants: Vec<VariantInfo>,
     /// Number of i64s in the data array: ceil(max_payload_size / 8)

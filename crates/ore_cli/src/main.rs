@@ -890,7 +890,7 @@ fn build_file_c(path: &Path, output: &Path) -> Result<(), String> {
 
     // Compile with cc
     let compiler = std::env::var("CC").unwrap_or_else(|_| "cc".to_string());
-    let status = std::process::Command::new(&compiler)
+    let cc_output = std::process::Command::new(&compiler)
         .arg(&c_path)
         .arg(&runtime_lib)
         .arg("-o")
@@ -898,14 +898,15 @@ fn build_file_c(path: &Path, output: &Path) -> Result<(), String> {
         .arg("-lm")
         .arg("-lpthread")
         .arg("-ldl")
-        .status()
+        .output()
         .map_err(|e| format!("failed to run compiler '{}': {}", compiler, e))?;
 
-    if !status.success() {
-        return Err(format!("C compiler '{}' failed with {}", compiler, status));
+    if !cc_output.status.success() {
+        let stderr = String::from_utf8_lossy(&cc_output.stderr);
+        return Err(format!("C compiler '{}' failed with {}:\n{}", compiler, cc_output.status, stderr));
     }
 
-    // Keep temp C file for debugging
+    // Clean up temp C file
     let _ = std::fs::remove_file(&c_path);
 
     eprintln!("compiled to {} (via C backend)", output.display());

@@ -615,6 +615,78 @@ impl CCodeGen {
                 fn_info.ret_kind.clone()
             };
             Ok((call, ret_kind))
+        } else if let Some(generic_fn) = self.generic_fns.get(name).cloned() {
+            // Generic function instantiation for pipeline
+            let (arg_val, arg_kind) = self.compile_expr(arg)?;
+            let mut arg_strs = vec![arg_val];
+            let mut arg_kinds = vec![arg_kind];
+            for a in extra_args {
+                let (v, k) = self.compile_expr(a)?;
+                arg_strs.push(v);
+                arg_kinds.push(k);
+            }
+            let type_param_names: Vec<String> = generic_fn.type_params.iter().map(|tp| tp.name.clone()).collect();
+            let mut type_map: HashMap<String, ValKind> = HashMap::new();
+            for (i, p) in generic_fn.params.iter().enumerate() {
+                if let Some(ak) = arg_kinds.get(i) {
+                    if let TypeExpr::Named(ref tn) = p.ty {
+                        if type_param_names.contains(tn) {
+                            type_map.insert(tn.clone(), ak.clone());
+                        }
+                    }
+                }
+            }
+            let type_suffix: Vec<String> = type_param_names.iter()
+                .map(|tp| type_map.get(tp).map(|k| Self::kind_to_suffix(k)).unwrap_or_else(|| "Int".to_string()))
+                .collect();
+            let mono_name = format!("{}__{}", name, type_suffix.join("_"));
+            if !self.functions.contains_key(&mono_name) {
+                let mono_params: Vec<Param> = generic_fn.params.iter().map(|p| {
+                    let ty = if let TypeExpr::Named(ref tn) = p.ty {
+                        if let Some(kind) = type_map.get(tn) {
+                            TypeExpr::Named(self.kind_to_type_name(kind).to_string())
+                        } else {
+                            p.ty.clone()
+                        }
+                    } else {
+                        p.ty.clone()
+                    };
+                    Param { name: p.name.clone(), ty, default: p.default.clone() }
+                }).collect();
+                let mono_ret = generic_fn.ret_type.as_ref().map(|rt| {
+                    if let TypeExpr::Named(ref tn) = rt {
+                        if let Some(kind) = type_map.get(tn) {
+                            TypeExpr::Named(self.kind_to_type_name(kind).to_string())
+                        } else {
+                            rt.clone()
+                        }
+                    } else {
+                        rt.clone()
+                    }
+                });
+                let mono_fn = FnDef {
+                    name: mono_name.clone(),
+                    type_params: vec![],
+                    params: mono_params,
+                    ret_type: mono_ret,
+                    body: generic_fn.body.clone(),
+                };
+                let saved_vars = self.variables.clone();
+                let saved_dynamic = self.dynamic_kind_tags.clone();
+                let saved_lines = std::mem::take(&mut self.lines);
+                let saved_indent = self.indent;
+                self.declare_function(&mono_fn)?;
+                self.compile_function(&mono_fn)?;
+                self.lambda_bodies.extend(std::mem::take(&mut self.lines));
+                self.lines = saved_lines;
+                self.indent = saved_indent;
+                self.variables = saved_vars;
+                self.dynamic_kind_tags = saved_dynamic;
+            }
+            let fn_info = self.functions.get(&mono_name).cloned()
+                .ok_or_else(|| self.err(format!("failed to instantiate generic '{}' in pipe", name)))?;
+            let call_str = format!("{}({})", mono_name, arg_strs.join(", "));
+            Ok((call_str, fn_info.ret_kind))
         } else {
             // Try as method call
             let method_call = Expr::MethodCall {
@@ -654,6 +726,16 @@ impl CCodeGen {
                 self.emit(&format!("ore_map_print_str({});", val));
             }
             ValKind::Map(_) => { self.emit(&format!("ore_map_print({});", val)); }
+            ValKind::Record(ref name) => {
+                let name = name.clone();
+                let s = self.record_to_str_expr(val, &name);
+                self.emit(&format!("ore_str_print({});", s));
+            }
+            ValKind::Enum(ref name) => {
+                let name = name.clone();
+                let s = self.enum_to_str_expr(val, &name);
+                self.emit(&format!("ore_str_print({});", s));
+            }
             _ => { self.emit(&format!("ore_print_int({});", val)); }
         }
         Ok(())
@@ -706,13 +788,122 @@ impl CCodeGen {
         Ok((result.unwrap_or_else(|| "ore_str_new(\"\", 0)".to_string()), ValKind::Str))
     }
 
-    pub(crate) fn value_to_str_expr(&self, val: &str, kind: &ValKind) -> String {
+    pub(crate) fn value_to_str_expr(&mut self, val: &str, kind: &ValKind) -> String {
         match kind {
             ValKind::Str => val.to_string(),
             ValKind::Int => format!("ore_int_to_str({})", val),
             ValKind::Float => format!("ore_float_to_str({})", val),
             ValKind::Bool => format!("ore_bool_to_str({})", val),
+            ValKind::Record(ref name) => {
+                let name = name.clone();
+                self.record_to_str_expr(val, &name)
+            }
+            ValKind::Enum(ref name) => {
+                let name = name.clone();
+                self.enum_to_str_expr(val, &name)
+            }
             _ => format!("ore_int_to_str({})", val),
         }
+    }
+
+    /// Generate code that converts a record value to a display string.
+    /// Returns a C expression (tmp variable) holding the result string.
+    fn record_to_str_expr(&mut self, val: &str, type_name: &str) -> String {
+        let info = self.records.get(type_name).cloned();
+        let result = self.tmp();
+        if let Some(info) = info {
+            // Start with "TypeName("
+            let header = format!("{}(", type_name);
+            let header_str = self.compile_string_literal(&header);
+            self.emit(&format!("void* {} = {};", result, header_str));
+            for (i, (fname, fkind)) in info.field_names.iter().zip(info.field_kinds.iter()).enumerate() {
+                if i > 0 {
+                    let comma = self.compile_string_literal(", ");
+                    let t = self.tmp();
+                    self.emit(&format!("void* {} = ore_str_concat({}, {});", t, result, comma));
+                    self.emit(&format!("{} = {};", result, t));
+                }
+                // Add "field_name: "
+                let label = format!("{}: ", fname);
+                let label_str = self.compile_string_literal(&label);
+                let t = self.tmp();
+                self.emit(&format!("void* {} = ore_str_concat({}, {});", t, result, label_str));
+                self.emit(&format!("{} = {};", result, t));
+                // Add field value
+                let field_expr = format!("{}.{}", val, fname);
+                let fval_str = self.value_to_str_expr(&field_expr, fkind);
+                let t = self.tmp();
+                self.emit(&format!("void* {} = ore_str_concat({}, {});", t, result, fval_str));
+                self.emit(&format!("{} = {};", result, t));
+            }
+            // Close with ")"
+            let close = self.compile_string_literal(")");
+            let t = self.tmp();
+            self.emit(&format!("void* {} = ore_str_concat({}, {});", t, result, close));
+            self.emit(&format!("{} = {};", result, t));
+        } else {
+            let fallback = self.compile_string_literal(&format!("{}(...)", type_name));
+            self.emit(&format!("void* {} = {};", result, fallback));
+        }
+        result
+    }
+
+    /// Generate code that converts an enum value to a display string.
+    /// Returns a C expression (tmp variable) holding the result string.
+    fn enum_to_str_expr(&mut self, val: &str, type_name: &str) -> String {
+        let info = self.enums.get(type_name).cloned();
+        let result = self.tmp();
+        self.emit(&format!("void* {};", result));
+        if let Some(info) = info {
+            self.emit(&format!("switch ({}.tag) {{", val));
+            for v in &info.variants {
+                self.emit(&format!("case {}: {{", v.tag));
+                if v.field_names.is_empty() {
+                    // Zero-field variant: just the name
+                    let name_str = self.compile_string_literal(&v.name);
+                    self.emit(&format!("    {} = {};", result, name_str));
+                } else {
+                    // Variant with fields: "VariantName(field: val, ...)"
+                    let payload_type = format!("struct ore_payload_{}_{}", Self::mangle_name(type_name), v.name);
+                    let payload_tmp = self.tmp();
+                    self.emit(&format!("    {} {}; memcpy(&{}, {}.data, sizeof({}));",
+                        payload_type, payload_tmp, payload_tmp, val, payload_type));
+                    let header = format!("{}(", v.name);
+                    let header_str = self.compile_string_literal(&header);
+                    self.emit(&format!("    {} = {};", result, header_str));
+                    for (i, (fname, fkind)) in v.field_names.iter().zip(v.field_kinds.iter()).enumerate() {
+                        if i > 0 {
+                            let comma = self.compile_string_literal(", ");
+                            let t = self.tmp();
+                            self.emit(&format!("    void* {} = ore_str_concat({}, {});", t, result, comma));
+                            self.emit(&format!("    {} = {};", result, t));
+                        }
+                        let label = format!("{}: ", fname);
+                        let label_str = self.compile_string_literal(&label);
+                        let t = self.tmp();
+                        self.emit(&format!("    void* {} = ore_str_concat({}, {});", t, result, label_str));
+                        self.emit(&format!("    {} = {};", result, t));
+                        let field_expr = format!("{}.{}", payload_tmp, fname);
+                        let fval_str = self.value_to_str_expr(&field_expr, fkind);
+                        let t = self.tmp();
+                        self.emit(&format!("    void* {} = ore_str_concat({}, {});", t, result, fval_str));
+                        self.emit(&format!("    {} = {};", result, t));
+                    }
+                    let close = self.compile_string_literal(")");
+                    let t = self.tmp();
+                    self.emit(&format!("    void* {} = ore_str_concat({}, {});", t, result, close));
+                    self.emit(&format!("    {} = {};", result, t));
+                }
+                self.emit("    break;");
+                self.emit("}");
+            }
+            let fallback = self.compile_string_literal(&format!("{}(?)", type_name));
+            self.emit(&format!("default: {} = {}; break;", result, fallback));
+            self.emit("}");
+        } else {
+            let fallback = self.compile_string_literal(&format!("{}(?)", type_name));
+            self.emit(&format!("{} = {};", result, fallback));
+        }
+        result
     }
 }

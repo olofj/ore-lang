@@ -199,8 +199,9 @@ impl CCodeGen {
                 Ok(Some(("0".to_string(), ValKind::Void)))
             }
             // Math functions
-            "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "floor" | "ceil" | "round" => {
-                if (name == "round") && args.len() == 2 {
+            "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "floor" | "ceil" | "round"
+            | "math_abs" | "math_floor" | "math_ceil" | "math_round" => {
+                if (name == "round" || name == "math_round") && args.len() == 2 {
                     let (val, kind) = self.compile_expr(&args[0])?;
                     let f_val = if kind == ValKind::Int { format!("(double)({})", val) } else { val };
                     let (dec, _) = self.compile_expr(&args[1])?;
@@ -209,7 +210,8 @@ impl CCodeGen {
                 self.check_arity(name, args, 1)?;
                 let (val, kind) = self.compile_expr(&args[0])?;
                 let f_val = if kind == ValKind::Int { format!("(double)({})", val) } else { val };
-                Ok(Some((format!("ore_math_{}({})", name, f_val), ValKind::Float)))
+                let rt_name = name.strip_prefix("math_").unwrap_or(name);
+                Ok(Some((format!("ore_math_{}({})", rt_name, f_val), ValKind::Float)))
             }
             "pow" | "atan2" => {
                 self.check_arity(name, args, 2)?;
