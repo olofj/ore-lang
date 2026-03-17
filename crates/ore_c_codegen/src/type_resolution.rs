@@ -305,6 +305,29 @@ impl CCodeGen {
         }
     }
 
+    /// Coerce a compiled expression from one ValKind to another.
+    ///
+    /// Handles mismatches between int64_t-typed values (e.g. from list access)
+    /// and struct-typed values (e.g. Record/Enum), and vice versa.
+    pub(crate) fn coerce_expr(&self, expr: &str, from: &ValKind, to: &ValKind) -> String {
+        if from == to {
+            return expr.to_string();
+        }
+        // int64_t source → struct target: dereference the i64 as a heap pointer
+        let from_is_i64 = matches!(from, ValKind::Int | ValKind::Void);
+        let to_is_struct = matches!(to, ValKind::Record(_) | ValKind::Enum(_) | ValKind::Option | ValKind::Result);
+        if from_is_i64 && to_is_struct {
+            return self.coerce_from_i64_expr(expr, to);
+        }
+        // struct source → int64_t target: heap-allocate and store as i64
+        let from_is_struct = matches!(from, ValKind::Record(_) | ValKind::Enum(_) | ValKind::Option | ValKind::Result);
+        let to_is_i64 = matches!(to, ValKind::Int | ValKind::Void);
+        if from_is_struct && to_is_i64 {
+            return self.value_to_i64_expr(expr, from);
+        }
+        expr.to_string()
+    }
+
     /// Generate a safe C identifier suffix for a ValKind (for monomorphized function names).
     pub(crate) fn kind_to_suffix(kind: &ValKind) -> String {
         match kind {
