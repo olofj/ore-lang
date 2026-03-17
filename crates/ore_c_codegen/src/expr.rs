@@ -66,99 +66,7 @@ impl CCodeGen {
                 Ok((c_name, kind))
             }
             Expr::BinOp { op, left, right } => {
-                if *op == BinOp::Pipe {
-                    return self.compile_pipeline(left, right);
-                }
-                if *op == BinOp::And || *op == BinOp::Or {
-                    return self.compile_short_circuit(*op, left, right);
-                }
-                let (l_expr, lk) = self.compile_expr(left)?;
-                let (r_expr, rk) = self.compile_expr(right)?;
-
-                // List concatenation
-                if lk.is_list() && *op == BinOp::Add {
-                    let result = format!("ore_list_concat({}, {})", l_expr, r_expr);
-                    let elem = match (&rk, &lk) {
-                        (ValKind::List(Some(ek)), _) | (_, ValKind::List(Some(ek))) => Some(ek.clone()),
-                        _ => None,
-                    };
-                    return Ok((result, ValKind::List(elem)));
-                }
-
-                // String repetition
-                if lk == ValKind::Str && *op == BinOp::Mul {
-                    return Ok((format!("ore_str_repeat({}, {})", l_expr, r_expr), ValKind::Str));
-                }
-
-                // String operations
-                if lk == ValKind::Str && rk == ValKind::Str {
-                    return self.compile_str_binop(*op, &l_expr, &r_expr);
-                }
-
-                // Float promotion
-                let (l_c, r_c, is_float) = if lk == ValKind::Float || rk == ValKind::Float {
-                    let l = if lk == ValKind::Int { format!("(double)({})", l_expr) } else { l_expr.clone() };
-                    let r = if rk == ValKind::Int { format!("(double)({})", r_expr) } else { r_expr.clone() };
-                    (l, r, true)
-                } else {
-                    (l_expr.clone(), r_expr.clone(), false)
-                };
-
-                let result_kind = match op {
-                    BinOp::Eq | BinOp::NotEq | BinOp::Lt | BinOp::Gt
-                    | BinOp::LtEq | BinOp::GtEq | BinOp::And | BinOp::Or => ValKind::Bool,
-                    _ => if is_float { ValKind::Float } else { lk.clone() },
-                };
-
-                let c_op = match op {
-                    BinOp::Add => "+",
-                    BinOp::Sub => "-",
-                    BinOp::Mul => "*",
-                    BinOp::Div => {
-                        if !is_float {
-                            // Pre-compute both operands as statements BEFORE any containing expression
-                            let l_tmp = self.tmp();
-                            let r_tmp = self.tmp();
-                            self.emit(&format!("int64_t {} = {};", l_tmp, l_c));
-                            self.emit(&format!("int64_t {} = {};", r_tmp, r_c));
-                            self.emit(&format!("if ({} == 0) ore_div_by_zero();", r_tmp));
-                            return Ok((format!("({} / {})", l_tmp, r_tmp), result_kind));
-                        }
-                        "/"
-                    }
-                    BinOp::Mod => {
-                        if !is_float {
-                            let l_tmp = self.tmp();
-                            let r_tmp = self.tmp();
-                            self.emit(&format!("int64_t {} = {};", l_tmp, l_c));
-                            self.emit(&format!("int64_t {} = {};", r_tmp, r_c));
-                            self.emit(&format!("if ({} == 0) ore_div_by_zero();", r_tmp));
-                            return Ok((format!("({} % {})", l_tmp, r_tmp), result_kind));
-                        }
-                        // For floats, use fmod
-                        return Ok((format!("fmod({}, {})", l_c, r_c), ValKind::Float));
-                    }
-                    BinOp::Eq => "==",
-                    BinOp::NotEq => "!=",
-                    BinOp::Lt => "<",
-                    BinOp::Gt => ">",
-                    BinOp::LtEq => "<=",
-                    BinOp::GtEq => ">=",
-                    BinOp::And => "&&",
-                    BinOp::Or => "||",
-                    BinOp::Pipe => unreachable!(),
-                };
-
-                // Bool comparisons: normalize bool to int8_t result
-                if result_kind == ValKind::Bool && (lk == ValKind::Bool || rk == ValKind::Bool) {
-                    match op {
-                        BinOp::And => return Ok((format!("(({}) && ({}))", l_c, r_c), ValKind::Bool)),
-                        BinOp::Or => return Ok((format!("(({}) || ({}))", l_c, r_c), ValKind::Bool)),
-                        _ => {}
-                    }
-                }
-
-                Ok((format!("({} {} {})", l_c, c_op, r_c), result_kind))
+                self.compile_binop(*op, left, right)
             }
             Expr::UnaryMinus(inner) => {
                 let (val, kind) = self.compile_expr(inner)?;
@@ -192,69 +100,7 @@ impl CCodeGen {
                 self.compile_assert_cmp(left, right, message.as_deref(), "ne")
             }
             Expr::Call { func: callee, args } => {
-                let name = match callee.as_ref() {
-                    Expr::Ident(n) => n.clone(),
-                    _ => return Err(self.err("only named function calls supported")),
-                };
-                // Try builtins first
-                if let Some(result) = self.compile_builtin_call(&name, args)? {
-                    return Ok(result);
-                }
-                // Variant construction
-                if self.variant_to_enum.contains_key(&name) {
-                    return self.compile_variant_construct(&name, &[]);
-                }
-                // Regular function call
-                if let Some(fn_info) = self.functions.get(&name).cloned() {
-                    let c_fn_name = Self::mangle_fn_name(&name);
-                    let mut arg_strs = Vec::new();
-                    for (i, arg) in args.iter().enumerate() {
-                        let (a, _ak) = self.compile_expr(arg)?;
-                        // Cast function pointers to int64_t when parameter expects Int
-                        let param_kind = fn_info.param_kinds.get(i);
-                        if param_kind == Some(&ValKind::Int) && a.starts_with("(void*)&") {
-                            arg_strs.push(format!("(int64_t)(intptr_t){}", a));
-                        } else {
-                            arg_strs.push(a);
-                        }
-                    }
-                    // Fill default args
-                    if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
-                        let num_args = arg_strs.len();
-                        for default_expr in defaults.iter().skip(num_args).flatten() {
-                            let (a, _) = self.compile_expr(default_expr)?;
-                            arg_strs.push(a);
-                        }
-                    }
-                    let call_str = format!("{}({})", c_fn_name, arg_strs.join(", "));
-                    let ret_kind = self.enrich_return_kind(&name, fn_info.ret_kind.clone());
-                    return Ok((call_str, ret_kind));
-                }
-                // Generic function instantiation
-                if let Some(generic_fn) = self.generic_fns.get(&name).cloned() {
-                    let mut arg_kinds = Vec::new();
-                    let mut arg_strs = Vec::new();
-                    for arg in args {
-                        let (a, ak) = self.compile_expr(arg)?;
-                        arg_strs.push(a);
-                        arg_kinds.push(ak);
-                    }
-                    return self.instantiate_generic(&name, &generic_fn, &arg_kinds, &arg_strs);
-                }
-                // Variable holding a function pointer
-                if self.variables.contains_key(&name) {
-                    let mut arg_strs = Vec::new();
-                    for arg in args {
-                        let (a, _) = self.compile_expr(arg)?;
-                        arg_strs.push(a);
-                    }
-                    let call_str = format!("((int64_t(*)({})){})({})",
-                        vec!["int64_t"; args.len()].join(", "),
-                        name,
-                        arg_strs.join(", "));
-                    return Ok((call_str, ValKind::Int));
-                }
-                Err(self.err(format!("undefined function '{}'", name)))
+                self.compile_call(callee, args)
             }
             Expr::IfElse { cond, then_block, else_block } => {
                 self.compile_if_else(cond, then_block, else_block.as_ref())
@@ -406,6 +252,167 @@ impl CCodeGen {
         self.indent -= 1;
         self.emit("}");
         Ok((result, ValKind::Bool))
+    }
+
+    fn compile_binop(&mut self, op: BinOp, left: &Expr, right: &Expr) -> Result<(String, ValKind), CCodeGenError> {
+        if op == BinOp::Pipe {
+            return self.compile_pipeline(left, right);
+        }
+        if op == BinOp::And || op == BinOp::Or {
+            return self.compile_short_circuit(op, left, right);
+        }
+        let (l_expr, lk) = self.compile_expr(left)?;
+        let (r_expr, rk) = self.compile_expr(right)?;
+
+        // List concatenation
+        if lk.is_list() && op == BinOp::Add {
+            let result = format!("ore_list_concat({}, {})", l_expr, r_expr);
+            let elem = match (&rk, &lk) {
+                (ValKind::List(Some(ek)), _) | (_, ValKind::List(Some(ek))) => Some(ek.clone()),
+                _ => None,
+            };
+            return Ok((result, ValKind::List(elem)));
+        }
+
+        // String repetition
+        if lk == ValKind::Str && op == BinOp::Mul {
+            return Ok((format!("ore_str_repeat({}, {})", l_expr, r_expr), ValKind::Str));
+        }
+
+        // String operations
+        if lk == ValKind::Str && rk == ValKind::Str {
+            return self.compile_str_binop(op, &l_expr, &r_expr);
+        }
+
+        // Float promotion
+        let (l_c, r_c, is_float) = if lk == ValKind::Float || rk == ValKind::Float {
+            let l = if lk == ValKind::Int { format!("(double)({})", l_expr) } else { l_expr.clone() };
+            let r = if rk == ValKind::Int { format!("(double)({})", r_expr) } else { r_expr.clone() };
+            (l, r, true)
+        } else {
+            (l_expr.clone(), r_expr.clone(), false)
+        };
+
+        let result_kind = match op {
+            BinOp::Eq | BinOp::NotEq | BinOp::Lt | BinOp::Gt
+            | BinOp::LtEq | BinOp::GtEq | BinOp::And | BinOp::Or => ValKind::Bool,
+            _ => if is_float { ValKind::Float } else { lk.clone() },
+        };
+
+        let c_op = match op {
+            BinOp::Add => "+",
+            BinOp::Sub => "-",
+            BinOp::Mul => "*",
+            BinOp::Div => {
+                if !is_float {
+                    let l_tmp = self.tmp();
+                    let r_tmp = self.tmp();
+                    self.emit(&format!("int64_t {} = {};", l_tmp, l_c));
+                    self.emit(&format!("int64_t {} = {};", r_tmp, r_c));
+                    self.emit(&format!("if ({} == 0) ore_div_by_zero();", r_tmp));
+                    return Ok((format!("({} / {})", l_tmp, r_tmp), result_kind));
+                }
+                "/"
+            }
+            BinOp::Mod => {
+                if !is_float {
+                    let l_tmp = self.tmp();
+                    let r_tmp = self.tmp();
+                    self.emit(&format!("int64_t {} = {};", l_tmp, l_c));
+                    self.emit(&format!("int64_t {} = {};", r_tmp, r_c));
+                    self.emit(&format!("if ({} == 0) ore_div_by_zero();", r_tmp));
+                    return Ok((format!("({} % {})", l_tmp, r_tmp), result_kind));
+                }
+                // For floats, use fmod
+                return Ok((format!("fmod({}, {})", l_c, r_c), ValKind::Float));
+            }
+            BinOp::Eq => "==",
+            BinOp::NotEq => "!=",
+            BinOp::Lt => "<",
+            BinOp::Gt => ">",
+            BinOp::LtEq => "<=",
+            BinOp::GtEq => ">=",
+            BinOp::And => "&&",
+            BinOp::Or => "||",
+            BinOp::Pipe => unreachable!(),
+        };
+
+        // Bool comparisons: normalize bool to int8_t result
+        if result_kind == ValKind::Bool && (lk == ValKind::Bool || rk == ValKind::Bool) {
+            match op {
+                BinOp::And => return Ok((format!("(({}) && ({}))", l_c, r_c), ValKind::Bool)),
+                BinOp::Or => return Ok((format!("(({}) || ({}))", l_c, r_c), ValKind::Bool)),
+                _ => {}
+            }
+        }
+
+        Ok((format!("({} {} {})", l_c, c_op, r_c), result_kind))
+    }
+
+    fn compile_call(&mut self, callee: &Expr, args: &[Expr]) -> Result<(String, ValKind), CCodeGenError> {
+        let name = match callee {
+            Expr::Ident(n) => n.clone(),
+            _ => return Err(self.err("only named function calls supported")),
+        };
+        // Try builtins first
+        if let Some(result) = self.compile_builtin_call(&name, args)? {
+            return Ok(result);
+        }
+        // Variant construction
+        if self.variant_to_enum.contains_key(&name) {
+            return self.compile_variant_construct(&name, &[]);
+        }
+        // Regular function call
+        if let Some(fn_info) = self.functions.get(&name).cloned() {
+            let c_fn_name = Self::mangle_fn_name(&name);
+            let mut arg_strs = Vec::new();
+            for (i, arg) in args.iter().enumerate() {
+                let (a, _ak) = self.compile_expr(arg)?;
+                // Cast function pointers to int64_t when parameter expects Int
+                let param_kind = fn_info.param_kinds.get(i);
+                if param_kind == Some(&ValKind::Int) && a.starts_with("(void*)&") {
+                    arg_strs.push(format!("(int64_t)(intptr_t){}", a));
+                } else {
+                    arg_strs.push(a);
+                }
+            }
+            // Fill default args
+            if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
+                let num_args = arg_strs.len();
+                for default_expr in defaults.iter().skip(num_args).flatten() {
+                    let (a, _) = self.compile_expr(default_expr)?;
+                    arg_strs.push(a);
+                }
+            }
+            let call_str = format!("{}({})", c_fn_name, arg_strs.join(", "));
+            let ret_kind = self.enrich_return_kind(&name, fn_info.ret_kind.clone());
+            return Ok((call_str, ret_kind));
+        }
+        // Generic function instantiation
+        if let Some(generic_fn) = self.generic_fns.get(&name).cloned() {
+            let mut arg_kinds = Vec::new();
+            let mut arg_strs = Vec::new();
+            for arg in args {
+                let (a, ak) = self.compile_expr(arg)?;
+                arg_strs.push(a);
+                arg_kinds.push(ak);
+            }
+            return self.instantiate_generic(&name, &generic_fn, &arg_kinds, &arg_strs);
+        }
+        // Variable holding a function pointer
+        if self.variables.contains_key(&name) {
+            let mut arg_strs = Vec::new();
+            for arg in args {
+                let (a, _) = self.compile_expr(arg)?;
+                arg_strs.push(a);
+            }
+            let call_str = format!("((int64_t(*)({})){})({})",
+                vec!["int64_t"; args.len()].join(", "),
+                name,
+                arg_strs.join(", "));
+            return Ok((call_str, ValKind::Int));
+        }
+        Err(self.err(format!("undefined function '{}'", name)))
     }
 
     pub(crate) fn compile_str_binop(&mut self, op: BinOp, l: &str, r: &str) -> Result<(String, ValKind), CCodeGenError> {
