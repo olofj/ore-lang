@@ -233,7 +233,6 @@ impl CCodeGen {
                 }
                 // Generic function instantiation
                 if let Some(generic_fn) = self.generic_fns.get(&name).cloned() {
-                    // Infer type params from arguments
                     let mut arg_kinds = Vec::new();
                     let mut arg_strs = Vec::new();
                     for arg in args {
@@ -241,81 +240,7 @@ impl CCodeGen {
                         arg_strs.push(a);
                         arg_kinds.push(ak);
                     }
-                    // Build type param -> kind mapping from first parameter
-                    let type_param_names: Vec<String> = generic_fn.type_params.iter().map(|tp| tp.name.clone()).collect();
-                    let mut type_map: HashMap<String, ValKind> = HashMap::new();
-                    for (i, p) in generic_fn.params.iter().enumerate() {
-                        if let Some(ak) = arg_kinds.get(i) {
-                            if let TypeExpr::Named(ref tn) = p.ty {
-                                if type_param_names.contains(tn) {
-                                    type_map.insert(tn.clone(), ak.clone());
-                                }
-                            }
-                        }
-                    }
-                    // Generate mangled name based on concrete types
-                    let type_suffix: Vec<String> = type_param_names.iter()
-                        .map(|tp| type_map.get(tp).map(|k| Self::kind_to_suffix(k)).unwrap_or_else(|| "Int".to_string()))
-                        .collect();
-                    let mono_name = format!("{}__{}", name, type_suffix.join("_"));
-                    // Check if already instantiated
-                    if !self.functions.contains_key(&mono_name) {
-                        // Create monomorphized FnDef with concrete types
-                        let subst_type_expr = |te: &TypeExpr, tm: &HashMap<String, ValKind>, cg: &Self| -> TypeExpr {
-                            fn subst(te: &TypeExpr, tm: &HashMap<String, ValKind>, cg: &CCodeGen) -> TypeExpr {
-                                match te {
-                                    TypeExpr::Named(ref tn) => {
-                                        if let Some(kind) = tm.get(tn) {
-                                            TypeExpr::Named(cg.kind_to_type_name(kind).to_string())
-                                        } else {
-                                            te.clone()
-                                        }
-                                    }
-                                    TypeExpr::Generic(name, args) => {
-                                        let new_args: Vec<TypeExpr> = args.iter().map(|a| subst(a, tm, cg)).collect();
-                                        TypeExpr::Generic(name.clone(), new_args)
-                                    }
-                                    TypeExpr::Fn { params, ret } => {
-                                        TypeExpr::Fn {
-                                            params: params.iter().map(|p| subst(p, tm, cg)).collect(),
-                                            ret: Box::new(subst(ret, tm, cg)),
-                                        }
-                                    }
-                                }
-                            }
-                            subst(te, tm, cg)
-                        };
-                        let mono_params: Vec<Param> = generic_fn.params.iter().map(|p| {
-                            let ty = subst_type_expr(&p.ty, &type_map, self);
-                            Param { name: p.name.clone(), ty, default: p.default.clone() }
-                        }).collect();
-                        let mono_ret = generic_fn.ret_type.as_ref().map(|rt| {
-                            subst_type_expr(rt, &type_map, self)
-                        });
-                        let mono_fn = FnDef {
-                            name: mono_name.clone(),
-                            type_params: vec![],
-                            params: mono_params,
-                            ret_type: mono_ret,
-                            body: generic_fn.body.clone(),
-                        };
-                        // Save and restore state around function compilation
-                        let saved_vars = self.variables.clone();
-                        let saved_dynamic = self.dynamic_kind_tags.clone();
-                        let saved_lines = std::mem::take(&mut self.lines);
-                        let saved_indent = self.indent;
-                        self.declare_function(&mono_fn)?;
-                        self.compile_function(&mono_fn)?;
-                        self.lambda_bodies.extend(std::mem::take(&mut self.lines));
-                        self.lines = saved_lines;
-                        self.indent = saved_indent;
-                        self.variables = saved_vars;
-                        self.dynamic_kind_tags = saved_dynamic;
-                    }
-                    let fn_info = self.functions.get(&mono_name).cloned()
-                        .ok_or_else(|| self.err(format!("failed to instantiate generic '{}'", name)))?;
-                    let call_str = format!("{}({})", mono_name, arg_strs.join(", "));
-                    return Ok((call_str, fn_info.ret_kind));
+                    return self.instantiate_generic(&name, &generic_fn, &arg_kinds, &arg_strs);
                 }
                 // Variable holding a function pointer
                 if self.variables.contains_key(&name) {
@@ -625,68 +550,7 @@ impl CCodeGen {
                 arg_strs.push(v);
                 arg_kinds.push(k);
             }
-            let type_param_names: Vec<String> = generic_fn.type_params.iter().map(|tp| tp.name.clone()).collect();
-            let mut type_map: HashMap<String, ValKind> = HashMap::new();
-            for (i, p) in generic_fn.params.iter().enumerate() {
-                if let Some(ak) = arg_kinds.get(i) {
-                    if let TypeExpr::Named(ref tn) = p.ty {
-                        if type_param_names.contains(tn) {
-                            type_map.insert(tn.clone(), ak.clone());
-                        }
-                    }
-                }
-            }
-            let type_suffix: Vec<String> = type_param_names.iter()
-                .map(|tp| type_map.get(tp).map(|k| Self::kind_to_suffix(k)).unwrap_or_else(|| "Int".to_string()))
-                .collect();
-            let mono_name = format!("{}__{}", name, type_suffix.join("_"));
-            if !self.functions.contains_key(&mono_name) {
-                let mono_params: Vec<Param> = generic_fn.params.iter().map(|p| {
-                    let ty = if let TypeExpr::Named(ref tn) = p.ty {
-                        if let Some(kind) = type_map.get(tn) {
-                            TypeExpr::Named(self.kind_to_type_name(kind).to_string())
-                        } else {
-                            p.ty.clone()
-                        }
-                    } else {
-                        p.ty.clone()
-                    };
-                    Param { name: p.name.clone(), ty, default: p.default.clone() }
-                }).collect();
-                let mono_ret = generic_fn.ret_type.as_ref().map(|rt| {
-                    if let TypeExpr::Named(ref tn) = rt {
-                        if let Some(kind) = type_map.get(tn) {
-                            TypeExpr::Named(self.kind_to_type_name(kind).to_string())
-                        } else {
-                            rt.clone()
-                        }
-                    } else {
-                        rt.clone()
-                    }
-                });
-                let mono_fn = FnDef {
-                    name: mono_name.clone(),
-                    type_params: vec![],
-                    params: mono_params,
-                    ret_type: mono_ret,
-                    body: generic_fn.body.clone(),
-                };
-                let saved_vars = self.variables.clone();
-                let saved_dynamic = self.dynamic_kind_tags.clone();
-                let saved_lines = std::mem::take(&mut self.lines);
-                let saved_indent = self.indent;
-                self.declare_function(&mono_fn)?;
-                self.compile_function(&mono_fn)?;
-                self.lambda_bodies.extend(std::mem::take(&mut self.lines));
-                self.lines = saved_lines;
-                self.indent = saved_indent;
-                self.variables = saved_vars;
-                self.dynamic_kind_tags = saved_dynamic;
-            }
-            let fn_info = self.functions.get(&mono_name).cloned()
-                .ok_or_else(|| self.err(format!("failed to instantiate generic '{}' in pipe", name)))?;
-            let call_str = format!("{}({})", mono_name, arg_strs.join(", "));
-            Ok((call_str, fn_info.ret_kind))
+            self.instantiate_generic(name, &generic_fn, &arg_kinds, &arg_strs)
         } else {
             // Try as method call
             let method_call = Expr::MethodCall {
@@ -696,6 +560,87 @@ impl CCodeGen {
             };
             self.compile_expr(&method_call)
         }
+    }
+
+    /// Instantiate a generic function with concrete types inferred from arguments.
+    /// Returns (call_expression, return_kind).
+    fn instantiate_generic(
+        &mut self,
+        name: &str,
+        generic_fn: &FnDef,
+        arg_kinds: &[ValKind],
+        arg_strs: &[String],
+    ) -> Result<(String, ValKind), CCodeGenError> {
+        // Build type param -> kind mapping from arguments
+        let type_param_names: Vec<String> = generic_fn.type_params.iter().map(|tp| tp.name.clone()).collect();
+        let mut type_map: HashMap<String, ValKind> = HashMap::new();
+        for (i, p) in generic_fn.params.iter().enumerate() {
+            if let Some(ak) = arg_kinds.get(i) {
+                if let TypeExpr::Named(ref tn) = p.ty {
+                    if type_param_names.contains(tn) {
+                        type_map.insert(tn.clone(), ak.clone());
+                    }
+                }
+            }
+        }
+        // Generate mangled name based on concrete types
+        let type_suffix: Vec<String> = type_param_names.iter()
+            .map(|tp| type_map.get(tp).map(|k| Self::kind_to_suffix(k)).unwrap_or_else(|| "Int".to_string()))
+            .collect();
+        let mono_name = format!("{}__{}", name, type_suffix.join("_"));
+        // Check if already instantiated
+        if !self.functions.contains_key(&mono_name) {
+            // Recursive type substitution
+            fn subst(te: &TypeExpr, tm: &HashMap<String, ValKind>, cg: &CCodeGen) -> TypeExpr {
+                match te {
+                    TypeExpr::Named(ref tn) => {
+                        if let Some(kind) = tm.get(tn) {
+                            TypeExpr::Named(cg.kind_to_type_name(kind).to_string())
+                        } else {
+                            te.clone()
+                        }
+                    }
+                    TypeExpr::Generic(name, args) => {
+                        let new_args: Vec<TypeExpr> = args.iter().map(|a| subst(a, tm, cg)).collect();
+                        TypeExpr::Generic(name.clone(), new_args)
+                    }
+                    TypeExpr::Fn { params, ret } => {
+                        TypeExpr::Fn {
+                            params: params.iter().map(|p| subst(p, tm, cg)).collect(),
+                            ret: Box::new(subst(ret, tm, cg)),
+                        }
+                    }
+                }
+            }
+            let mono_params: Vec<Param> = generic_fn.params.iter().map(|p| {
+                let ty = subst(&p.ty, &type_map, self);
+                Param { name: p.name.clone(), ty, default: p.default.clone() }
+            }).collect();
+            let mono_ret = generic_fn.ret_type.as_ref().map(|rt| subst(rt, &type_map, self));
+            let mono_fn = FnDef {
+                name: mono_name.clone(),
+                type_params: vec![],
+                params: mono_params,
+                ret_type: mono_ret,
+                body: generic_fn.body.clone(),
+            };
+            // Save and restore state around function compilation
+            let saved_vars = self.variables.clone();
+            let saved_dynamic = self.dynamic_kind_tags.clone();
+            let saved_lines = std::mem::take(&mut self.lines);
+            let saved_indent = self.indent;
+            self.declare_function(&mono_fn)?;
+            self.compile_function(&mono_fn)?;
+            self.lambda_bodies.extend(std::mem::take(&mut self.lines));
+            self.lines = saved_lines;
+            self.indent = saved_indent;
+            self.variables = saved_vars;
+            self.dynamic_kind_tags = saved_dynamic;
+        }
+        let fn_info = self.functions.get(&mono_name).cloned()
+            .ok_or_else(|| self.err(format!("failed to instantiate generic '{}'", name)))?;
+        let call_str = format!("{}({})", mono_name, arg_strs.join(", "));
+        Ok((call_str, fn_info.ret_kind))
     }
 
     pub(crate) fn compile_print_expr(&mut self, val: &str, kind: &ValKind, _inner: &Expr) -> Result<(), CCodeGenError> {
