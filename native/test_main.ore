@@ -43,6 +43,87 @@ fn run_typecheck parsed:List -> List
   stmts := s_get_list(parsed, 3)
   typecheck(tokens, exprs, stmts)
 
+-- Duplicated from main.ore for testing
+fn dir_of_file path:Str -> Str
+  mut last_slash := -1
+  for i in 0..path.len()
+    if path.char_at(i) == "/"
+      last_slash = i
+  if last_slash == -1
+    return "."
+  if last_slash == 0
+    return "/"
+  path.substr(0, last_slash)
+
+fn resolve_use_path base_dir:Str use_path:Str -> Str
+  if use_path.starts_with("/")
+    return use_path
+  if base_dir == "."
+    return use_path
+  "{base_dir}/{use_path}"
+
+fn parse_use_line line:Str -> Str
+  trimmed := line.trim()
+  if not trimmed.starts_with("use ")
+    return ""
+  rest := trimmed.substr(4, trimmed.len() - 4).trim()
+  if rest.len() == 0
+    return ""
+  if rest.starts_with("\"") and rest.ends_with("\"")
+    return rest.substr(1, rest.len() - 2)
+  "{rest}.ore"
+
+fn resolve_imports source:Str base_dir:Str loaded:List -> Str
+  lines := source.split("\n")
+  mut imported_source := ""
+  mut main_lines := []
+  for i in 0..lines.len()
+    use_path := parse_use_line(lines[i])
+    if use_path == ""
+      main_lines.push(lines[i])
+    else
+      resolved := resolve_use_path(base_dir, use_path)
+      mut already := false
+      for j in 0..loaded.len()
+        if loaded[j] == resolved
+          already = true
+          break
+      if not already
+        loaded.push(resolved)
+        dep_source := file_read(resolved)
+        if dep_source != ""
+          dep_dir := dir_of_file(resolved)
+          dep_merged := resolve_imports(dep_source, dep_dir, loaded)
+          imported_source = imported_source + dep_merged + "\n"
+  imported_source + main_lines.join("\n")
+
+fn test_dir_of_file
+  assert_eq dir_of_file("src/main.ore"), "src"
+  assert_eq dir_of_file("main.ore"), "."
+  assert_eq dir_of_file("/root/file.ore"), "/root"
+  assert_eq dir_of_file("a/b/c.ore"), "a/b"
+  assert_eq dir_of_file("/file.ore"), "/"
+
+fn test_resolve_use_path
+  assert_eq resolve_use_path("src", "lib.ore"), "src/lib.ore"
+  assert_eq resolve_use_path(".", "lib.ore"), "lib.ore"
+  assert_eq resolve_use_path("src", "/abs/lib.ore"), "/abs/lib.ore"
+
+fn test_parse_use_line
+  assert_eq parse_use_line("use foo"), "foo.ore"
+  assert_eq parse_use_line("use \"path/to/mod.ore\""), "path/to/mod.ore"
+  assert_eq parse_use_line("-- use foo"), ""
+  assert_eq parse_use_line("fn main"), ""
+  assert_eq parse_use_line("  use bar"), "bar.ore"
+
+fn test_resolve_imports_strips_use
+  source := "use something\nfn main\n  42\n"
+  mut loaded := ["test.ore"]
+  result := resolve_imports(source, ".", loaded)
+  -- use line should be stripped; fn main should remain
+  assert result.contains("fn main")
+  assert not result.contains("use something")
+
 fn test_c_output_path
   assert_eq c_output_path("hello.ore"), "hello.c"
   assert_eq c_output_path("src/main.ore"), "src/main.c"
@@ -73,6 +154,14 @@ fn test_run_typecheck_errors
   assert errors.len() > 0
 
 fn main
+  test_dir_of_file()
+  print "  [pass] dir_of_file"
+  test_resolve_use_path()
+  print "  [pass] resolve_use_path"
+  test_parse_use_line()
+  print "  [pass] parse_use_line"
+  test_resolve_imports_strips_use()
+  print "  [pass] resolve_imports strips use lines"
   test_c_output_path()
   print "  [pass] c_output_path"
   test_bin_output_path()
@@ -85,4 +174,4 @@ fn main
   print "  [pass] run_typecheck valid"
   test_run_typecheck_errors()
   print "  [pass] run_typecheck errors"
-  print "\nAll 6 main driver tests passed!"
+  print "\nAll 10 main driver tests passed!"

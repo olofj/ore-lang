@@ -2165,8 +2165,8 @@ fn compile_item st:List exprs:List stmts:List item:Item
       test_fn := FnDef(name: test_name, type_params: [], params: [], ret_type: NamedType(name: "Void"), body: body)
       compile_fn_def(st, exprs, stmts, test_fn)
     UseItem path ->
-      -- Use items are handled at the parser/driver level, skip
-      emit_raw(st, "// use {path}")
+      -- Use items are resolved at the driver level (source merging), skip
+      st = st
     ImplBlockItem type_name methods ->
       compile_impl_methods(st, exprs, stmts, type_name, methods)
     ImplTraitItem trait_name type_name methods ->

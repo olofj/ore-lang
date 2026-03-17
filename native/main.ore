@@ -8,6 +8,69 @@ use typecheck
 use arena
 use codegen
 
+-- Extract directory from a file path (everything up to last '/')
+-- Returns "." if no '/' found
+fn dir_of_file path:Str -> Str
+  mut last_slash := -1
+  for i in 0..path.len()
+    if path.char_at(i) == "/"
+      last_slash = i
+  if last_slash == -1
+    return "."
+  if last_slash == 0
+    return "/"
+  path.substr(0, last_slash)
+
+-- Resolve a use path relative to a base directory
+fn resolve_use_path base_dir:Str use_path:Str -> Str
+  if use_path.starts_with("/")
+    return use_path
+  if base_dir == "."
+    return use_path
+  "{base_dir}/{use_path}"
+
+-- Check if a line is a use statement. Returns the module path or "" if not a use.
+fn parse_use_line line:Str -> Str
+  trimmed := line.trim()
+  if not trimmed.starts_with("use ")
+    return ""
+  rest := trimmed.substr(4, trimmed.len() - 4).trim()
+  if rest.len() == 0
+    return ""
+  -- Check for quoted string: use "path/to/module"
+  if rest.starts_with("\"") and rest.ends_with("\"")
+    return rest.substr(1, rest.len() - 2)
+  -- Bare identifier: use module → module.ore
+  "{rest}.ore"
+
+-- Recursively resolve use imports, returning concatenated source.
+-- loaded: list of already-loaded paths (mutated to track duplicates)
+-- Returns the merged source text with use lines stripped.
+fn resolve_imports source:Str base_dir:Str loaded:List -> Str
+  lines := source.split("\n")
+  mut imported_source := ""
+  mut main_lines := []
+  for i in 0..lines.len()
+    use_path := parse_use_line(lines[i])
+    if use_path == ""
+      main_lines.push(lines[i])
+    else
+      resolved := resolve_use_path(base_dir, use_path)
+      -- Check if already loaded
+      mut already := false
+      for j in 0..loaded.len()
+        if loaded[j] == resolved
+          already = true
+          break
+      if not already
+        loaded.push(resolved)
+        dep_source := file_read(resolved)
+        if dep_source != ""
+          dep_dir := dir_of_file(resolved)
+          dep_merged := resolve_imports(dep_source, dep_dir, loaded)
+          imported_source = imported_source + dep_merged + "\n"
+  imported_source + main_lines.join("\n")
+
 -- Parse a source file, returning [tokens, items, exprs, stmts] on success
 -- or [error_string] on parse failure
 fn parse_source source:Str -> List
@@ -64,7 +127,10 @@ fn cmd_check file:Str -> Int
   if source == ""
     print "error: could not read file '{file}'"
     return 1
-  parsed := parse_source(source)
+  base_dir := dir_of_file(file)
+  mut loaded := [file]
+  merged := resolve_imports(source, base_dir, loaded)
+  parsed := parse_source(merged)
   if parsed.len() == 1
     print "error: {parsed[0]}"
     return 1
@@ -81,7 +147,10 @@ fn cmd_run file:Str -> Int
   if source == ""
     print "error: could not read file '{file}'"
     return 1
-  parsed := parse_source(source)
+  base_dir := dir_of_file(file)
+  mut loaded := [file]
+  merged := resolve_imports(source, base_dir, loaded)
+  parsed := parse_source(merged)
   if parsed.len() == 1
     print "error: {parsed[0]}"
     return 1
