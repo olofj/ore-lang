@@ -111,7 +111,9 @@ impl CCodeGen {
             let is_var_binding = matches!(&arm.pattern, Pattern::Variant { name, bindings }
                 if bindings.is_empty() && !self.variant_to_enum.contains_key(name));
 
-            if is_wildcard || is_var_binding {
+            if is_wildcard || (is_var_binding && arm.guard.is_none()) {
+                // Unconditional wildcard/variable binding (no guard) — this is
+                // the final catch-all arm.
                 if first {
                     self.emit("{");
                 } else {
@@ -119,7 +121,6 @@ impl CCodeGen {
                 }
                 self.indent += 1;
 
-                // Bind variable if named
                 if let Pattern::Variant { name, .. } = &arm.pattern {
                     let c_type = self.kind_to_c_type_str(subject_kind);
                     self.emit(&format!("{} {} = {};", c_type, name, subject_val));
@@ -130,25 +131,53 @@ impl CCodeGen {
                     });
                 }
 
-                if let Some(guard) = &arm.guard {
-                    let (guard_val, _) = self.compile_expr(guard)?;
-                    self.emit(&format!("if ({}) {{", guard_val));
-                    self.indent += 1;
-                }
-
                 let (body_val, body_kind) = self.compile_expr(&arm.body)?;
                 result_kind = body_kind.clone();
                 self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
-
-                if arm.guard.is_some() {
-                    self.indent -= 1;
-                    self.emit("}");
-                }
 
                 self.indent -= 1;
                 self.emit("}");
                 closed = true;
                 break;
+            }
+
+            if is_var_binding {
+                // Variable binding WITH guard — emit as "else if (guard)" in the chain.
+                // Bind the variable and check the guard.
+                let guard = arm.guard.as_ref().unwrap();
+                if let Pattern::Variant { name, .. } = &arm.pattern {
+                    // Bind variable before guard evaluation
+                    let c_type = self.kind_to_c_type_str(subject_kind);
+                    // Declare binding before the if chain if first, or use a temp
+                    if first {
+                        self.emit(&format!("{} {} = {};", c_type, name, subject_val));
+                    } else {
+                        // Variable already declared from a prior arm or declare fresh
+                        if !self.variables.contains_key(name) {
+                            self.emit(&format!("{} {} = {};", c_type, name, subject_val));
+                        }
+                    }
+                    self.variables.insert(name.clone(), VarInfo {
+                        c_name: name.clone(),
+                        kind: subject_kind.clone(),
+                        is_mutable: false,
+                    });
+                }
+
+                let (guard_val, _) = self.compile_expr(guard)?;
+                if first {
+                    self.emit(&format!("if ({}) {{", guard_val));
+                    first = false;
+                } else {
+                    self.emit(&format!("}} else if ({}) {{", guard_val));
+                }
+                self.indent += 1;
+
+                let (body_val, body_kind) = self.compile_expr(&arm.body)?;
+                result_kind = body_kind.clone();
+                self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
+                self.indent -= 1;
+                continue;
             }
 
             let cmp = self.compile_pattern_cmp(subject_val, subject_kind, &arm.pattern)?;
