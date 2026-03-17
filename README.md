@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="ore-lang" width="300">
+</p>
+
 # Ore
 
 A statically typed, expression-oriented programming language that compiles to native code via LLVM. Ore prioritizes **strong types, batteries-included tooling, and minimal ceremony** — designed so that every token carries meaning.
