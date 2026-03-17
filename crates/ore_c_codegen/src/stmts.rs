@@ -87,9 +87,19 @@ impl CCodeGen {
             }
             Stmt::FieldAssign { object, field, value } => {
                 let (obj_val, obj_kind) = self.compile_expr(object)?;
-                let (val, _) = self.compile_expr(value)?;
-                if let ValKind::Record(ref _name) = obj_kind {
-                    self.emit(&format!("{}.{} = {};", obj_val, field, val));
+                let (val, val_kind) = self.compile_expr(value)?;
+                if let ValKind::Record(ref name) = obj_kind {
+                    // Look up the target field kind and coerce if needed
+                    let coerced = if let Some(info) = self.records.get(name) {
+                        if let Some(idx) = info.field_names.iter().position(|n| n == field) {
+                            self.coerce_expr(&val, &val_kind, &info.field_kinds[idx])
+                        } else {
+                            val
+                        }
+                    } else {
+                        val
+                    };
+                    self.emit(&format!("{}.{} = {};", obj_val, field, coerced));
                 } else {
                     return Err(self.err(format!("field assignment not supported on {:?}", obj_kind)));
                 }

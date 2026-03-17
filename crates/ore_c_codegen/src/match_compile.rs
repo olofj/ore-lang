@@ -505,6 +505,7 @@ impl CCodeGen {
             .ok_or_else(|| self.err(format!("unknown variant '{}'", variant_name)))?;
         let tag = variant.tag;
         let field_names = variant.field_names.clone();
+        let field_kinds = variant.field_kinds.clone();
 
         let tmp = self.tmp();
         self.emit(&format!("{} {};", struct_name, tmp));
@@ -517,9 +518,11 @@ impl CCodeGen {
             for (name, expr) in fields {
                 let idx = field_names.iter().position(|n| n == name)
                     .ok_or_else(|| self.err(format!("unknown field '{}' on variant '{}'", name, variant_name)))?;
-                let (val, _) = self.compile_expr(expr)?;
+                let (val, val_kind) = self.compile_expr(expr)?;
                 let fname = &field_names[idx];
-                self.emit(&format!("{}->{} = {};", payload_tmp, fname, val));
+                let target_kind = &field_kinds[idx];
+                let coerced = self.coerce_expr(&val, &val_kind, target_kind);
+                self.emit(&format!("{}->{} = {};", payload_tmp, fname, coerced));
             }
         }
 
@@ -608,15 +611,18 @@ impl CCodeGen {
         let struct_name = format!("struct ore_rec_{}", Self::mangle_name(type_name));
         let info = self.records.get(type_name).ok_or_else(|| self.err(format!("undefined type '{}'", type_name)))?;
         let field_names = info.field_names.clone();
+        let field_kinds = info.field_kinds.clone();
 
         let tmp = self.tmp();
         self.emit(&format!("{} {};", struct_name, tmp));
         for (name, expr) in fields {
             let idx = field_names.iter().position(|n| n == name)
                 .ok_or_else(|| self.err(format!("unknown field '{}' on type '{}'", name, type_name)))?;
-            let (val, _) = self.compile_expr(expr)?;
+            let (val, val_kind) = self.compile_expr(expr)?;
             let fname = &field_names[idx];
-            self.emit(&format!("{}.{} = {};", tmp, fname, val));
+            let target_kind = &field_kinds[idx];
+            let coerced = self.coerce_expr(&val, &val_kind, target_kind);
+            self.emit(&format!("{}.{} = {};", tmp, fname, coerced));
         }
 
         Ok((tmp, ValKind::Record(type_name.to_string())))
