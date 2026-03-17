@@ -245,6 +245,7 @@ impl CCodeGen {
         let mut result_kind = ValKind::Int;
         let mut first = true;
         let mut closed = false;
+        let mut extra_else_depth: usize = 0;
 
         for arm in arms {
             let is_wildcard = matches!(&arm.pattern, Pattern::Wildcard);
@@ -282,20 +283,24 @@ impl CCodeGen {
             }
 
             if is_var_binding {
-                // Variable binding WITH guard — emit as "else if (guard)" in the chain.
-                // Bind the variable and check the guard.
+                // Variable binding WITH guard — close previous block first so
+                // guard temporaries are emitted in the correct scope.
                 let guard = arm.guard.as_ref().unwrap();
+
+                if !first {
+                    // Close the previous arm and open an else block so guard
+                    // setup code (temporaries, div-by-zero checks) is in scope
+                    // for the subsequent if condition.
+                    self.emit("} else {");
+                    self.indent += 1;
+                    extra_else_depth += 1;
+                }
+
                 if let Pattern::Variant { name, .. } = &arm.pattern {
                     // Bind variable before guard evaluation
                     let c_type = self.kind_to_c_type_str(subject_kind);
-                    // Declare binding before the if chain if first, or use a temp
-                    if first {
+                    if !self.variables.contains_key(name) || first {
                         self.emit(&format!("{} {} = {};", c_type, name, subject_val));
-                    } else {
-                        // Variable already declared from a prior arm or declare fresh
-                        if !self.variables.contains_key(name) {
-                            self.emit(&format!("{} {} = {};", c_type, name, subject_val));
-                        }
                     }
                     self.variables.insert(name.clone(), VarInfo {
                         c_name: name.clone(),
@@ -305,12 +310,8 @@ impl CCodeGen {
                 }
 
                 let (guard_val, _) = self.compile_expr(guard)?;
-                if first {
-                    self.emit(&format!("if ({}) {{", guard_val));
-                    first = false;
-                } else {
-                    self.emit(&format!("}} else if ({}) {{", guard_val));
-                }
+                self.emit(&format!("if ({}) {{", guard_val));
+                first = false;
                 self.indent += 1;
 
                 let (body_val, body_kind) = self.compile_expr(&arm.body)?;
@@ -348,6 +349,12 @@ impl CCodeGen {
         }
 
         if !first && !closed {
+            self.emit("}");
+        }
+
+        // Close any extra else blocks opened for guarded variable-binding arms
+        for _ in 0..extra_else_depth {
+            self.indent -= 1;
             self.emit("}");
         }
 
