@@ -1,6 +1,6 @@
 use super::*;
 use inkwell::values::{BasicValue, BasicValueEnum, FunctionValue, IntValue};
-use inkwell::IntPredicate;
+use inkwell::{IntPredicate, FloatPredicate};
 
 type BranchResults<'ctx> = Vec<(BasicValueEnum<'ctx>, inkwell::basic_block::BasicBlock<'ctx>)>;
 
@@ -510,6 +510,14 @@ impl<'ctx> CodeGen<'ctx> {
                 let le = bld!(self.builder.build_int_compare(IntPredicate::SLE, subj, end_val, "rle"))?;
                 bld!(self.builder.build_and(ge, le, "range_cmp"))
             }
+            Pattern::FloatLit(f) => {
+                let const_val = self.context.f64_type().const_float(*f);
+                let cmp = bld!(self.builder.build_float_compare(
+                    FloatPredicate::OEQ, subject.into_float_value(), const_val, "pcmp"
+                ))?;
+                // float compare returns i1, convert to bool
+                Ok(cmp)
+            }
             Pattern::Or(alternatives) => {
                 // Or pattern: check any alternative matches
                 let first = self.compile_pattern_cmp(subject, _subject_kind, &alternatives[0], _func)?;
@@ -519,6 +527,10 @@ impl<'ctx> CodeGen<'ctx> {
                     result = bld!(self.builder.build_or(result, alt_cmp, "or_pat"))?;
                 }
                 Ok(result)
+            }
+            Pattern::Wildcard => {
+                // Wildcard always matches
+                Ok(self.context.bool_type().const_int(1, false))
             }
             _ => Err(self.err("unsupported pattern in literal match")),
         }
