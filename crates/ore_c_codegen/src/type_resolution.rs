@@ -266,16 +266,18 @@ impl CCodeGen {
             }
             ValKind::Enum(name) => {
                 // Heap-allocate the enum struct, store value, return pointer as i64
+                // Use statement expression to materialize rvalues (e.g. function returns)
+                // into an lvalue before taking its address
                 let c_type = format!("struct ore_enum_{}", Self::mangle_name(name));
-                format!("(int64_t)(intptr_t)memcpy(malloc(sizeof({c_type})), &({expr}), sizeof({c_type}))")
+                format!("({{ {c_type} __v2i = {expr}; (int64_t)(intptr_t)memcpy(malloc(sizeof({c_type})), &__v2i, sizeof({c_type})); }})")
             }
             ValKind::Record(name) => {
                 let c_type = format!("struct ore_rec_{}", Self::mangle_name(name));
-                format!("(int64_t)(intptr_t)memcpy(malloc(sizeof({c_type})), &({expr}), sizeof({c_type}))")
+                format!("({{ {c_type} __v2i = {expr}; (int64_t)(intptr_t)memcpy(malloc(sizeof({c_type})), &__v2i, sizeof({c_type})); }})")
             }
             ValKind::Option | ValKind::Result => {
                 // Tagged union: copy to heap
-                format!("(int64_t)(intptr_t)memcpy(malloc(sizeof(OreTaggedUnion)), &({expr}), sizeof(OreTaggedUnion))")
+                format!("({{ OreTaggedUnion __v2i = {expr}; (int64_t)(intptr_t)memcpy(malloc(sizeof(OreTaggedUnion)), &__v2i, sizeof(OreTaggedUnion)); }})")
             }
             _ => expr.to_string(),
         }
