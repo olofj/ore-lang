@@ -679,6 +679,28 @@ impl CCodeGen {
             }
         }
 
+        // After compiling the body, if the function returns List(None) or Map(None),
+        // check if we inferred element/value kinds from push/set calls during body
+        // compilation. This lets callers properly handle typed elements.
+        if matches!(fn_info.ret_kind, ValKind::List(None)) {
+            if !self.fn_return_list_elem_kind.contains_key(&fndef.name) {
+                // Use element kind from any list that had push() calls in this function.
+                // In practice, functions returning List typically build one list.
+                if let Some(ek) = self.list_element_kinds.values().find(|k| **k != ValKind::Int).cloned()
+                    .or_else(|| self.list_element_kinds.values().next().cloned()) {
+                    self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek);
+                }
+            }
+        }
+        if matches!(fn_info.ret_kind, ValKind::Map(None)) {
+            if !self.fn_return_map_val_kind.contains_key(&fndef.name) {
+                if let Some(vk) = self.map_value_kinds.values().find(|k| **k != ValKind::Int).cloned()
+                    .or_else(|| self.map_value_kinds.values().next().cloned()) {
+                    self.fn_return_map_val_kind.insert(fndef.name.clone(), vk);
+                }
+            }
+        }
+
         self.indent -= 1;
         self.emit_raw("}");
         self.emit_raw("");
