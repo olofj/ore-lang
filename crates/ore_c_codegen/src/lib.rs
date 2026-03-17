@@ -883,7 +883,9 @@ impl CCodeGen {
                     BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
                         let lk = self.infer_expr_kind(left);
                         let rk = self.infer_expr_kind(right);
-                        if lk == ValKind::Float || rk == ValKind::Float {
+                        if lk == ValKind::Str || rk == ValKind::Str {
+                            ValKind::Str  // string concatenation
+                        } else if lk == ValKind::Float || rk == ValKind::Float {
                             ValKind::Float
                         } else {
                             ValKind::Int
