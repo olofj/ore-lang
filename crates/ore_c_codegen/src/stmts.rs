@@ -7,7 +7,15 @@ impl CCodeGen {
             Stmt::Let { name, mutable, value } => {
                 let (val, kind) = self.compile_expr(value)?;
                 let c_type = self.kind_to_c_type_str(&kind);
-                let c_name = Self::mangle_var_name(name);
+                // If variable already exists in scope, generate a unique C name
+                // to avoid C redefinition errors (Ore allows rebinding in same scope)
+                let c_name = if self.variables.contains_key(name) {
+                    let unique = format!("{}_{}", Self::mangle_var_name(name), self.temp_counter);
+                    self.temp_counter += 1;
+                    unique
+                } else {
+                    Self::mangle_var_name(name)
+                };
                 self.emit(&format!("{} {} = {};", c_type, c_name, val));
                 self.variables.insert(name.clone(), VarInfo {
                     c_name: c_name.clone(),
