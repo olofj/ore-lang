@@ -1118,8 +1118,15 @@ impl CCodeGen {
         if let Some(last) = block.stmts.last() {
             match &last.stmt {
                 Stmt::Expr(Expr::Ident(name)) => Some(name.clone()),
+                // Method call on a variable (e.g. result.skip(1)) — return the object var
+                Stmt::Expr(Expr::MethodCall { object, .. }) => {
+                    if let Expr::Ident(name) = object.as_ref() {
+                        Some(name.clone())
+                    } else {
+                        None
+                    }
+                }
                 Stmt::Expr(Expr::IfElse { then_block, else_block, .. }) => {
-                    // Check both branches; prefer the one that returns an ident
                     Self::find_return_ident(then_block)
                         .or_else(|| else_block.as_ref().and_then(|eb| Self::find_return_ident(eb)))
                 }
