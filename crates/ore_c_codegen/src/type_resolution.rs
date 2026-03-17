@@ -307,6 +307,30 @@ impl CCodeGen {
         }
     }
 
+    /// Coerce a compiled argument expression to match a function parameter's expected type.
+    /// When the C types match, the expression is returned as-is. When they differ (e.g., a
+    /// list element was coerced to a struct but the parameter expects int64_t), applies the
+    /// appropriate conversion through the int64_t intermediate representation.
+    pub(crate) fn coerce_arg_to_param(&self, expr: &str, arg_kind: &ValKind, param_kind: &ValKind) -> String {
+        // Fast path: same kind, no coercion needed
+        if arg_kind == param_kind {
+            return expr.to_string();
+        }
+        let arg_c = self.kind_to_c_type_str(arg_kind);
+        let param_c = self.kind_to_c_type_str(param_kind);
+        // If C types match, no coercion needed (e.g. both are void*)
+        if arg_c == param_c {
+            return expr.to_string();
+        }
+        // Special case: function pointer to int64_t
+        if param_kind == &ValKind::Int && expr.starts_with("(void*)&") {
+            return format!("(int64_t)(intptr_t){}", expr);
+        }
+        // Convert arg → int64_t → param type
+        let as_i64 = self.value_to_i64_expr(expr, arg_kind);
+        self.coerce_from_i64_expr(&as_i64, param_kind)
+    }
+
     /// Generate a safe C identifier suffix for a ValKind (for monomorphized function names).
     pub(crate) fn kind_to_suffix(kind: &ValKind) -> String {
         match kind {

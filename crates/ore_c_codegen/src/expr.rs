@@ -367,11 +367,11 @@ impl CCodeGen {
             let c_fn_name = Self::mangle_fn_name(&name);
             let mut arg_strs = Vec::new();
             for (i, arg) in args.iter().enumerate() {
-                let (a, _ak) = self.compile_expr(arg)?;
-                // Cast function pointers to int64_t when parameter expects Int
+                let (a, ak) = self.compile_expr(arg)?;
                 let param_kind = fn_info.param_kinds.get(i);
-                if param_kind == Some(&ValKind::Int) && a.starts_with("(void*)&") {
-                    arg_strs.push(format!("(int64_t)(intptr_t){}", a));
+                if let Some(pk) = param_kind {
+                    let coerced = self.coerce_arg_to_param(&a, &ak, pk);
+                    arg_strs.push(coerced);
                 } else {
                     arg_strs.push(a);
                 }
@@ -379,9 +379,14 @@ impl CCodeGen {
             // Fill default args
             if let Some(defaults) = self.fn_defaults.get(&name).cloned() {
                 let num_args = arg_strs.len();
-                for default_expr in defaults.iter().skip(num_args).flatten() {
-                    let (a, _) = self.compile_expr(default_expr)?;
-                    arg_strs.push(a);
+                for (di, default_expr) in defaults.iter().skip(num_args).flatten().enumerate() {
+                    let (a, ak) = self.compile_expr(default_expr)?;
+                    let param_idx = num_args + di;
+                    if let Some(pk) = fn_info.param_kinds.get(param_idx) {
+                        arg_strs.push(self.coerce_arg_to_param(&a, &ak, pk));
+                    } else {
+                        arg_strs.push(a);
+                    }
                 }
             }
             let call_str = format!("{}({})", c_fn_name, arg_strs.join(", "));
@@ -528,19 +533,28 @@ impl CCodeGen {
     fn compile_pipe_to_named(&mut self, arg: &Expr, name: &str, extra_args: &[Expr]) -> Result<(String, ValKind), CCodeGenError> {
         if self.functions.contains_key(name) {
             let c_fn_name = Self::mangle_fn_name(name);
-            let (arg_val, _) = self.compile_expr(arg)?;
+            let (arg_val, arg_kind) = self.compile_expr(arg)?;
             let fn_info = self.functions[name].clone();
-            let mut arg_strs = vec![arg_val];
+            let mut arg_vals = vec![(arg_val, arg_kind)];
             for a in extra_args {
-                let (v, _) = self.compile_expr(a)?;
-                arg_strs.push(v);
+                let (v, k) = self.compile_expr(a)?;
+                arg_vals.push((v, k));
             }
             // Fill defaults
             if let Some(defaults) = self.fn_defaults.get(name).cloned() {
-                let num_args = arg_strs.len();
+                let num_args = arg_vals.len();
                 for default_expr in defaults.iter().skip(num_args).flatten() {
-                    let (a, _) = self.compile_expr(default_expr)?;
-                    arg_strs.push(a);
+                    let (a, ak) = self.compile_expr(default_expr)?;
+                    arg_vals.push((a, ak));
+                }
+            }
+            // Coerce arguments to match parameter types
+            let mut arg_strs = Vec::new();
+            for (i, (val, ak)) in arg_vals.iter().enumerate() {
+                if let Some(pk) = fn_info.param_kinds.get(i) {
+                    arg_strs.push(self.coerce_arg_to_param(val, ak, pk));
+                } else {
+                    arg_strs.push(val.clone());
                 }
             }
             let call = format!("{}({})", c_fn_name, arg_strs.join(", "));
