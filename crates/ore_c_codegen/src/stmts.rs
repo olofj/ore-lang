@@ -7,22 +7,33 @@ impl CCodeGen {
             Stmt::Let { name, mutable, value } => {
                 let (val, kind) = self.compile_expr(value)?;
                 let c_type = self.kind_to_c_type_str(&kind);
-                // Always declare a new C variable. Use a unique name if the Ore
-                // variable name was already used in this function, to avoid C
-                // redefinition errors.
-                let c_name = if self.variables.contains_key(name) {
-                    let unique = format!("{}_{}", Self::mangle_var_name(name), self.temp_counter);
-                    self.temp_counter += 1;
-                    unique
+                if let Some(existing) = self.variables.get(name).cloned() {
+                    if existing.is_mutable && c_type == self.kind_to_c_type_str(&existing.kind) {
+                        // Mutable variable with same type: reassign the existing
+                        // C variable. This handles Ore's `:=` rebinding of a
+                        // mutable variable in a nested scope, which should modify
+                        // the outer variable (not shadow it).
+                        self.emit(&format!("{} = {};", existing.c_name, val));
+                    } else {
+                        // Different type or immutable: create new unique C variable
+                        let unique = format!("{}_{}", Self::mangle_var_name(name), self.temp_counter);
+                        self.temp_counter += 1;
+                        self.emit(&format!("{} {} = {};", c_type, unique, val));
+                        self.variables.insert(name.clone(), VarInfo {
+                            c_name: unique,
+                            kind: kind.clone(),
+                            is_mutable: *mutable,
+                        });
+                    }
                 } else {
-                    Self::mangle_var_name(name)
-                };
-                self.emit(&format!("{} {} = {};", c_type, c_name, val));
-                self.variables.insert(name.clone(), VarInfo {
-                    c_name,
-                    kind: kind.clone(),
-                    is_mutable: *mutable,
-                });
+                    let c_name = Self::mangle_var_name(name);
+                    self.emit(&format!("{} {} = {};", c_type, c_name, val));
+                    self.variables.insert(name.clone(), VarInfo {
+                        c_name,
+                        kind: kind.clone(),
+                        is_mutable: *mutable,
+                    });
+                }
                 self.track_variable_kinds(name, &kind);
                 Ok((None, ValKind::Void))
             }
