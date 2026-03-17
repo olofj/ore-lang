@@ -102,7 +102,9 @@ pub extern "C" fn ore_map_keys(map: *mut OreMap) -> *mut OreList {
     unsafe {
         let map = &*map;
         let list = ore_list_new();
-        for key in map.inner.keys() {
+        let mut keys: Vec<&String> = map.inner.keys().collect();
+        keys.sort();
+        for key in keys {
             let s = str_to_ore(key);
             ore_list_push(list, s as i64);
         }
@@ -116,8 +118,10 @@ pub extern "C" fn ore_map_values(map: *mut OreMap) -> *mut OreList {
     unsafe {
         let map = &*map;
         let list = ore_list_new();
-        for &val in map.inner.values() {
-            ore_list_push(list, val);
+        let mut keys: Vec<&String> = map.inner.keys().collect();
+        keys.sort();
+        for key in keys {
+            ore_list_push(list, map.inner[key]);
         }
         list
     }
@@ -215,7 +219,10 @@ pub extern "C" fn ore_map_map_values(
     let result = ore_map_new();
     unsafe {
         let map = &*map;
-        for (key, &val) in &map.inner {
+        let mut keys: Vec<&String> = map.inner.keys().collect();
+        keys.sort();
+        for key in keys {
+            let val = map.inner[key];
             let key_str = str_to_ore(key);
             let new_val = call_closure2(func, env_ptr, key_str as i64, val);
             ore_map_set(result, key_str, new_val);
@@ -235,7 +242,10 @@ pub extern "C" fn ore_map_filter(
     unsafe {
         let map = &*map;
         let result_map = &mut *result;
-        for (key, &val) in &map.inner {
+        let mut keys: Vec<&String> = map.inner.keys().collect();
+        keys.sort();
+        for key in keys {
+            let val = map.inner[key];
             let key_str = str_to_ore(key);
             if call_closure2(func, env_ptr, key_str as i64, val) != 0 {
                 result_map.inner.insert(key.clone(), val);
