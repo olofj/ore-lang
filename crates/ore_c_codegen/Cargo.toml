@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 ore_parser = { path = "../ore_parser" }
+
+[dev-dependencies]
+ore_lexer = { path = "../ore_lexer" }
