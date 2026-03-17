@@ -258,28 +258,36 @@ impl CCodeGen {
                     // Check if already instantiated
                     if !self.functions.contains_key(&mono_name) {
                         // Create monomorphized FnDef with concrete types
-                        let mono_params: Vec<Param> = generic_fn.params.iter().map(|p| {
-                            let ty = if let TypeExpr::Named(ref tn) = p.ty {
-                                if let Some(kind) = type_map.get(tn) {
-                                    TypeExpr::Named(self.kind_to_type_name(kind).to_string())
-                                } else {
-                                    p.ty.clone()
+                        let subst_type_expr = |te: &TypeExpr, tm: &HashMap<String, ValKind>, cg: &Self| -> TypeExpr {
+                            fn subst(te: &TypeExpr, tm: &HashMap<String, ValKind>, cg: &CCodeGen) -> TypeExpr {
+                                match te {
+                                    TypeExpr::Named(ref tn) => {
+                                        if let Some(kind) = tm.get(tn) {
+                                            TypeExpr::Named(cg.kind_to_type_name(kind).to_string())
+                                        } else {
+                                            te.clone()
+                                        }
+                                    }
+                                    TypeExpr::Generic(name, args) => {
+                                        let new_args: Vec<TypeExpr> = args.iter().map(|a| subst(a, tm, cg)).collect();
+                                        TypeExpr::Generic(name.clone(), new_args)
+                                    }
+                                    TypeExpr::Fn { params, ret } => {
+                                        TypeExpr::Fn {
+                                            params: params.iter().map(|p| subst(p, tm, cg)).collect(),
+                                            ret: Box::new(subst(ret, tm, cg)),
+                                        }
+                                    }
                                 }
-                            } else {
-                                p.ty.clone()
-                            };
+                            }
+                            subst(te, tm, cg)
+                        };
+                        let mono_params: Vec<Param> = generic_fn.params.iter().map(|p| {
+                            let ty = subst_type_expr(&p.ty, &type_map, self);
                             Param { name: p.name.clone(), ty, default: p.default.clone() }
                         }).collect();
                         let mono_ret = generic_fn.ret_type.as_ref().map(|rt| {
-                            if let TypeExpr::Named(ref tn) = rt {
-                                if let Some(kind) = type_map.get(tn) {
-                                    TypeExpr::Named(self.kind_to_type_name(kind).to_string())
-                                } else {
-                                    rt.clone()
-                                }
-                            } else {
-                                rt.clone()
-                            }
+                            subst_type_expr(rt, &type_map, self)
                         });
                         let mono_fn = FnDef {
                             name: mono_name.clone(),
