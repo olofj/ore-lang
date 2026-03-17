@@ -728,17 +728,28 @@ impl CCodeGen {
 
     /// Compile the full program, returning the generated C code as a string.
     pub fn compile_program(&mut self, program: &Program) -> Result<String, CCodeGenError> {
-        // Register type definitions
-        for item in &program.items {
+        self.register_types(&program.items)?;
+        self.declare_all_functions(&program.items)?;
+        self.compile_all_functions(&program.items)?;
+        self.compile_tests(&program.items)?;
+        Ok(self.assemble())
+    }
+
+    /// Register type and enum definitions.
+    fn register_types(&mut self, items: &[Item]) -> Result<(), CCodeGenError> {
+        for item in items {
             match item {
                 Item::TypeDef(td) => self.register_record(td)?,
                 Item::EnumDef(ed) => self.register_enum(ed)?,
                 _ => {}
             }
         }
+        Ok(())
+    }
 
-        // Declare regular functions (skip generic)
-        for item in &program.items {
+    /// Declare all regular functions (registering generics) and impl methods.
+    fn declare_all_functions(&mut self, items: &[Item]) -> Result<(), CCodeGenError> {
+        for item in items {
             if let Item::FnDef(f) = item {
                 if !f.type_params.is_empty() {
                     self.generic_fns.insert(f.name.clone(), f.clone());
@@ -747,26 +758,25 @@ impl CCodeGen {
                 }
             }
         }
-
-        // Declare impl methods
-        for (type_name, methods) in Self::impl_items(&program.items) {
+        for (type_name, methods) in Self::impl_items(items) {
             for method in methods {
                 let mangled_fn = Self::mangle_impl_method(type_name, method);
                 self.declare_function(&mangled_fn)?;
             }
         }
+        Ok(())
+    }
 
-        // Compile regular functions
-        for item in &program.items {
+    /// Compile all regular functions and impl methods.
+    fn compile_all_functions(&mut self, items: &[Item]) -> Result<(), CCodeGenError> {
+        for item in items {
             if let Item::FnDef(f) = item {
                 if f.type_params.is_empty() {
                     self.compile_function(f)?;
                 }
             }
         }
-
-        // Compile impl methods
-        let impl_fns: Vec<_> = Self::impl_items(&program.items)
+        let impl_fns: Vec<_> = Self::impl_items(items)
             .flat_map(|(type_name, methods)| {
                 methods.iter().map(move |m| Self::mangle_impl_method(type_name, m))
             })
@@ -774,10 +784,13 @@ impl CCodeGen {
         for mangled_fn in impl_fns {
             self.compile_function(&mangled_fn)?;
         }
+        Ok(())
+    }
 
-        // Compile test definitions
+    /// Compile test definitions and generate a test runner if needed.
+    fn compile_tests(&mut self, items: &[Item]) -> Result<(), CCodeGenError> {
         let mut test_idx = 0;
-        for item in &program.items {
+        for item in items {
             if let Item::TestDef { name, body } = item {
                 let fn_name = format!("ore_test_{}", test_idx);
                 self.test_names.push(name.clone());
@@ -793,14 +806,10 @@ impl CCodeGen {
                 test_idx += 1;
             }
         }
-
-        // Generate a test-runner main if there are tests but no explicit main
         if !self.test_names.is_empty() && !self.functions.contains_key("main") {
             self.emit_test_runner_main();
         }
-
-        // Assemble final C code
-        Ok(self.assemble())
+        Ok(())
     }
 
     /// Assemble all code sections into the final C output.
