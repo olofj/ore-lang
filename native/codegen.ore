@@ -1799,6 +1799,61 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   -- We can't easily shrink parallel lists in Ore, so just leave them
   -- (they'll be overwritten by later set_var calls)
 
+-- ── Impl block support ──
+
+-- Resolve Self type references in impl blocks.
+fn resolve_self_type te:TypeExpr type_name:Str -> TypeExpr
+  match te
+    NamedType name ->
+      if name == "Self"
+        return NamedType(name: type_name)
+      te
+    GenericType name args ->
+      mut new_name := name
+      if name == "Self"
+        new_name = type_name
+      mut new_args := []
+      for i in 0..args.len()
+        new_args.push(resolve_self_type(args[i], type_name))
+      GenericType(name: new_name, args: new_args)
+    _ ->
+      te
+
+-- Mangle an impl method into a top-level FnDef.
+-- Name becomes TypeName_method_name, Self types resolved, self param prepended if absent.
+fn mangle_impl_method type_name:Str method:FnDef -> FnDef
+  mangled_name := "{type_name}_{method.name}"
+  -- Resolve Self in params
+  mut resolved_params := []
+  for i in 0..method.params.len()
+    p := get_param_def(method.params, i)
+    resolved_ty := resolve_self_type(p.ty, type_name)
+    resolved_params.push(ParamDef(name: p.name, ty: resolved_ty, default_expr: p.default_expr))
+  -- Resolve Self in return type
+  resolved_ret := resolve_self_type(method.ret_type, type_name)
+  -- Check if self param already exists
+  mut has_self := false
+  if resolved_params.len() > 0
+    first_p := get_param_def(resolved_params, 0)
+    if first_p.name == "self"
+      has_self = true
+  -- Prepend self param if not present
+  mut final_params := []
+  if has_self
+    final_params = resolved_params
+  else
+    final_params.push(ParamDef(name: "self", ty: NamedType(name: type_name), default_expr: -1))
+    for i in 0..resolved_params.len()
+      final_params.push(resolved_params[i])
+  FnDef(name: mangled_name, type_params: method.type_params, params: final_params, ret_type: resolved_ret, body: method.body)
+
+-- Compile all methods in an impl block (or impl trait block).
+fn compile_impl_methods st:List exprs:List stmts:List type_name:Str methods:List
+  for i in 0..methods.len()
+    method := get_fn_def(methods, i)
+    mangled := mangle_impl_method(type_name, method)
+    compile_fn_def(st, exprs, stmts, mangled)
+
 -- ── Top-level item compilation ──
 
 fn compile_item st:List exprs:List stmts:List item:Item
@@ -1817,8 +1872,12 @@ fn compile_item st:List exprs:List stmts:List item:Item
     UseItem path ->
       -- Use items are handled at the parser/driver level, skip
       emit_raw(st, "// use {path}")
+    ImplBlockItem type_name methods ->
+      compile_impl_methods(st, exprs, stmts, type_name, methods)
+    ImplTraitItem trait_name type_name methods ->
+      compile_impl_methods(st, exprs, stmts, type_name, methods)
     _ ->
-      -- ImplBlockItem, TraitDefItem, ImplTraitItem — skip for now
+      -- TraitDefItem — skip (trait defs don't generate code)
       emit_raw(st, "// (skipped item)")
 
 -- ── Main entry point ──
@@ -1837,6 +1896,20 @@ fn generate items:List exprs:List stmts:List -> Str
         -- Pre-register functions so calls resolve
         ret_kind := type_expr_to_kind_str(st, fn_def.ret_type)
         cg_set_fn(st, fn_def.name, ret_kind)
+      ImplBlockItem type_name methods ->
+        -- Pre-register impl methods
+        for j in 0..methods.len()
+          m := get_fn_def(methods, j)
+          mangled := mangle_impl_method(type_name, m)
+          ret_kind := type_expr_to_kind_str(st, mangled.ret_type)
+          cg_set_fn(st, mangled.name, ret_kind)
+      ImplTraitItem trait_name type_name methods ->
+        -- Pre-register impl trait methods
+        for j in 0..methods.len()
+          m := get_fn_def(methods, j)
+          mangled := mangle_impl_method(type_name, m)
+          ret_kind := type_expr_to_kind_str(st, mangled.ret_type)
+          cg_set_fn(st, mangled.name, ret_kind)
       _ ->
         -- skip other items in first pass
         st = st
@@ -1861,6 +1934,10 @@ fn generate items:List exprs:List stmts:List -> Str
         compile_fn_def(st, exprs, stmts, fn_def)
       TestDefItem name body ->
         compile_item(st, exprs, stmts, items[i])
+      ImplBlockItem type_name methods ->
+        compile_impl_methods(st, exprs, stmts, type_name, methods)
+      ImplTraitItem trait_name type_name methods ->
+        compile_impl_methods(st, exprs, stmts, type_name, methods)
       _ ->
         -- Type/enum defs already handled
         st = st
