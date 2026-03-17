@@ -1,6 +1,23 @@
 use super::*;
 
 impl CCodeGen {
+    /// Enrich a function's return kind using tracked element/value kind info.
+    ///
+    /// If the base return kind is `List(None)` or `Map(None)`, upgrades it to
+    /// a typed variant when we have tracked element/value kind for the function.
+    fn enrich_return_kind(&self, fn_name: &str, base_kind: ValKind) -> ValKind {
+        if base_kind.is_list() {
+            if let Some(ek) = self.fn_return_list_elem_kind.get(fn_name) {
+                return ValKind::list_of(ek.clone());
+            }
+        } else if base_kind.is_map() {
+            if let Some(vk) = self.fn_return_map_val_kind.get(fn_name) {
+                return ValKind::map_of(vk.clone());
+            }
+        }
+        base_kind
+    }
+
     /// Compile an expression, returning (c_expr_string, ValKind).
     pub(crate) fn compile_expr(&mut self, expr: &Expr) -> Result<(String, ValKind), CCodeGenError> {
         match expr {
@@ -211,21 +228,7 @@ impl CCodeGen {
                         }
                     }
                     let call_str = format!("{}({})", c_fn_name, arg_strs.join(", "));
-                    let ret_kind = if fn_info.ret_kind.is_list() {
-                        if let Some(ek) = self.fn_return_list_elem_kind.get(&name) {
-                            ValKind::list_of(ek.clone())
-                        } else {
-                            fn_info.ret_kind.clone()
-                        }
-                    } else if fn_info.ret_kind.is_map() {
-                        if let Some(vk) = self.fn_return_map_val_kind.get(&name) {
-                            ValKind::map_of(vk.clone())
-                        } else {
-                            fn_info.ret_kind.clone()
-                        }
-                    } else {
-                        fn_info.ret_kind.clone()
-                    };
+                    let ret_kind = self.enrich_return_kind(&name, fn_info.ret_kind.clone());
                     return Ok((call_str, ret_kind));
                 }
                 // Generic function instantiation
@@ -610,22 +613,7 @@ impl CCodeGen {
                 }
             }
             let call = format!("{}({})", c_fn_name, arg_strs.join(", "));
-            // Enrich return kind with element/value kind tracking
-            let ret_kind = if fn_info.ret_kind.is_list() {
-                if let Some(ek) = self.fn_return_list_elem_kind.get(name) {
-                    ValKind::list_of(ek.clone())
-                } else {
-                    fn_info.ret_kind.clone()
-                }
-            } else if fn_info.ret_kind.is_map() {
-                if let Some(vk) = self.fn_return_map_val_kind.get(name) {
-                    ValKind::map_of(vk.clone())
-                } else {
-                    fn_info.ret_kind.clone()
-                }
-            } else {
-                fn_info.ret_kind.clone()
-            };
+            let ret_kind = self.enrich_return_kind(name, fn_info.ret_kind.clone());
             Ok((call, ret_kind))
         } else if let Some(generic_fn) = self.generic_fns.get(name).cloned() {
             // Generic function instantiation for pipeline
