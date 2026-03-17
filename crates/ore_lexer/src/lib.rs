@@ -564,6 +564,10 @@ impl<'a> Lexer<'a> {
                             Some(b' ') | Some(b'\t') => {
                                 self.advance();
                             }
+                            Some(b'\\') if self.pos + 1 < self.src.len() && self.src[self.pos + 1] == b'"' => {
+                                // Escaped string inside interpolation: \"...\"
+                                self.lex_escaped_string_in_interp()?;
+                            }
                             _ => {
                                 self.lex_token()?;
                             }
@@ -599,6 +603,51 @@ impl<'a> Lexer<'a> {
         } else {
             self.emit(Token::StringLit(s), start);
         }
+        Ok(())
+    }
+
+    /// Lex an escaped string inside interpolation: \"...\"
+    /// Handles escape sequences within the escaped string.
+    fn lex_escaped_string_in_interp(&mut self) -> Result<(), LexError> {
+        let start = self.pos;
+        self.advance(); // skip '\'
+        self.advance(); // skip '"'
+
+        let mut s = String::new();
+        loop {
+            match self.peek() {
+                None => {
+                    return Err(self.lex_error_at("unterminated escaped string in interpolation".to_string(), start));
+                }
+                Some(b'\\') if self.pos + 1 < self.src.len() && self.src[self.pos + 1] == b'"' => {
+                    // Closing \"
+                    self.advance(); // skip '\'
+                    self.advance(); // skip '"'
+                    break;
+                }
+                Some(b'\\') => {
+                    self.advance();
+                    match self.advance() {
+                        Some(b'n') => s.push('\n'),
+                        Some(b't') => s.push('\t'),
+                        Some(b'r') => s.push('\r'),
+                        Some(b'0') => s.push('\0'),
+                        Some(b'\\') => s.push('\\'),
+                        Some(b'{') => s.push('{'),
+                        Some(other) => {
+                            return Err(self.lex_error_at(format!("unknown escape '\\{}'", other as char), self.pos - 1));
+                        }
+                        None => {
+                            return Err(self.lex_error("unterminated escape".to_string()));
+                        }
+                    }
+                }
+                Some(_) => {
+                    s.push(self.advance().unwrap() as char);
+                }
+            }
+        }
+        self.emit(Token::StringLit(s), start);
         Ok(())
     }
 
