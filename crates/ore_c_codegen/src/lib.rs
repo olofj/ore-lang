@@ -852,6 +852,42 @@ impl CCodeGen {
         output.join("\n")
     }
 
+    /// Infer the return kind of a method call by name.
+    fn infer_method_return_kind(&self, method: &str) -> ValKind {
+        match method {
+            "to_upper" | "to_lower" | "trim" | "substr" | "replace"
+            | "join" | "to_str" | "repeat" | "reverse" => ValKind::Str,
+            "len" | "count" | "to_int" | "sum" | "min" | "max"
+            | "index_of" | "pop" | "first" | "last" => ValKind::Int,
+            "to_float" => ValKind::Float,
+            "contains" | "starts_with" | "ends_with"
+            | "is_empty" | "is_some" | "is_none" | "is_ok" | "is_err" => ValKind::Bool,
+            "split" | "keys" | "values" | "entries"
+            | "map" | "filter" | "take" | "drop" | "sort" | "flatten" => ValKind::List(None),
+            _ => ValKind::Int,
+        }
+    }
+
+    /// Infer the result kind of a binary operation.
+    fn infer_binop_kind(&self, op: &BinOp, left: &Expr, right: &Expr) -> ValKind {
+        match op {
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
+                let lk = self.infer_expr_kind(left);
+                let rk = self.infer_expr_kind(right);
+                if lk == ValKind::Str || rk == ValKind::Str {
+                    ValKind::Str // string concatenation
+                } else if lk == ValKind::Float || rk == ValKind::Float {
+                    ValKind::Float
+                } else {
+                    ValKind::Int
+                }
+            }
+            BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq
+            | BinOp::Eq | BinOp::NotEq | BinOp::And | BinOp::Or => ValKind::Bool,
+            BinOp::Pipe => self.infer_expr_kind(right),
+        }
+    }
+
     /// Infer expression kind without compilation (lightweight).
     pub(crate) fn infer_expr_kind(&self, expr: &Expr) -> ValKind {
         match expr {
@@ -864,38 +900,8 @@ impl CCodeGen {
             Expr::Ident(name) => {
                 self.variables.get(name).map(|v| v.kind.clone()).unwrap_or(ValKind::Int)
             }
-            Expr::MethodCall { method, .. } => {
-                match method.as_str() {
-                    "to_upper" | "to_lower" | "trim" | "substr" | "replace"
-                    | "join" | "to_str" | "repeat" | "reverse" => ValKind::Str,
-                    "len" | "count" | "to_int" | "sum" | "min" | "max"
-                    | "index_of" | "pop" | "first" | "last" => ValKind::Int,
-                    "to_float" => ValKind::Float,
-                    "contains" | "starts_with" | "ends_with"
-                    | "is_empty" | "is_some" | "is_none" | "is_ok" | "is_err" => ValKind::Bool,
-                    "split" | "keys" | "values" | "entries"
-                    | "map" | "filter" | "take" | "drop" | "sort" | "flatten" => ValKind::List(None),
-                    _ => ValKind::Int,
-                }
-            }
-            Expr::BinOp { op, left, right } => {
-                match op {
-                    BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
-                        let lk = self.infer_expr_kind(left);
-                        let rk = self.infer_expr_kind(right);
-                        if lk == ValKind::Str || rk == ValKind::Str {
-                            ValKind::Str  // string concatenation
-                        } else if lk == ValKind::Float || rk == ValKind::Float {
-                            ValKind::Float
-                        } else {
-                            ValKind::Int
-                        }
-                    }
-                    BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq
-                    | BinOp::Eq | BinOp::NotEq | BinOp::And | BinOp::Or => ValKind::Bool,
-                    BinOp::Pipe => self.infer_expr_kind(right),
-                }
-            }
+            Expr::MethodCall { method, .. } => self.infer_method_return_kind(method.as_str()),
+            Expr::BinOp { op, left, right } => self.infer_binop_kind(op, left, right),
             Expr::IfElse { then_block, .. } => {
                 if let Some(last) = then_block.stmts.last() {
                     if let Stmt::Expr(e) = &last.stmt {
