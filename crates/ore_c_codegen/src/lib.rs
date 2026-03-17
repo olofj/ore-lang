@@ -169,6 +169,8 @@ pub struct CCodeGen {
     continue_labels: Vec<String>,
     /// Label counter for unique loop labels
     label_counter: u32,
+    /// Tracks which function bodies have already been compiled (dedup guard)
+    compiled_functions: HashSet<String>,
 }
 
 impl Default for CCodeGen {
@@ -206,6 +208,7 @@ impl CCodeGen {
             break_labels: Vec::new(),
             continue_labels: Vec::new(),
             label_counter: 0,
+            compiled_functions: HashSet::new(),
         }
     }
 
@@ -428,7 +431,12 @@ impl CCodeGen {
     }
 
     /// Declare a function — emit C prototype.
+    /// Skips duplicate declarations (same function name from multiple source files).
     fn declare_function(&mut self, fndef: &FnDef) -> Result<(), CCodeGenError> {
+        // Skip if already declared — handles cross-module and same-file duplicates
+        if self.functions.contains_key(&fndef.name) {
+            return Ok(());
+        }
         let ret_kind = fndef.ret_type.as_ref().map(|t| self.type_expr_to_kind(t)).unwrap_or(ValKind::Void);
         let c_fn_name = Self::mangle_fn_name(&fndef.name);
 
@@ -481,7 +489,12 @@ impl CCodeGen {
     }
 
     /// Compile a function body — emit C function definition.
+    /// Skips duplicate compilations (same function name from multiple source files).
     fn compile_function(&mut self, fndef: &FnDef) -> Result<(), CCodeGenError> {
+        // Skip if already compiled — handles cross-module and same-file duplicates
+        if !self.compiled_functions.insert(fndef.name.clone()) {
+            return Ok(());
+        }
         let fn_info = self.functions.get(&fndef.name).cloned()
             .ok_or_else(|| self.err(format!("undefined function '{}'", fndef.name)))?;
         let c_fn_name = Self::mangle_fn_name(&fndef.name);
