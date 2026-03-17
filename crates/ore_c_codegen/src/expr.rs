@@ -519,6 +519,7 @@ impl CCodeGen {
 
         self.emit(&format!("if ({}) {{", cond_val));
         self.indent += 1;
+        let saved_vars = self.variables.clone();
         let (then_val, then_kind) = self.compile_block_stmts(then_block)?;
         if let Some(ref tv) = then_val {
             if use_native_type {
@@ -527,11 +528,13 @@ impl CCodeGen {
                 self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(tv, &then_kind)));
             }
         }
+        self.variables = saved_vars;
         self.indent -= 1;
 
         if let Some(eb) = else_block {
             self.emit("} else {");
             self.indent += 1;
+            let saved_vars = self.variables.clone();
             let (else_val, else_kind) = self.compile_block_stmts(eb)?;
             if let Some(ref ev) = else_val {
                 if use_native_type {
@@ -540,6 +543,7 @@ impl CCodeGen {
                     self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(ev, &else_kind)));
                 }
             }
+            self.variables = saved_vars;
             self.indent -= 1;
         }
         self.emit("}");

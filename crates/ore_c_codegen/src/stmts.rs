@@ -7,8 +7,9 @@ impl CCodeGen {
             Stmt::Let { name, mutable, value } => {
                 let (val, kind) = self.compile_expr(value)?;
                 let c_type = self.kind_to_c_type_str(&kind);
-                // If variable already exists in scope, generate a unique C name
-                // to avoid C redefinition errors (Ore allows rebinding in same scope)
+                // Always declare a new C variable. Use a unique name if the Ore
+                // variable name was already used in this function, to avoid C
+                // redefinition errors.
                 let c_name = if self.variables.contains_key(name) {
                     let unique = format!("{}_{}", Self::mangle_var_name(name), self.temp_counter);
                     self.temp_counter += 1;
@@ -18,7 +19,7 @@ impl CCodeGen {
                 };
                 self.emit(&format!("{} {} = {};", c_type, c_name, val));
                 self.variables.insert(name.clone(), VarInfo {
-                    c_name: c_name.clone(),
+                    c_name,
                     kind: kind.clone(),
                     is_mutable: *mutable,
                 });
@@ -219,6 +220,7 @@ impl CCodeGen {
 
         self.emit(&format!("for (int64_t {} = {}; {} < {}; {} += {}) {{", var, start, var, end_tmp, var, step_tmp));
         self.indent += 1;
+        let saved_vars = self.variables.clone();
         self.variables.insert(var.to_string(), VarInfo { c_name: var.to_string(), kind: ValKind::Int, is_mutable: false });
 
         self.compile_block_stmts(body)?;
@@ -227,6 +229,7 @@ impl CCodeGen {
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -260,6 +263,7 @@ impl CCodeGen {
 
         self.emit(&format!("for (int64_t {} = 0; {} < {}; {}++) {{", idx, idx, len_tmp, idx));
         self.indent += 1;
+        let saved_vars = self.variables.clone();
 
         let raw = format!("ore_list_get({}, {})", list_val, idx);
         let typed = self.coerce_from_i64_expr(&raw, &elem_kind);
@@ -272,6 +276,7 @@ impl CCodeGen {
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -296,6 +301,7 @@ impl CCodeGen {
 
             self.emit(&format!("for (int64_t {} = 0; {} < {}; {}++) {{", idx, idx, len_tmp, idx));
             self.indent += 1;
+            let saved_vars = self.variables.clone();
 
             self.emit(&format!("void* {} = (void*)(intptr_t)ore_list_get({}, {});", key_var, keys_tmp, idx));
             self.variables.insert(key_var.to_string(), VarInfo { c_name: key_var.to_string(), kind: ValKind::Str, is_mutable: false });
@@ -312,6 +318,7 @@ impl CCodeGen {
             self.indent -= 1;
             self.emit("}");
             self.emit(&format!("{}:;", break_label));
+            self.variables = saved_vars;
 
             self.break_labels.pop();
             self.continue_labels.pop();
@@ -332,6 +339,7 @@ impl CCodeGen {
 
         self.emit(&format!("for (int64_t {} = 0; {} < {}; {}++) {{", key_var, key_var, len_tmp, key_var));
         self.indent += 1;
+        let saved_vars = self.variables.clone();
 
         self.variables.insert(key_var.to_string(), VarInfo { c_name: key_var.to_string(), kind: ValKind::Int, is_mutable: false });
 
@@ -346,6 +354,7 @@ impl CCodeGen {
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -365,6 +374,7 @@ impl CCodeGen {
         self.emit(&format!("{}:;", continue_label));
         self.emit("for (;;) {");
         self.indent += 1;
+        let saved_vars = self.variables.clone();
 
         // Evaluate condition at the top of each iteration
         let (cond_val, _) = self.compile_expr(cond)?;
@@ -375,6 +385,7 @@ impl CCodeGen {
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -390,12 +401,14 @@ impl CCodeGen {
         self.emit(&format!("{}:;", continue_label));
         self.emit("for (;;) {");
         self.indent += 1;
+        let saved_vars = self.variables.clone();
 
         self.compile_block_stmts(body)?;
 
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
