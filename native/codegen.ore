@@ -1859,6 +1859,63 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           cg_dec_indent(st)
           emit(st, "}")
           first = false
+      FloatLitPat value ->
+        mut kw := "if"
+        if not first
+          kw = "else if"
+        emit(st, "{kw} (*(double*)&({subj[0]}) == {value}) \{")
+        cg_inc_indent(st)
+        br := compile_expr(st, exprs, stmts, body_id)
+        if br[0] != ""
+          emit(st, "{t} = (int64_t)({br[0]});")
+        cg_dec_indent(st)
+        emit(st, "}")
+        first = false
+      RangePat start end ->
+        mut kw := "if"
+        if not first
+          kw = "else if"
+        emit(st, "{kw} ((int64_t)({subj[0]}) >= {start}LL && (int64_t)({subj[0]}) <= {end}LL) \{")
+        cg_inc_indent(st)
+        br := compile_expr(st, exprs, stmts, body_id)
+        if br[0] != ""
+          emit(st, "{t} = (int64_t)({br[0]});")
+        cg_dec_indent(st)
+        emit(st, "}")
+        first = false
+      OrPat alternatives ->
+        mut kw := "if"
+        if not first
+          kw = "else if"
+        mut conds := []
+        for j in 0..alternatives.len()
+          ap := alternatives[j]
+          match ap
+            IntLitPat av ->
+              conds.push("(int64_t)({subj[0]}) == {av}LL")
+            FloatLitPat fv ->
+              conds.push("*(double*)&({subj[0]}) == {fv}")
+            BoolLitPat bv ->
+              mut bval := 0
+              if bv
+                bval = 1
+              conds.push("(int8_t)({subj[0]}) == {bval}")
+            StringLitPat sv ->
+              slit := compile_string_lit(st, sv)
+              conds.push("ore_str_eq({subj[0]}, {slit[0]})")
+            RangePat rs re ->
+              conds.push("((int64_t)({subj[0]}) >= {rs}LL && (int64_t)({subj[0]}) <= {re}LL)")
+            _ ->
+              conds.push("1")
+        cond := conds.join(" || ")
+        emit(st, "{kw} ({cond}) \{")
+        cg_inc_indent(st)
+        br := compile_expr(st, exprs, stmts, body_id)
+        if br[0] != ""
+          emit(st, "{t} = (int64_t)({br[0]});")
+        cg_dec_indent(st)
+        emit(st, "}")
+        first = false
       _ ->
         -- Unsupported pattern, treat as wildcard
         if not first
