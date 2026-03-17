@@ -680,23 +680,23 @@ impl CCodeGen {
         }
 
         // After compiling the body, if the function returns List(None) or Map(None),
-        // check if we inferred element/value kinds from push/set calls during body
-        // compilation. This lets callers properly handle typed elements.
+        // try to infer element/value kinds from the last expression. Only infer from
+        // the actual return variable, not from any list in the function.
         if matches!(fn_info.ret_kind, ValKind::List(None)) {
             if !self.fn_return_list_elem_kind.contains_key(&fndef.name) {
-                // Use element kind from any list that had push() calls in this function.
-                // In practice, functions returning List typically build one list.
-                if let Some(ek) = self.list_element_kinds.values().find(|k| **k != ValKind::Int).cloned()
-                    .or_else(|| self.list_element_kinds.values().next().cloned()) {
-                    self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek);
+                if let Some(name) = Self::find_return_ident(&fndef.body) {
+                    if let Some(ek) = self.list_element_kinds.get(&name) {
+                        self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek.clone());
+                    }
                 }
             }
         }
         if matches!(fn_info.ret_kind, ValKind::Map(None)) {
             if !self.fn_return_map_val_kind.contains_key(&fndef.name) {
-                if let Some(vk) = self.map_value_kinds.values().find(|k| **k != ValKind::Int).cloned()
-                    .or_else(|| self.map_value_kinds.values().next().cloned()) {
-                    self.fn_return_map_val_kind.insert(fndef.name.clone(), vk);
+                if let Some(name) = Self::find_return_ident(&fndef.body) {
+                    if let Some(vk) = self.map_value_kinds.get(&name) {
+                        self.fn_return_map_val_kind.insert(fndef.name.clone(), vk.clone());
+                    }
                 }
             }
         }
@@ -1088,6 +1088,25 @@ impl CCodeGen {
     }
 
     /// Track variable kinds for list/map element types.
+    /// Find the name of the variable in the return position of a block.
+    /// Looks at the last statement, recursing into if/else branches.
+    fn find_return_ident(block: &Block) -> std::option::Option<String> {
+        if let Some(last) = block.stmts.last() {
+            match &last.stmt {
+                Stmt::Expr(Expr::Ident(name)) => Some(name.clone()),
+                Stmt::Expr(Expr::IfElse { then_block, else_block, .. }) => {
+                    // Check both branches; prefer the one that returns an ident
+                    Self::find_return_ident(then_block)
+                        .or_else(|| else_block.as_ref().and_then(|eb| Self::find_return_ident(eb)))
+                }
+                Stmt::Return(Some(Expr::Ident(name))) => Some(name.clone()),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
     fn track_variable_kinds(&mut self, name: &str, kind: &ValKind) {
         if let ValKind::List(Some(ref ek)) = kind {
             self.list_element_kinds.insert(name.to_string(), ek.as_ref().clone());
