@@ -186,10 +186,10 @@ fn cmd_build file:Str output:Str -> Int
   c_path := c_output_path(file)
   file_write(c_path, c_code)
   -- Compile with cc, linking against libore_runtime
-  compiler := env_get("CC")
+  mut compiler := env_get("CC")
   if compiler == ""
     compiler = "cc"
-  runtime_lib := env_get("ORE_RUNTIME_LIB")
+  mut runtime_lib := env_get("ORE_RUNTIME_LIB")
   if runtime_lib == ""
     runtime_lib = "libore_runtime.a"
   cmd := "{compiler} {c_path} {runtime_lib} -o {output} -lm -lpthread -ldl 2>&1"
