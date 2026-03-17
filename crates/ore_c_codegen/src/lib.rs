@@ -169,6 +169,12 @@ pub struct CCodeGen {
     label_counter: u32,
 }
 
+impl Default for CCodeGen {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CCodeGen {
     pub fn new() -> Self {
         Self {
@@ -682,24 +688,22 @@ impl CCodeGen {
         // After compiling the body, if the function returns List(None) or Map(None),
         // try to infer element/value kinds from the last expression. Only infer from
         // the actual return variable, not from any list in the function.
-        if matches!(fn_info.ret_kind, ValKind::List(None)) {
-            if !self.fn_return_list_elem_kind.contains_key(&fndef.name) {
+        if matches!(fn_info.ret_kind, ValKind::List(None))
+            && !self.fn_return_list_elem_kind.contains_key(&fndef.name) {
                 if let Some(name) = Self::find_return_ident(&fndef.body) {
                     if let Some(ek) = self.list_element_kinds.get(&name) {
                         self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek.clone());
                     }
                 }
             }
-        }
-        if matches!(fn_info.ret_kind, ValKind::Map(None)) {
-            if !self.fn_return_map_val_kind.contains_key(&fndef.name) {
+        if matches!(fn_info.ret_kind, ValKind::Map(None))
+            && !self.fn_return_map_val_kind.contains_key(&fndef.name) {
                 if let Some(name) = Self::find_return_ident(&fndef.body) {
                     if let Some(vk) = self.map_value_kinds.get(&name) {
                         self.fn_return_map_val_kind.insert(fndef.name.clone(), vk.clone());
                     }
                 }
             }
-        }
 
         self.indent -= 1;
         self.emit_raw("}");
@@ -1143,7 +1147,7 @@ impl CCodeGen {
                 }
                 Stmt::Expr(Expr::IfElse { then_block, else_block, .. }) => {
                     Self::find_return_ident(then_block)
-                        .or_else(|| else_block.as_ref().and_then(|eb| Self::find_return_ident(eb)))
+                        .or_else(|| else_block.as_ref().and_then(Self::find_return_ident))
                 }
                 Stmt::Return(Some(Expr::Ident(name))) => Some(name.clone()),
                 _ => None,

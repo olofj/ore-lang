@@ -417,7 +417,7 @@ impl CCodeGen {
                 Ok(format!("({} == {})", subject, s))
             }
             Pattern::Wildcard => Ok("1".to_string()),
-            Pattern::Variant { name, .. } => Err(self.err(&format!("unsupported pattern Variant({}) in compile_pattern_cmp", name))),
+            Pattern::Variant { name, .. } => Err(self.err(format!("unsupported pattern Variant({}) in compile_pattern_cmp", name))),
         }
     }
 
