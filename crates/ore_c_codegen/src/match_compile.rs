@@ -99,120 +99,15 @@ impl CCodeGen {
             };
 
             if arm_indices.len() == 1 {
-                // Single arm for this tag — emit directly (no if/else needed)
-                let arm = &arms[arm_indices[0]];
-                if let Pattern::Variant { bindings, .. } = &arm.pattern {
-                    if !bindings.is_empty() {
-                        let pt = payload_tmp_name.as_ref().unwrap();
-                        for (i, binding) in bindings.iter().enumerate() {
-                            let fkind = &field_kinds[i];
-                            let c_type = self.kind_to_c_type_str(fkind);
-                            let fname = &field_names[i];
-                            self.emit(&format!("{} {} = {}->{};", c_type, binding, pt, fname));
-                            self.variables.insert(binding.clone(), VarInfo {
-                                c_name: binding.clone(),
-                                kind: fkind.clone(),
-                                is_mutable: false,
-                            });
-                        }
-                    }
-
-                    if let Some(guard) = &arm.guard {
-                        let (guard_val, _) = self.compile_expr(guard)?;
-                        self.emit(&format!("if (!({})) break;", guard_val));
-                    }
-
-                    let (body_val, body_kind) = self.compile_expr(&arm.body)?;
-                    result_kind = body_kind.clone();
-                    self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
-                }
+                result_kind = self.emit_single_arm_case(
+                    &arms[arm_indices[0]], payload_tmp_name.as_deref(),
+                    &field_names, &field_kinds, &result_tmp,
+                )?;
             } else {
-                // Multiple arms for this tag — use if/else chain
-                // Declare bindings once before the chain so all arms can use them
-                let mut declared_bindings: Vec<(String, ValKind)> = Vec::new();
-                if let Pattern::Variant { bindings, .. } = &first_arm.pattern {
-                    if !bindings.is_empty() {
-                        let pt = payload_tmp_name.as_ref().unwrap();
-                        for (i, binding) in bindings.iter().enumerate() {
-                            let fkind = &field_kinds[i];
-                            let c_type = self.kind_to_c_type_str(fkind);
-                            let fname = &field_names[i];
-                            self.emit(&format!("{} {} = {}->{};", c_type, binding, pt, fname));
-                            self.variables.insert(binding.clone(), VarInfo {
-                                c_name: binding.clone(),
-                                kind: fkind.clone(),
-                                is_mutable: false,
-                            });
-                            declared_bindings.push((binding.clone(), fkind.clone()));
-                        }
-                    }
-                }
-
-                let mut first_branch = true;
-                for &arm_idx in arm_indices {
-                    let arm = &arms[arm_idx];
-                    if let Pattern::Variant { bindings, .. } = &arm.pattern {
-                        // Re-register bindings (they may use different names per arm)
-                        for (i, binding) in bindings.iter().enumerate() {
-                            if i < declared_bindings.len() && binding != &declared_bindings[i].0 {
-                                // Different binding name — alias it
-                                let fkind = &field_kinds[i];
-                                let c_type = self.kind_to_c_type_str(fkind);
-                                self.emit(&format!("{} {} = {};", c_type, binding, declared_bindings[i].0));
-                                self.variables.insert(binding.clone(), VarInfo {
-                                    c_name: binding.clone(),
-                                    kind: fkind.clone(),
-                                    is_mutable: false,
-                                });
-                            } else if !self.variables.contains_key(binding) {
-                                let fkind = &field_kinds[i];
-                                self.variables.insert(binding.clone(), VarInfo {
-                                    c_name: binding.clone(),
-                                    kind: fkind.clone(),
-                                    is_mutable: false,
-                                });
-                            }
-                        }
-
-                        if let Some(guard) = &arm.guard {
-                            let (guard_val, _) = self.compile_expr(guard)?;
-                            if first_branch {
-                                self.emit(&format!("if ({}) {{", guard_val));
-                                first_branch = false;
-                            } else {
-                                self.emit(&format!("}} else if ({}) {{", guard_val));
-                            }
-                            self.indent += 1;
-                            let (body_val, body_kind) = self.compile_expr(&arm.body)?;
-                            result_kind = body_kind.clone();
-                            self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
-                            self.indent -= 1;
-                        } else {
-                            // No guard — this is the final fallback for this tag
-                            if first_branch {
-                                // Only arm has no guard (shouldn't happen in multi-arm, but handle it)
-                                let (body_val, body_kind) = self.compile_expr(&arm.body)?;
-                                result_kind = body_kind.clone();
-                                self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
-                            } else {
-                                self.emit("} else {");
-                                self.indent += 1;
-                                let (body_val, body_kind) = self.compile_expr(&arm.body)?;
-                                result_kind = body_kind.clone();
-                                self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
-                                self.indent -= 1;
-                                self.emit("}");
-                            }
-                            first_branch = false; // mark closed
-                        }
-                    }
-                }
-
-                // Close the if chain if last arm had a guard (no else)
-                let last_arm = &arms[*arm_indices.last().unwrap()];
-                if last_arm.guard.is_some() {
-                    self.emit("}");
-                }
+                result_kind = self.emit_multi_arm_case(
+                    arms, arm_indices, &first_arm.pattern, payload_tmp_name.as_deref(),
+                    &field_names, &field_kinds, &result_tmp,
+                )?;
             }
 
             self.emit("break;");
@@ -237,6 +132,144 @@ impl CCodeGen {
         self.emit("}");
 
         Ok((self.coerce_from_i64_expr(&result_tmp, &result_kind), result_kind))
+    }
+
+    fn emit_single_arm_case(
+        &mut self,
+        arm: &MatchArm,
+        payload_tmp: Option<&str>,
+        field_names: &[String],
+        field_kinds: &[ValKind],
+        result_tmp: &str,
+    ) -> Result<ValKind, CCodeGenError> {
+        let mut result_kind = ValKind::Int;
+        if let Pattern::Variant { bindings, .. } = &arm.pattern {
+            if !bindings.is_empty() {
+                let pt = payload_tmp.unwrap();
+                for (i, binding) in bindings.iter().enumerate() {
+                    let fkind = &field_kinds[i];
+                    let c_type = self.kind_to_c_type_str(fkind);
+                    let fname = &field_names[i];
+                    self.emit(&format!("{} {} = {}->{};", c_type, binding, pt, fname));
+                    self.variables.insert(binding.clone(), VarInfo {
+                        c_name: binding.clone(),
+                        kind: fkind.clone(),
+                        is_mutable: false,
+                    });
+                }
+            }
+
+            if let Some(guard) = &arm.guard {
+                let (guard_val, _) = self.compile_expr(guard)?;
+                self.emit(&format!("if (!({})) break;", guard_val));
+            }
+
+            let (body_val, body_kind) = self.compile_expr(&arm.body)?;
+            result_kind = body_kind.clone();
+            self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
+        }
+        Ok(result_kind)
+    }
+
+    fn emit_multi_arm_case(
+        &mut self,
+        arms: &[MatchArm],
+        arm_indices: &[usize],
+        first_pattern: &Pattern,
+        payload_tmp: Option<&str>,
+        field_names: &[String],
+        field_kinds: &[ValKind],
+        result_tmp: &str,
+    ) -> Result<ValKind, CCodeGenError> {
+        let mut result_kind = ValKind::Int;
+
+        // Declare bindings once before the chain so all arms can use them
+        let mut declared_bindings: Vec<(String, ValKind)> = Vec::new();
+        if let Pattern::Variant { bindings, .. } = first_pattern {
+            if !bindings.is_empty() {
+                let pt = payload_tmp.unwrap();
+                for (i, binding) in bindings.iter().enumerate() {
+                    let fkind = &field_kinds[i];
+                    let c_type = self.kind_to_c_type_str(fkind);
+                    let fname = &field_names[i];
+                    self.emit(&format!("{} {} = {}->{};", c_type, binding, pt, fname));
+                    self.variables.insert(binding.clone(), VarInfo {
+                        c_name: binding.clone(),
+                        kind: fkind.clone(),
+                        is_mutable: false,
+                    });
+                    declared_bindings.push((binding.clone(), fkind.clone()));
+                }
+            }
+        }
+
+        let mut first_branch = true;
+        for &arm_idx in arm_indices {
+            let arm = &arms[arm_idx];
+            if let Pattern::Variant { bindings, .. } = &arm.pattern {
+                // Re-register bindings (they may use different names per arm)
+                for (i, binding) in bindings.iter().enumerate() {
+                    if i < declared_bindings.len() && binding != &declared_bindings[i].0 {
+                        // Different binding name — alias it
+                        let fkind = &field_kinds[i];
+                        let c_type = self.kind_to_c_type_str(fkind);
+                        self.emit(&format!("{} {} = {};", c_type, binding, declared_bindings[i].0));
+                        self.variables.insert(binding.clone(), VarInfo {
+                            c_name: binding.clone(),
+                            kind: fkind.clone(),
+                            is_mutable: false,
+                        });
+                    } else if !self.variables.contains_key(binding) {
+                        let fkind = &field_kinds[i];
+                        self.variables.insert(binding.clone(), VarInfo {
+                            c_name: binding.clone(),
+                            kind: fkind.clone(),
+                            is_mutable: false,
+                        });
+                    }
+                }
+
+                if let Some(guard) = &arm.guard {
+                    let (guard_val, _) = self.compile_expr(guard)?;
+                    if first_branch {
+                        self.emit(&format!("if ({}) {{", guard_val));
+                        first_branch = false;
+                    } else {
+                        self.emit(&format!("}} else if ({}) {{", guard_val));
+                    }
+                    self.indent += 1;
+                    let (body_val, body_kind) = self.compile_expr(&arm.body)?;
+                    result_kind = body_kind.clone();
+                    self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
+                    self.indent -= 1;
+                } else {
+                    // No guard — this is the final fallback for this tag
+                    if first_branch {
+                        // Only arm has no guard (shouldn't happen in multi-arm, but handle it)
+                        let (body_val, body_kind) = self.compile_expr(&arm.body)?;
+                        result_kind = body_kind.clone();
+                        self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
+                    } else {
+                        self.emit("} else {");
+                        self.indent += 1;
+                        let (body_val, body_kind) = self.compile_expr(&arm.body)?;
+                        result_kind = body_kind.clone();
+                        self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
+                        self.indent -= 1;
+                        self.emit("}");
+                    }
+                    first_branch = false; // mark closed
+                }
+            }
+        }
+
+        // Close the if chain if last arm had a guard (no else)
+        let last_arm = &arms[*arm_indices.last().unwrap()];
+        if last_arm.guard.is_some() {
+            self.emit("}");
+        }
+
+        Ok(result_kind)
     }
 
     fn compile_literal_match(&mut self, subject_val: &str, subject_kind: &ValKind, arms: &[MatchArm]) -> Result<(String, ValKind), CCodeGenError> {
