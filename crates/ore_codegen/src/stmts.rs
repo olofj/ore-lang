@@ -81,81 +81,23 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> Result<(Option<BasicValueEnum<'ctx>>, ValKind), CodeGenError> {
         match stmt {
             Stmt::Let { name, mutable, value } => {
-                let (val, kind) = self.compile_expr_with_kind(value, func)?;
-                let ty = val.get_type();
-                let alloca = self.build_entry_alloca(func, ty, name)?;
-                bld!(self.builder.build_store(alloca, val))?;
-                self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: kind.clone(), is_mutable: *mutable });
-                self.track_variable_kinds(name, &kind);
+                self.compile_let(name, *mutable, value, func)?;
                 Ok((None, ValKind::Void))
             }
             Stmt::LetDestructure { names, value } => {
-                let (val, vk) = self.compile_expr_with_kind(value, func)?;
-                let list_ptr = val.into_pointer_value();
-                let elem_kind = match &vk {
-                    ValKind::List(Some(ek)) => ek.as_ref().clone(),
-                    _ => ValKind::Int,
-                };
-                let list_get_fn = self.rt("ore_list_get")?;
-                let i64_type = self.context.i64_type();
-
-                for (i, name) in names.iter().enumerate() {
-                    let idx = i64_type.const_int(i as u64, false);
-                    let result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "destr"))?;
-                    let raw_val = self.call_result_to_value(result)?;
-                    let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
-                    let (alloca, ty) = self.alloca_for_kind(name, &elem_kind)?;
-                    bld!(self.builder.build_store(alloca, typed_val))?;
-                    self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: elem_kind.clone(), is_mutable: false });
-                }
+                self.compile_let_destructure(names, value, func)?;
                 Ok((None, ValKind::Void))
             }
             Stmt::Assign { name, value } => {
-                let (val, kind) = self.compile_expr_with_kind(value, func)?;
-                let var_info = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?;
-                if !var_info.is_mutable {
-                    return Err(self.err(format!("cannot assign to immutable variable '{}'", name)));
-                }
-                bld!(self.builder.build_store(var_info.ptr, val))?;
-                self.track_variable_kinds(name, &kind);
+                self.compile_assign(name, value, func)?;
                 Ok((None, ValKind::Void))
             }
             Stmt::IndexAssign { object, index, value } => {
-                let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
-                let idx_val = self.compile_expr(index, func)?;
-                let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
-                match obj_kind {
-                    ValKind::List(_) => {
-                        self.call_rt("ore_list_set", &[obj_val.into(), idx_val.into(), val.into()], "")?;
-                    }
-                    ValKind::Map(_) => {
-                        // Convert non-string keys to strings for map
-                        let map_key = if idx_val.is_pointer_value() {
-                            idx_val
-                        } else {
-                            self.value_to_str(idx_val, ValKind::Int)?.into()
-                        };
-                        self.call_rt("ore_map_set", &[obj_val.into(), map_key.into(), val.into()], "")?;
-                    }
-                    _ => return Err(self.err("index assignment only supported on lists and maps")),
-                }
+                self.compile_index_assign(object, index, value, func)?;
                 Ok((None, ValKind::Void))
             }
             Stmt::FieldAssign { object, field, value } => {
-                let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
-                let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
-                match obj_kind {
-                    ValKind::Record(ref name) => {
-                        let rec_info = self.records.get(name).ok_or_else(|| self.err(format!("undefined record type '{}'", name)))?;
-                        let field_idx = rec_info.field_names.iter().position(|f| f == field).ok_or_else(|| self.err(format!("unknown field '{}' on record '{}'", field, name)))?;
-                        let struct_type = rec_info.struct_type;
-                        let field_ptr = bld!(self.builder.build_struct_gep(
-                            struct_type, obj_val.into_pointer_value(), field_idx as u32, &format!("fld_{}", field)
-                        ))?;
-                        bld!(self.builder.build_store(field_ptr, val))?;
-                    }
-                    _ => return Err(self.err(format!("field assignment not supported on {:?}", obj_kind))),
-                }
+                self.compile_field_assign(object, field, value, func)?;
                 Ok((None, ValKind::Void))
             }
             Stmt::Expr(expr) => {
@@ -208,77 +150,201 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((None, ValKind::Void))
             }
             Stmt::Spawn(expr) => {
-                match expr {
-                    Expr::Call { func: callee, args } => {
-                        let name = match callee.as_ref() {
-                            Expr::Ident(n) => n.clone(),
-                            _ => return Err(self.err("spawn requires a named function call")),
-                        };
-                        let (target_fn, _) = self.resolve_function(&name)?;
-                        let fn_ptr = target_fn.as_global_value().as_pointer_value();
-
-                        if args.is_empty() {
-                            self.call_rt("ore_spawn", &[fn_ptr.into()], "")?;
-                        } else {
-                            let mut i64_args: Vec<BasicValueEnum> = vec![fn_ptr.into()];
-                            for arg in args {
-                                let arg_val = self.compile_expr(arg, func)?;
-                                let i64_val = self.value_to_i64(arg_val)?;
-                                i64_args.push(i64_val.into());
-                            }
-                            let spawn_fn_name = match args.len() {
-                                1 => "ore_spawn_with_arg",
-                                2 => "ore_spawn_with_2args",
-                                3 => "ore_spawn_with_3args",
-                                n => return Err(self.err(format!("spawn supports at most 3 arguments, got {}", n))),
-                            };
-                            let call_args: Vec<_> = i64_args.iter().map(|a| (*a).into()).collect();
-                            self.call_rt(spawn_fn_name, &call_args, "")?;
-                        }
-                        Ok((None, ValKind::Void))
-                    }
-                    _ => Err(self.err("spawn requires a function call")),
-                }
+                self.compile_spawn(expr, func)?;
+                Ok((None, ValKind::Void))
             }
             Stmt::LocalFn(fndef) => {
-                // Compile local function with mangled name
-                let mangled = if let Ok(parent) = func.get_name().to_str() {
-                    format!("{}__{}", parent, fndef.name)
-                } else {
-                    fndef.name.clone()
-                };
-                let mut mangled_fndef = fndef.clone();
-                let original_name = fndef.name.clone();
-                mangled_fndef.name = mangled.clone();
-
-                // Save parent function state
-                let saved_vars = self.variables.clone();
-                let saved_insert_block = self.builder.get_insert_block();
-                let saved_break = self.break_target;
-                let saved_continue = self.continue_target;
-
-                self.declare_function(&mangled_fndef)?;
-                self.compile_function(&mangled_fndef)?;
-
-                // Restore parent function state
-                self.variables = saved_vars;
-                if let Some(block) = saved_insert_block {
-                    self.builder.position_at_end(block);
-                }
-                self.break_target = saved_break;
-                self.continue_target = saved_continue;
-
-                // Also register under the original name so calls resolve
-                if let Some(f) = self.module.get_function(&mangled) {
-                    let ret_kind = match fndef.ret_type.as_ref() {
-                        Some(te) => self.type_expr_to_kind(te),
-                        None => ValKind::Void,
-                    };
-                    self.functions.insert(original_name, (f, ret_kind));
-                }
+                self.compile_local_fn(fndef, func)?;
                 Ok((None, ValKind::Void))
             }
         }
+    }
+
+    fn compile_let(
+        &mut self,
+        name: &str,
+        mutable: bool,
+        value: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let (val, kind) = self.compile_expr_with_kind(value, func)?;
+        let ty = val.get_type();
+        let alloca = self.build_entry_alloca(func, ty, name)?;
+        bld!(self.builder.build_store(alloca, val))?;
+        self.variables.insert(name.to_string(), VarInfo { ptr: alloca, ty, kind: kind.clone(), is_mutable: mutable });
+        self.track_variable_kinds(name, &kind);
+        Ok(())
+    }
+
+    fn compile_let_destructure(
+        &mut self,
+        names: &[String],
+        value: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let (val, vk) = self.compile_expr_with_kind(value, func)?;
+        let list_ptr = val.into_pointer_value();
+        let elem_kind = match &vk {
+            ValKind::List(Some(ek)) => ek.as_ref().clone(),
+            _ => ValKind::Int,
+        };
+        let list_get_fn = self.rt("ore_list_get")?;
+        let i64_type = self.context.i64_type();
+
+        for (i, name) in names.iter().enumerate() {
+            let idx = i64_type.const_int(i as u64, false);
+            let result = bld!(self.builder.build_call(list_get_fn, &[list_ptr.into(), idx.into()], "destr"))?;
+            let raw_val = self.call_result_to_value(result)?;
+            let typed_val = self.list_elem_from_i64(raw_val, &elem_kind)?;
+            let (alloca, ty) = self.alloca_for_kind(name, &elem_kind)?;
+            bld!(self.builder.build_store(alloca, typed_val))?;
+            self.variables.insert(name.clone(), VarInfo { ptr: alloca, ty, kind: elem_kind.clone(), is_mutable: false });
+        }
+        Ok(())
+    }
+
+    fn compile_assign(
+        &mut self,
+        name: &str,
+        value: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let (val, kind) = self.compile_expr_with_kind(value, func)?;
+        let var_info = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?;
+        if !var_info.is_mutable {
+            return Err(self.err(format!("cannot assign to immutable variable '{}'", name)));
+        }
+        bld!(self.builder.build_store(var_info.ptr, val))?;
+        self.track_variable_kinds(name, &kind);
+        Ok(())
+    }
+
+    fn compile_index_assign(
+        &mut self,
+        object: &Expr,
+        index: &Expr,
+        value: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
+        let idx_val = self.compile_expr(index, func)?;
+        let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
+        match obj_kind {
+            ValKind::List(_) => {
+                self.call_rt("ore_list_set", &[obj_val.into(), idx_val.into(), val.into()], "")?;
+            }
+            ValKind::Map(_) => {
+                let map_key = if idx_val.is_pointer_value() {
+                    idx_val
+                } else {
+                    self.value_to_str(idx_val, ValKind::Int)?.into()
+                };
+                self.call_rt("ore_map_set", &[obj_val.into(), map_key.into(), val.into()], "")?;
+            }
+            _ => return Err(self.err("index assignment only supported on lists and maps")),
+        }
+        Ok(())
+    }
+
+    fn compile_field_assign(
+        &mut self,
+        object: &Expr,
+        field: &str,
+        value: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
+        let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
+        match obj_kind {
+            ValKind::Record(ref name) => {
+                let rec_info = self.records.get(name).ok_or_else(|| self.err(format!("undefined record type '{}'", name)))?;
+                let field_idx = rec_info.field_names.iter().position(|f| f == field).ok_or_else(|| self.err(format!("unknown field '{}' on record '{}'", field, name)))?;
+                let struct_type = rec_info.struct_type;
+                let field_ptr = bld!(self.builder.build_struct_gep(
+                    struct_type, obj_val.into_pointer_value(), field_idx as u32, &format!("fld_{}", field)
+                ))?;
+                bld!(self.builder.build_store(field_ptr, val))?;
+            }
+            _ => return Err(self.err(format!("field assignment not supported on {:?}", obj_kind))),
+        }
+        Ok(())
+    }
+
+    fn compile_spawn(
+        &mut self,
+        expr: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        match expr {
+            Expr::Call { func: callee, args } => {
+                let name = match callee.as_ref() {
+                    Expr::Ident(n) => n.clone(),
+                    _ => return Err(self.err("spawn requires a named function call")),
+                };
+                let (target_fn, _) = self.resolve_function(&name)?;
+                let fn_ptr = target_fn.as_global_value().as_pointer_value();
+
+                if args.is_empty() {
+                    self.call_rt("ore_spawn", &[fn_ptr.into()], "")?;
+                } else {
+                    let mut i64_args: Vec<BasicValueEnum> = vec![fn_ptr.into()];
+                    for arg in args {
+                        let arg_val = self.compile_expr(arg, func)?;
+                        let i64_val = self.value_to_i64(arg_val)?;
+                        i64_args.push(i64_val.into());
+                    }
+                    let spawn_fn_name = match args.len() {
+                        1 => "ore_spawn_with_arg",
+                        2 => "ore_spawn_with_2args",
+                        3 => "ore_spawn_with_3args",
+                        n => return Err(self.err(format!("spawn supports at most 3 arguments, got {}", n))),
+                    };
+                    let call_args: Vec<_> = i64_args.iter().map(|a| (*a).into()).collect();
+                    self.call_rt(spawn_fn_name, &call_args, "")?;
+                }
+                Ok(())
+            }
+            _ => Err(self.err("spawn requires a function call")),
+        }
+    }
+
+    fn compile_local_fn(
+        &mut self,
+        fndef: &FnDef,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let mangled = if let Ok(parent) = func.get_name().to_str() {
+            format!("{}__{}", parent, fndef.name)
+        } else {
+            fndef.name.clone()
+        };
+        let mut mangled_fndef = fndef.clone();
+        let original_name = fndef.name.clone();
+        mangled_fndef.name = mangled.clone();
+
+        let saved_vars = self.variables.clone();
+        let saved_insert_block = self.builder.get_insert_block();
+        let saved_break = self.break_target;
+        let saved_continue = self.continue_target;
+
+        self.declare_function(&mangled_fndef)?;
+        self.compile_function(&mangled_fndef)?;
+
+        self.variables = saved_vars;
+        if let Some(block) = saved_insert_block {
+            self.builder.position_at_end(block);
+        }
+        self.break_target = saved_break;
+        self.continue_target = saved_continue;
+
+        if let Some(f) = self.module.get_function(&mangled) {
+            let ret_kind = match fndef.ret_type.as_ref() {
+                Some(te) => self.type_expr_to_kind(te),
+                None => ValKind::Void,
+            };
+            self.functions.insert(original_name, (f, ret_kind));
+        }
+        Ok(())
     }
 
     /// Pre-scan a block for map.set() calls to infer value kinds before compilation.
