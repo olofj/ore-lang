@@ -37,9 +37,13 @@ impl CCodeGen {
                 // Propagate dynamic_kind_exprs from the RHS temp to the variable's C name.
                 // This ensures that values retrieved from untyped lists (which carry runtime
                 // kind tags) retain their kind info when assigned to named variables.
+                // When reassigning without a dynamic kind, remove the stale mapping so
+                // out-of-scope temp vars aren't referenced later.
+                let c_name = self.variables.get(name).unwrap().c_name.clone();
                 if let Some(kind_var) = self.dynamic_kind_exprs.get(&val).cloned() {
-                    let c_name = self.variables.get(name).unwrap().c_name.clone();
                     self.dynamic_kind_exprs.insert(c_name, kind_var);
+                } else {
+                    self.dynamic_kind_exprs.remove(&c_name);
                 }
                 self.track_variable_kinds(name, &kind);
                 Ok((None, ValKind::Void))
@@ -249,6 +253,7 @@ impl CCodeGen {
         self.emit(&format!("for (int64_t {} = {}; {} < {}; {} += {}) {{", var, start, var, end_tmp, var, step_tmp));
         self.indent += 1;
         let saved_vars = self.variables.clone();
+        let saved_dyn_kinds = self.dynamic_kind_exprs.clone();
         self.variables.insert(var.to_string(), VarInfo { c_name: var.to_string(), kind: ValKind::Int, is_mutable: false });
 
         self.compile_block_stmts(body)?;
@@ -258,6 +263,7 @@ impl CCodeGen {
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
         self.variables = saved_vars;
+        self.dynamic_kind_exprs = saved_dyn_kinds;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -296,6 +302,7 @@ impl CCodeGen {
         self.emit(&format!("for (int64_t {} = 0; {} < {}; {}++) {{", idx, idx, len_tmp, idx));
         self.indent += 1;
         let saved_vars = self.variables.clone();
+        let saved_dyn_kinds = self.dynamic_kind_exprs.clone();
 
         let raw = format!("ore_list_get({}, {})", list_val, idx);
         let typed = self.coerce_from_i64_expr(&raw, &elem_kind);
@@ -309,6 +316,7 @@ impl CCodeGen {
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
         self.variables = saved_vars;
+        self.dynamic_kind_exprs = saved_dyn_kinds;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -334,6 +342,7 @@ impl CCodeGen {
             self.emit(&format!("for (int64_t {} = 0; {} < {}; {}++) {{", idx, idx, len_tmp, idx));
             self.indent += 1;
             let saved_vars = self.variables.clone();
+            let saved_dyn_kinds = self.dynamic_kind_exprs.clone();
 
             self.emit(&format!("void* {} = (void*)(intptr_t)ore_list_get({}, {});", key_var, keys_tmp, idx));
             self.variables.insert(key_var.to_string(), VarInfo { c_name: key_var.to_string(), kind: ValKind::Str, is_mutable: false });
@@ -351,6 +360,7 @@ impl CCodeGen {
             self.emit("}");
             self.emit(&format!("{}:;", break_label));
             self.variables = saved_vars;
+            self.dynamic_kind_exprs = saved_dyn_kinds;
 
             self.break_labels.pop();
             self.continue_labels.pop();
@@ -372,6 +382,7 @@ impl CCodeGen {
         self.emit(&format!("for (int64_t {} = 0; {} < {}; {}++) {{", key_var, key_var, len_tmp, key_var));
         self.indent += 1;
         let saved_vars = self.variables.clone();
+        let saved_dyn_kinds = self.dynamic_kind_exprs.clone();
 
         self.variables.insert(key_var.to_string(), VarInfo { c_name: key_var.to_string(), kind: ValKind::Int, is_mutable: false });
 
@@ -387,6 +398,7 @@ impl CCodeGen {
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
         self.variables = saved_vars;
+        self.dynamic_kind_exprs = saved_dyn_kinds;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -407,6 +419,7 @@ impl CCodeGen {
         self.emit("for (;;) {");
         self.indent += 1;
         let saved_vars = self.variables.clone();
+        let saved_dyn_kinds = self.dynamic_kind_exprs.clone();
 
         // Evaluate condition at the top of each iteration
         let (cond_val, _) = self.compile_expr(cond)?;
@@ -418,6 +431,7 @@ impl CCodeGen {
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
         self.variables = saved_vars;
+        self.dynamic_kind_exprs = saved_dyn_kinds;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -434,6 +448,7 @@ impl CCodeGen {
         self.emit("for (;;) {");
         self.indent += 1;
         let saved_vars = self.variables.clone();
+        let saved_dyn_kinds = self.dynamic_kind_exprs.clone();
 
         self.compile_block_stmts(body)?;
 
@@ -441,6 +456,7 @@ impl CCodeGen {
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
         self.variables = saved_vars;
+        self.dynamic_kind_exprs = saved_dyn_kinds;
 
         self.break_labels.pop();
         self.continue_labels.pop();
