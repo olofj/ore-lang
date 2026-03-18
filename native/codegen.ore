@@ -1490,7 +1490,12 @@ fn compile_assign st:List exprs:List stmts:List name:Str value:Int -> List
   r := compile_expr(st, exprs, stmts, value)
   mn := mangle_var(name)
   emit(st, "{mn} = {r[0]};")
-  cg_set_var(st, name, r[1])
+  new_kind := r[1]
+  -- Don't overwrite with dynamic kind: the dynamic temp var may be scoped
+  -- to an inner block (e.g. inside if/else) and referencing it later would
+  -- produce an undeclared variable error in the generated C.
+  if not new_kind.starts_with("dynamic:")
+    cg_set_var(st, name, new_kind)
   ["", "void"]
 
 -- ── Index assign ──
