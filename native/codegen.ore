@@ -2276,14 +2276,14 @@ fn compile_record_construct st:List exprs:List stmts:List type_name:Str fields:L
   t := cg_tmp(st)
   c_type := "struct ore_rec_{type_name}"
   emit(st, "{c_type} {t};")
-  -- fields is a list of expr ids for field values
-  -- We need field names from the record definition
-  -- For now, assume fields are in order
+  -- fields is a list of [field_name, expr_id] pairs from the parser
   for i in 0..fields.len()
-    r := compile_expr(st, exprs, stmts, fields[i])
-    emit(st, "{t}.f{i} = {r[0]};")
-  __ret_11 := [t, "rec:{type_name}"]
-  __ret_11
+    pair := cg_list(fields, i)
+    field_name := str_at(pair, 0)
+    value_id := pair[1]
+    r := compile_expr(st, exprs, stmts, value_id)
+    emit(st, "{t}.{field_name} = {r[0]};")
+  [t, "rec:{type_name}"]
 
 -- ── Type definitions ──
 
