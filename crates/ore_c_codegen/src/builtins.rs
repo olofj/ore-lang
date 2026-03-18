@@ -1,7 +1,34 @@
 use super::*;
 
+type BuiltinResult = Result<std::option::Option<(String, ValKind)>, CCodeGenError>;
+
 impl CCodeGen {
-    pub(crate) fn compile_builtin_call(&mut self, name: &str, args: &[Expr]) -> Result<std::option::Option<(String, ValKind)>, CCodeGenError> {
+    pub(crate) fn compile_builtin_call(&mut self, name: &str, args: &[Expr]) -> BuiltinResult {
+        match name {
+            "abs" | "min" | "max"
+            | "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "floor" | "ceil" | "round"
+            | "math_abs" | "math_floor" | "math_ceil" | "math_round"
+            | "pow" | "atan2"
+            | "pi" | "euler" | "e" => self.compile_builtin_math(name, args),
+
+            "readln" | "input"
+            | "file_read" | "file_read_lines" | "file_write" | "file_append" | "file_exists"
+            | "eprint" => self.compile_builtin_io(name, args),
+
+            "str" | "int" | "float" | "ord" | "chr"
+            | "type_of" | "typeof" => self.compile_builtin_conversion(name, args),
+
+            "len" | "repeat" | "range" | "__range" => self.compile_builtin_collection(name, args),
+
+            "channel" | "env_get" | "env_set" | "args" | "exit" | "exec"
+            | "assert" | "rand_int" | "time_now" | "time_ms"
+            | "json_parse" | "json_stringify" => self.compile_builtin_system(name, args),
+
+            _ => Ok(None),
+        }
+    }
+
+    fn compile_builtin_math(&mut self, name: &str, args: &[Expr]) -> BuiltinResult {
         match name {
             "abs" => {
                 self.check_arity("abs", args, 1)?;
@@ -20,7 +47,38 @@ impl CCodeGen {
                 let kind = if ak == ValKind::Float { ValKind::Float } else { ValKind::Int };
                 Ok(Some((format!("(({0}) {2} ({1}) ? ({0}) : ({1}))", a, b, op), kind)))
             }
-            "channel" => Ok(Some(("ore_channel_new()".to_string(), ValKind::Channel))),
+            "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "floor" | "ceil" | "round"
+            | "math_abs" | "math_floor" | "math_ceil" | "math_round" => {
+                if (name == "round" || name == "math_round") && args.len() == 2 {
+                    let (val, kind) = self.compile_expr(&args[0])?;
+                    let f_val = if kind == ValKind::Int { format!("(double)({})", val) } else { val };
+                    let (dec, _) = self.compile_expr(&args[1])?;
+                    return Ok(Some((format!("ore_float_round_to({}, {})", f_val, dec), ValKind::Float)));
+                }
+                self.check_arity(name, args, 1)?;
+                let (val, kind) = self.compile_expr(&args[0])?;
+                let f_val = if kind == ValKind::Int { format!("(double)({})", val) } else { val };
+                let rt_name = name.strip_prefix("math_").unwrap_or(name);
+                Ok(Some((format!("ore_math_{}({})", rt_name, f_val), ValKind::Float)))
+            }
+            "pow" | "atan2" => {
+                self.check_arity(name, args, 2)?;
+                let (a, ak) = self.compile_expr(&args[0])?;
+                let (b, bk) = self.compile_expr(&args[1])?;
+                let af = if ak == ValKind::Int { format!("(double)({})", a) } else { a };
+                let bf = if bk == ValKind::Int { format!("(double)({})", b) } else { b };
+                Ok(Some((format!("ore_math_{}({}, {})", name, af, bf), ValKind::Float)))
+            }
+            "pi" | "euler" | "e" => {
+                let rt = if name == "pi" { "ore_math_pi" } else { "ore_math_e" };
+                Ok(Some((format!("{}()", rt), ValKind::Float)))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn compile_builtin_io(&mut self, name: &str, args: &[Expr]) -> BuiltinResult {
+        match name {
             "readln" | "input" => {
                 if args.len() == 1 {
                     let (prompt, _) = self.compile_expr(&args[0])?;
@@ -49,19 +107,6 @@ impl CCodeGen {
                 let (path, _) = self.compile_expr(&args[0])?;
                 Ok(Some((format!("(ore_file_exists({}) != 0)", path), ValKind::Bool)))
             }
-            "env_get" => {
-                self.check_arity("env_get", args, 1)?;
-                let (key, _) = self.compile_expr(&args[0])?;
-                Ok(Some((format!("ore_env_get({})", key), ValKind::Str)))
-            }
-            "env_set" => {
-                self.check_arity("env_set", args, 2)?;
-                let (key, _) = self.compile_expr(&args[0])?;
-                let (val, _) = self.compile_expr(&args[1])?;
-                self.emit(&format!("ore_env_set({}, {});", key, val));
-                Ok(Some(("0".to_string(), ValKind::Void)))
-            }
-            "args" => Ok(Some(("ore_args()".to_string(), ValKind::list_of(ValKind::Str)))),
             "eprint" => {
                 self.check_arity("eprint", args, 1)?;
                 let (val, kind) = self.compile_expr(&args[0])?;
@@ -74,17 +119,12 @@ impl CCodeGen {
                 self.emit(&format!("{}({});", rt, val));
                 Ok(Some(("0".to_string(), ValKind::Void)))
             }
-            "exit" => {
-                self.check_arity("exit", args, 1)?;
-                let (code, _) = self.compile_expr(&args[0])?;
-                self.emit(&format!("ore_exit({});", code));
-                Ok(Some(("0".to_string(), ValKind::Void)))
-            }
-            "exec" => {
-                self.check_arity("exec", args, 1)?;
-                let (cmd, _) = self.compile_expr(&args[0])?;
-                Ok(Some((format!("ore_exec({})", cmd), ValKind::Str)))
-            }
+            _ => Ok(None),
+        }
+    }
+
+    fn compile_builtin_conversion(&mut self, name: &str, args: &[Expr]) -> BuiltinResult {
+        match name {
             "str" => {
                 self.check_arity("str", args, 1)?;
                 let (val, kind) = self.compile_expr(&args[0])?;
@@ -135,24 +175,21 @@ impl CCodeGen {
                 let str_val = self.compile_string_literal(type_name);
                 Ok(Some((str_val, ValKind::Str)))
             }
-            "rand_int" => {
-                self.check_arity("rand_int", args, 2)?;
-                let (lo, _) = self.compile_expr(&args[0])?;
-                let (hi, _) = self.compile_expr(&args[1])?;
-                Ok(Some((format!("ore_rand_int({}, {})", lo, hi), ValKind::Int)))
-            }
-            "time_now" | "time_ms" => {
-                Ok(Some((format!("ore_{}()", name), ValKind::Int)))
-            }
-            "json_parse" => {
-                self.check_arity("json_parse", args, 1)?;
-                let (val, _) = self.compile_expr(&args[0])?;
-                Ok(Some((format!("ore_json_parse({})", val), ValKind::Map(None))))
-            }
-            "json_stringify" => {
-                self.check_arity("json_stringify", args, 1)?;
-                let (val, _) = self.compile_expr(&args[0])?;
-                Ok(Some((format!("ore_json_stringify({})", val), ValKind::Str)))
+            _ => Ok(None),
+        }
+    }
+
+    fn compile_builtin_collection(&mut self, name: &str, args: &[Expr]) -> BuiltinResult {
+        match name {
+            "len" => {
+                self.check_arity("len", args, 1)?;
+                let (val, kind) = self.compile_expr(&args[0])?;
+                match kind {
+                    ValKind::Str => Ok(Some((format!("ore_str_len({})", val), ValKind::Int))),
+                    ValKind::List(_) => Ok(Some((format!("ore_list_len({})", val), ValKind::Int))),
+                    ValKind::Map(_) => Ok(Some((format!("ore_map_len({})", val), ValKind::Int))),
+                    _ => Err(self.err("len() not supported on this type")),
+                }
             }
             "repeat" => {
                 self.check_arity("repeat", args, 2)?;
@@ -174,15 +211,43 @@ impl CCodeGen {
                     Ok(Some((format!("ore_range({}, {})", start, end), ValKind::list_of(ValKind::Int))))
                 }
             }
-            "len" => {
-                self.check_arity("len", args, 1)?;
-                let (val, kind) = self.compile_expr(&args[0])?;
-                match kind {
-                    ValKind::Str => Ok(Some((format!("ore_str_len({})", val), ValKind::Int))),
-                    ValKind::List(_) => Ok(Some((format!("ore_list_len({})", val), ValKind::Int))),
-                    ValKind::Map(_) => Ok(Some((format!("ore_map_len({})", val), ValKind::Int))),
-                    _ => Err(self.err("len() not supported on this type")),
-                }
+            "__range" => {
+                // Internal function used by list comprehension parser
+                self.check_arity("__range", args, 2)?;
+                let (start, _) = self.compile_expr(&args[0])?;
+                let (end, _) = self.compile_expr(&args[1])?;
+                Ok(Some((format!("ore_range({}, {})", start, end), ValKind::list_of(ValKind::Int))))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn compile_builtin_system(&mut self, name: &str, args: &[Expr]) -> BuiltinResult {
+        match name {
+            "channel" => Ok(Some(("ore_channel_new()".to_string(), ValKind::Channel))),
+            "env_get" => {
+                self.check_arity("env_get", args, 1)?;
+                let (key, _) = self.compile_expr(&args[0])?;
+                Ok(Some((format!("ore_env_get({})", key), ValKind::Str)))
+            }
+            "env_set" => {
+                self.check_arity("env_set", args, 2)?;
+                let (key, _) = self.compile_expr(&args[0])?;
+                let (val, _) = self.compile_expr(&args[1])?;
+                self.emit(&format!("ore_env_set({}, {});", key, val));
+                Ok(Some(("0".to_string(), ValKind::Void)))
+            }
+            "args" => Ok(Some(("ore_args()".to_string(), ValKind::list_of(ValKind::Str)))),
+            "exit" => {
+                self.check_arity("exit", args, 1)?;
+                let (code, _) = self.compile_expr(&args[0])?;
+                self.emit(&format!("ore_exit({});", code));
+                Ok(Some(("0".to_string(), ValKind::Void)))
+            }
+            "exec" => {
+                self.check_arity("exec", args, 1)?;
+                let (cmd, _) = self.compile_expr(&args[0])?;
+                Ok(Some((format!("ore_exec({})", cmd), ValKind::Str)))
             }
             "assert" => {
                 if args.is_empty() || args.len() > 2 {
@@ -198,37 +263,24 @@ impl CCodeGen {
                 }
                 Ok(Some(("0".to_string(), ValKind::Void)))
             }
-            // Math functions
-            "sqrt" | "sin" | "cos" | "tan" | "log" | "log10" | "exp" | "floor" | "ceil" | "round" => {
-                if (name == "round") && args.len() == 2 {
-                    let (val, kind) = self.compile_expr(&args[0])?;
-                    let f_val = if kind == ValKind::Int { format!("(double)({})", val) } else { val };
-                    let (dec, _) = self.compile_expr(&args[1])?;
-                    return Ok(Some((format!("ore_float_round_to({}, {})", f_val, dec), ValKind::Float)));
-                }
-                self.check_arity(name, args, 1)?;
-                let (val, kind) = self.compile_expr(&args[0])?;
-                let f_val = if kind == ValKind::Int { format!("(double)({})", val) } else { val };
-                Ok(Some((format!("ore_math_{}({})", name, f_val), ValKind::Float)))
+            "rand_int" => {
+                self.check_arity("rand_int", args, 2)?;
+                let (lo, _) = self.compile_expr(&args[0])?;
+                let (hi, _) = self.compile_expr(&args[1])?;
+                Ok(Some((format!("ore_rand_int({}, {})", lo, hi), ValKind::Int)))
             }
-            "pow" | "atan2" => {
-                self.check_arity(name, args, 2)?;
-                let (a, ak) = self.compile_expr(&args[0])?;
-                let (b, bk) = self.compile_expr(&args[1])?;
-                let af = if ak == ValKind::Int { format!("(double)({})", a) } else { a };
-                let bf = if bk == ValKind::Int { format!("(double)({})", b) } else { b };
-                Ok(Some((format!("ore_math_{}({}, {})", name, af, bf), ValKind::Float)))
+            "time_now" | "time_ms" => {
+                Ok(Some((format!("ore_{}()", name), ValKind::Int)))
             }
-            "pi" | "euler" | "e" => {
-                let rt = if name == "pi" { "ore_math_pi" } else { "ore_math_e" };
-                Ok(Some((format!("{}()", rt), ValKind::Float)))
+            "json_parse" => {
+                self.check_arity("json_parse", args, 1)?;
+                let (val, _) = self.compile_expr(&args[0])?;
+                Ok(Some((format!("ore_json_parse({})", val), ValKind::Map(None))))
             }
-            "__range" => {
-                // Internal function used by list comprehension parser
-                self.check_arity("__range", args, 2)?;
-                let (start, _) = self.compile_expr(&args[0])?;
-                let (end, _) = self.compile_expr(&args[1])?;
-                Ok(Some((format!("ore_range({}, {})", start, end), ValKind::list_of(ValKind::Int))))
+            "json_stringify" => {
+                self.check_arity("json_stringify", args, 1)?;
+                let (val, _) = self.compile_expr(&args[0])?;
+                Ok(Some((format!("ore_json_stringify({})", val), ValKind::Str)))
             }
             _ => Ok(None),
         }

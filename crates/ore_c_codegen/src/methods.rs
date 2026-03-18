@@ -5,7 +5,22 @@ impl CCodeGen {
         let (obj_val, obj_kind) = self.compile_expr(object)?;
 
         if obj_kind.is_list() {
-            let elem_kind = obj_kind.list_elem_kind().cloned().unwrap_or(ValKind::Int);
+            let elem_kind = obj_kind.list_elem_kind().cloned()
+                .or_else(|| {
+                    // Try to infer from variable tracking or function return tracking
+                    if let Expr::Ident(ref name) = object {
+                        self.list_element_kinds.get(name).cloned()
+                    } else if let Expr::Call { func, .. } = object {
+                        if let Expr::Ident(ref fn_name) = func.as_ref() {
+                            self.fn_return_list_elem_kind.get(fn_name).cloned()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(ValKind::Int);
             let result = self.compile_list_method(&obj_val, method, args, &elem_kind)?;
             // Track push kind
             if method == "push" {
@@ -63,8 +78,40 @@ impl CCodeGen {
             return Ok((format!("(int64_t)({})", obj_val), ValKind::Int));
         }
 
-        // Int methods
+        // Int methods — but first check if this looks like a map/list method
+        // (common when list elements are untyped and default to Int)
         if obj_kind == ValKind::Int {
+            // Map-like methods: the Int is likely an opaque pointer to a map
+            let map_methods = ["set", "get", "contains", "remove", "keys", "values",
+                               "len", "merge", "clear", "each", "entries", "get_or",
+                               "map_values", "filter"];
+            if map_methods.contains(&method) {
+                let map_val = format!("(void*)(intptr_t)({})", obj_val);
+                let map_vk = ValKind::Int;
+                let result = self.compile_map_method(&map_val, method, args, &map_vk)?;
+                return Ok(result);
+            }
+            // List-like methods when the Int is actually a list pointer
+            let list_methods = ["push", "pop", "sort", "reverse", "map", "filter",
+                                "each", "find", "fold", "any", "all", "join",
+                                "slice", "take", "skip", "zip", "enumerate",
+                                "flat_map", "count", "sum", "product", "first", "last"];
+            if list_methods.contains(&method) {
+                let list_val = format!("(void*)(intptr_t)({})", obj_val);
+                // Try to infer element kind from variable or function tracking
+                let elem_kind = if let Expr::Ident(ref name) = object {
+                    self.list_element_kinds.get(name).cloned()
+                } else if let Expr::Call { func, .. } = object {
+                    if let Expr::Ident(ref fn_name) = func.as_ref() {
+                        self.fn_return_list_elem_kind.get(fn_name).cloned()
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }.unwrap_or(ValKind::Int);
+                return self.compile_list_method(&list_val, method, args, &elem_kind);
+            }
             return self.compile_int_method(&obj_val, method, args);
         }
 
@@ -95,6 +142,8 @@ impl CCodeGen {
         match method {
             "to_float" => Ok((format!("(double)({})", val), ValKind::Float)),
             "to_str" => Ok((format!("ore_int_to_str({})", val), ValKind::Str)),
+            // When Int is actually an opaque Str pointer (from untyped list/map), to_int parses it
+            "to_int" => Ok((format!("ore_str_to_int((void*)(intptr_t)({}))", val), ValKind::Int)),
             "abs" => Ok((format!("(({0}) < 0 ? -({0}) : ({0}))", val), ValKind::Int)),
             "pow" => {
                 let (exp, _) = self.compile_expr(&args[0])?;

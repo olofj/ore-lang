@@ -14,6 +14,8 @@ mod map;
 mod lambda;
 mod util;
 mod runtime_decls;
+mod type_resolution;
+mod assembly;
 
 /// Tracks semantic type of compiled values (mirrors ore_codegen::ValKind)
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,12 +62,14 @@ impl ValKind {
 }
 
 /// Info about a record type
+#[derive(Clone)]
 struct RecordInfo {
     field_names: Vec<String>,
     field_kinds: Vec<ValKind>,
 }
 
 /// Info about a single enum variant
+#[derive(Clone)]
 struct VariantInfo {
     name: String,
     tag: u8,
@@ -74,6 +78,7 @@ struct VariantInfo {
 }
 
 /// Info about an enum type
+#[derive(Clone)]
 struct EnumInfo {
     variants: Vec<VariantInfo>,
     /// Number of i64s in the data array: ceil(max_payload_size / 8)
@@ -164,6 +169,14 @@ pub struct CCodeGen {
     continue_labels: Vec<String>,
     /// Label counter for unique loop labels
     label_counter: u32,
+    /// Tracks which function bodies have already been compiled (dedup guard)
+    compiled_functions: HashSet<String>,
+}
+
+impl Default for CCodeGen {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CCodeGen {
@@ -195,6 +208,7 @@ impl CCodeGen {
             break_labels: Vec::new(),
             continue_labels: Vec::new(),
             label_counter: 0,
+            compiled_functions: HashSet::new(),
         }
     }
 
@@ -236,41 +250,6 @@ impl CCodeGen {
         }
     }
 
-    /// Map a ValKind to its C type string.
-    pub(crate) fn kind_to_c_type(&self, kind: &ValKind) -> &'static str {
-        match kind {
-            ValKind::Int | ValKind::Void => "int64_t",
-            ValKind::Float => "double",
-            ValKind::Bool => "int8_t",
-            ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel => "void*",
-            ValKind::Record(name) => {
-                // Records are passed by value as their struct type
-                // We'll use void* for now since we pass by pointer in C
-                // Actually, records in LLVM codegen are passed by value (struct copy)
-                // In C we need the actual struct name - but we can't return &'static str
-                // for dynamic names. Let's use void* for pointer-based passing.
-                let _ = name;
-                "void*"
-            }
-            ValKind::Enum(_) => "void*",
-            ValKind::Option | ValKind::Result => "OreTaggedUnion",
-        }
-    }
-
-    /// Map a ValKind to its C type string, returning a String for dynamic names.
-    pub(crate) fn kind_to_c_type_str(&self, kind: &ValKind) -> String {
-        match kind {
-            ValKind::Int | ValKind::Void => "int64_t".to_string(),
-            ValKind::Float => "double".to_string(),
-            ValKind::Bool => "int8_t".to_string(),
-            ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel => "void*".to_string(),
-            ValKind::Record(name) => format!("struct ore_rec_{}", Self::mangle_name(name)),
-            ValKind::Enum(name) => format!("struct ore_enum_{}", Self::mangle_name(name)),
-            // Note: These always use "struct" prefix since C requires it for struct types
-            ValKind::Option | ValKind::Result => "OreTaggedUnion".to_string(),
-        }
-    }
-
     /// Mangle a name for use as a C identifier.
     fn mangle_name(name: &str) -> String {
         name.replace("::", "__").replace("$", "_D_")
@@ -304,76 +283,6 @@ impl CCodeGen {
             format!("ore_v_{}", name)
         } else {
             name.to_string()
-        }
-    }
-
-    pub(crate) fn valkind_to_tag(kind: &ValKind) -> u8 {
-        match kind {
-            ValKind::Int => 0,
-            ValKind::Float => 1,
-            ValKind::Bool => 2,
-            ValKind::Str => 3,
-            ValKind::Void => 4,
-            ValKind::Record(_) => 5,
-            ValKind::Enum(_) => 6,
-            ValKind::Option => 7,
-            ValKind::Result => 8,
-            ValKind::List(_) => 9,
-            ValKind::Map(_) => 10,
-            ValKind::Channel => 11,
-        }
-    }
-
-    pub(crate) fn type_expr_to_kind(&self, ty: &TypeExpr) -> ValKind {
-        match ty {
-            TypeExpr::Named(n) => match n.as_str() {
-                "Int" => ValKind::Int,
-                "Float" => ValKind::Float,
-                "Bool" => ValKind::Bool,
-                "Str" => ValKind::Str,
-                "Option" => ValKind::Option,
-                "Result" => ValKind::Result,
-                "List" => ValKind::List(None),
-                "Map" => ValKind::Map(None),
-                "Channel" => ValKind::Channel,
-                other => {
-                    if self.records.contains_key(other) {
-                        ValKind::Record(other.to_string())
-                    } else if self.enums.contains_key(other) {
-                        ValKind::Enum(other.to_string())
-                    } else {
-                        ValKind::Int
-                    }
-                }
-            },
-            TypeExpr::Fn { .. } => ValKind::Int,
-            TypeExpr::Generic(name, args) => {
-                match name.as_str() {
-                    "List" => {
-                        if let Some(elem_ty) = args.first() {
-                            ValKind::list_of(self.type_expr_to_kind(elem_ty))
-                        } else {
-                            ValKind::List(None)
-                        }
-                    }
-                    "Map" => {
-                        if args.len() >= 2 {
-                            ValKind::map_of(self.type_expr_to_kind(&args[1]))
-                        } else {
-                            ValKind::Map(None)
-                        }
-                    }
-                    "Option" => ValKind::Option,
-                    "Result" => ValKind::Result,
-                    other => {
-                        if self.records.contains_key(other) {
-                            ValKind::Record(other.to_string())
-                        } else {
-                            ValKind::Int
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -521,27 +430,13 @@ impl CCodeGen {
         Ok(())
     }
 
-    fn kind_size_bytes(&self, kind: &ValKind) -> u64 {
-        match kind {
-            ValKind::Bool => 1,
-            ValKind::Int | ValKind::Float | ValKind::Str | ValKind::List(_)
-            | ValKind::Map(_) | ValKind::Channel | ValKind::Void => 8,
-            ValKind::Record(name) => {
-                if let Some(info) = self.records.get(name) {
-                    info.field_kinds.iter().map(|k| self.kind_size_bytes(k)).sum()
-                } else { 8 }
-            }
-            ValKind::Enum(name) => {
-                if let Some(info) = self.enums.get(name) {
-                    1 + info.num_data_i64s as u64 * 8
-                } else { 8 }
-            }
-            ValKind::Option | ValKind::Result => 10, // tag + kind + i64
-        }
-    }
-
     /// Declare a function — emit C prototype.
+    /// Skips duplicate declarations (same function name from multiple source files).
     fn declare_function(&mut self, fndef: &FnDef) -> Result<(), CCodeGenError> {
+        // Skip if already declared — handles cross-module and same-file duplicates
+        if self.functions.contains_key(&fndef.name) {
+            return Ok(());
+        }
         let ret_kind = fndef.ret_type.as_ref().map(|t| self.type_expr_to_kind(t)).unwrap_or(ValKind::Void);
         let c_fn_name = Self::mangle_fn_name(&fndef.name);
 
@@ -594,13 +489,20 @@ impl CCodeGen {
     }
 
     /// Compile a function body — emit C function definition.
+    /// Skips duplicate compilations (same function name from multiple source files).
     fn compile_function(&mut self, fndef: &FnDef) -> Result<(), CCodeGenError> {
+        // Skip if already compiled — handles cross-module and same-file duplicates
+        if !self.compiled_functions.insert(fndef.name.clone()) {
+            return Ok(());
+        }
         let fn_info = self.functions.get(&fndef.name).cloned()
             .ok_or_else(|| self.err(format!("undefined function '{}'", fndef.name)))?;
         let c_fn_name = Self::mangle_fn_name(&fndef.name);
 
         self.variables.clear();
         self.dynamic_kind_tags.clear();
+        let saved_list_ek = std::mem::take(&mut self.list_element_kinds);
+        let saved_map_vk = std::mem::take(&mut self.map_value_kinds);
 
         let ret_c_type = if fndef.name == "main" {
             "int32_t".to_string()
@@ -656,29 +558,51 @@ impl CCodeGen {
             self.emit("return 0;");
         } else if fndef.ret_type.is_some() {
             if let Some(ref expr_str) = last_expr {
-                // Cast to the function's return type if needed to avoid C type mismatch.
-                // Only coerce when the if/else produced int64_t but the function expects
-                // a pointer type (Str, List, Map) or a tagged union (Option, Result).
-                let needs_cast = match &fn_info.ret_kind {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel
-                    | ValKind::Enum(_) | ValKind::Record(_) | ValKind::Option | ValKind::Result => {
-                        // The expression might be an int64_t from compile_if_else or list_get
-                        _last_kind == ValKind::Int
+                // Always coerce the return expression to match the declared return type.
+                // The compiled expression kind may differ from the declared return kind
+                // when list elements have unknown types or cross-function inference is imprecise.
+                if _last_kind != fn_info.ret_kind {
+                    let ret_expr = self.coerce_expr(expr_str, &_last_kind, &fn_info.ret_kind);
+                    if ret_expr != *expr_str {
+                        self.emit(&format!("return {};", ret_expr));
+                    } else {
+                        // coerce_expr couldn't do a direct conversion; try via i64
+                        let ret_expr = self.coerce_from_i64_expr(expr_str, &fn_info.ret_kind);
+                        self.emit(&format!("return {};", ret_expr));
                     }
-                    _ => false,
-                };
-                if needs_cast {
-                    let ret_expr = self.coerce_from_i64_expr(expr_str, &fn_info.ret_kind);
-                    self.emit(&format!("return {};", ret_expr));
                 } else {
                     self.emit(&format!("return {};", expr_str));
                 }
             }
         }
 
+        // After compiling the body, if the function returns List(None) or Map(None),
+        // try to infer element/value kinds from the last expression. Only infer from
+        // the actual return variable, not from any list in the function.
+        if matches!(fn_info.ret_kind, ValKind::List(None))
+            && !self.fn_return_list_elem_kind.contains_key(&fndef.name) {
+                if let Some(name) = Self::find_return_ident(&fndef.body) {
+                    if let Some(ek) = self.list_element_kinds.get(&name) {
+                        self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek.clone());
+                    }
+                }
+            }
+        if matches!(fn_info.ret_kind, ValKind::Map(None))
+            && !self.fn_return_map_val_kind.contains_key(&fndef.name) {
+                if let Some(name) = Self::find_return_ident(&fndef.body) {
+                    if let Some(vk) = self.map_value_kinds.get(&name) {
+                        self.fn_return_map_val_kind.insert(fndef.name.clone(), vk.clone());
+                    }
+                }
+            }
+
         self.indent -= 1;
         self.emit_raw("}");
         self.emit_raw("");
+
+        // Restore per-function element/value kind tracking
+        self.list_element_kinds = saved_list_ek;
+        self.map_value_kinds = saved_map_vk;
         Ok(())
     }
 
@@ -703,17 +627,28 @@ impl CCodeGen {
 
     /// Compile the full program, returning the generated C code as a string.
     pub fn compile_program(&mut self, program: &Program) -> Result<String, CCodeGenError> {
-        // Register type definitions
-        for item in &program.items {
+        self.register_types(&program.items)?;
+        self.declare_all_functions(&program.items)?;
+        self.compile_all_functions(&program.items)?;
+        self.compile_tests(&program.items)?;
+        Ok(self.assemble())
+    }
+
+    /// Register type and enum definitions.
+    fn register_types(&mut self, items: &[Item]) -> Result<(), CCodeGenError> {
+        for item in items {
             match item {
                 Item::TypeDef(td) => self.register_record(td)?,
                 Item::EnumDef(ed) => self.register_enum(ed)?,
                 _ => {}
             }
         }
+        Ok(())
+    }
 
-        // Declare regular functions (skip generic)
-        for item in &program.items {
+    /// Declare all regular functions (registering generics) and impl methods.
+    fn declare_all_functions(&mut self, items: &[Item]) -> Result<(), CCodeGenError> {
+        for item in items {
             if let Item::FnDef(f) = item {
                 if !f.type_params.is_empty() {
                     self.generic_fns.insert(f.name.clone(), f.clone());
@@ -722,26 +657,25 @@ impl CCodeGen {
                 }
             }
         }
-
-        // Declare impl methods
-        for (type_name, methods) in Self::impl_items(&program.items) {
+        for (type_name, methods) in Self::impl_items(items) {
             for method in methods {
                 let mangled_fn = Self::mangle_impl_method(type_name, method);
                 self.declare_function(&mangled_fn)?;
             }
         }
+        Ok(())
+    }
 
-        // Compile regular functions
-        for item in &program.items {
+    /// Compile all regular functions and impl methods.
+    fn compile_all_functions(&mut self, items: &[Item]) -> Result<(), CCodeGenError> {
+        for item in items {
             if let Item::FnDef(f) = item {
                 if f.type_params.is_empty() {
                     self.compile_function(f)?;
                 }
             }
         }
-
-        // Compile impl methods
-        let impl_fns: Vec<_> = Self::impl_items(&program.items)
+        let impl_fns: Vec<_> = Self::impl_items(items)
             .flat_map(|(type_name, methods)| {
                 methods.iter().map(move |m| Self::mangle_impl_method(type_name, m))
             })
@@ -749,10 +683,13 @@ impl CCodeGen {
         for mangled_fn in impl_fns {
             self.compile_function(&mangled_fn)?;
         }
+        Ok(())
+    }
 
-        // Compile test definitions
+    /// Compile test definitions and generate a test runner if needed.
+    fn compile_tests(&mut self, items: &[Item]) -> Result<(), CCodeGenError> {
         let mut test_idx = 0;
-        for item in &program.items {
+        for item in items {
             if let Item::TestDef { name, body } = item {
                 let fn_name = format!("ore_test_{}", test_idx);
                 self.test_names.push(name.clone());
@@ -768,213 +705,10 @@ impl CCodeGen {
                 test_idx += 1;
             }
         }
-
-        // Generate a test-runner main if there are tests but no explicit main
         if !self.test_names.is_empty() && !self.functions.contains_key("main") {
             self.emit_test_runner_main();
         }
-
-        // Assemble final C code
-        Ok(self.assemble())
-    }
-
-    /// Assemble all code sections into the final C output.
-    fn assemble(&self) -> String {
-        let mut output = Vec::new();
-
-        // Header
-        output.push("/* Generated by ore_c_codegen */".to_string());
-        output.push("#include <stdint.h>".to_string());
-        output.push("#include <stddef.h>".to_string());
-        output.push("#include <string.h>".to_string());
-        output.push("#include <stdlib.h>".to_string());
-        output.push(String::new());
-
-        // Tagged union type for Option/Result
-        output.push("typedef struct { int8_t tag; int8_t kind; int64_t val; } OreTaggedUnion;".to_string());
-        output.push(String::new());
-
-        // Runtime extern declarations
-        output.push("/* Runtime function declarations */".to_string());
-        output.extend(runtime_decls::runtime_declarations());
-        output.push(String::new());
-
-        // Type definitions (structs)
-        if !self.top_level.is_empty() {
-            output.push("/* Type definitions */".to_string());
-            output.extend(self.top_level.iter().cloned());
-            output.push(String::new());
-        }
-
-        // Forward declarations
-        if !self.forward_decls.is_empty() {
-            output.push("/* Forward declarations */".to_string());
-            output.extend(self.forward_decls.iter().cloned());
-            output.push(String::new());
-        }
-
-        // Lambda function bodies
-        if !self.lambda_bodies.is_empty() {
-            output.push("/* Lambda functions */".to_string());
-            output.extend(self.lambda_bodies.iter().cloned());
-            output.push(String::new());
-        }
-
-        // Main function bodies
-        output.push("/* Function definitions */".to_string());
-        output.extend(self.lines.iter().cloned());
-
-        output.join("\n")
-    }
-
-    /// Infer expression kind without compilation (lightweight).
-    pub(crate) fn infer_expr_kind(&self, expr: &Expr) -> ValKind {
-        match expr {
-            Expr::StringLit(_) | Expr::StringInterp(_) => ValKind::Str,
-            Expr::IntLit(_) => ValKind::Int,
-            Expr::FloatLit(_) => ValKind::Float,
-            Expr::BoolLit(_) => ValKind::Bool,
-            Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List(None),
-            Expr::MapLit(_) => ValKind::Map(None),
-            Expr::Ident(name) => {
-                self.variables.get(name).map(|v| v.kind.clone()).unwrap_or(ValKind::Int)
-            }
-            Expr::MethodCall { method, .. } => {
-                match method.as_str() {
-                    "to_upper" | "to_lower" | "trim" | "substr" | "replace"
-                    | "join" | "to_str" | "repeat" | "reverse" => ValKind::Str,
-                    "len" | "count" | "to_int" | "sum" | "min" | "max"
-                    | "index_of" | "pop" | "first" | "last" => ValKind::Int,
-                    "to_float" => ValKind::Float,
-                    "contains" | "starts_with" | "ends_with"
-                    | "is_empty" | "is_some" | "is_none" | "is_ok" | "is_err" => ValKind::Bool,
-                    "split" | "keys" | "values" | "entries"
-                    | "map" | "filter" | "take" | "drop" | "sort" | "flatten" => ValKind::List(None),
-                    _ => ValKind::Int,
-                }
-            }
-            Expr::BinOp { op, left, right } => {
-                match op {
-                    BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
-                        let lk = self.infer_expr_kind(left);
-                        let rk = self.infer_expr_kind(right);
-                        if lk == ValKind::Float || rk == ValKind::Float {
-                            ValKind::Float
-                        } else {
-                            ValKind::Int
-                        }
-                    }
-                    BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq
-                    | BinOp::Eq | BinOp::NotEq | BinOp::And | BinOp::Or => ValKind::Bool,
-                    BinOp::Pipe => self.infer_expr_kind(right),
-                }
-            }
-            Expr::IfElse { then_block, .. } => {
-                if let Some(last) = then_block.stmts.last() {
-                    if let Stmt::Expr(e) = &last.stmt {
-                        return self.infer_expr_kind(e);
-                    }
-                }
-                ValKind::Int
-            }
-            Expr::OptionSome(_) => ValKind::Option,
-            Expr::OptionNone => ValKind::Option,
-            Expr::ResultOk(_) => ValKind::Result,
-            Expr::ResultErr(_) => ValKind::Result,
-            Expr::Call { func, .. } => {
-                if let Expr::Ident(name) = func.as_ref() {
-                    if let Some(fn_info) = self.functions.get(name) {
-                        return fn_info.ret_kind.clone();
-                    }
-                }
-                ValKind::Int
-            }
-            Expr::RecordConstruct { type_name, .. } => {
-                if self.variant_to_enum.contains_key(type_name) {
-                    if let Some(enum_name) = self.variant_to_enum.get(type_name) {
-                        ValKind::Enum(enum_name.clone())
-                    } else {
-                        ValKind::Int
-                    }
-                } else if self.records.contains_key(type_name) {
-                    ValKind::Record(type_name.clone())
-                } else {
-                    ValKind::Int
-                }
-            }
-            _ => ValKind::Int,
-        }
-    }
-
-    /// Get the enriched kind for a variable, checking element/value kind maps.
-    pub(crate) fn get_var_kind(&self, name: &str) -> ValKind {
-        let base_kind = self.variables.get(name).map(|v| v.kind.clone()).unwrap_or(ValKind::Int);
-        match &base_kind {
-            ValKind::List(_) => {
-                if let Some(ek) = self.list_element_kinds.get(name) {
-                    ValKind::list_of(ek.clone())
-                } else {
-                    base_kind
-                }
-            }
-            ValKind::Map(_) => {
-                if let Some(vk) = self.map_value_kinds.get(name) {
-                    ValKind::map_of(vk.clone())
-                } else {
-                    base_kind
-                }
-            }
-            _ => base_kind,
-        }
-    }
-
-    /// Generate a C expression to convert a value to i64 for storage.
-    pub(crate) fn value_to_i64_expr(&self, expr: &str, kind: &ValKind) -> String {
-        match kind {
-            ValKind::Float => format!("*(int64_t*)&(double){{{}}}", expr),
-            ValKind::Bool => format!("(int64_t)({})", expr),
-            ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel => {
-                format!("(int64_t)(intptr_t)({})", expr)
-            }
-            ValKind::Enum(name) => {
-                // Heap-allocate the enum struct, store value, return pointer as i64
-                let c_type = format!("struct ore_enum_{}", Self::mangle_name(name));
-                format!("(int64_t)(intptr_t)memcpy(malloc(sizeof({c_type})), &({expr}), sizeof({c_type}))")
-            }
-            ValKind::Record(name) => {
-                let c_type = format!("struct ore_rec_{}", Self::mangle_name(name));
-                format!("(int64_t)(intptr_t)memcpy(malloc(sizeof({c_type})), &({expr}), sizeof({c_type}))")
-            }
-            ValKind::Option | ValKind::Result => {
-                // Tagged union: copy to heap
-                format!("(int64_t)(intptr_t)memcpy(malloc(sizeof(OreTaggedUnion)), &({expr}), sizeof(OreTaggedUnion))")
-            }
-            _ => expr.to_string(),
-        }
-    }
-
-    /// Generate a C expression to convert from i64 back to the correct type.
-    pub(crate) fn coerce_from_i64_expr(&self, expr: &str, kind: &ValKind) -> String {
-        match kind {
-            ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel => {
-                format!("(void*)(intptr_t)({})", expr)
-            }
-            ValKind::Float => format!("*(double*)&(int64_t){{{}}}", expr),
-            ValKind::Bool => format!("(int8_t)(({}) != 0)", expr),
-            ValKind::Enum(name) => {
-                // Dereference heap pointer back to enum struct
-                let c_type = format!("struct ore_enum_{}", Self::mangle_name(name));
-                format!("*({c_type}*)(intptr_t)({expr})")
-            }
-            ValKind::Record(name) => {
-                let c_type = format!("struct ore_rec_{}", Self::mangle_name(name));
-                format!("*({c_type}*)(intptr_t)({expr})")
-            }
-            ValKind::Option | ValKind::Result => {
-                format!("*(OreTaggedUnion*)(intptr_t)({})", expr)
-            }
-            _ => expr.to_string(),
-        }
+        Ok(())
     }
 
     /// Generate C code for a string literal, returning the C expression.
@@ -1002,67 +736,33 @@ impl CCodeGen {
         out
     }
 
-    /// Generate a safe C identifier suffix for a ValKind (for monomorphized function names).
-    pub(crate) fn kind_to_suffix(kind: &ValKind) -> String {
-        match kind {
-            ValKind::Int => "Int".to_string(),
-            ValKind::Float => "Float".to_string(),
-            ValKind::Bool => "Bool".to_string(),
-            ValKind::Str => "Str".to_string(),
-            ValKind::Void => "Void".to_string(),
-            ValKind::List(Some(ek)) => format!("List_{}", Self::kind_to_suffix(ek)),
-            ValKind::List(None) => "List".to_string(),
-            ValKind::Map(Some(vk)) => format!("Map_{}", Self::kind_to_suffix(vk)),
-            ValKind::Map(None) => "Map".to_string(),
-            ValKind::Option => "Option".to_string(),
-            ValKind::Result => "Result".to_string(),
-            ValKind::Channel => "Channel".to_string(),
-            ValKind::Record(n) => format!("Rec_{}", n),
-            ValKind::Enum(n) => format!("Enum_{}", n),
-        }
-    }
-
-    /// Map a ValKind back to an Ore type name string (for generic monomorphization).
-    pub(crate) fn kind_to_type_name(&self, kind: &ValKind) -> &str {
-        match kind {
-            ValKind::Int => "Int",
-            ValKind::Float => "Float",
-            ValKind::Bool => "Bool",
-            ValKind::Str => "Str",
-            ValKind::Void => "Int",
-            ValKind::List(_) => "List",
-            ValKind::Map(_) => "Map",
-            ValKind::Option => "Option",
-            ValKind::Result => "Result",
-            ValKind::Channel => "Channel",
-            ValKind::Record(_) => "Int",
-            ValKind::Enum(_) => "Int",
-        }
-    }
-
-    /// Emit a main() that calls all test functions (for test-only files).
-    fn emit_test_runner_main(&mut self) {
-        self.forward_decls.push("int32_t main(void);".to_string());
-        self.emit_raw("int32_t main(void) {");
-        self.indent = 1;
-        self.emit("ore_assert_set_test_mode(1);");
-        self.emit("int passed = 0, failed = 0;");
-        for i in 0..self.test_names.len() {
-            let fn_name = format!("ore_test_{}", i);
-            let test_name = Self::escape_c_string(&self.test_names[i]);
-            self.emit("ore_assert_check_and_reset();");
-            self.emit(&format!("{}();", fn_name));
-            self.emit(&format!("if (ore_assert_check_and_reset()) {{ failed++; ore_str_print(ore_str_new(\"  FAIL: {}\", {})); }}", test_name, test_name.len() + 8));
-            self.emit(&format!("else {{ passed++; ore_str_print(ore_str_new(\"  PASS: {}\", {})); }}", test_name, test_name.len() + 8));
-        }
-        self.emit("ore_assert_set_test_mode(0);");
-        self.emit("if (failed > 0) return 1;");
-        self.emit("return 0;");
-        self.indent = 0;
-        self.emit_raw("}");
-    }
-
     /// Track variable kinds for list/map element types.
+    /// Find the name of the variable in the return position of a block.
+    /// Looks at the last statement, recursing into if/else branches.
+    fn find_return_ident(block: &Block) -> std::option::Option<String> {
+        if let Some(last) = block.stmts.last() {
+            match &last.stmt {
+                Stmt::Expr(Expr::Ident(name)) => Some(name.clone()),
+                // Method call on a variable (e.g. result.skip(1)) — return the object var
+                Stmt::Expr(Expr::MethodCall { object, .. }) => {
+                    if let Expr::Ident(name) = object.as_ref() {
+                        Some(name.clone())
+                    } else {
+                        None
+                    }
+                }
+                Stmt::Expr(Expr::IfElse { then_block, else_block, .. }) => {
+                    Self::find_return_ident(then_block)
+                        .or_else(|| else_block.as_ref().and_then(Self::find_return_ident))
+                }
+                Stmt::Return(Some(Expr::Ident(name))) => Some(name.clone()),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
     fn track_variable_kinds(&mut self, name: &str, kind: &ValKind) {
         if let ValKind::List(Some(ref ek)) = kind {
             self.list_element_kinds.insert(name.to_string(), ek.as_ref().clone());
@@ -1075,5 +775,115 @@ impl CCodeGen {
                 var.kind = kind.clone();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Helper: parse an ore program and compile to C.
+    fn compile_ore_to_c(src: &str) -> String {
+        let tokens = ore_lexer::lex(src).expect("lex failed");
+        let program = ore_parser::parse(tokens).expect("parse failed");
+        let mut cg = CCodeGen::new();
+        cg.compile_program(&program).expect("compile failed")
+    }
+
+    #[test]
+    fn generic_list_accessor_record_cast() {
+        // A generic function that retrieves an element from a list.
+        // When instantiated with a Record type, the coerce_from_i64_expr
+        // must cast through the correct struct pointer type.
+        let src = r#"
+type Point { x:Int, y:Int }
+
+fn get_item[T] items:List[T] idx:Int -> T
+  items[idx]
+
+fn main
+  pts := [Point(x: 1, y: 2)]
+  p := get_item(pts, 0)
+  print p.x
+"#;
+        let c_code = compile_ore_to_c(src);
+        // The monomorphized function should cast through ore_rec_Point*, not some other type
+        assert!(
+            c_code.contains("ore_rec_Point"),
+            "Expected ore_rec_Point in generated C code, got:\n{}",
+            c_code
+        );
+    }
+
+    #[test]
+    fn generic_list_accessor_enum_cast() {
+        let src = r#"
+type Token
+  Number(val: Int)
+  Plus
+
+fn get_item[T] items:List[T] idx:Int -> T
+  items[idx]
+
+fn main
+  tokens := [Plus, Number(val: 1)]
+  t := get_item(tokens, 0)
+  print t
+"#;
+        let c_code = compile_ore_to_c(src);
+        // Should cast through ore_enum_Token*
+        assert!(
+            c_code.contains("ore_enum_Token"),
+            "Expected ore_enum_Token in generated C code, got:\n{}",
+            c_code
+        );
+    }
+
+    #[test]
+    fn match_arm_variable_scope_no_leakage() {
+        // Variables declared inside match arm bodies must not leak into
+        // subsequent arms or code after the match. If scope leaks, the
+        // generated C will reference variables outside their declaration
+        // scope, causing 'undeclared variable' errors in the C compiler.
+        let src = r#"
+type Token
+  Keyword(kw: String)
+  Number(val: Int)
+  Plus
+
+fn describe tag:Int -> String
+  match tag
+    0 ->
+      kw := "hello"
+      kw
+    1 ->
+      kw := "world"
+      kw
+    _ -> "other"
+
+fn main
+  print describe(0)
+"#;
+        let c_code = compile_ore_to_c(src);
+        // Each case block should declare 'kw' with its type, not just assign.
+        // Count declarations of kw (should appear twice — once per arm).
+        let kw_decls = c_code.matches("void* kw =").count();
+        assert!(
+            kw_decls >= 2,
+            "Expected kw to be declared in each match arm, found {} declarations.\nGenerated C:\n{}",
+            kw_decls, c_code
+        );
+    }
+
+    #[test]
+    fn kind_to_type_name_returns_record_name() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_type_name(&ValKind::Record("Foo".to_string())), "Foo");
+    }
+
+    #[test]
+    fn kind_to_type_name_returns_enum_name() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_type_name(&ValKind::Enum("Bar".to_string())), "Bar");
     }
 }

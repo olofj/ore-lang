@@ -7,13 +7,33 @@ impl CCodeGen {
             Stmt::Let { name, mutable, value } => {
                 let (val, kind) = self.compile_expr(value)?;
                 let c_type = self.kind_to_c_type_str(&kind);
-                let c_name = Self::mangle_var_name(name);
-                self.emit(&format!("{} {} = {};", c_type, c_name, val));
-                self.variables.insert(name.clone(), VarInfo {
-                    c_name: c_name.clone(),
-                    kind: kind.clone(),
-                    is_mutable: *mutable,
-                });
+                if let Some(existing) = self.variables.get(name).cloned() {
+                    if existing.is_mutable && c_type == self.kind_to_c_type_str(&existing.kind) {
+                        // Mutable variable with same type: reassign the existing
+                        // C variable. This handles Ore's `:=` rebinding of a
+                        // mutable variable in a nested scope, which should modify
+                        // the outer variable (not shadow it).
+                        self.emit(&format!("{} = {};", existing.c_name, val));
+                    } else {
+                        // Different type or immutable: create new unique C variable
+                        let unique = format!("{}_{}", Self::mangle_var_name(name), self.temp_counter);
+                        self.temp_counter += 1;
+                        self.emit(&format!("{} {} = {};", c_type, unique, val));
+                        self.variables.insert(name.clone(), VarInfo {
+                            c_name: unique,
+                            kind: kind.clone(),
+                            is_mutable: *mutable,
+                        });
+                    }
+                } else {
+                    let c_name = Self::mangle_var_name(name);
+                    self.emit(&format!("{} {} = {};", c_type, c_name, val));
+                    self.variables.insert(name.clone(), VarInfo {
+                        c_name,
+                        kind: kind.clone(),
+                        is_mutable: *mutable,
+                    });
+                }
                 self.track_variable_kinds(name, &kind);
                 Ok((None, ValKind::Void))
             }
@@ -67,9 +87,19 @@ impl CCodeGen {
             }
             Stmt::FieldAssign { object, field, value } => {
                 let (obj_val, obj_kind) = self.compile_expr(object)?;
-                let (val, _) = self.compile_expr(value)?;
-                if let ValKind::Record(ref _name) = obj_kind {
-                    self.emit(&format!("{}.{} = {};", obj_val, field, val));
+                let (val, val_kind) = self.compile_expr(value)?;
+                if let ValKind::Record(ref name) = obj_kind {
+                    // Look up the target field kind and coerce if needed
+                    let coerced = if let Some(info) = self.records.get(name) {
+                        if let Some(idx) = info.field_names.iter().position(|n| n == field) {
+                            self.coerce_expr(&val, &val_kind, &info.field_kinds[idx])
+                        } else {
+                            val
+                        }
+                    } else {
+                        val
+                    };
+                    self.emit(&format!("{}.{} = {};", obj_val, field, coerced));
                 } else {
                     return Err(self.err(format!("field assignment not supported on {:?}", obj_kind)));
                 }
@@ -211,6 +241,7 @@ impl CCodeGen {
 
         self.emit(&format!("for (int64_t {} = {}; {} < {}; {} += {}) {{", var, start, var, end_tmp, var, step_tmp));
         self.indent += 1;
+        let saved_vars = self.variables.clone();
         self.variables.insert(var.to_string(), VarInfo { c_name: var.to_string(), kind: ValKind::Int, is_mutable: false });
 
         self.compile_block_stmts(body)?;
@@ -219,6 +250,7 @@ impl CCodeGen {
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -235,7 +267,11 @@ impl CCodeGen {
         }
 
         let elem_kind = kind.list_elem_kind().cloned().unwrap_or(ValKind::Int);
-        self.compile_for_each_list(var, &val, elem_kind, body)
+        // Hoist iterable into a temporary to avoid re-evaluating the expression
+        // on each iteration (e.g. ore_str_chars(text) called per-iteration)
+        let list_tmp = self.tmp();
+        self.emit(&format!("void* {} = {};", list_tmp, val));
+        self.compile_for_each_list(var, &list_tmp, elem_kind, body)
     }
 
     fn compile_for_each_list(&mut self, var: &str, list_val: &str, elem_kind: ValKind, body: &Block) -> Result<(), CCodeGenError> {
@@ -252,6 +288,7 @@ impl CCodeGen {
 
         self.emit(&format!("for (int64_t {} = 0; {} < {}; {}++) {{", idx, idx, len_tmp, idx));
         self.indent += 1;
+        let saved_vars = self.variables.clone();
 
         let raw = format!("ore_list_get({}, {})", list_val, idx);
         let typed = self.coerce_from_i64_expr(&raw, &elem_kind);
@@ -264,6 +301,7 @@ impl CCodeGen {
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -288,6 +326,7 @@ impl CCodeGen {
 
             self.emit(&format!("for (int64_t {} = 0; {} < {}; {}++) {{", idx, idx, len_tmp, idx));
             self.indent += 1;
+            let saved_vars = self.variables.clone();
 
             self.emit(&format!("void* {} = (void*)(intptr_t)ore_list_get({}, {});", key_var, keys_tmp, idx));
             self.variables.insert(key_var.to_string(), VarInfo { c_name: key_var.to_string(), kind: ValKind::Str, is_mutable: false });
@@ -304,6 +343,7 @@ impl CCodeGen {
             self.indent -= 1;
             self.emit("}");
             self.emit(&format!("{}:;", break_label));
+            self.variables = saved_vars;
 
             self.break_labels.pop();
             self.continue_labels.pop();
@@ -324,6 +364,7 @@ impl CCodeGen {
 
         self.emit(&format!("for (int64_t {} = 0; {} < {}; {}++) {{", key_var, key_var, len_tmp, key_var));
         self.indent += 1;
+        let saved_vars = self.variables.clone();
 
         self.variables.insert(key_var.to_string(), VarInfo { c_name: key_var.to_string(), kind: ValKind::Int, is_mutable: false });
 
@@ -338,6 +379,7 @@ impl CCodeGen {
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -350,16 +392,25 @@ impl CCodeGen {
         self.break_labels.push(break_label.clone());
         self.continue_labels.push(continue_label.clone());
 
-        let (cond_val, _) = self.compile_expr(cond)?;
+        // Use for(;;) with condition re-evaluation each iteration.
+        // This is necessary because compile_expr may emit setup code
+        // (e.g. short-circuit evaluation for `and`/`or`) that must run
+        // every iteration, not just once before the loop.
         self.emit(&format!("{}:;", continue_label));
-        self.emit(&format!("while ({}) {{", cond_val));
+        self.emit("for (;;) {");
         self.indent += 1;
+        let saved_vars = self.variables.clone();
+
+        // Evaluate condition at the top of each iteration
+        let (cond_val, _) = self.compile_expr(cond)?;
+        self.emit(&format!("if (!({cond_val})) goto {break_label};"));
 
         self.compile_block_stmts(body)?;
 
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
@@ -375,12 +426,14 @@ impl CCodeGen {
         self.emit(&format!("{}:;", continue_label));
         self.emit("for (;;) {");
         self.indent += 1;
+        let saved_vars = self.variables.clone();
 
         self.compile_block_stmts(body)?;
 
         self.indent -= 1;
         self.emit("}");
         self.emit(&format!("{}:;", break_label));
+        self.variables = saved_vars;
 
         self.break_labels.pop();
         self.continue_labels.pop();
