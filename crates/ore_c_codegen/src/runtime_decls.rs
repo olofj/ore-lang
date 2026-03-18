@@ -82,12 +82,15 @@ pub fn runtime_declarations() -> Vec<String> {
     // Lists — basic operations
     d("void* ore_list_new(void)");
     d("void ore_list_push(void*, int64_t)");
+    d("void ore_list_push_typed(void*, int64_t, int8_t)");
     d("int64_t ore_list_pop(void*)");
     d("void ore_list_clear(void*)");
     d("void ore_list_insert(void*, int64_t, int64_t)");
     d("int64_t ore_list_remove_at(void*, int64_t)");
     d("int64_t ore_list_get(void*, int64_t)");
+    d("int8_t ore_list_get_kind(void*, int64_t)");
     d("void ore_list_set(void*, int64_t, int64_t)");
+    d("void ore_list_set_typed(void*, int64_t, int64_t, int8_t)");
     d("int64_t ore_list_get_or(void*, int64_t, int64_t)");
     d("int64_t ore_list_len(void*)");
 

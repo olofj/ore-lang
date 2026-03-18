@@ -164,6 +164,10 @@ pub struct CCodeGen {
     lambda_captures: HashMap<String, Vec<(String, ValKind)>>,
     /// Tracks variables that have dynamic kind tags (from Option/Result match)
     dynamic_kind_tags: HashSet<String>,
+    /// Maps a C value expression to its runtime kind-tag variable (for untyped
+    /// list element access).  Consumed by `value_to_str_expr` to emit
+    /// `ore_dynamic_to_str` instead of the default `ore_int_to_str`.
+    dynamic_kind_exprs: HashMap<String, String>,
     /// Break/continue label stack
     break_labels: Vec<String>,
     continue_labels: Vec<String>,
@@ -205,6 +209,7 @@ impl CCodeGen {
             lambda_bodies: Vec::new(),
             lambda_captures: HashMap::new(),
             dynamic_kind_tags: HashSet::new(),
+            dynamic_kind_exprs: HashMap::new(),
             break_labels: Vec::new(),
             continue_labels: Vec::new(),
             label_counter: 0,
@@ -501,6 +506,7 @@ impl CCodeGen {
 
         self.variables.clear();
         self.dynamic_kind_tags.clear();
+        self.dynamic_kind_exprs.clear();
         let saved_list_ek = std::mem::take(&mut self.list_element_kinds);
         let saved_map_vk = std::mem::take(&mut self.map_value_kinds);
 
