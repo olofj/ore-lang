@@ -70,6 +70,7 @@ fn cg_new -> List
   st.push([])       -- 23: exprs_pool (set later)
   st.push([])       -- 24: stmts_pool (set later)
   st.push([])       -- 25: deferred_fns
+  st.push([])       -- 26: record_field_kinds
   st
 
 fn cg_list st:List idx:Int -> List
@@ -231,10 +232,11 @@ fn cg_add_mono st:List mono_name:Str
 
 -- ── Record/Enum tracking ──
 
-fn cg_add_record st:List name:Str fields_str:Str count:Int
+fn cg_add_record st:List name:Str fields_str:Str count:Int field_kinds_str:Str
   cg_list(st, 11).push(name)
   cg_list(st, 12).push(fields_str)
   cg_list(st, 13).push(count)
+  cg_list(st, 26).push(field_kinds_str)
 
 fn cg_is_record st:List name:Str -> Bool
   recs := cg_list(st, 11)
@@ -242,6 +244,19 @@ fn cg_is_record st:List name:Str -> Bool
     if str_at(recs, i) == name
       return true
   false
+
+fn cg_get_record_field_kind st:List rec_name:Str field:Str -> Str
+  recs := cg_list(st, 11)
+  fields_list := cg_list(st, 12)
+  kinds_list := cg_list(st, 26)
+  for i in 0..recs.len()
+    if str_at(recs, i) == rec_name
+      fnames := str_at(fields_list, i).split(",")
+      fkinds := str_at(kinds_list, i).split(",")
+      for j in 0..fnames.len()
+        if str_at(fnames, j) == field
+          return str_at(fkinds, j)
+  "int"
 
 fn cg_add_enum st:List name:Str variants_str:Str count:Int
   cg_list(st, 14).push(name)
@@ -1606,7 +1621,9 @@ fn compile_field_access st:List exprs:List stmts:List object:Int field:Str -> Li
       return ["{obj[0]}.value", "int"]
   -- Record field access
   if kind.starts_with("rec:")
-    return ["{obj[0]}.{field}", "int"]
+    rec_name := kind.substr(4, kind.len() - 4)
+    fk := cg_get_record_field_kind(st, rec_name, field)
+    return ["{obj[0]}.{field}", fk]
   -- Enum field access
   if kind.starts_with("enum:")
     if field == "tag"
@@ -2414,6 +2431,7 @@ fn compile_type_def st:List td:TypeDefNode
   tl.push("// Record: {name}")
   mut sig := "struct ore_rec_{name} \{"
   mut field_names_str := ""
+  mut field_kinds_str := ""
   for i in 0..fields.len()
     f := get_field_def(fields, i)
     fn_str := f.name
@@ -2422,11 +2440,13 @@ fn compile_type_def st:List td:TypeDefNode
     sig = sig + " {c_type} {fn_str};"
     if i > 0
       field_names_str = field_names_str + ","
+      field_kinds_str = field_kinds_str + ","
     field_names_str = field_names_str + fn_str
+    field_kinds_str = field_kinds_str + ft
   sig = sig + " };"
   tl.push(sig)
   tl.push("")
-  cg_add_record(st, name, field_names_str, fields.len())
+  cg_add_record(st, name, field_names_str, fields.len(), field_kinds_str)
   cg_set_fn(st, name, "rec:{name}")
 
 fn compile_enum_def st:List ed:EnumDefNode
