@@ -1945,4 +1945,62 @@ fn main
         };
         assert_eq!(cg.type_expr_to_kind(&ty), ValKind::Int);
     }
+
+    // ---------------------------------------------------------------
+    // If/else branch variable hoisting
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn if_else_branch_var_hoisted_to_outer_scope() {
+        let src = "\
+fn main
+  y := -1.0
+  if y < 0.0
+    y_show := 0.0
+  else
+    y_show := y
+  print y_show";
+        let c_code = compile_ore_to_c(src);
+        // y_show should be declared before the if and used after it
+        let if_pos = c_code.find("if (").expect("if not found");
+        let decl_pos = c_code.find("double y_show;").expect("hoisted declaration not found");
+        assert!(
+            decl_pos < if_pos,
+            "y_show declaration should appear before the if statement.\nGenerated C:\n{}",
+            c_code,
+        );
+        // The in-block usages should be assignments, not declarations
+        let in_block_decls = c_code.matches("double y_show = ").count();
+        assert_eq!(
+            in_block_decls, 0,
+            "Expected no in-block declarations of y_show (should be assignments).\nGenerated C:\n{}",
+            c_code,
+        );
+    }
+
+    #[test]
+    fn if_else_branch_var_used_in_loop() {
+        // Mirrors the showcase451 pattern: variable defined in both if/else
+        // branches inside a loop, then used later in the same loop iteration.
+        let src = "\
+fn main
+  mut max_h := 0.0
+  y := -1.0
+  loop
+    if y < 0.0
+      y_show := 0.0
+    else
+      y_show := y
+    if y_show > max_h
+      max_h = y_show
+    break
+  print max_h";
+        let c_code = compile_ore_to_c(src);
+        // Must not contain undeclared y_show — the declaration should be hoisted
+        assert!(
+            c_code.contains("double y_show;"),
+            "Expected hoisted y_show declaration.\nGenerated C:\n{}",
+            c_code,
+        );
+    }
 }
