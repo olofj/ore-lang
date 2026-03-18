@@ -297,6 +297,40 @@ fn kind_to_c_type kind:Str -> Str
     return "struct ore_enum_{n}"
   "int64_t"
 
+-- Convert a value expression to an int64_t expression for storage in lists.
+-- For struct types (enum/record), heap-allocates and returns pointer as int64_t.
+fn value_to_i64_expr st:List val:Str kind:Str -> Str
+  if kind.starts_with("enum:")
+    ct := kind_to_c_type(kind)
+    return "(\{ {ct} __v2i = {val}; (int64_t)(intptr_t)memcpy(malloc(sizeof({ct})), &__v2i, sizeof({ct})); })"
+  if kind.starts_with("rec:")
+    ct := kind_to_c_type(kind)
+    return "(\{ {ct} __v2i = {val}; (int64_t)(intptr_t)memcpy(malloc(sizeof({ct})), &__v2i, sizeof({ct})); })"
+  if kind == "str" or kind == "list" or kind == "map"
+    return "(int64_t)(intptr_t)({val})"
+  if kind == "bool"
+    return "(int64_t)({val})"
+  if kind == "float"
+    return "*(int64_t*)&(double)\{{val}}"
+  "(int64_t)({val})"
+
+-- Convert an int64_t expression back to the proper C type.
+-- For struct types, dereferences the heap pointer.
+fn coerce_from_i64_expr val:Str kind:Str -> Str
+  if kind.starts_with("enum:")
+    ct := kind_to_c_type(kind)
+    return "*({ct}*)(intptr_t)({val})"
+  if kind.starts_with("rec:")
+    ct := kind_to_c_type(kind)
+    return "*({ct}*)(intptr_t)({val})"
+  if kind == "str" or kind == "list" or kind == "map"
+    return "(void*)(intptr_t)({val})"
+  if kind == "bool"
+    return "(int8_t)({val})"
+  if kind == "float"
+    return "*(double*)&(int64_t)\{{val}}"
+  val
+
 fn type_expr_to_kind_str st:List te:TypeExpr -> Str
   match te
     NamedType name ->
@@ -1521,7 +1555,8 @@ fn compile_list_lit st:List exprs:List stmts:List elements:List -> List
   emit(st, "void* {t} = ore_list_new();")
   for i in 0..elements.len()
     r := compile_expr(st, exprs, stmts, elements[i])
-    emit(st, "ore_list_push({t}, (int64_t)({r[0]}));")
+    i64val := value_to_i64_expr(st, r[0], r[1])
+    emit(st, "ore_list_push({t}, {i64val});")
   __ret_6 := [t, "list"]
   __ret_6
 
@@ -1657,7 +1692,9 @@ fn compile_list_method st:List obj:Str method:Str args:List kinds:List -> List
   if method == "len"
     return ["ore_list_len({obj})", "int"]
   if method == "push"
-    emit(st, "ore_list_push({obj}, (int64_t)({args[0]}));")
+    ak := str_at(kinds, 0)
+    i64val := value_to_i64_expr(st, args[0], ak)
+    emit(st, "ore_list_push({obj}, {i64val});")
     return ["0", "void"]
   if method == "pop"
     return ["ore_list_pop({obj})", "int"]
@@ -1667,7 +1704,9 @@ fn compile_list_method st:List obj:Str method:Str args:List kinds:List -> List
   if method == "get"
     return ["ore_list_get({obj}, {args[0]})", "int"]
   if method == "set"
-    emit(st, "ore_list_set({obj}, {args[0]}, (int64_t)({args[1]}));")
+    ak := str_at(kinds, 1)
+    i64val := value_to_i64_expr(st, args[1], ak)
+    emit(st, "ore_list_set({obj}, {args[0]}, {i64val});")
     return ["0", "void"]
   if method == "contains"
     return ["ore_list_contains({obj}, (int64_t)({args[0]}))", "bool"]
@@ -1778,10 +1817,31 @@ fn compile_block_expr st:List exprs:List stmts:List block:Block -> List
 
 -- ── Match expression (basic) ──
 
+-- Generate a match result assignment expression.
+-- For struct types (enum/record), direct assignment. For scalars/pointers, cast.
+fn match_assign_expr t:Str kind:Str val:Str -> Str
+  if kind.starts_with("enum:") or kind.starts_with("rec:")
+    return "{t} = {val};"
+  c := kind_to_c_type(kind)
+  "{t} = ({c})({val});"
+
+-- Generate the default initializer for a match temp variable declaration.
+fn match_default_init kind:Str -> Str
+  if kind.starts_with("enum:") or kind.starts_with("rec:")
+    return " = \{0}"
+  if kind == "float"
+    return " = 0.0"
+  " = 0"
+
 fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
   subj := compile_expr(st, exprs, stmts, subject)
   t := cg_tmp(st)
+  -- Emit placeholder declaration; will be patched after first arm reveals type
+  decl_pos := cg_lines(st).len()
+  decl_indent := indent_str(cg_indent(st))
   emit(st, "int64_t {t} = 0;")
+  mut result_kind := "int"
+  mut first_arm_compiled := false
   mut first := true
   for i in 0..arms.len()
     arm := get_match_arm(arms, i)
@@ -1796,8 +1856,14 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           emit(st, "else \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
+        if not first_arm_compiled
+          result_kind = br[1]
+          ct := kind_to_c_type(result_kind)
+          init := match_default_init(result_kind)
+          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          first_arm_compiled = true
         if br[0] != ""
-          emit(st, "{t} = (int64_t)({br[0]});")
+          emit(st, match_assign_expr(t, result_kind, br[0]))
         cg_dec_indent(st)
         emit(st, "}")
         first = false
@@ -1808,8 +1874,14 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ((int64_t)({subj[0]}) == {value}LL) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
+        if not first_arm_compiled
+          result_kind = br[1]
+          ct := kind_to_c_type(result_kind)
+          init := match_default_init(result_kind)
+          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          first_arm_compiled = true
         if br[0] != ""
-          emit(st, "{t} = (int64_t)({br[0]});")
+          emit(st, match_assign_expr(t, result_kind, br[0]))
         cg_dec_indent(st)
         emit(st, "}")
         first = false
@@ -1823,8 +1895,14 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ((int8_t)({subj[0]}) == {bv}) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
+        if not first_arm_compiled
+          result_kind = br[1]
+          ct := kind_to_c_type(result_kind)
+          init := match_default_init(result_kind)
+          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          first_arm_compiled = true
         if br[0] != ""
-          emit(st, "{t} = (int64_t)({br[0]});")
+          emit(st, match_assign_expr(t, result_kind, br[0]))
         cg_dec_indent(st)
         emit(st, "}")
         first = false
@@ -1836,8 +1914,14 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} (ore_str_eq({subj[0]}, {slit[0]})) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
+        if not first_arm_compiled
+          result_kind = br[1]
+          ct := kind_to_c_type(result_kind)
+          init := match_default_init(result_kind)
+          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          first_arm_compiled = true
         if br[0] != ""
-          emit(st, "{t} = (int64_t)({br[0]});")
+          emit(st, match_assign_expr(t, result_kind, br[0]))
         cg_dec_indent(st)
         emit(st, "}")
         first = false
@@ -1858,8 +1942,14 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
             emit(st, "int64_t {mn} = {subj[0]}.data[{j}];")
             cg_set_var(st, bname, "int")
           br := compile_expr(st, exprs, stmts, body_id)
+          if not first_arm_compiled
+            result_kind = br[1]
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+            first_arm_compiled = true
           if br[0] != ""
-            emit(st, "{t} = (int64_t)({br[0]});")
+            emit(st, match_assign_expr(t, result_kind, br[0]))
           cg_dec_indent(st)
           emit(st, "}")
           first = false
@@ -1878,8 +1968,14 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           emit(st, "int64_t {mn} = (int64_t)({subj[0]});")
           cg_set_var(st, name, subj[1])
           br := compile_expr(st, exprs, stmts, body_id)
+          if not first_arm_compiled
+            result_kind = br[1]
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+            first_arm_compiled = true
           if br[0] != ""
-            emit(st, "{t} = (int64_t)({br[0]});")
+            emit(st, match_assign_expr(t, result_kind, br[0]))
           cg_dec_indent(st)
           emit(st, "}")
           first = false
@@ -1890,8 +1986,14 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} (*(double*)&({subj[0]}) == {value}) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
+        if not first_arm_compiled
+          result_kind = br[1]
+          ct := kind_to_c_type(result_kind)
+          init := match_default_init(result_kind)
+          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          first_arm_compiled = true
         if br[0] != ""
-          emit(st, "{t} = (int64_t)({br[0]});")
+          emit(st, match_assign_expr(t, result_kind, br[0]))
         cg_dec_indent(st)
         emit(st, "}")
         first = false
@@ -1902,8 +2004,14 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ((int64_t)({subj[0]}) >= {start}LL && (int64_t)({subj[0]}) <= {end}LL) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
+        if not first_arm_compiled
+          result_kind = br[1]
+          ct := kind_to_c_type(result_kind)
+          init := match_default_init(result_kind)
+          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          first_arm_compiled = true
         if br[0] != ""
-          emit(st, "{t} = (int64_t)({br[0]});")
+          emit(st, match_assign_expr(t, result_kind, br[0]))
         cg_dec_indent(st)
         emit(st, "}")
         first = false
@@ -1935,8 +2043,14 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ({cond}) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
+        if not first_arm_compiled
+          result_kind = br[1]
+          ct := kind_to_c_type(result_kind)
+          init := match_default_init(result_kind)
+          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          first_arm_compiled = true
         if br[0] != ""
-          emit(st, "{t} = (int64_t)({br[0]});")
+          emit(st, match_assign_expr(t, result_kind, br[0]))
         cg_dec_indent(st)
         emit(st, "}")
         first = false
@@ -1948,12 +2062,18 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           emit(st, "\{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
+        if not first_arm_compiled
+          result_kind = br[1]
+          ct := kind_to_c_type(result_kind)
+          init := match_default_init(result_kind)
+          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          first_arm_compiled = true
         if br[0] != ""
-          emit(st, "{t} = (int64_t)({br[0]});")
+          emit(st, match_assign_expr(t, result_kind, br[0]))
         cg_dec_indent(st)
         emit(st, "}")
         first = false
-  __ret_10 := [t, "int"]
+  __ret_10 := [t, result_kind]
   __ret_10
 
 -- ── Free variable detection for closures ──
@@ -2374,7 +2494,13 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   if name == "main"
     emit(st, "return 0;")
   else if ret_kind != "void" and block_result[0] != ""
-    emit(st, "return {block_result[0]};")
+    -- Coerce block result to function return type if needed
+    bk := block_result[1]
+    if bk != ret_kind and (ret_kind.starts_with("enum:") or ret_kind.starts_with("rec:"))
+      coerced := coerce_from_i64_expr(block_result[0], ret_kind)
+      emit(st, "return {coerced};")
+    else
+      emit(st, "return {block_result[0]};")
   cg_dec_indent(st)
   emit_raw(st, "}")
   -- Restore variables (remove params)
