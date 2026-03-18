@@ -71,6 +71,7 @@ fn cg_new -> List
   st.push([])       -- 24: stmts_pool (set later)
   st.push([])       -- 25: deferred_fns
   st.push([])       -- 26: record_field_kinds
+  st.push([])       -- 27: variant_field_kinds
   st
 
 fn cg_list st:List idx:Int -> List
@@ -292,6 +293,26 @@ fn cg_variant_enum st:List variant:Str -> Str
     if e.starts_with(prefix)
       return e.substr(prefix.len(), e.len() - prefix.len())
   ""
+
+-- Store variant field kinds: "VariantName:kind0,kind1,kind2"
+fn cg_add_variant_field_kinds st:List variant:Str kinds_str:Str
+  cg_list(st, 27).push("{variant}:{kinds_str}")
+
+-- Look up the kind of a specific field in a variant by index
+fn cg_get_variant_field_kind st:List variant:Str idx:Int -> Str
+  entries := cg_list(st, 27)
+  prefix := variant + ":"
+  for i in 0..entries.len()
+    e := str_at(entries, i)
+    if e.starts_with(prefix)
+      kinds_str := e.substr(prefix.len(), e.len() - prefix.len())
+      if kinds_str == ""
+        return "int"
+      parts := kinds_str.split(",")
+      if idx < parts.len()
+        return str_at(parts, idx)
+      return "int"
+  "int"
 
 -- ── C type mapping ──
 
@@ -1690,14 +1711,15 @@ fn compile_field_access st:List exprs:List stmts:List object:Int field:Str -> Li
     if field == "tag"
       return ["{obj[0]}.tag", "int"]
     return ["{obj[0]}.{field}", "int"]
-  -- Unknown type: try to infer record type from field name
+  -- Unknown type (int, dynamic, etc.): try to infer record type from field name
+  -- The value is stored as int64_t (e.g. from list indexing or untyped variable)
+  -- and needs to be cast to the correct struct pointer for field access
   inferred := cg_infer_record_by_field(st, field)
   if inferred != ""
     fk := cg_get_record_field_kind(st, inferred, field)
     cast := "(*(struct ore_rec_{inferred}*)(intptr_t)({obj[0]}))"
     return ["{cast}.{field}", fk]
-  __ret_9 := ["{obj[0]}.{field}", "int"]
-  __ret_9
+  ["{obj[0]}.{field}", "int"]
 
 -- ── Method calls ──
 
@@ -2168,12 +2190,15 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
               kw = "else if"
             emit(st, "{kw} ({subj[0]}.tag == {vtag}) \{")
             cg_inc_indent(st)
-            -- Bind variant fields
+            -- Bind variant fields with proper type tracking
             for j in 0..bindings.len()
               bname := bindings[j]
               mn := mangle_var(bname)
-              emit(st, "int64_t {mn} = {subj[0]}.data[{j}];")
-              cg_set_var(st, bname, "int")
+              fk := cg_get_variant_field_kind(st, name, j)
+              ct := kind_to_c_type(fk)
+              coerced := coerce_from_i64_expr("{subj[0]}.data[{j}]", fk)
+              emit(st, "{ct} {mn} = {coerced};")
+              cg_set_var(st, bname, fk)
             br := compile_expr(st, exprs, stmts, body_id)
             if not first_arm_compiled and br[1] != "void"
               result_kind = br[1]
@@ -2699,6 +2724,15 @@ fn compile_enum_def st:List ed:EnumDefNode
     variant_names_str = variant_names_str + v.name
     -- Register variant-to-enum mapping
     cg_add_variant_map(st, v.name, name)
+    -- Register variant field kinds
+    mut vfk_str := ""
+    for j in 0..v.fields.len()
+      vf := get_field_def(v.fields, j)
+      vfk := type_expr_to_kind_str(st, vf.ty)
+      if j > 0
+        vfk_str = vfk_str + ","
+      vfk_str = vfk_str + vfk
+    cg_add_variant_field_kinds(st, v.name, vfk_str)
   -- Struct: { int8_t tag; int64_t data[N]; }
   mut data_decl := ""
   if max_fields > 0
