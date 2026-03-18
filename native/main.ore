@@ -107,6 +107,31 @@ fn report_errors errors:List file:Str -> Int
     print "typecheck error in {file}: {errors[i]}"
   errors.len()
 
+-- Locate libore_runtime.a using a search strategy:
+-- 1. ORE_RUNTIME_LIB env var
+-- 2. Same directory as this executable (argv[0])
+-- 3. target/debug/ and target/release/ relative to CWD
+-- 4. Bare filename as last resort
+fn find_runtime_lib -> Str
+  -- 1. Explicit env var
+  env_path := env_get("ORE_RUNTIME_LIB")
+  if env_path != ""
+    if file_exists(env_path)
+      return env_path
+  -- 2. Same directory as the running binary
+  exe := args()[0]
+  exe_dir := dir_of_file(exe)
+  candidate := "{exe_dir}/libore_runtime.a"
+  if file_exists(candidate)
+    return candidate
+  -- 3. Common cargo target paths relative to CWD
+  if file_exists("target/debug/libore_runtime.a")
+    return "target/debug/libore_runtime.a"
+  if file_exists("target/release/libore_runtime.a")
+    return "target/release/libore_runtime.a"
+  -- 4. Bare filename (will likely fail at link time with a clear error)
+  "libore_runtime.a"
+
 -- Format a file path: replace .ore with .c
 fn c_output_path file:Str -> Str
   if file.ends_with(".ore")
@@ -192,9 +217,7 @@ fn cmd_build file:Str output:Str -> Int
   mut compiler := env_get("CC")
   if compiler == ""
     compiler = "cc"
-  mut runtime_lib := env_get("ORE_RUNTIME_LIB")
-  if runtime_lib == ""
-    runtime_lib = "libore_runtime.a"
+  runtime_lib := find_runtime_lib()
   cmd := "{compiler} {c_path} {runtime_lib} -o {output} -lm -lpthread -ldl 2>&1"
   result := exec(cmd)
   if result != ""
