@@ -9,14 +9,7 @@ use arena
 use token
 
 -- Typed accessors for records stored in untyped lists
-fn get_variant_def pool:List idx:Int -> VariantDef
-  pool[idx]
-
-fn get_param_def pool:List idx:Int -> ParamDef
-  pool[idx]
-
-fn get_fn_def pool:List idx:Int -> FnDef
-  pool[idx]
+-- (get_variant_def, get_param_def, get_fn_def, get_string_part are in arena.ore)
 
 fn get_sspanned pool:List idx:Int -> SpannedStmt
   pool[idx]
@@ -25,9 +18,6 @@ fn get_match_arm_typed pool:List idx:Int -> MatchArm
   pool[idx]
 
 fn get_item_typed pool:List idx:Int -> Item
-  pool[idx]
-
-fn get_string_part pool:List idx:Int -> StringPart
   pool[idx]
 
 -- Helper: convert Int to Str

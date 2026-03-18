@@ -72,6 +72,7 @@ fn cg_new -> List
   st.push([])       -- 25: deferred_fns
   st.push([])       -- 26: record_field_kinds
   st.push([])       -- 27: variant_field_kinds
+  st.push(["void"]) -- 28: current_fn_ret_kind (single element)
   st
 
 fn cg_list st:List idx:Int -> List
@@ -369,6 +370,14 @@ fn kind_to_tag kind:Str -> Int
   if kind == "map"
     return 10
   0
+
+-- Ensure a value is a void* pointer expression.
+-- If kind is already str/list/map, value is already void*.
+-- If kind is int/dynamic/unknown, cast from int64_t to void*.
+fn ensure_void_ptr val:Str kind:Str -> Str
+  if kind == "str" or kind == "list" or kind == "map"
+    return val
+  "(void*)(intptr_t)({val})"
 
 -- Convert a value expression to an int64_t expression for storage in lists.
 -- For struct types (enum/record), heap-allocates and returns pointer as int64_t.
@@ -1238,7 +1247,9 @@ fn compile_variant_call st:List variant:Str enum_name:Str arg_strs:List arg_kind
   c_type := "struct ore_enum_{enum_name}"
   emit(st, "{c_type} {t}; {t}.tag = {tag};")
   for i in 0..arg_strs.len()
-    emit(st, "{t}.data[{i}] = (int64_t)({arg_strs[i]});")
+    ak := str_at(arg_kinds, i)
+    i64val := value_to_i64_expr(st, arg_strs[i], ak)
+    emit(st, "{t}.data[{i}] = {i64val};")
   __ret_1 := [t, "enum:{enum_name}"]
   __ret_1
 
@@ -1425,7 +1436,11 @@ fn compile_stmt_node st:List exprs:List stmts:List s:Stmt -> List
         r := compile_expr(st, exprs, stmts, value)
         emit(st, "return {r[0]};")
       else
-        emit(st, "return;")
+        fn_ret := str_at(cg_list(st, 28), 0)
+        if fn_ret == "void"
+          emit(st, "return;")
+        else
+          emit(st, "return 0;")
       return ["", "void"]
     ForInStmt var_name start end step body ->
       return compile_for_in(st, exprs, stmts, var_name, start, end, step, body)
@@ -1485,9 +1500,12 @@ fn compile_index_assign st:List exprs:List stmts:List object:Int index:Int value
   val := compile_expr(st, exprs, stmts, value)
   ok := obj[1]
   if ok == "list"
-    emit(st, "ore_list_set({obj[0]}, {idx[0]}, (int64_t)({val[0]}));")
+    v_i64 := value_to_i64_expr(st, val[0], val[1])
+    emit(st, "ore_list_set({obj[0]}, {idx[0]}, {v_i64});")
   else if ok == "map"
-    emit(st, "ore_map_set({obj[0]}, {idx[0]}, (int64_t)({val[0]}));")
+    key := ensure_void_ptr(idx[0], idx[1])
+    v_i64 := value_to_i64_expr(st, val[0], val[1])
+    emit(st, "ore_map_set({obj[0]}, {key}, {v_i64});")
   else
     emit(st, "{obj[0]}[{idx[0]}] = {val[0]};")
   __ret_4 := ["", "void"]
@@ -1687,8 +1705,10 @@ fn compile_index st:List exprs:List stmts:List object:Int index:Int -> List
     return ["ore_map_get({obj[0]}, {idx[0]})", "int"]
   if obj[1] == "str"
     return ["ore_str_char_at({obj[0]}, {idx[0]})", "str"]
-  __ret_8 := ["(({obj[0]})[{idx[0]}])", "int"]
-  __ret_8
+  -- Unknown type: assume list stored as int64_t
+  vt := cg_tmp(st)
+  emit(st, "int64_t {vt} = ore_list_get((void*)(intptr_t)({obj[0]}), {idx[0]});")
+  [vt, "int"]
 
 -- ── Field access ──
 
@@ -1751,6 +1771,8 @@ fn compile_method_call st:List exprs:List stmts:List object:Int method:Str args:
     return compile_str_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
   if is_list_method(method)
     return compile_list_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
+  if is_map_method(method)
+    return compile_map_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
   -- Default: treat as direct method
   all_args := arg_strs.join(", ")
   if all_args != ""
@@ -1792,7 +1814,14 @@ fn is_list_method method:Str -> Bool
     return true
   if method == "fold" or method == "reduce" or method == "any"
     return true
-  if method == "all" or method == "last"
+  if method == "all" or method == "last" or method == "len"
+    return true
+  false
+
+fn is_map_method method:Str -> Bool
+  if method == "set" or method == "get" or method == "len"
+    return true
+  if method == "keys" or method == "values" or method == "contains"
     return true
   false
 
@@ -1924,16 +1953,23 @@ fn compile_map_method st:List obj:Str method:Str args:List kinds:List -> List
   if method == "len"
     return ["ore_map_len({obj})", "int"]
   if method == "set"
-    emit(st, "ore_map_set({obj}, {args[0]}, (int64_t)({args[1]}));")
+    key := ensure_void_ptr(args[0], str_at(kinds, 0))
+    vk := str_at(kinds, 1)
+    v_i64 := value_to_i64_expr(st, args[1], vk)
+    emit(st, "ore_map_set({obj}, {key}, {v_i64});")
     return ["0", "void"]
   if method == "get"
-    return ["ore_map_get({obj}, {args[0]})", "int"]
+    key := ensure_void_ptr(args[0], str_at(kinds, 0))
+    return ["ore_map_get({obj}, {key})", "int"]
   if method == "get_or"
-    return ["ore_map_get_or({obj}, {args[0]}, (int64_t)({args[1]}))", "int"]
+    key := ensure_void_ptr(args[0], str_at(kinds, 0))
+    return ["ore_map_get_or({obj}, {key}, (int64_t)({args[1]}))", "int"]
   if method == "contains"
-    return ["ore_map_contains({obj}, {args[0]})", "bool"]
+    key := ensure_void_ptr(args[0], str_at(kinds, 0))
+    return ["ore_map_contains({obj}, {key})", "bool"]
   if method == "remove"
-    return ["ore_map_remove({obj}, {args[0]})", "int"]
+    key := ensure_void_ptr(args[0], str_at(kinds, 0))
+    return ["ore_map_remove({obj}, {key})", "int"]
   if method == "keys"
     return ["ore_map_keys({obj})", "list"]
   if method == "values"
@@ -2678,7 +2714,8 @@ fn compile_variant_record_construct st:List exprs:List stmts:List variant:Str en
     pair := cg_list(fields, i)
     value_id := pair[1]
     r := compile_expr(st, exprs, stmts, value_id)
-    emit(st, "{t}.data[{i}] = (int64_t)({r[0]});")
+    i64val := value_to_i64_expr(st, r[0], r[1])
+    emit(st, "{t}.data[{i}] = {i64val};")
   [t, "enum:{enum_name}"]
 
 -- ── Type definitions ──
@@ -2746,6 +2783,11 @@ fn compile_enum_def st:List ed:EnumDefNode
 
 fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   name := fd.name
+  -- Skip duplicate function definitions
+  fns := cg_list(st, 6)
+  for i in 0..fns.len()
+    if fns[i] == name
+      return
   params := fd.params
   body := fd.body
   ret_te := fd.ret_type
@@ -2757,6 +2799,8 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
     ret_kind = "int"
   -- Register function
   cg_set_fn(st, name, ret_kind)
+  -- Track current function return kind for bare return handling
+  cg_list(st, 28)[0] = ret_kind
   -- Save variables state (just track count to restore)
   saved_var_count := cg_list(st, 4).len()
   -- Build parameter signature
