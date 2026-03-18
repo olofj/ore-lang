@@ -817,14 +817,33 @@ pub extern "C" fn ore_list_find(list: *mut OreList, func: *const u8, env: *mut u
 }
 
 /// Join list elements as strings with a separator.
+/// Auto-detects whether elements are OreStr pointers or integers.
+/// If a value looks like a valid heap pointer (> 0x1000), it is treated as
+/// an OreStr pointer and dereferenced; otherwise it is formatted as an integer.
 #[no_mangle]
 pub extern "C" fn ore_list_join(list: *mut OreList, sep: *mut OreStr) -> *mut OreStr {
     unsafe {
         let src = &*list;
         let sep_str = (*sep).as_str();
         let mut parts: Vec<String> = Vec::new();
-        for &val in src.as_slice() {
-            parts.push(format!("{}", val));
+
+        // Determine strategy from the first element: if it looks like a
+        // valid OreStr pointer, join all elements as strings.
+        let use_str = src.as_slice().first().map_or(false, |&v| {
+            v > 0x1000 && (v as usize) % std::mem::align_of::<u32>() == 0
+        });
+
+        if use_str {
+            for &val in src.as_slice() {
+                let s = val as *mut OreStr;
+                if !s.is_null() {
+                    parts.push((*s).as_str().to_string());
+                }
+            }
+        } else {
+            for &val in src.as_slice() {
+                parts.push(format!("{}", val));
+            }
         }
         let joined = parts.join(sep_str);
         str_to_ore(joined)

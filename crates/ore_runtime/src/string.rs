@@ -62,7 +62,9 @@ pub extern "C" fn ore_str_capitalize(s: *mut OreStr) -> *mut OreStr {
     str_to_ore(result)
 }
 
-/// Get a single character at an index. Returns empty string if out of bounds.
+/// Get a single character at a byte index. Returns empty string if out of bounds.
+/// If the index falls inside a multi-byte UTF-8 character, returns the full
+/// character that contains that byte position.
 #[no_mangle]
 pub extern "C" fn ore_str_char_at(s: *mut OreStr, idx: i64) -> *mut OreStr {
     if s.is_null() { return empty_ore_str(); }
@@ -72,11 +74,31 @@ pub extern "C" fn ore_str_char_at(s: *mut OreStr, idx: i64) -> *mut OreStr {
     } else {
         idx as usize
     };
-    if i < str_val.len() {
-        let ch = &str_val[i..i+1];
+    if i >= str_val.len() {
+        return empty_ore_str();
+    }
+    // If i is on a char boundary, return that char; otherwise find the
+    // enclosing character boundary and return the full character.
+    if str_val.is_char_boundary(i) {
+        // Find the end of this character
+        let mut end = i + 1;
+        while end < str_val.len() && !str_val.is_char_boundary(end) {
+            end += 1;
+        }
+        let ch = &str_val[i..end];
         str_to_ore(ch)
     } else {
-        empty_ore_str()
+        // Mid-character byte: walk back to find the start of this char
+        let mut start = i;
+        while start > 0 && !str_val.is_char_boundary(start) {
+            start -= 1;
+        }
+        let mut end = i + 1;
+        while end < str_val.len() && !str_val.is_char_boundary(end) {
+            end += 1;
+        }
+        let ch = &str_val[start..end];
+        str_to_ore(ch)
     }
 }
 
@@ -206,12 +228,20 @@ pub extern "C" fn ore_str_reverse(s: *mut OreStr) -> *mut OreStr {
 pub extern "C" fn ore_str_substr(s: *mut OreStr, start: i64, len: i64) -> *mut OreStr {
     if s.is_null() { return empty_ore_str(); }
     let str_val = unsafe { (*s).as_str() };
-    let start = start.max(0) as usize;
+    let mut start = start.max(0) as usize;
     let len = len.max(0) as usize;
     if start >= str_val.len() {
         return empty_ore_str();
     }
-    let end = (start + len).min(str_val.len());
+    // Snap start to a valid char boundary
+    while start < str_val.len() && !str_val.is_char_boundary(start) {
+        start += 1;
+    }
+    let mut end = (start + len).min(str_val.len());
+    // Snap end to a valid char boundary
+    while end < str_val.len() && !str_val.is_char_boundary(end) {
+        end += 1;
+    }
     let sub = &str_val[start..end];
     str_to_ore(sub)
 }

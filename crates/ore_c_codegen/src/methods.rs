@@ -5,7 +5,22 @@ impl CCodeGen {
         let (obj_val, obj_kind) = self.compile_expr(object)?;
 
         if obj_kind.is_list() {
-            let elem_kind = obj_kind.list_elem_kind().cloned().unwrap_or(ValKind::Int);
+            let elem_kind = obj_kind.list_elem_kind().cloned()
+                .or_else(|| {
+                    // Try to infer from variable tracking or function return tracking
+                    if let Expr::Ident(ref name) = object {
+                        self.list_element_kinds.get(name).cloned()
+                    } else if let Expr::Call { func, .. } = object {
+                        if let Expr::Ident(ref fn_name) = func.as_ref() {
+                            self.fn_return_list_elem_kind.get(fn_name).cloned()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(ValKind::Int);
             let result = self.compile_list_method(&obj_val, method, args, &elem_kind)?;
             // Track push kind
             if method == "push" {
@@ -83,7 +98,18 @@ impl CCodeGen {
                                 "flat_map", "count", "sum", "product", "first", "last"];
             if list_methods.contains(&method) {
                 let list_val = format!("(void*)(intptr_t)({})", obj_val);
-                let elem_kind = ValKind::Int;
+                // Try to infer element kind from variable or function tracking
+                let elem_kind = if let Expr::Ident(ref name) = object {
+                    self.list_element_kinds.get(name).cloned()
+                } else if let Expr::Call { func, .. } = object {
+                    if let Expr::Ident(ref fn_name) = func.as_ref() {
+                        self.fn_return_list_elem_kind.get(fn_name).cloned()
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }.unwrap_or(ValKind::Int);
                 return self.compile_list_method(&list_val, method, args, &elem_kind);
             }
             return self.compile_int_method(&obj_val, method, args);

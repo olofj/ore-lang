@@ -169,7 +169,10 @@ fn cmd_build file:Str output:Str -> Int
   if source == ""
     print "error: could not read file '{file}'"
     return 1
-  parsed := parse_source(source)
+  base_dir := dir_of_file(file)
+  mut loaded := [file]
+  merged := resolve_imports(source, base_dir, loaded)
+  parsed := parse_source(merged)
   if parsed.len() == 1
     print "error: {parsed[0]}"
     return 1
