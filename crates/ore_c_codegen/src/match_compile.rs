@@ -151,6 +151,9 @@ impl CCodeGen {
             if !bindings.is_empty() {
                 let pt = payload_tmp.unwrap();
                 for (i, binding) in bindings.iter().enumerate() {
+                    if binding == "_" {
+                        continue;
+                    }
                     let fkind = &field_kinds[i];
                     let c_type = self.kind_to_c_type_str(fkind);
                     let fname = &field_names[i];
@@ -194,8 +197,12 @@ impl CCodeGen {
                 let pt = payload_tmp.unwrap();
                 for (i, binding) in bindings.iter().enumerate() {
                     let fkind = &field_kinds[i];
-                    let c_type = self.kind_to_c_type_str(fkind);
                     let fname = &field_names[i];
+                    if binding == "_" {
+                        declared_bindings.push((binding.clone(), fkind.clone()));
+                        continue;
+                    }
+                    let c_type = self.kind_to_c_type_str(fkind);
                     self.emit(&format!("{} {} = {}->{};", c_type, binding, pt, fname));
                     self.variables.insert(binding.clone(), VarInfo {
                         c_name: binding.clone(),
@@ -213,6 +220,9 @@ impl CCodeGen {
             if let Pattern::Variant { bindings, .. } = &arm.pattern {
                 // Re-register bindings (they may use different names per arm)
                 for (i, binding) in bindings.iter().enumerate() {
+                    if binding == "_" {
+                        continue;
+                    }
                     if i < declared_bindings.len() && binding != &declared_bindings[i].0 {
                         // Different binding name — alias it
                         let fkind = &field_kinds[i];

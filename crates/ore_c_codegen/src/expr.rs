@@ -409,6 +409,9 @@ impl CCodeGen {
         }
         // Variable holding a function pointer
         if self.variables.contains_key(&name) {
+            let c_name = self.variables.get(&name)
+                .map(|v| v.c_name.clone())
+                .unwrap_or_else(|| name.clone());
             let mut arg_strs = Vec::new();
             for arg in args {
                 let (a, _) = self.compile_expr(arg)?;
@@ -416,7 +419,7 @@ impl CCodeGen {
             }
             let call_str = format!("((int64_t(*)({})){})({})",
                 vec!["int64_t"; args.len()].join(", "),
-                name,
+                c_name,
                 arg_strs.join(", "));
             return Ok((call_str, ValKind::Int));
         }
@@ -470,6 +473,7 @@ impl CCodeGen {
         self.emit(&format!("if ({}) {{", cond_val));
         self.indent += 1;
         let saved_vars = self.variables.clone();
+        let saved_dyn_kinds = self.dynamic_kind_exprs.clone();
         let (then_val, then_kind) = self.compile_block_stmts(then_block)?;
         if let Some(ref tv) = then_val {
             if use_native_type {
@@ -479,12 +483,14 @@ impl CCodeGen {
             }
         }
         self.variables = saved_vars;
+        self.dynamic_kind_exprs = saved_dyn_kinds;
         self.indent -= 1;
 
         if let Some(eb) = else_block {
             self.emit("} else {");
             self.indent += 1;
             let saved_vars = self.variables.clone();
+            let saved_dyn_kinds = self.dynamic_kind_exprs.clone();
             let (else_val, else_kind) = self.compile_block_stmts(eb)?;
             if let Some(ref ev) = else_val {
                 if use_native_type {
@@ -494,6 +500,7 @@ impl CCodeGen {
                 }
             }
             self.variables = saved_vars;
+            self.dynamic_kind_exprs = saved_dyn_kinds;
             self.indent -= 1;
         }
         self.emit("}");
