@@ -1130,4 +1130,127 @@ mod tests {
     fn valid_lambda() {
         assert!(check("fn main\n  f := (x => x + 1)\n  print f(5)\n").is_ok());
     }
+
+    // --- Additional error cases ---
+
+    #[test]
+    fn error_fn_arg_type_mismatch() {
+        let errs = check_err("fn add a:Int b:Int -> Int\n  a + b\n\nfn main\n  add(\"hello\", 42)\n");
+        assert!(errs.iter().any(|e| e.msg.contains("argument") && e.msg.contains("expects")),
+            "expected argument type mismatch error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_wrong_return_type() {
+        let errs = check_err("fn greet -> Int\n  \"hello\"\n");
+        assert!(errs.iter().any(|e| e.msg.contains("return")),
+            "expected return type error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_enum_exhaustiveness() {
+        let errs = check_err(
+            "type Color\n  Red\n  Green\n  Blue\n\nfn main\n  c := Red\n  match c\n    Red -> print \"r\"\n    Green -> print \"g\"\n"
+        );
+        assert!(errs.iter().any(|e| e.msg.contains("exhaustive") || e.msg.contains("missing variant")),
+            "expected exhaustiveness error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_arity_too_few() {
+        let errs = check_err("fn add a:Int b:Int -> Int\n  a + b\n\nfn main\n  add()\n");
+        assert!(errs.iter().any(|e| e.msg.contains("expects") && e.msg.contains("args")),
+            "expected arity error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_arity_too_many() {
+        let errs = check_err("fn add a:Int b:Int -> Int\n  a + b\n\nfn main\n  add(1, 2, 3)\n");
+        assert!(errs.iter().any(|e| e.msg.contains("expects") && e.msg.contains("args")),
+            "expected arity error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_undefined_variable_in_assign() {
+        let errs = check_err("fn main\n  x = 42\n");
+        assert!(errs.iter().any(|e| e.msg.contains("undefined") && e.msg.contains("x")),
+            "expected undefined variable error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_unknown_type_in_record_construct() {
+        let errs = check_err("fn main\n  p := Bogus(x: 1)\n");
+        assert!(errs.iter().any(|e| e.msg.contains("unknown type") || e.msg.contains("undefined")),
+            "expected unknown type error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_unknown_field_in_record_construct() {
+        let errs = check_err("type Point { x:Int, y:Int }\n\nfn main\n  p := Point(x: 1, y: 2, z: 3)\n");
+        assert!(errs.iter().any(|e| e.msg.contains("unknown field") && e.msg.contains("z")),
+            "expected unknown field error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_field_access_nonexistent() {
+        let errs = check_err("type Point { x:Int, y:Int }\n\nfn main\n  p := Point(x: 1, y: 2)\n  print p.z\n");
+        assert!(errs.iter().any(|e| e.msg.contains("no field") && e.msg.contains("z")),
+            "expected field access error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_field_assign_nonexistent() {
+        let errs = check_err("type Point { x:Int, y:Int }\n\nfn main\n  mut p := Point(x: 1, y: 2)\n  p.z = 3\n");
+        assert!(errs.iter().any(|e| e.msg.contains("no field") && e.msg.contains("z")),
+            "expected field assign error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_return_type_mismatch_explicit() {
+        let errs = check_err("fn foo -> Int\n  return \"hello\"\n");
+        assert!(errs.iter().any(|e| e.msg.contains("return")),
+            "expected return type mismatch error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_missing_return_value() {
+        let errs = check_err("fn foo -> Int\n  return\n");
+        assert!(errs.iter().any(|e| e.msg.contains("return") || e.msg.contains("missing")),
+            "expected missing return value error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_assign_type_mismatch() {
+        let errs = check_err("fn main\n  mut x := 42\n  x = \"hello\"\n");
+        assert!(errs.iter().any(|e| e.msg.contains("type mismatch") && e.msg.contains("x")),
+            "expected type mismatch in assignment error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_destructure_non_list() {
+        let errs = check_err("fn main\n  [a, b] := 42\n");
+        assert!(errs.iter().any(|e| e.msg.contains("destructuring") && e.msg.contains("list")),
+            "expected destructuring error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_while_condition_not_bool() {
+        let errs = check_err("fn main\n  while 42\n    print \"loop\"\n");
+        assert!(errs.iter().any(|e| e.msg.contains("while") && e.msg.contains("Bool")),
+            "expected while condition type error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_if_condition_not_bool() {
+        let errs = check_err("fn main\n  if 42\n    print \"yes\"\n");
+        assert!(errs.iter().any(|e| e.msg.contains("if") && e.msg.contains("Bool")),
+            "expected if condition type error, got: {:?}", errs);
+    }
+
+    #[test]
+    fn error_for_in_non_int_bounds() {
+        let errs = check_err("fn main\n  for i in \"a\"..\"z\"\n    print i\n");
+        assert!(errs.iter().any(|e| e.msg.contains("for-in") && e.msg.contains("Int")),
+            "expected for-in type error, got: {:?}", errs);
+    }
 }
