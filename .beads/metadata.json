@@ -1,0 +1,8 @@
+{
+  "backend": "dolt",
+  "database": "dolt",
+  "dolt_database": "ore",
+  "dolt_mode": "server",
+  "dolt_server_host": "127.0.0.1",
+  "dolt_server_port": 3307
+}
