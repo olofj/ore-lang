@@ -553,6 +553,7 @@ fn emit_runtime_decls st:List
   emit_raw(st, "extern int64_t ore_list_pop(void*);")
   emit_raw(st, "extern void ore_list_clear(void*);")
   emit_raw(st, "extern int64_t ore_list_get(void*, int64_t);")
+  emit_raw(st, "extern int8_t ore_list_get_kind(void*, int64_t);")
   emit_raw(st, "extern void ore_list_set(void*, int64_t, int64_t);")
   emit_raw(st, "extern int64_t ore_list_len(void*);")
   emit_raw(st, "extern void ore_list_print(void*);")
@@ -824,10 +825,18 @@ fn compile_binop_values st:List op:BinOp l:List r:List -> List
   rv := r[0]
   lk := l[1]
   rk := r[1]
-  -- String operations
-  if lk == "str"
-    if rk == "str"
-      return compile_str_binop(st, op, lv, rv)
+  -- String operations: when either side is str, use string comparison/concat.
+  -- This handles values from untyped list access (typed as int/dynamic but actually string pointers).
+  mut l_is_str := lk == "str"
+  mut r_is_str := rk == "str"
+  if l_is_str or r_is_str
+    mut sl := lv
+    mut sr := rv
+    if not l_is_str
+      sl = "(void*)(intptr_t)({lv})"
+    if not r_is_str
+      sr = "(void*)(intptr_t)({rv})"
+    return compile_str_binop(st, op, sl, sr)
   -- List concatenation
   if lk == "list"
     match op
@@ -1199,7 +1208,13 @@ fn compile_print st:List exprs:List stmts:List inner:Int -> List
   r := compile_expr(st, exprs, stmts, inner)
   val := r[0]
   kind := r[1]
-  if kind == "int"
+  if kind.starts_with("dynamic:")
+    kind_var := kind.substr(8, kind.len() - 8)
+    dt := cg_tmp(st)
+    emit(st, "void* {dt} = ore_dynamic_to_str({val}, {kind_var});")
+    emit(st, "ore_str_print({dt});")
+    emit(st, "ore_str_release({dt});")
+  else if kind == "int"
     emit(st, "ore_print_int({val});")
   else if kind == "float"
     emit(st, "ore_print_float({val});")
@@ -1475,13 +1490,17 @@ fn compile_string_interp st:List exprs:List stmts:List parts:List -> List
         r := compile_expr(st, exprs, stmts, expr_id)
         -- Convert to string based on kind
         mut s_expr := r[0]
-        if r[1] == "int"
+        kind := r[1]
+        if kind.starts_with("dynamic:")
+          kind_var := kind.substr(8, kind.len() - 8)
+          s_expr = "ore_dynamic_to_str({r[0]}, {kind_var})"
+        else if kind == "int"
           s_expr = "ore_int_to_str({r[0]})"
-        else if r[1] == "float"
+        else if kind == "float"
           s_expr = "ore_float_to_str({r[0]})"
-        else if r[1] == "bool"
+        else if kind == "bool"
           s_expr = "ore_bool_to_str({r[0]})"
-        else if r[1] != "str"
+        else if kind != "str"
           s_expr = "ore_int_to_str((int64_t)({r[0]}))"
         if first
           result = s_expr
@@ -1527,7 +1546,11 @@ fn compile_index st:List exprs:List stmts:List object:Int index:Int -> List
   obj := compile_expr(st, exprs, stmts, object)
   idx := compile_expr(st, exprs, stmts, index)
   if obj[1] == "list"
-    return ["ore_list_get({obj[0]}, {idx[0]})", "int"]
+    vt := cg_tmp(st)
+    kt := cg_tmp(st)
+    emit(st, "int64_t {vt} = ore_list_get({obj[0]}, {idx[0]});")
+    emit(st, "int8_t {kt} = ore_list_get_kind({obj[0]}, {idx[0]});")
+    return [vt, "dynamic:{kt}"]
   if obj[1] == "map"
     return ["ore_map_get({obj[0]}, {idx[0]})", "int"]
   if obj[1] == "str"
