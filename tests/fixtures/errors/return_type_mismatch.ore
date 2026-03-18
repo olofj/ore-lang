@@ -1,0 +1,2 @@
+fn greet -> Int
+  "hello"

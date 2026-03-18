@@ -1,0 +1,6 @@
+fn add a:Int b:Int -> Int
+  a + b
+
+fn main
+  result := add("hello", 42)
+  print result

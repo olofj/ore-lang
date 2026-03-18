@@ -35,6 +35,18 @@ fn run_ore_expect_error(fixture: &str) -> String {
     String::from_utf8(output.stderr).unwrap()
 }
 
+/// Run `ore check` and expect an error. Returns stderr.
+fn check_ore_expect_error(fixture: &str) -> String {
+    let path = fixtures_dir().join(fixture);
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["check", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore");
+
+    assert!(!output.status.success(), "expected ore check to fail for {}", fixture);
+    String::from_utf8(output.stderr).unwrap()
+}
+
 #[test]
 fn phase0_hello() {
     assert_eq!(run_ore("phase_0/hello.ore").trim(), "42");
@@ -12279,7 +12291,8 @@ fn native_test_types() {
 
 #[test]
 fn native_c_backend_compilation() {
-    let ore_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let binding = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let ore_root = binding
         .parent().unwrap()  // crates/
         .parent().unwrap(); // ore/
     let main_ore = ore_root.join("native/main.ore");
@@ -12348,7 +12361,8 @@ fn build_ore_native() -> PathBuf {
 #[test]
 fn bootstrap_ore_native_runs_check() {
     let ore_native = build_ore_native();
-    let ore_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let binding = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let ore_root = binding
         .parent().unwrap()
         .parent().unwrap();
 
@@ -12385,7 +12399,8 @@ fn bootstrap_ore_native_runs_check() {
 
 #[test]
 fn bootstrap_ore_native_test_suite() {
-    let ore_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let binding = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let ore_root = binding
         .parent().unwrap()
         .parent().unwrap();
     let test_main_ore = ore_root.join("native/test_main.ore");
@@ -12431,4 +12446,111 @@ fn bootstrap_ore_native_test_suite() {
     );
 
     let _ = std::fs::remove_dir_all(&tmp_dir);
+}
+
+// --- Error-path integration tests ---
+
+#[test]
+fn error_undefined_variable() {
+    let err = check_ore_expect_error("errors/undefined_variable.ore");
+    assert!(err.contains("undefined variable") && err.contains("x"),
+        "expected undefined variable error, got: {}", err);
+}
+
+#[test]
+fn error_undefined_function() {
+    let err = check_ore_expect_error("errors/undefined_function.ore");
+    assert!(err.contains("undefined function") && err.contains("bogus"),
+        "expected undefined function error, got: {}", err);
+}
+
+#[test]
+fn error_type_mismatch_binding() {
+    let err = check_ore_expect_error("errors/type_mismatch_binding.ore");
+    assert!(err.contains("type mismatch") && err.contains("x"),
+        "expected type mismatch in assignment error, got: {}", err);
+}
+
+#[test]
+fn error_arity_too_few() {
+    let err = check_ore_expect_error("errors/arity_too_few.ore");
+    assert!(err.contains("expects") && err.contains("args"),
+        "expected arity error, got: {}", err);
+}
+
+#[test]
+fn error_arity_too_many() {
+    let err = check_ore_expect_error("errors/arity_too_many.ore");
+    assert!(err.contains("expects") && err.contains("args"),
+        "expected arity error, got: {}", err);
+}
+
+#[test]
+fn error_arg_type_mismatch() {
+    let err = check_ore_expect_error("errors/arg_type_mismatch.ore");
+    assert!(err.contains("argument") && err.contains("expects"),
+        "expected argument type mismatch error, got: {}", err);
+}
+
+#[test]
+fn error_bad_field_access() {
+    let err = check_ore_expect_error("errors/bad_field_access.ore");
+    assert!(err.contains("no field") && err.contains("z"),
+        "expected bad field access error, got: {}", err);
+}
+
+#[test]
+fn error_unknown_field_construct() {
+    let err = check_ore_expect_error("errors/unknown_field_construct.ore");
+    assert!(err.contains("unknown field") && err.contains("z"),
+        "expected unknown field error, got: {}", err);
+}
+
+#[test]
+fn error_missing_field_construct() {
+    let err = check_ore_expect_error("errors/missing_field_construct.ore");
+    assert!(err.contains("missing field") && err.contains("y"),
+        "expected missing field error, got: {}", err);
+}
+
+#[test]
+fn error_return_type_mismatch() {
+    let err = check_ore_expect_error("errors/return_type_mismatch.ore");
+    assert!(err.contains("declared to return Int, but body returns Str"),
+        "expected return type mismatch error, got: {}", err);
+}
+
+#[test]
+fn error_if_cond_not_bool() {
+    let err = check_ore_expect_error("errors/if_cond_not_bool.ore");
+    assert!(err.contains("must be Bool"),
+        "expected if condition type error, got: {}", err);
+}
+
+#[test]
+fn error_while_cond_not_bool() {
+    let err = check_ore_expect_error("errors/while_cond_not_bool.ore");
+    assert!(err.contains("must be Bool"),
+        "expected while condition type error, got: {}", err);
+}
+
+#[test]
+fn error_import_nonexistent() {
+    let err = check_ore_expect_error("errors/import_nonexistent.ore");
+    assert!(err.contains("cannot resolve") || err.contains("No such file"),
+        "expected import resolution error, got: {}", err);
+}
+
+#[test]
+fn error_assign_immutable() {
+    let err = check_ore_expect_error("errors/assign_immutable.ore");
+    assert!(err.contains("cannot assign to immutable"),
+        "expected immutable assignment error, got: {}", err);
+}
+
+#[test]
+fn error_enum_not_exhaustive() {
+    let err = check_ore_expect_error("errors/enum_not_exhaustive.ore");
+    assert!(err.contains("non-exhaustive") && err.contains("Blue"),
+        "expected non-exhaustive match error, got: {}", err);
 }

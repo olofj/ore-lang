@@ -1,0 +1,10 @@
+type Color
+  Red
+  Green
+  Blue
+
+fn main
+  c := Red
+  match c
+    Red -> print "r"
+    Green -> print "g"

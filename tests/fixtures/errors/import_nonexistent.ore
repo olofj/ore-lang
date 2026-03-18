@@ -1,0 +1,4 @@
+use "nonexistent_module.ore"
+
+fn main
+  print "should not reach here"
