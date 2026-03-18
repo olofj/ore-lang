@@ -85,13 +85,15 @@ The `ore` binary is at `target/debug/ore`. For AOT compilation (`ore build`), th
 ## Project Structure
 
 ```
-crates/
+src/              # The Ore compiler, written in Ore (self-hosted)
+bootstrap/        # Bootstrap compiler (Rust), used to build src/
   ore_cli/        # CLI frontend (run, build, check, fmt, repl)
   ore_lexer/      # Tokenizer
   ore_parser/     # Parser and AST, formatter
   ore_types/      # Type definitions
   ore_typecheck/  # Type checker
   ore_codegen/    # LLVM IR generation (via inkwell)
+  ore_c_codegen/  # C code generation (no LLVM dependency)
   ore_runtime/    # Runtime library (print, strings, lists, concurrency)
 docs/             # Language design documents
 tests/            # Test fixtures (.ore files)
@@ -111,7 +113,7 @@ tests/            # Test fixtures (.ore files)
 
 ## Status
 
-Early development. The compiler implements: lexing, parsing, LLVM codegen (JIT and AOT), record types, sum types with pattern matching, generics, traits, closures, Option/Result types, mutability checking, multi-file modules, concurrency primitives, lists with map/filter/each, and an interactive REPL.
+The Ore compiler is self-hosting: `src/` contains the compiler written in Ore itself, which the Rust bootstrap compiler (`bootstrap/`) can build via the C backend. The bootstrap compiler implements: lexing, parsing, LLVM codegen (JIT and AOT), C codegen, record types, sum types with pattern matching, generics, traits, closures, Option/Result types, mutability checking, multi-file modules, concurrency primitives, lists with map/filter/each, and an interactive REPL.
 
 ## License
 
