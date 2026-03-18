@@ -850,6 +850,8 @@ fn compile_expr_node st:List exprs:List stmts:List e:Expr -> List
       r := compile_expr(st, exprs, stmts, inner)
       emit(st, "ore_sleep({r[0]});")
       return ["0", "void"]
+    ColonMatchExpr cond then_expr else_expr ->
+      return compile_colon_match(st, exprs, stmts, cond, then_expr, else_expr)
     _ ->
       cg_error(st, "unsupported expression type")
       return ["0", "int"]
@@ -1333,26 +1335,32 @@ fn compile_print st:List exprs:List stmts:List inner:Int -> List
 fn compile_if_else st:List exprs:List stmts:List cond:Int then_block:Block else_block:Block -> List
   cr := compile_expr(st, exprs, stmts, cond)
   t := cg_tmp(st)
-  -- Emit placeholder declaration; will be patched after branches reveal type
+  -- Emit placeholder declaration; will be patched after we know the type
   decl_pos := cg_lines(st).len()
   decl_indent := indent_str(cg_indent(st))
   emit(st, "int64_t {t} = 0;")
   emit(st, "if ({cr[0]}) \{")
   cg_inc_indent(st)
   tr := compile_block(st, exprs, stmts, then_block)
+  -- Determine kind from branches
+  mut kind := tr[1]
+  if kind == "void" or kind == ""
+    kind = "int"
+  -- Patch declaration with correct type
+  ct := kind_to_c_type(kind)
+  init := match_default_init(kind)
+  cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
   if tr[0] != ""
-    emit(st, match_assign_expr(t, tr[1], tr[0]))
+    emit(st, match_assign_expr(t, kind, tr[0]))
   cg_dec_indent(st)
   emit(st, "} else \{")
   cg_inc_indent(st)
   er := compile_block(st, exprs, stmts, else_block)
   if er[0] != ""
-    emit(st, match_assign_expr(t, er[1], er[0]))
+    emit(st, match_assign_expr(t, kind, er[0]))
   cg_dec_indent(st)
   emit(st, "}")
-  -- Determine kind from branches
-  mut kind := tr[1]
-  if kind == "void" or kind == ""
+  if kind == "void"
     kind = er[1]
   if kind == "" or kind == "void"
     kind = "int"
@@ -1363,6 +1371,40 @@ fn compile_if_else st:List exprs:List stmts:List cond:Int then_block:Block else_
     cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
   __ret_2 := [t, kind]
   __ret_2
+
+-- Inline if/then/else expression: `if cond then expr1 else expr2`
+fn compile_colon_match st:List exprs:List stmts:List cond:Int then_expr:Int else_expr:Int -> List
+  cr := compile_expr(st, exprs, stmts, cond)
+  t := cg_tmp(st)
+  -- Emit placeholder declaration; will be patched after we know the type
+  decl_pos := cg_lines(st).len()
+  decl_indent := indent_str(cg_indent(st))
+  emit(st, "int64_t {t} = 0;")
+  emit(st, "if ({cr[0]}) \{")
+  cg_inc_indent(st)
+  tr := compile_expr(st, exprs, stmts, then_expr)
+  mut kind := tr[1]
+  if kind == "void" or kind == ""
+    kind = "int"
+  -- Patch declaration with correct type
+  ct := kind_to_c_type(kind)
+  init := match_default_init(kind)
+  cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+  if tr[0] != ""
+    emit(st, match_assign_expr(t, kind, tr[0]))
+  cg_dec_indent(st)
+  if else_expr >= 0
+    emit(st, "} else \{")
+    cg_inc_indent(st)
+    er := compile_expr(st, exprs, stmts, else_expr)
+    if er[0] != ""
+      emit(st, match_assign_expr(t, kind, er[0]))
+    cg_dec_indent(st)
+    emit(st, "}")
+  else
+    emit(st, "}")
+  __ret_cm := [t, kind]
+  __ret_cm
 
 -- ── Block compilation ──
 -- Returns [last_expr_str, kind]
@@ -2198,7 +2240,8 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
               emit(st, "\{")
             cg_inc_indent(st)
             mn := mangle_var(name)
-            emit(st, "int64_t {mn} = (int64_t)({subj[0]});")
+            sc := kind_to_c_type(subj[1])
+            emit(st, "{sc} {mn} = {subj[0]};")
             cg_set_var(st, name, subj[1])
             br := compile_expr(st, exprs, stmts, body_id)
             if not first_arm_compiled and br[1] != "void"
