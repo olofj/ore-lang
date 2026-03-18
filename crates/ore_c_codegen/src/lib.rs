@@ -501,6 +501,8 @@ impl CCodeGen {
 
         self.variables.clear();
         self.dynamic_kind_tags.clear();
+        let saved_list_ek = std::mem::take(&mut self.list_element_kinds);
+        let saved_map_vk = std::mem::take(&mut self.map_value_kinds);
 
         let ret_c_type = if fndef.name == "main" {
             "int32_t".to_string()
@@ -556,20 +558,18 @@ impl CCodeGen {
             self.emit("return 0;");
         } else if fndef.ret_type.is_some() {
             if let Some(ref expr_str) = last_expr {
-                // Cast to the function's return type if needed to avoid C type mismatch.
-                // Only coerce when the if/else produced int64_t but the function expects
-                // a pointer type (Str, List, Map) or a tagged union (Option, Result).
-                let needs_cast = match &fn_info.ret_kind {
-                    ValKind::Str | ValKind::List(_) | ValKind::Map(_) | ValKind::Channel
-                    | ValKind::Enum(_) | ValKind::Record(_) | ValKind::Option | ValKind::Result => {
-                        // The expression might be an int64_t from compile_if_else or list_get
-                        _last_kind == ValKind::Int
+                // Always coerce the return expression to match the declared return type.
+                // The compiled expression kind may differ from the declared return kind
+                // when list elements have unknown types or cross-function inference is imprecise.
+                if _last_kind != fn_info.ret_kind {
+                    let ret_expr = self.coerce_expr(expr_str, &_last_kind, &fn_info.ret_kind);
+                    if ret_expr != *expr_str {
+                        self.emit(&format!("return {};", ret_expr));
+                    } else {
+                        // coerce_expr couldn't do a direct conversion; try via i64
+                        let ret_expr = self.coerce_from_i64_expr(expr_str, &fn_info.ret_kind);
+                        self.emit(&format!("return {};", ret_expr));
                     }
-                    _ => false,
-                };
-                if needs_cast {
-                    let ret_expr = self.coerce_from_i64_expr(expr_str, &fn_info.ret_kind);
-                    self.emit(&format!("return {};", ret_expr));
                 } else {
                     self.emit(&format!("return {};", expr_str));
                 }
@@ -599,6 +599,10 @@ impl CCodeGen {
         self.indent -= 1;
         self.emit_raw("}");
         self.emit_raw("");
+
+        // Restore per-function element/value kind tracking
+        self.list_element_kinds = saved_list_ek;
+        self.map_value_kinds = saved_map_vk;
         Ok(())
     }
 
