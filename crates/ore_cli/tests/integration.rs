@@ -12276,3 +12276,35 @@ fn native_test_typecheck() {
 fn native_test_types() {
     run_ore_test("test_types.ore");
 }
+
+#[test]
+fn native_c_backend_compilation() {
+    let ore_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent().unwrap()  // crates/
+        .parent().unwrap(); // ore/
+    let main_ore = ore_root.join("native/main.ore");
+
+    let tmp_dir = std::env::temp_dir().join("ore_test_c_backend");
+    std::fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
+    let output_bin = tmp_dir.join("native_main");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args([
+            "build",
+            "--backend", "c",
+            main_ore.to_str().unwrap(),
+            "-o", output_bin.to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to execute ore build");
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        panic!("ore build --backend c native/main.ore failed:\n{}", stderr);
+    }
+
+    assert!(output_bin.exists(), "compiled binary should exist at {}", output_bin.display());
+
+    // Clean up
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+}
