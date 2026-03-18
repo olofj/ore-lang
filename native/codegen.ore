@@ -1207,7 +1207,7 @@ fn try_builtin st:List fname:Str args:List kinds:List -> List
 fn compile_print st:List exprs:List stmts:List inner:Int -> List
   r := compile_expr(st, exprs, stmts, inner)
   val := r[0]
-  kind := r[1]
+  kind := str_at(r, 1)
   if kind.starts_with("dynamic:")
     kind_var := kind.substr(8, kind.len() - 8)
     dt := cg_tmp(st)
@@ -1490,7 +1490,7 @@ fn compile_string_interp st:List exprs:List stmts:List parts:List -> List
         r := compile_expr(st, exprs, stmts, expr_id)
         -- Convert to string based on kind
         mut s_expr := r[0]
-        kind := r[1]
+        kind := str_at(r, 1)
         if kind.starts_with("dynamic:")
           kind_var := kind.substr(8, kind.len() - 8)
           s_expr = "ore_dynamic_to_str({r[0]}, {kind_var})"
