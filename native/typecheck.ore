@@ -561,7 +561,7 @@ fn typecheck_with_scopes tokens:List exprs:List stmts:List -> List
 fn typecheck tokens:List exprs:List stmts:List -> List
   typecheck_with_scopes(tokens, exprs, stmts)
 
--- Scan tokens and add fn params + for-loop vars to scope
+-- Scan tokens and add fn params + for-loop vars + match arm bindings to scope
 fn add_fn_params_from_tokens tc:List tokens:List
   scopes := tc_scopes(tc)
   mut i := 0
@@ -579,8 +579,40 @@ fn add_fn_params_from_tokens tc:List tokens:List
           vname := token_ident_name(get_token(tokens, i + 1))
           if vname != ""
             scope_define(scopes, vname, "any")
+      ArrowTok ->
+        -- Match arm pattern bindings: UpperIdent binding1 binding2 ... ArrowTok
+        add_match_arm_bindings(scopes, tokens, i)
       _ -> 0
     i = i + 1
+
+-- Add match arm pattern bindings to scope by scanning backwards from ArrowTok
+-- Pattern: UpperIdent binding1 binding2 ... ArrowTok
+fn add_match_arm_bindings scopes:List tokens:List arrow_pos:Int
+  -- Scan backwards from arrow to find lowercase ident bindings
+  -- preceded by an uppercase ident (variant name)
+  mut j := arrow_pos - 1
+  loop
+    if j < 0
+      break
+    t := get_token(tokens, j)
+    name := token_ident_name(t)
+    if name == ""
+      break
+    if name == "_"
+      break
+    first_ch := ord(name.char_at(0))
+    if first_ch >= 65 and first_ch <= 90
+      -- Found uppercase variant name; add all idents between j+1 and arrow_pos
+      mut k := j + 1
+      loop
+        if k >= arrow_pos
+          break
+        bname := token_ident_name(get_token(tokens, k))
+        if bname != "" and bname != "_"
+          scope_define(scopes, bname, "any")
+        k = k + 1
+      break
+    j = j - 1
 
 -- Add params for one fn starting at token index start
 fn add_params_for_fn scopes:List tokens:List start:Int len:Int

@@ -127,13 +127,36 @@ impl<'ctx> CodeGen<'ctx> {
             &arm.pattern,
             Pattern::IntLit(_) | Pattern::FloatLit(_) | Pattern::BoolLit(_) | Pattern::StringLit(_) | Pattern::Range(_, _) | Pattern::Or(_)
         ));
-        if has_literal_patterns || matches!(subject_kind, ValKind::Int | ValKind::Float | ValKind::Bool | ValKind::Str) {
+
+        // Check if any arm has a Variant pattern (enum destructuring)
+        let has_variant_patterns = arms.iter().any(|arm| matches!(
+            &arm.pattern,
+            Pattern::Variant { .. }
+        ));
+
+        if has_literal_patterns && !has_variant_patterns {
+            return self.compile_literal_match(subject_val, &subject_kind, arms, func);
+        }
+        if !has_variant_patterns && matches!(subject_kind, ValKind::Int | ValKind::Float | ValKind::Bool | ValKind::Str) {
             return self.compile_literal_match(subject_val, &subject_kind, arms, func);
         }
 
+        // Determine enum name: from subject kind if known, or infer from variant patterns
         let enum_name = match &subject_kind {
             ValKind::Enum(name) => name.clone(),
-            _ => return Err(self.err("match subject must be an enum type")),
+            _ => {
+                // Try to infer enum type from variant patterns (handles dynamically-typed subjects)
+                let mut inferred = None;
+                for arm in arms {
+                    if let Pattern::Variant { name, .. } = &arm.pattern {
+                        if let Some(ename) = self.variant_to_enum.get(name) {
+                            inferred = Some(ename.clone());
+                            break;
+                        }
+                    }
+                }
+                inferred.ok_or_else(|| self.err("match subject must be an enum type"))?
+            }
         };
 
         let enum_info = self.enums.get(&enum_name).ok_or_else(|| {
