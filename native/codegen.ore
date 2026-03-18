@@ -2826,6 +2826,18 @@ fn compile_enum_def st:List ed:EnumDefNode
     data_decl = " int64_t data[{max_fields}];"
   tl.push("// Enum: {name}")
   tl.push("struct ore_enum_{name} \{ int8_t tag;{data_decl} };")
+  -- Emit payload structs for variants with fields
+  for i in 0..variants.len()
+    v := get_variant_def(variants, i)
+    if v.fields.len() > 0
+      mut payload_sig := "struct ore_payload_{name}_{v.name} \{"
+      for j in 0..v.fields.len()
+        f := get_field_def(v.fields, j)
+        fk := type_expr_to_kind_str(st, f.ty)
+        fc := kind_to_c_type(fk)
+        payload_sig = payload_sig + " {fc} {f.name};"
+      payload_sig = payload_sig + " };"
+      tl.push(payload_sig)
   tl.push("")
   cg_add_enum(st, name, "{name}:{variant_names_str}", variants.len())
 
