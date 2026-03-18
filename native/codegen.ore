@@ -2113,10 +2113,10 @@ fn match_temp_c_type kind:Str -> Str
   kind_to_c_type(kind)
 
 fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
-  subj := compile_expr(st, exprs, stmts, subject)
-  -- If subject is int64_t but arms match enum variants, coerce subject to enum type
+  mut subj := compile_expr(st, exprs, stmts, subject)
+  -- If subject is int64_t/dynamic but arms match enum variants, coerce subject to enum type
   subj_kind := str_at(subj, 1)
-  if subj_kind == "int" or subj_kind == "void"
+  if subj_kind == "int" or subj_kind == "void" or subj_kind.starts_with("dynamic:")
     -- Scan arms for VariantPat to infer enum type
     mut inferred_enum := ""
     for ii in 0..arms.len()
