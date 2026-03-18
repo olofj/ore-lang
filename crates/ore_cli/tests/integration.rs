@@ -17,10 +17,51 @@ fn run_ore(fixture: &str) -> String {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        // Fall back to C backend when LLVM is not available
+        if stderr.contains("requires the llvm feature") {
+            return run_ore_via_c(fixture);
+        }
         panic!("ore run failed for {}:\n{}", fixture, stderr);
     }
 
     String::from_utf8(output.stdout).unwrap()
+}
+
+/// Compile a fixture via the C backend and run the resulting binary.
+fn run_ore_via_c(fixture: &str) -> String {
+    let path = fixtures_dir().join(fixture);
+    let bin_name = fixture.replace('.', "_");
+    let tmp_dir = std::env::temp_dir().join(format!("ore_c_{}", bin_name));
+    std::fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
+    let output_bin = tmp_dir.join(&bin_name);
+
+    let build = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args([
+            "build",
+            "--backend", "c",
+            path.to_str().unwrap(),
+            "-o", output_bin.to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to execute ore build");
+
+    if !build.status.success() {
+        let stderr = String::from_utf8_lossy(&build.stderr);
+        panic!("ore build --backend c failed for {}:\n{}", fixture, stderr);
+    }
+
+    let run = Command::new(&output_bin)
+        .output()
+        .expect("failed to execute compiled binary");
+
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+
+    if !run.status.success() {
+        let stderr = String::from_utf8_lossy(&run.stderr);
+        panic!("compiled binary failed for {}:\n{}", fixture, stderr);
+    }
+
+    String::from_utf8(run.stdout).unwrap()
 }
 
 /// Run ore and expect a type error. Returns stderr.
