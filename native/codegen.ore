@@ -12,7 +12,8 @@ use types
 --                   forward_decls, top_level, errors,
 --                   record_names, record_field_names, record_field_counts,
 --                   enum_names, enum_variant_names, enum_variant_counts,
---                   variant_to_enum_name, break_labels, continue_labels]
+--                   variant_to_enum_name, break_labels, continue_labels,
+--                   generic_fn_names, generic_fn_defs, mono_cache]
 -- Indices:
 --   0: lines (List[Str])
 --   1: [indent] (List[Int], single element)
@@ -34,6 +35,12 @@ use types
 --  17: variant_to_enum (List[Str]) -- "VariantName:EnumName"
 --  18: break_labels (List[Str])
 --  19: continue_labels (List[Str])
+--  20: generic_fn_names (List[Str]) -- names of generic functions
+--  21: generic_fn_defs (List[FnDef]) -- corresponding FnDef objects
+--  22: mono_cache (List[Str]) -- mangled names of already-monomorphized functions
+--  23: exprs_pool (List, the exprs arena)
+--  24: stmts_pool (List, the stmts arena)
+--  25: deferred_fns (List[Str]) -- lines for monomorphized functions emitted out-of-order
 
 fn cg_new -> List
   mut st := []
@@ -57,6 +64,12 @@ fn cg_new -> List
   st.push([])       -- 17: variant_to_enum
   st.push([])       -- 18: break_labels
   st.push([])       -- 19: continue_labels
+  st.push([])       -- 20: generic_fn_names
+  st.push([])       -- 21: generic_fn_defs
+  st.push([])       -- 22: mono_cache
+  st.push([])       -- 23: exprs_pool (set later)
+  st.push([])       -- 24: stmts_pool (set later)
+  st.push([])       -- 25: deferred_fns
   st
 
 fn cg_list st:List idx:Int -> List
@@ -185,6 +198,37 @@ fn cg_has_fn st:List name:Str -> Bool
       return true
   false
 
+-- ── Generic function tracking ──
+
+fn cg_add_generic_fn st:List name:Str fd:FnDef
+  cg_list(st, 20).push(name)
+  cg_list(st, 21).push(fd)
+
+fn cg_get_generic_fn st:List name:Str -> List
+  names := cg_list(st, 20)
+  defs := cg_list(st, 21)
+  for i in 0..names.len()
+    if str_at(names, i) == name
+      return [defs[i]]
+  []
+
+fn cg_has_generic_fn st:List name:Str -> Bool
+  names := cg_list(st, 20)
+  for i in 0..names.len()
+    if str_at(names, i) == name
+      return true
+  false
+
+fn cg_has_mono st:List mono_name:Str -> Bool
+  cache := cg_list(st, 22)
+  for i in 0..cache.len()
+    if str_at(cache, i) == mono_name
+      return true
+  false
+
+fn cg_add_mono st:List mono_name:Str
+  cg_list(st, 22).push(mono_name)
+
 -- ── Record/Enum tracking ──
 
 fn cg_add_record st:List name:Str fields_str:Str count:Int
@@ -284,6 +328,56 @@ fn type_expr_to_kind_str st:List te:TypeExpr -> Str
     _ ->
       return "int"
   "int"
+
+-- ── Monomorphization helpers ──
+
+fn kind_to_suffix kind:Str -> Str
+  if kind == "int"
+    return "Int"
+  if kind == "float"
+    return "Float"
+  if kind == "bool"
+    return "Bool"
+  if kind == "str"
+    return "Str"
+  if kind == "void"
+    return "Void"
+  if kind == "list"
+    return "List"
+  if kind == "map"
+    return "Map"
+  if kind == "option"
+    return "Option"
+  if kind == "result"
+    return "Result"
+  if kind.starts_with("rec:")
+    n := kind.substr(4, kind.len() - 4)
+    return "Rec_{n}"
+  if kind.starts_with("enum:")
+    n := kind.substr(5, kind.len() - 5)
+    return "Enum_{n}"
+  "Int"
+
+fn kind_str_to_type_name kind:Str -> Str
+  if kind == "int"
+    return "Int"
+  if kind == "float"
+    return "Float"
+  if kind == "bool"
+    return "Bool"
+  if kind == "str"
+    return "Str"
+  if kind == "void"
+    return "Void"
+  if kind == "list"
+    return "List"
+  if kind == "map"
+    return "Map"
+  if kind == "option"
+    return "Option"
+  if kind == "result"
+    return "Result"
+  "Int"
 
 -- ── C reserved word mangling ──
 
@@ -892,11 +986,122 @@ fn compile_fn_call_with_args st:List fname:Str arg_strs:List arg_kinds:List -> L
   en := cg_variant_enum(st, fname)
   if en != ""
     return compile_variant_call(st, fname, en, arg_strs, arg_kinds)
+  -- Check for generic function monomorphization
+  if cg_has_generic_fn(st, fname)
+    return compile_generic_call(st, fname, arg_strs, arg_kinds)
   -- Regular function call
   mn := mangle_fn(fname)
   all_args := arg_strs.join(", ")
   ret_kind := cg_get_fn_ret(st, fname)
   ["{mn}({all_args})", ret_kind]
+
+-- ── Generic function monomorphization ──
+
+fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
+  -- Look up the generic FnDef
+  gf_list := cg_get_generic_fn(st, fname)
+  if gf_list.len() == 0
+    cg_error(st, "generic function not found: {fname}")
+    return ["0", "int"]
+  gf := get_fn_def(gf_list, 0)
+  -- Extract type parameter names
+  tp_list := gf.type_params
+  mut tp_names := []
+  for i in 0..tp_list.len()
+    tpd := get_type_param_def(tp_list, i)
+    tp_names.push(tpd.name)
+  -- Infer type param -> kind mapping from arguments
+  mut type_map_keys := []
+  mut type_map_vals := []
+  params := gf.params
+  for i in 0..params.len()
+    if i < arg_kinds.len()
+      p := get_param_def(params, i)
+      match p.ty
+        NamedType ptn ->
+          if list_contains_str(tp_names, ptn)
+            if not list_contains_str(type_map_keys, ptn)
+              type_map_keys.push(ptn)
+              type_map_vals.push(str_at(arg_kinds, i))
+        _ ->
+          0
+  -- Generate mangled name: fname__Suffix1_Suffix2
+  mut suffixes := []
+  for i in 0..tp_names.len()
+    tpn := str_at(tp_names, i)
+    mut found_kind := "int"
+    for j in 0..type_map_keys.len()
+      if str_at(type_map_keys, j) == tpn
+        found_kind = str_at(type_map_vals, j)
+    suffixes.push(kind_to_suffix(found_kind))
+  uscore := "_"
+  mono_name := "{fname}__{suffixes.join(uscore)}"
+  -- Compile monomorphized version if not cached
+  if not cg_has_mono(st, mono_name)
+    cg_add_mono(st, mono_name)
+    -- Build monomorphized FnDef with concrete types
+    mut mono_params := []
+    for i in 0..params.len()
+      p := get_param_def(params, i)
+      mut new_ty := p.ty
+      match p.ty
+        NamedType ptn ->
+          resolved := resolve_type_param(ptn, type_map_keys, type_map_vals)
+          if resolved != ptn
+            new_ty = NamedType(name: resolved)
+        _ ->
+          0
+      mono_params.push(ParamDef(name: p.name, ty: new_ty, default_expr: p.default_expr))
+    -- Resolve return type
+    mut mono_ret := gf.ret_type
+    match gf.ret_type
+      NamedType rtn ->
+        resolved := resolve_type_param(rtn, type_map_keys, type_map_vals)
+        if resolved != rtn
+          mono_ret = NamedType(name: resolved)
+      _ ->
+        0
+    mono_fn := FnDef(name: mono_name, type_params: [], params: mono_params, ret_type: mono_ret, body: gf.body)
+    -- Compile the monomorphized function with save/restore
+    -- Save current lines and indent, compile into fresh lines, then move to deferred
+    saved_lines := cg_list(st, 0)
+    saved_indent := cg_indent(st)
+    saved_var_names := cg_list(st, 4)
+    saved_var_kinds := cg_list(st, 5)
+    st[0] = []
+    cg_set_indent(st, 0)
+    st[4] = []
+    st[5] = []
+    exprs := cg_list(st, 23)
+    stmts := cg_list(st, 24)
+    compile_fn_def(st, exprs, stmts, mono_fn)
+    -- Move compiled lines to deferred_fns
+    mono_lines := cg_list(st, 0)
+    deferred := cg_list(st, 25)
+    for i in 0..mono_lines.len()
+      deferred.push(mono_lines[i])
+    -- Restore original state
+    st[0] = saved_lines
+    cg_set_indent(st, saved_indent)
+    st[4] = saved_var_names
+    st[5] = saved_var_kinds
+  -- Call the monomorphized function
+  mn := mangle_fn(mono_name)
+  all_args := arg_strs.join(", ")
+  ret_kind := cg_get_fn_ret(st, mono_name)
+  ["{mn}({all_args})", ret_kind]
+
+fn resolve_type_param name:Str keys:List vals:List -> Str
+  for i in 0..keys.len()
+    if str_at(keys, i) == name
+      return kind_str_to_type_name(str_at(vals, i))
+  name
+
+fn list_contains_str lst:List s:Str -> Bool
+  for i in 0..lst.len()
+    if str_at(lst, i) == s
+      return true
+  false
 
 -- ── Variant constructor call ──
 
@@ -1473,20 +1678,27 @@ fn compile_list_method st:List obj:Str method:Str args:List kinds:List -> List
   if method == "enumerate"
     return ["ore_list_enumerate({obj})", "list"]
   if method == "map"
-    return ["ore_list_map({obj}, {args[0]}, NULL)", "list"]
+    cp := parse_closure_expr(args[0])
+    return ["ore_list_map({obj}, {cp[0]}, {cp[1]})", "list"]
   if method == "filter"
-    return ["ore_list_filter({obj}, {args[0]}, NULL)", "list"]
+    cp := parse_closure_expr(args[0])
+    return ["ore_list_filter({obj}, {cp[0]}, {cp[1]})", "list"]
   if method == "each"
-    emit(st, "ore_list_each({obj}, {args[0]}, NULL);")
+    cp := parse_closure_expr(args[0])
+    emit(st, "ore_list_each({obj}, {cp[0]}, {cp[1]});")
     return ["0", "void"]
   if method == "fold"
-    return ["ore_list_fold({obj}, {args[0]}, {args[1]}, NULL)", "int"]
+    cp := parse_closure_expr(args[1])
+    return ["ore_list_fold({obj}, {args[0]}, {cp[0]}, {cp[1]})", "int"]
   if method == "reduce"
-    return ["ore_list_reduce1({obj}, {args[0]}, NULL)", "int"]
+    cp := parse_closure_expr(args[0])
+    return ["ore_list_reduce1({obj}, {cp[0]}, {cp[1]})", "int"]
   if method == "any"
-    return ["ore_list_any({obj}, {args[0]}, NULL)", "bool"]
+    cp := parse_closure_expr(args[0])
+    return ["ore_list_any({obj}, {cp[0]}, {cp[1]})", "bool"]
   if method == "all"
-    return ["ore_list_all({obj}, {args[0]}, NULL)", "bool"]
+    cp := parse_closure_expr(args[0])
+    return ["ore_list_all({obj}, {cp[0]}, {cp[1]})", "bool"]
   cg_error(st, "unknown list method: {method}")
   ["0", "int"]
 
@@ -1648,6 +1860,63 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           cg_dec_indent(st)
           emit(st, "}")
           first = false
+      FloatLitPat value ->
+        mut kw := "if"
+        if not first
+          kw = "else if"
+        emit(st, "{kw} (*(double*)&({subj[0]}) == {value}) \{")
+        cg_inc_indent(st)
+        br := compile_expr(st, exprs, stmts, body_id)
+        if br[0] != ""
+          emit(st, "{t} = (int64_t)({br[0]});")
+        cg_dec_indent(st)
+        emit(st, "}")
+        first = false
+      RangePat start end ->
+        mut kw := "if"
+        if not first
+          kw = "else if"
+        emit(st, "{kw} ((int64_t)({subj[0]}) >= {start}LL && (int64_t)({subj[0]}) <= {end}LL) \{")
+        cg_inc_indent(st)
+        br := compile_expr(st, exprs, stmts, body_id)
+        if br[0] != ""
+          emit(st, "{t} = (int64_t)({br[0]});")
+        cg_dec_indent(st)
+        emit(st, "}")
+        first = false
+      OrPat alternatives ->
+        mut kw := "if"
+        if not first
+          kw = "else if"
+        mut conds := []
+        for j in 0..alternatives.len()
+          ap := alternatives[j]
+          match ap
+            IntLitPat av ->
+              conds.push("(int64_t)({subj[0]}) == {av}LL")
+            FloatLitPat fv ->
+              conds.push("*(double*)&({subj[0]}) == {fv}")
+            BoolLitPat bv ->
+              mut bval := 0
+              if bv
+                bval = 1
+              conds.push("(int8_t)({subj[0]}) == {bval}")
+            StringLitPat sv ->
+              slit := compile_string_lit(st, sv)
+              conds.push("ore_str_eq({subj[0]}, {slit[0]})")
+            RangePat rs re ->
+              conds.push("((int64_t)({subj[0]}) >= {rs}LL && (int64_t)({subj[0]}) <= {re}LL)")
+            _ ->
+              conds.push("1")
+        cond := conds.join(" || ")
+        emit(st, "{kw} ({cond}) \{")
+        cg_inc_indent(st)
+        br := compile_expr(st, exprs, stmts, body_id)
+        if br[0] != ""
+          emit(st, "{t} = (int64_t)({br[0]});")
+        cg_dec_indent(st)
+        emit(st, "}")
+        first = false
       _ ->
         -- Unsupported pattern, treat as wildcard
         if not first
@@ -1664,31 +1933,319 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
   __ret_10 := [t, "int"]
   __ret_10
 
--- ── Lambda (simplified — no captures) ──
+-- ── Free variable detection for closures ──
+
+fn collect_free_vars_expr exprs:List stmts:List expr_id:Int bound:List seen:List free:List
+  e := get_expr(exprs, expr_id)
+  match e
+    IdentExpr name ->
+      if not list_contains_str(bound, name)
+        if not list_contains_str(seen, name)
+          seen.push(name)
+          free.push(name)
+    IntLitExpr _ ->
+      st := 0
+    FloatLitExpr _ ->
+      st := 0
+    BoolLitExpr _ ->
+      st := 0
+    StringLitExpr _ ->
+      st := 0
+    BreakExpr ->
+      st := 0
+    OptionNoneExpr ->
+      st := 0
+    BinOpExpr op left right ->
+      collect_free_vars_expr(exprs, stmts, left, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, right, bound, seen, free)
+    UnaryMinusExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    UnaryNotExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    PrintExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    OptionSomeExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    ResultOkExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    ResultErrExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    TryExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    SleepExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    CallExpr func args ->
+      collect_free_vars_expr(exprs, stmts, func, bound, seen, free)
+      for i in 0..args.len()
+        collect_free_vars_expr(exprs, stmts, args[i], bound, seen, free)
+    LambdaExpr lparams lbody ->
+      mut inner_bound := copy_str_list(bound)
+      for i in 0..lparams.len()
+        inner_bound.push(lparams[i])
+      collect_free_vars_expr(exprs, stmts, lbody, inner_bound, seen, free)
+    IfElseExpr cond then_block else_block ->
+      collect_free_vars_expr(exprs, stmts, cond, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, then_block, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, else_block, bound, seen, free)
+    ColonMatchExpr cond then_expr else_expr ->
+      collect_free_vars_expr(exprs, stmts, cond, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, then_expr, bound, seen, free)
+      if else_expr >= 0
+        collect_free_vars_expr(exprs, stmts, else_expr, bound, seen, free)
+    MatchExpr subject arms ->
+      collect_free_vars_expr(exprs, stmts, subject, bound, seen, free)
+      for i in 0..arms.len()
+        arm := get_match_arm(arms, i)
+        if arm.guard >= 0
+          collect_free_vars_expr(exprs, stmts, arm.guard, bound, seen, free)
+        collect_free_vars_expr(exprs, stmts, arm.body, bound, seen, free)
+    StringInterpExpr parts ->
+      for i in 0..parts.len()
+        p := get_string_part(parts, i)
+        match p
+          ExprPart expr_id ->
+            collect_free_vars_expr(exprs, stmts, expr_id, bound, seen, free)
+          _ ->
+            st := 0
+    BlockExprExpr block ->
+      collect_free_vars_block(exprs, stmts, block, bound, seen, free)
+    RecordConstructExpr type_name fields ->
+      for i in 0..fields.len()
+        collect_free_vars_expr(exprs, stmts, fields[i], bound, seen, free)
+    FieldAccessExpr object field ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+    OptionalChainExpr object field ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+    MethodCallExpr object method args ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      for i in 0..args.len()
+        collect_free_vars_expr(exprs, stmts, args[i], bound, seen, free)
+    OptionalMethodCallExpr object method args ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      for i in 0..args.len()
+        collect_free_vars_expr(exprs, stmts, args[i], bound, seen, free)
+    ListLitExpr elements ->
+      for i in 0..elements.len()
+        collect_free_vars_expr(exprs, stmts, elements[i], bound, seen, free)
+    ListCompExpr expr var_name iterable cond ->
+      collect_free_vars_expr(exprs, stmts, iterable, bound, seen, free)
+      mut inner_bound := copy_str_list(bound)
+      inner_bound.push(var_name)
+      collect_free_vars_expr(exprs, stmts, expr, inner_bound, seen, free)
+      if cond >= 0
+        collect_free_vars_expr(exprs, stmts, cond, inner_bound, seen, free)
+    MapLitExpr entries ->
+      for i in 0..entries.len()
+        collect_free_vars_expr(exprs, stmts, entries[i], bound, seen, free)
+    IndexExpr object index ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, index, bound, seen, free)
+    AssertExpr cond message ->
+      collect_free_vars_expr(exprs, stmts, cond, bound, seen, free)
+    AssertEqExpr left right message ->
+      collect_free_vars_expr(exprs, stmts, left, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, right, bound, seen, free)
+    AssertNeExpr left right message ->
+      collect_free_vars_expr(exprs, stmts, left, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, right, bound, seen, free)
+    _ ->
+      st := 0
+
+fn collect_free_vars_stmt exprs:List stmts:List stmt_id:Int bound:List seen:List free:List
+  s := get_stmt(stmts, stmt_id)
+  match s
+    LetStmt name mutable value ->
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    LetDestructureStmt names value ->
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    AssignStmt name value ->
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    ExprStmt expr ->
+      collect_free_vars_expr(exprs, stmts, expr, bound, seen, free)
+    ReturnStmt value ->
+      if value >= 0
+        collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    SpawnStmt expr ->
+      collect_free_vars_expr(exprs, stmts, expr, bound, seen, free)
+    ForInStmt var_name start end step body ->
+      collect_free_vars_expr(exprs, stmts, start, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, end, bound, seen, free)
+      if step >= 0
+        collect_free_vars_expr(exprs, stmts, step, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    WhileStmt cond body ->
+      collect_free_vars_expr(exprs, stmts, cond, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    ForEachStmt var_name iterable body ->
+      collect_free_vars_expr(exprs, stmts, iterable, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    ForEachKVStmt key_var val_var iterable body ->
+      collect_free_vars_expr(exprs, stmts, iterable, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    LoopStmt body ->
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    IndexAssignStmt object index value ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, index, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    FieldAssignStmt object field value ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    _ ->
+      st := 0
+
+fn collect_free_vars_block exprs:List stmts:List block:Block bound:List seen:List free:List
+  ss := block.stmts
+  for i in 0..ss.len()
+    sp := get_sstmt(ss, i)
+    collect_free_vars_stmt(exprs, stmts, sp.stmt_id, bound, seen, free)
+
+fn list_contains_str lst:List needle:Str -> Bool
+  for i in 0..lst.len()
+    if str_at(lst, i) == needle
+      return true
+  false
+
+fn copy_str_list src:List -> List
+  mut dst := []
+  for i in 0..src.len()
+    dst.push(src[i])
+  dst
+
+fn find_free_vars exprs:List stmts:List expr_id:Int params:List -> List
+  mut bound := []
+  for i in 0..params.len()
+    bound.push(params[i])
+  mut seen := []
+  mut free := []
+  collect_free_vars_expr(exprs, stmts, expr_id, bound, seen, free)
+  free
+
+-- ── Lambda / Closure compilation ──
 
 fn compile_lambda st:List exprs:List stmts:List params:List body:Int -> List
-  -- Generate a unique lambda function name
   lname := cg_label(st, "lambda")
-  -- For now emit a forward declaration comment
-  -- Lambdas in C codegen need careful handling; use function pointers
-  -- Simple case: emit static function
-  -- Save current lines, emit lambda into top_level
-  tl := cg_list(st, 9)
-  -- Build param list
+
+  -- Detect free variables (captures)
+  free_vars := find_free_vars(exprs, stmts, body, params)
+
+  -- Filter to variables that exist in the current scope
+  mut capture_names := []
+  mut capture_kinds := []
+  for i in 0..free_vars.len()
+    fv := str_at(free_vars, i)
+    if cg_has_var(st, fv)
+      capture_names.push(fv)
+      capture_kinds.push(cg_get_var_kind(st, fv))
+
+  has_captures := capture_names.len() > 0
+
+  -- Build function parameter signature
   mut param_sig := ""
+  if has_captures
+    param_sig = "void* __env"
   for i in 0..params.len()
-    if i > 0
+    if param_sig != ""
       param_sig = param_sig + ", "
-    param_sig = param_sig + "int64_t p{i}"
-  tl.push("static int64_t {lname}({param_sig}) \{")
-  -- We need to compile the body into top_level lines
-  -- For simplicity, just reference it as a function pointer
-  -- The body compilation would need to go into top_level which is complex
-  -- For now, just emit a stub
-  tl.push("    return 0; // TODO: lambda body")
-  tl.push("}")
-  tl.push("")
-  ["(void*)&{lname}", "int"]
+    param_sig = param_sig + "int64_t {params[i]}"
+
+  -- Emit capture struct definition if needed
+  mut struct_name := ""
+  if has_captures
+    struct_name = "__captures_{lname}"
+    tl := cg_list(st, 9)
+    mut struct_def := "struct {struct_name} \{"
+    for i in 0..capture_names.len()
+      cn := str_at(capture_names, i)
+      ck := str_at(capture_kinds, i)
+      ct := kind_to_c_type(ck)
+      struct_def = struct_def + " {ct} {cn};"
+    struct_def = struct_def + " };"
+    tl.push(struct_def)
+    tl.push("")
+
+  -- Save current codegen state
+  saved_lines := cg_lines(st)
+  saved_indent := cg_indent(st)
+  saved_var_count := cg_list(st, 4).len()
+
+  -- Set up fresh lines for lambda body compilation
+  st[0] = []
+  cg_set_indent(st, 1)
+
+  -- Extract captured variables from env_ptr
+  if has_captures
+    emit(st, "struct {struct_name}* __cap = (struct {struct_name}*)__env;")
+    for i in 0..capture_names.len()
+      cn := str_at(capture_names, i)
+      ck := str_at(capture_kinds, i)
+      ct := kind_to_c_type(ck)
+      emit(st, "{ct} {cn} = __cap->{cn};")
+      cg_set_var(st, cn, ck)
+
+  -- Register lambda parameters as variables
+  for i in 0..params.len()
+    pn := str_at(params, i)
+    cg_set_var(st, pn, "int")
+
+  -- Compile the body expression
+  r := compile_expr(st, exprs, stmts, body)
+
+  -- Emit return statement
+  emit(st, "return (int64_t)({r[0]});")
+
+  -- Collect lambda body lines
+  body_lines := cg_lines(st)
+
+  -- Restore state
+  st[0] = saved_lines
+  cg_set_indent(st, saved_indent)
+  -- Restore variables by removing any added during lambda body
+  vnames := cg_list(st, 4)
+  vkinds := cg_list(st, 5)
+  while vnames.len() > saved_var_count
+    vnames.pop()
+    vkinds.pop()
+
+  -- Emit the lambda function definition into top_level
+  tl2 := cg_list(st, 9)
+  tl2.push("static int64_t {lname}({param_sig}) \{")
+  for i in 0..body_lines.len()
+    tl2.push(body_lines[i])
+  tl2.push("}")
+  tl2.push("")
+
+  -- Build the captures struct at the call site and return closure expression
+  if has_captures
+    cap_var := cg_tmp(st)
+    emit(st, "struct {struct_name} {cap_var};")
+    for i in 0..capture_names.len()
+      cn := str_at(capture_names, i)
+      -- Use the mangled name from current scope
+      mn := mangle_var(cn)
+      emit(st, "{cap_var}.{cn} = {mn};")
+    ["__closure_{lname}|{cap_var}", "int"]
+  else
+    ["(void*)&{lname}", "int"]
+
+-- Parse a closure expression into (fn_ptr, env_ptr)
+-- Closure format: "__closure_LAMBDA_NAME|CAP_VAR"
+-- Regular function pointer: "(void*)&FUNC_NAME"
+fn parse_closure_expr cexpr:Str -> List
+  if cexpr.starts_with("__closure_")
+    rest := cexpr.substr(10, cexpr.len() - 10)
+    -- Find the | separator
+    chars := rest.chars()
+    mut pipe_idx := -1
+    for i in 0..chars.len()
+      if chars[i] == "|"
+        pipe_idx = i
+    if pipe_idx >= 0
+      lname := rest.substr(0, pipe_idx)
+      cap_var := rest.substr(pipe_idx + 1, rest.len() - pipe_idx - 1)
+      return ["(void*)&{lname}", "(void*)&{cap_var}"]
+  result := [cexpr, "NULL"]
+  result
 
 -- ── Record construction ──
 
@@ -1799,6 +2356,61 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   -- We can't easily shrink parallel lists in Ore, so just leave them
   -- (they'll be overwritten by later set_var calls)
 
+-- ── Impl block support ──
+
+-- Resolve Self type references in impl blocks.
+fn resolve_self_type te:TypeExpr type_name:Str -> TypeExpr
+  match te
+    NamedType name ->
+      if name == "Self"
+        return NamedType(name: type_name)
+      te
+    GenericType name args ->
+      mut new_name := name
+      if name == "Self"
+        new_name = type_name
+      mut new_args := []
+      for i in 0..args.len()
+        new_args.push(resolve_self_type(args[i], type_name))
+      GenericType(name: new_name, args: new_args)
+    _ ->
+      te
+
+-- Mangle an impl method into a top-level FnDef.
+-- Name becomes TypeName_method_name, Self types resolved, self param prepended if absent.
+fn mangle_impl_method type_name:Str method:FnDef -> FnDef
+  mangled_name := "{type_name}_{method.name}"
+  -- Resolve Self in params
+  mut resolved_params := []
+  for i in 0..method.params.len()
+    p := get_param_def(method.params, i)
+    resolved_ty := resolve_self_type(p.ty, type_name)
+    resolved_params.push(ParamDef(name: p.name, ty: resolved_ty, default_expr: p.default_expr))
+  -- Resolve Self in return type
+  resolved_ret := resolve_self_type(method.ret_type, type_name)
+  -- Check if self param already exists
+  mut has_self := false
+  if resolved_params.len() > 0
+    first_p := get_param_def(resolved_params, 0)
+    if first_p.name == "self"
+      has_self = true
+  -- Prepend self param if not present
+  mut final_params := []
+  if has_self
+    final_params = resolved_params
+  else
+    final_params.push(ParamDef(name: "self", ty: NamedType(name: type_name), default_expr: -1))
+    for i in 0..resolved_params.len()
+      final_params.push(resolved_params[i])
+  FnDef(name: mangled_name, type_params: method.type_params, params: final_params, ret_type: resolved_ret, body: method.body)
+
+-- Compile all methods in an impl block (or impl trait block).
+fn compile_impl_methods st:List exprs:List stmts:List type_name:Str methods:List
+  for i in 0..methods.len()
+    method := get_fn_def(methods, i)
+    mangled := mangle_impl_method(type_name, method)
+    compile_fn_def(st, exprs, stmts, mangled)
+
 -- ── Top-level item compilation ──
 
 fn compile_item st:List exprs:List stmts:List item:Item
@@ -1815,17 +2427,24 @@ fn compile_item st:List exprs:List stmts:List item:Item
       test_fn := FnDef(name: test_name, type_params: [], params: [], ret_type: NamedType(name: "Void"), body: body)
       compile_fn_def(st, exprs, stmts, test_fn)
     UseItem path ->
-      -- Use items are handled at the parser/driver level, skip
-      emit_raw(st, "// use {path}")
+      -- Use items are resolved at the driver level (source merging), skip
+      0
+    ImplBlockItem type_name methods ->
+      compile_impl_methods(st, exprs, stmts, type_name, methods)
+    ImplTraitItem trait_name type_name methods ->
+      compile_impl_methods(st, exprs, stmts, type_name, methods)
     _ ->
-      -- ImplBlockItem, TraitDefItem, ImplTraitItem — skip for now
+      -- TraitDefItem — skip (trait defs don't generate code)
       emit_raw(st, "// (skipped item)")
 
 -- ── Main entry point ──
 
 fn generate items:List exprs:List stmts:List -> Str
   mut st := cg_new()
-  -- First pass: collect type definitions
+  -- Store exprs/stmts pools in state for monomorphization
+  st[23] = exprs
+  st[24] = stmts
+  -- First pass: collect type definitions and register functions
   for i in 0..items.len()
     item := get_item(items, i)
     match item
@@ -1834,35 +2453,71 @@ fn generate items:List exprs:List stmts:List -> Str
       EnumDefItem enum_def ->
         compile_enum_def(st, enum_def)
       FnDefItem fn_def ->
-        -- Pre-register functions so calls resolve
-        ret_kind := type_expr_to_kind_str(st, fn_def.ret_type)
-        cg_set_fn(st, fn_def.name, ret_kind)
+        if fn_def.type_params.len() > 0
+          -- Generic function: store for monomorphization, don't compile
+          cg_add_generic_fn(st, fn_def.name, fn_def)
+        else
+          -- Pre-register functions so calls resolve
+          ret_kind := type_expr_to_kind_str(st, fn_def.ret_type)
+          cg_set_fn(st, fn_def.name, ret_kind)
+      ImplBlockItem type_name methods ->
+        -- Pre-register impl methods
+        for j in 0..methods.len()
+          m := get_fn_def(methods, j)
+          mangled := mangle_impl_method(type_name, m)
+          ret_kind := type_expr_to_kind_str(st, mangled.ret_type)
+          cg_set_fn(st, mangled.name, ret_kind)
+      ImplTraitItem trait_name type_name methods ->
+        -- Pre-register impl trait methods
+        for j in 0..methods.len()
+          m := get_fn_def(methods, j)
+          mangled := mangle_impl_method(type_name, m)
+          ret_kind := type_expr_to_kind_str(st, mangled.ret_type)
+          cg_set_fn(st, mangled.name, ret_kind)
       _ ->
         -- skip other items in first pass
-        st = st
+        0
   -- Emit header
   emit_runtime_decls(st)
   -- Emit top-level definitions (records, enums)
   top := cg_list(st, 9)
   for i in 0..top.len()
     emit_raw(st, top[i])
-  -- Emit forward declarations
+  -- Second pass: compile functions (skip generic — they're monomorphized on demand)
+  -- We compile into a separate list, then prepend forward decls
+  -- Save current lines (header + top-level defs), compile into fresh lines
+  header_lines := cg_list(st, 0)
+  st[0] = []
+  for i in 0..items.len()
+    item := get_item(items, i)
+    match item
+      FnDefItem fn_def ->
+        if fn_def.type_params.len() == 0
+          compile_fn_def(st, exprs, stmts, fn_def)
+      TestDefItem name body ->
+        compile_item(st, exprs, stmts, items[i])
+      ImplBlockItem type_name methods ->
+        compile_impl_methods(st, exprs, stmts, type_name, methods)
+      ImplTraitItem trait_name type_name methods ->
+        compile_impl_methods(st, exprs, stmts, type_name, methods)
+      _ ->
+        0
+  fn_lines := cg_list(st, 0)
+  -- Reassemble: header + forward decls + deferred mono fns + regular fns
+  st[0] = header_lines
+  -- Emit all forward declarations (including those from monomorphized functions)
   fwd := cg_list(st, 8)
   if fwd.len() > 0
     emit_raw(st, "// Forward declarations")
     for i in 0..fwd.len()
       emit_raw(st, fwd[i])
     emit_raw(st, "")
-  -- Second pass: compile functions and other items
-  for i in 0..items.len()
-    item := get_item(items, i)
-    match item
-      FnDefItem fn_def ->
-        compile_fn_def(st, exprs, stmts, fn_def)
-      TestDefItem name body ->
-        compile_item(st, exprs, stmts, items[i])
-      _ ->
-        -- Type/enum defs already handled
-        st = st
+  -- Emit monomorphized function bodies
+  deferred := cg_list(st, 25)
+  for i in 0..deferred.len()
+    emit_raw(st, deferred[i])
+  -- Emit regular function bodies
+  for i in 0..fn_lines.len()
+    emit_raw(st, fn_lines[i])
   -- Collect all lines
   cg_lines(st).join("\n")
