@@ -37,7 +37,7 @@ impl CCodeGen {
                 // Propagate dynamic_kind_exprs from the RHS temp to the variable's C name.
                 // This ensures that values retrieved from untyped lists (which carry runtime
                 // kind tags) retain their kind info when assigned to named variables.
-                if let Some(kind_var) = self.dynamic_kind_exprs.remove(&val) {
+                if let Some(kind_var) = self.dynamic_kind_exprs.get(&val).cloned() {
                     let c_name = self.variables.get(name).unwrap().c_name.clone();
                     self.dynamic_kind_exprs.insert(c_name, kind_var);
                 }
