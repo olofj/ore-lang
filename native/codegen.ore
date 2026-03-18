@@ -1875,9 +1875,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         br := compile_expr(st, exprs, stmts, body_id)
         if not first_arm_compiled
           result_kind = br[1]
-          ct := kind_to_c_type(result_kind)
-          init := match_default_init(result_kind)
-          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          if result_kind != "void"
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
           first_arm_compiled = true
         if br[0] != ""
           emit(st, match_assign_expr(t, result_kind, br[0]))
@@ -1893,9 +1894,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         br := compile_expr(st, exprs, stmts, body_id)
         if not first_arm_compiled
           result_kind = br[1]
-          ct := kind_to_c_type(result_kind)
-          init := match_default_init(result_kind)
-          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          if result_kind != "void"
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
           first_arm_compiled = true
         if br[0] != ""
           emit(st, match_assign_expr(t, result_kind, br[0]))
@@ -1914,9 +1916,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         br := compile_expr(st, exprs, stmts, body_id)
         if not first_arm_compiled
           result_kind = br[1]
-          ct := kind_to_c_type(result_kind)
-          init := match_default_init(result_kind)
-          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          if result_kind != "void"
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
           first_arm_compiled = true
         if br[0] != ""
           emit(st, match_assign_expr(t, result_kind, br[0]))
@@ -1933,9 +1936,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         br := compile_expr(st, exprs, stmts, body_id)
         if not first_arm_compiled
           result_kind = br[1]
-          ct := kind_to_c_type(result_kind)
-          init := match_default_init(result_kind)
-          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          if result_kind != "void"
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
           first_arm_compiled = true
         if br[0] != ""
           emit(st, match_assign_expr(t, result_kind, br[0]))
@@ -1961,9 +1965,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           br := compile_expr(st, exprs, stmts, body_id)
           if not first_arm_compiled
             result_kind = br[1]
-            ct := kind_to_c_type(result_kind)
-            init := match_default_init(result_kind)
-            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+            if result_kind != "void"
+              ct := kind_to_c_type(result_kind)
+              init := match_default_init(result_kind)
+              cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
             first_arm_compiled = true
           if br[0] != ""
             emit(st, match_assign_expr(t, result_kind, br[0]))
@@ -1987,9 +1992,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           br := compile_expr(st, exprs, stmts, body_id)
           if not first_arm_compiled
             result_kind = br[1]
-            ct := kind_to_c_type(result_kind)
-            init := match_default_init(result_kind)
-            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+            if result_kind != "void"
+              ct := kind_to_c_type(result_kind)
+              init := match_default_init(result_kind)
+              cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
             first_arm_compiled = true
           if br[0] != ""
             emit(st, match_assign_expr(t, result_kind, br[0]))
@@ -2005,9 +2011,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         br := compile_expr(st, exprs, stmts, body_id)
         if not first_arm_compiled
           result_kind = br[1]
-          ct := kind_to_c_type(result_kind)
-          init := match_default_init(result_kind)
-          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          if result_kind != "void"
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
           first_arm_compiled = true
         if br[0] != ""
           emit(st, match_assign_expr(t, result_kind, br[0]))
@@ -2023,9 +2030,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         br := compile_expr(st, exprs, stmts, body_id)
         if not first_arm_compiled
           result_kind = br[1]
-          ct := kind_to_c_type(result_kind)
-          init := match_default_init(result_kind)
-          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          if result_kind != "void"
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
           first_arm_compiled = true
         if br[0] != ""
           emit(st, match_assign_expr(t, result_kind, br[0]))
@@ -2062,9 +2070,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         br := compile_expr(st, exprs, stmts, body_id)
         if not first_arm_compiled
           result_kind = br[1]
-          ct := kind_to_c_type(result_kind)
-          init := match_default_init(result_kind)
-          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          if result_kind != "void"
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
           first_arm_compiled = true
         if br[0] != ""
           emit(st, match_assign_expr(t, result_kind, br[0]))
@@ -2081,9 +2090,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         br := compile_expr(st, exprs, stmts, body_id)
         if not first_arm_compiled
           result_kind = br[1]
-          ct := kind_to_c_type(result_kind)
-          init := match_default_init(result_kind)
-          cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+          if result_kind != "void"
+            ct := kind_to_c_type(result_kind)
+            init := match_default_init(result_kind)
+            cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
           first_arm_compiled = true
         if br[0] != ""
           emit(st, match_assign_expr(t, result_kind, br[0]))
