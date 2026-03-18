@@ -27,6 +27,9 @@ pub use print::*;
 pub use range::*;
 pub use string::*;
 
+#[cfg(test)]
+mod tests;
+
 // ── RC Strings ──
 //
 // OreStr layout: [refcount: u32][len: u32][data: u8...]
