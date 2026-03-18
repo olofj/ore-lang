@@ -708,6 +708,14 @@ impl Parser {
                     }
                 }
             }
+            Token::If => {
+                // Parse if as a standalone statement expression, bypassing the
+                // postfix loop in parse_expr. This prevents a bare `[` on the
+                // next line from being consumed as an indexing operator on the
+                // if expression.
+                let expr = self.parse_prefix()?;
+                Ok(Stmt::Expr(expr))
+            }
             _ => {
                 let expr = self.parse_expr(0)?;
                 Ok(Stmt::Expr(expr))
