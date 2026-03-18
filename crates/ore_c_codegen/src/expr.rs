@@ -470,6 +470,9 @@ impl CCodeGen {
             self.emit(&format!("int64_t {} = 0;", result_tmp));
         }
 
+        // Save position before the if statement — used to insert hoisted declarations
+        let hoist_insert_pos = self.lines.len();
+
         self.emit(&format!("if ({}) {{", cond_val));
         self.indent += 1;
         let saved_vars = self.variables.clone();
@@ -482,15 +485,16 @@ impl CCodeGen {
                 self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(tv, &then_kind)));
             }
         }
-        self.variables = saved_vars;
-        self.dynamic_kind_exprs = saved_dyn_kinds;
+        let then_vars = self.variables.clone();
+        self.variables = saved_vars.clone();
+        self.dynamic_kind_exprs = saved_dyn_kinds.clone();
         self.indent -= 1;
 
         if let Some(eb) = else_block {
             self.emit("} else {");
             self.indent += 1;
-            let saved_vars = self.variables.clone();
-            let saved_dyn_kinds = self.dynamic_kind_exprs.clone();
+            let saved_vars2 = self.variables.clone();
+            let saved_dyn_kinds2 = self.dynamic_kind_exprs.clone();
             let (else_val, else_kind) = self.compile_block_stmts(eb)?;
             if let Some(ref ev) = else_val {
                 if use_native_type {
@@ -499,16 +503,77 @@ impl CCodeGen {
                     self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(ev, &else_kind)));
                 }
             }
-            self.variables = saved_vars;
-            self.dynamic_kind_exprs = saved_dyn_kinds;
+            let else_vars = self.variables.clone();
+            self.variables = saved_vars2;
+            self.dynamic_kind_exprs = saved_dyn_kinds2;
             self.indent -= 1;
+            self.emit("}");
+
+            // Hoist variables defined in both branches to the outer scope.
+            // In Ore, variables declared in both if/else branches are accessible
+            // after the if/else. In C, they would be scoped to the block, so we
+            // insert a forward declaration before the if and convert the in-block
+            // declarations to plain assignments.
+            self.hoist_common_branch_vars(&saved_vars, &then_vars, &else_vars, hoist_insert_pos);
+        } else {
+            self.emit("}");
         }
-        self.emit("}");
 
         if use_native_type {
             Ok((result_tmp, inferred_kind))
         } else {
             Ok((result_tmp, ValKind::Int))
+        }
+    }
+
+    /// Hoist variables that were declared in both if/else branches to the
+    /// enclosing scope. Inserts a forward declaration before the if statement
+    /// and converts the in-block declarations to assignments.
+    fn hoist_common_branch_vars(
+        &mut self,
+        saved_vars: &HashMap<String, VarInfo>,
+        then_vars: &HashMap<String, VarInfo>,
+        else_vars: &HashMap<String, VarInfo>,
+        insert_pos: usize,
+    ) {
+        let mut hoisted_count = 0;
+        for (name, then_info) in then_vars {
+            // Skip variables that already existed before the if/else
+            if saved_vars.contains_key(name) { continue; }
+            if let Some(else_info) = else_vars.get(name) {
+                if then_info.kind == else_info.kind && then_info.c_name == else_info.c_name {
+                    let c_type = self.kind_to_c_type_str(&then_info.kind);
+                    let c_name = &then_info.c_name;
+
+                    // Insert a forward declaration before the if statement
+                    let indent_str = "    ".repeat(self.indent as usize);
+                    let decl = format!("{}{} {};", indent_str, c_type, c_name);
+                    self.lines.insert(insert_pos + hoisted_count, decl);
+                    hoisted_count += 1;
+
+                    // Convert the in-block "TYPE NAME = VALUE;" to "NAME = VALUE;"
+                    let decl_prefix = format!("{} {} = ", c_type, c_name);
+                    let assign_prefix = format!("{} = ", c_name);
+                    let mut replacements_remaining = 2; // one per branch
+                    for line in self.lines[(insert_pos + hoisted_count)..].iter_mut() {
+                        if replacements_remaining == 0 { break; }
+                        if let Some(pos) = line.find(&decl_prefix) {
+                            let new_line = format!(
+                                "{}{}{}",
+                                &line[..pos],
+                                assign_prefix,
+                                &line[pos + decl_prefix.len()..],
+                            );
+                            *line = new_line;
+                            replacements_remaining -= 1;
+                        }
+                    }
+
+                    // Keep the variable in scope after the if/else
+                    self.variables.insert(name.clone(), then_info.clone());
+                    self.track_variable_kinds(name, &then_info.kind);
+                }
+            }
         }
     }
 
