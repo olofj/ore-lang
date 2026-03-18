@@ -672,6 +672,11 @@ impl CCodeGen {
                 return Ok(());
             }
         }
+        // Check for runtime kind tag (from untyped list element access)
+        if let Some(kind_var) = self.dynamic_kind_exprs.remove(val) {
+            self.emit(&format!("{{ void* __dstr = ore_dynamic_to_str({}, {}); ore_str_print(__dstr); ore_str_release(__dstr); }}", val, kind_var));
+            return Ok(());
+        }
         match kind {
             ValKind::Str => { self.emit(&format!("ore_str_print({});", val)); }
             ValKind::Int => { self.emit(&format!("ore_print_int({});", val)); }
