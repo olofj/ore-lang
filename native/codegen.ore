@@ -1844,11 +1844,19 @@ fn match_assign_expr t:Str kind:Str val:Str -> Str
 
 -- Generate the default initializer for a match temp variable declaration.
 fn match_default_init kind:Str -> Str
+  if kind == "void"
+    return " = 0"
   if kind.starts_with("enum:") or kind.starts_with("rec:")
     return " = \{0}"
   if kind == "float"
     return " = 0.0"
   " = 0"
+
+-- C type for match temp variables (void -> int64_t since void vars are invalid)
+fn match_temp_c_type kind:Str -> Str
+  if kind == "void"
+    return "int64_t"
+  kind_to_c_type(kind)
 
 fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
   subj := compile_expr(st, exprs, stmts, subject)
@@ -1969,6 +1977,65 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
               ct := kind_to_c_type(result_kind)
               init := match_default_init(result_kind)
               cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+            first_arm_compiled = true
+          if br[0] != ""
+            emit(st, match_assign_expr(t, result_kind, br[0]))
+          cg_dec_indent(st)
+          emit(st, "}")
+          first = false
+        else if (name == "Ok" or name == "Err") and subj[1] == "result"
+          -- Result pattern matching (OreTaggedUnion)
+          mut vtag := 1
+          if name == "Err"
+            vtag = 0
+          mut kw := "if"
+          if not first
+            kw = "else if"
+          emit(st, "{kw} ({subj[0]}.tag == {vtag}) \{")
+          cg_inc_indent(st)
+          -- Bind payload variable
+          if bindings.len() > 0
+            bname := bindings[0]
+            mn := mangle_var(bname)
+            emit(st, "int64_t {mn} = {subj[0]}.value;")
+            cg_set_var(st, bname, "int")
+          br := compile_expr(st, exprs, stmts, body_id)
+          if not first_arm_compiled
+            result_kind = br[1]
+            if result_kind != "void"
+              ct := kind_to_c_type(result_kind)
+              init := match_default_init(result_kind)
+              cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+            first_arm_compiled = true
+          if br[0] != ""
+            emit(st, match_assign_expr(t, result_kind, br[0]))
+          cg_dec_indent(st)
+          emit(st, "}")
+          first = false
+        else if (name == "Some" or name == "None") and subj[1] == "option"
+          -- Option pattern matching (OreTaggedUnion)
+          mut vtag := 1
+          if name == "None"
+            vtag = 0
+          mut kw := "if"
+          if not first
+            kw = "else if"
+          emit(st, "{kw} ({subj[0]}.tag == {vtag}) \{")
+          cg_inc_indent(st)
+          -- Bind payload variable (Some only)
+          if name == "Some" and bindings.len() > 0
+            bname := bindings[0]
+            mn := mangle_var(bname)
+            emit(st, "int64_t {mn} = {subj[0]}.value;")
+            cg_set_var(st, bname, "int")
+          br := compile_expr(st, exprs, stmts, body_id)
+          if not first_arm_compiled
+            result_kind = br[1]
+            if result_kind != "void"
+              ct := kind_to_c_type(result_kind)
+              init := match_default_init(result_kind)
+              cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+
             first_arm_compiled = true
           if br[0] != ""
             emit(st, match_assign_expr(t, result_kind, br[0]))
