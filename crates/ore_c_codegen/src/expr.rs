@@ -370,18 +370,8 @@ impl CCodeGen {
                 let (a, ak) = self.compile_expr(arg)?;
                 let param_kind = fn_info.param_kinds.get(i);
                 if let Some(pk) = param_kind {
-<<<<<<< HEAD
                     let coerced = self.coerce_arg_to_param(&a, &ak, pk);
                     arg_strs.push(coerced);
-=======
-                    // Cast function pointers to int64_t when parameter expects Int
-                    if pk == &ValKind::Int && a.starts_with("(void*)&") {
-                        arg_strs.push(format!("(int64_t)(intptr_t){}", a));
-                    } else {
-                        // Coerce between int64_t and struct types as needed
-                        arg_strs.push(self.coerce_expr(&a, &ak, pk));
-                    }
->>>>>>> origin/polecat/guzzle/ore-86f@mmv9buvi
                 } else {
                     arg_strs.push(a);
                 }

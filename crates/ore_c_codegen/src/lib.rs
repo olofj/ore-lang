@@ -836,6 +836,42 @@ fn main
     }
 
     #[test]
+    fn match_arm_variable_scope_no_leakage() {
+        // Variables declared inside match arm bodies must not leak into
+        // subsequent arms or code after the match. If scope leaks, the
+        // generated C will reference variables outside their declaration
+        // scope, causing 'undeclared variable' errors in the C compiler.
+        let src = r#"
+type Token
+  Keyword(kw: String)
+  Number(val: Int)
+  Plus
+
+fn describe tag:Int -> String
+  match tag
+    0 ->
+      kw := "hello"
+      kw
+    1 ->
+      kw := "world"
+      kw
+    _ -> "other"
+
+fn main
+  print describe(0)
+"#;
+        let c_code = compile_ore_to_c(src);
+        // Each case block should declare 'kw' with its type, not just assign.
+        // Count declarations of kw (should appear twice — once per arm).
+        let kw_decls = c_code.matches("void* kw =").count();
+        assert!(
+            kw_decls >= 2,
+            "Expected kw to be declared in each match arm, found {} declarations.\nGenerated C:\n{}",
+            kw_decls, c_code
+        );
+    }
+
+    #[test]
     fn kind_to_type_name_returns_record_name() {
         let cg = CCodeGen::new();
         assert_eq!(cg.kind_to_type_name(&ValKind::Record("Foo".to_string())), "Foo");

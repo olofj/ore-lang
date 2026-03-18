@@ -76,6 +76,7 @@ impl CCodeGen {
         for (vtag, arm_indices) in &tag_groups {
             self.emit(&format!("case {}: {{", vtag));
             self.indent += 1;
+            let saved_vars = self.variables.clone();
 
             // All arms in this group share the same variant. Extract fields once
             // (using the first arm's bindings to determine the payload struct).
@@ -111,6 +112,7 @@ impl CCodeGen {
             }
 
             self.emit("break;");
+            self.variables = saved_vars;
             self.indent -= 1;
             self.emit("}");
         }
@@ -120,10 +122,12 @@ impl CCodeGen {
             let arm = &arms[wi];
             self.emit("default: {");
             self.indent += 1;
+            let saved_vars = self.variables.clone();
             let (body_val, body_kind) = self.compile_expr(&arm.body)?;
             result_kind = body_kind.clone();
             self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
             self.emit("break;");
+            self.variables = saved_vars;
             self.indent -= 1;
             self.emit("}");
         }
@@ -294,6 +298,7 @@ impl CCodeGen {
                     self.emit("} else {");
                 }
                 self.indent += 1;
+                let saved_vars = self.variables.clone();
 
                 if let Pattern::Variant { name, .. } = &arm.pattern {
                     let c_type = self.kind_to_c_type_str(subject_kind);
@@ -309,6 +314,7 @@ impl CCodeGen {
                 result_kind = body_kind.clone();
                 self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
 
+                self.variables = saved_vars;
                 self.indent -= 1;
                 self.emit("}");
                 closed = true;
@@ -328,6 +334,8 @@ impl CCodeGen {
                     self.indent += 1;
                     extra_else_depth += 1;
                 }
+
+                let saved_vars = self.variables.clone();
 
                 if let Pattern::Variant { name, .. } = &arm.pattern {
                     // Bind variable before guard evaluation
@@ -350,6 +358,7 @@ impl CCodeGen {
                 let (body_val, body_kind) = self.compile_expr(&arm.body)?;
                 result_kind = body_kind.clone();
                 self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
+                self.variables = saved_vars;
                 self.indent -= 1;
                 continue;
             }
@@ -362,6 +371,7 @@ impl CCodeGen {
                 self.emit(&format!("}} else if ({}) {{", cmp));
             }
             self.indent += 1;
+            let saved_vars = self.variables.clone();
 
             if let Some(guard) = &arm.guard {
                 let (guard_val, _) = self.compile_expr(guard)?;
@@ -378,6 +388,7 @@ impl CCodeGen {
                 self.emit("}");
             }
 
+            self.variables = saved_vars;
             self.indent -= 1;
         }
 
@@ -456,6 +467,8 @@ impl CCodeGen {
 
                     self.emit(&format!("case {}: {{", vtag));
                     self.indent += 1;
+                    let saved_vars = self.variables.clone();
+                    let saved_dynamic = self.dynamic_kind_tags.clone();
 
                     if has_payload(vtag) && !bindings.is_empty() {
                         self.emit(&format!("int64_t {} = {}.val;", bindings[0], subject_tmp));
@@ -473,16 +486,20 @@ impl CCodeGen {
                     result_kind = body_kind.clone();
                     self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
                     self.emit("break;");
+                    self.variables = saved_vars;
+                    self.dynamic_kind_tags = saved_dynamic;
                     self.indent -= 1;
                     self.emit("}");
                 }
                 Pattern::Wildcard => {
                     self.emit("default: {");
                     self.indent += 1;
+                    let saved_vars = self.variables.clone();
                     let (body_val, body_kind) = self.compile_expr(&arm.body)?;
                     result_kind = body_kind.clone();
                     self.emit(&format!("{} = {};", result_tmp, self.value_to_i64_expr(&body_val, &body_kind)));
                     self.emit("break;");
+                    self.variables = saved_vars;
                     self.indent -= 1;
                     self.emit("}");
                 }
