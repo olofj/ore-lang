@@ -1881,7 +1881,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           emit(st, "else \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled
+        if not first_arm_compiled and br[1] != "void"
           result_kind = br[1]
           if result_kind != "void"
             ct := kind_to_c_type(result_kind)
@@ -1900,7 +1900,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ((int64_t)({subj[0]}) == {value}LL) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled
+        if not first_arm_compiled and br[1] != "void"
           result_kind = br[1]
           if result_kind != "void"
             ct := kind_to_c_type(result_kind)
@@ -1922,7 +1922,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ((int8_t)({subj[0]}) == {bv}) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled
+        if not first_arm_compiled and br[1] != "void"
           result_kind = br[1]
           if result_kind != "void"
             ct := kind_to_c_type(result_kind)
@@ -1942,7 +1942,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} (ore_str_eq({subj[0]}, {slit[0]})) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled
+        if not first_arm_compiled and br[1] != "void"
           result_kind = br[1]
           if result_kind != "void"
             ct := kind_to_c_type(result_kind)
@@ -1955,23 +1955,24 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "}")
         first = false
       VariantPat name bindings ->
-        -- Enum variant matching
-        en := cg_variant_enum(st, name)
-        if en != ""
-          vtag := find_variant_tag(st, en, name)
+        -- Result/Option tagged union matching
+        if subj[1] == "result" or subj[1] == "option"
+          mut vtag := 0
+          if name == "Ok" or name == "Some"
+            vtag = 1
           mut kw := "if"
           if not first
             kw = "else if"
           emit(st, "{kw} ({subj[0]}.tag == {vtag}) \{")
           cg_inc_indent(st)
-          -- Bind variant fields
-          for j in 0..bindings.len()
-            bname := bindings[j]
+          -- Bind payload from .value
+          if bindings.len() > 0
+            bname := bindings[0]
             mn := mangle_var(bname)
-            emit(st, "int64_t {mn} = {subj[0]}.data[{j}];")
+            emit(st, "int64_t {mn} = {subj[0]}.value;")
             cg_set_var(st, bname, "int")
           br := compile_expr(st, exprs, stmts, body_id)
-          if not first_arm_compiled
+          if not first_arm_compiled and br[1] != "void"
             result_kind = br[1]
             if result_kind != "void"
               ct := kind_to_c_type(result_kind)
@@ -2043,32 +2044,59 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           emit(st, "}")
           first = false
         else
-          -- Might be a variable binding (single ident in match)
-          mut kw := "if"
-          if not first
-            kw = "else if"
-          -- Treat as catch-all with binding
-          if not first
-            emit(st, "else \{")
-          else
-            emit(st, "\{")
-          cg_inc_indent(st)
-          mn := mangle_var(name)
-          emit(st, "int64_t {mn} = (int64_t)({subj[0]});")
-          cg_set_var(st, name, subj[1])
-          br := compile_expr(st, exprs, stmts, body_id)
-          if not first_arm_compiled
-            result_kind = br[1]
-            if result_kind != "void"
+          -- Enum variant matching
+          en := cg_variant_enum(st, name)
+          if en != ""
+            vtag := find_variant_tag(st, en, name)
+            mut kw := "if"
+            if not first
+              kw = "else if"
+            emit(st, "{kw} ({subj[0]}.tag == {vtag}) \{")
+            cg_inc_indent(st)
+            -- Bind variant fields
+            for j in 0..bindings.len()
+              bname := bindings[j]
+              mn := mangle_var(bname)
+              emit(st, "int64_t {mn} = {subj[0]}.data[{j}];")
+              cg_set_var(st, bname, "int")
+            br := compile_expr(st, exprs, stmts, body_id)
+            if not first_arm_compiled and br[1] != "void"
+              result_kind = br[1]
               ct := kind_to_c_type(result_kind)
               init := match_default_init(result_kind)
               cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
-            first_arm_compiled = true
-          if br[0] != ""
-            emit(st, match_assign_expr(t, result_kind, br[0]))
-          cg_dec_indent(st)
-          emit(st, "}")
-          first = false
+              first_arm_compiled = true
+            if br[0] != ""
+              emit(st, match_assign_expr(t, result_kind, br[0]))
+            cg_dec_indent(st)
+            emit(st, "}")
+            first = false
+          else
+            -- Might be a variable binding (single ident in match)
+            mut kw := "if"
+            if not first
+              kw = "else if"
+            -- Treat as catch-all with binding
+            if not first
+              emit(st, "else \{")
+            else
+              emit(st, "\{")
+            cg_inc_indent(st)
+            mn := mangle_var(name)
+            emit(st, "int64_t {mn} = (int64_t)({subj[0]});")
+            cg_set_var(st, name, subj[1])
+            br := compile_expr(st, exprs, stmts, body_id)
+            if not first_arm_compiled and br[1] != "void"
+              result_kind = br[1]
+              ct := kind_to_c_type(result_kind)
+              init := match_default_init(result_kind)
+              cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
+              first_arm_compiled = true
+            if br[0] != ""
+              emit(st, match_assign_expr(t, result_kind, br[0]))
+            cg_dec_indent(st)
+            emit(st, "}")
+            first = false
       FloatLitPat value ->
         mut kw := "if"
         if not first
@@ -2076,7 +2104,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} (*(double*)&({subj[0]}) == {value}) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled
+        if not first_arm_compiled and br[1] != "void"
           result_kind = br[1]
           if result_kind != "void"
             ct := kind_to_c_type(result_kind)
@@ -2095,7 +2123,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ((int64_t)({subj[0]}) >= {start}LL && (int64_t)({subj[0]}) <= {end}LL) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled
+        if not first_arm_compiled and br[1] != "void"
           result_kind = br[1]
           if result_kind != "void"
             ct := kind_to_c_type(result_kind)
@@ -2135,7 +2163,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ({cond}) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled
+        if not first_arm_compiled and br[1] != "void"
           result_kind = br[1]
           if result_kind != "void"
             ct := kind_to_c_type(result_kind)
@@ -2155,7 +2183,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           emit(st, "\{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled
+        if not first_arm_compiled and br[1] != "void"
           result_kind = br[1]
           if result_kind != "void"
             ct := kind_to_c_type(result_kind)
