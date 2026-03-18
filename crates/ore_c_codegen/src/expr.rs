@@ -676,7 +676,9 @@ impl CCodeGen {
             }
         }
         // Check for runtime kind tag (from untyped list element access)
-        if let Some(kind_var) = self.dynamic_kind_exprs.remove(val) {
+        // Use .get().cloned() instead of .remove() so the dynamic kind survives across
+        // all branches of an if-else chain (each branch compiles {val} interpolations).
+        if let Some(kind_var) = self.dynamic_kind_exprs.get(val).cloned() {
             self.emit(&format!("{{ void* __dstr = ore_dynamic_to_str({}, {}); ore_str_print(__dstr); ore_str_release(__dstr); }}", val, kind_var));
             return Ok(());
         }
@@ -763,7 +765,9 @@ impl CCodeGen {
 
     pub(crate) fn value_to_str_expr(&mut self, val: &str, kind: &ValKind) -> String {
         // Check for runtime kind tag (from untyped list element access)
-        if let Some(kind_var) = self.dynamic_kind_exprs.remove(val) {
+        // Use .get().cloned() instead of .remove() so the dynamic kind survives across
+        // all branches of an if-else chain (each branch compiles {val} interpolations).
+        if let Some(kind_var) = self.dynamic_kind_exprs.get(val).cloned() {
             return format!("ore_dynamic_to_str({}, {})", val, kind_var);
         }
         match kind {
