@@ -409,6 +409,9 @@ impl CCodeGen {
         }
         // Variable holding a function pointer
         if self.variables.contains_key(&name) {
+            let c_name = self.variables.get(&name)
+                .map(|v| v.c_name.clone())
+                .unwrap_or_else(|| name.clone());
             let mut arg_strs = Vec::new();
             for arg in args {
                 let (a, _) = self.compile_expr(arg)?;
@@ -416,7 +419,7 @@ impl CCodeGen {
             }
             let call_str = format!("((int64_t(*)({})){})({})",
                 vec!["int64_t"; args.len()].join(", "),
-                name,
+                c_name,
                 arg_strs.join(", "));
             return Ok((call_str, ValKind::Int));
         }
