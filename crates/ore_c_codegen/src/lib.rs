@@ -583,25 +583,29 @@ impl CCodeGen {
         }
 
         // After compiling the body, if the function returns List(None) or Map(None),
-        // try to infer element/value kinds from the last expression. Check named
-        // return variables, inline list literals, and function calls with known kinds.
+        // try to infer element/value kinds from the last expression. Only infer when
+        // ALL return paths agree on the element/value kind — functions with mixed-type
+        // returns (e.g. error path returns [string], success path returns [list, ...])
+        // must use dynamic dispatch at the call site.
         if matches!(fn_info.ret_kind, ValKind::List(None))
             && !self.fn_return_list_elem_kind.contains_key(&fndef.name) {
-                // Try named return variable first
-                let inferred = Self::find_return_ident(&fndef.body)
-                    .and_then(|name| self.list_element_kinds.get(&name).cloned());
-                // Then try inline list literals and function calls
-                let inferred = inferred.or_else(|| self.find_return_list_elem_kind(&fndef.body));
-                if let Some(ek) = inferred {
-                    self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek);
+                let all_idents = Self::collect_return_idents(&fndef.body);
+                let kinds: Vec<_> = all_idents.iter()
+                    .filter_map(|n| self.list_element_kinds.get(n))
+                    .collect();
+                // Only infer if all return paths have tracked element kinds and they agree
+                if !kinds.is_empty() && kinds.iter().all(|k| *k == kinds[0]) {
+                    self.fn_return_list_elem_kind.insert(fndef.name.clone(), kinds[0].clone());
                 }
             }
         if matches!(fn_info.ret_kind, ValKind::Map(None))
             && !self.fn_return_map_val_kind.contains_key(&fndef.name) {
-                if let Some(name) = Self::find_return_ident(&fndef.body) {
-                    if let Some(vk) = self.map_value_kinds.get(&name) {
-                        self.fn_return_map_val_kind.insert(fndef.name.clone(), vk.clone());
-                    }
+                let all_idents = Self::collect_return_idents(&fndef.body);
+                let kinds: Vec<_> = all_idents.iter()
+                    .filter_map(|n| self.map_value_kinds.get(n))
+                    .collect();
+                if !kinds.is_empty() && kinds.iter().all(|k| *k == kinds[0]) {
+                    self.fn_return_map_val_kind.insert(fndef.name.clone(), kinds[0].clone());
                 }
             }
 
@@ -772,61 +776,43 @@ impl CCodeGen {
         }
     }
 
-    /// Infer the list element kind from the return position of a function body.
-    /// Handles: inline list literals, function calls with known return elem kinds,
-    /// return statements with list literals, and if/else branches.
-    fn find_return_list_elem_kind(&self, block: &Block) -> std::option::Option<ValKind> {
-        if let Some(last) = block.stmts.last() {
-            match &last.stmt {
-                Stmt::Expr(Expr::ListLit(elements)) | Stmt::Return(Some(Expr::ListLit(elements))) => {
-                    Self::infer_list_literal_elem_kind(elements)
-                }
-                Stmt::Expr(Expr::Call { func, .. }) | Stmt::Return(Some(Expr::Call { func, .. })) => {
-                    if let Expr::Ident(fn_name) = func.as_ref() {
-                        self.fn_return_list_elem_kind.get(fn_name).cloned()
-                    } else {
-                        None
-                    }
+    /// Collect ALL return variable names from a block, including early `return`
+    /// statements in nested control flow. Used to verify that all return paths
+    /// agree on list element / map value kinds before inferring.
+    fn collect_return_idents(block: &Block) -> Vec<String> {
+        let mut idents = Vec::new();
+        for spanned in &block.stmts {
+            match &spanned.stmt {
+                Stmt::Return(Some(Expr::Ident(name))) => {
+                    idents.push(name.clone());
                 }
                 Stmt::Expr(Expr::IfElse { then_block, else_block, .. }) => {
-                    self.find_return_list_elem_kind(then_block)
-                        .or_else(|| else_block.as_ref().and_then(|eb| self.find_return_list_elem_kind(eb)))
+                    idents.extend(Self::collect_return_idents(then_block));
+                    if let Some(eb) = else_block {
+                        idents.extend(Self::collect_return_idents(eb));
+                    }
                 }
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
-
-    /// Infer element kind from a list literal's elements (statically).
-    fn infer_list_literal_elem_kind(elements: &[Expr]) -> std::option::Option<ValKind> {
-        if elements.is_empty() {
-            return None;
-        }
-        // Check if all elements are string literals or string expressions
-        let mut all_str = true;
-        for e in elements {
-            match e {
-                Expr::StringLit(_) | Expr::StringInterp(_) => {}
-                _ => { all_str = false; break; }
+                Stmt::ForIn { body, .. } | Stmt::While { body, .. }
+                | Stmt::ForEach { body, .. } | Stmt::ForEachKV { body, .. }
+                | Stmt::Loop { body, .. } => {
+                    idents.extend(Self::collect_return_idents(body));
+                }
+                _ => {}
             }
         }
-        if all_str {
-            return Some(ValKind::Str);
-        }
-        // Check if all elements are int literals
-        let mut all_int = true;
-        for e in elements {
-            match e {
-                Expr::IntLit(_) => {}
-                _ => { all_int = false; break; }
+        // Include the implicit return (last expression)
+        if let Some(last) = block.stmts.last() {
+            match &last.stmt {
+                Stmt::Expr(Expr::Ident(name)) => idents.push(name.clone()),
+                Stmt::Expr(Expr::MethodCall { object, .. }) => {
+                    if let Expr::Ident(name) = object.as_ref() {
+                        idents.push(name.clone());
+                    }
+                }
+                _ => {}
             }
         }
-        if all_int {
-            return Some(ValKind::Int);
-        }
-        None
+        idents
     }
 
     fn track_variable_kinds(&mut self, name: &str, kind: &ValKind) {
