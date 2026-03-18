@@ -664,7 +664,11 @@ impl CCodeGen {
             obj_val
         } else {
             let c_type = format!("struct ore_rec_{}", Self::mangle_name(&type_name));
+<<<<<<< HEAD
             format!("*({c_type}*)(intptr_t)({obj_val})")
+=======
+            format!("(*({c_type}*)(intptr_t)({obj_val}))")
+>>>>>>> origin/polecat/rust/ore-208@mmvajdp1
         };
         Ok((format!("{}.{}", obj_expr, field), field_kind))
     }

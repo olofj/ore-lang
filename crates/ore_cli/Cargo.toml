@@ -7,12 +7,16 @@ edition = "2021"
 name = "ore"
 path = "src/main.rs"
 
+[features]
+default = ["llvm"]
+llvm = ["dep:ore_codegen", "dep:inkwell"]
+
 [dependencies]
 ore_lexer = { path = "../ore_lexer" }
 ore_parser = { path = "../ore_parser" }
 ore_typecheck = { path = "../ore_typecheck" }
-ore_codegen = { path = "../ore_codegen" }
+ore_codegen = { path = "../ore_codegen", optional = true }
 ore_c_codegen = { path = "../ore_c_codegen" }
 ore_runtime = { path = "../ore_runtime" }
 clap = { version = "4", features = ["derive"] }
-inkwell = { workspace = true }
+inkwell = { workspace = true, optional = true }
