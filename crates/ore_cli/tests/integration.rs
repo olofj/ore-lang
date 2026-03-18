@@ -12208,3 +12208,227 @@ fn runtime_fn_sync_check() {
         missing.join("\n  ")
     );
 }
+
+#[test]
+fn builtins_args() {
+    let out = run_ore("builtins/args.ore");
+    assert!(out.contains("arg count:"));
+    // args() returns std::env::args() which includes the binary, "run", and the file path
+    let count: i64 = out.trim().strip_prefix("arg count: ").unwrap().parse().unwrap();
+    assert!(count >= 1, "expected at least 1 arg, got {}", count);
+}
+
+// ---------------------------------------------------------------------------
+// Native test files: run `ore test` on each native/test_*.ore file
+// ---------------------------------------------------------------------------
+
+fn native_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent().unwrap()  // crates/
+        .parent().unwrap()  // ore/
+        .join("native")
+}
+
+fn run_ore_test(file: &str) {
+    let path = native_dir().join(file);
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args(["test", path.to_str().unwrap()])
+        .output()
+        .expect("failed to execute ore test");
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !output.status.success() {
+        panic!("ore test failed for {}:\n{}", file, stderr);
+    }
+}
+
+#[test]
+fn native_test_ast() {
+    run_ore_test("test_ast.ore");
+}
+
+#[test]
+fn native_test_codegen() {
+    run_ore_test("test_codegen.ore");
+}
+
+#[test]
+fn native_test_lexer() {
+    run_ore_test("test_lexer.ore");
+}
+
+#[test]
+fn native_test_main() {
+    run_ore_test("test_main.ore");
+}
+
+#[test]
+fn native_test_parser() {
+    run_ore_test("test_parser.ore");
+}
+
+#[test]
+fn native_test_typecheck() {
+    run_ore_test("test_typecheck.ore");
+}
+
+#[test]
+fn native_test_types() {
+    run_ore_test("test_types.ore");
+}
+
+#[test]
+fn native_c_backend_compilation() {
+    let ore_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent().unwrap()  // crates/
+        .parent().unwrap(); // ore/
+    let main_ore = ore_root.join("native/main.ore");
+
+    let tmp_dir = std::env::temp_dir().join("ore_test_c_backend");
+    std::fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
+    let output_bin = tmp_dir.join("native_main");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args([
+            "build",
+            "--backend", "c",
+            main_ore.to_str().unwrap(),
+            "-o", output_bin.to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to execute ore build");
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        panic!("ore build --backend c native/main.ore failed:\n{}", stderr);
+    }
+
+    assert!(output_bin.exists(), "compiled binary should exist at {}", output_bin.display());
+
+    // Clean up
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+}
+
+/// Helper: get the ore project root directory.
+fn ore_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent().unwrap()  // crates/
+        .parent().unwrap()  // ore/
+        .to_path_buf()
+}
+
+/// Helper: compile native/main.ore to a binary via C backend, returning the path.
+fn build_ore_native() -> PathBuf {
+    let ore_root = ore_root();
+    let main_ore = ore_root.join("native/main.ore");
+
+    let tmp_dir = std::env::temp_dir().join("ore_test_bootstrap");
+    std::fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
+    let output_bin = tmp_dir.join("ore-native");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args([
+            "build",
+            "--backend", "c",
+            main_ore.to_str().unwrap(),
+            "-o", output_bin.to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to execute ore build");
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        panic!("ore build --backend c native/main.ore failed:\n{}", stderr);
+    }
+
+    assert!(output_bin.exists(), "ore-native binary should exist");
+    output_bin
+}
+
+#[test]
+fn bootstrap_ore_native_runs_check() {
+    let ore_native = build_ore_native();
+    let ore_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent().unwrap()
+        .parent().unwrap();
+
+    // Write a simple test program
+    let tmp_dir = std::env::temp_dir().join("ore_test_bootstrap_check");
+    std::fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
+    let test_ore = tmp_dir.join("hello.ore");
+    std::fs::write(&test_ore, "fn fib n:Int -> Int\n  if n < 2\n    n\n  else\n    fib(n - 1) + fib(n - 2)\n\nfn main\n  print fib(10)\n")
+        .expect("failed to write test file");
+
+    // Run ore-native check on the test program
+    let output = Command::new(&ore_native)
+        .args(["check", test_ore.to_str().unwrap()])
+        .current_dir(&ore_root)
+        .output()
+        .expect("failed to run ore-native check");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        output.status.success(),
+        "ore-native check failed:\nstdout: {}\nstderr: {}",
+        stdout, stderr
+    );
+    assert!(
+        stdout.contains("ok:") || stdout.contains("passed"),
+        "expected 'ok' in output, got:\nstdout: {}\nstderr: {}",
+        stdout, stderr
+    );
+
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+}
+
+#[test]
+fn bootstrap_ore_native_test_suite() {
+    let ore_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent().unwrap()
+        .parent().unwrap();
+    let test_main_ore = ore_root.join("native/test_main.ore");
+
+    // Compile test_main.ore directly with C backend (it has its own main)
+    let tmp_dir = std::env::temp_dir().join("ore_test_bootstrap_suite");
+    std::fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
+    let test_bin = tmp_dir.join("ore-test-main");
+
+    let build_output = Command::new(env!("CARGO_BIN_EXE_ore"))
+        .args([
+            "build",
+            "--backend", "c",
+            test_main_ore.to_str().unwrap(),
+            "-o", test_bin.to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to execute ore build");
+
+    if !build_output.status.success() {
+        let stderr = String::from_utf8_lossy(&build_output.stderr);
+        panic!("ore build --backend c native/test_main.ore failed:\n{}", stderr);
+    }
+
+    // Run the compiled test binary
+    let output = Command::new(&test_bin)
+        .current_dir(&ore_root)
+        .output()
+        .expect("failed to run ore-test-main");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        output.status.success(),
+        "ore-test-main exited with failure:\nstdout: {}\nstderr: {}",
+        stdout, stderr
+    );
+    assert!(
+        stdout.contains("All 10 main driver tests passed!"),
+        "expected all tests to pass, got:\nstdout: {}\nstderr: {}",
+        stdout, stderr
+    );
+
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+}

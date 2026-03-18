@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
+#[cfg(feature = "llvm")]
 use inkwell::context::Context;
+#[cfg(feature = "llvm")]
 use inkwell::execution_engine::JitFunction;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -67,6 +69,7 @@ enum Commands {
     },
 }
 
+#[cfg(feature = "llvm")]
 type MainFunc = unsafe extern "C" fn() -> i32;
 
 fn print_error_with_context(error: &str, file: &Path) {
@@ -117,13 +120,22 @@ fn print_error_with_context(error: &str, file: &Path) {
     }
 }
 
+#[allow(unreachable_code)]
 fn main() {
     // If the first arg looks like a .ore file, treat as `ore run <file>`
     let args: Vec<String> = std::env::args().collect();
     if args.len() >= 2 && args[1].ends_with(".ore") && !args[1].starts_with('-') {
-        let file = PathBuf::from(&args[1]);
-        if let Err(e) = run_file(&file, false) {
-            print_error_with_context(&e, &file);
+        #[cfg(feature = "llvm")]
+        {
+            let file = PathBuf::from(&args[1]);
+            if let Err(e) = run_file(&file, false) {
+                print_error_with_context(&e, &file);
+                std::process::exit(1);
+            }
+        }
+        #[cfg(not(feature = "llvm"))]
+        {
+            eprintln!("error: 'run' requires the llvm feature (build with --features llvm)");
             std::process::exit(1);
         }
         return;
@@ -133,8 +145,15 @@ fn main() {
 
     match cli.command {
         Commands::Run { file, opt } => {
+            #[cfg(feature = "llvm")]
             if let Err(e) = run_file(&file, opt) {
                 print_error_with_context(&e, &file);
+                std::process::exit(1);
+            }
+            #[cfg(not(feature = "llvm"))]
+            {
+                let _ = (file, opt);
+                eprintln!("error: 'run' requires the llvm feature");
                 std::process::exit(1);
             }
         }
@@ -145,8 +164,15 @@ fn main() {
                     std::process::exit(1);
                 }
             } else {
+                #[cfg(feature = "llvm")]
                 if let Err(e) = build_file(&file, &output, opt) {
                     print_error_with_context(&e, &file);
+                    std::process::exit(1);
+                }
+                #[cfg(not(feature = "llvm"))]
+                {
+                    let _ = opt;
+                    eprintln!("error: LLVM backend requires the llvm feature");
                     std::process::exit(1);
                 }
             }
@@ -181,11 +207,24 @@ fn main() {
             }
         }
         Commands::Repl => {
+            #[cfg(feature = "llvm")]
             run_repl();
+            #[cfg(not(feature = "llvm"))]
+            {
+                eprintln!("error: 'repl' requires the llvm feature");
+                std::process::exit(1);
+            }
         }
         Commands::Test { file } => {
+            #[cfg(feature = "llvm")]
             if let Err(e) = test_file(&file) {
                 print_error_with_context(&e, &file);
+                std::process::exit(1);
+            }
+            #[cfg(not(feature = "llvm"))]
+            {
+                let _ = file;
+                eprintln!("error: 'test' requires the llvm feature");
                 std::process::exit(1);
             }
         }
@@ -196,20 +235,29 @@ fn main() {
             }
         }
         Commands::Eval { expr } => {
-            // Wrap expression in fn main + print
-            let source = format!("fn main\n  print {}\n", expr);
-            let tmp = std::env::temp_dir().join("ore_eval.ore");
-            std::fs::write(&tmp, &source).expect("failed to write temp file");
-            if run_file(&tmp, false).is_err() {
-                // Try as statement (no print wrapper)
-                let source2 = format!("fn main\n  {}\n", expr);
-                std::fs::write(&tmp, &source2).expect("failed to write temp file");
-                if let Err(e2) = run_file(&tmp, false) {
-                    eprintln!("error: {}", e2);
-                    std::process::exit(1);
+            #[cfg(feature = "llvm")]
+            {
+                // Wrap expression in fn main + print
+                let source = format!("fn main\n  print {}\n", expr);
+                let tmp = std::env::temp_dir().join("ore_eval.ore");
+                std::fs::write(&tmp, &source).expect("failed to write temp file");
+                if run_file(&tmp, false).is_err() {
+                    // Try as statement (no print wrapper)
+                    let source2 = format!("fn main\n  {}\n", expr);
+                    std::fs::write(&tmp, &source2).expect("failed to write temp file");
+                    if let Err(e2) = run_file(&tmp, false) {
+                        eprintln!("error: {}", e2);
+                        std::process::exit(1);
+                    }
                 }
+                let _ = std::fs::remove_file(&tmp);
             }
-            let _ = std::fs::remove_file(&tmp);
+            #[cfg(not(feature = "llvm"))]
+            {
+                let _ = expr;
+                eprintln!("error: 'eval' requires the llvm feature");
+                std::process::exit(1);
+            }
         }
     }
 }
@@ -292,6 +340,7 @@ fn parse_and_typecheck(path: &Path) -> Result<ore_parser::ast::Program, String> 
     Ok(program)
 }
 
+#[cfg(feature = "llvm")]
 /// Parse, resolve imports, and compile a source file, returning the codegen context.
 fn compile_source<'ctx>(
     path: &Path,
@@ -352,6 +401,7 @@ fn fmt_file(path: &Path) -> Result<String, String> {
     Ok(ore_parser::fmt::format_program(&program))
 }
 
+#[cfg(feature = "llvm")]
 fn run_repl() {
     use std::io::{self, BufRead, Write};
 
@@ -474,6 +524,7 @@ fn run_repl() {
     }
 }
 
+#[cfg(feature = "llvm")]
 /// Create a JIT execution engine and map all runtime functions.
 fn create_jit<'ctx>(
     codegen: &ore_codegen::CodeGen<'ctx>,
@@ -491,6 +542,7 @@ fn create_jit<'ctx>(
     Ok(ee)
 }
 
+#[cfg(feature = "llvm")]
 /// Map all ore_runtime functions to the JIT execution engine.
 /// This is the single source of truth for JIT function mappings.
 fn map_runtime_functions(
@@ -734,6 +786,7 @@ fn map_runtime_functions(
     map_fn!("ore_assert_ne_str", ore_runtime::ore_assert_ne_str);
 }
 
+#[cfg(feature = "llvm")]
 fn run_file(path: &std::path::Path, optimize: bool) -> Result<(), String> {
     let context = Context::create();
     let codegen = compile_source(path, &context)?;
@@ -749,6 +802,7 @@ fn run_file(path: &std::path::Path, optimize: bool) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "llvm")]
 fn test_file(path: &Path) -> Result<(), String> {
     let context = Context::create();
     let codegen = compile_source(path, &context)?;
@@ -797,6 +851,7 @@ fn test_file(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "llvm")]
 fn build_file(path: &Path, output: &Path, optimize: bool) -> Result<(), String> {
     use inkwell::targets::{
         CodeModel, InitializationConfig, RelocMode, Target, TargetMachine,
@@ -884,13 +939,15 @@ fn build_file_c(path: &Path, output: &Path) -> Result<(), String> {
     let c_path = tmp_dir.join("output.c");
     std::fs::write(&c_path, &c_code)
         .map_err(|e| format!("failed to write C file: {}", e))?;
+    // Debug: save a copy of the generated C code
+    let _ = std::fs::write(tmp_dir.join("output_debug.c"), &c_code);
 
     // Find the ore_runtime staticlib
     let runtime_lib = find_runtime_staticlib()?;
 
     // Compile with cc
     let compiler = std::env::var("CC").unwrap_or_else(|_| "cc".to_string());
-    let status = std::process::Command::new(&compiler)
+    let cc_output = std::process::Command::new(&compiler)
         .arg(&c_path)
         .arg(&runtime_lib)
         .arg("-o")
@@ -898,15 +955,15 @@ fn build_file_c(path: &Path, output: &Path) -> Result<(), String> {
         .arg("-lm")
         .arg("-lpthread")
         .arg("-ldl")
-        .status()
+        .output()
         .map_err(|e| format!("failed to run compiler '{}': {}", compiler, e))?;
 
-    if !status.success() {
-        return Err(format!("C compiler '{}' failed with {}", compiler, status));
+    if !cc_output.status.success() {
+        let stderr = String::from_utf8_lossy(&cc_output.stderr);
+        return Err(format!("C compiler '{}' failed with {}:\n{}", compiler, cc_output.status, stderr));
     }
 
-    // Keep temp C file for debugging
-    let _ = std::fs::remove_file(&c_path);
+    // Keep temp C file for debugging (do NOT remove)
 
     eprintln!("compiled to {} (via C backend)", output.display());
     Ok(())
