@@ -258,6 +258,17 @@ fn cg_get_record_field_kind st:List rec_name:Str field:Str -> Str
           return str_at(fkinds, j)
   "int"
 
+-- Infer which record type has a given field name
+fn cg_infer_record_by_field st:List field:Str -> Str
+  recs := cg_list(st, 11)
+  fields_list := cg_list(st, 12)
+  for i in 0..recs.len()
+    fnames := str_at(fields_list, i).split(",")
+    for j in 0..fnames.len()
+      if str_at(fnames, j) == field
+        return str_at(recs, i)
+  ""
+
 fn cg_add_enum st:List name:Str variants_str:Str count:Int
   cg_list(st, 14).push(name)
   cg_list(st, 15).push(variants_str)
@@ -805,6 +816,10 @@ fn compile_expr_node st:List exprs:List stmts:List e:Expr -> List
     LambdaExpr params body ->
       return compile_lambda(st, exprs, stmts, params, body)
     RecordConstructExpr type_name fields ->
+      -- Check if this is actually an enum variant construct
+      en := cg_variant_enum(st, type_name)
+      if en != ""
+        return compile_variant_record_construct(st, exprs, stmts, type_name, en, fields)
       return compile_record_construct(st, exprs, stmts, type_name, fields)
     AssertExpr cond message ->
       r := compile_expr(st, exprs, stmts, cond)
@@ -1675,6 +1690,12 @@ fn compile_field_access st:List exprs:List stmts:List object:Int field:Str -> Li
     if field == "tag"
       return ["{obj[0]}.tag", "int"]
     return ["{obj[0]}.{field}", "int"]
+  -- Unknown type: try to infer record type from field name
+  inferred := cg_infer_record_by_field(st, field)
+  if inferred != ""
+    fk := cg_get_record_field_kind(st, inferred, field)
+    cast := "(*(struct ore_rec_{inferred}*)(intptr_t)({obj[0]}))"
+    return ["{cast}.{field}", fk]
   __ret_9 := ["{obj[0]}.{field}", "int"]
   __ret_9
 
@@ -1702,12 +1723,56 @@ fn compile_method_call st:List exprs:List stmts:List object:Int method:Str args:
   -- Option/Result methods
   if kind == "option" or kind == "result"
     return compile_option_method(st, obj[0], kind, method, arg_strs, arg_kinds)
+  -- Unknown type: try to infer from method name
+  if is_str_method(method)
+    -- Cast from int64_t to void* for string methods
+    return compile_str_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
+  if is_list_method(method)
+    return compile_list_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
   -- Default: treat as direct method
   all_args := arg_strs.join(", ")
   if all_args != ""
     ["{obj[0]}.{method}({all_args})", "int"]
   else
     ["{obj[0]}.{method}()", "int"]
+
+-- ── Method inference helpers ──
+
+fn is_str_method method:Str -> Bool
+  if method == "trim" or method == "to_upper" or method == "to_lower"
+    return true
+  if method == "starts_with" or method == "ends_with" or method == "contains"
+    return true
+  if method == "split" or method == "replace" or method == "substr"
+    return true
+  if method == "chars" or method == "repeat" or method == "reverse"
+    return true
+  if method == "char_at" or method == "to_int" or method == "to_float"
+    return true
+  if method == "index_of"
+    return true
+  false
+
+fn is_list_method method:Str -> Bool
+  if method == "push" or method == "pop" or method == "clear"
+    return true
+  if method == "sort" or method == "join"
+    return true
+  if method == "concat" or method == "take"
+    return true
+  if method == "skip" or method == "slice" or method == "flatten"
+    return true
+  if method == "unique" or method == "sum" or method == "min"
+    return true
+  if method == "max" or method == "average" or method == "enumerate"
+    return true
+  if method == "map" or method == "filter" or method == "each"
+    return true
+  if method == "fold" or method == "reduce" or method == "any"
+    return true
+  if method == "all" or method == "last"
+    return true
+  false
 
 -- ── String methods ──
 
@@ -2576,6 +2641,20 @@ fn compile_record_construct st:List exprs:List stmts:List type_name:Str fields:L
     r := compile_expr(st, exprs, stmts, value_id)
     emit(st, "{t}.{field_name} = {r[0]};")
   [t, "rec:{type_name}"]
+
+-- Construct an enum variant using named fields (RecordConstruct syntax)
+fn compile_variant_record_construct st:List exprs:List stmts:List variant:Str enum_name:Str fields:List -> List
+  tag := find_variant_tag(st, enum_name, variant)
+  t := cg_tmp(st)
+  c_type := "struct ore_enum_{enum_name}"
+  emit(st, "{c_type} {t}; {t}.tag = {tag};")
+  -- Store fields into data[] by field order
+  for i in 0..fields.len()
+    pair := cg_list(fields, i)
+    value_id := pair[1]
+    r := compile_expr(st, exprs, stmts, value_id)
+    emit(st, "{t}.data[{i}] = (int64_t)({r[0]});")
+  [t, "enum:{enum_name}"]
 
 -- ── Type definitions ──
 
