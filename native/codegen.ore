@@ -41,6 +41,10 @@ use types
 --  23: exprs_pool (List, the exprs arena)
 --  24: stmts_pool (List, the stmts arena)
 --  25: deferred_fns (List[Str]) -- lines for monomorphized functions emitted out-of-order
+--  26: record_field_kinds (List[Str]) -- "kind1,kind2,..."
+--  27: variant_field_keys (List[Str]) -- "EnumName:VariantName"
+--  28: variant_field_names (List[Str]) -- "field1,field2,..."
+--  29: variant_field_kinds (List[Str]) -- "kind1,kind2,..."
 
 fn cg_new -> List
   mut st := []
@@ -71,6 +75,9 @@ fn cg_new -> List
   st.push([])       -- 24: stmts_pool (set later)
   st.push([])       -- 25: deferred_fns
   st.push([])       -- 26: record_field_kinds
+  st.push([])       -- 27: variant_field_keys
+  st.push([])       -- 28: variant_field_names
+  st.push([])       -- 29: variant_field_kinds
   st
 
 fn cg_list st:List idx:Int -> List
@@ -293,6 +300,27 @@ fn cg_variant_enum st:List variant:Str -> Str
       return e.substr(prefix.len(), e.len() - prefix.len())
   ""
 
+fn cg_add_variant_fields st:List enum_name:Str variant:Str field_names_str:Str field_kinds_str:Str
+  cg_list(st, 27).push("{enum_name}:{variant}")
+  cg_list(st, 28).push(field_names_str)
+  cg_list(st, 29).push(field_kinds_str)
+
+fn cg_get_variant_field_names st:List enum_name:Str variant:Str -> Str
+  keys := cg_list(st, 27)
+  key := "{enum_name}:{variant}"
+  for i in 0..keys.len()
+    if str_at(keys, i) == key
+      return str_at(cg_list(st, 28), i)
+  ""
+
+fn cg_get_variant_field_kinds st:List enum_name:Str variant:Str -> Str
+  keys := cg_list(st, 27)
+  key := "{enum_name}:{variant}"
+  for i in 0..keys.len()
+    if str_at(keys, i) == key
+      return str_at(cg_list(st, 29), i)
+  ""
+
 -- ── C type mapping ──
 
 fn kind_to_c_type kind:Str -> Str
@@ -382,6 +410,23 @@ fn coerce_from_i64_expr val:Str kind:Str -> Str
   if kind == "float"
     return "*(double*)&(int64_t)\{{val}}"
   val
+
+-- Coerce a value to the C type expected by a payload struct field
+fn coerce_to_c_type val:Str from_kind:Str to_kind:Str -> Str
+  if from_kind == to_kind
+    return val
+  ct := kind_to_c_type(to_kind)
+  if to_kind == "str" or to_kind == "list" or to_kind == "map"
+    return "(void*)({val})"
+  if to_kind == "int"
+    return "(int64_t)({val})"
+  if to_kind == "float"
+    if from_kind == "int"
+      return "(double)({val})"
+    return "({val})"
+  if to_kind == "bool"
+    return "(int8_t)({val})"
+  "({ct})({val})"
 
 fn type_expr_to_kind_str st:List te:TypeExpr -> Str
   match te
@@ -1218,8 +1263,23 @@ fn compile_variant_call st:List variant:Str enum_name:Str arg_strs:List arg_kind
   t := cg_tmp(st)
   c_type := "struct ore_enum_{enum_name}"
   emit(st, "{c_type} {t}; {t}.tag = {tag};")
-  for i in 0..arg_strs.len()
-    emit(st, "{t}.data[{i}] = (int64_t)({arg_strs[i]});")
+  if arg_strs.len() > 0
+    payload_name := "ore_payload_{enum_name}_{variant}"
+    pt := cg_tmp(st)
+    emit(st, "struct {payload_name}* {pt} = (struct {payload_name}*){t}.data;")
+    def_field_names := cg_get_variant_field_names(st, enum_name, variant)
+    if def_field_names != ""
+      fnames := def_field_names.split(",")
+      fkinds := cg_get_variant_field_kinds(st, enum_name, variant).split(",")
+      for i in 0..arg_strs.len()
+        fname := str_at(fnames, i)
+        fk := str_at(fkinds, i)
+        coerced := coerce_to_c_type(arg_strs[i], arg_kinds[i], fk)
+        emit(st, "{pt}->{fname} = {coerced};")
+    else
+      -- Fallback: positional data[] access
+      for i in 0..arg_strs.len()
+        emit(st, "{t}.data[{i}] = (int64_t)({arg_strs[i]});")
   __ret_1 := [t, "enum:{enum_name}"]
   __ret_1
 
@@ -2288,12 +2348,29 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
               kw = "else if"
             emit(st, "{kw} ({subj[0]}.tag == {vtag}) \{")
             cg_inc_indent(st)
-            -- Bind variant fields
-            for j in 0..bindings.len()
-              bname := bindings[j]
-              mn := mangle_var(bname)
-              emit(st, "int64_t {mn} = {subj[0]}.data[{j}];")
-              cg_set_var(st, bname, "int")
+            -- Bind variant fields via payload struct
+            def_fnames := cg_get_variant_field_names(st, en, name)
+            def_fkinds := cg_get_variant_field_kinds(st, en, name)
+            if bindings.len() > 0 and def_fnames != ""
+              payload_name := "ore_payload_{en}_{name}"
+              mpt := cg_tmp(st)
+              emit(st, "struct {payload_name}* {mpt} = (struct {payload_name}*){subj[0]}.data;")
+              fnames := def_fnames.split(",")
+              fkinds := def_fkinds.split(",")
+              for j in 0..bindings.len()
+                bname := bindings[j]
+                mn := mangle_var(bname)
+                fname := str_at(fnames, j)
+                fk := str_at(fkinds, j)
+                ct := kind_to_c_type(fk)
+                emit(st, "{ct} {mn} = {mpt}->{fname};")
+                cg_set_var(st, bname, fk)
+            else
+              for j in 0..bindings.len()
+                bname := bindings[j]
+                mn := mangle_var(bname)
+                emit(st, "int64_t {mn} = {subj[0]}.data[{j}];")
+                cg_set_var(st, bname, "int")
             br := compile_expr(st, exprs, stmts, body_id)
             if not first_arm_compiled and br[1] != "void"
               result_kind = br[1]
@@ -2769,12 +2846,30 @@ fn compile_variant_record_construct st:List exprs:List stmts:List variant:Str en
   t := cg_tmp(st)
   c_type := "struct ore_enum_{enum_name}"
   emit(st, "{c_type} {t}; {t}.tag = {tag};")
-  -- Store fields into data[] by field order
-  for i in 0..fields.len()
-    pair := cg_list(fields, i)
-    value_id := pair[1]
-    r := compile_expr(st, exprs, stmts, value_id)
-    emit(st, "{t}.data[{i}] = (int64_t)({r[0]});")
+  -- Use payload struct to store fields by name
+  if fields.len() > 0
+    payload_name := "ore_payload_{enum_name}_{variant}"
+    pt := cg_tmp(st)
+    emit(st, "struct {payload_name}* {pt} = (struct {payload_name}*){t}.data;")
+    -- Get defined field names for this variant to look up by name
+    def_field_names := cg_get_variant_field_names(st, enum_name, variant)
+    def_field_kinds := cg_get_variant_field_kinds(st, enum_name, variant)
+    for i in 0..fields.len()
+      pair := cg_list(fields, i)
+      field_name := str_at(pair, 0)
+      value_id := pair[1]
+      r := compile_expr(st, exprs, stmts, value_id)
+      -- Find the target kind for proper coercion
+      if def_field_names != ""
+        fnames := def_field_names.split(",")
+        fkinds := def_field_kinds.split(",")
+        for j in 0..fnames.len()
+          if str_at(fnames, j) == field_name
+            fk := str_at(fkinds, j)
+            coerced := coerce_to_c_type(r[0], r[1], fk)
+            emit(st, "{pt}->{field_name} = {coerced};")
+      else
+        emit(st, "{pt}->{field_name} = ({r[0]});")
   [t, "enum:{enum_name}"]
 
 -- ── Type definitions ──
@@ -2820,6 +2915,19 @@ fn compile_enum_def st:List ed:EnumDefNode
     variant_names_str = variant_names_str + v.name
     -- Register variant-to-enum mapping
     cg_add_variant_map(st, v.name, name)
+    -- Register variant field info
+    if v.fields.len() > 0
+      mut vfn_str := ""
+      mut vfk_str := ""
+      for j in 0..v.fields.len()
+        f := get_field_def(v.fields, j)
+        ft := type_expr_to_kind_str(st, f.ty)
+        if j > 0
+          vfn_str = vfn_str + ","
+          vfk_str = vfk_str + ","
+        vfn_str = vfn_str + f.name
+        vfk_str = vfk_str + ft
+      cg_add_variant_fields(st, name, v.name, vfn_str, vfk_str)
   -- Struct: { int8_t tag; int64_t data[N]; }
   mut data_decl := ""
   if max_fields > 0
