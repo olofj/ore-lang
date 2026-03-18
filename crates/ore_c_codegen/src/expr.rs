@@ -279,9 +279,12 @@ impl CCodeGen {
             return Ok((format!("ore_str_repeat({}, {})", l_expr, r_expr), ValKind::Str));
         }
 
-        // String operations
-        if lk == ValKind::Str && rk == ValKind::Str {
-            return self.compile_str_binop(op, &l_expr, &r_expr);
+        // String operations: when either side is a string, use string comparison/concat.
+        // This handles values from untyped list access (typed as Int but actually string pointers).
+        if lk == ValKind::Str || rk == ValKind::Str {
+            let l = if lk != ValKind::Str { format!("(void*)(intptr_t)({})", l_expr) } else { l_expr.clone() };
+            let r = if rk != ValKind::Str { format!("(void*)(intptr_t)({})", r_expr) } else { r_expr.clone() };
+            return self.compile_str_binop(op, &l, &r);
         }
 
         // Float promotion
