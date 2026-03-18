@@ -821,6 +821,8 @@ mod tests {
         codegen.module.print_to_string().to_string()
     }
 
+    // ── Existing: arithmetic & basics ──────────────────────────────────
+
     #[test]
     fn test_int_arithmetic_ir() {
         let ir = compile_to_ir("fn add a:Int b:Int -> Int\n  a + b");
@@ -869,5 +871,765 @@ mod tests {
         let ir = compile_to_ir("fn main\n  x := [1, 2, 3]");
         assert!(ir.contains("@ore_list_new"), "expected '@ore_list_new' in IR:\n{}", ir);
         assert!(ir.contains("@ore_list_push"), "expected '@ore_list_push' in IR:\n{}", ir);
+    }
+
+    // ── Arithmetic: remaining operators ────────────────────────────────
+
+    #[test]
+    fn test_int_subtraction_ir() {
+        let ir = compile_to_ir("fn sub a:Int b:Int -> Int\n  a - b");
+        assert!(ir.contains("sub i64"), "expected 'sub i64' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_int_multiplication_ir() {
+        let ir = compile_to_ir("fn mul a:Int b:Int -> Int\n  a * b");
+        assert!(ir.contains("mul i64"), "expected 'mul i64' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_int_division_ir() {
+        let ir = compile_to_ir("fn div a:Int b:Int -> Int\n  a / b");
+        assert!(ir.contains("sdiv i64"), "expected 'sdiv i64' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_int_modulo_ir() {
+        let ir = compile_to_ir("fn rem a:Int b:Int -> Int\n  a % b");
+        assert!(ir.contains("srem i64"), "expected 'srem i64' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_float_subtraction_ir() {
+        let ir = compile_to_ir("fn sub a:Float b:Float -> Float\n  a - b");
+        assert!(ir.contains("fsub double"), "expected 'fsub double' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_float_multiplication_ir() {
+        let ir = compile_to_ir("fn mul a:Float b:Float -> Float\n  a * b");
+        assert!(ir.contains("fmul double"), "expected 'fmul double' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_float_division_ir() {
+        let ir = compile_to_ir("fn div a:Float b:Float -> Float\n  a / b");
+        assert!(ir.contains("fdiv double"), "expected 'fdiv double' in IR:\n{}", ir);
+    }
+
+    // ── Comparison operators ───────────────────────────────────────────
+
+    #[test]
+    fn test_int_greater_than_ir() {
+        let ir = compile_to_ir("fn cmp a:Int b:Int -> Bool\n  a > b");
+        assert!(ir.contains("icmp sgt"), "expected 'icmp sgt' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_int_less_equal_ir() {
+        let ir = compile_to_ir("fn cmp a:Int b:Int -> Bool\n  a <= b");
+        assert!(ir.contains("icmp sle"), "expected 'icmp sle' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_int_greater_equal_ir() {
+        let ir = compile_to_ir("fn cmp a:Int b:Int -> Bool\n  a >= b");
+        assert!(ir.contains("icmp sge"), "expected 'icmp sge' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_int_equality_ir() {
+        let ir = compile_to_ir("fn cmp a:Int b:Int -> Bool\n  a == b");
+        assert!(ir.contains("icmp eq"), "expected 'icmp eq' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_int_not_equal_ir() {
+        let ir = compile_to_ir("fn cmp a:Int b:Int -> Bool\n  a != b");
+        assert!(ir.contains("icmp ne"), "expected 'icmp ne' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_float_less_than_ir() {
+        let ir = compile_to_ir("fn cmp a:Float b:Float -> Bool\n  a < b");
+        assert!(ir.contains("fcmp olt"), "expected 'fcmp olt' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_float_greater_than_ir() {
+        let ir = compile_to_ir("fn cmp a:Float b:Float -> Bool\n  a > b");
+        assert!(ir.contains("fcmp ogt"), "expected 'fcmp ogt' in IR:\n{}", ir);
+    }
+
+    // ── Boolean operations ─────────────────────────────────────────────
+
+    #[test]
+    fn test_bool_literal_true_ir() {
+        let ir = compile_to_ir("fn main\n  x := true");
+        assert!(ir.contains("i1 true") || ir.contains("const_int(1)") || ir.contains("store i1"),
+            "expected bool literal in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_bool_literal_false_ir() {
+        let ir = compile_to_ir("fn main\n  x := false");
+        assert!(ir.contains("i1 false") || ir.contains("store i1"),
+            "expected bool literal in IR:\n{}", ir);
+    }
+
+    // ── Mutable variables & assignment ─────────────────────────────────
+
+    #[test]
+    fn test_mutable_binding_ir() {
+        let ir = compile_to_ir("fn main\n  mut x := 0\n  x = 42");
+        // Should have alloca for the variable and two stores
+        assert!(ir.contains("alloca"), "expected 'alloca' in IR:\n{}", ir);
+        assert!(ir.contains("store"), "expected 'store' in IR:\n{}", ir);
+    }
+
+    // ── If/else ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_if_else_branches_ir() {
+        let ir = compile_to_ir("fn choose x:Bool -> Int\n  if x\n    1\n  else\n    2\n");
+        assert!(ir.contains("br i1"), "expected conditional branch 'br i1' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_if_else_phi_ir() {
+        let ir = compile_to_ir("fn choose x:Bool -> Int\n  if x\n    1\n  else\n    2\n");
+        assert!(ir.contains("phi"), "expected phi node in IR:\n{}", ir);
+    }
+
+    // ── For loop ───────────────────────────────────────────────────────
+
+    #[test]
+    fn test_for_range_loop_ir() {
+        let ir = compile_to_ir("fn main\n  for i in 0..10\n    print i\n");
+        // Loop structure: comparison, conditional branch, increment
+        assert!(ir.contains("icmp slt"), "expected loop comparison in IR:\n{}", ir);
+        assert!(ir.contains("br i1"), "expected conditional branch in IR:\n{}", ir);
+        assert!(ir.contains("@ore_print_int"), "expected print call in IR:\n{}", ir);
+    }
+
+    // ── While loop ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_while_loop_ir() {
+        let ir = compile_to_ir("fn main\n  mut x := 0\n  while x < 5\n    x = x + 1\n");
+        assert!(ir.contains("br i1"), "expected conditional branch in IR:\n{}", ir);
+        assert!(ir.contains("icmp slt"), "expected comparison in IR:\n{}", ir);
+    }
+
+    // ── Print codegen ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_print_int_ir() {
+        let ir = compile_to_ir("fn main\n  print 42");
+        assert!(ir.contains("@ore_print_int"), "expected '@ore_print_int' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_print_string_ir() {
+        let ir = compile_to_ir("fn main\n  print \"hello\"");
+        assert!(ir.contains("@ore_str_print"), "expected '@ore_str_print' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_print_bool_ir() {
+        let ir = compile_to_ir("fn main\n  print true");
+        assert!(ir.contains("@ore_print_bool"), "expected '@ore_print_bool' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_print_float_ir() {
+        let ir = compile_to_ir("fn main\n  print 3.14");
+        assert!(ir.contains("@ore_print_float"), "expected '@ore_print_float' in IR:\n{}", ir);
+    }
+
+    // ── String interpolation ───────────────────────────────────────────
+
+    #[test]
+    fn test_string_interpolation_ir() {
+        let ir = compile_to_ir("fn greet name:Str -> Str\n  \"Hello, {name}!\"");
+        assert!(ir.contains("@ore_str_concat"), "expected '@ore_str_concat' in IR:\n{}", ir);
+    }
+
+    // ── String methods ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_str_len_ir() {
+        let ir = compile_to_ir("fn main\n  x := \"hello\"\n  x.len()");
+        assert!(ir.contains("@ore_str_len"), "expected '@ore_str_len' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_str_contains_ir() {
+        let ir = compile_to_ir("fn main\n  x := \"hello world\"\n  x.contains(\"world\")");
+        assert!(ir.contains("@ore_str_contains"), "expected '@ore_str_contains' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_str_trim_ir() {
+        let ir = compile_to_ir("fn main\n  x := \" hello \"\n  x.trim()");
+        assert!(ir.contains("@ore_str_trim"), "expected '@ore_str_trim' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_str_split_ir() {
+        let ir = compile_to_ir("fn main\n  x := \"a,b,c\"\n  x.split(\",\")");
+        assert!(ir.contains("@ore_str_split"), "expected '@ore_str_split' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_str_replace_ir() {
+        let ir = compile_to_ir("fn main\n  x := \"hello\"\n  x.replace(\"l\", \"r\")");
+        assert!(ir.contains("@ore_str_replace"), "expected '@ore_str_replace' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_str_starts_with_ir() {
+        let ir = compile_to_ir("fn main\n  x := \"hello\"\n  x.starts_with(\"he\")");
+        assert!(ir.contains("@ore_str_starts_with"), "expected '@ore_str_starts_with' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_str_ends_with_ir() {
+        let ir = compile_to_ir("fn main\n  x := \"hello\"\n  x.ends_with(\"lo\")");
+        assert!(ir.contains("@ore_str_ends_with"), "expected '@ore_str_ends_with' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_str_to_int_ir() {
+        let ir = compile_to_ir("fn main\n  x := \"42\"\n  x.to_int()");
+        assert!(ir.contains("@ore_str_to_int"), "expected '@ore_str_to_int' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_str_to_float_ir() {
+        let ir = compile_to_ir("fn main\n  x := \"3.14\"\n  x.to_float()");
+        assert!(ir.contains("@ore_str_to_float"), "expected '@ore_str_to_float' in IR:\n{}", ir);
+    }
+
+    // ── Map operations ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_map_literal_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1, \"b\": 2}");
+        assert!(ir.contains("@ore_map_new"), "expected '@ore_map_new' in IR:\n{}", ir);
+        assert!(ir.contains("@ore_map_set"), "expected '@ore_map_set' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_map_get_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1}\n  m.get(\"a\")");
+        assert!(ir.contains("@ore_map_get"), "expected '@ore_map_get' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_map_contains_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1}\n  m.contains(\"a\")");
+        assert!(ir.contains("@ore_map_contains"), "expected '@ore_map_contains' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_map_len_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1}\n  m.len()");
+        assert!(ir.contains("@ore_map_len"), "expected '@ore_map_len' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_map_remove_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1}\n  m.remove(\"a\")");
+        assert!(ir.contains("@ore_map_remove"), "expected '@ore_map_remove' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_map_keys_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1}\n  m.keys()");
+        assert!(ir.contains("@ore_map_keys"), "expected '@ore_map_keys' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_map_values_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1}\n  m.values()");
+        assert!(ir.contains("@ore_map_values"), "expected '@ore_map_values' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_map_merge_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1}\n  n := {\"b\": 2}\n  m.merge(n)");
+        assert!(ir.contains("@ore_map_merge"), "expected '@ore_map_merge' in IR:\n{}", ir);
+    }
+
+    // ── Lambda codegen ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_lambda_basic_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.map(n => n * 2)");
+        // Lambda should generate a separate function definition
+        assert!(ir.contains("@__lambda_"), "expected lambda function '@__lambda_' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_lambda_with_capture_ir() {
+        let ir = compile_to_ir("fn main\n  factor := 10\n  xs := [1, 2, 3]\n  xs.map(n => n * factor)");
+        // Captured variables create an environment struct
+        assert!(ir.contains("@__lambda_"), "expected lambda function in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_lambda_filter_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3, 4, 5]\n  xs.filter(n => n > 3)");
+        assert!(ir.contains("@ore_list_filter"), "expected '@ore_list_filter' in IR:\n{}", ir);
+        assert!(ir.contains("@__lambda_"), "expected lambda function in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_lambda_each_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.each(n => print n)");
+        assert!(ir.contains("@ore_list_each"), "expected '@ore_list_each' in IR:\n{}", ir);
+    }
+
+    // ── List methods ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_list_len_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.len()");
+        assert!(ir.contains("@ore_list_len"), "expected '@ore_list_len' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_pop_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.pop()");
+        assert!(ir.contains("@ore_list_pop"), "expected '@ore_list_pop' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_get_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.get(0)");
+        assert!(ir.contains("@ore_list_get"), "expected '@ore_list_get' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_map_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.map(n => n * 2)");
+        assert!(ir.contains("@ore_list_map"), "expected '@ore_list_map' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_filter_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.filter(n => n > 1)");
+        assert!(ir.contains("@ore_list_filter"), "expected '@ore_list_filter' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_fold_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.fold(0, (acc, n => acc + n))");
+        assert!(ir.contains("@ore_list_fold"), "expected '@ore_list_fold' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_any_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.any(n => n > 2)");
+        assert!(ir.contains("@ore_list_any"), "expected '@ore_list_any' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_all_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.all(n => n > 0)");
+        assert!(ir.contains("@ore_list_all"), "expected '@ore_list_all' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_sort_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [3, 1, 2]\n  xs.sort()");
+        assert!(ir.contains("@ore_list_sort"), "expected '@ore_list_sort' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_reverse_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.reverse()");
+        assert!(ir.contains("@ore_list_reverse"), "expected '@ore_list_reverse' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_join_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [\"a\", \"b\", \"c\"]\n  xs.join(\", \")");
+        assert!(ir.contains("@ore_list_join"), "expected '@ore_list_join' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_contains_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.contains(2)");
+        assert!(ir.contains("@ore_list_contains"), "expected '@ore_list_contains' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_sum_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.sum()");
+        assert!(ir.contains("@ore_list_sum"), "expected '@ore_list_sum' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_unique_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 2, 3]\n  xs.unique()");
+        assert!(ir.contains("@ore_list_unique"), "expected '@ore_list_unique' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_take_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3, 4]\n  xs.take(2)");
+        assert!(ir.contains("@ore_list_take"), "expected '@ore_list_take' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_list_skip_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3, 4]\n  xs.skip(2)");
+        assert!(ir.contains("@ore_list_skip"), "expected '@ore_list_skip' in IR:\n{}", ir);
+    }
+
+    // ── Match compilation ──────────────────────────────────────────────
+
+    #[test]
+    fn test_literal_match_int_ir() {
+        let ir = compile_to_ir("fn label x:Int -> Str\n  x :\n    1 -> \"one\"\n    2 -> \"two\"\n    _ -> \"other\"\n");
+        // Literal match generates integer comparisons and branches
+        assert!(ir.contains("icmp eq"), "expected 'icmp eq' for match comparison in IR:\n{}", ir);
+        assert!(ir.contains("br i1"), "expected conditional branch in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_literal_match_string_ir() {
+        let ir = compile_to_ir("fn label x:Str -> Str\n  x :\n    \"a\" -> \"first\"\n    _ -> \"other\"\n");
+        // String matching uses ore_str_eq
+        assert!(ir.contains("@ore_str_eq"), "expected '@ore_str_eq' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_literal_match_bool_ir() {
+        let ir = compile_to_ir("fn label x:Bool -> Str\n  x :\n    true -> \"yes\"\n    false -> \"no\"\n");
+        assert!(ir.contains("icmp eq"), "expected 'icmp eq' in match IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_enum_match_ir() {
+        let ir = compile_to_ir(
+            "type Shape\n  Circle(radius: Float)\n  Rect(width: Float, height: Float)\n\n\
+             fn area s:Shape -> Float\n  s :\n    Circle r -> r * r\n    Rect w h -> w * h\n"
+        );
+        // Enum match: tag extraction via GEP, dispatch via switch
+        assert!(ir.contains("@area"), "expected '@area' function in IR:\n{}", ir);
+        assert!(ir.contains("switch i8"), "expected tag switch in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_enum_variant_construct_ir() {
+        let ir = compile_to_ir(
+            "type Shape\n  Circle(radius: Float)\n  Rect(width: Float, height: Float)\n\n\
+             fn main\n  s := Circle(radius: 3.14)\n"
+        );
+        // Enum construction: alloca struct, store tag, store payload
+        assert!(ir.contains("alloca"), "expected alloca for enum in IR:\n{}", ir);
+        assert!(ir.contains("store i8"), "expected tag store in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_match_wildcard_ir() {
+        let ir = compile_to_ir("fn classify x:Int -> Str\n  x :\n    0 -> \"zero\"\n    _ -> \"nonzero\"\n");
+        // Wildcard arm should have a default branch
+        assert!(ir.contains("br i1"), "expected branch in IR:\n{}", ir);
+        assert!(ir.contains("@ore_str_new"), "expected string creation in IR:\n{}", ir);
+    }
+
+    // ── Record codegen ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_record_construct_ir() {
+        let ir = compile_to_ir("type Point { x:Float, y:Float }\n\nfn main\n  p := Point(x: 1.0, y: 2.0)\n");
+        // Record construction: alloca struct, store fields
+        assert!(ir.contains("alloca"), "expected alloca for record in IR:\n{}", ir);
+        assert!(ir.contains("store double"), "expected float field store in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_record_field_access_ir() {
+        let ir = compile_to_ir(
+            "type Point { x:Float, y:Float }\n\n\
+             fn getx p:Point -> Float\n  p.x\n"
+        );
+        assert!(ir.contains("@getx"), "expected '@getx' function in IR:\n{}", ir);
+    }
+
+    // ── Impl blocks / method calls ─────────────────────────────────────
+
+    #[test]
+    fn test_impl_method_ir() {
+        let ir = compile_to_ir(
+            "type Point { x:Float, y:Float }\n\n\
+             impl Point\n  fn magnitude self:Point -> Float\n    self.x * self.x + self.y * self.y\n"
+        );
+        // Impl generates a function named after the type
+        assert!(ir.contains("@Point_magnitude") || ir.contains("magnitude"),
+            "expected method function in IR:\n{}", ir);
+        assert!(ir.contains("fmul double"), "expected float multiplication in method body IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_impl_method_call_ir() {
+        let ir = compile_to_ir(
+            "type Point { x:Float, y:Float }\n\n\
+             impl Point\n  fn magnitude self:Point -> Float\n    self.x * self.x + self.y * self.y\n\n\
+             fn main\n  p := Point(x: 3.0, y: 4.0)\n  p.magnitude()\n"
+        );
+        // Should call the magnitude method
+        assert!(ir.contains("call"), "expected method call in IR:\n{}", ir);
+    }
+
+    // ── Builtin functions ──────────────────────────────────────────────
+
+    #[test]
+    fn test_builtin_abs_int_ir() {
+        let ir = compile_to_ir("fn do_abs x:Int -> Int\n  abs(x)");
+        // abs(Int) is inlined as (x ^ sign) - sign
+        assert!(ir.contains("xor"), "expected xor in abs codegen IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_builtin_min_ir() {
+        let ir = compile_to_ir("fn do_min a:Int b:Int -> Int\n  min(a, b)");
+        // min generates icmp + select
+        assert!(ir.contains("icmp slt"), "expected 'icmp slt' in min IR:\n{}", ir);
+        assert!(ir.contains("select"), "expected 'select' in min IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_builtin_max_ir() {
+        let ir = compile_to_ir("fn do_max a:Int b:Int -> Int\n  max(a, b)");
+        assert!(ir.contains("icmp sgt"), "expected 'icmp sgt' in max IR:\n{}", ir);
+        assert!(ir.contains("select"), "expected 'select' in max IR:\n{}", ir);
+    }
+
+    // ── Unary operations ───────────────────────────────────────────────
+
+    #[test]
+    fn test_unary_minus_int_ir() {
+        let ir = compile_to_ir("fn neg x:Int -> Int\n  -x");
+        assert!(ir.contains("sub i64"), "expected 'sub i64' for negation in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_unary_minus_float_ir() {
+        let ir = compile_to_ir("fn neg x:Float -> Float\n  -x");
+        assert!(ir.contains("fneg"), "expected 'fneg' for float negation in IR:\n{}", ir);
+    }
+
+    // ── Function calls ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_function_call_ir() {
+        let ir = compile_to_ir("fn double x:Int -> Int\n  x * 2\n\nfn main\n  double(5)");
+        assert!(ir.contains("call i64 @double"), "expected 'call i64 @double' in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_recursive_function_ir() {
+        let ir = compile_to_ir(
+            "fn factorial n:Int -> Int\n  if n < 2\n    1\n  else\n    n * factorial(n - 1)\n"
+        );
+        assert!(ir.contains("call i64 @factorial"), "expected recursive call in IR:\n{}", ir);
+        assert!(ir.contains("mul i64"), "expected multiplication in IR:\n{}", ir);
+    }
+
+    // ── Multiple functions ─────────────────────────────────────────────
+
+    #[test]
+    fn test_multiple_functions_ir() {
+        let ir = compile_to_ir(
+            "fn add a:Int b:Int -> Int\n  a + b\n\n\
+             fn mul a:Int b:Int -> Int\n  a * b\n"
+        );
+        assert!(ir.contains("define i64 @add"), "expected '@add' function in IR:\n{}", ir);
+        assert!(ir.contains("define i64 @mul"), "expected '@mul' function in IR:\n{}", ir);
+    }
+
+    // ── Return type handling ───────────────────────────────────────────
+
+    #[test]
+    fn test_void_function_ir() {
+        let ir = compile_to_ir("fn greet\n  print \"hello\"");
+        assert!(ir.contains("define void @greet") || ir.contains("define i64 @greet"),
+            "expected greet function definition in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_bool_return_ir() {
+        let ir = compile_to_ir("fn is_positive x:Int -> Bool\n  x > 0");
+        assert!(ir.contains("define i1 @is_positive"), "expected 'define i1 @is_positive' in IR:\n{}", ir);
+    }
+
+    // ── List comprehension ─────────────────────────────────────────────
+
+    #[test]
+    fn test_list_comprehension_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [x * x for x in 0..5]");
+        assert!(ir.contains("@ore_list_new"), "expected list creation in comprehension IR:\n{}", ir);
+        assert!(ir.contains("@ore_list_push"), "expected list push in comprehension IR:\n{}", ir);
+        assert!(ir.contains("mul i64"), "expected multiplication in comprehension IR:\n{}", ir);
+    }
+
+    // ── Index access ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_list_index_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs[1]");
+        assert!(ir.contains("@ore_list_get"), "expected '@ore_list_get' for indexing in IR:\n{}", ir);
+    }
+
+    // ── Pipeline ───────────────────────────────────────────────────────
+
+    #[test]
+    fn test_pipeline_ir() {
+        let ir = compile_to_ir("fn double x:Int -> Int\n  x * 2\n\nfn main\n  result := 5 | double");
+        assert!(ir.contains("call i64 @double"), "expected pipeline function call in IR:\n{}", ir);
+    }
+
+    // ── Compound assignment ────────────────────────────────────────────
+
+    #[test]
+    fn test_compound_add_assign_ir() {
+        let ir = compile_to_ir("fn main\n  mut x := 10\n  x += 5");
+        assert!(ir.contains("add i64"), "expected 'add i64' for += in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_compound_sub_assign_ir() {
+        let ir = compile_to_ir("fn main\n  mut x := 10\n  x -= 3");
+        assert!(ir.contains("sub i64"), "expected 'sub i64' for -= in IR:\n{}", ir);
+    }
+
+    #[test]
+    fn test_compound_mul_assign_ir() {
+        let ir = compile_to_ir("fn main\n  mut x := 10\n  x *= 4");
+        assert!(ir.contains("mul i64"), "expected 'mul i64' for *= in IR:\n{}", ir);
+    }
+
+    // ── Enum zero-arg variant ──────────────────────────────────────────
+
+    #[test]
+    fn test_enum_zero_arg_variant_ir() {
+        let ir = compile_to_ir(
+            "type Color\n  Red\n  Green\n  Blue\n\n\
+             fn main\n  c := Red\n"
+        );
+        // Zero-arg variant stores a tag
+        assert!(ir.contains("store i8"), "expected tag store for zero-arg variant in IR:\n{}", ir);
+    }
+
+    // ── Multiple return paths (phi merging) ────────────────────────────
+
+    #[test]
+    fn test_multi_branch_phi_ir() {
+        let ir = compile_to_ir(
+            "fn sign x:Int -> Int\n  if x > 0\n    1\n  else if x < 0\n    -1\n  else\n    0\n"
+        );
+        assert!(ir.contains("phi"), "expected phi node for multi-branch in IR:\n{}", ir);
+    }
+
+    // ── Runtime declarations ───────────────────────────────────────────
+
+    #[test]
+    fn test_runtime_declarations_present() {
+        let ir = compile_to_ir("fn main\n  print 42");
+        // Basic runtime functions should be declared
+        assert!(ir.contains("declare"), "expected runtime declarations in IR:\n{}", ir);
+        assert!(ir.contains("ore_print_int"), "expected ore_print_int declaration in IR:\n{}", ir);
+    }
+
+    // ── String list operations ─────────────────────────────────────────
+
+    #[test]
+    fn test_string_list_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [\"a\", \"b\", \"c\"]");
+        assert!(ir.contains("@ore_list_new"), "expected '@ore_list_new' in IR:\n{}", ir);
+        assert!(ir.contains("@ore_str_new"), "expected '@ore_str_new' for string elements in IR:\n{}", ir);
+    }
+
+    // ── List reduce ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_list_reduce_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.reduce((a, b) => a + b)");
+        assert!(ir.contains("@ore_list_reduce1"), "expected '@ore_list_reduce1' in IR:\n{}", ir);
+    }
+
+    // ── For-each loop ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_for_each_loop_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  for x in xs\n    print x\n");
+        assert!(ir.contains("@ore_list_len"), "expected list len call in foreach IR:\n{}", ir);
+        assert!(ir.contains("@ore_list_get"), "expected list get call in foreach IR:\n{}", ir);
+    }
+
+    // ── Map each/iteration ─────────────────────────────────────────────
+
+    #[test]
+    fn test_map_each_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1, \"b\": 2}\n  m.each((k, v) => print k)");
+        assert!(ir.contains("@ore_map_each"), "expected '@ore_map_each' in IR:\n{}", ir);
+    }
+
+    // ── Enum with fields match ─────────────────────────────────────────
+
+    #[test]
+    fn test_enum_match_with_payload_ir() {
+        let ir = compile_to_ir(
+            "type Shape\n  Circle(radius: Float)\n  Rect(width: Float, height: Float)\n\n\
+             fn describe s:Shape -> Float\n  match s\n    Circle r -> r\n    Rect w h -> w + h\n"
+        );
+        // Match should extract payload from enum variant
+        assert!(ir.contains("@describe"), "expected describe function in IR:\n{}", ir);
+        assert!(ir.contains("fadd double"), "expected float add in Rect arm in IR:\n{}", ir);
+    }
+
+    // ── List sort_by ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_list_sort_by_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [3, 1, 2]\n  xs.sort_by(x => x)");
+        assert!(ir.contains("@ore_list_sort_by_key"), "expected '@ore_list_sort_by_key' in IR:\n{}", ir);
+    }
+
+    // ── List find ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_list_find_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 2, 3]\n  xs.find(n => n > 1)");
+        assert!(ir.contains("@ore_list_find"), "expected '@ore_list_find' in IR:\n{}", ir);
+    }
+
+    // ── Map clear ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_map_clear_ir() {
+        let ir = compile_to_ir("fn main\n  m := {\"a\": 1}\n  m.clear()");
+        assert!(ir.contains("@ore_map_clear"), "expected '@ore_map_clear' in IR:\n{}", ir);
+    }
+
+    // ── List flatten ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_list_flatten_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [[1, 2], [3, 4]]\n  xs.flatten()");
+        assert!(ir.contains("@ore_list_flatten"), "expected '@ore_list_flatten' in IR:\n{}", ir);
+    }
+
+    // ── List dedup ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_list_dedup_ir() {
+        let ir = compile_to_ir("fn main\n  xs := [1, 1, 2, 2, 3]\n  xs.dedup()");
+        assert!(ir.contains("@ore_list_dedup"), "expected '@ore_list_dedup' in IR:\n{}", ir);
     }
 }
