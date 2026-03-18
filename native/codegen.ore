@@ -2346,10 +2346,12 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   emit_raw(st, "")
   emit_raw(st, "{ret_c} {mn}({param_sig}) \{")
   cg_inc_indent(st)
-  compile_block(st, exprs, stmts, body)
-  -- If main, add return 0
+  block_result := compile_block(st, exprs, stmts, body)
+  -- Emit implicit return for non-void functions
   if name == "main"
     emit(st, "return 0;")
+  else if ret_kind != "void" and block_result[0] != ""
+    emit(st, "return {block_result[0]};")
   cg_dec_indent(st)
   emit_raw(st, "}")
   -- Restore variables (remove params)
