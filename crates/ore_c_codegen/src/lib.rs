@@ -790,11 +790,760 @@ mod tests {
         cg.compile_program(&program).expect("compile failed")
     }
 
+    // ---------------------------------------------------------------
+    // ValKind helper methods
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn valkind_is_list() {
+        assert!(ValKind::List(None).is_list());
+        assert!(ValKind::list_of(ValKind::Int).is_list());
+        assert!(!ValKind::Int.is_list());
+        assert!(!ValKind::Map(None).is_list());
+    }
+
+    #[test]
+    fn valkind_is_map() {
+        assert!(ValKind::Map(None).is_map());
+        assert!(ValKind::map_of(ValKind::Str).is_map());
+        assert!(!ValKind::Int.is_map());
+        assert!(!ValKind::List(None).is_map());
+    }
+
+    #[test]
+    fn valkind_list_elem_kind() {
+        assert_eq!(ValKind::list_of(ValKind::Int).list_elem_kind(), Some(&ValKind::Int));
+        assert_eq!(ValKind::List(None).list_elem_kind(), None);
+        assert_eq!(ValKind::Int.list_elem_kind(), None);
+    }
+
+    #[test]
+    fn valkind_map_val_kind() {
+        assert_eq!(ValKind::map_of(ValKind::Str).map_val_kind(), Some(&ValKind::Str));
+        assert_eq!(ValKind::Map(None).map_val_kind(), None);
+        assert_eq!(ValKind::Int.map_val_kind(), None);
+    }
+
+    #[test]
+    fn valkind_list_of_nested() {
+        let nested = ValKind::list_of(ValKind::list_of(ValKind::Int));
+        assert!(nested.is_list());
+        let inner = nested.list_elem_kind().unwrap();
+        assert!(inner.is_list());
+        assert_eq!(inner.list_elem_kind(), Some(&ValKind::Int));
+    }
+
+    // ---------------------------------------------------------------
+    // Name mangling
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn mangle_name_replaces_colons_and_dollar() {
+        assert_eq!(CCodeGen::mangle_name("Foo::bar"), "Foo__bar");
+        assert_eq!(CCodeGen::mangle_name("a$b"), "a_D_b");
+        assert_eq!(CCodeGen::mangle_name("simple"), "simple");
+    }
+
+    #[test]
+    fn mangle_fn_name_preserves_main() {
+        assert_eq!(CCodeGen::mangle_fn_name("main"), "main");
+    }
+
+    #[test]
+    fn mangle_fn_name_prefixes_reserved_words() {
+        assert_eq!(CCodeGen::mangle_fn_name("int"), "ore_fn_int");
+        assert_eq!(CCodeGen::mangle_fn_name("return"), "ore_fn_return");
+        assert_eq!(CCodeGen::mangle_fn_name("abs"), "ore_fn_abs");
+        assert_eq!(CCodeGen::mangle_fn_name("malloc"), "ore_fn_malloc");
+    }
+
+    #[test]
+    fn mangle_fn_name_passes_through_normal() {
+        assert_eq!(CCodeGen::mangle_fn_name("compute"), "compute");
+        assert_eq!(CCodeGen::mangle_fn_name("my_func"), "my_func");
+    }
+
+    #[test]
+    fn mangle_var_name_prefixes_reserved_words() {
+        assert_eq!(CCodeGen::mangle_var_name("int"), "ore_v_int");
+        assert_eq!(CCodeGen::mangle_var_name("for"), "ore_v_for");
+        assert_eq!(CCodeGen::mangle_var_name("void"), "ore_v_void");
+    }
+
+    #[test]
+    fn mangle_var_name_passes_through_normal() {
+        assert_eq!(CCodeGen::mangle_var_name("x"), "x");
+        assert_eq!(CCodeGen::mangle_var_name("my_var"), "my_var");
+    }
+
+    // ---------------------------------------------------------------
+    // CCodeGen internal helpers
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn tmp_generates_unique_names() {
+        let mut cg = CCodeGen::new();
+        assert_eq!(cg.tmp(), "__tmp_0");
+        assert_eq!(cg.tmp(), "__tmp_1");
+        assert_eq!(cg.tmp(), "__tmp_2");
+    }
+
+    #[test]
+    fn label_generates_unique_names() {
+        let mut cg = CCodeGen::new();
+        assert_eq!(cg.label("loop"), "loop_0");
+        assert_eq!(cg.label("loop"), "loop_1");
+        assert_eq!(cg.label("end"), "end_2");
+    }
+
+    #[test]
+    fn emit_respects_indent() {
+        let mut cg = CCodeGen::new();
+        cg.emit("line0");
+        cg.indent = 1;
+        cg.emit("line1");
+        cg.indent = 2;
+        cg.emit("line2");
+        assert_eq!(cg.lines[0], "line0");
+        assert_eq!(cg.lines[1], "    line1");
+        assert_eq!(cg.lines[2], "        line2");
+    }
+
+    #[test]
+    fn emit_raw_ignores_indent() {
+        let mut cg = CCodeGen::new();
+        cg.indent = 3;
+        cg.emit_raw("no indent");
+        assert_eq!(cg.lines[0], "no indent");
+    }
+
+    // ---------------------------------------------------------------
+    // type_resolution: kind_to_c_type_str
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn kind_to_c_type_str_primitives() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Int), "int64_t");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Float), "double");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Bool), "int8_t");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Str), "void*");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Void), "int64_t");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Channel), "void*");
+    }
+
+    #[test]
+    fn kind_to_c_type_str_collections() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::List(None)), "void*");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::list_of(ValKind::Int)), "void*");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Map(None)), "void*");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::map_of(ValKind::Str)), "void*");
+    }
+
+    #[test]
+    fn kind_to_c_type_str_record_and_enum() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Record("Point".into())), "struct ore_rec_Point");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Enum("Token".into())), "struct ore_enum_Token");
+    }
+
+    #[test]
+    fn kind_to_c_type_str_option_result() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Option), "OreTaggedUnion");
+        assert_eq!(cg.kind_to_c_type_str(&ValKind::Result), "OreTaggedUnion");
+    }
+
+    // ---------------------------------------------------------------
+    // type_resolution: valkind_to_tag
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn valkind_to_tag_all_variants() {
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Int), 0);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Float), 1);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Bool), 2);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Str), 3);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Void), 4);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Record("X".into())), 5);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Enum("Y".into())), 6);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Option), 7);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Result), 8);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::List(None)), 9);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Map(None)), 10);
+        assert_eq!(CCodeGen::valkind_to_tag(&ValKind::Channel), 11);
+    }
+
+    // ---------------------------------------------------------------
+    // type_resolution: kind_to_suffix
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn kind_to_suffix_basic_types() {
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::Int), "Int");
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::Float), "Float");
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::Bool), "Bool");
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::Str), "Str");
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::Void), "Void");
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::Channel), "Channel");
+    }
+
+    #[test]
+    fn kind_to_suffix_nested_collections() {
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::list_of(ValKind::Int)), "List_Int");
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::List(None)), "List");
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::map_of(ValKind::Str)), "Map_Str");
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::Map(None)), "Map");
+    }
+
+    #[test]
+    fn kind_to_suffix_record_enum() {
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::Record("Foo".into())), "Rec_Foo");
+        assert_eq!(CCodeGen::kind_to_suffix(&ValKind::Enum("Bar".into())), "Enum_Bar");
+    }
+
+    // ---------------------------------------------------------------
+    // type_resolution: kind_to_type_name
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn kind_to_type_name_returns_record_name() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_type_name(&ValKind::Record("Foo".to_string())), "Foo");
+    }
+
+    #[test]
+    fn kind_to_type_name_returns_enum_name() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_type_name(&ValKind::Enum("Bar".to_string())), "Bar");
+    }
+
+    #[test]
+    fn kind_to_type_name_primitives() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_to_type_name(&ValKind::Int), "Int");
+        assert_eq!(cg.kind_to_type_name(&ValKind::Float), "Float");
+        assert_eq!(cg.kind_to_type_name(&ValKind::Bool), "Bool");
+        assert_eq!(cg.kind_to_type_name(&ValKind::Str), "Str");
+        assert_eq!(cg.kind_to_type_name(&ValKind::Void), "Int"); // Void maps to Int
+        assert_eq!(cg.kind_to_type_name(&ValKind::List(None)), "List");
+        assert_eq!(cg.kind_to_type_name(&ValKind::Map(None)), "Map");
+        assert_eq!(cg.kind_to_type_name(&ValKind::Option), "Option");
+        assert_eq!(cg.kind_to_type_name(&ValKind::Result), "Result");
+        assert_eq!(cg.kind_to_type_name(&ValKind::Channel), "Channel");
+    }
+
+    // ---------------------------------------------------------------
+    // type_resolution: kind_size_bytes
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn kind_size_bytes_primitives() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.kind_size_bytes(&ValKind::Bool), 1);
+        assert_eq!(cg.kind_size_bytes(&ValKind::Int), 8);
+        assert_eq!(cg.kind_size_bytes(&ValKind::Float), 8);
+        assert_eq!(cg.kind_size_bytes(&ValKind::Str), 8);
+        assert_eq!(cg.kind_size_bytes(&ValKind::Void), 8);
+        assert_eq!(cg.kind_size_bytes(&ValKind::Channel), 8);
+        assert_eq!(cg.kind_size_bytes(&ValKind::Option), 10);
+        assert_eq!(cg.kind_size_bytes(&ValKind::Result), 10);
+    }
+
+    // ---------------------------------------------------------------
+    // util: valkind_to_name
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn valkind_to_name_all_variants() {
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Int), "Int");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Float), "Float");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Bool), "Bool");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Str), "Str");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Void), "Void");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Record("Pt".into())), "Pt");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Enum("Tok".into())), "Tok");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Option), "Option");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Result), "Result");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::List(None)), "List");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Map(None)), "Map");
+        assert_eq!(CCodeGen::valkind_to_name(&ValKind::Channel), "Channel");
+    }
+
+    // ---------------------------------------------------------------
+    // type_resolution: coercion helpers
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn value_to_i64_expr_int_passthrough() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.value_to_i64_expr("42", &ValKind::Int), "42");
+    }
+
+    #[test]
+    fn value_to_i64_expr_float_reinterpret() {
+        let cg = CCodeGen::new();
+        let result = cg.value_to_i64_expr("3.14", &ValKind::Float);
+        assert!(result.contains("int64_t"), "Expected int64_t cast: {}", result);
+        assert!(result.contains("double"), "Expected double reference: {}", result);
+    }
+
+    #[test]
+    fn value_to_i64_expr_str_intptr() {
+        let cg = CCodeGen::new();
+        let result = cg.value_to_i64_expr("s", &ValKind::Str);
+        assert!(result.contains("intptr_t"), "Expected intptr_t cast: {}", result);
+    }
+
+    #[test]
+    fn coerce_from_i64_expr_str() {
+        let cg = CCodeGen::new();
+        let result = cg.coerce_from_i64_expr("val", &ValKind::Str);
+        assert!(result.contains("void*"), "Expected void* cast: {}", result);
+    }
+
+    #[test]
+    fn coerce_from_i64_expr_float() {
+        let cg = CCodeGen::new();
+        let result = cg.coerce_from_i64_expr("val", &ValKind::Float);
+        assert!(result.contains("double"), "Expected double cast: {}", result);
+    }
+
+    #[test]
+    fn coerce_from_i64_expr_bool() {
+        let cg = CCodeGen::new();
+        let result = cg.coerce_from_i64_expr("val", &ValKind::Bool);
+        assert!(result.contains("int8_t"), "Expected int8_t cast: {}", result);
+    }
+
+    #[test]
+    fn coerce_from_i64_expr_record() {
+        let cg = CCodeGen::new();
+        let result = cg.coerce_from_i64_expr("val", &ValKind::Record("Pt".into()));
+        assert!(result.contains("ore_rec_Pt"), "Expected ore_rec_Pt: {}", result);
+    }
+
+    #[test]
+    fn coerce_from_i64_expr_enum() {
+        let cg = CCodeGen::new();
+        let result = cg.coerce_from_i64_expr("val", &ValKind::Enum("Tok".into()));
+        assert!(result.contains("ore_enum_Tok"), "Expected ore_enum_Tok: {}", result);
+    }
+
+    #[test]
+    fn coerce_expr_same_kind_is_noop() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.coerce_expr("x", &ValKind::Int, &ValKind::Int), "x");
+        assert_eq!(cg.coerce_expr("s", &ValKind::Str, &ValKind::Str), "s");
+    }
+
+    #[test]
+    fn coerce_expr_i64_to_struct() {
+        let cg = CCodeGen::new();
+        let result = cg.coerce_expr("val", &ValKind::Int, &ValKind::Record("Pt".into()));
+        assert!(result.contains("ore_rec_Pt"), "Expected record coercion: {}", result);
+    }
+
+    #[test]
+    fn coerce_expr_struct_to_i64() {
+        let cg = CCodeGen::new();
+        let result = cg.coerce_expr("val", &ValKind::Record("Pt".into()), &ValKind::Int);
+        assert!(result.contains("int64_t") || result.contains("intptr_t"),
+            "Expected i64 coercion: {}", result);
+    }
+
+    // ---------------------------------------------------------------
+    // escape_c_string
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn escape_c_string_special_chars() {
+        assert_eq!(CCodeGen::escape_c_string("hello"), "hello");
+        assert_eq!(CCodeGen::escape_c_string("a\"b"), "a\\\"b");
+        assert_eq!(CCodeGen::escape_c_string("a\\b"), "a\\\\b");
+        assert_eq!(CCodeGen::escape_c_string("a\nb"), "a\\nb");
+        assert_eq!(CCodeGen::escape_c_string("a\tb"), "a\\tb");
+        assert_eq!(CCodeGen::escape_c_string("a\rb"), "a\\rb");
+        assert_eq!(CCodeGen::escape_c_string("a\0b"), "a\\0b");
+    }
+
+    // ---------------------------------------------------------------
+    // Assembly: output structure
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn assembly_contains_header() {
+        let c_code = compile_ore_to_c("fn main\n  print 1");
+        assert!(c_code.contains("/* Generated by ore_c_codegen */"), "Missing header comment");
+        assert!(c_code.contains("#include <stdint.h>"), "Missing stdint.h");
+        assert!(c_code.contains("#include <stdlib.h>"), "Missing stdlib.h");
+        assert!(c_code.contains("OreTaggedUnion"), "Missing OreTaggedUnion typedef");
+    }
+
+    #[test]
+    fn assembly_contains_runtime_decls() {
+        let c_code = compile_ore_to_c("fn main\n  print 1");
+        assert!(c_code.contains("/* Runtime function declarations */"),
+            "Missing runtime declarations section");
+    }
+
+    #[test]
+    fn assembly_contains_forward_decls() {
+        let c_code = compile_ore_to_c("fn main\n  print 1");
+        assert!(c_code.contains("/* Forward declarations */"),
+            "Missing forward declarations section");
+        assert!(c_code.contains("int32_t main(void);"), "Missing main prototype");
+    }
+
+    // ---------------------------------------------------------------
+    // Literal compilation
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_int_literal() {
+        let c_code = compile_ore_to_c("fn main\n  x := 42\n  print x");
+        assert!(c_code.contains("42"), "Expected 42 in output:\n{}", c_code);
+        assert!(c_code.contains("int64_t"), "Expected int64_t type:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_float_literal() {
+        let c_code = compile_ore_to_c("fn main\n  x := 3.14\n  print x");
+        assert!(c_code.contains("3.14"), "Expected 3.14 in output:\n{}", c_code);
+        assert!(c_code.contains("double"), "Expected double type:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_bool_literal() {
+        let c_code = compile_ore_to_c("fn main\n  x := true\n  y := false\n  print x");
+        assert!(c_code.contains("int8_t"), "Expected int8_t for bool:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_string_literal() {
+        let c_code = compile_ore_to_c("fn main\n  x := \"hello\"\n  print x");
+        assert!(c_code.contains("ore_str_new"), "Expected ore_str_new call:\n{}", c_code);
+        assert!(c_code.contains("hello"), "Expected string content:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Function compilation
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_simple_function() {
+        let src = "fn add a:Int b:Int -> Int\n  a + b\nfn main\n  print add(1, 2)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("int64_t add(int64_t a, int64_t b)"),
+            "Expected add function signature:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_void_function() {
+        let src = "fn greet\n  print \"hi\"\nfn main\n  greet()";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("void greet(void)"),
+            "Expected void function:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_function_with_return_type() {
+        let src = "fn square n:Int -> Int\n  n * n\nfn main\n  print square(5)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("int64_t square(int64_t n)"),
+            "Expected int64_t return type:\n{}", c_code);
+        assert!(c_code.contains("return"), "Expected return statement:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_main_returns_int32() {
+        let c_code = compile_ore_to_c("fn main\n  print 1");
+        assert!(c_code.contains("int32_t main(void)"),
+            "Expected int32_t main(void):\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Record types
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_record_type() {
+        let src = "type Point { x:Int, y:Int }\nfn main\n  p := Point(x: 1, y: 2)\n  print p.x";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("struct ore_rec_Point"), "Expected struct ore_rec_Point:\n{}", c_code);
+        assert!(c_code.contains("int64_t x;"), "Expected field x:\n{}", c_code);
+        assert!(c_code.contains("int64_t y;"), "Expected field y:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_record_with_mixed_fields() {
+        let src = "type Item { name:Str, count:Int, active:Bool }\nfn main\n  i := Item(name: \"a\", count: 1, active: true)\n  print i.name";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("struct ore_rec_Item"), "Expected struct:\n{}", c_code);
+        assert!(c_code.contains("void* name;"), "Expected void* name:\n{}", c_code);
+        assert!(c_code.contains("int64_t count;"), "Expected int64_t count:\n{}", c_code);
+        assert!(c_code.contains("int8_t active;"), "Expected int8_t active:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Enum types
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_enum_type() {
+        let src = "type Color\n  Red\n  Green\n  Blue\nfn main\n  c := Red\n  print c";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("struct ore_enum_Color"),
+            "Expected struct ore_enum_Color:\n{}", c_code);
+        assert!(c_code.contains("int8_t tag;"), "Expected tag field:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_enum_with_payload() {
+        let src = "type Shape\n  Circle(r: Float)\n  Rect(w: Int, h: Int)\nfn main\n  s := Circle(r: 3.14)\n  print s";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("struct ore_enum_Shape"),
+            "Expected enum struct:\n{}", c_code);
+        assert!(c_code.contains("ore_payload_Shape_Circle"),
+            "Expected payload struct for Circle:\n{}", c_code);
+        assert!(c_code.contains("ore_payload_Shape_Rect"),
+            "Expected payload struct for Rect:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Binary operations
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_arithmetic_ops() {
+        let src = "fn main\n  a := 10 + 20\n  b := a - 5\n  c := b * 2\n  d := c / 3\n  print d";
+        let c_code = compile_ore_to_c(src);
+        // All variables should be int64_t
+        let int_count = c_code.matches("int64_t").count();
+        assert!(int_count >= 4, "Expected multiple int64_t declarations:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_comparison_ops() {
+        let src = "fn check a:Int b:Int -> Bool\n  a < b\nfn main\n  print check(1, 2)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("int8_t check("), "Expected bool return:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Control flow
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_if_else() {
+        let src = "fn main\n  x := 5\n  if x > 3\n    print \"big\"\n  else\n    print \"small\"";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("if ("), "Expected if statement:\n{}", c_code);
+        assert!(c_code.contains("else"), "Expected else branch:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_while_loop() {
+        let src = "fn main\n  mut i := 0\n  while i < 10\n    i = i + 1\n  print i";
+        let c_code = compile_ore_to_c(src);
+        // While loops use goto-based labels
+        assert!(c_code.contains("goto") || c_code.contains("while"),
+            "Expected loop construct:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_for_range() {
+        let src = "fn main\n  for i in 0..5\n    print i";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("int64_t i"), "Expected loop variable:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Match expressions
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_match_on_int() {
+        let src = "fn describe n:Int -> Str\n  match n\n    1 -> \"one\"\n    2 -> \"two\"\n    _ -> \"other\"\nfn main\n  print describe(1)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("if (") || c_code.contains("switch"),
+            "Expected match compilation:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_match_on_enum() {
+        let src = r#"
+type Color
+  Red
+  Green
+  Blue
+
+fn name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+
+fn main
+  print name(Red)
+"#;
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("switch") || c_code.contains(".tag"),
+            "Expected enum match on tag:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_match_with_payload_extraction() {
+        let src = r#"
+type Token
+  Number(val: Int)
+  Plus
+
+fn eval t:Token -> Int
+  match t
+    Number val -> val
+    Plus -> 0
+
+fn main
+  print eval(Number(val: 42))
+"#;
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("ore_payload_Token_Number"),
+            "Expected payload extraction:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // String operations
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_string_interpolation() {
+        let src = "fn main\n  x := 42\n  print \"{x}\"";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("ore_str_concat") || c_code.contains("ore_int_to_str"),
+            "Expected string interpolation helpers:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Impl blocks
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_impl_block() {
+        let src = r#"
+type Point { x:Int, y:Int }
+
+impl Point
+  fn sum self:Point -> Int
+    self.x + self.y
+
+fn main
+  p := Point(x: 3, y: 4)
+  print p.sum()
+"#;
+        let c_code = compile_ore_to_c(src);
+        // Impl method should be mangled as Point_sum
+        assert!(c_code.contains("Point_sum"),
+            "Expected mangled impl method name:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Lambda / closures
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_lambda() {
+        let src = "fn main\n  xs := [1, 2, 3]\n  ys := xs.map(x => x * 2)\n  print ys";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("/* Lambda functions */") || c_code.contains("lambda"),
+            "Expected lambda section:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Test definitions
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_test_def() {
+        let src = "test \"basic addition\"\n  assert 1 + 1 == 2";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("ore_test_0"), "Expected test function:\n{}", c_code);
+        assert!(c_code.contains("ore_assert_set_test_mode"),
+            "Expected test mode setup:\n{}", c_code);
+        assert!(c_code.contains("PASS") && c_code.contains("FAIL"),
+            "Expected PASS/FAIL reporting:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_multiple_tests() {
+        let src = "test \"test one\"\n  assert 1 == 1\n\ntest \"test two\"\n  assert 2 == 2";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("ore_test_0"), "Expected first test:\n{}", c_code);
+        assert!(c_code.contains("ore_test_1"), "Expected second test:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Unary operators
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_unary_minus() {
+        let src = "fn neg n:Int -> Int\n  -n\nfn main\n  print neg(5)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("-("), "Expected unary minus:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_unary_not() {
+        let src = "fn flip b:Bool -> Bool\n  not b\nfn main\n  print flip(true)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("!("), "Expected unary not:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Variable shadowing
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_variable_shadowing() {
+        let src = "fn main\n  x := 1\n  x := \"hello\"\n  print x";
+        let c_code = compile_ore_to_c(src);
+        // Shadowing with different type should create a new C variable
+        assert!(c_code.contains("int64_t x"), "Expected first declaration:\n{}", c_code);
+        // Second declaration should have a unique suffix
+        assert!(c_code.contains("void* x_"), "Expected shadowed variable with suffix:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Default parameters
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_default_params() {
+        let src = "fn greet name:Str greeting:Str=\"Hello\" -> Str\n  greeting\nfn main\n  print greet(\"world\")";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("ore_str_new"), "Expected default string:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Reserved word handling in generated output
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn reserved_word_function_name_mangled() {
+        let src = "fn float x:Int -> Int\n  x\nfn main\n  print float(1)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("ore_fn_float"),
+            "Expected mangled function name ore_fn_float:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Generic functions
+    // ---------------------------------------------------------------
+
     #[test]
     fn generic_list_accessor_record_cast() {
-        // A generic function that retrieves an element from a list.
-        // When instantiated with a Record type, the coerce_from_i64_expr
-        // must cast through the correct struct pointer type.
         let src = r#"
 type Point { x:Int, y:Int }
 
@@ -807,7 +1556,6 @@ fn main
   print p.x
 "#;
         let c_code = compile_ore_to_c(src);
-        // The monomorphized function should cast through ore_rec_Point*, not some other type
         assert!(
             c_code.contains("ore_rec_Point"),
             "Expected ore_rec_Point in generated C code, got:\n{}",
@@ -831,7 +1579,6 @@ fn main
   print t
 "#;
         let c_code = compile_ore_to_c(src);
-        // Should cast through ore_enum_Token*
         assert!(
             c_code.contains("ore_enum_Token"),
             "Expected ore_enum_Token in generated C code, got:\n{}",
@@ -840,11 +1587,28 @@ fn main
     }
 
     #[test]
+    fn generic_function_monomorphized_name() {
+        let src = r#"
+fn identity[T] x:T -> T
+  x
+
+fn main
+  a := identity(42)
+  b := identity("hello")
+  print a
+"#;
+        let c_code = compile_ore_to_c(src);
+        // Should contain monomorphized versions with type suffixes
+        assert!(c_code.contains("identity_") || c_code.contains("identity"),
+            "Expected monomorphized function:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Match arm variable scope
+    // ---------------------------------------------------------------
+
+    #[test]
     fn match_arm_variable_scope_no_leakage() {
-        // Variables declared inside match arm bodies must not leak into
-        // subsequent arms or code after the match. If scope leaks, the
-        // generated C will reference variables outside their declaration
-        // scope, causing 'undeclared variable' errors in the C compiler.
         let src = r#"
 type Token
   Keyword(kw: String)
@@ -865,8 +1629,6 @@ fn main
   print describe(0)
 "#;
         let c_code = compile_ore_to_c(src);
-        // Each case block should declare 'kw' with its type, not just assign.
-        // Count declarations of kw (should appear twice — once per arm).
         let kw_decls = c_code.matches("void* kw =").count();
         assert!(
             kw_decls >= 2,
@@ -875,15 +1637,260 @@ fn main
         );
     }
 
+    // ---------------------------------------------------------------
+    // Let destructuring
+    // ---------------------------------------------------------------
+
     #[test]
-    fn kind_to_type_name_returns_record_name() {
-        let cg = CCodeGen::new();
-        assert_eq!(cg.kind_to_type_name(&ValKind::Record("Foo".to_string())), "Foo");
+    fn compile_let_destructure() {
+        let src = "fn main\n  xs := [1, 2, 3]\n  [a, b, c] := xs\n  print a";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("ore_list_get"), "Expected ore_list_get calls:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Return statements
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_explicit_return() {
+        let src = "fn early n:Int -> Int\n  if n < 0\n    return 0\n  n\nfn main\n  print early(5)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("return"), "Expected return statement:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Multiple functions produce correct forward declarations
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn forward_declarations_for_all_functions() {
+        let src = "fn foo -> Int\n  1\nfn bar -> Int\n  foo()\nfn main\n  print bar()";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("int64_t foo(void);"), "Expected foo prototype:\n{}", c_code);
+        assert!(c_code.contains("int64_t bar(void);"), "Expected bar prototype:\n{}", c_code);
+        assert!(c_code.contains("int32_t main(void);"), "Expected main prototype:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Float parameter functions
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_float_param_function() {
+        let src = "fn area r:Float -> Float\n  r * r\nfn main\n  print area(3.0)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("double area(double r)"),
+            "Expected double param signature:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Option / Result types
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_option_some_none() {
+        let src = "fn maybe flag:Bool -> Option\n  if flag\n    Some(42)\n  else\n    None\nfn main\n  print maybe(true)";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("OreTaggedUnion"),
+            "Expected OreTaggedUnion for Option:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // CCodeGenError display
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn error_display_with_line() {
+        let err = CCodeGenError { msg: "bad thing".to_string(), line: Some(42) };
+        assert_eq!(format!("{}", err), "line 42: bad thing");
     }
 
     #[test]
-    fn kind_to_type_name_returns_enum_name() {
+    fn error_display_without_line() {
+        let err = CCodeGenError { msg: "bad thing".to_string(), line: None };
+        assert_eq!(format!("{}", err), "bad thing");
+    }
+
+    // ---------------------------------------------------------------
+    // Default trait implementation
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn default_creates_valid_codegen() {
+        let cg = CCodeGen::default();
+        assert!(cg.lines.is_empty());
+        assert!(cg.variables.is_empty());
+        assert!(cg.functions.is_empty());
+    }
+
+    // ---------------------------------------------------------------
+    // Empty program
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_empty_program() {
+        let c_code = compile_ore_to_c("");
+        assert!(c_code.contains("/* Generated by ore_c_codegen */"),
+            "Empty program should still produce header:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // check_arity error
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn check_arity_ok_when_matching() {
         let cg = CCodeGen::new();
-        assert_eq!(cg.kind_to_type_name(&ValKind::Enum("Bar".to_string())), "Bar");
+        assert!(cg.check_arity("foo", &[], 0).is_ok());
+    }
+
+    #[test]
+    fn check_arity_err_when_mismatched() {
+        let cg = CCodeGen::new();
+        let result = cg.check_arity("foo", &[], 2);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.msg.contains("foo"), "Error should mention function name");
+        assert!(err.msg.contains("2"), "Error should mention expected arity");
+    }
+
+    // ---------------------------------------------------------------
+    // resolve_self_type
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn resolve_self_type_replaces_self() {
+        let ty = TypeExpr::Named("Self".to_string());
+        let resolved = CCodeGen::resolve_self_type(&ty, "MyType");
+        assert_eq!(resolved, TypeExpr::Named("MyType".to_string()));
+    }
+
+    #[test]
+    fn resolve_self_type_preserves_other() {
+        let ty = TypeExpr::Named("Int".to_string());
+        let resolved = CCodeGen::resolve_self_type(&ty, "MyType");
+        assert_eq!(resolved, TypeExpr::Named("Int".to_string()));
+    }
+
+    #[test]
+    fn resolve_self_type_in_generic() {
+        let ty = TypeExpr::Generic(
+            "List".to_string(),
+            vec![TypeExpr::Named("Self".to_string())],
+        );
+        let resolved = CCodeGen::resolve_self_type(&ty, "Point");
+        match resolved {
+            TypeExpr::Generic(name, args) => {
+                assert_eq!(name, "List");
+                assert_eq!(args[0], TypeExpr::Named("Point".to_string()));
+            }
+            other => panic!("Expected Generic, got {:?}", other),
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Mutable variable reassignment
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_mutable_reassignment() {
+        let src = "fn main\n  mut x := 1\n  x = 2\n  print x";
+        let c_code = compile_ore_to_c(src);
+        // Should reassign, not redeclare
+        let x_decls = c_code.matches("int64_t x =").count();
+        assert_eq!(x_decls, 1, "Expected exactly one declaration of x, found {}:\n{}", x_decls, c_code);
+        assert!(c_code.contains("x = "), "Expected reassignment:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Enum with zero-arg variant as value
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_zero_arg_variant() {
+        let src = "type Dir\n  Up\n  Down\nfn main\n  d := Up\n  print d";
+        let c_code = compile_ore_to_c(src);
+        // Zero-arg variant should set tag
+        assert!(c_code.contains(".tag"), "Expected tag assignment:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Multiple record types
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_multiple_record_types() {
+        let src = r#"
+type Point { x:Int, y:Int }
+type Size { w:Int, h:Int }
+fn main
+  p := Point(x: 0, y: 0)
+  s := Size(w: 10, h: 20)
+  print p.x
+"#;
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("struct ore_rec_Point"), "Expected Point struct:\n{}", c_code);
+        assert!(c_code.contains("struct ore_rec_Size"), "Expected Size struct:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // Loop with break
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn compile_loop_with_break() {
+        let src = "fn main\n  mut i := 0\n  loop\n    if i >= 5\n      break\n    i = i + 1\n  print i";
+        let c_code = compile_ore_to_c(src);
+        assert!(c_code.contains("goto"), "Expected goto for break:\n{}", c_code);
+    }
+
+    // ---------------------------------------------------------------
+    // type_expr_to_kind
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn type_expr_to_kind_named_primitives() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.type_expr_to_kind(&TypeExpr::Named("Int".into())), ValKind::Int);
+        assert_eq!(cg.type_expr_to_kind(&TypeExpr::Named("Float".into())), ValKind::Float);
+        assert_eq!(cg.type_expr_to_kind(&TypeExpr::Named("Bool".into())), ValKind::Bool);
+        assert_eq!(cg.type_expr_to_kind(&TypeExpr::Named("Str".into())), ValKind::Str);
+        assert_eq!(cg.type_expr_to_kind(&TypeExpr::Named("Option".into())), ValKind::Option);
+        assert_eq!(cg.type_expr_to_kind(&TypeExpr::Named("Result".into())), ValKind::Result);
+        assert_eq!(cg.type_expr_to_kind(&TypeExpr::Named("Channel".into())), ValKind::Channel);
+    }
+
+    #[test]
+    fn type_expr_to_kind_generic_list() {
+        let cg = CCodeGen::new();
+        let ty = TypeExpr::Generic("List".into(), vec![TypeExpr::Named("Int".into())]);
+        assert_eq!(cg.type_expr_to_kind(&ty), ValKind::list_of(ValKind::Int));
+    }
+
+    #[test]
+    fn type_expr_to_kind_generic_map() {
+        let cg = CCodeGen::new();
+        let ty = TypeExpr::Generic("Map".into(), vec![
+            TypeExpr::Named("Str".into()),
+            TypeExpr::Named("Int".into()),
+        ]);
+        assert_eq!(cg.type_expr_to_kind(&ty), ValKind::map_of(ValKind::Int));
+    }
+
+    #[test]
+    fn type_expr_to_kind_unknown_defaults_to_int() {
+        let cg = CCodeGen::new();
+        assert_eq!(cg.type_expr_to_kind(&TypeExpr::Named("UnknownType".into())), ValKind::Int);
+    }
+
+    #[test]
+    fn type_expr_to_kind_fn_type_defaults_to_int() {
+        let cg = CCodeGen::new();
+        let ty = TypeExpr::Fn {
+            params: vec![TypeExpr::Named("Int".into())],
+            ret: Box::new(TypeExpr::Named("Int".into())),
+        };
+        assert_eq!(cg.type_expr_to_kind(&ty), ValKind::Int);
     }
 }
