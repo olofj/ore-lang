@@ -935,15 +935,14 @@ fn build_file_c(path: &Path, output: &Path) -> Result<(), String> {
     let mut codegen = ore_c_codegen::CCodeGen::new();
     let c_code = codegen.compile_program(&program).map_err(|e| e.to_string())?;
 
-    // Write C code to temp file
-    let tmp_dir = std::env::temp_dir().join("ore_build");
+    // Write C code to temp file (use output stem for uniqueness under parallel builds)
+    let stem = output.file_stem().unwrap_or_default().to_string_lossy();
+    let tmp_dir = std::env::temp_dir().join(format!("ore_build_{}", stem));
     std::fs::create_dir_all(&tmp_dir)
         .map_err(|e| format!("failed to create temp dir: {}", e))?;
-    let c_path = tmp_dir.join("output.c");
+    let c_path = tmp_dir.join(format!("{}.c", stem));
     std::fs::write(&c_path, &c_code)
         .map_err(|e| format!("failed to write C file: {}", e))?;
-    // Debug: save a copy of the generated C code
-    let _ = std::fs::write(tmp_dir.join("output_debug.c"), &c_code);
 
     // Find the ore_runtime staticlib
     let runtime_lib = find_runtime_staticlib()?;
