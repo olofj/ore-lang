@@ -583,14 +583,17 @@ impl CCodeGen {
         }
 
         // After compiling the body, if the function returns List(None) or Map(None),
-        // try to infer element/value kinds from the last expression. Only infer from
-        // the actual return variable, not from any list in the function.
+        // try to infer element/value kinds from the last expression. Check named
+        // return variables, inline list literals, and function calls with known kinds.
         if matches!(fn_info.ret_kind, ValKind::List(None))
             && !self.fn_return_list_elem_kind.contains_key(&fndef.name) {
-                if let Some(name) = Self::find_return_ident(&fndef.body) {
-                    if let Some(ek) = self.list_element_kinds.get(&name) {
-                        self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek.clone());
-                    }
+                // Try named return variable first
+                let inferred = Self::find_return_ident(&fndef.body)
+                    .and_then(|name| self.list_element_kinds.get(&name).cloned());
+                // Then try inline list literals and function calls
+                let inferred = inferred.or_else(|| self.find_return_list_elem_kind(&fndef.body));
+                if let Some(ek) = inferred {
+                    self.fn_return_list_elem_kind.insert(fndef.name.clone(), ek);
                 }
             }
         if matches!(fn_info.ret_kind, ValKind::Map(None))
@@ -767,6 +770,63 @@ impl CCodeGen {
         } else {
             None
         }
+    }
+
+    /// Infer the list element kind from the return position of a function body.
+    /// Handles: inline list literals, function calls with known return elem kinds,
+    /// return statements with list literals, and if/else branches.
+    fn find_return_list_elem_kind(&self, block: &Block) -> std::option::Option<ValKind> {
+        if let Some(last) = block.stmts.last() {
+            match &last.stmt {
+                Stmt::Expr(Expr::ListLit(elements)) | Stmt::Return(Some(Expr::ListLit(elements))) => {
+                    Self::infer_list_literal_elem_kind(elements)
+                }
+                Stmt::Expr(Expr::Call { func, .. }) | Stmt::Return(Some(Expr::Call { func, .. })) => {
+                    if let Expr::Ident(fn_name) = func.as_ref() {
+                        self.fn_return_list_elem_kind.get(fn_name).cloned()
+                    } else {
+                        None
+                    }
+                }
+                Stmt::Expr(Expr::IfElse { then_block, else_block, .. }) => {
+                    self.find_return_list_elem_kind(then_block)
+                        .or_else(|| else_block.as_ref().and_then(|eb| self.find_return_list_elem_kind(eb)))
+                }
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Infer element kind from a list literal's elements (statically).
+    fn infer_list_literal_elem_kind(elements: &[Expr]) -> std::option::Option<ValKind> {
+        if elements.is_empty() {
+            return None;
+        }
+        // Check if all elements are string literals or string expressions
+        let mut all_str = true;
+        for e in elements {
+            match e {
+                Expr::StringLit(_) | Expr::StringInterp(_) => {}
+                _ => { all_str = false; break; }
+            }
+        }
+        if all_str {
+            return Some(ValKind::Str);
+        }
+        // Check if all elements are int literals
+        let mut all_int = true;
+        for e in elements {
+            match e {
+                Expr::IntLit(_) => {}
+                _ => { all_int = false; break; }
+            }
+        }
+        if all_int {
+            return Some(ValKind::Int);
+        }
+        None
     }
 
     fn track_variable_kinds(&mut self, name: &str, kind: &ValKind) {
