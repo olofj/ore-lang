@@ -41,6 +41,12 @@ use types
 --  23: exprs_pool (List, the exprs arena)
 --  24: stmts_pool (List, the stmts arena)
 --  25: deferred_fns (List[Str]) -- lines for monomorphized functions emitted out-of-order
+--  26: record_field_kinds
+--  27: variant_field_kinds
+--  28: current_fn_ret_kind (single element)
+--  29: compiled_fns (dedup guard for compile_fn_def)
+--  30: fn_param_names (List[Str]) -- parallel to 31
+--  31: fn_param_kinds_strs (List[Str]) -- comma-separated param kinds per function
 
 fn cg_new -> List
   mut st := []
@@ -74,6 +80,8 @@ fn cg_new -> List
   st.push([])       -- 27: variant_field_kinds
   st.push(["void"]) -- 28: current_fn_ret_kind (single element)
   st.push([])       -- 29: compiled_fns (dedup guard for compile_fn_def)
+  st.push([])       -- 30: fn_param_names (parallel to 31)
+  st.push([])       -- 31: fn_param_kinds_strs (comma-separated param kinds per function)
   st
 
 fn cg_list st:List idx:Int -> List
@@ -184,6 +192,20 @@ fn cg_set_fn st:List name:Str ret_kind:Str
   rets := cg_list(st, 7)
   fns.push(name)
   rets.push(ret_kind)
+
+fn cg_set_fn_params st:List name:Str param_kinds_str:Str
+  cg_list(st, 30).push(name)
+  cg_list(st, 31).push(param_kinds_str)
+
+fn cg_get_fn_params st:List name:Str -> Str
+  names := cg_list(st, 30)
+  kinds := cg_list(st, 31)
+  mut i := names.len() - 1
+  while i >= 0
+    if str_at(names, i) == name
+      return str_at(kinds, i)
+    i = i - 1
+  ""
 
 fn cg_get_fn_ret st:List name:Str -> Str
   fns := cg_list(st, 6)
@@ -413,6 +435,39 @@ fn coerce_from_i64_expr val:Str kind:Str -> Str
   if kind == "float"
     return "*(double*)&(int64_t)\{{val}}"
   val
+
+-- Coerce an argument expression to match a parameter's expected type.
+-- Handles int64_t -> struct (enum/record) and struct -> int64_t conversions.
+fn coerce_arg_to_param st:List expr:Str arg_kind:Str param_kind:Str -> Str
+  if arg_kind == param_kind
+    return expr
+  -- Treat dynamic kinds as int64_t for coercion purposes
+  mut effective_arg_kind := arg_kind
+  if arg_kind.starts_with("dynamic:")
+    effective_arg_kind = "int"
+  -- int64_t arg where struct param is expected: dereference heap pointer
+  mut arg_is_i64 := effective_arg_kind == "int" or effective_arg_kind == "void"
+  mut param_is_struct := param_kind.starts_with("enum:") or param_kind.starts_with("rec:")
+  if arg_is_i64 and param_is_struct
+    return coerce_from_i64_expr(expr, param_kind)
+  -- struct arg where int64_t param is expected: box to heap
+  mut arg_is_struct := effective_arg_kind.starts_with("enum:") or effective_arg_kind.starts_with("rec:")
+  mut param_is_i64 := param_kind == "int" or param_kind == "void"
+  if arg_is_struct and param_is_i64
+    return value_to_i64_expr(st, expr, arg_kind)
+  -- str arg where int64_t param is expected
+  if effective_arg_kind == "str" and param_is_i64
+    return "(int64_t)(intptr_t)({expr})"
+  -- int64_t arg where str param is expected
+  if arg_is_i64 and param_kind == "str"
+    return "(void*)(intptr_t)({expr})"
+  -- int64_t arg where list/map param is expected
+  if arg_is_i64 and (param_kind == "list" or param_kind == "map")
+    return "(void*)(intptr_t)({expr})"
+  -- list/map arg where int64_t param is expected
+  if (effective_arg_kind == "list" or effective_arg_kind == "map") and param_is_i64
+    return "(int64_t)(intptr_t)({expr})"
+  expr
 
 fn type_expr_to_kind_str st:List te:TypeExpr -> Str
   match te
@@ -1126,9 +1181,20 @@ fn compile_fn_call_with_args st:List fname:Str arg_strs:List arg_kinds:List -> L
   -- Check for generic function monomorphization
   if cg_has_generic_fn(st, fname)
     return compile_generic_call(st, fname, arg_strs, arg_kinds)
-  -- Regular function call
+  -- Regular function call — coerce args to expected param types
   mn := mangle_fn(fname)
-  all_args := arg_strs.join(", ")
+  param_kinds_str := cg_get_fn_params(st, fname)
+  mut coerced_args := []
+  if param_kinds_str != ""
+    pk_list := param_kinds_str.split(",")
+    for i in 0..arg_strs.len()
+      if i < pk_list.len()
+        coerced_args.push(coerce_arg_to_param(st, str_at(arg_strs, i), str_at(arg_kinds, i), str_at(pk_list, i)))
+      else
+        coerced_args.push(str_at(arg_strs, i))
+  else
+    coerced_args = arg_strs
+  all_args := coerced_args.join(", ")
   ret_kind := cg_get_fn_ret(st, fname)
   ["{mn}({all_args})", ret_kind]
 
@@ -1489,13 +1555,22 @@ fn compile_let st:List exprs:List stmts:List name:Str mutable:Bool value:Int -> 
 fn compile_assign st:List exprs:List stmts:List name:Str value:Int -> List
   r := compile_expr(st, exprs, stmts, value)
   mn := mangle_var(name)
-  emit(st, "{mn} = {r[0]};")
-  new_kind := r[1]
+  new_kind := str_at(r, 1)
+  -- Coerce RHS to match existing variable kind if needed
+  existing_kind := cg_get_var_kind(st, name)
+  if existing_kind != "int" and new_kind == "int"
+    -- Preserve existing (more specific) kind through temporary assignments
+    coerced := coerce_from_i64_expr(r[0], existing_kind)
+    emit(st, "{mn} = {coerced};")
+  else
+    emit(st, "{mn} = {r[0]};")
   -- Don't overwrite with dynamic kind: the dynamic temp var may be scoped
   -- to an inner block (e.g. inside if/else) and referencing it later would
   -- produce an undeclared variable error in the generated C.
   if not new_kind.starts_with("dynamic:")
-    cg_set_var(st, name, new_kind)
+    -- Preserve existing more-specific kind when new_kind is generic int
+    if new_kind != "int" or existing_kind == "int"
+      cg_set_var(st, name, new_kind)
   ["", "void"]
 
 -- ── Index assign ──
@@ -2039,6 +2114,27 @@ fn match_temp_c_type kind:Str -> Str
 
 fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
   subj := compile_expr(st, exprs, stmts, subject)
+  -- If subject is int64_t but arms match enum variants, coerce subject to enum type
+  subj_kind := str_at(subj, 1)
+  if subj_kind == "int" or subj_kind == "void"
+    -- Scan arms for VariantPat to infer enum type
+    mut inferred_enum := ""
+    for ii in 0..arms.len()
+      if inferred_enum == ""
+        scan_arm := get_match_arm(arms, ii)
+        match scan_arm.pattern
+          VariantPat vname _ ->
+            ven := cg_variant_enum(st, vname)
+            if ven != ""
+              inferred_enum = ven
+          _ ->
+            0
+    if inferred_enum != ""
+      -- Cast subject from int64_t to enum struct
+      cast_tmp := cg_tmp(st)
+      ect := kind_to_c_type("enum:{inferred_enum}")
+      emit(st, "{ect} {cast_tmp} = *(struct ore_enum_{inferred_enum}*)(intptr_t)({subj[0]});")
+      subj = [cast_tmp, "enum:{inferred_enum}"]
   t := cg_tmp(st)
   -- Emit placeholder declaration; will be patched after first arm reveals type
   decl_pos := cg_lines(st).len()
@@ -2230,7 +2326,12 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
             mut kw := "if"
             if not first
               kw = "else if"
-            emit(st, "{kw} ({subj[0]}.tag == {vtag}) \{")
+            -- If subject is int64_t (from list), cast to enum struct
+            mut subj_expr := subj[0]
+            subj_kind := str_at(subj, 1)
+            if subj_kind == "int" or subj_kind == "void"
+              subj_expr = coerce_from_i64_expr(subj[0], "enum:{en}")
+            emit(st, "{kw} ({subj_expr}.tag == {vtag}) \{")
             cg_inc_indent(st)
             -- Bind variant fields with proper type tracking
             for j in 0..bindings.len()
@@ -2238,7 +2339,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
               mn := mangle_var(bname)
               fk := cg_get_variant_field_kind(st, name, j)
               ct := kind_to_c_type(fk)
-              coerced := coerce_from_i64_expr("{subj[0]}.data[{j}]", fk)
+              coerced := coerce_from_i64_expr("{subj_expr}.data[{j}]", fk)
               emit(st, "{ct} {mn} = {coerced};")
               cg_set_var(st, bname, fk)
             br := compile_expr(st, exprs, stmts, body_id)
@@ -2810,18 +2911,22 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   cg_list(st, 28)[0] = ret_kind
   -- Save variables state (just track count to restore)
   saved_var_count := cg_list(st, 4).len()
-  -- Build parameter signature
+  -- Build parameter signature and collect param kinds
   mn := mangle_fn(name)
   mut param_sig := ""
+  mut param_kinds_parts := []
   for i in 0..params.len()
     p := get_param_def(params, i)
     pk := type_expr_to_kind_str(st, p.ty)
     pc := kind_to_c_type(pk)
     pn := mangle_var(p.name)
+    param_kinds_parts.push(pk)
     if i > 0
       param_sig = param_sig + ", "
     param_sig = param_sig + "{pc} {pn}"
     cg_set_var(st, p.name, pk)
+  -- Register parameter kinds for arg coercion at call sites
+  cg_set_fn_params(st, name, param_kinds_parts.join(","))
   -- Emit forward declaration
   cg_list(st, 8).push("{ret_c} {mn}({param_sig});")
   -- Emit function body
