@@ -604,6 +604,15 @@ fn parse_stmt s:List -> Int
       s_alloc_stmt(s, ExprStmt(expr: s_alloc_expr(s, AssertNeExpr(left: lid, right: rid, message: msg))))
     IdentTok _ ->
       parse_ident_stmt(s)
+    IfTok ->
+      -- Parse if as standalone statement, bypassing postfix loop
+      -- to prevent bare [ on next line being treated as indexing
+      eid := parse_prefix(s)
+      s_alloc_stmt(s, ExprStmt(expr: eid))
+    MatchTok ->
+      -- Same treatment as if - prevent postfix [ consumption
+      eid := parse_prefix(s)
+      s_alloc_stmt(s, ExprStmt(expr: eid))
     _ ->
       eid := parse_expr(s, 0)
       s_alloc_stmt(s, ExprStmt(expr: eid))
