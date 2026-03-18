@@ -1916,6 +1916,10 @@ fn is_list_method method:Str -> Bool
     return true
   if method == "all" or method == "last" or method == "len"
     return true
+  if method == "first" or method == "get" or method == "set"
+    return true
+  if method == "contains" or method == "reverse"
+    return true
   false
 
 fn is_map_method method:Str -> Bool
@@ -2044,6 +2048,10 @@ fn compile_list_method st:List obj:Str method:Str args:List kinds:List -> List
   if method == "all"
     cp := parse_closure_expr(args[0])
     return ["ore_list_all({obj}, {cp[0]}, {cp[1]})", "bool"]
+  if method == "last"
+    return ["ore_list_get({obj}, -1)", "int"]
+  if method == "first"
+    return ["ore_list_get({obj}, 0)", "int"]
   cg_error(st, "unknown list method: {method}")
   ["0", "int"]
 
