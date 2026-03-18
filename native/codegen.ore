@@ -716,6 +716,7 @@ fn emit_runtime_decls st:List
   emit_raw(st, "extern double ore_str_to_float(void*);")
   emit_raw(st, "extern void* ore_str_reverse(void*);")
   emit_raw(st, "extern void* ore_str_char_at(void*, int64_t);")
+  emit_raw(st, "extern int64_t ore_str_index_of(void*, void*);")
   emit_raw(st, "extern int64_t ore_ord(void*);")
   emit_raw(st, "extern void* ore_chr(int64_t);")
   -- Assert
@@ -1558,8 +1559,26 @@ fn compile_assign st:List exprs:List stmts:List name:Str value:Int -> List
   new_kind := str_at(r, 1)
   -- Coerce RHS to match existing variable kind if needed
   existing_kind := cg_get_var_kind(st, name)
-  if existing_kind != "int" and new_kind == "int"
-    -- Preserve existing (more specific) kind through temporary assignments
+  -- Normalize dynamic kinds to int for cast determination
+  mut effective_new := new_kind
+  if new_kind.starts_with("dynamic:")
+    effective_new = "int"
+  mut effective_existing := existing_kind
+  if existing_kind.starts_with("dynamic:")
+    effective_existing = "int"
+  -- Check if C types differ between variable and value
+  mut existing_is_ptr := effective_existing == "str" or effective_existing == "list" or effective_existing == "map"
+  mut new_is_ptr := effective_new == "str" or effective_new == "list" or effective_new == "map"
+  mut existing_is_i64 := effective_existing == "int" or effective_existing == "void"
+  mut new_is_i64 := effective_new == "int" or effective_new == "void"
+  if existing_is_ptr and new_is_i64
+    -- int64_t value → void* variable: cast to pointer
+    coerced := coerce_from_i64_expr(r[0], existing_kind)
+    emit(st, "{mn} = {coerced};")
+  else if existing_is_i64 and new_is_ptr
+    -- void* value → int64_t variable: cast to integer
+    emit(st, "{mn} = (int64_t)(intptr_t)({r[0]});")
+  else if (existing_kind.starts_with("enum:") or existing_kind.starts_with("rec:")) and new_is_i64
     coerced := coerce_from_i64_expr(r[0], existing_kind)
     emit(st, "{mn} = {coerced};")
   else
@@ -2940,7 +2959,10 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   else if ret_kind != "void" and block_result[0] != ""
     -- Coerce block result to function return type if needed
     bk := block_result[1]
-    if bk != ret_kind and (ret_kind.starts_with("enum:") or ret_kind.starts_with("rec:"))
+    mut effective_bk := bk
+    if bk.starts_with("dynamic:")
+      effective_bk = "int"
+    if effective_bk != ret_kind
       coerced := coerce_from_i64_expr(block_result[0], ret_kind)
       emit(st, "return {coerced};")
     else
@@ -3055,6 +3077,14 @@ fn generate items:List exprs:List stmts:List -> Str
           -- Pre-register functions so calls resolve
           ret_kind := type_expr_to_kind_str(st, fn_def.ret_type)
           cg_set_fn(st, fn_def.name, ret_kind)
+          -- Pre-register param kinds so arg coercion works for forward-referenced fns
+          mut pk_parts := []
+          fn_params := fn_def.params
+          for j in 0..fn_params.len()
+            p := get_param_def(fn_params, j)
+            pk := type_expr_to_kind_str(st, p.ty)
+            pk_parts.push(pk)
+          cg_set_fn_params(st, fn_def.name, pk_parts.join(","))
       ImplBlockItem type_name methods ->
         -- Pre-register impl methods
         for j in 0..methods.len()
@@ -3062,6 +3092,14 @@ fn generate items:List exprs:List stmts:List -> Str
           mangled := mangle_impl_method(type_name, m)
           ret_kind := type_expr_to_kind_str(st, mangled.ret_type)
           cg_set_fn(st, mangled.name, ret_kind)
+          -- Pre-register param kinds
+          mut pk_parts := []
+          impl_params := mangled.params
+          for k in 0..impl_params.len()
+            p := get_param_def(impl_params, k)
+            pk := type_expr_to_kind_str(st, p.ty)
+            pk_parts.push(pk)
+          cg_set_fn_params(st, mangled.name, pk_parts.join(","))
       ImplTraitItem trait_name type_name methods ->
         -- Pre-register impl trait methods
         for j in 0..methods.len()
@@ -3069,6 +3107,14 @@ fn generate items:List exprs:List stmts:List -> Str
           mangled := mangle_impl_method(type_name, m)
           ret_kind := type_expr_to_kind_str(st, mangled.ret_type)
           cg_set_fn(st, mangled.name, ret_kind)
+          -- Pre-register param kinds
+          mut pk_parts := []
+          trait_params := mangled.params
+          for k in 0..trait_params.len()
+            p := get_param_def(trait_params, k)
+            pk := type_expr_to_kind_str(st, p.ty)
+            pk_parts.push(pk)
+          cg_set_fn_params(st, mangled.name, pk_parts.join(","))
       _ ->
         -- skip other items in first pass
         0
