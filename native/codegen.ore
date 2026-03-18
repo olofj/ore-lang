@@ -1765,18 +1765,35 @@ fn compile_method_call st:List exprs:List stmts:List object:Int method:Str args:
   -- Option/Result methods
   if kind == "option" or kind == "result"
     return compile_option_method(st, obj[0], kind, method, arg_strs, arg_kinds)
+  -- Int methods (kind is genuinely "int")
+  if kind == "int"
+    if is_int_method(method)
+      return compile_int_method(st, obj[0], method, arg_strs, arg_kinds)
+    -- Int value but method belongs to another type: infer from method name
+    if is_str_method(method)
+      return compile_str_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
+    if is_list_method(method)
+      return compile_list_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
+    if is_map_method(method)
+      return compile_map_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
+    cg_error(st, "unknown method '{method}' on int")
+    return ["0", "int"]
+  -- Float methods
+  if kind == "float"
+    if is_float_method(method)
+      return compile_float_method(st, obj[0], method, arg_strs, arg_kinds)
+    cg_error(st, "unknown method '{method}' on float")
+    return ["0", "int"]
   -- Unknown type: try to infer from method name
   if is_str_method(method)
     -- Cast from int64_t to void* for string methods
     return compile_str_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
   if is_list_method(method)
     return compile_list_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
-  -- Default: treat as direct method
-  all_args := arg_strs.join(", ")
-  if all_args != ""
-    ["{obj[0]}.{method}({all_args})", "int"]
-  else
-    ["{obj[0]}.{method}()", "int"]
+  if is_map_method(method)
+    return compile_map_method(st, "(void*)(intptr_t)({obj[0]})", method, arg_strs, arg_kinds)
+  cg_error(st, "unknown method '{method}' on type '{kind}'")
+  ["0", "int"]
 
 -- ── Method inference helpers ──
 
@@ -1791,7 +1808,7 @@ fn is_str_method method:Str -> Bool
     return true
   if method == "char_at" or method == "to_int" or method == "to_float"
     return true
-  if method == "index_of"
+  if method == "index_of" or method == "len"
     return true
   false
 
@@ -1815,6 +1832,67 @@ fn is_list_method method:Str -> Bool
   if method == "all" or method == "last"
     return true
   false
+
+fn is_map_method method:Str -> Bool
+  if method == "set" or method == "get" or method == "get_or"
+    return true
+  if method == "keys" or method == "values" or method == "entries"
+    return true
+  if method == "merge" or method == "remove"
+    return true
+  false
+
+fn is_int_method method:Str -> Bool
+  if method == "to_str" or method == "abs" or method == "pow"
+    return true
+  false
+
+fn is_float_method method:Str -> Bool
+  if method == "abs" or method == "sqrt" or method == "round"
+    return true
+  if method == "floor" or method == "ceil" or method == "to_str"
+    return true
+  if method == "round_to" or method == "format" or method == "to_int"
+    return true
+  false
+
+-- ── Int methods ──
+
+fn compile_int_method st:List obj:Str method:Str args:List kinds:List -> List
+  if method == "to_str"
+    return ["ore_int_to_str((int64_t)({obj}))", "str"]
+  if method == "abs"
+    t := cg_tmp(st)
+    emit(st, "int64_t {t} = ({obj}); if ({t} < 0) {t} = -{t};")
+    return [t, "int"]
+  if method == "pow"
+    return ["ore_int_pow((int64_t)({obj}), (int64_t)({args[0]}))", "int"]
+  cg_error(st, "unknown int method: {method}")
+  ["0", "int"]
+
+-- ── Float methods ──
+
+fn compile_float_method st:List obj:Str method:Str args:List kinds:List -> List
+  if method == "abs"
+    return ["ore_math_abs((double)({obj}))", "float"]
+  if method == "sqrt"
+    return ["ore_math_sqrt((double)({obj}))", "float"]
+  if method == "round"
+    return ["ore_math_round((double)({obj}))", "float"]
+  if method == "floor"
+    return ["ore_math_floor((double)({obj}))", "float"]
+  if method == "ceil"
+    return ["ore_math_ceil((double)({obj}))", "float"]
+  if method == "round_to"
+    return ["ore_float_round_to((double)({obj}), {args[0]})", "float"]
+  if method == "format"
+    return ["ore_float_format((double)({obj}), {args[0]})", "str"]
+  if method == "to_str"
+    return ["ore_float_to_str((double)({obj}))", "str"]
+  if method == "to_int"
+    return ["(int64_t)({obj})", "int"]
+  cg_error(st, "unknown float method: {method}")
+  ["0", "int"]
 
 -- ── String methods ──
 
