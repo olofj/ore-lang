@@ -900,7 +900,54 @@ fn parse_if_expr s:List -> Int
   cid := parse_expr(s, 0)
   if s_has_error(s)
     return -1
-  -- Block form only (inline then/else omitted for now)
+  -- Inline form: if cond then expr [else expr]
+  if p_at(s, "then")
+    p_skip(s)
+    line := p_peek_line(s)
+    then_id := parse_expr(s, 0)
+    if s_has_error(s)
+      return -1
+    tsid := s_alloc_stmt(s, ExprStmt(expr: then_id))
+    tblock := Block(stmts: [SpannedStmt(stmt_id: tsid, line: line)])
+    -- Look ahead through indent/dedent/newline to find else
+    p_skip_nl(s)
+    saved_pos := s_pos(s)
+    mut depth := 0
+    mut found_else := false
+    loop
+      t := p_peek(s)
+      if p_is_indent(t)
+        depth = depth + 1
+        p_skip(s)
+      else if p_is_dedent(t)
+        depth = depth - 1
+        p_skip(s)
+      else if p_is_newline(t)
+        p_skip(s)
+      else
+        break
+    if p_at(s, "else")
+      found_else = true
+    if not found_else
+      s_set_pos(s, saved_pos)
+      return s_alloc_expr(s, IfElseExpr(cond: cid, then_block: tblock, else_block: Block(stmts: [])))
+    p_skip(s)
+    eline := p_peek_line(s)
+    else_id := parse_expr(s, 0)
+    if s_has_error(s)
+      return -1
+    esid := s_alloc_stmt(s, ExprStmt(expr: else_id))
+    eblock := Block(stmts: [SpannedStmt(stmt_id: esid, line: eline)])
+    -- Consume matching dedent tokens
+    p_skip_nl(s)
+    mut i := 0
+    while i < depth
+      if p_is_dedent(p_peek(s))
+        p_skip(s)
+        p_skip_nl(s)
+      i = i + 1
+    return s_alloc_expr(s, IfElseExpr(cond: cid, then_block: tblock, else_block: eblock))
+  -- Block form: if cond\n  body\nelse\n  body
   p_skip_nl(s)
   mut tstmts := []
   parse_block(s, tstmts)
