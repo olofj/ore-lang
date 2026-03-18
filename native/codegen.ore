@@ -73,6 +73,7 @@ fn cg_new -> List
   st.push([])       -- 26: record_field_kinds
   st.push([])       -- 27: variant_field_kinds
   st.push(["void"]) -- 28: current_fn_ret_kind (single element)
+  st.push([])       -- 29: compiled_fns (dedup guard for compile_fn_def)
   st
 
 fn cg_list st:List idx:Int -> List
@@ -2783,11 +2784,12 @@ fn compile_enum_def st:List ed:EnumDefNode
 
 fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   name := fd.name
-  -- Skip duplicate function definitions
-  fns := cg_list(st, 6)
-  for i in 0..fns.len()
-    if fns[i] == name
+  -- Skip duplicate function definitions (use separate compiled_fns list, not fn registry)
+  compiled := cg_list(st, 29)
+  for i in 0..compiled.len()
+    if compiled[i] == name
       return
+  compiled.push(name)
   params := fd.params
   body := fd.body
   ret_te := fd.ret_type
