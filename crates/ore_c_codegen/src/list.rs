@@ -12,7 +12,13 @@ impl CCodeGen {
             "push" => {
                 let (arg, arg_kind) = self.compile_expr(&args[0])?;
                 let i64_val = self.value_to_i64_expr(&arg, &arg_kind);
-                self.emit(&format!("ore_list_push({}, {});", list_val, i64_val));
+                let tag = Self::valkind_to_tag(&arg_kind);
+                if tag == 0 {
+                    // KIND_INT — use untyped push (no kinds-array overhead)
+                    self.emit(&format!("ore_list_push({}, {});", list_val, i64_val));
+                } else {
+                    self.emit(&format!("ore_list_push_typed({}, {}, {});", list_val, i64_val, tag));
+                }
                 Ok((list_val.to_string(), ValKind::list_of(arg_kind)))
             }
             "pop" => {
@@ -265,7 +271,12 @@ impl CCodeGen {
         for elem in elements {
             let (val, kind) = self.compile_expr(elem)?;
             let i64_val = self.value_to_i64_expr(&val, &kind);
-            self.emit(&format!("ore_list_push({}, {});", tmp, i64_val));
+            let tag = Self::valkind_to_tag(&kind);
+            if tag == 0 {
+                self.emit(&format!("ore_list_push({}, {});", tmp, i64_val));
+            } else {
+                self.emit(&format!("ore_list_push_typed({}, {}, {});", tmp, i64_val, tag));
+            }
             elem_kind = Some(kind);
         }
 
@@ -299,7 +310,12 @@ impl CCodeGen {
 
         let (body_val, body_kind) = self.compile_expr(body)?;
         let push_val = self.value_to_i64_expr(&body_val, &body_kind);
-        self.emit(&format!("ore_list_push({}, {});", result_tmp, push_val));
+        let tag = Self::valkind_to_tag(&body_kind);
+        if tag == 0 {
+            self.emit(&format!("ore_list_push({}, {});", result_tmp, push_val));
+        } else {
+            self.emit(&format!("ore_list_push_typed({}, {}, {});", result_tmp, push_val, tag));
+        }
 
         self.indent -= 1;
         self.emit("}");

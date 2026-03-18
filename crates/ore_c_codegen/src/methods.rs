@@ -227,10 +227,42 @@ impl CCodeGen {
 
         match obj_kind {
             ValKind::List(ref ek) => {
-                let elem_kind = ek.as_ref().map(|k| k.as_ref().clone()).unwrap_or(ValKind::Int);
+                // Try to resolve the element kind: explicit annotation > variable tracking > function return tracking
+                let resolved_elem_kind = ek.as_ref().map(|k| k.as_ref().clone())
+                    .or_else(|| {
+                        if let Expr::Ident(ref name) = object {
+                            self.list_element_kinds.get(name).cloned()
+                        } else {
+                            None
+                        }
+                    })
+                    .or_else(|| {
+                        if let Expr::Call { func, .. } = object {
+                            if let Expr::Ident(ref fn_name) = func.as_ref() {
+                                self.fn_return_list_elem_kind.get(fn_name).cloned()
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    });
+
                 let raw = format!("ore_list_get({}, {})", obj_val, idx_val);
-                let typed = self.coerce_from_i64_expr(&raw, &elem_kind);
-                Ok((typed, elem_kind))
+
+                if let Some(elem_kind) = resolved_elem_kind {
+                    // Known element type — coerce and return
+                    let typed = self.coerce_from_i64_expr(&raw, &elem_kind);
+                    Ok((typed, elem_kind))
+                } else {
+                    // Unknown element type — store runtime kind tag for dynamic dispatch
+                    let val_tmp = self.tmp();
+                    self.emit(&format!("int64_t {} = {};", val_tmp, raw));
+                    let kind_tmp = self.tmp();
+                    self.emit(&format!("int8_t {} = ore_list_get_kind({}, {});", kind_tmp, obj_val, idx_val));
+                    self.dynamic_kind_exprs.insert(val_tmp.clone(), kind_tmp);
+                    Ok((val_tmp, ValKind::Int))
+                }
             }
             ValKind::Map(_) => {
                 let val_kind = obj_kind.map_val_kind().cloned().unwrap_or(ValKind::Int);

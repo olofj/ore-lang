@@ -754,6 +754,10 @@ impl CCodeGen {
     }
 
     pub(crate) fn value_to_str_expr(&mut self, val: &str, kind: &ValKind) -> String {
+        // Check for runtime kind tag (from untyped list element access)
+        if let Some(kind_var) = self.dynamic_kind_exprs.remove(val) {
+            return format!("ore_dynamic_to_str({}, {})", val, kind_var);
+        }
         match kind {
             ValKind::Str => val.to_string(),
             ValKind::Int => format!("ore_int_to_str({})", val),

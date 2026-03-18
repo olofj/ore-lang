@@ -23,6 +23,8 @@ pub struct OreList {
     pub len: i64,
     pub cap: i64,
     pub data: *mut i64,
+    /// Per-element kind tags (parallel to `data`).  NULL means "all KIND_INT".
+    pub kinds: *mut i8,
 }
 
 impl OreList {
@@ -57,7 +59,38 @@ pub extern "C" fn ore_list_new() -> *mut OreList {
         (*list).len = 0;
         (*list).cap = 0;
         (*list).data = std::ptr::null_mut();
+        (*list).kinds = std::ptr::null_mut();
         list
+    }
+}
+
+/// Grow both `data` and `kinds` arrays when capacity is exceeded.
+unsafe fn list_grow(list: &mut OreList) {
+    let new_cap = if list.cap == 0 { 4 } else { list.cap * 2 };
+    let new_layout = std::alloc::Layout::array::<i64>(new_cap as usize).unwrap();
+    let new_data = if list.data.is_null() {
+        std::alloc::alloc(new_layout) as *mut i64
+    } else {
+        let old_layout = std::alloc::Layout::array::<i64>(list.cap as usize).unwrap();
+        std::alloc::realloc(list.data as *mut u8, old_layout, new_layout.size()) as *mut i64
+    };
+    list.data = new_data;
+    // Grow kinds array in parallel if it exists
+    if !list.kinds.is_null() {
+        let new_k_layout = std::alloc::Layout::array::<i8>(new_cap as usize).unwrap();
+        let old_k_layout = std::alloc::Layout::array::<i8>(list.cap as usize).unwrap();
+        list.kinds = std::alloc::realloc(list.kinds as *mut u8, old_k_layout, new_k_layout.size()) as *mut i8;
+        // Zero-fill new slots (KIND_INT = 0)
+        std::ptr::write_bytes(list.kinds.add(list.cap as usize), 0, (new_cap - list.cap) as usize);
+    }
+    list.cap = new_cap;
+}
+
+/// Ensure the `kinds` array is allocated, backfilling existing elements with KIND_INT.
+unsafe fn list_ensure_kinds(list: &mut OreList) {
+    if list.kinds.is_null() && list.cap > 0 {
+        let k_layout = std::alloc::Layout::array::<i8>(list.cap as usize).unwrap();
+        list.kinds = std::alloc::alloc_zeroed(k_layout) as *mut i8; // zeroed = KIND_INT
     }
 }
 
@@ -65,20 +98,41 @@ pub extern "C" fn ore_list_new() -> *mut OreList {
 pub extern "C" fn ore_list_push(list: *mut OreList, value: i64) {
     unsafe {
         let list = &mut *list;
-        if list.len >= list.cap {
-            let new_cap = if list.cap == 0 { 4 } else { list.cap * 2 };
-            let new_layout = std::alloc::Layout::array::<i64>(new_cap as usize).unwrap();
-            let new_data = if list.data.is_null() {
-                std::alloc::alloc(new_layout) as *mut i64
-            } else {
-                let old_layout = std::alloc::Layout::array::<i64>(list.cap as usize).unwrap();
-                std::alloc::realloc(list.data as *mut u8, old_layout, new_layout.size()) as *mut i64
-            };
-            list.data = new_data;
-            list.cap = new_cap;
-        }
+        if list.len >= list.cap { list_grow(list); }
         *list.data.add(list.len as usize) = value;
+        // If kinds array exists, record KIND_INT for the new element
+        if !list.kinds.is_null() {
+            *list.kinds.add(list.len as usize) = KIND_INT;
+        }
         list.len += 1;
+    }
+}
+
+/// Push a value with an explicit kind tag.  Allocates the kinds array on
+/// first non-INT push so that homogeneous int-lists pay no overhead.
+#[no_mangle]
+pub extern "C" fn ore_list_push_typed(list: *mut OreList, value: i64, kind: i8) {
+    unsafe {
+        let list = &mut *list;
+        if list.len >= list.cap { list_grow(list); }
+        *list.data.add(list.len as usize) = value;
+        if kind != KIND_INT || !list.kinds.is_null() {
+            list_ensure_kinds(list);
+            *list.kinds.add(list.len as usize) = kind;
+        }
+        list.len += 1;
+    }
+}
+
+/// Return the kind tag for the element at `index`, or KIND_INT when no
+/// per-element tags have been recorded.
+#[no_mangle]
+pub extern "C" fn ore_list_get_kind(list: *mut OreList, index: i64) -> i8 {
+    unsafe {
+        let list = &*list;
+        if list.kinds.is_null() { return KIND_INT; }
+        let idx = checked_index(index, list.len);
+        *list.kinds.add(idx)
     }
 }
 
@@ -98,6 +152,7 @@ pub extern "C" fn ore_list_pop(list: *mut OreList) -> i64 {
 pub extern "C" fn ore_list_clear(list: *mut OreList) {
     unsafe {
         (*list).len = 0;
+        // kinds array is kept allocated but length governs valid range
     }
 }
 
@@ -114,8 +169,14 @@ pub extern "C" fn ore_list_insert(list: *mut OreList, index: i64, value: i64) {
         // Shift elements right
         if idx < len - 1 {
             std::ptr::copy(list_ref.data.add(idx), list_ref.data.add(idx + 1), len - 1 - idx);
+            if !list_ref.kinds.is_null() {
+                std::ptr::copy(list_ref.kinds.add(idx), list_ref.kinds.add(idx + 1), len - 1 - idx);
+            }
         }
         *list_ref.data.add(idx) = value;
+        if !list_ref.kinds.is_null() {
+            *list_ref.kinds.add(idx) = KIND_INT;
+        }
     }
 }
 
@@ -129,6 +190,9 @@ pub extern "C" fn ore_list_remove_at(list: *mut OreList, index: i64) -> i64 {
         let len = list_ref.len as usize;
         if idx < len - 1 {
             std::ptr::copy(list_ref.data.add(idx + 1), list_ref.data.add(idx), len - 1 - idx);
+            if !list_ref.kinds.is_null() {
+                std::ptr::copy(list_ref.kinds.add(idx + 1), list_ref.kinds.add(idx), len - 1 - idx);
+            }
         }
         list_ref.len -= 1;
         removed
@@ -785,6 +849,20 @@ pub extern "C" fn ore_list_set(list: *mut OreList, index: i64, value: i64) {
         let list = &mut *list;
         let idx = checked_index(index, list.len);
         *list.data.add(idx) = value;
+    }
+}
+
+/// Set a value at the given index with an explicit kind tag.
+#[no_mangle]
+pub extern "C" fn ore_list_set_typed(list: *mut OreList, index: i64, value: i64, kind: i8) {
+    unsafe {
+        let list = &mut *list;
+        let idx = checked_index(index, list.len);
+        *list.data.add(idx) = value;
+        if kind != KIND_INT || !list.kinds.is_null() {
+            list_ensure_kinds(list);
+            *list.kinds.add(idx) = kind;
+        }
     }
 }
 
