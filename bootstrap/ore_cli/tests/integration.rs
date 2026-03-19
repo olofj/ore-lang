@@ -3,7 +3,7 @@ use std::process::Command;
 
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent().unwrap()  // crates/
+        .parent().unwrap()  // bootstrap/
         .parent().unwrap()  // ore/
         .join("tests/fixtures")
 }
@@ -12185,7 +12185,7 @@ fn runtime_fn_sync_check() {
     // Phase 20.3: Verify declare_runtime_functions() and map_runtime_functions() are in sync.
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let codegen_path = manifest_dir
-        .parent().unwrap() // crates/
+        .parent().unwrap() // bootstrap/
         .join("ore_codegen/src/lib.rs");
     let cli_path = manifest_dir.join("src/main.rs");
 
@@ -12272,14 +12272,14 @@ fn builtins_args() {
 }
 
 // ---------------------------------------------------------------------------
-// Native test files: run `ore test` on each native/test_*.ore file
+// Native test files: run `ore test` on each src/test_*.ore file
 // ---------------------------------------------------------------------------
 
 fn native_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent().unwrap()  // crates/
+        .parent().unwrap()  // bootstrap/
         .parent().unwrap()  // ore/
-        .join("native")
+        .join("src")
 }
 
 fn run_ore_test(file: &str) {
@@ -12334,9 +12334,9 @@ fn native_test_types() {
 fn native_c_backend_compilation() {
     let binding = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let ore_root = binding
-        .parent().unwrap()  // crates/
+        .parent().unwrap()  // bootstrap/
         .parent().unwrap(); // ore/
-    let main_ore = ore_root.join("native/main.ore");
+    let main_ore = ore_root.join("src/main.ore");
 
     let tmp_dir = std::env::temp_dir().join("ore_test_c_backend");
     std::fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
@@ -12354,7 +12354,7 @@ fn native_c_backend_compilation() {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        panic!("ore build --backend c native/main.ore failed:\n{}", stderr);
+        panic!("ore build --backend c src/main.ore failed:\n{}", stderr);
     }
 
     assert!(output_bin.exists(), "compiled binary should exist at {}", output_bin.display());
@@ -12366,15 +12366,15 @@ fn native_c_backend_compilation() {
 /// Helper: get the ore project root directory.
 fn ore_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent().unwrap()  // crates/
+        .parent().unwrap()  // bootstrap/
         .parent().unwrap()  // ore/
         .to_path_buf()
 }
 
-/// Helper: compile native/main.ore to a binary via C backend, returning the path.
+/// Helper: compile src/main.ore to a binary via C backend, returning the path.
 fn build_ore_native() -> PathBuf {
     let ore_root = ore_root();
-    let main_ore = ore_root.join("native/main.ore");
+    let main_ore = ore_root.join("src/main.ore");
 
     let tmp_dir = std::env::temp_dir().join("ore_test_bootstrap");
     std::fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
@@ -12392,7 +12392,7 @@ fn build_ore_native() -> PathBuf {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        panic!("ore build --backend c native/main.ore failed:\n{}", stderr);
+        panic!("ore build --backend c src/main.ore failed:\n{}", stderr);
     }
 
     assert!(output_bin.exists(), "ore-native binary should exist");
@@ -12444,7 +12444,7 @@ fn bootstrap_ore_native_test_suite() {
     let ore_root = binding
         .parent().unwrap()
         .parent().unwrap();
-    let test_main_ore = ore_root.join("native/test_main.ore");
+    let test_main_ore = ore_root.join("src/test_main.ore");
 
     // Compile test_main.ore directly with C backend (it has its own main)
     let tmp_dir = std::env::temp_dir().join("ore_test_bootstrap_suite");
@@ -12463,7 +12463,7 @@ fn bootstrap_ore_native_test_suite() {
 
     if !build_output.status.success() {
         let stderr = String::from_utf8_lossy(&build_output.stderr);
-        panic!("ore build --backend c native/test_main.ore failed:\n{}", stderr);
+        panic!("ore build --backend c src/test_main.ore failed:\n{}", stderr);
     }
 
     // Run the compiled test binary

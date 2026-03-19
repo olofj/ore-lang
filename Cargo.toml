@@ -1,14 +1,14 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/ore_cli",
-    "crates/ore_lexer",
-    "crates/ore_parser",
-    "crates/ore_types",
-    "crates/ore_typecheck",
-    "crates/ore_codegen",
-    "crates/ore_runtime",
-    "crates/ore_c_codegen",
+    "bootstrap/ore_cli",
+    "bootstrap/ore_lexer",
+    "bootstrap/ore_parser",
+    "bootstrap/ore_types",
+    "bootstrap/ore_typecheck",
+    "bootstrap/ore_codegen",
+    "bootstrap/ore_runtime",
+    "bootstrap/ore_c_codegen",
 ]
 
 [workspace.dependencies]
