@@ -1,0 +1,21 @@
+=== ORE STRESS TEST: Full Bootstrap Cycle ===
+Started: 2026-03-18T18:21:55-07:00
+Cgroup: /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/tmux-spawn-1d0bc854-e162-49e2-9703-3dfe3ff57b71.scope
+Cgroup memory.max: max
+
+[Step 0: Baseline] current=396MB peak=514MB 2026-03-18T18:21:55-07:00
+--- Step 1: cargo build --release ---
+[Step 1: After cargo build --release] current=892MB peak=5837MB 2026-03-18T18:23:26-07:00
+--- Step 2: cargo run --release -- build --backend c ---
+[Step 2: After C backend compile] current=882MB peak=5837MB 2026-03-18T18:23:42-07:00
+--- Step 3: Compile C output with cc ---
+[Step 3: Before bootstrap] current=904MB peak=5837MB 2026-03-18T18:23:54-07:00
+--- Step 4: Bootstrap self-compile ---
+[Step 4: After bootstrap self-compile] current=891MB peak=5837MB 2026-03-18T18:23:54-07:00
+[Step 4: After bootstrap self-compile] current=880MB peak=5837MB 2026-03-18T18:24:01-07:00
+--- Step 5: Verify bootstrapped binary ---
+[Step 5: After verification] current=901MB peak=5837MB 2026-03-18T18:24:08-07:00
+
+=== STRESS TEST COMPLETE ===
+Finished: 2026-03-18T18:24:08-07:00
+
