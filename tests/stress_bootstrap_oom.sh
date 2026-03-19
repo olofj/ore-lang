@@ -21,9 +21,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
-MEMORY_LIMIT="${1:-16G}"
-if [[ "$1" == "--memory-limit" ]] 2>/dev/null; then
+MEMORY_LIMIT="16G"
+if [[ "${1:-}" == "--memory-limit" ]]; then
     MEMORY_LIMIT="${2:-16G}"
+elif [[ -n "${1:-}" ]]; then
+    MEMORY_LIMIT="$1"
 fi
 
 LOG="stress-test-bootstrap-oom.log"
@@ -83,15 +85,17 @@ check_system_health() {
 check_oom_events() {
     local scope_name="$1"
     local since="$2"
-    # Check both journalctl and dmesg for OOM events
     local oom_count=0
-    if journalctl --user --since="$since" 2>/dev/null | grep -c "oom-kill\|oom_reaper\|Out of memory\|memory\.max" || true; then
-        oom_count=$(journalctl --user --since="$since" 2>/dev/null | grep -c "oom-kill\|oom_reaper\|Out of memory\|memory\.max" || echo "0")
-    fi
+    # Check journalctl for OOM events
+    oom_count=$(journalctl --user --since="$since" 2>/dev/null \
+        | grep -c "oom-kill\|oom_reaper\|Out of memory\|memory\.max" 2>/dev/null || true)
     # Also check dmesg
     local dmesg_ooms=0
-    dmesg_ooms=$(dmesg --time-format iso 2>/dev/null | grep "oom-kill\|oom_reaper\|Out of memory" | awk -v since="$since" '$0 >= since' | wc -l || echo "0")
-    echo "$((oom_count + dmesg_ooms))"
+    dmesg_ooms=$(dmesg --time-format iso 2>/dev/null \
+        | grep "oom-kill\|oom_reaper\|Out of memory" \
+        | awk -v since="$since" '$0 >= since' \
+        | wc -l 2>/dev/null || true)
+    echo "$(( ${oom_count:-0} + ${dmesg_ooms:-0} ))"
 }
 
 echo "=== ORE STRESS TEST: Bootstrap Self-Compilation (OOM Trigger) ===" | tee "$LOG"
@@ -122,7 +126,7 @@ free -m | tee -a "$LOG"
 
 # --- Step 1: Build the Rust compiler (cargo build --release) ---
 log "--- Step 1: cargo build --release ---"
-cargo build --release 2>&1 | tail -5 | tee -a "$LOG"
+cargo build --release 2>&1 | tail -3 | tee -a "$LOG"
 log "Step 1 complete"
 
 # Verify the ore binary exists
@@ -135,7 +139,7 @@ fi
 # --- Step 2: Compile native/main.ore via C backend → ore-native1 ---
 log "--- Step 2: Build ore-native1 via C backend ---"
 ORE_NATIVE1="$TMPDIR_BASE/ore-native1"
-cargo run --release -- build --backend c src/main.ore -o "$ORE_NATIVE1" 2>&1 | tee -a "$LOG"
+cargo run --release -- build --backend c src/main.ore -o "$ORE_NATIVE1" 2>&1 | tail -3 | tee -a "$LOG"
 if [[ ! -x "$ORE_NATIVE1" ]]; then
     log "ERROR: ore-native1 not built"
     exit 1
@@ -164,19 +168,83 @@ log "Running: ore-native1 build src/main.ore -o ore-native2 (inside $MEMORY_LIMI
 set +e  # Don't exit on error — we expect potential OOM
 BOOTSTRAP_START="$(date +%s)"
 
+# Monitor cgroup memory using memory.peak (cgroup v2) or by polling memory.current.
+# The cgroup path for a user scope is:
+#   /sys/fs/cgroup/user.slice/user-UID.slice/user@UID.service/SCOPE_NAME
+CGROUP_BASE="/sys/fs/cgroup/user.slice/user-$(id -u).slice/user@$(id -u).service"
+
+# Write a cgroup memory monitor that polls memory.current
+MONITOR_SCRIPT="$TMPDIR_BASE/monitor.sh"
+cat > "$MONITOR_SCRIPT" << 'MONEOF'
+#!/bin/bash
+CGROUP_DIR="$1"
+LOGFILE="$2"
+MAX_BYTES=0
+while true; do
+    current=$(cat "$CGROUP_DIR/memory.current" 2>/dev/null) || break
+    if (( current > MAX_BYTES )); then
+        MAX_BYTES=$current
+    fi
+    sleep 0.1
+done
+echo "$MAX_BYTES" > "$LOGFILE"
+MONEOF
+chmod +x "$MONITOR_SCRIPT"
+
 systemd-run --user --scope \
     -p MemoryMax="$MEMORY_LIMIT" \
     -p MemoryHigh="$((${MEMORY_LIMIT%G} * 3 / 4))G" \
     --unit="$SCOPE_NAME" \
     -- "$ORE_NATIVE1" build src/main.ore -o "$ORE_NATIVE2" \
-    >"$TMPDIR_BASE/bootstrap-stdout.log" 2>"$TMPDIR_BASE/bootstrap-stderr.log"
+    >"$TMPDIR_BASE/bootstrap-stdout.log" 2>"$TMPDIR_BASE/bootstrap-stderr.log" &
+SCOPE_PID=$!
+
+# Give systemd a moment to create the scope cgroup
+sleep 0.3
+CGROUP_DIR="$CGROUP_BASE/$SCOPE_NAME"
+log "Cgroup: $CGROUP_DIR"
+if [[ -d "$CGROUP_DIR" ]]; then
+    log "Cgroup memory.max: $(cat "$CGROUP_DIR/memory.max" 2>/dev/null || echo 'unknown')"
+    # Start cgroup memory monitor in background
+    "$MONITOR_SCRIPT" "$CGROUP_DIR" "$TMPDIR_BASE/peak-mem.txt" &
+    MONITOR_PID=$!
+else
+    log "WARNING: cgroup directory not found at $CGROUP_DIR"
+    MONITOR_PID=""
+fi
+
+# Wait for the scope to finish
+wait "$SCOPE_PID" 2>/dev/null
 BOOTSTRAP_EXIT=$?
+
+# Also try to read memory.peak (available in cgroup v2 kernels 5.19+)
+CGROUP_PEAK=""
+if [[ -f "$CGROUP_DIR/memory.peak" ]]; then
+    CGROUP_PEAK=$(cat "$CGROUP_DIR/memory.peak" 2>/dev/null || true)
+fi
+
+# Wait for monitor to finish
+if [[ -n "$MONITOR_PID" ]]; then
+    wait "$MONITOR_PID" 2>/dev/null
+fi
 
 BOOTSTRAP_END="$(date +%s)"
 BOOTSTRAP_DURATION=$((BOOTSTRAP_END - BOOTSTRAP_START))
-set -e
+# Keep set +e for the analysis section — grep/journalctl may return non-zero
+
+# Read peak memory from monitor (in bytes)
+PEAK_BYTES=$(cat "$TMPDIR_BASE/peak-mem.txt" 2>/dev/null || echo "0")
+PEAK_MB=$((PEAK_BYTES / 1048576))
+# Also report the kernel-tracked peak if available
+if [[ -n "$CGROUP_PEAK" ]]; then
+    PEAK_CGROUP_MB=$((CGROUP_PEAK / 1048576))
+else
+    PEAK_CGROUP_MB="n/a"
+fi
 
 log "Bootstrap exit code: $BOOTSTRAP_EXIT (duration: ${BOOTSTRAP_DURATION}s)"
+log "Peak memory (polled): ${PEAK_MB}MB"
+log "Peak memory (cgroup v2 memory.peak): ${PEAK_CGROUP_MB}MB"
 
 # Capture stdout/stderr
 if [[ -s "$TMPDIR_BASE/bootstrap-stdout.log" ]]; then
