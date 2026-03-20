@@ -30,7 +30,7 @@ fn run_ore(fixture: &str) -> String {
 /// Compile a fixture via the C backend and run the resulting binary.
 fn run_ore_via_c(fixture: &str) -> String {
     let path = fixtures_dir().join(fixture);
-    let bin_name = fixture.replace('.', "_");
+    let bin_name = fixture.replace('.', "_").replace('/', "_");
     let tmp_dir = std::env::temp_dir().join(format!("ore_c_{}", bin_name));
     std::fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
     let output_bin = tmp_dir.join(&bin_name);
