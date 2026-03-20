@@ -928,6 +928,18 @@ pub extern "C" fn ore_list_join(list: *mut OreList, sep: *mut OreStr) -> *mut Or
     }
 }
 
+/// Join list elements where elements are i64 integers.
+#[no_mangle]
+pub extern "C" fn ore_list_join_int(list: *mut OreList, sep: *mut OreStr) -> *mut OreStr {
+    unsafe {
+        let src = &*list;
+        let sep_str = (*sep).as_str();
+        let parts: Vec<String> = src.as_slice().iter().map(|&v| format!("{}", v)).collect();
+        let joined = parts.join(sep_str);
+        str_to_ore(joined)
+    }
+}
+
 /// Join list elements where elements are OreStr pointers.
 #[no_mangle]
 pub extern "C" fn ore_list_join_str(list: *mut OreList, sep: *mut OreStr) -> *mut OreStr {

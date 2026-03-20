@@ -146,6 +146,7 @@ pub fn runtime_declarations() -> Vec<String> {
     d("void* ore_list_zip(void*, void*)");
     d("void* ore_list_enumerate(void*)");
     d("void* ore_list_join(void*, void*)");
+    d("void* ore_list_join_int(void*, void*)");
     d("void* ore_list_join_str(void*, void*)");
     d("void* ore_list_join_float(void*, void*)");
     d("void* ore_list_take(void*, int64_t)");

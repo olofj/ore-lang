@@ -152,6 +152,7 @@ impl CCodeGen {
                 let rt = match elem_kind {
                     ValKind::Str => "ore_list_join_str",
                     ValKind::Float => "ore_list_join_float",
+                    ValKind::Int => "ore_list_join_int",
                     _ => "ore_list_join",
                 };
                 Ok((format!("{}({}, {})", rt, list_val, sep), ValKind::Str))
