@@ -49,7 +49,7 @@ pub extern "C" fn ore_sleep(ms: i64) {
 use std::sync::mpsc;
 
 pub struct OreChannel {
-    sender: mpsc::Sender<i64>,
+    sender: Mutex<mpsc::Sender<i64>>,
     receiver: Mutex<mpsc::Receiver<i64>>,
 }
 
@@ -57,7 +57,7 @@ pub struct OreChannel {
 pub extern "C" fn ore_channel_new() -> *mut OreChannel {
     let (tx, rx) = mpsc::channel();
     let ch = Box::new(OreChannel {
-        sender: tx,
+        sender: Mutex::new(tx),
         receiver: Mutex::new(rx),
     });
     Box::into_raw(ch)
@@ -66,7 +66,7 @@ pub extern "C" fn ore_channel_new() -> *mut OreChannel {
 #[no_mangle]
 pub extern "C" fn ore_channel_send(ch: *mut OreChannel, val: i64) {
     let ch = unsafe { &*ch };
-    ch.sender.send(val).unwrap();
+    ch.sender.lock().unwrap().send(val).unwrap();
 }
 
 #[no_mangle]
