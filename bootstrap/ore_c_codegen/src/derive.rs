@@ -141,6 +141,7 @@ impl CCodeGen {
         self.functions.insert(fn_name.clone(), FnInfo {
             ret_kind: ValKind::Str,
             param_kinds: vec![ValKind::Record(type_name.to_string())],
+            context: vec![],
         });
 
         self.make_stub_fndef(&fn_name, type_name, &[], Some(TypeExpr::Named("Str".to_string())))
@@ -182,6 +183,7 @@ impl CCodeGen {
                 ValKind::Record(type_name.to_string()),
                 ValKind::Record(type_name.to_string()),
             ],
+            context: vec![],
         });
 
         self.make_stub_fndef(
@@ -219,6 +221,7 @@ impl CCodeGen {
         self.functions.insert(fn_name.clone(), FnInfo {
             ret_kind: ValKind::Record(type_name.to_string()),
             param_kinds: vec![ValKind::Record(type_name.to_string())],
+            context: vec![],
         });
 
         self.make_stub_fndef(
@@ -278,6 +281,7 @@ impl CCodeGen {
         self.functions.insert(fn_name.clone(), FnInfo {
             ret_kind: ValKind::Str,
             param_kinds: vec![ValKind::Record(type_name.to_string())],
+            context: vec![],
         });
 
         self.make_stub_fndef(&fn_name, type_name, &[], Some(TypeExpr::Named("Str".to_string())))
@@ -361,6 +365,7 @@ impl CCodeGen {
         self.functions.insert(fn_name.clone(), FnInfo {
             ret_kind: ValKind::Str,
             param_kinds: vec![ValKind::Enum(type_name.to_string())],
+            context: vec![],
         });
 
         self.make_stub_fndef(&fn_name, type_name, &[], Some(TypeExpr::Named("Str".to_string())))
@@ -426,6 +431,7 @@ impl CCodeGen {
                 ValKind::Enum(type_name.to_string()),
                 ValKind::Enum(type_name.to_string()),
             ],
+            context: vec![],
         });
 
         self.make_stub_fndef(
@@ -456,6 +462,7 @@ impl CCodeGen {
         self.functions.insert(fn_name.clone(), FnInfo {
             ret_kind: ValKind::Enum(type_name.to_string()),
             param_kinds: vec![ValKind::Enum(type_name.to_string())],
+            context: vec![],
         });
 
         self.make_stub_fndef(
@@ -551,6 +558,7 @@ impl CCodeGen {
         self.functions.insert(fn_name.clone(), FnInfo {
             ret_kind: ValKind::Str,
             param_kinds: vec![ValKind::Enum(type_name.to_string())],
+            context: vec![],
         });
 
         self.make_stub_fndef(&fn_name, type_name, &[], Some(TypeExpr::Named("Str".to_string())))
@@ -606,6 +614,7 @@ impl CCodeGen {
             type_params: vec![],
             params,
             ret_type,
+            context: vec![],
             body: Block { stmts: vec![] },
         }
     }

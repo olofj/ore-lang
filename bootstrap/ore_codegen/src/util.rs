@@ -438,6 +438,7 @@ impl<'ctx> CodeGen<'ctx> {
             type_params: vec![], // No longer generic
             params: specialized_params,
             ret_type: specialized_ret,
+            context: generic_fn.context.clone(),
             body: generic_fn.body,
         };
 

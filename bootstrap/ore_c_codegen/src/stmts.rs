@@ -267,6 +267,9 @@ impl CCodeGen {
 
                 Ok((None, ValKind::Void))
             }
+            Stmt::WithBlock { expr, body } => {
+                self.compile_with_block(expr, body)
+            }
         }
     }
 
@@ -501,5 +504,57 @@ impl CCodeGen {
         self.break_labels.pop();
         self.continue_labels.pop();
         Ok(())
+    }
+
+    /// Compile a `with expr` block — evaluate the expression and bind its fields
+    /// (or itself) as context capabilities available for implicit injection.
+    pub(crate) fn compile_with_block(&mut self, expr: &Expr, body: &Block) -> Result<(std::option::Option<String>, ValKind), CCodeGenError> {
+        let (val, kind) = self.compile_expr(expr)?;
+        let saved_ctx = self.context_vars.clone();
+        let saved_vars = self.variables.clone();
+
+        match &kind {
+            ValKind::Record(rec_name) => {
+                // Bind each field of the record as a context variable.
+                // The field name (capitalized) becomes the capability name,
+                // the field value becomes the context variable.
+                if let Some(info) = self.records.get(rec_name).cloned() {
+                    for (i, field_name) in info.field_names.iter().enumerate() {
+                        let field_kind = &info.field_kinds[i];
+                        let c_type = self.kind_to_c_type_str(field_kind);
+                        let c_var = format!("__ctx_{}", field_name);
+                        self.emit(&format!("{} {} = {}.{};", c_type, c_var, val, field_name));
+                        self.variables.insert(field_name.clone(), VarInfo {
+                            c_name: c_var.clone(),
+                            kind: field_kind.clone(),
+                            is_mutable: false,
+                        });
+                        // Register capability by capitalized field name
+                        let cap_name = field_name[..1].to_uppercase() + &field_name[1..];
+                        self.context_vars.insert(cap_name, c_var);
+                    }
+                }
+            }
+            _ => {
+                // For non-record expressions, bind the value directly.
+                // Use the identifier name as capability name if it's an ident.
+                if let Expr::Ident(name) = expr {
+                    let cap_name = name[..1].to_uppercase() + &name[1..];
+                    let c_name = self.variables.get(name)
+                        .map(|v| v.c_name.clone())
+                        .unwrap_or_else(|| Self::mangle_var_name(name));
+                    self.context_vars.insert(cap_name, c_name);
+                }
+            }
+        }
+
+        // Compile the body with context available
+        let result = self.compile_block_stmts(body)?;
+
+        // Restore context
+        self.context_vars = saved_ctx;
+        self.variables = saved_vars;
+
+        Ok(result)
     }
 }

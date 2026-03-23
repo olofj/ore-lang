@@ -390,6 +390,20 @@ impl Parser {
             }
         }
 
+        // Parse optional context requirements: `with Db, Log`
+        let context = if self.peek() == &Token::With {
+            self.advance();
+            let mut caps = Vec::new();
+            caps.push(self.expect_ident("capability")?);
+            while self.peek() == &Token::Comma {
+                self.advance();
+                caps.push(self.expect_ident("capability")?);
+            }
+            caps
+        } else {
+            Vec::new()
+        };
+
         self.skip_newlines();
         let body = self.parse_block()?;
 
@@ -398,6 +412,7 @@ impl Parser {
             type_params,
             params,
             ret_type,
+            context,
             body,
         })
     }
@@ -634,6 +649,13 @@ impl Parser {
                 self.advance();
                 let expr = self.parse_expr(0)?;
                 Ok(Stmt::Spawn(expr))
+            }
+            Token::With => {
+                self.advance();
+                let expr = self.parse_expr(0)?;
+                self.skip_newlines();
+                let body = self.parse_block()?;
+                Ok(Stmt::WithBlock { expr, body })
             }
             Token::Assert => {
                 self.advance();

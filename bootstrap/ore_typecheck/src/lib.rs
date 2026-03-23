@@ -523,6 +523,18 @@ impl TypeChecker {
                 self.check_block(&fndef.body, &mut fn_env, &ret);
                 Type::Unit
             }
+            Stmt::WithBlock { expr, body } => {
+                let ctx_ty = self.infer_expr(expr, env);
+                // If the with-expression is a record, bind its fields as variables
+                if let Type::Record(rec_name) = &ctx_ty {
+                    if let Some(fields) = self.records.get(rec_name).map(|rd| rd.fields.clone()) {
+                        for (fname, ftype) in &fields {
+                            env.insert(fname.clone(), ftype.clone(), false);
+                        }
+                    }
+                }
+                self.check_block(body, env, ret_ty)
+            }
         }
     }
 

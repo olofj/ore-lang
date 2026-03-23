@@ -175,6 +175,12 @@ fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<S
                 collect_free_vars_stmt(s, bound, free, seen);
             }
         }
+        Stmt::WithBlock { expr, body } => {
+            collect_free_vars(expr, bound, free, seen);
+            for s in body.iter_stmts() {
+                collect_free_vars_stmt(s, bound, free, seen);
+            }
+        }
     }
 }
 
@@ -320,6 +326,7 @@ impl CCodeGen {
         self.functions.insert(name.to_string(), FnInfo {
             ret_kind: ret_kind.clone(),
             param_kinds: vec![ValKind::Int; params.len()],
+            context: vec![],
         });
 
         if captures.has_captures {

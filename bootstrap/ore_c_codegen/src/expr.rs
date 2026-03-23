@@ -395,9 +395,29 @@ impl CCodeGen {
         if let Some(fn_info) = self.functions.get(&name).cloned() {
             let c_fn_name = Self::mangle_fn_name(&name);
             let mut arg_strs = Vec::new();
+
+            // Inject implicit context arguments for functions with capability requirements
+            let ctx_offset = fn_info.context.len();
+            for cap in &fn_info.context {
+                if let Some(ctx_var) = self.context_vars.get(cap) {
+                    arg_strs.push(ctx_var.clone());
+                } else {
+                    // Check if lowercased capability name exists as a variable
+                    let lowered = cap[..1].to_lowercase() + &cap[1..];
+                    if let Some(var_info) = self.variables.get(&lowered) {
+                        arg_strs.push(var_info.c_name.clone());
+                    } else {
+                        return Err(self.err(format!(
+                            "missing context '{}' required by function '{}' — use `with` to provide it",
+                            cap, name
+                        )));
+                    }
+                }
+            }
+
             for (i, arg) in args.iter().enumerate() {
                 let (a, ak) = self.compile_expr(arg)?;
-                let param_kind = fn_info.param_kinds.get(i);
+                let param_kind = fn_info.param_kinds.get(i + ctx_offset);
                 if let Some(pk) = param_kind {
                     let coerced = self.coerce_arg_to_param(&a, &ak, pk);
                     arg_strs.push(coerced);
@@ -705,6 +725,26 @@ impl CCodeGen {
             let c_fn_name = Self::mangle_fn_name(name);
             let (arg_val, arg_kind) = self.compile_expr(arg)?;
             let fn_info = self.functions[name].clone();
+
+            // Inject implicit context arguments first
+            let ctx_offset = fn_info.context.len();
+            let mut ctx_strs = Vec::new();
+            for cap in &fn_info.context {
+                if let Some(ctx_var) = self.context_vars.get(cap) {
+                    ctx_strs.push(ctx_var.clone());
+                } else {
+                    let lowered = cap[..1].to_lowercase() + &cap[1..];
+                    if let Some(var_info) = self.variables.get(&lowered) {
+                        ctx_strs.push(var_info.c_name.clone());
+                    } else {
+                        return Err(self.err(format!(
+                            "missing context '{}' required by function '{}' — use `with` to provide it",
+                            cap, name
+                        )));
+                    }
+                }
+            }
+
             let mut arg_vals = vec![(arg_val, arg_kind)];
             for a in extra_args {
                 let (v, k) = self.compile_expr(a)?;
@@ -718,10 +758,10 @@ impl CCodeGen {
                     arg_vals.push((a, ak));
                 }
             }
-            // Coerce arguments to match parameter types
-            let mut arg_strs = Vec::new();
+            // Coerce arguments to match parameter types (offset by context params)
+            let mut arg_strs = ctx_strs;
             for (i, (val, ak)) in arg_vals.iter().enumerate() {
-                if let Some(pk) = fn_info.param_kinds.get(i) {
+                if let Some(pk) = fn_info.param_kinds.get(i + ctx_offset) {
                     arg_strs.push(self.coerce_arg_to_param(val, ak, pk));
                 } else {
                     arg_strs.push(val.clone());
@@ -812,6 +852,7 @@ impl CCodeGen {
                 type_params: vec![],
                 params: mono_params,
                 ret_type: mono_ret,
+                context: generic_fn.context.clone(),
                 body: generic_fn.body.clone(),
             };
             // Save and restore state around function compilation

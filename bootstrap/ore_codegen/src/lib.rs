@@ -308,6 +308,7 @@ impl<'ctx> CodeGen<'ctx> {
             type_params: method.type_params.clone(),
             params,
             ret_type: resolved_ret,
+            context: method.context.clone(),
             body: method.body.clone(),
         }
     }
@@ -371,6 +372,7 @@ impl<'ctx> CodeGen<'ctx> {
                     type_params: vec![],
                     params: vec![],
                     ret_type: None,
+                    context: vec![],
                     body: body.clone(),
                 };
                 self.declare_function(&test_fn)?;

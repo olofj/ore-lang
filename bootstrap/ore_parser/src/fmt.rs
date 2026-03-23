@@ -157,6 +157,9 @@ impl Formatter {
         if let Some(ret) = &f.ret_type {
             self.out.push_str(&format!(" -> {}", format_type_expr(ret)));
         }
+        if !f.context.is_empty() {
+            self.out.push_str(&format!(" with {}", f.context.join(", ")));
+        }
         self.out.push('\n');
         self.format_block(&f.body, level + 1);
     }
@@ -289,6 +292,13 @@ impl Formatter {
             }
             Stmt::LocalFn(fndef) => {
                 self.format_fn_def(fndef, level);
+            }
+            Stmt::WithBlock { expr, body } => {
+                self.indent(level);
+                self.out.push_str("with ");
+                self.format_expr(expr, level);
+                self.out.push('\n');
+                self.format_block(body, level + 1);
             }
         }
     }

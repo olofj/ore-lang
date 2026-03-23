@@ -1,0 +1,32 @@
+-- Test implicit context injection with `with` capability syntax
+
+-- Define capability types
+type Db { url:Str }
+type Log { level:Str }
+
+-- Define a context record that bundles capabilities
+type AppCtx { db:Db, log:Log }
+
+-- Function that requires Db context
+fn getUser id:Int -> Str with Db
+  "{db.url}/users/{id}"
+
+-- Function that requires both Db and Log contexts
+fn fetchData key:Str -> Str with Db, Log
+  "{log.level}: fetching {key} from {db.url}"
+
+-- Function that calls a context-requiring function (context propagates)
+fn getUserInfo id:Int -> Str with Db
+  getUser(id)
+
+-- Nested context: function requiring both, calling fetchData which also needs both
+fn loggedFetch key:Str -> Str with Db, Log
+  fetchData(key)
+
+fn main
+  ctx := AppCtx(db: Db(url: "postgres://localhost"), log: Log(level: "INFO"))
+  with ctx
+    print getUser(42)
+    print fetchData("config")
+    print getUserInfo(7)
+    print loggedFetch("data")

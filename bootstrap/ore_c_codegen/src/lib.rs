@@ -91,6 +91,8 @@ struct EnumInfo {
 struct FnInfo {
     ret_kind: ValKind,
     param_kinds: Vec<ValKind>,
+    /// Context/capability requirements (e.g. ["Db", "Log"])
+    context: Vec<String>,
 }
 
 /// Info about a local variable in the current function
@@ -176,6 +178,10 @@ pub struct CCodeGen {
     label_counter: u32,
     /// Tracks which function bodies have already been compiled (dedup guard)
     compiled_functions: HashSet<String>,
+    /// Context capabilities available in the current scope (capability name -> variable name)
+    context_vars: HashMap<String, String>,
+    /// Context requirements for each function (function name -> Vec of capability names)
+    fn_context: HashMap<String, Vec<String>>,
 }
 
 impl Default for CCodeGen {
@@ -215,6 +221,8 @@ impl CCodeGen {
             continue_labels: Vec::new(),
             label_counter: 0,
             compiled_functions: HashSet::new(),
+            context_vars: HashMap::new(),
+            fn_context: HashMap::new(),
         }
     }
 
@@ -346,6 +354,7 @@ impl CCodeGen {
             type_params: method.type_params.clone(),
             params,
             ret_type: resolved_ret,
+            context: method.context.clone(),
             body: method.body.clone(),
         }
     }
@@ -448,6 +457,24 @@ impl CCodeGen {
 
         let mut param_kinds = Vec::new();
         let mut param_strs = Vec::new();
+
+        // Add hidden context parameters for capability requirements
+        for cap in &fndef.context {
+            let lowered = cap[..1].to_lowercase() + &cap[1..];
+            let c_param_name = Self::mangle_var_name(&lowered);
+            // Context capabilities are passed as opaque pointers (record types)
+            if self.records.contains_key(cap) {
+                let kind = ValKind::Record(cap.clone());
+                let c_type = self.kind_to_c_type_str(&kind);
+                param_strs.push(format!("{} {}", c_type, c_param_name));
+                param_kinds.push(kind);
+            } else {
+                // Unknown capability type — use void* as generic context
+                param_strs.push(format!("void* {}", c_param_name));
+                param_kinds.push(ValKind::Int); // opaque pointer as i64
+            }
+        }
+
         for p in &fndef.params {
             let kind = self.type_expr_to_kind(&p.ty);
             let c_type = self.kind_to_c_type_str(&kind);
@@ -468,9 +495,15 @@ impl CCodeGen {
         let proto = format!("{} {}({})", ret_c_type, c_fn_name, params_str);
         self.forward_decls.push(format!("{};", proto));
 
+        // Store context requirements for implicit injection at call sites
+        if !fndef.context.is_empty() {
+            self.fn_context.insert(fndef.name.clone(), fndef.context.clone());
+        }
+
         self.functions.insert(fndef.name.clone(), FnInfo {
             ret_kind: ret_kind.clone(),
             param_kinds,
+            context: fndef.context.clone(),
         });
 
         // Track return type annotations for List[T] and Map[K,V]
@@ -520,8 +553,27 @@ impl CCodeGen {
         };
 
         let mut param_strs = Vec::new();
+        let ctx_offset = fndef.context.len();
+
+        // Register context parameters as variables
+        let saved_ctx = std::mem::take(&mut self.context_vars);
+        for (ci, cap) in fndef.context.iter().enumerate() {
+            let lowered = cap[..1].to_lowercase() + &cap[1..];
+            let c_param_name = Self::mangle_var_name(&lowered);
+            let kind = &fn_info.param_kinds[ci];
+            let c_type = self.kind_to_c_type_str(kind);
+            param_strs.push(format!("{} {}", c_type, c_param_name));
+            self.variables.insert(lowered.clone(), VarInfo {
+                c_name: c_param_name.clone(),
+                kind: kind.clone(),
+                is_mutable: false,
+            });
+            // Make this capability available for implicit injection to callees
+            self.context_vars.insert(cap.clone(), c_param_name);
+        }
+
         for (i, p) in fndef.params.iter().enumerate() {
-            let kind = &fn_info.param_kinds[i];
+            let kind = &fn_info.param_kinds[i + ctx_offset];
             let c_type = self.kind_to_c_type_str(kind);
             let c_param_name = Self::mangle_var_name(&p.name);
             param_strs.push(format!("{} {}", c_type, c_param_name));
@@ -617,6 +669,7 @@ impl CCodeGen {
         // Restore per-function element/value kind tracking
         self.list_element_kinds = saved_list_ek;
         self.map_value_kinds = saved_map_vk;
+        self.context_vars = saved_ctx;
         Ok(())
     }
 
@@ -725,6 +778,7 @@ impl CCodeGen {
                     type_params: vec![],
                     params: vec![],
                     ret_type: None,
+                    context: vec![],
                     body: body.clone(),
                 };
                 self.declare_function(&test_fn)?;

@@ -80,6 +80,7 @@ pub struct FnDef {
     pub type_params: Vec<TypeParam>,
     pub params: Vec<Param>,
     pub ret_type: Option<TypeExpr>,
+    pub context: Vec<String>,
     pub body: Block,
 }
 
@@ -178,6 +179,10 @@ pub enum Stmt {
     Continue,
     Spawn(Expr),
     LocalFn(FnDef),
+    WithBlock {
+        expr: Expr,
+        body: Block,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
