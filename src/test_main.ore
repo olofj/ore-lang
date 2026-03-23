@@ -73,7 +73,7 @@ fn parse_use_line line:Str -> Str
     return rest.substr(1, rest.len() - 2)
   "{rest}.ore"
 
-fn resolve_imports source:Str base_dir:Str loaded:List -> Str
+fn resolve_imports source:Str base_dir:Str loaded:Map -> Str
   lines := source.split("\n")
   mut imported_source := ""
   mut main_lines := []
@@ -83,13 +83,8 @@ fn resolve_imports source:Str base_dir:Str loaded:List -> Str
       main_lines.push(lines[i])
     else
       resolved := resolve_use_path(base_dir, use_path)
-      mut already := false
-      for j in 0..loaded.len()
-        if loaded[j] == resolved
-          already = true
-          break
-      if not already
-        loaded.push(resolved)
+      if not loaded.contains(resolved)
+        loaded.set(resolved, true)
         dep_source := file_read(resolved)
         if dep_source != ""
           dep_dir := dir_of_file(resolved)
@@ -118,7 +113,8 @@ fn test_parse_use_line
 
 fn test_resolve_imports_strips_use
   source := "use something\nfn main\n  42\n"
-  mut loaded := ["test.ore"]
+  mut loaded := {}
+  loaded.set("test.ore", true)
   result := resolve_imports(source, ".", loaded)
   -- use line should be stripped; fn main should remain
   assert result.contains("fn main")
