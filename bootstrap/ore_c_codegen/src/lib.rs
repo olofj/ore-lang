@@ -16,6 +16,7 @@ mod util;
 mod runtime_decls;
 mod type_resolution;
 mod assembly;
+mod derive;
 
 /// Tracks semantic type of compiled values (mirrors ore_codegen::ValKind)
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -647,12 +648,25 @@ impl CCodeGen {
         Ok(self.assemble())
     }
 
-    /// Register type and enum definitions.
+    /// Register type and enum definitions, then generate derived methods.
     fn register_types(&mut self, items: &[Item]) -> Result<(), CCodeGenError> {
+        // First pass: register all types
         for item in items {
             match item {
                 Item::TypeDef(td) => self.register_record(td)?,
                 Item::EnumDef(ed) => self.register_enum(ed)?,
+                _ => {}
+            }
+        }
+        // Second pass: generate derived methods (needs types to be registered)
+        for item in items {
+            match item {
+                Item::TypeDef(td) => {
+                    self.generate_record_derives(td)?;
+                }
+                Item::EnumDef(ed) => {
+                    self.generate_enum_derives(ed)?;
+                }
                 _ => {}
             }
         }

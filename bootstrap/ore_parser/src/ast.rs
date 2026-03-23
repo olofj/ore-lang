@@ -46,6 +46,7 @@ pub struct TypeDef {
     pub name: String,
     pub type_params: Vec<TypeParam>,
     pub fields: Vec<FieldDef>,
+    pub deriving: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -58,6 +59,7 @@ pub struct FieldDef {
 pub struct EnumDef {
     pub name: String,
     pub variants: Vec<Variant>,
+    pub deriving: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -248,9 +248,12 @@ impl Parser {
         // Parse optional type parameters
         let type_params = self.parse_optional_type_params()?;
 
+        // Parse optional deriving clause: deriving(Trait1, Trait2)
+        let deriving = self.parse_optional_deriving()?;
+
         // If next is '{', it's a record type
         if self.peek() == &Token::LBrace {
-            return self.parse_record_body(name, type_params).map(Item::TypeDef);
+            return self.parse_record_body(name, type_params, deriving).map(Item::TypeDef);
         }
 
         // Otherwise it's an enum (indented variants)
@@ -267,7 +270,28 @@ impl Parser {
         if self.peek() == &Token::Dedent {
             self.advance();
         }
-        Ok(Item::EnumDef(EnumDef { name, variants }))
+        Ok(Item::EnumDef(EnumDef { name, variants, deriving }))
+    }
+
+    /// Parse optional `deriving(Trait1, Trait2, ...)` clause.
+    fn parse_optional_deriving(&mut self) -> Result<Vec<String>, ParseError> {
+        if let Token::Ident(ref kw) = self.peek().clone() {
+            if kw == "deriving" {
+                self.advance(); // consume "deriving"
+                self.expect(&Token::LParen)?;
+                let mut traits = Vec::new();
+                while self.peek() != &Token::RParen {
+                    let trait_name = self.expect_ident("derived trait")?;
+                    traits.push(trait_name);
+                    if self.peek() == &Token::Comma {
+                        self.advance();
+                    }
+                }
+                self.expect(&Token::RParen)?;
+                return Ok(traits);
+            }
+        }
+        Ok(Vec::new())
     }
 
     fn parse_variant(&mut self) -> Result<Variant, ParseError> {
@@ -291,7 +315,7 @@ impl Parser {
 
     // ── Type Definitions ──
 
-    fn parse_record_body(&mut self, name: String, type_params: Vec<TypeParam>) -> Result<TypeDef, ParseError> {
+    fn parse_record_body(&mut self, name: String, type_params: Vec<TypeParam>, deriving: Vec<String>) -> Result<TypeDef, ParseError> {
         self.expect(&Token::LBrace)?;
         self.skip_whitespace_tokens();
         let mut fields = Vec::new();
@@ -309,7 +333,7 @@ impl Parser {
         }
         self.skip_whitespace_tokens();
         self.expect(&Token::RBrace)?;
-        Ok(TypeDef { name, type_params, fields })
+        Ok(TypeDef { name, type_params, fields, deriving })
     }
 
     // ── Function Definitions ──

@@ -66,10 +66,14 @@ impl Formatter {
                 let tp_strs: Vec<String> = td.type_params.iter().map(|tp| {
                     if let Some(ref b) = tp.bound { format!("{}: {}", tp.name, b) } else { tp.name.clone() }
                 }).collect();
-                self.out.push_str(&format!("type {}[{}] {{ ", td.name, tp_strs.join(", ")));
+                self.out.push_str(&format!("type {}[{}]", td.name, tp_strs.join(", ")));
             } else {
-                self.out.push_str(&format!("type {} {{ ", td.name));
+                self.out.push_str(&format!("type {}", td.name));
             }
+                if !td.deriving.is_empty() {
+                    self.out.push_str(&format!(" deriving({})", td.deriving.join(", ")));
+                }
+                self.out.push_str(" { ");
                 for (i, f) in td.fields.iter().enumerate() {
                     if i > 0 {
                         self.out.push_str(", ");
@@ -80,7 +84,11 @@ impl Formatter {
             }
             Item::EnumDef(ed) => {
                 self.indent(level);
-                self.out.push_str(&format!("type {}\n", ed.name));
+                if !ed.deriving.is_empty() {
+                    self.out.push_str(&format!("type {} deriving({})\n", ed.name, ed.deriving.join(", ")));
+                } else {
+                    self.out.push_str(&format!("type {}\n", ed.name));
+                }
                 for v in &ed.variants {
                     self.indent(level + 1);
                     self.out.push_str(&v.name);
