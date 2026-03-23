@@ -19,10 +19,10 @@ use types
 --   1: [indent] (List[Int], single element)
 --   2: [temp_counter] (List[Int], single element)
 --   3: [label_counter] (List[Int], single element)
---   4: var_names (List[Str])
---   5: var_kinds (List[Str]) -- kind tag as string
---   6: fn_names (List[Str])
---   7: fn_ret_kinds (List[Str])
+--   4: var_map (Map[Str, OreKind]) -- name -> kind
+--   5: (unused, kept for index stability)
+--   6: fn_ret_map (Map[Str, OreKind]) -- name -> ret_kind
+--   7: (unused, kept for index stability)
 --   8: forward_decls (List[Str])
 --   9: top_level (List[Str])
 --  10: errors (List[Str])
@@ -41,12 +41,12 @@ use types
 --  23: exprs_pool (List, the exprs arena)
 --  24: stmts_pool (List, the stmts arena)
 --  25: deferred_fns (List[Str]) -- lines for monomorphized functions emitted out-of-order
---  26: record_field_kinds
---  27: variant_field_kinds
---  28: current_fn_ret_kind (single element)
+--  26: record_field_kinds (List[List[OreKind]])
+--  27: variant_field_kinds (List, entries are [variant_name, kind0, kind1, ...])
+--  28: current_fn_ret_kind (List[OreKind], single element)
 --  29: compiled_fns (dedup guard for compile_fn_def)
---  30: fn_param_names (List[Str]) -- parallel to 31
---  31: fn_param_kinds_strs (List[Str]) -- comma-separated param kinds per function
+--  30: fn_params_map (Map[Str, List[OreKind]]) -- name -> param kinds
+--  31: (unused, kept for index stability)
 
 fn cg_new -> List
   mut st := []
@@ -78,9 +78,9 @@ fn cg_new -> List
   st.push([])       -- 25: deferred_fns
   st.push([])       -- 26: record_field_kinds
   st.push([])       -- 27: variant_field_kinds
-  st.push(["void"]) -- 28: current_fn_ret_kind (single element)
+  st.push([VoidKind]) -- 28: current_fn_ret_kind (single element)
   st.push([])       -- 29: compiled_fns (dedup guard for compile_fn_def)
-  st.push({})       -- 30: fn_params_map (name -> comma-separated param kinds)
+  st.push({})       -- 30: fn_params_map (name -> param kinds)
   st.push([])       -- 31: (unused, kept for index stability)
   st
 
@@ -160,14 +160,14 @@ fn emit_raw st:List line:Str
 fn cg_var_map st:List -> Map
   st[4]
 
-fn cg_set_var st:List name:Str kind:Str
+fn cg_set_var st:List name:Str kind:OreKind
   cg_var_map(st).set(name, kind)
 
-fn cg_get_var_kind st:List name:Str -> Str
+fn cg_get_var_kind st:List name:Str -> OreKind
   m := cg_var_map(st)
   if m.contains(name)
     return m.get(name)
-  "int"
+  IntKind
 
 fn cg_has_var st:List name:Str -> Bool
   cg_var_map(st).contains(name)
@@ -180,23 +180,23 @@ fn cg_fn_ret_map st:List -> Map
 fn cg_fn_params_map st:List -> Map
   st[30]
 
-fn cg_set_fn st:List name:Str ret_kind:Str
+fn cg_set_fn st:List name:Str ret_kind:OreKind
   cg_fn_ret_map(st).set(name, ret_kind)
 
-fn cg_set_fn_params st:List name:Str param_kinds_str:Str
-  cg_fn_params_map(st).set(name, param_kinds_str)
+fn cg_set_fn_params st:List name:Str param_kinds:List
+  cg_fn_params_map(st).set(name, param_kinds)
 
-fn cg_get_fn_params st:List name:Str -> Str
+fn cg_get_fn_params st:List name:Str -> List
   m := cg_fn_params_map(st)
   if m.contains(name)
     return m.get(name)
-  ""
+  []
 
-fn cg_get_fn_ret st:List name:Str -> Str
+fn cg_get_fn_ret st:List name:Str -> OreKind
   m := cg_fn_ret_map(st)
   if m.contains(name)
     return m.get(name)
-  "int64_t"
+  IntKind
 
 fn cg_has_fn st:List name:Str -> Bool
   cg_fn_ret_map(st).contains(name)
@@ -234,11 +234,11 @@ fn cg_add_mono st:List mono_name:Str
 
 -- ── Record/Enum tracking ──
 
-fn cg_add_record st:List name:Str fields_str:Str count:Int field_kinds_str:Str
+fn cg_add_record st:List name:Str fields_str:Str count:Int field_kinds:List
   cg_list(st, 11).push(name)
   cg_list(st, 12).push(fields_str)
   cg_list(st, 13).push(count)
-  cg_list(st, 26).push(field_kinds_str)
+  cg_list(st, 26).push(field_kinds)
 
 fn cg_is_record st:List name:Str -> Bool
   recs := cg_list(st, 11)
@@ -247,18 +247,18 @@ fn cg_is_record st:List name:Str -> Bool
       return true
   false
 
-fn cg_get_record_field_kind st:List rec_name:Str field:Str -> Str
+fn cg_get_record_field_kind st:List rec_name:Str field:Str -> OreKind
   recs := cg_list(st, 11)
   fields_list := cg_list(st, 12)
   kinds_list := cg_list(st, 26)
   for i in 0..recs.len()
     if str_at(recs, i) == rec_name
       fnames := str_at(fields_list, i).split(",")
-      fkinds := str_at(kinds_list, i).split(",")
+      fkinds := kinds_list[i]
       for j in 0..fnames.len()
         if str_at(fnames, j) == field
-          return str_at(fkinds, j)
-  "int"
+          return kind_at(fkinds, j)
+  IntKind
 
 -- Infer which record type has a given field name
 fn cg_infer_record_by_field st:List field:Str -> Str
@@ -295,238 +295,191 @@ fn cg_variant_enum st:List variant:Str -> Str
       return e.substr(prefix.len(), e.len() - prefix.len())
   ""
 
--- Store variant field kinds: "VariantName:kind0,kind1,kind2"
-fn cg_add_variant_field_kinds st:List variant:Str kinds_str:Str
-  cg_list(st, 27).push("{variant}:{kinds_str}")
+-- Store variant field kinds as [variant_name, kind0, kind1, ...]
+fn cg_add_variant_field_kinds st:List variant:Str kinds:List
+  mut entry := [variant]
+  for i in 0..kinds.len()
+    entry.push(kinds[i])
+  cg_list(st, 27).push(entry)
 
 -- Look up the kind of a specific field in a variant by index
-fn cg_get_variant_field_kind st:List variant:Str idx:Int -> Str
+fn cg_get_variant_field_kind st:List variant:Str idx:Int -> OreKind
   entries := cg_list(st, 27)
-  prefix := variant + ":"
   for i in 0..entries.len()
-    e := str_at(entries, i)
-    if e.starts_with(prefix)
-      kinds_str := e.substr(prefix.len(), e.len() - prefix.len())
-      if kinds_str == ""
-        return "int"
-      parts := kinds_str.split(",")
-      if idx < parts.len()
-        return str_at(parts, idx)
-      return "int"
-  "int"
+    e := entries[i]
+    if str_at(e, 0) == variant
+      if idx + 1 < e.len()
+        return kind_at(e, idx + 1)
+      return IntKind
+  IntKind
 
 -- ── C type mapping ──
 
-fn kind_to_c_type kind:Str -> Str
-  if kind == "int"
-    return "int64_t"
-  if kind == "float"
-    return "double"
-  if kind == "bool"
-    return "int8_t"
-  if kind == "str"
-    return "void*"
-  if kind == "list"
-    return "void*"
-  if kind == "map"
-    return "void*"
-  if kind == "void"
-    return "void"
-  if kind == "option"
-    return "OreTaggedUnion"
-  if kind == "result"
-    return "OreTaggedUnion"
-  -- records/enums: use struct type
-  if kind.starts_with("rec:")
-    n := kind.substr(4, kind.len() - 4)
-    return "struct ore_rec_{n}"
-  if kind.starts_with("enum:")
-    n := kind.substr(5, kind.len() - 5)
-    return "struct ore_enum_{n}"
-  "int64_t"
+fn kind_to_c_type kind:OreKind -> Str
+  match kind
+    IntKind -> "int64_t"
+    FloatKind -> "double"
+    BoolKind -> "int8_t"
+    StrKind -> "void*"
+    ListKind -> "void*"
+    MapKind -> "void*"
+    VoidKind -> "void"
+    OptionKind -> "OreTaggedUnion"
+    ResultKind -> "OreTaggedUnion"
+    RecKind name -> "struct ore_rec_{name}"
+    EnumKind name -> "struct ore_enum_{name}"
+    DynamicKind _ -> "int64_t"
+    _ -> "int64_t"
 
 -- Convert kind string to runtime kind tag integer
-fn kind_to_tag kind:Str -> Int
-  if kind == "int"
-    return 0
-  if kind == "float"
-    return 1
-  if kind == "bool"
-    return 2
-  if kind == "str"
-    return 3
-  if kind == "void"
-    return 4
-  if kind.starts_with("rec:")
-    return 5
-  if kind.starts_with("enum:")
-    return 6
-  if kind == "option"
-    return 7
-  if kind == "result"
-    return 8
-  if kind == "list"
-    return 9
-  if kind == "map"
-    return 10
-  0
+fn kind_to_tag kind:OreKind -> Int
+  match kind
+    IntKind -> 0
+    FloatKind -> 1
+    BoolKind -> 2
+    StrKind -> 3
+    VoidKind -> 4
+    RecKind _ -> 5
+    EnumKind _ -> 6
+    OptionKind -> 7
+    ResultKind -> 8
+    ListKind -> 9
+    MapKind -> 10
+    _ -> 0
 
 -- Ensure a value is a void* pointer expression.
 -- If kind is already str/list/map, value is already void*.
 -- If kind is int/dynamic/unknown, cast from int64_t to void*.
-fn ensure_void_ptr val:Str kind:Str -> Str
-  if kind == "str" or kind == "list" or kind == "map"
+fn ensure_void_ptr val:Str kind:OreKind -> Str
+  if is_pointer_kind(kind)
     return val
   "(void*)(intptr_t)({val})"
 
 -- Convert a value expression to an int64_t expression for storage in lists.
 -- For struct types (enum/record), heap-allocates and returns pointer as int64_t.
-fn value_to_i64_expr st:List val:Str kind:Str -> Str
-  if kind.starts_with("enum:")
+fn value_to_i64_expr st:List val:Str kind:OreKind -> Str
+  if is_struct_kind(kind)
     ct := kind_to_c_type(kind)
     return "(\{ {ct} __v2i = {val}; (int64_t)(intptr_t)memcpy(malloc(sizeof({ct})), &__v2i, sizeof({ct})); })"
-  if kind.starts_with("rec:")
-    ct := kind_to_c_type(kind)
-    return "(\{ {ct} __v2i = {val}; (int64_t)(intptr_t)memcpy(malloc(sizeof({ct})), &__v2i, sizeof({ct})); })"
-  if kind == "str" or kind == "list" or kind == "map"
+  if is_pointer_kind(kind)
     return "(int64_t)(intptr_t)({val})"
-  if kind == "bool"
+  if is_bool_kind(kind)
     return "(int64_t)({val})"
-  if kind == "float"
+  if is_float_kind(kind)
     return "*(int64_t*)&(double)\{{val}}"
   "(int64_t)({val})"
 
 -- Convert an int64_t expression back to the proper C type.
 -- For struct types, dereferences the heap pointer.
-fn coerce_from_i64_expr val:Str kind:Str -> Str
-  if kind.starts_with("enum:")
+fn coerce_from_i64_expr val:Str kind:OreKind -> Str
+  if is_struct_kind(kind)
     ct := kind_to_c_type(kind)
     return "*({ct}*)(intptr_t)({val})"
-  if kind.starts_with("rec:")
-    ct := kind_to_c_type(kind)
-    return "*({ct}*)(intptr_t)({val})"
-  if kind == "str" or kind == "list" or kind == "map"
+  if is_pointer_kind(kind)
     return "(void*)(intptr_t)({val})"
-  if kind == "bool"
+  if is_bool_kind(kind)
     return "(int8_t)({val})"
-  if kind == "float"
+  if is_float_kind(kind)
     return "*(double*)&(int64_t)\{{val}}"
   val
 
 -- Coerce an argument expression to match a parameter's expected type.
 -- Handles int64_t -> struct (enum/record) and struct -> int64_t conversions.
-fn coerce_arg_to_param st:List expr:Str arg_kind:Str param_kind:Str -> Str
-  if arg_kind == param_kind
-    return expr
+fn coerce_arg_to_param st:List expr:Str arg_kind:OreKind param_kind:OreKind -> Str
+  if kind_to_tag(arg_kind) == kind_to_tag(param_kind)
+    if not is_rec_kind(arg_kind) and not is_enum_kind(arg_kind)
+      return expr
+    if kind_name(arg_kind) == kind_name(param_kind)
+      return expr
   -- Treat dynamic kinds as int64_t for coercion purposes
   mut effective_arg_kind := arg_kind
-  if arg_kind.starts_with("dynamic:")
-    effective_arg_kind = "int"
+  if is_dynamic_kind(arg_kind)
+    effective_arg_kind = IntKind
   -- int64_t arg where struct param is expected: dereference heap pointer
-  mut arg_is_i64 := effective_arg_kind == "int" or effective_arg_kind == "void"
-  mut param_is_struct := param_kind.starts_with("enum:") or param_kind.starts_with("rec:")
+  mut arg_is_i64 := is_i64_kind(effective_arg_kind)
+  mut param_is_struct := is_struct_kind(param_kind)
   if arg_is_i64 and param_is_struct
     return coerce_from_i64_expr(expr, param_kind)
   -- struct arg where int64_t param is expected: box to heap
-  mut arg_is_struct := effective_arg_kind.starts_with("enum:") or effective_arg_kind.starts_with("rec:")
-  mut param_is_i64 := param_kind == "int" or param_kind == "void"
+  mut arg_is_struct := is_struct_kind(effective_arg_kind)
+  mut param_is_i64 := is_i64_kind(param_kind)
   if arg_is_struct and param_is_i64
     return value_to_i64_expr(st, expr, arg_kind)
   -- str arg where int64_t param is expected
-  if effective_arg_kind == "str" and param_is_i64
+  if is_str_kind(effective_arg_kind) and param_is_i64
     return "(int64_t)(intptr_t)({expr})"
   -- int64_t arg where str param is expected
-  if arg_is_i64 and param_kind == "str"
+  if arg_is_i64 and is_str_kind(param_kind)
     return "(void*)(intptr_t)({expr})"
   -- int64_t arg where list/map param is expected
-  if arg_is_i64 and (param_kind == "list" or param_kind == "map")
+  if arg_is_i64 and (is_list_kind(param_kind) or is_map_kind(param_kind))
     return "(void*)(intptr_t)({expr})"
   -- list/map arg where int64_t param is expected
-  if (effective_arg_kind == "list" or effective_arg_kind == "map") and param_is_i64
+  if (is_list_kind(effective_arg_kind) or is_map_kind(effective_arg_kind)) and param_is_i64
     return "(int64_t)(intptr_t)({expr})"
   expr
 
-fn type_expr_to_kind_str st:List te:TypeExpr -> Str
+fn type_expr_to_kind st:List te:TypeExpr -> OreKind
   match te
     NamedType name ->
       if name == "Int"
-        return "int"
+        return IntKind
       if name == "Float"
-        return "float"
+        return FloatKind
       if name == "Bool"
-        return "bool"
+        return BoolKind
       if name == "Str"
-        return "str"
+        return StrKind
       if name == "Void"
-        return "void"
+        return VoidKind
       if name == "List"
-        return "list"
+        return ListKind
       if name == "Map"
-        return "map"
+        return MapKind
       if name == "Option"
-        return "option"
+        return OptionKind
       if name == "Result"
-        return "result"
+        return ResultKind
       if name == "Channel"
-        return "int64_t"
+        return IntKind
       if cg_is_record(st, name)
-        return "rec:{name}"
+        return RecKind(name: name)
       if cg_is_enum(st, name)
-        return "enum:{name}"
-      return "int"
+        return EnumKind(name: name)
+      return IntKind
     _ ->
-      return "int"
-  "int"
+      return IntKind
+  IntKind
 
 -- ── Monomorphization helpers ──
 
-fn kind_to_suffix kind:Str -> Str
-  if kind == "int"
-    return "Int"
-  if kind == "float"
-    return "Float"
-  if kind == "bool"
-    return "Bool"
-  if kind == "str"
-    return "Str"
-  if kind == "void"
-    return "Void"
-  if kind == "list"
-    return "List"
-  if kind == "map"
-    return "Map"
-  if kind == "option"
-    return "Option"
-  if kind == "result"
-    return "Result"
-  if kind.starts_with("rec:")
-    n := kind.substr(4, kind.len() - 4)
-    return "Rec_{n}"
-  if kind.starts_with("enum:")
-    n := kind.substr(5, kind.len() - 5)
-    return "Enum_{n}"
-  "Int"
+fn kind_to_suffix kind:OreKind -> Str
+  match kind
+    IntKind -> "Int"
+    FloatKind -> "Float"
+    BoolKind -> "Bool"
+    StrKind -> "Str"
+    VoidKind -> "Void"
+    ListKind -> "List"
+    MapKind -> "Map"
+    OptionKind -> "Option"
+    ResultKind -> "Result"
+    RecKind name -> "Rec_{name}"
+    EnumKind name -> "Enum_{name}"
+    _ -> "Int"
 
-fn kind_str_to_type_name kind:Str -> Str
-  if kind == "int"
-    return "Int"
-  if kind == "float"
-    return "Float"
-  if kind == "bool"
-    return "Bool"
-  if kind == "str"
-    return "Str"
-  if kind == "void"
-    return "Void"
-  if kind == "list"
-    return "List"
-  if kind == "map"
-    return "Map"
-  if kind == "option"
-    return "Option"
-  if kind == "result"
-    return "Result"
-  "Int"
+fn kind_to_type_name kind:OreKind -> Str
+  match kind
+    IntKind -> "Int"
+    FloatKind -> "Float"
+    BoolKind -> "Bool"
+    StrKind -> "Str"
+    VoidKind -> "Void"
+    ListKind -> "List"
+    MapKind -> "Map"
+    OptionKind -> "Option"
+    ResultKind -> "Result"
+    _ -> "Int"
 
 -- ── C reserved word mangling ──
 
@@ -803,9 +756,7 @@ fn emit_runtime_decls st:List
   emit_raw(st, "")
 
 -- ── Expression compilation ──
--- Returns [c_expr_string, kind_string]
--- kind_string is one of: "int", "float", "bool", "str", "list", "map", "void",
---                         "option", "result", "rec:Name", "enum:Name"
+-- Returns [c_expr_string, OreKind]
 
 fn compile_expr st:List exprs:List stmts:List expr_id:Int -> List
   e := get_expr(exprs, expr_id)
@@ -814,14 +765,14 @@ fn compile_expr st:List exprs:List stmts:List expr_id:Int -> List
 fn compile_expr_node st:List exprs:List stmts:List e:Expr -> List
   match e
     IntLitExpr value ->
-      return ["{value}LL", "int"]
+      return ["{value}LL", IntKind]
     FloatLitExpr value ->
-      return ["{value}", "float"]
+      return ["{value}", FloatKind]
     BoolLitExpr value ->
       if value
-        return ["((int8_t)1)", "bool"]
+        return ["((int8_t)1)", BoolKind]
       else
-        return ["((int8_t)0)", "bool"]
+        return ["((int8_t)0)", BoolKind]
     StringLitExpr value ->
       return compile_string_lit(st, value)
     IdentExpr name ->
@@ -830,10 +781,10 @@ fn compile_expr_node st:List exprs:List stmts:List e:Expr -> List
       return compile_binop(st, exprs, stmts, op, left, right)
     UnaryMinusExpr inner ->
       r := compile_expr(st, exprs, stmts, inner)
-      return ["(-({r[0]}))", r[1]]
+      return ["(-({r[0]}))", kind_at(r, 1)]
     UnaryNotExpr inner ->
       r := compile_expr(st, exprs, stmts, inner)
-      return ["(!({r[0]}))", "bool"]
+      return ["(!({r[0]}))", BoolKind]
     CallExpr func args ->
       return compile_call(st, exprs, stmts, func, args)
     PrintExpr inner ->
@@ -856,23 +807,23 @@ fn compile_expr_node st:List exprs:List stmts:List e:Expr -> List
       r := compile_expr(st, exprs, stmts, inner)
       t := cg_tmp(st)
       emit(st, "OreTaggedUnion {t}; {t}.tag = 1; {t}.value = (int64_t)({r[0]});")
-      return [t, "option"]
+      return [t, OptionKind]
     OptionNoneExpr ->
       t := cg_tmp(st)
       emit(st, "OreTaggedUnion {t}; {t}.tag = 0; {t}.value = 0;")
-      return [t, "option"]
+      return [t, OptionKind]
     ResultOkExpr inner ->
       r := compile_expr(st, exprs, stmts, inner)
       t := cg_tmp(st)
       emit(st, "OreTaggedUnion {t}; {t}.tag = 1; {t}.value = (int64_t)({r[0]});")
-      return [t, "result"]
+      return [t, ResultKind]
     ResultErrExpr inner ->
       r := compile_expr(st, exprs, stmts, inner)
       t := cg_tmp(st)
       emit(st, "OreTaggedUnion {t}; {t}.tag = 0; {t}.value = (int64_t)({r[0]});")
-      return [t, "result"]
+      return [t, ResultKind]
     BreakExpr ->
-      return ["0", "void"]
+      return ["0", VoidKind]
     BlockExprExpr block ->
       return compile_block_expr(st, exprs, stmts, block)
     MatchExpr subject arms ->
@@ -889,40 +840,40 @@ fn compile_expr_node st:List exprs:List stmts:List e:Expr -> List
       r := compile_expr(st, exprs, stmts, cond)
       msg := compile_string_lit(st, message)
       emit(st, "ore_assert({r[0]}, {msg[0]}, 0);")
-      return ["0", "void"]
+      return ["0", VoidKind]
     AssertEqExpr left right message ->
       l := compile_expr(st, exprs, stmts, left)
       r := compile_expr(st, exprs, stmts, right)
       msg := compile_string_lit(st, message)
-      if l[1] == "str"
+      if is_str_kind(kind_at(l, 1))
         emit(st, "ore_assert_eq_str({l[0]}, {r[0]}, {msg[0]}, 0);")
-      else if l[1] == "float"
+      else if is_float_kind(kind_at(l, 1))
         emit(st, "ore_assert_eq_float({l[0]}, {r[0]}, {msg[0]}, 0);")
       else
         emit(st, "ore_assert_eq_int({l[0]}, {r[0]}, {msg[0]}, 0);")
-      return ["0", "void"]
+      return ["0", VoidKind]
     AssertNeExpr left right message ->
       l := compile_expr(st, exprs, stmts, left)
       r := compile_expr(st, exprs, stmts, right)
       msg := compile_string_lit(st, message)
-      if l[1] == "str"
+      if is_str_kind(kind_at(l, 1))
         emit(st, "ore_assert_ne_str({l[0]}, {r[0]}, {msg[0]}, 0);")
       else
         emit(st, "ore_assert_ne_int({l[0]}, {r[0]}, {msg[0]}, 0);")
-      return ["0", "void"]
+      return ["0", VoidKind]
     SleepExpr inner ->
       r := compile_expr(st, exprs, stmts, inner)
       emit(st, "ore_sleep({r[0]});")
-      return ["0", "void"]
+      return ["0", VoidKind]
     _ ->
       cg_error(st, "unsupported expression type")
-      return ["0", "int"]
+      return ["0", IntKind]
 
 -- ── String literal ──
 
 fn compile_string_lit st:List s:Str -> List
   esc := c_escape(s)
-  ["ore_str_new(\"{esc}\", {s.len()})", "str"]
+  ["ore_str_new(\"{esc}\", {s.len()})", StrKind]
 
 -- ── Identifier ──
 
@@ -935,7 +886,7 @@ fn compile_ident st:List name:Str -> List
   if not cg_has_var(st, name)
     if cg_has_fn(st, name)
       mn := mangle_fn(name)
-      return ["(void*)&{mn}", "int"]
+      return ["(void*)&{mn}", IntKind]
   mn := mangle_var(name)
   kind := cg_get_var_kind(st, name)
   [mn, kind]
@@ -947,7 +898,7 @@ fn compile_variant_zero_arg st:List variant:Str enum_name:Str -> List
   t := cg_tmp(st)
   c_type := "struct ore_enum_{enum_name}"
   emit(st, "{c_type} {t}; {t}.tag = {tag};")
-  [t, "enum:{enum_name}"]
+  [t, EnumKind(name: enum_name)]
 
 fn find_variant_tag st:List enum_name:Str variant:Str -> Int
   variants_list := cg_list(st, 15)
@@ -984,12 +935,12 @@ fn compile_binop st:List exprs:List stmts:List op:BinOp left:Int right:Int -> Li
 fn compile_binop_values st:List op:BinOp l:List r:List -> List
   lv := l[0]
   rv := r[0]
-  lk := l[1]
-  rk := r[1]
+  lk := kind_at(l, 1)
+  rk := kind_at(r, 1)
   -- String operations: when either side is str, use string comparison/concat.
   -- This handles values from untyped list access (typed as int/dynamic but actually string pointers).
-  mut l_is_str := lk == "str"
-  mut r_is_str := rk == "str"
+  mut l_is_str := is_str_kind(lk)
+  mut r_is_str := is_str_kind(rk)
   if l_is_str or r_is_str
     mut sl := lv
     mut sr := rv
@@ -999,43 +950,43 @@ fn compile_binop_values st:List op:BinOp l:List r:List -> List
       sr = "(void*)(intptr_t)({rv})"
     return compile_str_binop(st, op, sl, sr)
   -- List concatenation
-  if lk == "list"
+  if is_list_kind(lk)
     match op
       AddOp ->
-        return ["ore_list_concat({lv}, {rv})", "list"]
+        return ["ore_list_concat({lv}, {rv})", ListKind]
       _ ->
-        return ["0", "int"]
+        return ["0", IntKind]
   -- Float promotion
-  is_float := lk == "float" or rk == "float"
+  is_float := is_float_kind(lk) or is_float_kind(rk)
   mut lc := lv
   mut rc := rv
   if is_float
-    if lk == "int"
+    if is_int_kind(lk)
       lc = "(double)({lv})"
-    if rk == "int"
+    if is_int_kind(rk)
       rc = "(double)({rv})"
   -- Result kind
   mut result_kind := lk
   if is_float
-    result_kind = "float"
+    result_kind = FloatKind
   -- Comparison ops always return bool
   match op
     EqOp ->
-      result_kind = "bool"
+      result_kind = BoolKind
     NotEqOp ->
-      result_kind = "bool"
+      result_kind = BoolKind
     LtOp ->
-      result_kind = "bool"
+      result_kind = BoolKind
     GtOp ->
-      result_kind = "bool"
+      result_kind = BoolKind
     LtEqOp ->
-      result_kind = "bool"
+      result_kind = BoolKind
     GtEqOp ->
-      result_kind = "bool"
+      result_kind = BoolKind
     AndOp ->
-      result_kind = "bool"
+      result_kind = BoolKind
     OrOp ->
-      result_kind = "bool"
+      result_kind = BoolKind
     _ ->
       result_kind = result_kind
   c_op := binop_to_c(st, op, is_float, lc, rc)
@@ -1058,7 +1009,7 @@ fn compile_binop_values st:List op:BinOp l:List r:List -> List
         emit(st, "if ({rt} == 0) ore_div_by_zero();")
         return ["({lt} % {rt})", result_kind]
       else
-        return ["fmod({lc}, {rc})", "float"]
+        return ["fmod({lc}, {rc})", FloatKind]
     _ ->
       return ["({lc} {c_op} {rc})", result_kind]
 
@@ -1082,23 +1033,23 @@ fn binop_to_c st:List op:BinOp is_float:Bool lc:Str rc:Str -> Str
 fn compile_str_binop st:List op:BinOp lv:Str rv:Str -> List
   match op
     AddOp ->
-      return ["ore_str_concat({lv}, {rv})", "str"]
+      return ["ore_str_concat({lv}, {rv})", StrKind]
     EqOp ->
-      return ["ore_str_eq({lv}, {rv})", "bool"]
+      return ["ore_str_eq({lv}, {rv})", BoolKind]
     NotEqOp ->
-      return ["(!ore_str_eq({lv}, {rv}))", "bool"]
+      return ["(!ore_str_eq({lv}, {rv}))", BoolKind]
     LtOp ->
-      return ["(ore_str_cmp({lv}, {rv}) < 0)", "bool"]
+      return ["(ore_str_cmp({lv}, {rv}) < 0)", BoolKind]
     GtOp ->
-      return ["(ore_str_cmp({lv}, {rv}) > 0)", "bool"]
+      return ["(ore_str_cmp({lv}, {rv}) > 0)", BoolKind]
     LtEqOp ->
-      return ["(ore_str_cmp({lv}, {rv}) <= 0)", "bool"]
+      return ["(ore_str_cmp({lv}, {rv}) <= 0)", BoolKind]
     GtEqOp ->
-      return ["(ore_str_cmp({lv}, {rv}) >= 0)", "bool"]
+      return ["(ore_str_cmp({lv}, {rv}) >= 0)", BoolKind]
     MulOp ->
-      return ["ore_str_repeat({lv}, {rv})", "str"]
+      return ["ore_str_repeat({lv}, {rv})", StrKind]
     _ ->
-      return ["0", "int"]
+      return ["0", IntKind]
 
 -- ── Pipe operator ──
 
@@ -1145,7 +1096,7 @@ fn compile_call st:List exprs:List stmts:List func:Int args:List -> List
       return compile_fn_call_with_args(st, fname, arg_strs, arg_kinds)
     _ ->
       cg_error(st, "call: expected function name")
-      return ["0", "int"]
+      return ["0", IntKind]
 
 fn compile_fn_call_with_args st:List fname:Str arg_strs:List arg_kinds:List -> List
   -- Check builtins first
@@ -1161,13 +1112,12 @@ fn compile_fn_call_with_args st:List fname:Str arg_strs:List arg_kinds:List -> L
     return compile_generic_call(st, fname, arg_strs, arg_kinds)
   -- Regular function call — coerce args to expected param types
   mn := mangle_fn(fname)
-  param_kinds_str := cg_get_fn_params(st, fname)
+  pk_list := cg_get_fn_params(st, fname)
   mut coerced_args := []
-  if param_kinds_str != ""
-    pk_list := param_kinds_str.split(",")
+  if pk_list.len() > 0
     for i in 0..arg_strs.len()
       if i < pk_list.len()
-        coerced_args.push(coerce_arg_to_param(st, str_at(arg_strs, i), str_at(arg_kinds, i), str_at(pk_list, i)))
+        coerced_args.push(coerce_arg_to_param(st, str_at(arg_strs, i), kind_at(arg_kinds, i), kind_at(pk_list, i)))
       else
         coerced_args.push(str_at(arg_strs, i))
   else
@@ -1183,7 +1133,7 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
   gf_list := cg_get_generic_fn(st, fname)
   if gf_list.len() == 0
     cg_error(st, "generic function not found: {fname}")
-    return ["0", "int"]
+    return ["0", IntKind]
   gf := get_fn_def(gf_list, 0)
   -- Extract type parameter names
   tp_list := gf.type_params
@@ -1203,17 +1153,17 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
           if list_contains_str(tp_names, ptn)
             if not list_contains_str(type_map_keys, ptn)
               type_map_keys.push(ptn)
-              type_map_vals.push(str_at(arg_kinds, i))
+              type_map_vals.push(kind_at(arg_kinds, i))
         _ ->
           0
   -- Generate mangled name: fname__Suffix1_Suffix2
   mut suffixes := []
   for i in 0..tp_names.len()
     tpn := str_at(tp_names, i)
-    mut found_kind := "int"
+    mut found_kind := IntKind
     for j in 0..type_map_keys.len()
       if str_at(type_map_keys, j) == tpn
-        found_kind = str_at(type_map_vals, j)
+        found_kind = kind_at(type_map_vals, j)
     suffixes.push(kind_to_suffix(found_kind))
   uscore := "_"
   mono_name := "{fname}__{suffixes.join(uscore)}"
@@ -1247,7 +1197,7 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
     -- Save current lines and indent, compile into fresh lines, then move to deferred
     saved_lines := cg_list(st, 0)
     saved_indent := cg_indent(st)
-    saved_var_map := cg_var_map(st)
+    saved_var_map := st[4]
     st[0] = []
     cg_set_indent(st, 0)
     st[4] = {}
@@ -1272,7 +1222,7 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
 fn resolve_type_param name:Str keys:List vals:List -> Str
   for i in 0..keys.len()
     if str_at(keys, i) == name
-      return kind_str_to_type_name(str_at(vals, i))
+      return kind_to_type_name(kind_at(vals, i))
   name
 
 fn list_contains_str lst:List s:Str -> Bool
@@ -1289,86 +1239,86 @@ fn compile_variant_call st:List variant:Str enum_name:Str arg_strs:List arg_kind
   c_type := "struct ore_enum_{enum_name}"
   emit(st, "{c_type} {t}; {t}.tag = {tag};")
   for i in 0..arg_strs.len()
-    ak := str_at(arg_kinds, i)
+    ak := kind_at(arg_kinds, i)
     i64val := value_to_i64_expr(st, arg_strs[i], ak)
     emit(st, "{t}.data[{i}] = {i64val};")
-  __ret_1 := [t, "enum:{enum_name}"]
+  __ret_1 := [t, EnumKind(name: enum_name)]
   __ret_1
 
 -- ── Builtins ──
 
 fn try_builtin st:List fname:Str args:List kinds:List -> List
   if fname == "sqrt"
-    return ["ore_math_sqrt((double)({args[0]}))", "float"]
+    return ["ore_math_sqrt((double)({args[0]}))", FloatKind]
   if fname == "sin"
-    return ["ore_math_sin((double)({args[0]}))", "float"]
+    return ["ore_math_sin((double)({args[0]}))", FloatKind]
   if fname == "cos"
-    return ["ore_math_cos((double)({args[0]}))", "float"]
+    return ["ore_math_cos((double)({args[0]}))", FloatKind]
   if fname == "log"
-    return ["ore_math_log((double)({args[0]}))", "float"]
+    return ["ore_math_log((double)({args[0]}))", FloatKind]
   if fname == "pow"
     if kinds.len() >= 2
-      if kinds[0] == "float" or kinds[1] == "float"
-        return ["ore_math_pow((double)({args[0]}), (double)({args[1]}))", "float"]
-    return ["ore_int_pow({args[0]}, {args[1]})", "int"]
+      if is_float_kind(kind_at(kinds, 0)) or is_float_kind(kind_at(kinds, 1))
+        return ["ore_math_pow((double)({args[0]}), (double)({args[1]}))", FloatKind]
+    return ["ore_int_pow({args[0]}, {args[1]})", IntKind]
   if fname == "abs"
-    return ["ore_math_abs((double)({args[0]}))", "float"]
+    return ["ore_math_abs((double)({args[0]}))", FloatKind]
   if fname == "floor"
-    return ["(int64_t)ore_math_floor((double)({args[0]}))", "int"]
+    return ["(int64_t)ore_math_floor((double)({args[0]}))", IntKind]
   if fname == "ceil"
-    return ["(int64_t)ore_math_ceil((double)({args[0]}))", "int"]
+    return ["(int64_t)ore_math_ceil((double)({args[0]}))", IntKind]
   if fname == "round"
     if args.len() == 2
-      return ["ore_float_round_to((double)({args[0]}), {args[1]})", "float"]
-    return ["(int64_t)ore_math_round((double)({args[0]}))", "int"]
+      return ["ore_float_round_to((double)({args[0]}), {args[1]})", FloatKind]
+    return ["(int64_t)ore_math_round((double)({args[0]}))", IntKind]
   if fname == "pi"
-    return ["ore_math_pi()", "float"]
+    return ["ore_math_pi()", FloatKind]
   if fname == "euler" or fname == "e"
-    return ["ore_math_e()", "float"]
+    return ["ore_math_e()", FloatKind]
   if fname == "rand_int"
-    return ["ore_rand_int({args[0]}, {args[1]})", "int"]
+    return ["ore_rand_int({args[0]}, {args[1]})", IntKind]
   if fname == "time_now"
-    return ["ore_time_now()", "int"]
+    return ["ore_time_now()", IntKind]
   if fname == "time_ms"
-    return ["ore_time_ms()", "int"]
+    return ["ore_time_ms()", IntKind]
   if fname == "exit"
     emit(st, "ore_exit({args[0]});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if fname == "input"
-    return ["ore_readln()", "str"]
+    return ["ore_readln()", StrKind]
   if fname == "file_read"
-    return ["ore_file_read({args[0]})", "str"]
+    return ["ore_file_read({args[0]})", StrKind]
   if fname == "file_read_lines"
-    return ["ore_file_read_lines({args[0]})", "list"]
+    return ["ore_file_read_lines({args[0]})", ListKind]
   if fname == "file_write"
-    return ["ore_file_write({args[0]}, {args[1]})", "bool"]
+    return ["ore_file_write({args[0]}, {args[1]})", BoolKind]
   if fname == "file_exists"
-    return ["ore_file_exists({args[0]})", "bool"]
+    return ["ore_file_exists({args[0]})", BoolKind]
   if fname == "args"
-    return ["ore_args()", "list"]
+    return ["ore_args()", ListKind]
   if fname == "exec"
-    return ["ore_exec({args[0]})", "str"]
+    return ["ore_exec({args[0]})", StrKind]
   if fname == "env_get"
-    return ["ore_env_get({args[0]})", "str"]
+    return ["ore_env_get({args[0]})", StrKind]
   if fname == "env_set"
     emit(st, "ore_env_set({args[0]}, {args[1]});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if fname == "type_of"
-    return ["ore_type_of(0)", "str"]
+    return ["ore_type_of(0)", StrKind]
   if fname == "ord"
-    return ["ore_ord({args[0]})", "int"]
+    return ["ore_ord({args[0]})", IntKind]
   if fname == "chr"
-    return ["ore_chr({args[0]})", "str"]
+    return ["ore_chr({args[0]})", StrKind]
   if fname == "sleep"
     emit(st, "ore_sleep({args[0]});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if fname == "channel_new"
-    return ["ore_channel_new()", "list"]
+    return ["ore_channel_new()", ListKind]
   if fname == "channel_send"
     emit(st, "ore_channel_send({args[0]}, {args[1]});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if fname == "channel_recv"
-    return ["ore_channel_recv({args[0]})", "int"]
+    return ["ore_channel_recv({args[0]})", IntKind]
   -- Not a builtin
   mut empty := []
   empty
@@ -1378,28 +1328,28 @@ fn try_builtin st:List fname:Str args:List kinds:List -> List
 fn compile_print st:List exprs:List stmts:List inner:Int -> List
   r := compile_expr(st, exprs, stmts, inner)
   val := r[0]
-  kind := str_at(r, 1)
-  if kind.starts_with("dynamic:")
-    kind_var := kind.substr(8, kind.len() - 8)
+  kind := kind_at(r, 1)
+  if is_dynamic_kind(kind)
+    kind_var := kind_dynamic_var(kind)
     dt := cg_tmp(st)
     emit(st, "void* {dt} = ore_dynamic_to_str({val}, {kind_var});")
     emit(st, "ore_str_print({dt});")
     emit(st, "ore_str_release({dt});")
-  else if kind == "int"
+  else if is_int_kind(kind)
     emit(st, "ore_print_int({val});")
-  else if kind == "float"
+  else if is_float_kind(kind)
     emit(st, "ore_print_float({val});")
-  else if kind == "bool"
+  else if is_bool_kind(kind)
     emit(st, "ore_print_bool({val});")
-  else if kind == "str"
+  else if is_str_kind(kind)
     emit(st, "ore_str_print({val});")
-  else if kind == "list"
+  else if is_list_kind(kind)
     emit(st, "ore_list_print({val});")
-  else if kind == "map"
+  else if is_map_kind(kind)
     emit(st, "ore_map_print({val});")
   else
     emit(st, "ore_print_int((int64_t)({val}));")
-  result := ["0", "void"]
+  result := ["0", VoidKind]
   result
 
 -- ── If/else expression ──
@@ -1425,13 +1375,13 @@ fn compile_if_else st:List exprs:List stmts:List cond:Int then_block:Block else_
   cg_dec_indent(st)
   emit(st, "}")
   -- Determine kind from branches
-  mut kind := tr[1]
-  if kind == "void" or kind == ""
-    kind = er[1]
-  if kind == "" or kind == "void"
-    kind = "int"
+  mut kind := kind_at(tr, 1)
+  if is_void_kind(kind)
+    kind = kind_at(er, 1)
+  if is_void_kind(kind)
+    kind = IntKind
   -- Patch declaration with proper type if non-int
-  if kind != "int" and kind != "void"
+  if not is_int_kind(kind) and not is_void_kind(kind)
     ct := match_temp_c_type(kind)
     init := match_default_init(kind)
     cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -1444,7 +1394,7 @@ fn compile_if_else st:List exprs:List stmts:List cond:Int then_block:Block else_
 fn compile_block st:List exprs:List stmts:List block:Block -> List
   ss := block.stmts
   mut last_val := ""
-  mut last_kind := "void"
+  mut last_kind := VoidKind
   for i in 0..ss.len()
     sp := get_sstmt(ss, i)
 
@@ -1452,7 +1402,7 @@ fn compile_block st:List exprs:List stmts:List block:Block -> List
     r := compile_stmt_by_id(st, exprs, stmts, sid)
     if r[0] != ""
       last_val = r[0]
-      last_kind = r[1]
+      last_kind = kind_at(r, 1)
   __ret_3 := [last_val, last_kind]
   __ret_3
 
@@ -1470,20 +1420,20 @@ fn compile_stmt_node st:List exprs:List stmts:List s:Stmt -> List
       return compile_assign(st, exprs, stmts, name, value)
     ExprStmt expr ->
       r := compile_expr(st, exprs, stmts, expr)
-      if r[1] != "void"
+      if not is_void_kind(kind_at(r, 1))
         return r
-      return ["", "void"]
+      return ["", VoidKind]
     ReturnStmt value ->
       if value >= 0
         r := compile_expr(st, exprs, stmts, value)
         emit(st, "return {r[0]};")
       else
-        fn_ret := str_at(cg_list(st, 28), 0)
-        if fn_ret == "void"
+        fn_ret := kind_at(cg_list(st, 28), 0)
+        if is_void_kind(fn_ret)
           emit(st, "return;")
         else
           emit(st, "return 0;")
-      return ["", "void"]
+      return ["", VoidKind]
     ForInStmt var_name start end step body ->
       return compile_for_in(st, exprs, stmts, var_name, start, end, step, body)
     ForEachStmt var_name iterable body ->
@@ -1497,54 +1447,55 @@ fn compile_stmt_node st:List exprs:List stmts:List s:Stmt -> List
       if brk.len() > 0
         lbl := brk[brk.len() - 1]
         emit(st, "goto {lbl};")
-      return ["", "void"]
+      return ["", VoidKind]
     ContinueStmt ->
       cont := cg_list(st, 19)
       if cont.len() > 0
         lbl := cont[cont.len() - 1]
         emit(st, "goto {lbl};")
-      return ["", "void"]
+      return ["", VoidKind]
     IndexAssignStmt object index value ->
       return compile_index_assign(st, exprs, stmts, object, index, value)
     FieldAssignStmt object field value ->
       return compile_field_assign(st, exprs, stmts, object, field, value)
     SpawnStmt expr ->
       emit(st, "// spawn not fully supported in C codegen")
-      return ["", "void"]
+      return ["", VoidKind]
     _ ->
       cg_error(st, "unsupported statement type")
-      return ["", "void"]
+      return ["", VoidKind]
 
 -- ── Let statement ──
 
 fn compile_let st:List exprs:List stmts:List name:Str mutable:Bool value:Int -> List
   r := compile_expr(st, exprs, stmts, value)
-  c_type := kind_to_c_type(r[1])
+  rk := kind_at(r, 1)
+  c_type := kind_to_c_type(rk)
   mn := mangle_var(name)
   emit(st, "{c_type} {mn} = {r[0]};")
-  cg_set_var(st, name, r[1])
-  ["", "void"]
+  cg_set_var(st, name, rk)
+  ["", VoidKind]
 
 -- ── Assign statement ──
 
 fn compile_assign st:List exprs:List stmts:List name:Str value:Int -> List
   r := compile_expr(st, exprs, stmts, value)
   mn := mangle_var(name)
-  new_kind := str_at(r, 1)
+  new_kind := kind_at(r, 1)
   -- Coerce RHS to match existing variable kind if needed
   existing_kind := cg_get_var_kind(st, name)
   -- Normalize dynamic kinds to int for cast determination
   mut effective_new := new_kind
-  if new_kind.starts_with("dynamic:")
-    effective_new = "int"
+  if is_dynamic_kind(new_kind)
+    effective_new = IntKind
   mut effective_existing := existing_kind
-  if existing_kind.starts_with("dynamic:")
-    effective_existing = "int"
+  if is_dynamic_kind(existing_kind)
+    effective_existing = IntKind
   -- Check if C types differ between variable and value
-  mut existing_is_ptr := effective_existing == "str" or effective_existing == "list" or effective_existing == "map"
-  mut new_is_ptr := effective_new == "str" or effective_new == "list" or effective_new == "map"
-  mut existing_is_i64 := effective_existing == "int" or effective_existing == "void"
-  mut new_is_i64 := effective_new == "int" or effective_new == "void"
+  mut existing_is_ptr := is_pointer_kind(effective_existing)
+  mut new_is_ptr := is_pointer_kind(effective_new)
+  mut existing_is_i64 := is_i64_kind(effective_existing)
+  mut new_is_i64 := is_i64_kind(effective_new)
   if existing_is_ptr and new_is_i64
     -- int64_t value → void* variable: cast to pointer
     coerced := coerce_from_i64_expr(r[0], existing_kind)
@@ -1552,7 +1503,7 @@ fn compile_assign st:List exprs:List stmts:List name:Str value:Int -> List
   else if existing_is_i64 and new_is_ptr
     -- void* value → int64_t variable: cast to integer
     emit(st, "{mn} = (int64_t)(intptr_t)({r[0]});")
-  else if (existing_kind.starts_with("enum:") or existing_kind.starts_with("rec:")) and new_is_i64
+  else if is_struct_kind(existing_kind) and new_is_i64
     coerced := coerce_from_i64_expr(r[0], existing_kind)
     emit(st, "{mn} = {coerced};")
   else
@@ -1560,11 +1511,11 @@ fn compile_assign st:List exprs:List stmts:List name:Str value:Int -> List
   -- Don't overwrite with dynamic kind: the dynamic temp var may be scoped
   -- to an inner block (e.g. inside if/else) and referencing it later would
   -- produce an undeclared variable error in the generated C.
-  if not new_kind.starts_with("dynamic:")
+  if not is_dynamic_kind(new_kind)
     -- Preserve existing more-specific kind when new_kind is generic int
-    if new_kind != "int" or existing_kind == "int"
+    if not is_int_kind(new_kind) or is_int_kind(existing_kind)
       cg_set_var(st, name, new_kind)
-  ["", "void"]
+  ["", VoidKind]
 
 -- ── Index assign ──
 
@@ -1572,17 +1523,17 @@ fn compile_index_assign st:List exprs:List stmts:List object:Int index:Int value
   obj := compile_expr(st, exprs, stmts, object)
   idx := compile_expr(st, exprs, stmts, index)
   val := compile_expr(st, exprs, stmts, value)
-  ok := obj[1]
-  if ok == "list"
-    v_i64 := value_to_i64_expr(st, val[0], val[1])
+  ok := kind_at(obj, 1)
+  if is_list_kind(ok)
+    v_i64 := value_to_i64_expr(st, val[0], kind_at(val, 1))
     emit(st, "ore_list_set({obj[0]}, {idx[0]}, {v_i64});")
-  else if ok == "map"
-    key := ensure_void_ptr(idx[0], idx[1])
-    v_i64 := value_to_i64_expr(st, val[0], val[1])
+  else if is_map_kind(ok)
+    key := ensure_void_ptr(idx[0], kind_at(idx, 1))
+    v_i64 := value_to_i64_expr(st, val[0], kind_at(val, 1))
     emit(st, "ore_map_set({obj[0]}, {key}, {v_i64});")
   else
     emit(st, "{obj[0]}[{idx[0]}] = {val[0]};")
-  __ret_4 := ["", "void"]
+  __ret_4 := ["", VoidKind]
   __ret_4
 
 -- ── Field assign ──
@@ -1591,7 +1542,7 @@ fn compile_field_assign st:List exprs:List stmts:List object:Int field:Str value
   obj := compile_expr(st, exprs, stmts, object)
   val := compile_expr(st, exprs, stmts, value)
   emit(st, "{obj[0]}.{field} = {val[0]};")
-  ["", "void"]
+  ["", VoidKind]
 
 -- ── For-in loop ──
 
@@ -1603,7 +1554,7 @@ fn compile_for_in st:List exprs:List stmts:List var_name:Str start:Int end:Int s
   cg_list(st, 18).push(brk_lbl)
   cg_list(st, 19).push(cont_lbl)
   mn := mangle_var(var_name)
-  cg_set_var(st, var_name, "int")
+  cg_set_var(st, var_name, IntKind)
   if step >= 0
     step_val := compile_expr(st, exprs, stmts, step)
     emit(st, "for (int64_t {mn} = {sv[0]}; {mn} < {ev[0]}; {mn} += {step_val[0]}) \{")
@@ -1617,7 +1568,7 @@ fn compile_for_in st:List exprs:List stmts:List var_name:Str start:Int end:Int s
   emit(st, "{brk_lbl}: ;")
   cg_list(st, 18).pop()
   cg_list(st, 19).pop()
-  ["", "void"]
+  ["", VoidKind]
 
 -- ── For-each loop ──
 
@@ -1636,9 +1587,9 @@ fn compile_for_each st:List exprs:List stmts:List var_name:Str iterable:Int body
   emit(st, "for (int64_t {idx_tmp} = 0; {idx_tmp} < {len_tmp}; {idx_tmp}++) \{")
   cg_inc_indent(st)
   -- Determine element kind from iterable kind
-  mut elem_kind := "int"
-  if it[1] == "list"
-    elem_kind = "int"
+  mut elem_kind := IntKind
+  if is_list_kind(kind_at(it, 1))
+    elem_kind = IntKind
   cg_set_var(st, var_name, elem_kind)
   c_elem_type := kind_to_c_type(elem_kind)
   emit(st, "{c_elem_type} {mn} = ({c_elem_type})ore_list_get({iter_tmp}, {idx_tmp});")
@@ -1649,7 +1600,7 @@ fn compile_for_each st:List exprs:List stmts:List var_name:Str iterable:Int body
   emit(st, "{brk_lbl}: ;")
   cg_list(st, 18).pop()
   cg_list(st, 19).pop()
-  ["", "void"]
+  ["", VoidKind]
 
 -- ── While loop ──
 
@@ -1668,7 +1619,7 @@ fn compile_while st:List exprs:List stmts:List cond:Int body:Block -> List
   emit(st, "{brk_lbl}: ;")
   cg_list(st, 18).pop()
   cg_list(st, 19).pop()
-  ["", "void"]
+  ["", VoidKind]
 
 -- ── Loop (infinite) ──
 
@@ -1686,7 +1637,7 @@ fn compile_loop st:List exprs:List stmts:List body:Block -> List
   emit(st, "{brk_lbl}: ;")
   cg_list(st, 18).pop()
   cg_list(st, 19).pop()
-  ["", "void"]
+  ["", VoidKind]
 
 -- ── String interpolation ──
 
@@ -1708,17 +1659,17 @@ fn compile_string_interp st:List exprs:List stmts:List parts:List -> List
         r := compile_expr(st, exprs, stmts, expr_id)
         -- Convert to string based on kind
         mut s_expr := r[0]
-        kind := str_at(r, 1)
-        if kind.starts_with("dynamic:")
-          kind_var := kind.substr(8, kind.len() - 8)
+        kind := kind_at(r, 1)
+        if is_dynamic_kind(kind)
+          kind_var := kind_dynamic_var(kind)
           s_expr = "ore_dynamic_to_str({r[0]}, {kind_var})"
-        else if kind == "int"
+        else if is_int_kind(kind)
           s_expr = "ore_int_to_str({r[0]})"
-        else if kind == "float"
+        else if is_float_kind(kind)
           s_expr = "ore_float_to_str({r[0]})"
-        else if kind == "bool"
+        else if is_bool_kind(kind)
           s_expr = "ore_bool_to_str({r[0]})"
-        else if kind != "str"
+        else if not is_str_kind(kind)
           s_expr = "ore_int_to_str((int64_t)({r[0]}))"
         if first
           result = s_expr
@@ -1729,7 +1680,7 @@ fn compile_string_interp st:List exprs:List stmts:List parts:List -> List
         result = result
   if first
     result = "ore_str_new(\"\", 0)"
-  __ret_5 := [result, "str"]
+  __ret_5 := [result, StrKind]
   __ret_5
 
 -- ── List literal ──
@@ -1739,13 +1690,14 @@ fn compile_list_lit st:List exprs:List stmts:List elements:List -> List
   emit(st, "void* {t} = ore_list_new();")
   for i in 0..elements.len()
     r := compile_expr(st, exprs, stmts, elements[i])
-    i64val := value_to_i64_expr(st, r[0], r[1])
-    tag := kind_to_tag(r[1])
+    rk := kind_at(r, 1)
+    i64val := value_to_i64_expr(st, r[0], rk)
+    tag := kind_to_tag(rk)
     if tag == 0
       emit(st, "ore_list_push({t}, {i64val});")
     else
       emit(st, "ore_list_push_typed({t}, {i64val}, {tag});")
-  __ret_6 := [t, "list"]
+  __ret_6 := [t, ListKind]
   __ret_6
 
 -- ── Map literal ──
@@ -1758,10 +1710,10 @@ fn compile_map_lit st:List exprs:List stmts:List entries:List -> List
   while i + 1 < entries.len()
     k := compile_expr(st, exprs, stmts, entries[i])
     v := compile_expr(st, exprs, stmts, entries[i + 1])
-    v_i64 := value_to_i64_expr(st, v[0], v[1])
+    v_i64 := value_to_i64_expr(st, v[0], kind_at(v, 1))
     emit(st, "ore_map_set({t}, {k[0]}, {v_i64});")
     i = i + 2
-  __ret_7 := [t, "map"]
+  __ret_7 := [t, MapKind]
   __ret_7
 
 -- ── Index expression ──
@@ -1769,42 +1721,43 @@ fn compile_map_lit st:List exprs:List stmts:List entries:List -> List
 fn compile_index st:List exprs:List stmts:List object:Int index:Int -> List
   obj := compile_expr(st, exprs, stmts, object)
   idx := compile_expr(st, exprs, stmts, index)
-  if obj[1] == "list"
+  obj_kind := kind_at(obj, 1)
+  if is_list_kind(obj_kind)
     vt := cg_tmp(st)
     kt := cg_tmp(st)
     emit(st, "int64_t {vt} = ore_list_get({obj[0]}, {idx[0]});")
     emit(st, "int8_t {kt} = ore_list_get_kind({obj[0]}, {idx[0]});")
-    return [vt, "dynamic:{kt}"]
-  if obj[1] == "map"
-    return ["ore_map_get({obj[0]}, {idx[0]})", "int"]
-  if obj[1] == "str"
-    return ["ore_str_char_at({obj[0]}, {idx[0]})", "str"]
+    return [vt, DynamicKind(var_name: kt)]
+  if is_map_kind(obj_kind)
+    return ["ore_map_get({obj[0]}, {idx[0]})", IntKind]
+  if is_str_kind(obj_kind)
+    return ["ore_str_char_at({obj[0]}, {idx[0]})", StrKind]
   -- Unknown type: assume list stored as int64_t
   vt := cg_tmp(st)
   emit(st, "int64_t {vt} = ore_list_get((void*)(intptr_t)({obj[0]}), {idx[0]});")
-  [vt, "int"]
+  [vt, IntKind]
 
 -- ── Field access ──
 
 fn compile_field_access st:List exprs:List stmts:List object:Int field:Str -> List
   obj := compile_expr(st, exprs, stmts, object)
-  kind := str_at(obj, 1)
+  kind := kind_at(obj, 1)
   -- Option/Result field access
-  if kind == "option" or kind == "result"
+  if is_option_kind(kind) or is_result_kind(kind)
     if field == "tag"
-      return ["{obj[0]}.tag", "int"]
+      return ["{obj[0]}.tag", IntKind]
     if field == "value"
-      return ["{obj[0]}.value", "int"]
+      return ["{obj[0]}.value", IntKind]
   -- Record field access
-  if kind.starts_with("rec:")
-    rec_name := kind.substr(4, kind.len() - 4)
+  if is_rec_kind(kind)
+    rec_name := kind_name(kind)
     fk := cg_get_record_field_kind(st, rec_name, field)
     return ["{obj[0]}.{field}", fk]
   -- Enum field access
-  if kind.starts_with("enum:")
+  if is_enum_kind(kind)
     if field == "tag"
-      return ["{obj[0]}.tag", "int"]
-    return ["{obj[0]}.{field}", "int"]
+      return ["{obj[0]}.tag", IntKind]
+    return ["{obj[0]}.{field}", IntKind]
   -- Unknown type (int, dynamic, etc.): try to infer record type from field name
   -- The value is stored as int64_t (e.g. from list indexing or untyped variable)
   -- and needs to be cast to the correct struct pointer for field access
@@ -1813,7 +1766,7 @@ fn compile_field_access st:List exprs:List stmts:List object:Int field:Str -> Li
     fk := cg_get_record_field_kind(st, inferred, field)
     cast := "(*(struct ore_rec_{inferred}*)(intptr_t)({obj[0]}))"
     return ["{cast}.{field}", fk]
-  ["{obj[0]}.{field}", "int"]
+  ["{obj[0]}.{field}", IntKind]
 
 -- ── Method calls ──
 
@@ -1826,18 +1779,18 @@ fn compile_method_call st:List exprs:List stmts:List object:Int method:Str args:
     a := compile_expr(st, exprs, stmts, args[i])
     arg_strs.push(a[0])
     arg_kinds.push(a[1])
-  kind := str_at(obj, 1)
+  kind := kind_at(obj, 1)
   -- String methods
-  if kind == "str"
+  if is_str_kind(kind)
     return compile_str_method(st, obj[0], method, arg_strs, arg_kinds)
   -- List methods
-  if kind == "list"
+  if is_list_kind(kind)
     return compile_list_method(st, obj[0], method, arg_strs, arg_kinds)
   -- Map methods
-  if kind == "map"
+  if is_map_kind(kind)
     return compile_map_method(st, obj[0], method, arg_strs, arg_kinds)
   -- Option/Result methods
-  if kind == "option" or kind == "result"
+  if is_option_kind(kind) or is_result_kind(kind)
     return compile_option_method(st, obj[0], kind, method, arg_strs, arg_kinds)
   -- Unknown type: try to infer from method name
   if is_str_method(method)
@@ -1850,9 +1803,9 @@ fn compile_method_call st:List exprs:List stmts:List object:Int method:Str args:
   -- Default: treat as direct method
   all_args := arg_strs.join(", ")
   if all_args != ""
-    ["{obj[0]}.{method}({all_args})", "int"]
+    ["{obj[0]}.{method}({all_args})", IntKind]
   else
-    ["{obj[0]}.{method}()", "int"]
+    ["{obj[0]}.{method}()", IntKind]
 
 -- ── Method inference helpers ──
 
@@ -1907,180 +1860,180 @@ fn is_map_method method:Str -> Bool
 
 fn compile_str_method st:List obj:Str method:Str args:List kinds:List -> List
   if method == "len"
-    return ["ore_str_len({obj})", "int"]
+    return ["ore_str_len({obj})", IntKind]
   if method == "contains"
-    return ["ore_str_contains({obj}, {args[0]})", "bool"]
+    return ["ore_str_contains({obj}, {args[0]})", BoolKind]
   if method == "starts_with"
-    return ["ore_str_starts_with({obj}, {args[0]})", "bool"]
+    return ["ore_str_starts_with({obj}, {args[0]})", BoolKind]
   if method == "ends_with"
-    return ["ore_str_ends_with({obj}, {args[0]})", "bool"]
+    return ["ore_str_ends_with({obj}, {args[0]})", BoolKind]
   if method == "trim"
-    return ["ore_str_trim({obj})", "str"]
+    return ["ore_str_trim({obj})", StrKind]
   if method == "to_upper"
-    return ["ore_str_to_upper({obj})", "str"]
+    return ["ore_str_to_upper({obj})", StrKind]
   if method == "to_lower"
-    return ["ore_str_to_lower({obj})", "str"]
+    return ["ore_str_to_lower({obj})", StrKind]
   if method == "split"
-    return ["ore_str_split({obj}, {args[0]})", "list"]
+    return ["ore_str_split({obj}, {args[0]})", ListKind]
   if method == "replace"
-    return ["ore_str_replace({obj}, {args[0]}, {args[1]})", "str"]
+    return ["ore_str_replace({obj}, {args[0]}, {args[1]})", StrKind]
   if method == "substr"
-    return ["ore_str_substr({obj}, {args[0]}, {args[1]})", "str"]
+    return ["ore_str_substr({obj}, {args[0]}, {args[1]})", StrKind]
   if method == "chars"
-    return ["ore_str_chars({obj})", "list"]
+    return ["ore_str_chars({obj})", ListKind]
   if method == "repeat"
-    return ["ore_str_repeat({obj}, {args[0]})", "str"]
+    return ["ore_str_repeat({obj}, {args[0]})", StrKind]
   if method == "reverse"
-    return ["ore_str_reverse({obj})", "str"]
+    return ["ore_str_reverse({obj})", StrKind]
   if method == "char_at"
-    return ["ore_str_char_at({obj}, {args[0]})", "str"]
+    return ["ore_str_char_at({obj}, {args[0]})", StrKind]
   if method == "to_int"
-    return ["ore_str_to_int({obj})", "int"]
+    return ["ore_str_to_int({obj})", IntKind]
   if method == "to_float"
-    return ["ore_str_to_float({obj})", "float"]
+    return ["ore_str_to_float({obj})", FloatKind]
   if method == "index_of"
-    return ["ore_str_index_of({obj}, {args[0]})", "int"]
+    return ["ore_str_index_of({obj}, {args[0]})", IntKind]
   cg_error(st, "unknown string method: {method}")
-  ["0", "int"]
+  ["0", IntKind]
 
 -- ── List methods ──
 
 fn compile_list_method st:List obj:Str method:Str args:List kinds:List -> List
   if method == "len"
-    return ["ore_list_len({obj})", "int"]
+    return ["ore_list_len({obj})", IntKind]
   if method == "push"
-    ak := str_at(kinds, 0)
+    ak := kind_at(kinds, 0)
     i64val := value_to_i64_expr(st, args[0], ak)
     tag := kind_to_tag(ak)
     if tag == 0
       emit(st, "ore_list_push({obj}, {i64val});")
     else
       emit(st, "ore_list_push_typed({obj}, {i64val}, {tag});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if method == "pop"
-    return ["ore_list_pop({obj})", "int"]
+    return ["ore_list_pop({obj})", IntKind]
   if method == "clear"
     emit(st, "ore_list_clear({obj});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if method == "get"
-    return ["ore_list_get({obj}, {args[0]})", "int"]
+    return ["ore_list_get({obj}, {args[0]})", IntKind]
   if method == "set"
-    ak := str_at(kinds, 1)
+    ak := kind_at(kinds, 1)
     i64val := value_to_i64_expr(st, args[1], ak)
     emit(st, "ore_list_set({obj}, {args[0]}, {i64val});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if method == "contains"
-    return ["ore_list_contains({obj}, (int64_t)({args[0]}))", "bool"]
+    return ["ore_list_contains({obj}, (int64_t)({args[0]}))", BoolKind]
   if method == "sort"
-    return ["ore_list_sort({obj})", "list"]
+    return ["ore_list_sort({obj})", ListKind]
   if method == "reverse"
     emit(st, "ore_list_reverse({obj});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if method == "concat"
-    return ["ore_list_concat({obj}, {args[0]})", "list"]
+    return ["ore_list_concat({obj}, {args[0]})", ListKind]
   if method == "join"
-    return ["ore_list_join({obj}, {args[0]})", "str"]
+    return ["ore_list_join({obj}, {args[0]})", StrKind]
   if method == "sum"
-    return ["ore_list_sum({obj})", "int"]
+    return ["ore_list_sum({obj})", IntKind]
   if method == "min"
-    return ["ore_list_min({obj})", "int"]
+    return ["ore_list_min({obj})", IntKind]
   if method == "max"
-    return ["ore_list_max({obj})", "int"]
+    return ["ore_list_max({obj})", IntKind]
   if method == "average"
-    return ["ore_list_average({obj})", "float"]
+    return ["ore_list_average({obj})", FloatKind]
   if method == "take"
-    return ["ore_list_take({obj}, {args[0]})", "list"]
+    return ["ore_list_take({obj}, {args[0]})", ListKind]
   if method == "skip"
-    return ["ore_list_skip({obj}, {args[0]})", "list"]
+    return ["ore_list_skip({obj}, {args[0]})", ListKind]
   if method == "slice"
-    return ["ore_list_slice({obj}, {args[0]}, {args[1]})", "list"]
+    return ["ore_list_slice({obj}, {args[0]}, {args[1]})", ListKind]
   if method == "flatten"
-    return ["ore_list_flatten({obj})", "list"]
+    return ["ore_list_flatten({obj})", ListKind]
   if method == "unique"
-    return ["ore_list_unique({obj})", "list"]
+    return ["ore_list_unique({obj})", ListKind]
   if method == "enumerate"
-    return ["ore_list_enumerate({obj})", "list"]
+    return ["ore_list_enumerate({obj})", ListKind]
   if method == "map"
     cp := parse_closure_expr(args[0])
-    return ["ore_list_map({obj}, {cp[0]}, {cp[1]})", "list"]
+    return ["ore_list_map({obj}, {cp[0]}, {cp[1]})", ListKind]
   if method == "filter"
     cp := parse_closure_expr(args[0])
-    return ["ore_list_filter({obj}, {cp[0]}, {cp[1]})", "list"]
+    return ["ore_list_filter({obj}, {cp[0]}, {cp[1]})", ListKind]
   if method == "each"
     cp := parse_closure_expr(args[0])
     emit(st, "ore_list_each({obj}, {cp[0]}, {cp[1]});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if method == "fold"
     cp := parse_closure_expr(args[1])
-    return ["ore_list_fold({obj}, {args[0]}, {cp[0]}, {cp[1]})", "int"]
+    return ["ore_list_fold({obj}, {args[0]}, {cp[0]}, {cp[1]})", IntKind]
   if method == "reduce"
     cp := parse_closure_expr(args[0])
-    return ["ore_list_reduce1({obj}, {cp[0]}, {cp[1]})", "int"]
+    return ["ore_list_reduce1({obj}, {cp[0]}, {cp[1]})", IntKind]
   if method == "any"
     cp := parse_closure_expr(args[0])
-    return ["ore_list_any({obj}, {cp[0]}, {cp[1]})", "bool"]
+    return ["ore_list_any({obj}, {cp[0]}, {cp[1]})", BoolKind]
   if method == "all"
     cp := parse_closure_expr(args[0])
-    return ["ore_list_all({obj}, {cp[0]}, {cp[1]})", "bool"]
+    return ["ore_list_all({obj}, {cp[0]}, {cp[1]})", BoolKind]
   if method == "last"
-    return ["ore_list_get({obj}, -1)", "int"]
+    return ["ore_list_get({obj}, -1)", IntKind]
   if method == "first"
-    return ["ore_list_get({obj}, 0)", "int"]
+    return ["ore_list_get({obj}, 0)", IntKind]
   cg_error(st, "unknown list method: {method}")
-  ["0", "int"]
+  ["0", IntKind]
 
 -- ── Map methods ──
 
 fn compile_map_method st:List obj:Str method:Str args:List kinds:List -> List
   if method == "len"
-    return ["ore_map_len({obj})", "int"]
+    return ["ore_map_len({obj})", IntKind]
   if method == "set"
-    key := ensure_void_ptr(args[0], str_at(kinds, 0))
-    vk := str_at(kinds, 1)
+    key := ensure_void_ptr(args[0], kind_at(kinds, 0))
+    vk := kind_at(kinds, 1)
     v_i64 := value_to_i64_expr(st, args[1], vk)
     emit(st, "ore_map_set({obj}, {key}, {v_i64});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   if method == "get"
-    key := ensure_void_ptr(args[0], str_at(kinds, 0))
-    return ["ore_map_get({obj}, {key})", "int"]
+    key := ensure_void_ptr(args[0], kind_at(kinds, 0))
+    return ["ore_map_get({obj}, {key})", IntKind]
   if method == "get_or"
-    key := ensure_void_ptr(args[0], str_at(kinds, 0))
-    return ["ore_map_get_or({obj}, {key}, (int64_t)({args[1]}))", "int"]
+    key := ensure_void_ptr(args[0], kind_at(kinds, 0))
+    return ["ore_map_get_or({obj}, {key}, (int64_t)({args[1]}))", IntKind]
   if method == "contains"
-    key := ensure_void_ptr(args[0], str_at(kinds, 0))
-    return ["ore_map_contains({obj}, {key})", "bool"]
+    key := ensure_void_ptr(args[0], kind_at(kinds, 0))
+    return ["ore_map_contains({obj}, {key})", BoolKind]
   if method == "remove"
-    key := ensure_void_ptr(args[0], str_at(kinds, 0))
-    return ["ore_map_remove({obj}, {key})", "int"]
+    key := ensure_void_ptr(args[0], kind_at(kinds, 0))
+    return ["ore_map_remove({obj}, {key})", IntKind]
   if method == "keys"
-    return ["ore_map_keys({obj})", "list"]
+    return ["ore_map_keys({obj})", ListKind]
   if method == "values"
-    return ["ore_map_values({obj})", "list"]
+    return ["ore_map_values({obj})", ListKind]
   if method == "entries"
-    return ["ore_map_entries({obj})", "list"]
+    return ["ore_map_entries({obj})", ListKind]
   if method == "merge"
-    return ["ore_map_merge({obj}, {args[0]})", "map"]
+    return ["ore_map_merge({obj}, {args[0]})", MapKind]
   if method == "clear"
     emit(st, "ore_map_clear({obj});")
-    return ["0", "void"]
+    return ["0", VoidKind]
   cg_error(st, "unknown map method: {method}")
-  ["0", "int"]
+  ["0", IntKind]
 
 -- ── Option/Result methods ──
 
-fn compile_option_method st:List obj:Str kind:Str method:Str args:List kinds:List -> List
+fn compile_option_method st:List obj:Str kind:OreKind method:Str args:List kinds:List -> List
   if method == "unwrap"
-    return ["{obj}.value", "int"]
+    return ["{obj}.value", IntKind]
   if method == "unwrap_or"
     t := cg_tmp(st)
     emit(st, "int64_t {t} = ({obj}.tag != 0) ? {obj}.value : (int64_t)({args[0]});")
-    return [t, "int"]
+    return [t, IntKind]
   if method == "is_some" or method == "is_ok"
-    return ["(int8_t)({obj}.tag != 0)", "bool"]
+    return ["(int8_t)({obj}.tag != 0)", BoolKind]
   if method == "is_none" or method == "is_err"
-    return ["(int8_t)({obj}.tag == 0)", "bool"]
+    return ["(int8_t)({obj}.tag == 0)", BoolKind]
   cg_error(st, "unknown option/result method: {method}")
-  ["0", "int"]
+  ["0", IntKind]
 
 -- ── Block expression ──
 
@@ -2091,33 +2044,33 @@ fn compile_block_expr st:List exprs:List stmts:List block:Block -> List
 
 -- Generate a match result assignment expression.
 -- For struct types (enum/record), direct assignment. For scalars/pointers, cast.
-fn match_assign_expr t:Str kind:Str val:Str -> Str
-  if kind.starts_with("enum:") or kind.starts_with("rec:")
+fn match_assign_expr t:Str kind:OreKind val:Str -> Str
+  if is_struct_kind(kind)
     return "{t} = {val};"
   c := kind_to_c_type(kind)
   "{t} = ({c})({val});"
 
 -- Generate the default initializer for a match temp variable declaration.
-fn match_default_init kind:Str -> Str
-  if kind == "void"
+fn match_default_init kind:OreKind -> Str
+  if is_void_kind(kind)
     return " = 0"
-  if kind.starts_with("enum:") or kind.starts_with("rec:")
+  if is_struct_kind(kind)
     return " = \{0}"
-  if kind == "float"
+  if is_float_kind(kind)
     return " = 0.0"
   " = 0"
 
 -- C type for match temp variables (void -> int64_t since void vars are invalid)
-fn match_temp_c_type kind:Str -> Str
-  if kind == "void"
+fn match_temp_c_type kind:OreKind -> Str
+  if is_void_kind(kind)
     return "int64_t"
   kind_to_c_type(kind)
 
 fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
   mut subj := compile_expr(st, exprs, stmts, subject)
   -- If subject is int64_t/dynamic but arms match enum variants, coerce subject to enum type
-  subj_kind := str_at(subj, 1)
-  if subj_kind == "int" or subj_kind == "void" or subj_kind.starts_with("dynamic:")
+  subj_kind := kind_at(subj, 1)
+  if is_i64_kind(subj_kind) or is_dynamic_kind(subj_kind)
     -- Scan arms for VariantPat to infer enum type
     mut inferred_enum := ""
     for ii in 0..arms.len()
@@ -2133,15 +2086,16 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
     if inferred_enum != ""
       -- Cast subject from int64_t to enum struct
       cast_tmp := cg_tmp(st)
-      ect := kind_to_c_type("enum:{inferred_enum}")
+      inferred_kind := EnumKind(name: inferred_enum)
+      ect := kind_to_c_type(inferred_kind)
       emit(st, "{ect} {cast_tmp} = *(struct ore_enum_{inferred_enum}*)(intptr_t)({subj[0]});")
-      subj = [cast_tmp, "enum:{inferred_enum}"]
+      subj = [cast_tmp, inferred_kind]
   t := cg_tmp(st)
   -- Emit placeholder declaration; will be patched after first arm reveals type
   decl_pos := cg_lines(st).len()
   decl_indent := indent_str(cg_indent(st))
   emit(st, "int64_t {t} = 0;")
-  mut result_kind := "int"
+  mut result_kind := IntKind
   mut first_arm_compiled := false
   mut first := true
   for i in 0..arms.len()
@@ -2157,9 +2111,9 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           emit(st, "else \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled and br[1] != "void"
-          result_kind = br[1]
-          if result_kind != "void"
+        if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+          result_kind = kind_at(br, 1)
+          if not is_void_kind(result_kind)
             ct := kind_to_c_type(result_kind)
             init := match_default_init(result_kind)
             cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2176,9 +2130,9 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ((int64_t)({subj[0]}) == {value}LL) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled and br[1] != "void"
-          result_kind = br[1]
-          if result_kind != "void"
+        if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+          result_kind = kind_at(br, 1)
+          if not is_void_kind(result_kind)
             ct := kind_to_c_type(result_kind)
             init := match_default_init(result_kind)
             cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2198,9 +2152,9 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ((int8_t)({subj[0]}) == {bv}) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled and br[1] != "void"
-          result_kind = br[1]
-          if result_kind != "void"
+        if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+          result_kind = kind_at(br, 1)
+          if not is_void_kind(result_kind)
             ct := kind_to_c_type(result_kind)
             init := match_default_init(result_kind)
             cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2218,9 +2172,9 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} (ore_str_eq({subj[0]}, {slit[0]})) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled and br[1] != "void"
-          result_kind = br[1]
-          if result_kind != "void"
+        if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+          result_kind = kind_at(br, 1)
+          if not is_void_kind(result_kind)
             ct := kind_to_c_type(result_kind)
             init := match_default_init(result_kind)
             cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2232,7 +2186,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         first = false
       VariantPat name bindings ->
         -- Result/Option tagged union matching
-        if subj[1] == "result" or subj[1] == "option"
+        if is_result_kind(kind_at(subj, 1)) or is_option_kind(kind_at(subj, 1))
           mut vtag := 0
           if name == "Ok" or name == "Some"
             vtag = 1
@@ -2246,11 +2200,11 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
             bname := bindings[0]
             mn := mangle_var(bname)
             emit(st, "int64_t {mn} = {subj[0]}.value;")
-            cg_set_var(st, bname, "int")
+            cg_set_var(st, bname, IntKind)
           br := compile_expr(st, exprs, stmts, body_id)
-          if not first_arm_compiled and br[1] != "void"
-            result_kind = br[1]
-            if result_kind != "void"
+          if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+            result_kind = kind_at(br, 1)
+            if not is_void_kind(result_kind)
               ct := kind_to_c_type(result_kind)
               init := match_default_init(result_kind)
               cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2260,7 +2214,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           cg_dec_indent(st)
           emit(st, "}")
           first = false
-        else if (name == "Ok" or name == "Err") and subj[1] == "result"
+        else if (name == "Ok" or name == "Err") and is_result_kind(kind_at(subj, 1))
           -- Result pattern matching (OreTaggedUnion)
           mut vtag := 1
           if name == "Err"
@@ -2275,11 +2229,11 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
             bname := bindings[0]
             mn := mangle_var(bname)
             emit(st, "int64_t {mn} = {subj[0]}.value;")
-            cg_set_var(st, bname, "int")
+            cg_set_var(st, bname, IntKind)
           br := compile_expr(st, exprs, stmts, body_id)
           if not first_arm_compiled
-            result_kind = br[1]
-            if result_kind != "void"
+            result_kind = kind_at(br, 1)
+            if not is_void_kind(result_kind)
               ct := kind_to_c_type(result_kind)
               init := match_default_init(result_kind)
               cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2289,7 +2243,7 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           cg_dec_indent(st)
           emit(st, "}")
           first = false
-        else if (name == "Some" or name == "None") and subj[1] == "option"
+        else if (name == "Some" or name == "None") and is_option_kind(kind_at(subj, 1))
           -- Option pattern matching (OreTaggedUnion)
           mut vtag := 1
           if name == "None"
@@ -2304,11 +2258,11 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
             bname := bindings[0]
             mn := mangle_var(bname)
             emit(st, "int64_t {mn} = {subj[0]}.value;")
-            cg_set_var(st, bname, "int")
+            cg_set_var(st, bname, IntKind)
           br := compile_expr(st, exprs, stmts, body_id)
           if not first_arm_compiled
-            result_kind = br[1]
-            if result_kind != "void"
+            result_kind = kind_at(br, 1)
+            if not is_void_kind(result_kind)
               ct := kind_to_c_type(result_kind)
               init := match_default_init(result_kind)
               cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2329,9 +2283,9 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
               kw = "else if"
             -- If subject is int64_t (from list), cast to enum struct
             mut subj_expr := subj[0]
-            subj_kind := str_at(subj, 1)
-            if subj_kind == "int" or subj_kind == "void"
-              subj_expr = coerce_from_i64_expr(subj[0], "enum:{en}")
+            inner_subj_kind := kind_at(subj, 1)
+            if is_i64_kind(inner_subj_kind)
+              subj_expr = coerce_from_i64_expr(subj[0], EnumKind(name: en))
             emit(st, "{kw} ({subj_expr}.tag == {vtag}) \{")
             cg_inc_indent(st)
             -- Bind variant fields with proper type tracking
@@ -2344,8 +2298,8 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
               emit(st, "{ct} {mn} = {coerced};")
               cg_set_var(st, bname, fk)
             br := compile_expr(st, exprs, stmts, body_id)
-            if not first_arm_compiled and br[1] != "void"
-              result_kind = br[1]
+            if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+              result_kind = kind_at(br, 1)
               ct := kind_to_c_type(result_kind)
               init := match_default_init(result_kind)
               cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2368,10 +2322,10 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
             cg_inc_indent(st)
             mn := mangle_var(name)
             emit(st, "int64_t {mn} = (int64_t)({subj[0]});")
-            cg_set_var(st, name, subj[1])
+            cg_set_var(st, name, kind_at(subj, 1))
             br := compile_expr(st, exprs, stmts, body_id)
-            if not first_arm_compiled and br[1] != "void"
-              result_kind = br[1]
+            if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+              result_kind = kind_at(br, 1)
               ct := kind_to_c_type(result_kind)
               init := match_default_init(result_kind)
               cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2388,9 +2342,9 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} (*(double*)&({subj[0]}) == {value}) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled and br[1] != "void"
-          result_kind = br[1]
-          if result_kind != "void"
+        if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+          result_kind = kind_at(br, 1)
+          if not is_void_kind(result_kind)
             ct := kind_to_c_type(result_kind)
             init := match_default_init(result_kind)
             cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2407,9 +2361,9 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ((int64_t)({subj[0]}) >= {start}LL && (int64_t)({subj[0]}) <= {end}LL) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled and br[1] != "void"
-          result_kind = br[1]
-          if result_kind != "void"
+        if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+          result_kind = kind_at(br, 1)
+          if not is_void_kind(result_kind)
             ct := kind_to_c_type(result_kind)
             init := match_default_init(result_kind)
             cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2447,9 +2401,9 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
         emit(st, "{kw} ({cond}) \{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled and br[1] != "void"
-          result_kind = br[1]
-          if result_kind != "void"
+        if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+          result_kind = kind_at(br, 1)
+          if not is_void_kind(result_kind)
             ct := kind_to_c_type(result_kind)
             init := match_default_init(result_kind)
             cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2467,9 +2421,9 @@ fn compile_match st:List exprs:List stmts:List subject:Int arms:List -> List
           emit(st, "\{")
         cg_inc_indent(st)
         br := compile_expr(st, exprs, stmts, body_id)
-        if not first_arm_compiled and br[1] != "void"
-          result_kind = br[1]
-          if result_kind != "void"
+        if not first_arm_compiled and not is_void_kind(kind_at(br, 1))
+          result_kind = kind_at(br, 1)
+          if not is_void_kind(result_kind)
             ct := kind_to_c_type(result_kind)
             init := match_default_init(result_kind)
             cg_lines(st)[decl_pos] = "{decl_indent}{ct} {t}{init};"
@@ -2706,7 +2660,7 @@ fn compile_lambda st:List exprs:List stmts:List params:List body:Int -> List
     mut struct_def := "struct {struct_name} \{"
     for i in 0..capture_names.len()
       cn := str_at(capture_names, i)
-      ck := str_at(capture_kinds, i)
+      ck := kind_at(capture_kinds, i)
       ct := kind_to_c_type(ck)
       struct_def = struct_def + " {ct} {cn};"
     struct_def = struct_def + " };"
@@ -2716,11 +2670,11 @@ fn compile_lambda st:List exprs:List stmts:List params:List body:Int -> List
   -- Save current codegen state
   saved_lines := cg_lines(st)
   saved_indent := cg_indent(st)
-  saved_var_map := cg_var_map(st)
-  st[4] = {}.merge(saved_var_map)
+  saved_var_map := st[4]
 
   -- Set up fresh lines for lambda body compilation
   st[0] = []
+  st[4] = {}
   cg_set_indent(st, 1)
 
   -- Extract captured variables from env_ptr
@@ -2728,7 +2682,7 @@ fn compile_lambda st:List exprs:List stmts:List params:List body:Int -> List
     emit(st, "struct {struct_name}* __cap = (struct {struct_name}*)__env;")
     for i in 0..capture_names.len()
       cn := str_at(capture_names, i)
-      ck := str_at(capture_kinds, i)
+      ck := kind_at(capture_kinds, i)
       ct := kind_to_c_type(ck)
       emit(st, "{ct} {cn} = __cap->{cn};")
       cg_set_var(st, cn, ck)
@@ -2736,7 +2690,7 @@ fn compile_lambda st:List exprs:List stmts:List params:List body:Int -> List
   -- Register lambda parameters as variables
   for i in 0..params.len()
     pn := str_at(params, i)
-    cg_set_var(st, pn, "int")
+    cg_set_var(st, pn, IntKind)
 
   -- Compile the body expression
   r := compile_expr(st, exprs, stmts, body)
@@ -2750,7 +2704,6 @@ fn compile_lambda st:List exprs:List stmts:List params:List body:Int -> List
   -- Restore state
   st[0] = saved_lines
   cg_set_indent(st, saved_indent)
-  -- Restore variable map to pre-lambda state
   st[4] = saved_var_map
 
   -- Emit the lambda function definition into top_level
@@ -2770,9 +2723,9 @@ fn compile_lambda st:List exprs:List stmts:List params:List body:Int -> List
       -- Use the mangled name from current scope
       mn := mangle_var(cn)
       emit(st, "{cap_var}.{cn} = {mn};")
-    ["__closure_{lname}|{cap_var}", "int"]
+    ["__closure_{lname}|{cap_var}", IntKind]
   else
-    ["(void*)&{lname}", "int"]
+    ["(void*)&{lname}", IntKind]
 
 -- Parse a closure expression into (fn_ptr, env_ptr)
 -- Closure format: "__closure_LAMBDA_NAME|CAP_VAR"
@@ -2806,7 +2759,7 @@ fn compile_record_construct st:List exprs:List stmts:List type_name:Str fields:L
     value_id := pair[1]
     r := compile_expr(st, exprs, stmts, value_id)
     emit(st, "{t}.{field_name} = {r[0]};")
-  [t, "rec:{type_name}"]
+  [t, RecKind(name: type_name)]
 
 -- Construct an enum variant using named fields (RecordConstruct syntax)
 fn compile_variant_record_construct st:List exprs:List stmts:List variant:Str enum_name:Str fields:List -> List
@@ -2819,9 +2772,9 @@ fn compile_variant_record_construct st:List exprs:List stmts:List variant:Str en
     pair := cg_list(fields, i)
     value_id := pair[1]
     r := compile_expr(st, exprs, stmts, value_id)
-    i64val := value_to_i64_expr(st, r[0], r[1])
+    i64val := value_to_i64_expr(st, r[0], kind_at(r, 1))
     emit(st, "{t}.data[{i}] = {i64val};")
-  [t, "enum:{enum_name}"]
+  [t, EnumKind(name: enum_name)]
 
 -- ── Type definitions ──
 
@@ -2832,23 +2785,22 @@ fn compile_type_def st:List td:TypeDefNode
   tl.push("// Record: {name}")
   mut sig := "struct ore_rec_{name} \{"
   mut field_names_str := ""
-  mut field_kinds_str := ""
+  mut field_kinds := []
   for i in 0..fields.len()
     f := get_field_def(fields, i)
     fn_str := f.name
-    ft := type_expr_to_kind_str(st, f.ty)
+    ft := type_expr_to_kind(st, f.ty)
     c_type := kind_to_c_type(ft)
     sig = sig + " {c_type} {fn_str};"
     if i > 0
       field_names_str = field_names_str + ","
-      field_kinds_str = field_kinds_str + ","
     field_names_str = field_names_str + fn_str
-    field_kinds_str = field_kinds_str + ft
+    field_kinds.push(ft)
   sig = sig + " };"
   tl.push(sig)
   tl.push("")
-  cg_add_record(st, name, field_names_str, fields.len(), field_kinds_str)
-  cg_set_fn(st, name, "rec:{name}")
+  cg_add_record(st, name, field_names_str, fields.len(), field_kinds)
+  cg_set_fn(st, name, RecKind(name: name))
 
 fn compile_enum_def st:List ed:EnumDefNode
   name := ed.name
@@ -2867,14 +2819,12 @@ fn compile_enum_def st:List ed:EnumDefNode
     -- Register variant-to-enum mapping
     cg_add_variant_map(st, v.name, name)
     -- Register variant field kinds
-    mut vfk_str := ""
+    mut vfk_list := []
     for j in 0..v.fields.len()
       vf := get_field_def(v.fields, j)
-      vfk := type_expr_to_kind_str(st, vf.ty)
-      if j > 0
-        vfk_str = vfk_str + ","
-      vfk_str = vfk_str + vfk
-    cg_add_variant_field_kinds(st, v.name, vfk_str)
+      vfk := type_expr_to_kind(st, vf.ty)
+      vfk_list.push(vfk)
+    cg_add_variant_field_kinds(st, v.name, vfk_list)
   -- Struct: { int8_t tag; int64_t data[N]; }
   mut data_decl := ""
   if max_fields > 0
@@ -2898,25 +2848,25 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   body := fd.body
   ret_te := fd.ret_type
   -- Determine return type
-  mut ret_kind := type_expr_to_kind_str(st, ret_te)
+  mut ret_kind := type_expr_to_kind(st, ret_te)
   mut ret_c := kind_to_c_type(ret_kind)
   if name == "main"
     ret_c = "int"
-    ret_kind = "int"
+    ret_kind = IntKind
   -- Register function
   cg_set_fn(st, name, ret_kind)
   -- Track current function return kind for bare return handling
   cg_list(st, 28)[0] = ret_kind
-  -- Save variable map (restore after function body)
-  saved_var_map := cg_var_map(st)
-  st[4] = {}.merge(saved_var_map)
+  -- Save variables state (save the map, restore after compilation)
+  saved_var_map := st[4]
+  st[4] = {}
   -- Build parameter signature and collect param kinds
   mn := mangle_fn(name)
   mut param_sig := ""
   mut param_kinds_parts := []
   for i in 0..params.len()
     p := get_param_def(params, i)
-    pk := type_expr_to_kind_str(st, p.ty)
+    pk := type_expr_to_kind(st, p.ty)
     pc := kind_to_c_type(pk)
     pn := mangle_var(p.name)
     param_kinds_parts.push(pk)
@@ -2925,7 +2875,7 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
     param_sig = param_sig + "{pc} {pn}"
     cg_set_var(st, p.name, pk)
   -- Register parameter kinds for arg coercion at call sites
-  cg_set_fn_params(st, name, param_kinds_parts.join(","))
+  cg_set_fn_params(st, name, param_kinds_parts)
   -- Emit forward declaration
   cg_list(st, 8).push("{ret_c} {mn}({param_sig});")
   -- Emit function body
@@ -2936,20 +2886,20 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   -- Emit implicit return for non-void functions
   if name == "main"
     emit(st, "return 0;")
-  else if ret_kind != "void" and block_result[0] != ""
+  else if not is_void_kind(ret_kind) and block_result[0] != ""
     -- Coerce block result to function return type if needed
-    bk := block_result[1]
+    bk := kind_at(block_result, 1)
     mut effective_bk := bk
-    if bk.starts_with("dynamic:")
-      effective_bk = "int"
-    if effective_bk != ret_kind
+    if is_dynamic_kind(bk)
+      effective_bk = IntKind
+    if kind_to_tag(effective_bk) != kind_to_tag(ret_kind)
       coerced := coerce_from_i64_expr(block_result[0], ret_kind)
       emit(st, "return {coerced};")
     else
       emit(st, "return {block_result[0]};")
   cg_dec_indent(st)
   emit_raw(st, "}")
-  -- Restore variable map (remove params and locals from this function)
+  -- Restore variables (remove function-local vars)
   st[4] = saved_var_map
 
 -- ── Impl block support ──
@@ -3054,46 +3004,46 @@ fn generate items:List exprs:List stmts:List -> Str
           cg_add_generic_fn(st, fn_def.name, fn_def)
         else
           -- Pre-register functions so calls resolve
-          ret_kind := type_expr_to_kind_str(st, fn_def.ret_type)
+          ret_kind := type_expr_to_kind(st, fn_def.ret_type)
           cg_set_fn(st, fn_def.name, ret_kind)
           -- Pre-register param kinds so arg coercion works for forward-referenced fns
           mut pk_parts := []
           fn_params := fn_def.params
           for j in 0..fn_params.len()
             p := get_param_def(fn_params, j)
-            pk := type_expr_to_kind_str(st, p.ty)
+            pk := type_expr_to_kind(st, p.ty)
             pk_parts.push(pk)
-          cg_set_fn_params(st, fn_def.name, pk_parts.join(","))
+          cg_set_fn_params(st, fn_def.name, pk_parts)
       ImplBlockItem type_name methods ->
         -- Pre-register impl methods
         for j in 0..methods.len()
           m := get_fn_def(methods, j)
           mangled := mangle_impl_method(type_name, m)
-          ret_kind := type_expr_to_kind_str(st, mangled.ret_type)
+          ret_kind := type_expr_to_kind(st, mangled.ret_type)
           cg_set_fn(st, mangled.name, ret_kind)
           -- Pre-register param kinds
           mut pk_parts := []
           impl_params := mangled.params
           for k in 0..impl_params.len()
             p := get_param_def(impl_params, k)
-            pk := type_expr_to_kind_str(st, p.ty)
+            pk := type_expr_to_kind(st, p.ty)
             pk_parts.push(pk)
-          cg_set_fn_params(st, mangled.name, pk_parts.join(","))
+          cg_set_fn_params(st, mangled.name, pk_parts)
       ImplTraitItem trait_name type_name methods ->
         -- Pre-register impl trait methods
         for j in 0..methods.len()
           m := get_fn_def(methods, j)
           mangled := mangle_impl_method(type_name, m)
-          ret_kind := type_expr_to_kind_str(st, mangled.ret_type)
+          ret_kind := type_expr_to_kind(st, mangled.ret_type)
           cg_set_fn(st, mangled.name, ret_kind)
           -- Pre-register param kinds
           mut pk_parts := []
           trait_params := mangled.params
           for k in 0..trait_params.len()
             p := get_param_def(trait_params, k)
-            pk := type_expr_to_kind_str(st, p.ty)
+            pk := type_expr_to_kind(st, p.ty)
             pk_parts.push(pk)
-          cg_set_fn_params(st, mangled.name, pk_parts.join(","))
+          cg_set_fn_params(st, mangled.name, pk_parts)
       _ ->
         -- skip other items in first pass
         0
