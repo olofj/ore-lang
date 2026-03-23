@@ -378,6 +378,17 @@ impl TypeChecker {
                 }
                 Type::Unit
             }
+            Stmt::AssignIfUnset { name, value } => {
+                let _val_ty = self.infer_expr(value, env);
+                if let Some((_var_ty, mutable)) = env.lookup(name).cloned() {
+                    if !mutable {
+                        self.err(format!("cannot assign to immutable variable '{}'", name));
+                    }
+                } else {
+                    self.err(format!("undefined variable '{}'", name));
+                }
+                Type::Unit
+            }
             Stmt::IndexAssign { object, index, value } => {
                 self.infer_expr(object, env);
                 self.infer_expr(index, env);

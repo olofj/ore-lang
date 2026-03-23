@@ -92,6 +92,12 @@ impl<'ctx> CodeGen<'ctx> {
                 self.compile_assign(name, value, func)?;
                 Ok((None, ValKind::Void))
             }
+            Stmt::AssignIfUnset { name, value } => {
+                // For now, treat as a regular assign in LLVM codegen
+                // (the C codegen has the conditional logic)
+                self.compile_assign(name, value, func)?;
+                Ok((None, ValKind::Void))
+            }
             Stmt::IndexAssign { object, index, value } => {
                 self.compile_index_assign(object, index, value, func)?;
                 Ok((None, ValKind::Void))
@@ -358,7 +364,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub(crate) fn prescan_stmt_for_map_kinds(&mut self, stmt: &Stmt) {
         match stmt {
-            Stmt::Expr(expr) | Stmt::Let { value: expr, .. } | Stmt::Assign { value: expr, .. } => {
+            Stmt::Expr(expr) | Stmt::Let { value: expr, .. } | Stmt::Assign { value: expr, .. } | Stmt::AssignIfUnset { value: expr, .. } => {
                 self.prescan_expr_for_map_kinds(expr);
             }
             Stmt::While { body, .. } | Stmt::Loop { body, .. }

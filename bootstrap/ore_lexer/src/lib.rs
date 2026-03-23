@@ -66,10 +66,12 @@ pub enum Token {
     QuestionMark, // ?
     QuestionDot,  // ?.
     PlusEq,      // +=
+    PlusPlusEq,  // ++=
     MinusEq,     // -=
     StarEq,      // *=
     SlashEq,     // /=
     PercentEq,   // %=
+    PipePipeEq,  // ||=
     And,
     Or,
     Not,
@@ -369,7 +371,19 @@ impl<'a> Lexer<'a> {
             b'0'..=b'9' => self.lex_number()?,
             b'"' => self.lex_string()?,
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.lex_ident_or_keyword(),
-            b'+' => self.lex_maybe_eq(start, Token::Plus, Token::PlusEq),
+            b'+' => {
+                self.advance();
+                if self.peek() == Some(b'+') && self.src.get(self.pos + 1) == Some(&b'=') {
+                    self.advance(); // skip second '+'
+                    self.advance(); // skip '='
+                    self.emit(Token::PlusPlusEq, start);
+                } else if self.peek() == Some(b'=') {
+                    self.advance();
+                    self.emit(Token::PlusEq, start);
+                } else {
+                    self.emit(Token::Plus, start);
+                }
+            }
             b'*' => self.lex_maybe_eq(start, Token::Star, Token::StarEq),
             b'/' => self.lex_maybe_eq(start, Token::Slash, Token::SlashEq),
             b'%' => self.lex_maybe_eq(start, Token::Percent, Token::PercentEq),
@@ -389,7 +403,16 @@ impl<'a> Lexer<'a> {
                     self.emit(Token::QuestionMark, start);
                 }
             }
-            b'|' => { self.advance(); self.emit(Token::Pipe, start); }
+            b'|' => {
+                self.advance();
+                if self.peek() == Some(b'|') && self.src.get(self.pos + 1) == Some(&b'=') {
+                    self.advance(); // skip second '|'
+                    self.advance(); // skip '='
+                    self.emit(Token::PipePipeEq, start);
+                } else {
+                    self.emit(Token::Pipe, start);
+                }
+            }
             b'-' => {
                 self.advance();
                 if self.peek() == Some(b'>') {
@@ -921,6 +944,37 @@ mod tests {
         assert_eq!(
             toks,
             vec![Token::StringLit("hello {world}".into()), Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_plus_plus_eq() {
+        assert_eq!(
+            tokens("++="),
+            vec![Token::PlusPlusEq, Token::Eof]
+        );
+        // Ensure += still works
+        assert_eq!(
+            tokens("+="),
+            vec![Token::PlusEq, Token::Eof]
+        );
+        // Ensure + still works
+        assert_eq!(
+            tokens("+"),
+            vec![Token::Plus, Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_pipe_pipe_eq() {
+        assert_eq!(
+            tokens("||="),
+            vec![Token::PipePipeEq, Token::Eof]
+        );
+        // Ensure | still works
+        assert_eq!(
+            tokens("|"),
+            vec![Token::Pipe, Token::Eof]
         );
     }
 }

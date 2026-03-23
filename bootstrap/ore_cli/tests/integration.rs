@@ -606,6 +606,20 @@ fn mutation_compound() {
 }
 
 #[test]
+fn mutation_append_assign() {
+    let out = run_ore("mutation/append_assign.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["[1, 2, 3, 4, 5]", "[1, 2, 3, 4, 5, 6]"]);
+}
+
+#[test]
+fn mutation_assign_if_unset() {
+    let out = run_ore("mutation/assign_if_unset.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["42", "10"]);
+}
+
+#[test]
 fn mutation_spawn_mut_error() {
     let err = run_ore_expect_error("mutation/spawn_mut.ore");
     assert!(err.contains("cannot send mutable variable 'counter' to spawned task"));

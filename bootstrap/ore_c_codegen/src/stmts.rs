@@ -116,6 +116,32 @@ impl CCodeGen {
                 }
                 Ok((None, ValKind::Void))
             }
+            Stmt::AssignIfUnset { name, value } => {
+                let var = self.variables.get(name).ok_or_else(|| self.err(format!("undefined variable '{}'", name)))?;
+                if !var.is_mutable {
+                    return Err(self.err(format!("cannot assign to immutable variable '{}'", name)));
+                }
+                let c_name = var.c_name.clone();
+                let var_kind = var.kind.clone();
+                let (val, kind) = self.compile_expr(value)?;
+                // Emit conditional assignment: only assign if the variable is "unset"
+                match var_kind {
+                    ValKind::Option => {
+                        // Option: check tag == 0 (None)
+                        self.emit(&format!("if ({}.tag == 0) {{", c_name));
+                    }
+                    _ => {
+                        // General case: check for zero/null/false
+                        self.emit(&format!("if (!{}) {{", c_name));
+                    }
+                }
+                self.indent += 1;
+                self.emit(&format!("{} = {};", c_name, val));
+                self.indent -= 1;
+                self.emit("}");
+                self.track_variable_kinds(name, &kind);
+                Ok((None, ValKind::Void))
+            }
             Stmt::Expr(expr) => {
                 let (val, kind) = self.compile_expr(expr)?;
                 let is_call = matches!(expr, Expr::Call { .. } | Expr::MethodCall { .. });

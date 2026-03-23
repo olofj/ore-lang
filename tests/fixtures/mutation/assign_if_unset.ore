@@ -1,0 +1,7 @@
+fn main
+  mut x := 0
+  x ||= 42
+  print x
+  mut y := 10
+  y ||= 99
+  print y

@@ -128,7 +128,7 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
 fn collect_free_vars_stmt(stmt: &Stmt, bound: &HashSet<String>, free: &mut Vec<String>, seen: &mut HashSet<String>) {
     match stmt {
         Stmt::Let { value, .. } | Stmt::LetDestructure { value, .. }
-        | Stmt::Assign { value, .. } => collect_free_vars(value, bound, free, seen),
+        | Stmt::Assign { value, .. } | Stmt::AssignIfUnset { value, .. } => collect_free_vars(value, bound, free, seen),
         Stmt::Expr(e) | Stmt::Spawn(e) | Stmt::Return(Some(e)) => collect_free_vars(e, bound, free, seen),
         Stmt::Return(None) | Stmt::Break | Stmt::Continue => {}
         Stmt::ForIn { start, end, body, .. } => {

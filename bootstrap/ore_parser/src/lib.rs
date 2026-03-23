@@ -667,9 +667,9 @@ impl Parser {
                         let value = self.parse_expr(0)?;
                         Ok(Stmt::Assign { name, value })
                     }
-                    Token::PlusEq | Token::MinusEq | Token::StarEq | Token::SlashEq | Token::PercentEq => {
+                    Token::PlusEq | Token::PlusPlusEq | Token::MinusEq | Token::StarEq | Token::SlashEq | Token::PercentEq => {
                         let op = match self.peek() {
-                            Token::PlusEq => BinOp::Add,
+                            Token::PlusEq | Token::PlusPlusEq => BinOp::Add,
                             Token::MinusEq => BinOp::Sub,
                             Token::StarEq => BinOp::Mul,
                             Token::SlashEq => BinOp::Div,
@@ -684,6 +684,11 @@ impl Parser {
                             right: Box::new(rhs),
                         };
                         Ok(Stmt::Assign { name, value })
+                    }
+                    Token::PipePipeEq => {
+                        self.advance();
+                        let value = self.parse_expr(0)?;
+                        Ok(Stmt::AssignIfUnset { name, value })
                     }
                     _ => {
                         // Backtrack and parse as expression, then check for assignment

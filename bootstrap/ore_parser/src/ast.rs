@@ -130,6 +130,10 @@ pub enum Stmt {
         name: String,
         value: Expr,
     },
+    AssignIfUnset {
+        name: String,
+        value: Expr,
+    },
     IndexAssign {
         object: Expr,
         index: Expr,

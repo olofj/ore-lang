@@ -185,6 +185,12 @@ impl Formatter {
                 self.format_expr(value, level);
                 self.out.push('\n');
             }
+            Stmt::AssignIfUnset { name, value } => {
+                self.indent(level);
+                self.out.push_str(&format!("{} ||= ", name));
+                self.format_expr(value, level);
+                self.out.push('\n');
+            }
             Stmt::IndexAssign { object, index, value } => {
                 self.indent(level);
                 self.format_expr(object, level);
