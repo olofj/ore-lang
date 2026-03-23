@@ -555,8 +555,9 @@ impl<'ctx> CodeGen<'ctx> {
                 self.compile_pipe_to_named(arg, &name, args, current_fn)
             }
             Expr::Lambda { params, body } => {
-                let arg_val = self.compile_expr(arg, current_fn)?;
-                let lambda_fn = self.compile_lambda(params, body)?;
+                let (arg_val, arg_kind) = self.compile_expr_with_kind(arg, current_fn)?;
+                let param_kinds = vec![arg_kind];
+                let (lambda_fn, ret_kind) = self.compile_lambda_with_kinds(params, body, Some(&param_kinds))?;
                 let lambda_name = Self::get_lambda_name(lambda_fn);
 
                 let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> = Vec::new();
@@ -564,11 +565,13 @@ impl<'ctx> CodeGen<'ctx> {
                     let env_ptr = self.build_captures_struct(&lambda_name)?;
                     call_args.push(env_ptr.into());
                 }
-                call_args.push(arg_val.into());
+                // Lambda params are always i64, so convert the arg value
+                let arg_i64 = self.value_to_i64(arg_val)?;
+                call_args.push(arg_i64.into());
 
                 let result = bld!(self.builder.build_call(lambda_fn, &call_args, "pipe"))?;
                 let val = self.call_result_to_value(result)?;
-                Ok((val, ValKind::Int))
+                Ok((val, ret_kind))
             }
             _ => Err(self.err("unsupported pipeline target")),
         }

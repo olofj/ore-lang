@@ -703,6 +703,7 @@ fn map_runtime_functions(
     map_fn!("ore_channel_new", ore_runtime::ore_channel_new);
     map_fn!("ore_channel_send", ore_runtime::ore_channel_send);
     map_fn!("ore_channel_recv", ore_runtime::ore_channel_recv);
+    map_fn!("ore_fork", ore_runtime::ore_fork);
     // Int math
     map_fn!("ore_int_pow", ore_runtime::ore_int_pow);
     // Map methods

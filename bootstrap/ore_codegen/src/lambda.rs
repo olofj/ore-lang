@@ -301,6 +301,24 @@ impl<'ctx> CodeGen<'ctx> {
                     bld!(self.builder.build_store(alloca, f_val))?;
                     self.variables.insert(param_name.clone(), VarInfo { ptr: alloca, ty: f64_ty.as_basic_type_enum(), kind, is_mutable: false });
                 }
+                ValKind::Record(ref name) => {
+                    // Records are passed as heap pointer cast to i64; load the struct back
+                    let st = self.records[name].struct_type;
+                    let ptr = self.i64_to_ptr(val.into_int_value())?;
+                    let loaded = bld!(self.builder.build_load(st, ptr, &format!("load_{}", param_name)))?;
+                    let alloca = bld!(self.builder.build_alloca(st, param_name))?;
+                    bld!(self.builder.build_store(alloca, loaded))?;
+                    self.variables.insert(param_name.clone(), VarInfo { ptr: alloca, ty: st.as_basic_type_enum(), kind, is_mutable: false });
+                }
+                ValKind::Enum(ref name) => {
+                    // Enums are passed as heap pointer cast to i64; load the struct back
+                    let et = self.enums[name].enum_type;
+                    let ptr = self.i64_to_ptr(val.into_int_value())?;
+                    let loaded = bld!(self.builder.build_load(et, ptr, &format!("load_{}", param_name)))?;
+                    let alloca = bld!(self.builder.build_alloca(et, param_name))?;
+                    bld!(self.builder.build_store(alloca, loaded))?;
+                    self.variables.insert(param_name.clone(), VarInfo { ptr: alloca, ty: et.as_basic_type_enum(), kind, is_mutable: false });
+                }
                 _ => {
                     let ty = val.get_type();
                     let alloca = bld!(self.builder.build_alloca(ty, param_name))?;

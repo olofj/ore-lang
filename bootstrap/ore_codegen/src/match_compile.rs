@@ -128,11 +128,15 @@ impl<'ctx> CodeGen<'ctx> {
             Pattern::IntLit(_) | Pattern::FloatLit(_) | Pattern::BoolLit(_) | Pattern::StringLit(_) | Pattern::Range(_, _) | Pattern::Or(_)
         ));
 
-        // Check if any arm has a Variant pattern (enum destructuring)
-        let has_variant_patterns = arms.iter().any(|arm| matches!(
-            &arm.pattern,
-            Pattern::Variant { .. }
-        ));
+        // Check if any arm has a true Variant pattern (enum destructuring).
+        // Variable bindings like `n if n < 0` are parsed as Variant { name: "n", bindings: [] }
+        // but are NOT real variant patterns — only count patterns whose name is a known enum variant.
+        let has_variant_patterns = arms.iter().any(|arm| match &arm.pattern {
+            Pattern::Variant { name, bindings } => {
+                !bindings.is_empty() || self.variant_to_enum.contains_key(name)
+            }
+            _ => false,
+        });
 
         if has_literal_patterns && !has_variant_patterns {
             return self.compile_literal_match(subject_val, &subject_kind, arms, func);

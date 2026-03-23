@@ -93,9 +93,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Ok((None, ValKind::Void))
             }
             Stmt::AssignIfUnset { name, value } => {
-                // For now, treat as a regular assign in LLVM codegen
-                // (the C codegen has the conditional logic)
-                self.compile_assign(name, value, func)?;
+                self.compile_assign_if_unset(name, value, func)?;
                 Ok((None, ValKind::Void))
             }
             Stmt::IndexAssign { object, index, value } => {
@@ -229,6 +227,54 @@ impl<'ctx> CodeGen<'ctx> {
         }
         bld!(self.builder.build_store(var_info.ptr, val))?;
         self.track_variable_kinds(name, &kind);
+        Ok(())
+    }
+
+    fn compile_assign_if_unset(
+        &mut self,
+        name: &str,
+        value: &Expr,
+        func: FunctionValue<'ctx>,
+    ) -> Result<(), CodeGenError> {
+        let var_info = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?;
+        if !var_info.is_mutable {
+            return Err(self.err(format!("cannot assign to immutable variable '{}'", name)));
+        }
+        let ptr = var_info.ptr;
+        let kind = var_info.kind.clone();
+
+        // Load current value and check if it's "falsy" (zero/false/null)
+        let is_unset = match &kind {
+            ValKind::Int => {
+                let cur = bld!(self.builder.build_load(self.context.i64_type(), ptr, "cur"))?.into_int_value();
+                let zero = self.context.i64_type().const_int(0, false);
+                bld!(self.builder.build_int_compare(IntPredicate::EQ, cur, zero, "is_unset"))?
+            }
+            ValKind::Bool => {
+                let cur = bld!(self.builder.build_load(self.context.bool_type(), ptr, "cur"))?.into_int_value();
+                let zero = self.context.bool_type().const_int(0, false);
+                bld!(self.builder.build_int_compare(IntPredicate::EQ, cur, zero, "is_unset"))?
+            }
+            _ => {
+                // For other types, treat as regular assign (fallback)
+                let (val, kind) = self.compile_expr_with_kind(value, func)?;
+                bld!(self.builder.build_store(ptr, val))?;
+                self.track_variable_kinds(name, &kind);
+                return Ok(());
+            }
+        };
+
+        let then_bb = self.context.append_basic_block(func, "aiu_then");
+        let merge_bb = self.context.append_basic_block(func, "aiu_merge");
+        bld!(self.builder.build_conditional_branch(is_unset, then_bb, merge_bb))?;
+
+        self.builder.position_at_end(then_bb);
+        let (val, new_kind) = self.compile_expr_with_kind(value, func)?;
+        bld!(self.builder.build_store(ptr, val))?;
+        self.track_variable_kinds(name, &new_kind);
+        bld!(self.builder.build_unconditional_branch(merge_bb))?;
+
+        self.builder.position_at_end(merge_bb);
         Ok(())
     }
 
