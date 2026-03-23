@@ -729,6 +729,15 @@ fn concurrency_each_pipe() {
 }
 
 #[test]
+fn concurrency_fork() {
+    let out = run_ore("concurrency/fork.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines[0], "[10, 15, -5]");
+    assert_eq!(lines[1], "[20, 15, 7]");
+    assert_eq!(lines[2], "[16, 26]");
+}
+
+#[test]
 fn lists_any_all() {
     let out = run_ore("lists/any_all.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

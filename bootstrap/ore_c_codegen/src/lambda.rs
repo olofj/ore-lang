@@ -120,6 +120,12 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
         Expr::Assert { cond, .. } => {
             collect_free_vars(cond, bound, free, seen);
         }
+        Expr::Fork { input, branches } => {
+            collect_free_vars(input, bound, free, seen);
+            for b in branches {
+                collect_free_vars(b, bound, free, seen);
+            }
+        }
         Expr::IntLit(_) | Expr::FloatLit(_) | Expr::BoolLit(_) | Expr::StringLit(_)
         | Expr::Break | Expr::OptionNone => {}
     }

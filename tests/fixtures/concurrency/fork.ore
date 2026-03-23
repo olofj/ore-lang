@@ -1,0 +1,32 @@
+fn double n:Int -> Int
+  n * 2
+
+fn add_ten n:Int -> Int
+  n + 10
+
+fn negate n:Int -> Int
+  0 - n
+
+fn main
+  -- Basic fork: same input, different functions, parallel execution
+  results := 5 | fork
+    double
+    add_ten
+    negate
+
+  print results
+
+  -- Fork with inline lambdas
+  results2 := 10 | fork
+    (x => x * 2)
+    (x => x + 5)
+    (x => x - 3)
+
+  print results2
+
+  -- Fork with multi-step pipelines
+  results3 := 3 | fork
+    double | add_ten
+    add_ten | double
+
+  print results3

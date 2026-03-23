@@ -424,4 +424,4 @@ the bootstrap compiler:
 - **Type aliases** — no type alias syntax
 - **Comparison chains** — no `0 < x < 100`
 - **`crud` code generation** — no type-driven CRUD/database generation (but `deriving(Serialize)` provides the JSON foundation)
-- **`fork` parallel pipelines** — no fork/join concurrency
+- **`fork` parallel pipelines** — `data | fork` with indented branches runs each branch in parallel and returns results as a list

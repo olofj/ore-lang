@@ -41,6 +41,7 @@ pub enum Token {
     Assert,
     AssertEq,
     AssertNe,
+    Fork,
 
     // Operators
     Plus,
@@ -778,6 +779,7 @@ impl<'a> Lexer<'a> {
             "assert" => Token::Assert,
             "assert_eq" => Token::AssertEq,
             "assert_ne" => Token::AssertNe,
+            "fork" => Token::Fork,
             _ => Token::Ident(text.to_string()),
         };
         self.emit(token, start);

@@ -842,6 +842,32 @@ pub extern "C" fn ore_list_par_each(list: *mut OreList, func: *const u8, env: *m
     }
 }
 
+/// Fork: run multiple closures in parallel with the same input, collect results.
+/// `closures` is a list of [fn_ptr1, env_ptr1, fn_ptr2, env_ptr2, ...] pairs.
+#[no_mangle]
+pub extern "C" fn ore_fork(input: i64, closures: *mut OreList) -> *mut OreList {
+    unsafe {
+        let cls = &*closures;
+        let n = (cls.len as usize) / 2;
+        let data = cls.as_slice();
+        let handles: Vec<_> = (0..n).map(|i| {
+            let func = data[i * 2] as usize;
+            let env = data[i * 2 + 1] as usize;
+            let input_copy = input;
+            std::thread::spawn(move || {
+                let f = func as *const u8;
+                let e = env as *mut u8;
+                call_closure(f, e, input_copy)
+            })
+        }).collect();
+        let result = ore_list_new();
+        for h in handles {
+            ore_list_push(result, h.join().unwrap());
+        }
+        result
+    }
+}
+
 /// Set a list element by index
 #[no_mangle]
 pub extern "C" fn ore_list_set(list: *mut OreList, index: i64, value: i64) {

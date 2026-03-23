@@ -410,6 +410,9 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::OptionalMethodCall { object, method, args } => {
                 self.compile_optional_method_call(object, method, args, func)
             }
+            Expr::Fork { input, branches } => {
+                self.compile_fork(input, branches, func)
+            }
             Expr::Break => {
                 if let Some(target) = self.break_target {
                     bld!(self.builder.build_unconditional_branch(target))?;
@@ -569,6 +572,64 @@ impl<'ctx> CodeGen<'ctx> {
             }
             _ => Err(self.err("unsupported pipeline target")),
         }
+    }
+
+    pub(crate) fn compile_fork(
+        &mut self,
+        input: &Expr,
+        branches: &[Expr],
+        current_fn: FunctionValue<'ctx>,
+    ) -> Result<(BasicValueEnum<'ctx>, ValKind), CodeGenError> {
+        let (input_val, _input_kind) = self.compile_expr_with_kind(input, current_fn)?;
+        let input_i64 = if input_val.is_int_value() {
+            input_val.into_int_value()
+        } else if input_val.is_pointer_value() {
+            bld!(self.builder.build_ptr_to_int(
+                input_val.into_pointer_value(),
+                self.context.i64_type(),
+                "fork_input"
+            ))?
+        } else {
+            return Err(self.err("fork input must be an integer or pointer type"));
+        };
+
+        // Build a list of [fn_ptr, env_ptr, fn_ptr, env_ptr, ...] for each branch
+        let closures_list = self.call_rt("ore_list_new", &[], "fork_closures")?;
+        let closures_ptr = if closures_list.is_pointer_value() {
+            closures_list.into_pointer_value()
+        } else {
+            self.i64_to_ptr(closures_list.into_int_value())?
+        };
+
+        for branch in branches {
+            match branch {
+                Expr::Lambda { params, body } => {
+                    let lambda_fn = self.compile_lambda(params, body)?;
+                    let lambda_name = Self::get_lambda_name(lambda_fn);
+
+                    let fn_ptr = lambda_fn.as_global_value().as_pointer_value();
+                    let fn_ptr_i64 = bld!(self.builder.build_ptr_to_int(
+                        fn_ptr, self.context.i64_type(), "fork_fn"
+                    ))?;
+
+                    let env_ptr_i64 = if self.lambda_captures.contains_key(&lambda_name) {
+                        let env_ptr = self.build_captures_struct(&lambda_name)?;
+                        bld!(self.builder.build_ptr_to_int(
+                            env_ptr, self.context.i64_type(), "fork_env"
+                        ))?
+                    } else {
+                        self.context.i64_type().const_int(0, false)
+                    };
+
+                    self.call_rt("ore_list_push", &[closures_ptr.into(), fn_ptr_i64.into()], "")?;
+                    self.call_rt("ore_list_push", &[closures_ptr.into(), env_ptr_i64.into()], "")?;
+                }
+                _ => return Err(self.err("fork branches must be lambdas")),
+            }
+        }
+
+        let result = self.call_rt("ore_fork", &[input_i64.into(), closures_ptr.into()], "fork_result")?;
+        Ok((result, ValKind::List(None)))
     }
 
     pub(crate) fn emit_div_by_zero_check(&mut self, divisor: IntValue<'ctx>) -> Result<(), CodeGenError> {

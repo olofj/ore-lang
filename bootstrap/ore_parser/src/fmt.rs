@@ -605,6 +605,15 @@ impl Formatter {
                     self.out.push_str(&format!(", \"{}\"", msg));
                 }
             }
+            Expr::Fork { input, branches } => {
+                self.format_expr(input, level);
+                self.out.push_str(" | fork");
+                for branch in branches {
+                    self.out.push('\n');
+                    self.indent(level + 1);
+                    self.format_expr(branch, level + 1);
+                }
+            }
         }
     }
 

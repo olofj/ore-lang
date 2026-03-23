@@ -276,6 +276,10 @@ pub enum Expr {
         right: Box<Expr>,
         message: Option<String>,
     },
+    Fork {
+        input: Box<Expr>,
+        branches: Vec<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

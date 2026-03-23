@@ -204,6 +204,7 @@ pub fn runtime_declarations() -> Vec<String> {
     d("void* ore_map_filter(void*, void*, void*)");
 
     // Concurrency
+    d("void* ore_fork(int64_t, void*)");
     d("void ore_spawn(void*)");
     d("void ore_spawn_with_arg(void*, int64_t)");
     d("void ore_spawn_with_2args(void*, int64_t, int64_t)");

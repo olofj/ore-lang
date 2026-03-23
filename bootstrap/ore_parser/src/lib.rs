@@ -90,6 +90,26 @@ impl Parser {
         }
     }
 
+    /// Inject `__fork_it |` at the leftmost position of a pipeline chain.
+    /// For `step1 | step2`, produces `__fork_it | step1 | step2`.
+    /// For `(x => x * 2)`, produces `__fork_it | (x => x * 2)`.
+    fn inject_fork_input(expr: Expr) -> Expr {
+        match expr {
+            Expr::BinOp { op: BinOp::Pipe, left, right } => {
+                Expr::BinOp {
+                    op: BinOp::Pipe,
+                    left: Box::new(Self::inject_fork_input(*left)),
+                    right,
+                }
+            }
+            other => Expr::BinOp {
+                op: BinOp::Pipe,
+                left: Box::new(Expr::Ident("__fork_it".to_string())),
+                right: Box::new(other),
+            },
+        }
+    }
+
     /// Parse comma-separated expression arguments inside parentheses.
     /// Assumes '(' has already been consumed.
     fn parse_call_args(&mut self) -> Result<Vec<Expr>, ParseError> {
@@ -967,6 +987,55 @@ impl Parser {
                                 op: BinOp::Pipe,
                                 left: Box::new(lhs),
                                 right: Box::new(lambda),
+                            };
+                            continue;
+                        }
+                    }
+                    // Check for `| fork` syntax: parallel heterogeneous branches
+                    if let Some(next) = self.tokens.get(self.pos + 1) {
+                        if matches!(&next.token, Token::Fork) {
+                            let l_bp = 9u8; // same as pipe l_bp
+                            if l_bp < min_bp {
+                                break;
+                            }
+                            self.advance(); // consume `|`
+                            self.advance(); // consume `fork`
+                            // Expect indented block of branches
+                            if self.peek() != &Token::Newline {
+                                return Err(self.error("expected newline after 'fork'".to_string()));
+                            }
+                            self.advance(); // consume Newline
+                            if self.peek() != &Token::Indent {
+                                return Err(self.error("expected indented block of fork branches".to_string()));
+                            }
+                            self.advance(); // consume Indent
+                            let mut branches = Vec::new();
+                            loop {
+                                if self.peek() == &Token::Dedent || self.peek() == &Token::Eof {
+                                    break;
+                                }
+                                // Parse branch expression (a pipeline)
+                                let branch_expr = self.parse_expr(0)?;
+                                // Desugar: wrap in lambda that pipes input through branch
+                                let body = Self::inject_fork_input(branch_expr);
+                                branches.push(Expr::Lambda {
+                                    params: vec!["__fork_it".to_string()],
+                                    body: Box::new(body),
+                                });
+                                // Skip newline between branches
+                                if self.peek() == &Token::Newline {
+                                    self.advance();
+                                }
+                            }
+                            if self.peek() == &Token::Dedent {
+                                self.advance(); // consume Dedent
+                            }
+                            if branches.is_empty() {
+                                return Err(self.error("fork requires at least one branch".to_string()));
+                            }
+                            lhs = Expr::Fork {
+                                input: Box::new(lhs),
+                                branches,
                             };
                             continue;
                         }

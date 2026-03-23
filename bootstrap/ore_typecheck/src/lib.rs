@@ -939,6 +939,13 @@ impl TypeChecker {
                 self.infer_expr(right, env);
                 Type::Unit
             }
+            Expr::Fork { input, branches } => {
+                self.infer_expr(input, env);
+                for b in branches {
+                    self.infer_expr(b, env);
+                }
+                Type::List(Box::new(Type::Any))
+            }
         }
     }
 

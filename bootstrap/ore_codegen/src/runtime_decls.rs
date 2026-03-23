@@ -207,6 +207,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.module.add_function("ore_map_filter", ptr_type.fn_type(&[ptr_type.into(), ptr_type.into(), ptr_type.into()], false), ext);
 
         // Concurrency
+        self.module.add_function("ore_fork", ptr_type.fn_type(&[i64_type.into(), ptr_type.into()], false), ext);
         self.module.add_function("ore_spawn", void_type.fn_type(&[ptr_type.into()], false), ext);
         self.module.add_function("ore_spawn_with_arg", void_type.fn_type(&[ptr_type.into(), i64_type.into()], false), ext);
         self.module.add_function("ore_spawn_with_2args", void_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false), ext);

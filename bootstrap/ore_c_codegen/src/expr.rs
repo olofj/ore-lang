@@ -249,6 +249,9 @@ impl CCodeGen {
                 let (val, _) = self.compile_expr(object)?;
                 Ok((val, ValKind::Option))
             }
+            Expr::Fork { input, branches } => {
+                self.compile_fork(input, branches)
+            }
             Expr::Break => {
                 if let Some(label) = self.break_labels.last().cloned() {
                     self.emit(&format!("goto {};", label));
@@ -633,6 +636,26 @@ impl CCodeGen {
             }
             _ => Err(self.err("unsupported pipeline target")),
         }
+    }
+
+    pub(crate) fn compile_fork(&mut self, input: &Expr, branches: &[Expr]) -> Result<(String, ValKind), CCodeGenError> {
+        let (input_val, _) = self.compile_expr(input)?;
+        let closures_var = self.tmp();
+        self.emit(&format!("void* {} = ore_list_new();", closures_var));
+        for branch in branches {
+            match branch {
+                Expr::Lambda { params, body } => {
+                    let (raw, _) = self.compile_lambda(params, body, None)?;
+                    let (fn_ptr, env_ptr) = Self::parse_closure_expr(&raw);
+                    self.emit(&format!("ore_list_push({}, (int64_t){});", closures_var, fn_ptr));
+                    self.emit(&format!("ore_list_push({}, (int64_t){});", closures_var, env_ptr));
+                }
+                _ => return Err(self.err("fork branches must be lambdas")),
+            }
+        }
+        let result_var = self.tmp();
+        self.emit(&format!("void* {} = ore_fork((int64_t){}, {});", result_var, input_val, closures_var));
+        Ok((format!("(int64_t){}", result_var), ValKind::List(None)))
     }
 
     /// Try to inline a dot-shorthand lambda by substituting the pipe argument
