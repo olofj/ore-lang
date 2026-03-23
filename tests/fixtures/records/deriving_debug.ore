@@ -1,0 +1,5 @@
+type Point deriving(Debug) { x:Int, y:Int }
+
+fn main
+  p := Point(x: 3, y: 4)
+  print p.debug()

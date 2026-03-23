@@ -397,7 +397,7 @@ the bootstrap compiler:
 - **HTTP client/server** — no `http.get()`, no `http.server()`, no web framework
 - **SQLite / database access** — no `sqlite.open()`, no `db.query()`
 - **CLI argument parsing via `deriving(Cli)`** — no derive-based CLI generation
-- **`deriving()` macro system** — no `deriving(Serialize)`, `deriving(Eq)`, etc.
+- **`deriving()` additional traits** — `deriving(Debug)`, `deriving(Eq)`, `deriving(Clone)`, `deriving(Serialize)` are implemented; `deriving(Cli)`, user-defined derives are not
 - **Date/Time types** — no `DateTime`, `Date`, `Duration` (only `time_now()` for Unix timestamps)
 - **Set type** — no `Set[T]` collection
 - **Async/await** — no `async fn`, no `.await`, no structured async concurrency
@@ -423,5 +423,5 @@ the bootstrap compiler:
 - **Int-keyed maps** — maps are string-keyed only
 - **Type aliases** — no type alias syntax
 - **Comparison chains** — no `0 < x < 100`
-- **`crud` code generation** — no type-driven CRUD generation
+- **`crud` code generation** — no type-driven CRUD/database generation (but `deriving(Serialize)` provides the JSON foundation)
 - **`fork` parallel pipelines** — no fork/join concurrency

@@ -101,10 +101,11 @@ library. For complex apps, the primitives compose well.
 ## 3. Built-in JSON (and Serialization) [PARTIALLY IMPLEMENTED]
 
 > **What works today:** `json_parse()` and `json_stringify()` for basic
-> map-based JSON conversion.
+> map-based JSON conversion. `deriving(Serialize)` generates `toJson() -> Str`
+> for records and enums.
 >
-> **Not yet implemented:** `deriving(Serialize)`, `toJson()`/`fromJson()`
-> methods, `@jsonName`, `@optional` annotations, TOML/YAML/MessagePack/CSV.
+> **Not yet implemented:** `fromJson()` parsing, `@jsonName`, `@optional`
+> annotations, TOML/YAML/MessagePack/CSV.
 
 ```
 -- Any type with `Serialize` can become JSON

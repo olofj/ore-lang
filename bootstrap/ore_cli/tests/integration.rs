@@ -599,6 +599,69 @@ fn enum_display() {
 }
 
 #[test]
+fn deriving_debug() {
+    let out = run_ore("records/deriving_debug.ore");
+    assert_eq!(out.trim(), "Point(x: 3, y: 4)");
+}
+
+#[test]
+fn deriving_eq() {
+    let out = run_ore("records/deriving_eq.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["true", "false"]);
+}
+
+#[test]
+fn deriving_clone() {
+    let out = run_ore("records/deriving_clone.ore");
+    assert_eq!(out.trim(), "Point(x: 10, y: 20)");
+}
+
+#[test]
+fn deriving_serialize() {
+    let out = run_ore("records/deriving_serialize.ore");
+    assert_eq!(out.trim(), r#"{"name": "Alice", "age": 30}"#);
+}
+
+#[test]
+fn deriving_eq_str() {
+    let out = run_ore("records/deriving_eq_str.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["true", "false"]);
+}
+
+#[test]
+fn deriving_enum() {
+    let out = run_ore("records/deriving_enum.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "Circle(radius: 5.0)",
+        "Rect(width: 3.0, height: 4.0)",
+        "true",
+        "false",
+        r#"{"type": "Circle", "radius": 5.0}"#,
+        r#"{"type": "Rect", "width": 3.0, "height": 4.0}"#,
+    ]);
+}
+
+#[test]
+fn deriving_all() {
+    let out = run_ore("records/deriving_all.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "User(name: Alice, age: 30, active: true)",
+        "true",
+        r#"{"name": "Alice", "age": 30, "active": true}"#,
+        "false",
+        r#"{"name": "Bob", "age": 25, "active": false}"#,
+        "Red",
+        "true",
+        "false",
+        r#"{"type": "Red"}"#,
+    ]);
+}
+
+#[test]
 fn stdlib_split_iter() {
     let out = run_ore("stdlib/split_iter.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

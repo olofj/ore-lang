@@ -1,0 +1,23 @@
+type User deriving(Debug, Eq, Clone, Serialize) { name:Str, age:Int, active:Bool }
+
+type Color deriving(Debug, Eq, Clone, Serialize)
+  Red
+  Green
+  Blue
+
+fn main
+  u := User(name: "Alice", age: 30, active: true)
+  u2 := u.clone()
+  print u.debug()
+  print u.eq(u2)
+  print u.toJson()
+  u3 := User(name: "Bob", age: 25, active: false)
+  print u.eq(u3)
+  print u3.toJson()
+  c := Red
+  c2 := Red
+  c3 := Blue
+  print c.debug()
+  print c.eq(c2)
+  print c.eq(c3)
+  print c.toJson()

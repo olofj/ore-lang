@@ -1,0 +1,6 @@
+type Point deriving(Clone, Debug) { x:Int, y:Int }
+
+fn main
+  p := Point(x: 10, y: 20)
+  q := p.clone()
+  print q.debug()

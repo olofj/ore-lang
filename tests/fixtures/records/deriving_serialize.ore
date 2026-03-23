@@ -1,0 +1,5 @@
+type User deriving(Serialize) { name:Str, age:Int }
+
+fn main
+  u := User(name: "Alice", age: 30)
+  print u.toJson()

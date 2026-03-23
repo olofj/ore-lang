@@ -1,0 +1,8 @@
+type Person deriving(Eq) { name:Str, age:Int }
+
+fn main
+  a := Person(name: "Alice", age: 30)
+  b := Person(name: "Alice", age: 30)
+  c := Person(name: "Bob", age: 30)
+  print a.eq(b)
+  print a.eq(c)

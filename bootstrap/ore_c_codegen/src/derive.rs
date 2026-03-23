@@ -246,12 +246,13 @@ impl CCodeGen {
                         .to_string(),
                 );
             }
-            // "\"fieldName\": "
-            let key = format!("\\\"{}\\\"", fname);
-            let key_with_colon = format!("{}: ", key);
+            // "fieldName": (with actual quote characters)
+            let key_with_colon = format!("\"{}\"", fname);
+            let key_with_colon = format!("{}: ", key_with_colon);
+            let escaped = Self::escape_c_string(&key_with_colon);
             body_lines.push(format!(
                 "    ore_result = ore_str_concat(ore_result, ore_str_new(\"{}\", {}));",
-                Self::escape_c_string(&key_with_colon),
+                escaped,
                 key_with_colon.len()
             ));
             let field_expr = format!("ore_self.{}", fname);
@@ -479,10 +480,11 @@ impl CCodeGen {
             body_lines.push(format!("    case {}:", v.tag));
             if v.field_names.is_empty() {
                 // Simple variant: {"type": "VariantName"}
-                let json = format!("{{\\\"type\\\": \\\"{}\\\"}}", v.name);
+                let json = format!("{{\"type\": \"{}\"}}", v.name);
+                let escaped = Self::escape_c_string(&json);
                 body_lines.push(format!(
                     "        return ore_str_new(\"{}\", {});",
-                    json,
+                    escaped,
                     json.len()
                 ));
             } else {
@@ -496,10 +498,11 @@ impl CCodeGen {
                     payload_type
                 ));
                 // {"type": "VariantName", "field1": val1, ...}
-                let type_key = format!("{{\\\"type\\\": \\\"{}\\\", ", v.name);
+                let type_key = format!("{{\"type\": \"{}\", ", v.name);
+                let escaped_key = Self::escape_c_string(&type_key);
                 body_lines.push(format!(
                     "        void* ore_result = ore_str_new(\"{}\", {});",
-                    type_key,
+                    escaped_key,
                     type_key.len()
                 ));
                 for (i, (fname, fkind)) in
@@ -511,11 +514,11 @@ impl CCodeGen {
                                 .to_string(),
                         );
                     }
-                    let key = format!("\\\"{}\\\"", fname);
-                    let key_with_colon = format!("{}: ", key);
+                    let key_with_colon = format!("\"{}\": ", fname);
+                    let escaped = Self::escape_c_string(&key_with_colon);
                     body_lines.push(format!(
                         "        ore_result = ore_str_concat(ore_result, ore_str_new(\"{}\", {}));",
-                        Self::escape_c_string(&key_with_colon),
+                        escaped,
                         key_with_colon.len()
                     ));
                     let field_expr = format!("ore_pl.{}", fname);
@@ -533,12 +536,9 @@ impl CCodeGen {
             }
         }
 
-        let fallback = "\\\"null\\\"";
-        body_lines.push(format!(
-            "    default: return ore_str_new(\"{}\", {});",
-            fallback,
-            fallback.len()
-        ));
+        body_lines.push(
+            "    default: return ore_str_new(\"null\", 4);".to_string()
+        );
         body_lines.push("    }".to_string());
 
         self.emit_derived_c_function(

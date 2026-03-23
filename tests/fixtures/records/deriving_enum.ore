@@ -1,0 +1,14 @@
+type Shape deriving(Debug, Eq, Serialize)
+  Circle(radius: Float)
+  Rect(width: Float, height: Float)
+
+fn main
+  c := Circle(radius: 5.0)
+  r := Rect(width: 3.0, height: 4.0)
+  c2 := Circle(radius: 5.0)
+  print c.debug()
+  print r.debug()
+  print c.eq(c2)
+  print c.eq(r)
+  print c.toJson()
+  print r.toJson()
