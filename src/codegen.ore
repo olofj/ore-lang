@@ -54,10 +54,10 @@ fn cg_new -> List
   st.push([0])      -- 1: indent
   st.push([0])      -- 2: temp_counter
   st.push([0])      -- 3: label_counter
-  st.push([])       -- 4: var_names
-  st.push([])       -- 5: var_kinds
-  st.push([])       -- 6: fn_names
-  st.push([])       -- 7: fn_ret_kinds
+  st.push({})       -- 4: var_map (name -> kind)
+  st.push([])       -- 5: (unused, kept for index stability)
+  st.push({})       -- 6: fn_ret_map (name -> ret_kind)
+  st.push([])       -- 7: (unused, kept for index stability)
   st.push([])       -- 8: forward_decls
   st.push([])       -- 9: top_level
   st.push([])       -- 10: errors
@@ -80,8 +80,8 @@ fn cg_new -> List
   st.push([])       -- 27: variant_field_kinds
   st.push(["void"]) -- 28: current_fn_ret_kind (single element)
   st.push([])       -- 29: compiled_fns (dedup guard for compile_fn_def)
-  st.push([])       -- 30: fn_param_names (parallel to 31)
-  st.push([])       -- 31: fn_param_kinds_strs (comma-separated param kinds per function)
+  st.push({})       -- 30: fn_params_map (name -> comma-separated param kinds)
+  st.push([])       -- 31: (unused, kept for index stability)
   st
 
 fn cg_list st:List idx:Int -> List
@@ -155,74 +155,51 @@ fn emit st:List line:Str
 fn emit_raw st:List line:Str
   cg_lines(st).push(line)
 
--- ── Variable tracking (simple parallel lists) ──
+-- ── Variable tracking (Map-based O(1) lookup) ──
+
+fn cg_var_map st:List -> Map
+  st[4]
 
 fn cg_set_var st:List name:Str kind:Str
-  names := cg_list(st, 4)
-  kinds := cg_list(st, 5)
-  -- check if already exists, update
-  for i in 0..names.len()
-    if str_at(names, i) == name
-      kinds[i] = kind
-      return
-  names.push(name)
-  kinds.push(kind)
+  cg_var_map(st).set(name, kind)
 
 fn cg_get_var_kind st:List name:Str -> Str
-  names := cg_list(st, 4)
-  kinds := cg_list(st, 5)
-  mut i := names.len() - 1
-  while i >= 0
-    if str_at(names, i) == name
-      return str_at(kinds, i)
-    i = i - 1
+  m := cg_var_map(st)
+  if m.contains(name)
+    return m.get(name)
   "int"
 
 fn cg_has_var st:List name:Str -> Bool
-  names := cg_list(st, 4)
-  for i in 0..names.len()
-    if str_at(names, i) == name
-      return true
-  false
+  cg_var_map(st).contains(name)
 
--- ── Function tracking ──
+-- ── Function tracking (Map-based O(1) lookup) ──
+
+fn cg_fn_ret_map st:List -> Map
+  st[6]
+
+fn cg_fn_params_map st:List -> Map
+  st[30]
 
 fn cg_set_fn st:List name:Str ret_kind:Str
-  fns := cg_list(st, 6)
-  rets := cg_list(st, 7)
-  fns.push(name)
-  rets.push(ret_kind)
+  cg_fn_ret_map(st).set(name, ret_kind)
 
 fn cg_set_fn_params st:List name:Str param_kinds_str:Str
-  cg_list(st, 30).push(name)
-  cg_list(st, 31).push(param_kinds_str)
+  cg_fn_params_map(st).set(name, param_kinds_str)
 
 fn cg_get_fn_params st:List name:Str -> Str
-  names := cg_list(st, 30)
-  kinds := cg_list(st, 31)
-  mut i := names.len() - 1
-  while i >= 0
-    if str_at(names, i) == name
-      return str_at(kinds, i)
-    i = i - 1
+  m := cg_fn_params_map(st)
+  if m.contains(name)
+    return m.get(name)
   ""
 
 fn cg_get_fn_ret st:List name:Str -> Str
-  fns := cg_list(st, 6)
-  rets := cg_list(st, 7)
-  mut i := fns.len() - 1
-  while i >= 0
-    if str_at(fns, i) == name
-      return str_at(rets, i)
-    i = i - 1
+  m := cg_fn_ret_map(st)
+  if m.contains(name)
+    return m.get(name)
   "int64_t"
 
 fn cg_has_fn st:List name:Str -> Bool
-  fns := cg_list(st, 6)
-  for i in 0..fns.len()
-    if str_at(fns, i) == name
-      return true
-  false
+  cg_fn_ret_map(st).contains(name)
 
 -- ── Generic function tracking ──
 
@@ -1270,12 +1247,10 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
     -- Save current lines and indent, compile into fresh lines, then move to deferred
     saved_lines := cg_list(st, 0)
     saved_indent := cg_indent(st)
-    saved_var_names := cg_list(st, 4)
-    saved_var_kinds := cg_list(st, 5)
+    saved_var_map := cg_var_map(st)
     st[0] = []
     cg_set_indent(st, 0)
-    st[4] = []
-    st[5] = []
+    st[4] = {}
     exprs := cg_list(st, 23)
     stmts := cg_list(st, 24)
     compile_fn_def(st, exprs, stmts, mono_fn)
@@ -1287,8 +1262,7 @@ fn compile_generic_call st:List fname:Str arg_strs:List arg_kinds:List -> List
     -- Restore original state
     st[0] = saved_lines
     cg_set_indent(st, saved_indent)
-    st[4] = saved_var_names
-    st[5] = saved_var_kinds
+    st[4] = saved_var_map
   -- Call the monomorphized function
   mn := mangle_fn(mono_name)
   all_args := arg_strs.join(", ")
@@ -2742,7 +2716,8 @@ fn compile_lambda st:List exprs:List stmts:List params:List body:Int -> List
   -- Save current codegen state
   saved_lines := cg_lines(st)
   saved_indent := cg_indent(st)
-  saved_var_count := cg_list(st, 4).len()
+  saved_var_map := cg_var_map(st)
+  st[4] = {}.merge(saved_var_map)
 
   -- Set up fresh lines for lambda body compilation
   st[0] = []
@@ -2775,12 +2750,8 @@ fn compile_lambda st:List exprs:List stmts:List params:List body:Int -> List
   -- Restore state
   st[0] = saved_lines
   cg_set_indent(st, saved_indent)
-  -- Restore variables by removing any added during lambda body
-  vnames := cg_list(st, 4)
-  vkinds := cg_list(st, 5)
-  while vnames.len() > saved_var_count
-    vnames.pop()
-    vkinds.pop()
+  -- Restore variable map to pre-lambda state
+  st[4] = saved_var_map
 
   -- Emit the lambda function definition into top_level
   tl2 := cg_list(st, 9)
@@ -2936,8 +2907,9 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
   cg_set_fn(st, name, ret_kind)
   -- Track current function return kind for bare return handling
   cg_list(st, 28)[0] = ret_kind
-  -- Save variables state (just track count to restore)
-  saved_var_count := cg_list(st, 4).len()
+  -- Save variable map (restore after function body)
+  saved_var_map := cg_var_map(st)
+  st[4] = {}.merge(saved_var_map)
   -- Build parameter signature and collect param kinds
   mn := mangle_fn(name)
   mut param_sig := ""
@@ -2977,9 +2949,8 @@ fn compile_fn_def st:List exprs:List stmts:List fd:FnDef
       emit(st, "return {block_result[0]};")
   cg_dec_indent(st)
   emit_raw(st, "}")
-  -- Restore variables (remove params)
-  -- We can't easily shrink parallel lists in Ore, so just leave them
-  -- (they'll be overwritten by later set_var calls)
+  -- Restore variable map (remove params and locals from this function)
+  st[4] = saved_var_map
 
 -- ── Impl block support ──
 
