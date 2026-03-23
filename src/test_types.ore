@@ -16,6 +16,12 @@ fn test_named_types
   assert_eq type_to_str(RecordOreType(name: "Point")), "Point"
   assert_eq type_to_str(EnumOreType(name: "Shape")), "Shape"
 
+fn test_generic_type_to_str
+  assert_eq type_to_str(ListOreType(elem: IntOreType)), "List[Int]"
+  assert_eq type_to_str(ListOreType(elem: StrOreType)), "List[Str]"
+  assert_eq type_to_str(MapOreType(key: StrOreType, val: IntOreType)), "Map[Str, Int]"
+  assert_eq type_to_str(FnOreType(params: [IntOreType, StrOreType], ret: BoolOreType)), "(Int, Str) -> Bool"
+
 fn test_type_expr_conversion
   t1 := type_expr_to_ore_type(NamedType(name: "Int"))
   assert_eq type_to_str(t1), "Int"
@@ -26,19 +32,53 @@ fn test_type_expr_conversion
   t3 := type_expr_to_ore_type(NamedType(name: "Point"))
   assert_eq type_to_str(t3), "Point"
 
+fn test_generic_type_expr_conversion
+  -- GenericType List<Str> should produce ListOreType(elem: StrOreType)
+  t1 := type_expr_to_ore_type(GenericType(name: "List", args: [NamedType(name: "Str")]))
+  assert types_equal(t1, ListOreType(elem: StrOreType))
+  -- GenericType Map<Int, Bool> should produce MapOreType(key: IntOreType, val: BoolOreType)
+  t2 := type_expr_to_ore_type(GenericType(name: "Map", args: [NamedType(name: "Int"), NamedType(name: "Bool")]))
+  assert types_equal(t2, MapOreType(key: IntOreType, val: BoolOreType))
+
 fn test_type_equality
   assert types_equal(IntOreType, IntOreType)
   assert types_equal(StrOreType, StrOreType)
   assert not types_equal(IntOreType, FloatOreType)
   assert not types_equal(StrOreType, IntOreType)
 
+fn test_generic_type_equality
+  -- List<Int> == List<Int>
+  assert types_equal(ListOreType(elem: IntOreType), ListOreType(elem: IntOreType))
+  -- List<Int> != List<Str>
+  assert not types_equal(ListOreType(elem: IntOreType), ListOreType(elem: StrOreType))
+  -- Map<Str, Int> == Map<Str, Int>
+  assert types_equal(MapOreType(key: StrOreType, val: IntOreType), MapOreType(key: StrOreType, val: IntOreType))
+  -- Map<Str, Int> != Map<Str, Bool>
+  assert not types_equal(MapOreType(key: StrOreType, val: IntOreType), MapOreType(key: StrOreType, val: BoolOreType))
+  -- Map<Str, Int> != Map<Int, Int>
+  assert not types_equal(MapOreType(key: StrOreType, val: IntOreType), MapOreType(key: IntOreType, val: IntOreType))
+  -- Fn(Int) -> Bool == Fn(Int) -> Bool
+  assert types_equal(FnOreType(params: [IntOreType], ret: BoolOreType), FnOreType(params: [IntOreType], ret: BoolOreType))
+  -- Fn(Int) -> Bool != Fn(Str) -> Bool
+  assert not types_equal(FnOreType(params: [IntOreType], ret: BoolOreType), FnOreType(params: [StrOreType], ret: BoolOreType))
+  -- Fn(Int) -> Bool != Fn(Int) -> Str
+  assert not types_equal(FnOreType(params: [IntOreType], ret: BoolOreType), FnOreType(params: [IntOreType], ret: StrOreType))
+  -- List<Int> != Int (cross-kind)
+  assert not types_equal(ListOreType(elem: IntOreType), IntOreType)
+
 fn main
   test_basic_types()
   print "  [pass] basic types"
   test_named_types()
   print "  [pass] named types"
+  test_generic_type_to_str()
+  print "  [pass] generic type_to_str"
   test_type_expr_conversion()
   print "  [pass] type expr conversion"
+  test_generic_type_expr_conversion()
+  print "  [pass] generic type expr conversion"
   test_type_equality()
   print "  [pass] type equality"
-  print "\nAll 4 type tests passed!"
+  test_generic_type_equality()
+  print "  [pass] generic type equality"
+  print "\nAll 7 type tests passed!"
