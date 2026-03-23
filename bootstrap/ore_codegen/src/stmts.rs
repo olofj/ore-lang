@@ -80,7 +80,7 @@ impl<'ctx> CodeGen<'ctx> {
         func: FunctionValue<'ctx>,
     ) -> Result<(Option<BasicValueEnum<'ctx>>, ValKind), CodeGenError> {
         match stmt {
-            Stmt::Let { name, mutable, value } => {
+            Stmt::Let { name, mutable, value, .. } => {
                 self.compile_let(name, *mutable, value, func)?;
                 Ok((None, ValKind::Void))
             }

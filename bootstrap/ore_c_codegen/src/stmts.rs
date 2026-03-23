@@ -4,8 +4,22 @@ impl CCodeGen {
     /// Compile a statement. Returns (Option<last_expr_str>, kind).
     pub(crate) fn compile_stmt(&mut self, stmt: &Stmt) -> Result<(std::option::Option<String>, ValKind), CCodeGenError> {
         match stmt {
-            Stmt::Let { name, mutable, value } => {
-                let (val, kind) = self.compile_expr(value)?;
+            Stmt::Let { name, mutable, type_annotation, value } => {
+                // Tuple-to-record auto-conversion in typed binding context
+                let (val, kind) = if let (Some(TypeExpr::Named(type_name)), Expr::TupleLit(elems)) = (type_annotation, value) {
+                    if let Some(info) = self.records.get(type_name).cloned() {
+                        // Convert tuple elements to record fields positionally
+                        let fields: Vec<(String, Expr)> = info.field_names.iter()
+                            .zip(elems.iter())
+                            .map(|(fname, expr)| (fname.clone(), expr.clone()))
+                            .collect();
+                        self.compile_record_construct(type_name, &fields)?
+                    } else {
+                        self.compile_expr(value)?
+                    }
+                } else {
+                    self.compile_expr(value)?
+                };
                 let c_type = self.kind_to_c_type_str(&kind);
                 if let Some(existing) = self.variables.get(name).cloned() {
                     if existing.is_mutable && c_type == self.kind_to_c_type_str(&existing.kind) {

@@ -145,6 +145,10 @@ impl CCodeGen {
             Expr::MethodCall { object, method, args } => {
                 self.compile_method_call(object, method, args)
             }
+            Expr::TupleLit(elements) => {
+                // Standalone tuple without typed context — compile as a list
+                self.compile_list_lit(elements)
+            }
             Expr::ListLit(elements) => {
                 self.compile_list_lit(elements)
             }

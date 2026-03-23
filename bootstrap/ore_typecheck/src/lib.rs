@@ -342,8 +342,40 @@ impl TypeChecker {
 
     fn check_stmt(&mut self, stmt: &Stmt, env: &mut Env, ret_ty: &Type) -> Type {
         match stmt {
-            Stmt::Let { name, mutable, value } => {
-                let ty = self.infer_expr(value, env);
+            Stmt::Let { name, mutable, type_annotation, value } => {
+                let inferred = self.infer_expr(value, env);
+                let ty = if let Some(te) = type_annotation {
+                    let annotated = self.resolve_type_expr(te);
+                    // Tuple-to-record auto-conversion: check field count and types match
+                    if let (Type::Record(rec_name), Type::Tuple(tuple_types)) = (&annotated, &inferred) {
+                        let fields = self.records.get(rec_name).map(|rd| rd.fields.clone());
+                        if let Some(fields) = fields {
+                            if tuple_types.len() != fields.len() {
+                                self.err(format!(
+                                    "tuple has {} elements but {} has {} fields",
+                                    tuple_types.len(), rec_name, fields.len()
+                                ));
+                            } else {
+                                for (i, ((fname, ftype), ttype)) in fields.iter().zip(tuple_types.iter()).enumerate() {
+                                    if !ttype.compatible_with(ftype) {
+                                        self.err(format!(
+                                            "tuple element {} (type {}) is not compatible with field '{}' (type {}) of {}",
+                                            i, ttype, fname, ftype, rec_name
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    } else if !inferred.compatible_with(&annotated) {
+                        self.err(format!(
+                            "type mismatch: annotated type {} but value has type {}",
+                            annotated, inferred
+                        ));
+                    }
+                    annotated
+                } else {
+                    inferred
+                };
                 env.insert(name.clone(), ty.clone(), *mutable);
                 ty
             }
@@ -789,6 +821,11 @@ impl TypeChecker {
                     }
                 }
                 self.infer_method_return(&obj_ty, method)
+            }
+
+            Expr::TupleLit(elems) => {
+                let types: Vec<Type> = elems.iter().map(|e| self.infer_expr(e, env)).collect();
+                Type::Tuple(types)
             }
 
             Expr::ListLit(elems) => {

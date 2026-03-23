@@ -11,6 +11,7 @@ pub enum Type {
     Result(Box<Type>, Box<Type>),
     Record(String),
     Enum(String),
+    Tuple(Vec<Type>),
     Fn {
         params: Vec<Type>,
         ret: Box<Type>,
@@ -32,6 +33,10 @@ impl std::fmt::Display for Type {
             Type::Map(k, v) => write!(f, "Map[{}, {}]", k, v),
             Type::Option(inner) => write!(f, "Option[{}]", inner),
             Type::Result(ok, err) => write!(f, "Result[{}, {}]", ok, err),
+            Type::Tuple(elems) => {
+                let es: Vec<String> = elems.iter().map(|e| e.to_string()).collect();
+                write!(f, "({})", es.join(", "))
+            }
             Type::Record(name) | Type::Enum(name) => write!(f, "{}", name),
             Type::Channel => write!(f, "Channel"),
             Type::Fn { params, ret } => {
@@ -53,6 +58,7 @@ impl Type {
             (Type::Option(a), Type::Option(b)) | (Type::List(a), Type::List(b)) => a.compatible_with(b),
             (Type::Result(a1, a2), Type::Result(b1, b2)) => a1.compatible_with(b1) && a2.compatible_with(b2),
             (Type::Map(k1, v1), Type::Map(k2, v2)) => k1.compatible_with(k2) && v1.compatible_with(v2),
+            (Type::Tuple(a), Type::Tuple(b)) => a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.compatible_with(y)),
             _ => self == other,
         }
     }

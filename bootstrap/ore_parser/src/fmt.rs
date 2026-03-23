@@ -169,13 +169,17 @@ impl Formatter {
 
     fn format_stmt(&mut self, stmt: &Stmt, level: usize) {
         match stmt {
-            Stmt::Let { name, mutable, value } => {
+            Stmt::Let { name, mutable, type_annotation, value } => {
                 self.indent(level);
                 if *mutable {
-                    self.out.push_str(&format!("mut {} := ", name));
+                    self.out.push_str(&format!("mut {}", name));
                 } else {
-                    self.out.push_str(&format!("{} := ", name));
+                    self.out.push_str(name);
                 }
+                if let Some(ty) = type_annotation {
+                    self.out.push_str(&format!(" : {}", format_type_expr(ty)));
+                }
+                self.out.push_str(" := ");
                 self.format_expr(value, level);
                 self.out.push('\n');
             }
@@ -487,6 +491,14 @@ impl Formatter {
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 { self.out.push_str(", "); }
                     self.format_expr(arg, level);
+                }
+                self.out.push(')');
+            }
+            Expr::TupleLit(elems) => {
+                self.out.push('(');
+                for (i, elem) in elems.iter().enumerate() {
+                    if i > 0 { self.out.push_str(", "); }
+                    self.format_expr(elem, level);
                 }
                 self.out.push(')');
             }

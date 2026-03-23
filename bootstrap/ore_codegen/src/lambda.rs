@@ -95,7 +95,7 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
                 collect_free_vars(arg, bound, free, seen);
             }
         }
-        Expr::ListLit(elements) => {
+        Expr::TupleLit(elements) | Expr::ListLit(elements) => {
             for e in elements {
                 collect_free_vars(e, bound, free, seen);
             }

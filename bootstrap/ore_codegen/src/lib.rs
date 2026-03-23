@@ -473,6 +473,7 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::IntLit(_) => ValKind::Int,
             Expr::FloatLit(_) => ValKind::Float,
             Expr::BoolLit(_) => ValKind::Bool,
+            Expr::TupleLit(_) => ValKind::List(None),
             Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List(None),
             Expr::MapLit(_) => ValKind::Map(None),
             Expr::Ident(name) => {

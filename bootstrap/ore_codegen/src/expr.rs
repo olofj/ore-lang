@@ -314,6 +314,10 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::MethodCall { object, method, args } => {
                 self.compile_method_call(object, method, args, func)
             }
+            Expr::TupleLit(elements) => {
+                // Standalone tuple — compile as a list
+                self.compile_list_lit(elements, func)
+            }
             Expr::ListLit(elements) => {
                 self.compile_list_lit(elements, func)
             }

@@ -642,7 +642,7 @@ impl Parser {
                 let name = self.expect_ident("variable")?;
                 self.expect(&Token::ColonEq)?;
                 let value = self.parse_expr(0)?;
-                Ok(Stmt::Let { name, mutable: true, value })
+                Ok(Stmt::Let { name, mutable: true, type_annotation: None, value })
             }
             Token::LBracket => {
                 // Could be destructuring [a, b, c] := expr or list expression
@@ -681,10 +681,40 @@ impl Parser {
                 let name = self.expect_ident("variable")?;
 
                 match self.peek() {
+                    Token::Colon => {
+                        // Could be typed let: name : Type := value
+                        let _colon_pos = self.pos;
+                        self.advance(); // consume ':'
+                        if let Ok(ty) = self.parse_type_expr() {
+                            if self.peek() == &Token::ColonEq {
+                                self.advance(); // consume ':='
+                                let value = self.parse_expr(0)?;
+                                return Ok(Stmt::Let { name, mutable: false, type_annotation: Some(ty), value });
+                            }
+                        }
+                        // Not a typed let, backtrack and parse as expression
+                        self.pos = saved;
+                        let expr = self.parse_expr(0)?;
+                        if self.peek() == &Token::Eq {
+                            self.advance();
+                            let value = self.parse_expr(0)?;
+                            match expr {
+                                Expr::Index { object, index } => {
+                                    Ok(Stmt::IndexAssign { object: *object, index: *index, value })
+                                }
+                                Expr::FieldAccess { object, field } => {
+                                    Ok(Stmt::FieldAssign { object: *object, field, value })
+                                }
+                                _ => Err(self.error("invalid assignment target".into())),
+                            }
+                        } else {
+                            Ok(Stmt::Expr(expr))
+                        }
+                    }
                     Token::ColonEq => {
                         self.advance();
                         let value = self.parse_expr(0)?;
-                        Ok(Stmt::Let { name, mutable: false, value })
+                        Ok(Stmt::Let { name, mutable: false, type_annotation: None, value })
                     }
                     Token::Eq => {
                         self.advance();
@@ -1213,12 +1243,26 @@ impl Parser {
                     return Ok(lambda);
                 }
 
-                // Not a lambda, backtrack and parse as grouped expression
+                // Not a lambda, backtrack and parse as grouped expression or tuple
                 self.pos = saved;
                 self.advance(); // consume '('
-                let expr = self.parse_expr(0)?;
-                self.expect(&Token::RParen)?;
-                Ok(expr)
+                let first = self.parse_expr(0)?;
+                if self.peek() == &Token::Comma {
+                    // Tuple literal: (expr, expr, ...)
+                    let mut elems = vec![first];
+                    while self.peek() == &Token::Comma {
+                        self.advance(); // consume ','
+                        if self.peek() == &Token::RParen {
+                            break; // trailing comma
+                        }
+                        elems.push(self.parse_expr(0)?);
+                    }
+                    self.expect(&Token::RParen)?;
+                    Ok(Expr::TupleLit(elems))
+                } else {
+                    self.expect(&Token::RParen)?;
+                    Ok(first)
+                }
             }
             Token::None_ => {
                 self.advance();
@@ -1668,7 +1712,7 @@ mod tests {
                 assert_eq!(f.name, "main");
                 assert_eq!(f.body.stmts.len(), 1);
                 match &f.body.stmts[0].stmt {
-                    Stmt::Let { name, mutable, value } => {
+                    Stmt::Let { name, mutable, value, .. } => {
                         assert_eq!(name, "x");
                         assert!(!mutable);
                         assert_eq!(*value, Expr::IntLit(42));
@@ -2143,6 +2187,70 @@ mod tests {
                         }
                     }
                     _ => panic!("expected pipe binop"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_tuple_literal() {
+        let prog = parse_src("fn main\n  x := (1, 2, 3)\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { value, .. } => {
+                        match value {
+                            Expr::TupleLit(elems) => {
+                                assert_eq!(elems.len(), 3);
+                                assert_eq!(elems[0], Expr::IntLit(1));
+                                assert_eq!(elems[1], Expr::IntLit(2));
+                                assert_eq!(elems[2], Expr::IntLit(3));
+                            }
+                            _ => panic!("expected tuple literal, got {:?}", value),
+                        }
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_typed_let_binding() {
+        let prog = parse_src("type Point { x:Int, y:Int }\nfn main\n  p : Point := (1, 2)\n");
+        match &prog.items[1] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { name, type_annotation, value, .. } => {
+                        assert_eq!(name, "p");
+                        assert_eq!(*type_annotation, Some(TypeExpr::Named("Point".into())));
+                        match value {
+                            Expr::TupleLit(elems) => {
+                                assert_eq!(elems.len(), 2);
+                            }
+                            _ => panic!("expected tuple literal"),
+                        }
+                    }
+                    _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_single_paren_expr_not_tuple() {
+        // Single expression in parens should not be a tuple
+        let prog = parse_src("fn main\n  x := (42)\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Let { value, .. } => {
+                        assert_eq!(*value, Expr::IntLit(42));
+                    }
+                    _ => panic!("expected let"),
                 }
             }
             _ => panic!("expected FnDef"),

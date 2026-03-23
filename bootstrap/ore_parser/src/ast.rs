@@ -122,6 +122,7 @@ pub enum Stmt {
     Let {
         name: String,
         mutable: bool,
+        type_annotation: Option<TypeExpr>,
         value: Expr,
     },
     LetDestructure {
@@ -222,6 +223,7 @@ pub enum Expr {
         type_name: String,
         fields: Vec<(String, Expr)>,
     },
+    TupleLit(Vec<Expr>),
     FieldAccess {
         object: Box<Expr>,
         field: String,
