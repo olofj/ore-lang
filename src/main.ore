@@ -166,7 +166,7 @@ fn cmd_check file:Str -> Int
   print "ok: {file} passed type checking"
   0
 
--- Run command: lex, parse, typecheck, then run via ore
+-- Run command: lex, parse, typecheck, compile via C backend, then execute
 fn cmd_run file:Str -> Int
   source := file_read(file)
   if source == ""
@@ -183,9 +183,34 @@ fn cmd_run file:Str -> Int
   if errors.len() > 0
     report_errors(errors, file)
     return 1
-  -- Typecheck passed; run the file with the Ore JIT
-  result := exec("ore run " + file)
-  print result
+  -- Generate C code
+  items := s_get_list(parsed, 1)
+  exprs := s_get_list(parsed, 2)
+  stmts := s_get_list(parsed, 3)
+  c_code := generate(items, exprs, stmts)
+  -- Write C code to temp file
+  c_path := c_output_path(file)
+  file_write(c_path, c_code)
+  -- Compile with cc, linking against libore_runtime
+  tmp_bin := bin_output_path(file) + ".tmp"
+  mut compiler := env_get("CC")
+  if compiler == ""
+    compiler = "cc"
+  runtime_lib := find_runtime_lib()
+  compile_cmd := "{compiler} {c_path} {runtime_lib} -o {tmp_bin} -lm -lpthread -ldl 2>&1"
+  compile_result := exec(compile_cmd)
+  if compile_result != ""
+    print "{compile_result}"
+  if not file_exists(tmp_bin)
+    print "error: C compilation failed"
+    exec("rm -f {c_path}")
+    return 1
+  -- Execute the compiled binary
+  result := exec(tmp_bin)
+  if result != ""
+    print result
+  -- Clean up temp files
+  exec("rm -f {c_path} {tmp_bin}")
   0
 
 -- Build command: lex, parse, typecheck, generate C, compile to binary
