@@ -1,38 +1,39 @@
 use codegen
+use types
 
 fn main
   mut st := cg_new()
-  
+
   -- Test state operations
-  cg_set_var(st, "x", "int")
-  cg_set_var(st, "name", "str")
-  assert_eq cg_get_var_kind(st, "x"), "int"
-  assert_eq cg_get_var_kind(st, "name"), "str"
+  cg_set_var(st, "x", IntKind)
+  cg_set_var(st, "name", StrKind)
+  assert is_int_kind(cg_get_var_kind(st, "x"))
+  assert is_str_kind(cg_get_var_kind(st, "name"))
   print "  [pass] variable tracking"
-  
-  cg_set_fn(st, "add", "int")
+
+  cg_set_fn(st, "add", IntKind)
   assert cg_has_fn(st, "add")
-  assert_eq cg_get_fn_ret(st, "add"), "int"
+  assert is_int_kind(cg_get_fn_ret(st, "add"))
   print "  [pass] function tracking"
-  
+
   -- Test kind_to_c_type
-  assert_eq kind_to_c_type("int"), "int64_t"
-  assert_eq kind_to_c_type("float"), "double"
-  assert_eq kind_to_c_type("str"), "void*"
-  assert_eq kind_to_c_type("bool"), "int8_t"
+  assert_eq kind_to_c_type(IntKind), "int64_t"
+  assert_eq kind_to_c_type(FloatKind), "double"
+  assert_eq kind_to_c_type(StrKind), "void*"
+  assert_eq kind_to_c_type(BoolKind), "int8_t"
   print "  [pass] kind_to_c_type"
-  
+
   -- Test emit
   emit(st, "int x = 42;")
   emit(st, "return x;")
   lines := cg_lines(st)
   assert_eq lines.len(), 2
   print "  [pass] emit"
-  
+
   -- Test runtime decls
   emit_runtime_decls(st)
   all_lines := cg_lines(st)
   assert all_lines.len() > 100
   print "  [pass] runtime declarations ({all_lines.len()} lines)"
-  
+
   print "\nAll 5 codegen unit tests passed!"
