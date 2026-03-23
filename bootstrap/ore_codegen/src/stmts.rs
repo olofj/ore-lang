@@ -312,15 +312,35 @@ impl<'ctx> CodeGen<'ctx> {
         value: &Expr,
         func: FunctionValue<'ctx>,
     ) -> Result<(), CodeGenError> {
-        let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
         let (val, _val_kind) = self.compile_expr_with_kind(value, func)?;
+
+        // For record field assignment we need the alloca pointer, not the loaded value.
+        // If the object is an Ident, grab the variable's alloca directly.
+        // Otherwise, compile the expression and store it to a temp alloca.
+        let (obj_ptr, obj_kind) = if let Expr::Ident(name) = object {
+            let var = self.variables.get(name).ok_or_else(|| self.undefined_var_error(name))?.clone();
+            (var.ptr, var.kind.clone())
+        } else {
+            let (obj_val, obj_kind) = self.compile_expr_with_kind(object, func)?;
+            match &obj_kind {
+                ValKind::Record(name) => {
+                    let rec_info = self.records.get(name).ok_or_else(|| self.err(format!("undefined record type '{}'", name)))?;
+                    let struct_type = rec_info.struct_type;
+                    let alloca = bld!(self.builder.build_alloca(struct_type, "tmp_fa"))?;
+                    bld!(self.builder.build_store(alloca, obj_val))?;
+                    (alloca, obj_kind)
+                }
+                _ => return Err(self.err(format!("field assignment not supported on {:?}", obj_kind))),
+            }
+        };
+
         match obj_kind {
             ValKind::Record(ref name) => {
                 let rec_info = self.records.get(name).ok_or_else(|| self.err(format!("undefined record type '{}'", name)))?;
                 let field_idx = rec_info.field_names.iter().position(|f| f == field).ok_or_else(|| self.err(format!("unknown field '{}' on record '{}'", field, name)))?;
                 let struct_type = rec_info.struct_type;
                 let field_ptr = bld!(self.builder.build_struct_gep(
-                    struct_type, obj_val.into_pointer_value(), field_idx as u32, &format!("fld_{}", field)
+                    struct_type, obj_ptr, field_idx as u32, &format!("fld_{}", field)
                 ))?;
                 bld!(self.builder.build_store(field_ptr, val))?;
             }
