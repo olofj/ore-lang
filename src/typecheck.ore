@@ -24,101 +24,48 @@ fn get_item_typed pool:List idx:Int -> Item
 fn int_to_str n:Int -> Str
   "{n}"
 
+-- Register a list of names into a set (map with true values)
+fn set_all s:Map names:List
+  for i in 0..names.len()
+    s.set(names[i], true)
+
 -- Build the set of known pipeline/builtin method names
 fn make_method_set -> Map
   mut s := {}
-  methods := ["map", "filter", "each", "reduce", "fold", "scan", "join"]
-  for i in 0..methods.len()
-    s.set(methods[i], true)
-  m2 := ["sort", "sort_by", "sort_by_key", "reverse", "unique", "dedup"]
-  for i in 0..m2.len()
-    s.set(m2[i], true)
-  m3 := ["take", "skip", "take_while", "drop_while", "step"]
-  for i in 0..m3.len()
-    s.set(m3[i], true)
-  m4 := ["flatten", "flat_map", "zip", "zip_with", "enumerate"]
-  for i in 0..m4.len()
-    s.set(m4[i], true)
-  m5 := ["window", "chunks", "intersperse", "partition", "group_by"]
-  for i in 0..m5.len()
-    s.set(m5[i], true)
-  m6 := ["count_by", "frequencies", "to_map", "first", "last"]
-  for i in 0..m6.len()
-    s.set(m6[i], true)
-  m7 := ["sum", "product", "min", "max", "average", "any", "all"]
-  for i in 0..m7.len()
-    s.set(m7[i], true)
-  m8 := ["find", "find_index", "index_of", "contains"]
-  for i in 0..m8.len()
-    s.set(m8[i], true)
-  m9 := ["push", "pop", "insert", "remove_at", "clear", "set"]
-  for i in 0..m9.len()
-    s.set(m9[i], true)
-  m10 := ["get", "get_or", "len", "is_empty", "slice"]
-  for i in 0..m10.len()
-    s.set(m10[i], true)
-  m11 := ["to_upper", "to_lower", "trim", "trim_start", "trim_end"]
-  for i in 0..m11.len()
-    s.set(m11[i], true)
-  m12 := ["split", "replace", "starts_with", "ends_with", "repeat"]
-  for i in 0..m12.len()
-    s.set(m12[i], true)
-  m13 := ["capitalize", "count", "strip_prefix", "strip_suffix"]
-  for i in 0..m13.len()
-    s.set(m13[i], true)
-  m14 := ["substr", "chars", "char_at", "pad_left", "pad_right"]
-  for i in 0..m14.len()
-    s.set(m14[i], true)
-  m15 := ["words", "lines", "to_int", "to_float", "to_str"]
-  for i in 0..m15.len()
-    s.set(m15[i], true)
-  m16 := ["parse_int", "parse_float", "abs", "floor", "ceil"]
-  for i in 0..m16.len()
-    s.set(m16[i], true)
-  m17 := ["round", "sqrt", "pow", "clamp", "unwrap_or"]
-  for i in 0..m17.len()
-    s.set(m17[i], true)
-  m18 := ["merge", "keys", "values", "entries", "send", "recv"]
-  for i in 0..m18.len()
-    s.set(m18[i], true)
-  m19 := ["tap", "format", "is_some", "is_none", "is_ok", "is_err"]
-  for i in 0..m19.len()
-    s.set(m19[i], true)
-  m20 := ["map_with_index", "each_with_index", "par_map", "par_each"]
-  for i in 0..m20.len()
-    s.set(m20[i], true)
+  set_all(s, ["map", "filter", "each", "reduce", "fold", "scan", "join"])
+  set_all(s, ["sort", "sort_by", "sort_by_key", "reverse", "unique", "dedup"])
+  set_all(s, ["take", "skip", "take_while", "drop_while", "step"])
+  set_all(s, ["flatten", "flat_map", "zip", "zip_with", "enumerate"])
+  set_all(s, ["window", "chunks", "intersperse", "partition", "group_by"])
+  set_all(s, ["count_by", "frequencies", "to_map", "first", "last"])
+  set_all(s, ["sum", "product", "min", "max", "average", "any", "all"])
+  set_all(s, ["find", "find_index", "index_of", "contains"])
+  set_all(s, ["push", "pop", "insert", "remove_at", "clear", "set"])
+  set_all(s, ["get", "get_or", "len", "is_empty", "slice"])
+  set_all(s, ["to_upper", "to_lower", "trim", "trim_start", "trim_end"])
+  set_all(s, ["split", "replace", "starts_with", "ends_with", "repeat"])
+  set_all(s, ["capitalize", "count", "strip_prefix", "strip_suffix"])
+  set_all(s, ["substr", "chars", "char_at", "pad_left", "pad_right"])
+  set_all(s, ["words", "lines", "to_int", "to_float", "to_str"])
+  set_all(s, ["parse_int", "parse_float", "abs", "floor", "ceil"])
+  set_all(s, ["round", "sqrt", "pow", "clamp", "unwrap_or"])
+  set_all(s, ["merge", "keys", "values", "entries", "send", "recv"])
+  set_all(s, ["tap", "format", "is_some", "is_none", "is_ok", "is_err"])
+  set_all(s, ["map_with_index", "each_with_index", "par_map", "par_each"])
   s
 
 -- Build the set of known builtin functions
 fn make_builtin_set -> Map
   mut s := {}
-  b1 := ["print", "exit", "args", "input", "type_of"]
-  for i in 0..b1.len()
-    s.set(b1[i], true)
-  b2 := ["to_str", "to_int", "to_float"]
-  for i in 0..b2.len()
-    s.set(b2[i], true)
-  b3 := ["sqrt", "sin", "cos", "tan", "log", "log10", "exp", "pow"]
-  for i in 0..b3.len()
-    s.set(b3[i], true)
-  b4 := ["atan2", "pi", "euler", "e", "floor", "ceil", "round", "abs"]
-  for i in 0..b4.len()
-    s.set(b4[i], true)
-  b5 := ["rand_int", "time_now", "time_ms", "sleep", "spawn", "channel"]
-  for i in 0..b5.len()
-    s.set(b5[i], true)
-  b6 := ["file_read", "file_write", "file_exists", "exec"]
-  for i in 0..b6.len()
-    s.set(b6[i], true)
-  b7 := ["env_get", "env_set", "json_parse", "json_stringify"]
-  for i in 0..b7.len()
-    s.set(b7[i], true)
-  b8 := ["ord", "chr", "Some", "None", "Ok", "Err"]
-  for i in 0..b8.len()
-    s.set(b8[i], true)
-  b9 := ["assert", "assert_eq", "assert_ne"]
-  for i in 0..b9.len()
-    s.set(b9[i], true)
+  set_all(s, ["print", "exit", "args", "input", "type_of"])
+  set_all(s, ["to_str", "to_int", "to_float"])
+  set_all(s, ["sqrt", "sin", "cos", "tan", "log", "log10", "exp", "pow"])
+  set_all(s, ["atan2", "pi", "euler", "e", "floor", "ceil", "round", "abs"])
+  set_all(s, ["rand_int", "time_now", "time_ms", "sleep", "spawn", "channel"])
+  set_all(s, ["file_read", "file_write", "file_exists", "exec"])
+  set_all(s, ["env_get", "env_set", "json_parse", "json_stringify"])
+  set_all(s, ["ord", "chr", "Some", "None", "Ok", "Err"])
+  set_all(s, ["assert", "assert_eq", "assert_ne"])
   s
 
 -- Scope management
