@@ -605,6 +605,13 @@ impl CCodeGen {
                 self.compile_pipe_to_named(arg, &name, args)
             }
             Expr::Lambda { params, body } => {
+                // Optimization: inline dot-shorthand lambdas as direct field access/method calls.
+                // e.g. `x | .name` desugars to `x | (it => it.name)` — compile as direct field access on x.
+                if params.len() == 1 {
+                    if let Some(inlined) = self.try_inline_dot_lambda(arg, &params[0], body)? {
+                        return Ok(inlined);
+                    }
+                }
                 let (arg_val, _) = self.compile_expr(arg)?;
                 let (raw, ret_kind) = self.compile_lambda(params, body, None)?;
                 let (fn_ptr, env_ptr) = Self::parse_closure_expr(&raw);
@@ -617,6 +624,48 @@ impl CCodeGen {
                 Ok((call, ret_kind))
             }
             _ => Err(self.err("unsupported pipeline target")),
+        }
+    }
+
+    /// Try to inline a dot-shorthand lambda by substituting the pipe argument
+    /// for the lambda parameter. Returns None if the body isn't a simple
+    /// field access / method call chain on the parameter.
+    fn try_inline_dot_lambda(
+        &mut self,
+        arg: &Expr,
+        param: &str,
+        body: &Expr,
+    ) -> Result<Option<(String, ValKind)>, CCodeGenError> {
+        // Substitute the param with the actual arg in the body expression
+        if let Some(substituted) = self.substitute_param(param, arg, body) {
+            let result = self.compile_expr(&substituted)?;
+            return Ok(Some(result));
+        }
+        Ok(None)
+    }
+
+    /// Recursively substitute occurrences of `param` with `arg` in a
+    /// field access / method call chain. Returns None if the expression
+    /// contains anything other than field access, method calls, or the param ident.
+    fn substitute_param(&self, param: &str, arg: &Expr, body: &Expr) -> Option<Expr> {
+        match body {
+            Expr::Ident(name) if name == param => Some(arg.clone()),
+            Expr::FieldAccess { object, field } => {
+                let new_obj = self.substitute_param(param, arg, object)?;
+                Some(Expr::FieldAccess {
+                    object: Box::new(new_obj),
+                    field: field.clone(),
+                })
+            }
+            Expr::MethodCall { object, method, args } => {
+                let new_obj = self.substitute_param(param, arg, object)?;
+                Some(Expr::MethodCall {
+                    object: Box::new(new_obj),
+                    method: method.clone(),
+                    args: args.clone(),
+                })
+            }
+            _ => None,
         }
     }
 

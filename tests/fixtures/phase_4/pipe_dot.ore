@@ -1,0 +1,17 @@
+type Point { x:Int, y:Int }
+type Line { start:Point, end_pt:Point }
+
+fn main
+  p := Point(x: 10, y: 20)
+  -- Simple dot shorthand: extract field via pipe
+  a := p | .x
+  print a
+  b := p | .y
+  print b
+
+  -- Chained dot shorthand
+  line := Line(start: Point(x: 1, y: 2), end_pt: Point(x: 3, y: 4))
+  c := line | .start.x
+  print c
+  d := line | .end_pt.y
+  print d

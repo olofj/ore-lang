@@ -139,6 +139,13 @@ fn phase4_lambda() {
 }
 
 #[test]
+fn phase4_pipe_dot() {
+    let out = run_ore("phase_4/pipe_dot.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["10", "20", "1", "4"]);
+}
+
+#[test]
 fn phase5_records() {
     assert_eq!(run_ore("phase_5/records.ore").trim(), "25.0");
 }

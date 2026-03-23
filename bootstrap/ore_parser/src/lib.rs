@@ -870,6 +870,53 @@ impl Parser {
                             continue;
                         }
                     }
+                    // Check for `| .field` syntax: dot shorthand implicit lambda
+                    // `.field` desugars to `(it => it.field)`
+                    // `.field.nested` desugars to `(it => it.field.nested)`
+                    // `.method()` desugars to `(it => it.method())`
+                    if let Some(next) = self.tokens.get(self.pos + 1) {
+                        if matches!(&next.token, Token::Dot) {
+                            let l_bp = 9u8; // same as pipe l_bp
+                            if l_bp < min_bp {
+                                break;
+                            }
+                            self.advance(); // consume `|`
+                            // Parse the dot-chain as field accesses on an implicit `it` variable
+                            let mut body = Expr::Ident("it".to_string());
+                            while self.peek() == &Token::Dot {
+                                self.advance(); // consume `.`
+                                let field = match self.peek().clone() {
+                                    Token::Ident(f) => { self.advance(); f }
+                                    _ => return Err(self.error("expected field name after '.' in pipe shorthand".to_string())),
+                                };
+                                // Check for method call: .method(args)
+                                if self.peek() == &Token::LParen {
+                                    self.advance(); // consume '('
+                                    let args = self.parse_call_args()?;
+                                    body = Expr::MethodCall {
+                                        object: Box::new(body),
+                                        method: field,
+                                        args,
+                                    };
+                                } else {
+                                    body = Expr::FieldAccess {
+                                        object: Box::new(body),
+                                        field,
+                                    };
+                                }
+                            }
+                            let lambda = Expr::Lambda {
+                                params: vec!["it".to_string()],
+                                body: Box::new(body),
+                            };
+                            lhs = Expr::BinOp {
+                                op: BinOp::Pipe,
+                                left: Box::new(lhs),
+                                right: Box::new(lambda),
+                            };
+                            continue;
+                        }
+                    }
                     BinOp::Pipe
                 }
                 Token::Colon => {
@@ -1974,6 +2021,104 @@ mod tests {
                         }
                     }
                     _ => panic!("expected let"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_pipe_dot_shorthand_field() {
+        // `x | .name` should desugar to `x | (it => it.name)`
+        let prog = parse_src("fn main\n  x | .name\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Expr(Expr::BinOp { op: BinOp::Pipe, left, right }) => {
+                        assert_eq!(**left, Expr::Ident("x".into()));
+                        match right.as_ref() {
+                            Expr::Lambda { params, body } => {
+                                assert_eq!(params, &vec!["it".to_string()]);
+                                match body.as_ref() {
+                                    Expr::FieldAccess { object, field } => {
+                                        assert_eq!(**object, Expr::Ident("it".into()));
+                                        assert_eq!(field, "name");
+                                    }
+                                    _ => panic!("expected field access in lambda body"),
+                                }
+                            }
+                            _ => panic!("expected lambda, got {:?}", right),
+                        }
+                    }
+                    other => panic!("expected pipe binop, got {:?}", other),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_pipe_dot_shorthand_chained() {
+        // `x | .a.b` should desugar to `x | (it => it.a.b)`
+        let prog = parse_src("fn main\n  x | .a.b\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Expr(Expr::BinOp { op: BinOp::Pipe, left, right }) => {
+                        assert_eq!(**left, Expr::Ident("x".into()));
+                        match right.as_ref() {
+                            Expr::Lambda { params, body } => {
+                                assert_eq!(params, &vec!["it".to_string()]);
+                                // body should be FieldAccess(FieldAccess(it, "a"), "b")
+                                match body.as_ref() {
+                                    Expr::FieldAccess { object, field } => {
+                                        assert_eq!(field, "b");
+                                        match object.as_ref() {
+                                            Expr::FieldAccess { object: inner, field: f2 } => {
+                                                assert_eq!(**inner, Expr::Ident("it".into()));
+                                                assert_eq!(f2, "a");
+                                            }
+                                            _ => panic!("expected nested field access"),
+                                        }
+                                    }
+                                    _ => panic!("expected field access in lambda body"),
+                                }
+                            }
+                            _ => panic!("expected lambda"),
+                        }
+                    }
+                    _ => panic!("expected pipe binop"),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_pipe_dot_shorthand_method() {
+        // `x | .len()` should desugar to `x | (it => it.len())`
+        let prog = parse_src("fn main\n  x | .len()\n");
+        match &prog.items[0] {
+            Item::FnDef(f) => {
+                match &f.body.stmts[0].stmt {
+                    Stmt::Expr(Expr::BinOp { op: BinOp::Pipe, left, right }) => {
+                        assert_eq!(**left, Expr::Ident("x".into()));
+                        match right.as_ref() {
+                            Expr::Lambda { params, body } => {
+                                assert_eq!(params, &vec!["it".to_string()]);
+                                match body.as_ref() {
+                                    Expr::MethodCall { object, method, args } => {
+                                        assert_eq!(**object, Expr::Ident("it".into()));
+                                        assert_eq!(method, "len");
+                                        assert!(args.is_empty());
+                                    }
+                                    _ => panic!("expected method call in lambda body"),
+                                }
+                            }
+                            _ => panic!("expected lambda"),
+                        }
+                    }
+                    _ => panic!("expected pipe binop"),
                 }
             }
             _ => panic!("expected FnDef"),
