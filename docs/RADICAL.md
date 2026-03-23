@@ -1,10 +1,14 @@
-# Ore — Radical Redesign: A Language Truly For Me
+# Ore — Design Exploration (Not Canonical)
 
-> **Note:** This document explores radical syntax ideas. Some ideas (like
-> indentation-based blocks and the `|` pipeline operator) were adopted in
-> the bootstrap compiler. Many others (`each|` parallel pipelines, `with`
-> contexts, `crud` generation, `fork`) are **aspirational** and not yet
-> implemented. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for current status.
+> **⚠️ This is NOT the canonical syntax reference.** This document is a design
+> exploration — a record of radical syntax ideas considered for Ore. Some ideas
+> (indentation-based blocks, the `|` pipeline operator) were adopted and are
+> documented in the canonical syntax reference: **[SYNTAX.md](SYNTAX.md)**.
+> Many others (`each|` parallel pipelines, `with` contexts, `crud` generation,
+> `fork`) remain **aspirational** and are not implemented.
+>
+> For the canonical syntax that the compiler implements, see **[SYNTAX.md](SYNTAX.md)**.
+> For what the bootstrap compiler supports today, see [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
 The previous design was "a nice language a human would like that I'd also
 benefit from." This document throws that away and asks: if I'm the primary

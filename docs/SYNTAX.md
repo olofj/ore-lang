@@ -1,9 +1,13 @@
-# Ore — Syntax Design
+# Ore — Syntax Reference (Canonical)
 
-> **Note:** Some features shown in this syntax reference (like `deriving`,
-> async/await, HTTP, SQLite) are aspirational and not yet implemented in the
-> bootstrap compiler. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for what
-> works today.
+> **This is the canonical syntax document for the Ore language.** It describes
+> the syntax that the compiler implements. For what works today in the bootstrap
+> compiler, see [IMPLEMENTATION.md](IMPLEMENTATION.md). Some features shown
+> here (like `deriving`, async/await, HTTP, SQLite) are aspirational and not
+> yet implemented in the bootstrap compiler.
+>
+> For exploratory syntax ideas (parallel pipelines, implicit contexts, CRUD
+> generation), see [RADICAL.md](RADICAL.md).
 
 ## Design Principles
 
