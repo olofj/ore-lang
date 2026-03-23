@@ -119,3 +119,119 @@ fn types_equal a:OreType b:OreType -> Bool
               eq = types_equal(params_a[i], params_b[i])
           eq
       _ -> false
+
+-- ── Codegen Kind System ──
+-- OreKind represents the type kind of values during code generation.
+-- Replaces the previous string-based kind system ("int", "rec:Name", etc.)
+
+type OreKind
+  IntKind
+  FloatKind
+  BoolKind
+  StrKind
+  VoidKind
+  ListKind
+  MapKind
+  OptionKind
+  ResultKind
+  RecKind(name: Str)
+  EnumKind(name: Str)
+  DynamicKind(var_name: Str)
+
+-- Kind predicates
+
+fn is_int_kind k:OreKind -> Bool
+  match k
+    IntKind -> true
+    _ -> false
+
+fn is_float_kind k:OreKind -> Bool
+  match k
+    FloatKind -> true
+    _ -> false
+
+fn is_bool_kind k:OreKind -> Bool
+  match k
+    BoolKind -> true
+    _ -> false
+
+fn is_str_kind k:OreKind -> Bool
+  match k
+    StrKind -> true
+    _ -> false
+
+fn is_void_kind k:OreKind -> Bool
+  match k
+    VoidKind -> true
+    _ -> false
+
+fn is_list_kind k:OreKind -> Bool
+  match k
+    ListKind -> true
+    _ -> false
+
+fn is_map_kind k:OreKind -> Bool
+  match k
+    MapKind -> true
+    _ -> false
+
+fn is_option_kind k:OreKind -> Bool
+  match k
+    OptionKind -> true
+    _ -> false
+
+fn is_result_kind k:OreKind -> Bool
+  match k
+    ResultKind -> true
+    _ -> false
+
+fn is_rec_kind k:OreKind -> Bool
+  match k
+    RecKind _ -> true
+    _ -> false
+
+fn is_enum_kind k:OreKind -> Bool
+  match k
+    EnumKind _ -> true
+    _ -> false
+
+fn is_dynamic_kind k:OreKind -> Bool
+  match k
+    DynamicKind _ -> true
+    _ -> false
+
+fn is_struct_kind k:OreKind -> Bool
+  match k
+    RecKind _ -> true
+    EnumKind _ -> true
+    _ -> false
+
+fn is_i64_kind k:OreKind -> Bool
+  match k
+    IntKind -> true
+    VoidKind -> true
+    _ -> false
+
+fn is_pointer_kind k:OreKind -> Bool
+  match k
+    StrKind -> true
+    ListKind -> true
+    MapKind -> true
+    _ -> false
+
+-- Extract the name from RecKind or EnumKind
+fn kind_name k:OreKind -> Str
+  match k
+    RecKind name -> name
+    EnumKind name -> name
+    _ -> ""
+
+-- Extract the variable name from DynamicKind
+fn kind_dynamic_var k:OreKind -> Str
+  match k
+    DynamicKind var_name -> var_name
+    _ -> ""
+
+-- Typed accessor for OreKind values stored in untyped lists
+fn kind_at lst:List idx:Int -> OreKind
+  lst[idx]
