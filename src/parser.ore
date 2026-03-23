@@ -6,71 +6,73 @@ use token
 use ast
 use arena
 
--- State: [tokens, [pos], exprs, stmts, errors, items, type_exprs, patterns]
+-- Parser state record
+type ParserState { tokens: List, pos: List, exprs: List, stmts: List, errors: List, items: List, types: List, patterns: List, lines: List, cols: List }
 
-fn s_get_list s:List idx:Int -> List
-  s[idx]
+-- Generic list accessor for non-state lists (split_data, result_holder)
+fn list_at lst:List idx:Int -> List
+  lst[idx]
 
-fn s_pos s:List -> Int
-  p := s_get_list(s, 1)
+fn s_pos s:ParserState -> Int
+  p := s.pos
   p[0]
 
-fn s_set_pos s:List val:Int
-  p := s_get_list(s, 1)
+fn s_set_pos s:ParserState val:Int
+  p := s.pos
   p[0] = val
 
-fn s_tokens s:List -> List
-  s_get_list(s, 0)
+fn s_tokens s:ParserState -> List
+  s.tokens
 
-fn s_exprs s:List -> List
-  s_get_list(s, 2)
+fn s_exprs s:ParserState -> List
+  s.exprs
 
-fn s_stmts s:List -> List
-  s_get_list(s, 3)
+fn s_stmts s:ParserState -> List
+  s.stmts
 
-fn s_errors s:List -> List
-  s_get_list(s, 4)
+fn s_errors s:ParserState -> List
+  s.errors
 
-fn s_items s:List -> List
-  s_get_list(s, 5)
+fn s_items s:ParserState -> List
+  s.items
 
-fn s_types s:List -> List
-  s_get_list(s, 6)
+fn s_types s:ParserState -> List
+  s.types
 
-fn s_patterns s:List -> List
-  s_get_list(s, 7)
+fn s_patterns s:ParserState -> List
+  s.patterns
 
-fn s_has_error s:List -> Bool
+fn s_has_error s:ParserState -> Bool
   s_errors(s).len() > 0
 
-fn s_error s:List msg:Str
+fn s_error s:ParserState msg:Str
   errs := s_errors(s)
   if errs.len() == 0
     line := p_peek_line(s)
     col := p_peek_col(s)
     errs.push("parse error at {line}:{col}: {msg}")
 
-fn s_alloc_expr s:List e:Expr -> Int
+fn s_alloc_expr s:ParserState e:Expr -> Int
   pool := s_exprs(s)
   pool.push(e)
   pool.len() - 1
 
-fn s_alloc_stmt s:List st:Stmt -> Int
+fn s_alloc_stmt s:ParserState st:Stmt -> Int
   pool := s_stmts(s)
   pool.push(st)
   pool.len() - 1
 
-fn s_alloc_item s:List it:Item -> Int
+fn s_alloc_item s:ParserState it:Item -> Int
   pool := s_items(s)
   pool.push(it)
   pool.len() - 1
 
-fn s_alloc_type s:List te:TypeExpr -> Int
+fn s_alloc_type s:ParserState te:TypeExpr -> Int
   pool := s_types(s)
   pool.push(te)
   pool.len() - 1
 
-fn s_alloc_pat s:List p:Pattern -> Int
+fn s_alloc_pat s:ParserState p:Pattern -> Int
   pool := s_patterns(s)
   pool.push(p)
   pool.len() - 1
@@ -79,7 +81,7 @@ fn s_alloc_pat s:List p:Pattern -> Int
 
 -- ── Token helpers ──
 
-fn p_peek s:List -> Token
+fn p_peek s:ParserState -> Token
   pos := s_pos(s)
   toks := s_tokens(s)
   if pos < toks.len()
@@ -87,7 +89,7 @@ fn p_peek s:List -> Token
   else
     EofTok
 
-fn p_peek_line s:List -> Int
+fn p_peek_line s:ParserState -> Int
   pos := s_pos(s)
   lines := s_lines(s)
   if pos < lines.len()
@@ -95,7 +97,7 @@ fn p_peek_line s:List -> Int
   else
     0
 
-fn p_peek_col s:List -> Int
+fn p_peek_col s:ParserState -> Int
   pos := s_pos(s)
   cols := s_cols(s)
   if pos < cols.len()
@@ -103,7 +105,7 @@ fn p_peek_col s:List -> Int
   else
     0
 
-fn p_peek_at s:List offset:Int -> Token
+fn p_peek_at s:ParserState offset:Int -> Token
   idx := s_pos(s) + offset
   toks := s_tokens(s)
   if idx < toks.len()
@@ -111,7 +113,7 @@ fn p_peek_at s:List offset:Int -> Token
   else
     EofTok
 
-fn p_skip s:List
+fn p_skip s:ParserState
   pos := s_pos(s)
   if pos < s_tokens(s).len()
     s_set_pos(s, pos + 1)
@@ -136,7 +138,7 @@ fn p_is_indent tok:Token -> Bool
     IndentTok -> true
     _ -> false
 
-fn p_at_block_end s:List -> Bool
+fn p_at_block_end s:ParserState -> Bool
   t := p_peek(s)
   p_is_eof(t) or p_is_dedent(t)
 
@@ -328,16 +330,16 @@ fn p_check_tok tok:Token tag:Str -> Bool
     return r4 == 1
   false
 
-fn p_at s:List tag:Str -> Bool
+fn p_at s:ParserState tag:Str -> Bool
   p_check_tok(p_peek(s), tag)
 
-fn p_expect s:List tag:Str
+fn p_expect s:ParserState tag:Str
   if p_at(s, tag)
     p_skip(s)
   else
     s_error(s, "expected {tag}")
 
-fn p_expect_ident s:List ctx:Str -> Str
+fn p_expect_ident s:ParserState ctx:Str -> Str
   match p_peek(s)
     IdentTok n ->
       p_skip(s)
@@ -346,14 +348,14 @@ fn p_expect_ident s:List ctx:Str -> Str
       s_error(s, "expected {ctx} name")
       ""
 
-fn p_skip_nl s:List
+fn p_skip_nl s:ParserState
   loop
     if p_is_newline(p_peek(s))
       p_skip(s)
     else
       break
 
-fn p_skip_ws s:List
+fn p_skip_ws s:ParserState
   loop
     t := p_peek(s)
     if p_is_newline(t) or p_is_indent(t) or p_is_dedent(t)
@@ -432,7 +434,7 @@ fn bp_r n:Int -> Int
 
 -- ── Type expressions ──
 
-fn parse_type_expr s:List -> Int
+fn parse_type_expr s:ParserState -> Int
   if s_has_error(s)
     return -1
   match p_peek(s)
@@ -445,7 +447,7 @@ fn parse_type_expr s:List -> Int
 
 -- ── Parameters ──
 
-fn parse_param s:List out:List
+fn parse_param s:ParserState out:List
   name := p_expect_ident(s, "parameter")
   if s_has_error(s)
     return
@@ -460,7 +462,7 @@ fn parse_param s:List out:List
 
 -- ── Call arguments ──
 
-fn parse_call_args s:List -> List
+fn parse_call_args s:ParserState -> List
   p_skip_ws(s)
   mut args := []
   if not p_at(s, ")")
@@ -486,7 +488,7 @@ fn parse_call_args s:List -> List
 
 -- ── Block ──
 
-fn parse_block s:List out:List
+fn parse_block s:ParserState out:List
   p_expect(s, "indent")
   if s_has_error(s)
     return
@@ -502,7 +504,7 @@ fn parse_block s:List out:List
   if p_at(s, "dedent")
     p_skip(s)
 
-fn parse_optional_msg s:List -> Str
+fn parse_optional_msg s:ParserState -> Str
   if p_at(s, ",")
     p_skip(s)
     match p_peek(s)
@@ -515,7 +517,7 @@ fn parse_optional_msg s:List -> Str
 
 -- ── Statements ──
 
-fn parse_stmt s:List -> Int
+fn parse_stmt s:ParserState -> Int
   if s_has_error(s)
     return -1
   match p_peek(s)
@@ -617,7 +619,7 @@ fn parse_stmt s:List -> Int
       eid := parse_expr(s, 0)
       s_alloc_stmt(s, ExprStmt(expr: eid))
 
-fn parse_for_stmt s:List -> Int
+fn parse_for_stmt s:ParserState -> Int
   p_skip(s)
   vname := p_expect_ident(s, "variable")
   if s_has_error(s)
@@ -666,7 +668,7 @@ fn parse_for_stmt s:List -> Int
     parse_block(s, bstmts)
     s_alloc_stmt(s, ForEachStmt(var_name: vname, iterable: start_id, body: Block(stmts: bstmts)))
 
-fn parse_ident_stmt s:List -> Int
+fn parse_ident_stmt s:ParserState -> Int
   saved := s_pos(s)
   match p_peek(s)
     IdentTok name ->
@@ -721,7 +723,7 @@ fn parse_ident_stmt s:List -> Int
 
 -- ── Expressions ──
 
-fn parse_expr s:List min_bp:Int -> Int
+fn parse_expr s:ParserState min_bp:Int -> Int
   if s_has_error(s)
     return -1
   mut lhs := parse_prefix(s)
@@ -800,7 +802,7 @@ fn parse_expr s:List min_bp:Int -> Int
       break
   lhs
 
-fn parse_prefix s:List -> Int
+fn parse_prefix s:ParserState -> Int
   if s_has_error(s)
     return -1
   match p_peek(s)
@@ -883,7 +885,7 @@ fn parse_prefix s:List -> Int
       s_error(s, "expected expression")
       -1
 
-fn parse_string_interp s:List start:Str -> Int
+fn parse_string_interp s:ParserState start:Str -> Int
   p_skip(s)
   mut parts := []
   if start.len() > 0
@@ -944,7 +946,7 @@ fn can_start_adjacent_expr tok:Token -> Bool
     ErrTok -> true
     _ -> false
 
-fn parse_adjacent_parts s:List parts:List
+fn parse_adjacent_parts s:ParserState parts:List
   loop
     match p_peek(s)
       StringLitTok sv ->
@@ -986,7 +988,7 @@ fn parse_adjacent_parts s:List parts:List
         else
           break
 
-fn parse_if_expr s:List -> Int
+fn parse_if_expr s:ParserState -> Int
   p_skip(s)
   cid := parse_expr(s, 0)
   if s_has_error(s)
@@ -1060,7 +1062,7 @@ fn parse_if_expr s:List -> Int
     return s_alloc_expr(s, IfElseExpr(cond: cid, then_block: Block(stmts: tstmts), else_block: Block(stmts: estmts)))
   s_alloc_expr(s, IfElseExpr(cond: cid, then_block: Block(stmts: tstmts), else_block: Block(stmts: [])))
 
-fn parse_paren_expr s:List -> Int
+fn parse_paren_expr s:ParserState -> Int
   saved := s_pos(s)
   p_skip(s)
   lam := try_lambda(s)
@@ -1076,7 +1078,7 @@ fn parse_paren_expr s:List -> Int
   p_expect(s, ")")
   eid
 
-fn try_lambda s:List -> Int
+fn try_lambda s:ParserState -> Int
   saved := s_pos(s)
   mut params := []
   match p_peek(s)
@@ -1116,7 +1118,7 @@ fn try_lambda s:List -> Int
   p_expect(s, ")")
   s_alloc_expr(s, LambdaExpr(params: params, body: bid))
 
-fn parse_lambda_body s:List -> Int
+fn parse_lambda_body s:ParserState -> Int
   if p_is_newline(p_peek(s))
     if p_is_indent(p_peek_at(s, 1))
       p_skip_nl(s)
@@ -1125,7 +1127,7 @@ fn parse_lambda_body s:List -> Int
       return s_alloc_expr(s, BlockExprExpr(block: Block(stmts: bstmts)))
   parse_expr(s, 0)
 
-fn parse_list_lit s:List -> Int
+fn parse_list_lit s:ParserState -> Int
   p_skip(s)
   p_skip_ws(s)
   mut elems := []
@@ -1150,7 +1152,7 @@ fn parse_list_lit s:List -> Int
   p_expect(s, "]")
   s_alloc_expr(s, ListLitExpr(elements: elems))
 
-fn parse_map_lit s:List -> Int
+fn parse_map_lit s:ParserState -> Int
   p_skip(s)
   p_skip_ws(s)
   mut entries := []
@@ -1185,7 +1187,7 @@ fn parse_map_lit s:List -> Int
   p_expect(s, "rbrace")
   s_alloc_expr(s, MapLitExpr(entries: entries))
 
-fn parse_ident_expr s:List -> Int
+fn parse_ident_expr s:ParserState -> Int
   match p_peek(s)
     IdentTok name ->
       p_skip(s)
@@ -1245,7 +1247,7 @@ fn parse_ident_expr s:List -> Int
 
 -- ── Match arms ──
 
-fn parse_match_arms s:List -> List
+fn parse_match_arms s:ParserState -> List
   p_expect(s, "indent")
   if s_has_error(s)
     return []
@@ -1262,7 +1264,7 @@ fn parse_match_arms s:List -> List
     p_skip(s)
   arms
 
-fn parse_match_arm s:List -> MatchArm
+fn parse_match_arm s:ParserState -> MatchArm
   pid := parse_pattern(s)
   if s_has_error(s)
     return MatchArm(pattern: WildcardPat, guard: -1, body: -1)
@@ -1300,7 +1302,7 @@ fn parse_match_arm s:List -> MatchArm
   bid := parse_expr(s, 0)
   MatchArm(pattern: pat, guard: gid, body: bid)
 
-fn parse_pattern s:List -> Int
+fn parse_pattern s:ParserState -> Int
   if s_has_error(s)
     return -1
   match p_peek(s)
@@ -1364,7 +1366,7 @@ fn parse_pattern s:List -> Int
       s_error(s, "expected pattern")
       -1
 
-fn parse_variant_pat s:List name:Str -> Int
+fn parse_variant_pat s:ParserState name:Str -> Int
   mut bindings := []
   loop
     match p_peek(s)
@@ -1379,7 +1381,7 @@ fn parse_variant_pat s:List name:Str -> Int
 
 -- ── Top-level items ──
 
-fn parse_fn_def s:List out:List
+fn parse_fn_def s:ParserState out:List
   p_expect(s, "fn")
   if s_has_error(s)
     return
@@ -1415,7 +1417,7 @@ fn parse_fn_def s:List out:List
     return
   out.push(FnDef(name: name, type_params: [], params: params, ret_type: ret_type, body: Block(stmts: bstmts)))
 
-fn parse_type_or_enum s:List -> Int
+fn parse_type_or_enum s:ParserState -> Int
   p_skip(s)
   name := p_expect_ident(s, "type")
   if s_has_error(s)
@@ -1483,7 +1485,7 @@ fn parse_type_or_enum s:List -> Int
     p_skip(s)
   s_alloc_item(s, EnumDefItem(enum_def: EnumDefNode(name: name, variants: variants)))
 
-fn parse_use_item s:List -> Int
+fn parse_use_item s:ParserState -> Int
   p_skip(s)
   match p_peek(s)
     StringLitTok path ->
@@ -1496,7 +1498,7 @@ fn parse_use_item s:List -> Int
       s_error(s, "expected module name after 'use'")
       -1
 
-fn parse_test_def s:List -> Int
+fn parse_test_def s:ParserState -> Int
   p_skip(s)
   match p_peek(s)
     StringLitTok sv ->
@@ -1509,7 +1511,7 @@ fn parse_test_def s:List -> Int
       s_error(s, "expected string after 'test'")
       -1
 
-fn parse_item s:List -> Int
+fn parse_item s:ParserState -> Int
   if s_has_error(s)
     return -1
   match p_peek(s)
@@ -1531,26 +1533,15 @@ fn parse_item s:List -> Int
 
 -- ── Entry point ──
 
-fn s_lines s:List -> List
-  s_get_list(s, 8)
+fn s_lines s:ParserState -> List
+  s.lines
 
-fn s_cols s:List -> List
-  s_get_list(s, 9)
+fn s_cols s:ParserState -> List
+  s.cols
 
 -- Create parser state from split token data [toks, lines, cols]
-fn make_parse_state_split split_data:List -> List
-  mut s := []
-  s.push(s_get_list(split_data, 0))
-  s.push([0])
-  s.push([])
-  s.push([])
-  s.push([])
-  s.push([])
-  s.push([])
-  s.push([])
-  s.push(s_get_list(split_data, 1))
-  s.push(s_get_list(split_data, 2))
-  s
+fn make_parse_state_split split_data:List -> ParserState
+  ParserState(tokens: list_at(split_data, 0), pos: [0], exprs: [], stmts: [], errors: [], items: [], types: [], patterns: [], lines: list_at(split_data, 1), cols: list_at(split_data, 2))
 
 fn parse_to_lists split_data:List result_holder:List -> Bool
   s := make_parse_state_split(split_data)
@@ -1579,7 +1570,7 @@ fn parse split_data:List -> Program
   mut holder := []
   ok := parse_to_lists(split_data, holder)
   if ok
-    items := s_get_list(holder, 0)
+    items := list_at(holder, 0)
     Program(items: items)
   else
     Program(items: [])
