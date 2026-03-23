@@ -8,13 +8,13 @@ use token
 -- Helper: parse source and run typecheck, return error list
 fn check src:Str -> List
   split := lex_split(src)
-  tokens := s_get_list(split, 0)
+  tokens := list_at(split, 0)
   mut holder := []
   ok := parse_to_lists(split, holder)
   if not ok
     return ["parse error"]
-  exprs := s_get_list(holder, 1)
-  stmts := s_get_list(holder, 2)
+  exprs := list_at(holder, 1)
+  stmts := list_at(holder, 2)
   typecheck(tokens, exprs, stmts)
 
 fn test_valid_program

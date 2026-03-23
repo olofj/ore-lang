@@ -7,7 +7,7 @@ use parser
 use arena
 
 fn get_items_from r:List -> List
-  s_get_list(r, 0)
+  list_at(r, 0)
 
 fn do_parse src:Str -> List
   split := lex_split(src)

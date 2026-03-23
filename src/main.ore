@@ -69,7 +69,7 @@ fn resolve_imports source:Str base_dir:Str loaded:Map -> Str
 -- or [error_string] on parse failure
 fn parse_source source:Str -> List
   split := lex_split(source)
-  tokens := s_get_list(split, 0)
+  tokens := list_at(split, 0)
   mut holder := []
   ok := parse_to_lists(split, holder)
   if not ok
@@ -82,17 +82,17 @@ fn parse_source source:Str -> List
   -- Return [tokens, items, exprs, stmts]
   mut result := []
   result.push(tokens)
-  result.push(s_get_list(holder, 0))
-  result.push(s_get_list(holder, 1))
-  result.push(s_get_list(holder, 2))
+  result.push(list_at(holder, 0))
+  result.push(list_at(holder, 1))
+  result.push(list_at(holder, 2))
   result
 
 -- Run the type checker on parsed data
 -- parsed: [tokens, items, exprs, stmts]
 fn run_typecheck parsed:List -> List
-  tokens := s_get_list(parsed, 0)
-  exprs := s_get_list(parsed, 2)
-  stmts := s_get_list(parsed, 3)
+  tokens := list_at(parsed, 0)
+  exprs := list_at(parsed, 2)
+  stmts := list_at(parsed, 3)
   typecheck(tokens, exprs, stmts)
 
 -- Print type errors and return count
@@ -180,9 +180,9 @@ fn cmd_run file:Str -> Int
     report_errors(errors, file)
     return 1
   -- Generate C code
-  items := s_get_list(parsed, 1)
-  exprs := s_get_list(parsed, 2)
-  stmts := s_get_list(parsed, 3)
+  items := list_at(parsed, 1)
+  exprs := list_at(parsed, 2)
+  stmts := list_at(parsed, 3)
   c_code := generate(items, exprs, stmts)
   -- Write C code to temp file
   c_path := c_output_path(file)
@@ -228,9 +228,9 @@ fn cmd_build file:Str output:Str -> Int
     report_errors(errors, file)
     return 1
   -- Generate C code
-  items := s_get_list(parsed, 1)
-  exprs := s_get_list(parsed, 2)
-  stmts := s_get_list(parsed, 3)
+  items := list_at(parsed, 1)
+  exprs := list_at(parsed, 2)
+  stmts := list_at(parsed, 3)
   c_code := generate(items, exprs, stmts)
   -- Write C code to temp file
   c_path := c_output_path(file)

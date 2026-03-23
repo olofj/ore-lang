@@ -20,7 +20,7 @@ fn bin_output_path file:Str -> Str
 
 fn parse_source source:Str -> List
   split := lex_split(source)
-  tokens := s_get_list(split, 0)
+  tokens := list_at(split, 0)
   mut holder := []
   ok := parse_to_lists(split, holder)
   if not ok
@@ -32,15 +32,15 @@ fn parse_source source:Str -> List
     return err_result
   mut result := []
   result.push(tokens)
-  result.push(s_get_list(holder, 0))
-  result.push(s_get_list(holder, 1))
-  result.push(s_get_list(holder, 2))
+  result.push(list_at(holder, 0))
+  result.push(list_at(holder, 1))
+  result.push(list_at(holder, 2))
   result
 
 fn run_typecheck parsed:List -> List
-  tokens := s_get_list(parsed, 0)
-  exprs := s_get_list(parsed, 2)
-  stmts := s_get_list(parsed, 3)
+  tokens := list_at(parsed, 0)
+  exprs := list_at(parsed, 2)
+  stmts := list_at(parsed, 3)
   typecheck(tokens, exprs, stmts)
 
 -- Duplicated from main.ore for testing
