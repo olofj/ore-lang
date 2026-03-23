@@ -1,0 +1,28 @@
+-- Adjacent string concatenation tests
+fn main
+  name := "World"
+  count := 42
+
+  -- Basic adjacent: string + expr + string
+  print "Hello, " name "!"
+
+  -- Multiple adjacent parts
+  print "Found " count " items in " name " context"
+
+  -- Adjacent with method calls
+  print "Upper: " name.to_upper() " done"
+
+  -- Adjacent string literals (no expression between)
+  print "hello" " " "world"
+
+  -- Adjacent with interpolated string
+  print "prefix-" "{name}-suffix"
+
+  -- Adjacent with parenthesized expression
+  print "sum: " (10 + 20) " end"
+
+  -- Simple string (no adjacent) still works
+  print "plain string"
+
+  -- Interpolation still works
+  print "interp: {name}"

@@ -818,7 +818,15 @@ fn parse_prefix s:List -> Int
       s_alloc_expr(s, BoolLitExpr(value: false))
     StringLitTok sv ->
       p_skip(s)
-      s_alloc_expr(s, StringLitExpr(value: sv))
+      -- Adjacent string concatenation: "hello " name " world"
+      if can_start_adjacent(p_peek(s))
+        mut parts := []
+        if sv.len() > 0
+          parts.push(LitPart(value: sv))
+        parse_adjacent_parts(s, parts)
+        s_alloc_expr(s, StringInterpExpr(parts: parts))
+      else
+        s_alloc_expr(s, StringLitExpr(value: sv))
     StringStartTok sv ->
       parse_string_interp(s, sv)
     MinusTok ->
@@ -902,7 +910,81 @@ fn parse_string_interp s:List start:Str -> Int
       _ ->
         s_error(s, "expected string continuation")
         return -1
+  -- Check for adjacent concat after interpolated string
+  parse_adjacent_parts(s, parts)
   s_alloc_expr(s, StringInterpExpr(parts: parts))
+
+fn can_start_adjacent tok:Token -> Bool
+  match tok
+    IdentTok _ -> true
+    IntTok _ -> true
+    FloatTok _ -> true
+    TrueTok -> true
+    FalseTok -> true
+    LParenTok -> true
+    StringLitTok _ -> true
+    StringStartTok _ -> true
+    SomeTok -> true
+    NoneTok -> true
+    OkTok -> true
+    ErrTok -> true
+    _ -> false
+
+fn can_start_adjacent_expr tok:Token -> Bool
+  match tok
+    IdentTok _ -> true
+    IntTok _ -> true
+    FloatTok _ -> true
+    TrueTok -> true
+    FalseTok -> true
+    LParenTok -> true
+    SomeTok -> true
+    NoneTok -> true
+    OkTok -> true
+    ErrTok -> true
+    _ -> false
+
+fn parse_adjacent_parts s:List parts:List
+  loop
+    match p_peek(s)
+      StringLitTok sv ->
+        p_skip(s)
+        if sv.len() > 0
+          parts.push(LitPart(value: sv))
+      StringStartTok sv ->
+        p_skip(s)
+        if sv.len() > 0
+          parts.push(LitPart(value: sv))
+        eid := parse_expr(s, 0)
+        if s_has_error(s)
+          return
+        parts.push(ExprPart(expr_id: eid))
+        loop
+          match p_peek(s)
+            StringMidTok sv2 ->
+              p_skip(s)
+              if sv2.len() > 0
+                parts.push(LitPart(value: sv2))
+              eid2 := parse_expr(s, 0)
+              if s_has_error(s)
+                return
+              parts.push(ExprPart(expr_id: eid2))
+            StringEndTok sv2 ->
+              p_skip(s)
+              if sv2.len() > 0
+                parts.push(LitPart(value: sv2))
+              break
+            _ ->
+              s_error(s, "expected string continuation")
+              return
+      _ ->
+        if can_start_adjacent_expr(p_peek(s))
+          eid := parse_expr(s, 17)
+          if s_has_error(s)
+            return
+          parts.push(ExprPart(expr_id: eid))
+        else
+          break
 
 fn parse_if_expr s:List -> Int
   p_skip(s)

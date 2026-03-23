@@ -1581,6 +1581,22 @@ fn strings_triple_quoted() {
 }
 
 #[test]
+fn strings_adjacent_concat() {
+    let out = run_ore("strings/adjacent_concat.ore");
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines, vec![
+        "Hello, World!",
+        "Found 42 items in World context",
+        "Upper: WORLD done",
+        "hello world",
+        "prefix-World-suffix",
+        "sum: 30 end",
+        "plain string",
+        "interp: World",
+    ]);
+}
+
+#[test]
 fn lists_get_or() {
     let out = run_ore("lists/get_or.ore");
     let lines: Vec<&str> = out.lines().collect();

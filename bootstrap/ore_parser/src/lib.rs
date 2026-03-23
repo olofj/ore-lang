@@ -1189,7 +1189,19 @@ impl Parser {
             }
             Token::StringLit(s) => {
                 self.advance();
-                Ok(Expr::StringLit(s))
+                // Adjacent string concatenation: "hello " name " world"
+                // If the next token can be an adjacent expression (not separated by
+                // a newline or operator), collect all adjacent parts into StringInterp.
+                if self.can_start_adjacent_concat() {
+                    let mut parts = Vec::new();
+                    if !s.is_empty() {
+                        parts.push(StringPart::Lit(s));
+                    }
+                    self.parse_adjacent_concat_parts(&mut parts)?;
+                    Ok(Expr::StringInterp(parts))
+                } else {
+                    Ok(Expr::StringLit(s))
+                }
             }
             Token::StringStart(s) => {
                 self.advance();
@@ -1221,6 +1233,8 @@ impl Parser {
                         _ => return Err(self.error("expected string continuation".into())),
                     }
                 }
+                // Check for adjacent concat after interpolated string
+                self.parse_adjacent_concat_parts(&mut parts)?;
                 Ok(Expr::StringInterp(parts))
             }
             Token::Minus => {
@@ -1458,6 +1472,84 @@ impl Parser {
             }
             _ => Err(self.error(format!("expected expression, got {:?}", self.peek()))),
         }
+    }
+
+    /// Check if the next token can start an adjacent string concatenation part.
+    fn can_start_adjacent_concat(&self) -> bool {
+        matches!(self.peek(),
+            Token::Ident(_) | Token::Int(_) | Token::Float(_) |
+            Token::True | Token::False |
+            Token::LParen |
+            Token::StringLit(_) | Token::StringStart(_) |
+            Token::Some | Token::None_ | Token::Ok_ | Token::Err_
+        )
+    }
+
+    /// Parse adjacent concatenation parts after the initial string literal.
+    /// Collects alternating literal and expression parts into the parts vector.
+    fn parse_adjacent_concat_parts(&mut self, parts: &mut Vec<StringPart>) -> Result<(), ParseError> {
+        loop {
+            match self.peek().clone() {
+                Token::StringLit(s) => {
+                    self.advance();
+                    // Merge with previous Lit part if possible
+                    if let Some(StringPart::Lit(prev)) = parts.last_mut() {
+                        prev.push_str(&s);
+                    } else if !s.is_empty() {
+                        parts.push(StringPart::Lit(s));
+                    }
+                }
+                Token::StringStart(s) => {
+                    // Inline an interpolated string's parts
+                    self.advance();
+                    if !s.is_empty() {
+                        if let Some(StringPart::Lit(prev)) = parts.last_mut() {
+                            prev.push_str(&s);
+                        } else {
+                            parts.push(StringPart::Lit(s));
+                        }
+                    }
+                    let expr = self.parse_expr(0)?;
+                    parts.push(StringPart::Expr(expr));
+                    loop {
+                        match self.peek().clone() {
+                            Token::StringMid(s) => {
+                                self.advance();
+                                if !s.is_empty() {
+                                    parts.push(StringPart::Lit(s));
+                                }
+                                let expr = self.parse_expr(0)?;
+                                parts.push(StringPart::Expr(expr));
+                            }
+                            Token::StringEnd(s) => {
+                                self.advance();
+                                if !s.is_empty() {
+                                    parts.push(StringPart::Lit(s));
+                                }
+                                break;
+                            }
+                            _ => return Err(self.error("expected string continuation".into())),
+                        }
+                    }
+                }
+                _ if self.can_start_adjacent_concat_expr() => {
+                    let expr = self.parse_expr(PREFIX_BP)?;
+                    parts.push(StringPart::Expr(expr));
+                }
+                _ => break,
+            }
+        }
+        Ok(())
+    }
+
+    /// Check if the next token can start a non-string expression in adjacent concat.
+    fn can_start_adjacent_concat_expr(&self) -> bool {
+        matches!(self.peek(),
+            Token::Ident(_) | Token::Int(_) | Token::Float(_) |
+            Token::True | Token::False |
+            Token::LParen |
+            Token::Some | Token::None_ | Token::Ok_ | Token::Err_
+        )
     }
 
     /// Try to parse lambda inside parens. Already consumed '('.
