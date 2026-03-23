@@ -865,6 +865,13 @@ fn control_ifelse_expr() {
 }
 
 #[test]
+fn control_inline_then_enum() {
+    let out = run_ore("control/inline_then_enum.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["red", "green", "blue", "red", "green", "blue"]);
+}
+
+#[test]
 fn control_range_patterns() {
     let out = run_ore("control/range_patterns.ore");
     let lines: Vec<&str> = out.trim().lines().collect();
