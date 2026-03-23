@@ -854,6 +854,24 @@ impl TypeChecker {
             }
 
             Expr::MapLit(entries) => {
+                // Check if this is an anonymous record literal: all keys are bare identifiers
+                let field_names: Option<Vec<&str>> = entries.iter().map(|(k, _)| {
+                    if let Expr::Ident(name) = k { Some(name.as_str()) } else { None }
+                }).collect();
+
+                if let Some(names) = field_names {
+                    if !names.is_empty() {
+                        // Look for a record type whose fields match exactly
+                        if let Some(record_name) = self.find_record_by_fields(&names) {
+                            // Type-check field values
+                            for (_k, v) in entries {
+                                self.infer_expr(v, env);
+                            }
+                            return Type::Record(record_name);
+                        }
+                    }
+                }
+
                 let mut key_ty = Type::Any;
                 let mut val_ty = Type::Any;
                 for (k, v) in entries {
@@ -921,6 +939,25 @@ impl TypeChecker {
                 self.infer_expr(right, env);
                 Type::Unit
             }
+        }
+    }
+
+    /// Find a record type whose field names match the given names exactly.
+    /// Returns the record type name if exactly one record matches.
+    fn find_record_by_fields(&self, field_names: &[&str]) -> Option<String> {
+        let mut matches = Vec::new();
+        for (name, rd) in &self.records {
+            let record_fields: Vec<&str> = rd.fields.iter().map(|(f, _)| f.as_str()).collect();
+            if record_fields.len() == field_names.len()
+                && field_names.iter().all(|f| record_fields.contains(f))
+            {
+                matches.push(name.clone());
+            }
+        }
+        if matches.len() == 1 {
+            Some(matches.into_iter().next().unwrap())
+        } else {
+            None
         }
     }
 
@@ -1307,5 +1344,27 @@ mod tests {
         let errs = check_err("fn main\n  for i in \"a\"..\"z\"\n    print i\n");
         assert!(errs.iter().any(|e| e.msg.contains("for-in") && e.msg.contains("Int")),
             "expected for-in type error, got: {:?}", errs);
+    }
+
+    // --- Anonymous record literal inference ---
+
+    #[test]
+    fn anon_record_literal_inferred_as_named_type() {
+        // {x: 1, y: 2} should be inferred as Point when Point has fields x and y
+        assert!(check("type Point { x:Int, y:Int }\n\nfn main\n  p := {x: 1, y: 2}\n  print p.x\n").is_ok());
+    }
+
+    #[test]
+    fn anon_record_literal_field_access() {
+        // Accessing fields on anonymous record literal should work
+        assert!(check("type Person { name:Str, age:Int }\n\nfn main\n  p := {name: \"Alice\", age: 30}\n  print p.name\n").is_ok());
+    }
+
+    #[test]
+    fn anon_record_literal_as_function_arg() {
+        // Anonymous record literal passed to a function expecting the record type
+        assert!(check(
+            "type Point { x:Int, y:Int }\n\nfn show p:Point -> Str\n  \"point\"\n\nfn main\n  show({x: 1, y: 2})\n"
+        ).is_ok());
     }
 }

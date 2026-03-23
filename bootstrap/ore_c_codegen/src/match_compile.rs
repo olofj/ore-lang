@@ -679,6 +679,39 @@ impl CCodeGen {
         Ok((format!("{}.{}", obj_expr, field), field_kind))
     }
 
+    /// Check if a MapLit's entries represent an anonymous record literal.
+    /// All keys must be bare Ident expressions, and the field set must match
+    /// exactly one registered record type. Returns (type_name, fields) if so.
+    pub(crate) fn try_as_record_fields(&self, entries: &[(Expr, Expr)]) -> Option<(String, Vec<(String, Expr)>)> {
+        if entries.is_empty() {
+            return None;
+        }
+        let mut field_names = Vec::new();
+        let mut fields = Vec::new();
+        for (k, v) in entries {
+            if let Expr::Ident(name) = k {
+                field_names.push(name.as_str());
+                fields.push((name.clone(), v.clone()));
+            } else {
+                return None;
+            }
+        }
+        // Find a record type whose fields match exactly
+        let mut matches = Vec::new();
+        for (name, info) in &self.records {
+            if info.field_names.len() == field_names.len()
+                && field_names.iter().all(|f| info.field_names.iter().any(|n| n == f))
+            {
+                matches.push(name.clone());
+            }
+        }
+        if matches.len() == 1 {
+            Some((matches.into_iter().next().unwrap(), fields))
+        } else {
+            None
+        }
+    }
+
     /// Search all registered records for one that has the given field name.
     /// Returns Some(type_name) if exactly one record has it, or the first match if multiple do.
     fn infer_record_type_by_field(&self, field: &str) -> Option<String> {

@@ -1,0 +1,22 @@
+-- Anonymous record literals inferred as named types
+type Point { x:Int, y:Int }
+type Person { name:Str, age:Int }
+
+fn distance p:Point -> Int
+  p.x + p.y
+
+fn greet p:Person -> Str
+  "{p.name} is {p.age}"
+
+fn main
+  -- Anonymous record literal inferred as Point
+  p := {x: 3, y: 4}
+  print p.x
+  print p.y
+  print distance(p)
+
+  -- Anonymous record literal inferred as Person
+  bob := {name: "Bob", age: 25}
+  print bob.name
+  print bob.age
+  print greet(bob)

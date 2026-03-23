@@ -475,7 +475,13 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::BoolLit(_) => ValKind::Bool,
             Expr::TupleLit(_) => ValKind::List(None),
             Expr::ListLit(_) | Expr::ListComp { .. } => ValKind::List(None),
-            Expr::MapLit(_) => ValKind::Map(None),
+            Expr::MapLit(entries) => {
+                if let Some((type_name, _)) = self.try_as_record_fields(entries) {
+                    ValKind::Record(type_name)
+                } else {
+                    ValKind::Map(None)
+                }
+            }
             Expr::Ident(name) => {
                 if let Some(var_info) = self.variables.get(name) {
                     var_info.kind.clone()

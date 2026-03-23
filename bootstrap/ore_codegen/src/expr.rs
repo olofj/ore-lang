@@ -325,6 +325,10 @@ impl<'ctx> CodeGen<'ctx> {
                 self.compile_list_comp(expr, var, iterable, cond.as_deref(), func)
             }
             Expr::MapLit(entries) => {
+                // Check if this is an anonymous record literal (all keys are bare identifiers)
+                if let Some((type_name, fields)) = self.try_as_record_fields(entries) {
+                    return self.compile_record_construct(&type_name, &fields, func);
+                }
                 self.compile_map_lit(entries, func)
             }
             Expr::Index { object, index } => {

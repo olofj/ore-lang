@@ -568,6 +568,20 @@ fn records_display() {
 }
 
 #[test]
+fn records_anon_literal() {
+    let out = run_ore("records/anon_literal.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec![
+        "3",
+        "4",
+        "7",
+        "Bob",
+        "25",
+        "Bob is 25",
+    ]);
+}
+
+#[test]
 fn lists_typed_display() {
     let out = run_ore("lists/typed_display.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

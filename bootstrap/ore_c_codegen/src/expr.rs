@@ -156,6 +156,10 @@ impl CCodeGen {
                 self.compile_list_comp(body, var, iterable, cond.as_deref())
             }
             Expr::MapLit(entries) => {
+                // Check if this is an anonymous record literal (all keys are bare identifiers)
+                if let Some(record_fields) = self.try_as_record_fields(entries) {
+                    return self.compile_record_construct(&record_fields.0, &record_fields.1);
+                }
                 self.compile_map_lit(entries)
             }
             Expr::Index { object, index } => {
