@@ -103,14 +103,13 @@ tests/            # Test fixtures (.ore files)
 
 - [IMPLEMENTATION.md](docs/IMPLEMENTATION.md) — **what the bootstrap compiler supports today**
 - [PHILOSOPHY.md](docs/PHILOSOPHY.md) — why Ore exists
-- [SYNTAX.md](docs/SYNTAX.md) — **canonical syntax reference** (the syntax the compiler implements)
+- [SYNTAX.md](docs/SYNTAX.md) — **syntax reference** (canonical syntax the compiler implements)
 - [FEATURES.md](docs/FEATURES.md) — planned core features (many aspirational)
 - [EXAMPLES.md](docs/EXAMPLES.md) — full program examples (mostly aspirational)
 - [TOOLING.md](docs/TOOLING.md) — CLI and developer tooling
 - [CONCURRENCY.md](docs/CONCURRENCY.md) — concurrency model (mostly aspirational)
 - [COMPETITIVE.md](docs/COMPETITIVE.md) — comparison with other languages
 - [TRADEOFFS.md](docs/TRADEOFFS.md) — design tradeoffs
-- [RADICAL.md](docs/RADICAL.md) — design exploration (not canonical, ideas only)
 
 ## Status
 
