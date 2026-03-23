@@ -1,21 +1,25 @@
 # Ore — Tooling
 
+> **⚠ Many features below are ASPIRATIONAL.** See which commands are
+> available in [IMPLEMENTATION.md](IMPLEMENTATION.md).
+
 Everything is built in. One binary. No ecosystem fragmentation.
 
 ## The `ore` Command
 
 ```
 ore run file.ore         -- compile and run (cached, sub-second for most programs)
-ore build                -- produce optimized binary
+ore build                -- produce optimized binary (LLVM or C backend)
 ore test                 -- run all tests
-ore fmt                  -- format all code (one style, no config, not negotiable)
+ore fmt                  -- format source code
 ore check                -- type-check without building
-ore doc                  -- generate documentation
-ore deps add foo         -- add a dependency
-ore deps update          -- update dependencies
-ore new project-name     -- scaffold a new project
 ore repl                 -- interactive REPL
-ore bench                -- run benchmarks
+ore doc                  -- generate documentation [ASPIRATIONAL]
+ore deps add foo         -- add a dependency [ASPIRATIONAL]
+ore deps update          -- update dependencies [ASPIRATIONAL]
+ore new project-name     -- scaffold a new project [ASPIRATIONAL]
+ore bench                -- run benchmarks [ASPIRATIONAL]
+ore lsp                  -- language server [ASPIRATIONAL]
 ```
 
 ## Project Structure
@@ -50,7 +54,7 @@ myproject/
     auth_test.ore
 ```
 
-### ore.toml
+### ore.toml [ASPIRATIONAL]
 
 ```toml
 [project]
@@ -77,27 +81,25 @@ from day one.
 
 ## Compilation
 
-The compiler targets native code via a lightweight backend (think Go's
-compiler speed, not LLVM's). Debug builds compile in milliseconds. Release
-builds take a few seconds and produce optimized binaries.
+The bootstrap compiler targets native code via **LLVM** (JIT and AOT) or
+generates **C code** as an alternative backend.
 
 Compilation modes:
-- `ore run` — JIT-like experience. Caches compilation, re-runs instantly if
-  source hasn't changed.
-- `ore build` — Optimized native binary. Static by default.
+- `ore run` — JIT execution via LLVM.
+- `ore build` — AOT compilation to native binary via LLVM.
+- `ore build --backend c` — Generate C code.
+
+### Not yet implemented [ASPIRATIONAL]
+
 - `ore build --target wasm` — WebAssembly output.
+- Cross-compilation (`--target linux-amd64`, etc.).
 
-Cross-compilation works out of the box:
-```
-ore build --target linux-amd64
-ore build --target darwin-arm64
-ore build --target windows-amd64
-```
+## LSP [ASPIRATIONAL]
 
-## LSP
+> **Not yet implemented.**
 
-Built into the compiler. `ore lsp` starts it. Works with every editor.
-Provides:
+Planned to be built into the compiler. `ore lsp` would start it.
+Planned features:
 - Completions
 - Hover information
 - Go to definition
@@ -109,35 +111,26 @@ Provides:
 ## REPL
 
 ```
-$ lang repl
+$ ore repl
 > 2 + 2
 4
-> fn fib(n: Int) { if n < 2 { n } else { fib(n-1) + fib(n-2) } }
+> fn fib n:Int -> Int
+    if n < 2
+      n
+    else
+      fib(n - 1) + fib(n - 2)
 > fib(10)
 55
-> use http
-> http.get("https://httpbin.org/ip").await?.json()
-{"origin": "1.2.3.4"}
 ```
 
-Full language support. Async works. Imports work. Useful for exploration.
+The REPL supports core language features. HTTP and async are not available.
 
-## Benchmarking
+## Benchmarking [ASPIRATIONAL]
+
+> **Not yet implemented.** `bench` blocks and `ore bench` are planned.
 
 ```
-bench "sorting 10k elements" {
+bench "sorting 10k elements"
   list := List.random(10000)
   list.sort()
-}
-
-bench "map lookup" {
-  map := Map.from(entries)
-  map.get("key")
-}
-```
-
-```
-$ lang bench
-sorting 10k elements ... 1.23 ms/iter (± 0.05 ms)
-map lookup            ... 45 ns/iter (± 2 ns)
 ```

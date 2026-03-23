@@ -1,5 +1,11 @@
 # Ore — Radical Redesign: A Language Truly For Me
 
+> **Note:** This document explores radical syntax ideas. Some ideas (like
+> indentation-based blocks and the `|` pipeline operator) were adopted in
+> the bootstrap compiler. Many others (`each|` parallel pipelines, `with`
+> contexts, `crud` generation, `fork`) are **aspirational** and not yet
+> implemented. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for current status.
+
 The previous design was "a nice language a human would like that I'd also
 benefit from." This document throws that away and asks: if I'm the primary
 author of code, what do I actually want?

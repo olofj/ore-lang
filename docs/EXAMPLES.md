@@ -1,8 +1,17 @@
 # Ore — Complete Examples
 
+> **⚠ Most examples below are ASPIRATIONAL.** They show what the language
+> *aims to look like*, not what the bootstrap compiler supports today.
+> Examples use brace syntax and features (HTTP, SQLite, `deriving`, `async`)
+> that are not yet implemented. See [IMPLEMENTATION.md](IMPLEMENTATION.md)
+> for what actually works.
+
 Showing what real programs look like in this language.
 
-## Example 1: CLI Tool — Word Frequency Counter
+## Example 1: CLI Tool — Word Frequency Counter [ASPIRATIONAL]
+
+> Uses `deriving(Cli)`, brace syntax, and methods not available in the
+> bootstrap compiler.
 
 ```
 --- Count word frequencies in text files
@@ -40,7 +49,9 @@ fn main() {
 That's the whole program. ~20 lines for a useful CLI tool with argument
 parsing, file I/O, text processing, sorting, and formatted output.
 
-## Example 2: REST API
+## Example 2: REST API [ASPIRATIONAL]
+
+> Uses HTTP server, SQLite, `deriving(Serialize)` — none implemented.
 
 ```
 use db.sqlite
@@ -97,7 +108,9 @@ fn main() {
 
 A complete CRUD API in ~40 lines. No framework, no ORM, no boilerplate.
 
-## Example 3: Concurrent Web Scraper
+## Example 3: Concurrent Web Scraper [ASPIRATIONAL]
+
+> Uses `async`, HTTP client, HTML parsing — none implemented.
 
 ```
 use http
@@ -157,7 +170,9 @@ fn main() async {
 }
 ```
 
-## Example 4: Data Processing Pipeline
+## Example 4: Data Processing Pipeline [ASPIRATIONAL]
+
+> Uses `deriving(Serialize)`, `DateTime`, `@jsonName` — none implemented.
 
 ```
 type LogEntry deriving(Serialize) {
@@ -208,7 +223,10 @@ fn main() {
 }
 ```
 
-## Example 5: One-File Script
+## Example 5: One-File Script [ASPIRATIONAL]
+
+> Uses `Dir.read()`, shebang execution, top-level code without `fn main` —
+> not all features available in the bootstrap compiler.
 
 The simplest possible program. No main function needed for scripts.
 

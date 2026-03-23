@@ -1,5 +1,10 @@
 # Ore — Syntax Design
 
+> **Note:** Some features shown in this syntax reference (like `deriving`,
+> async/await, HTTP, SQLite) are aspirational and not yet implemented in the
+> bootstrap compiler. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for what
+> works today.
+
 ## Design Principles
 
 1. **Indentation-sensitive** — Blocks are delimited by indentation (like Python).

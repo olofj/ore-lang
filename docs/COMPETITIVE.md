@@ -1,5 +1,10 @@
 # Ore — Competitive Analysis: Why A New Language?
 
+> **Note:** This document describes language *design goals*. Claims about
+> "this language" having built-in HTTP, JSON, deriving, etc. refer to the
+> planned feature set, not the current bootstrap compiler. See
+> [IMPLEMENTATION.md](IMPLEMENTATION.md) for what's implemented today.
+
 ## The Honest Question
 
 With dozens of modern languages available, the bar for "we need something

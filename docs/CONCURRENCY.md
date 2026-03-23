@@ -1,5 +1,13 @@
 # Ore — Concurrency Model
 
+> **⚠ Most of this document is ASPIRATIONAL.** The bootstrap compiler
+> supports basic concurrency: `spawn()`, `channel()`, `send()`/`recv()`,
+> `sleep()`, and `thread_join_all()` using OS threads. The three-layer model
+> (pipelines, channels, cells), `each|` parallel pipelines, `select`,
+> structured concurrency, and green threads described below are **not yet
+> implemented**. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for what works
+> today.
+
 ## Why No Locks?
 
 Locks, mutexes, semaphores, and memory barriers exist because of one thing:

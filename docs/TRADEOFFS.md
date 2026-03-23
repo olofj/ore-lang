@@ -161,24 +161,29 @@ that generates complete programs from specifications.
 
 ## Comparison Matrix
 
-| Feature              | This Lang | Go    | Rust  | Kotlin | Swift  | Mojo   | Nim    | Gleam  |
-|----------------------|-----------|-------|-------|--------|--------|--------|--------|--------|
-| Type inference       | Strong    | Weak  | Good  | Strong | Strong | Medium | Strong | Good   |
-| Null safety          | Yes       | No    | Yes   | Yes    | Yes    | Partial| Partial| Yes    |
-| Error handling       | Result+?  | Multi | Result| Except | Result | Except | Except | Result |
-| Sum types            | Yes       | No    | Yes   | Yes    | Yes    | No     | Yes    | Yes    |
-| Generics             | Yes       | Basic | Yes   | Yes    | Yes    | Partial| Yes    | Yes    |
-| Built-in HTTP        | Yes       | Yes   | No    | No     | No     | No     | Yes    | No     |
-| Built-in JSON        | Yes       | Yes   | No    | No*    | No     | No     | Yes    | Yes    |
-| Built-in testing     | Yes       | Yes   | Yes   | No     | Yes    | No     | Yes    | No     |
-| Compilation speed    | Fast      | Fast  | Slow  | Medium | Medium | Medium | Fast   | Fast   |
-| GC pauses            | Low       | Yes   | None  | Yes    | None†  | None   | Config | Yes    |
-| Single binary        | Yes       | Yes   | Yes   | No‡    | Yes    | Yes    | Yes    | No     |
-| Whitespace-safe      | Yes       | Yes   | Yes   | Yes    | Yes    | No     | No     | Yes    |
-| Learning curve       | Low       | Low   | High  | Medium | Medium | Medium | Medium | Medium |
+> **Note:** The "This Lang" column reflects *design goals*. Features marked
+> with † are aspirational — not yet in the bootstrap compiler.
+> See [IMPLEMENTATION.md](IMPLEMENTATION.md) for current status.
+
+| Feature              | This Lang  | Go    | Rust  | Kotlin | Swift  | Mojo   | Nim    | Gleam  |
+|----------------------|------------|-------|-------|--------|--------|--------|--------|--------|
+| Type inference       | Strong     | Weak  | Good  | Strong | Strong | Medium | Strong | Good   |
+| Null safety          | Yes        | No    | Yes   | Yes    | Yes    | Partial| Partial| Yes    |
+| Error handling       | Result+?   | Multi | Result| Except | Result | Except | Except | Result |
+| Sum types            | Yes        | No    | Yes   | Yes    | Yes    | No     | Yes    | Yes    |
+| Generics             | Yes        | Basic | Yes   | Yes    | Yes    | Partial| Yes    | Yes    |
+| Built-in HTTP        | Planned†   | Yes   | No    | No     | No     | No     | Yes    | No     |
+| Built-in JSON        | Basic      | Yes   | No    | No*    | No     | No     | Yes    | Yes    |
+| Built-in testing     | Basic      | Yes   | Yes   | No     | Yes    | No     | Yes    | No     |
+| Compilation speed    | Fast       | Fast  | Slow  | Medium | Medium | Medium | Fast   | Fast   |
+| GC pauses            | Low        | Yes   | None  | Yes    | None** | None   | Config | Yes    |
+| Single binary        | Yes        | Yes   | Yes   | No***  | Yes    | Yes    | Yes    | No     |
+| Whitespace-safe      | No (indent)| Yes   | Yes   | Yes    | Yes    | No     | No     | Yes    |
+| Learning curve       | Low        | Low   | High  | Medium | Medium | Medium | Medium | Medium |
 
 *Kotlin has kotlinx.serialization but it's external
-†Swift uses ARC, not GC — no pauses but retain cycle risk
-‡GraalVM native-image exists but is slow and limited
+**Swift uses ARC, not GC — no pauses but retain cycle risk
+***GraalVM native-image exists but is slow and limited
+†Not yet implemented in the bootstrap compiler
 
 For a detailed analysis of each language, see [COMPETITIVE.md](COMPETITIVE.md).
