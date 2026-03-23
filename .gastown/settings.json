@@ -1,0 +1,13 @@
+{
+    "type": "rig-settings",
+    "version": 1,
+
+    "merge_queue": {
+        "run_tests": true,
+        "test_command": "cargo test --workspace --exclude ore_codegen --exclude ore_cli",
+        "build_command": "cargo check --workspace --exclude ore_codegen --exclude ore_cli",
+        "setup_command": "",
+        "typecheck_command": "",
+        "lint_command": ""
+    }
+}
