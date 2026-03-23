@@ -2,9 +2,8 @@
 
 ## Design Principles
 
-1. **Whitespace-insensitive, brace-delimited** — Indentation-sensitivity
-   (Python) causes problems when I generate code in chat contexts where
-   whitespace gets mangled. Braces are unambiguous.
+1. **Indentation-sensitive** — Blocks are delimited by indentation (like Python).
+   No braces required for function bodies, control flow, or type declarations.
 2. **Minimal keywords** — Prefer symbols where they're universally understood
    (`+`, `=`, `->`, `|`), keywords where they add clarity (`fn`, `if`, `for`).
 3. **Expression-oriented** — Everything is an expression. `if` returns a value.
@@ -26,6 +25,13 @@ name := "hello"
 mut counter := 0
 counter = counter + 1
 
+-- Compound assignment
+counter += 1
+counter -= 2
+counter *= 3
+counter /= 4
+counter %= 5
+
 -- Type annotation (rarely needed due to inference)
 x: Int := 42
 ```
@@ -36,36 +42,45 @@ Immutable by default. `mut` is explicit and visible. `:=` for binding
 ### Functions
 
 ```
-fn add(a: Int, b: Int) -> Int {
+fn add a:Int b:Int -> Int
   a + b
-}
 
 -- Return type inferred for private functions
-fn double(x: Int) { x * 2 }
+fn double x:Int
+  x * 2
 
 -- Multi-expression body
-fn greet(name: Str) -> Str {
+fn greet name:Str -> Str
   prefix := "Hello"
   "{prefix}, {name}!"
-}
 
--- Single-expression shorthand
-fn square(x: Int) = x * x
+-- No parameters
+fn main
+  print "hello"
+
+-- Default parameter values
+fn greet name:Str greeting:Str = "Hello" -> Str
+  "{greeting}, {name}!"
+
+-- Generic functions
+fn identity[T] x:T -> T
+  x
 ```
+
+Function signatures use space-separated `name:Type` pairs — no parentheses
+around parameter lists. Return type follows `->`. Body is indented on the
+next line.
 
 Public function signatures require return types (documentation + API contract).
 Private functions infer everything.
+
+**Calling** functions uses parentheses: `add(1, 2)`, `greet("Alice")`.
 
 ### String Interpolation
 
 ```
 name := "world"
 greeting := "Hello, {name}!"
-multiline := """
-  This is a multiline string.
-  It preserves structure but strips common indentation.
-  Values: {x}, {y}, {compute(z)}
-"""
 ```
 
 Interpolation uses `{}` directly — no `$` prefix needed. The parser knows
@@ -86,80 +101,139 @@ Triple dash for doc comments.
 
 ### If/Else
 
-```
-result := if x > 0 { "positive" } else { "non-positive" }
+Two forms: inline (single expression) and block (multi-line).
 
-if condition {
+**Inline form** (uses `then` keyword):
+```
+result := if x > 0 then "positive" else "non-positive"
+sign := if n > 0 then "positive" else if n < 0 then "negative" else "zero"
+abs_n := if n < 0 then -n else n
+```
+
+**Block form** (uses indentation):
+```
+if condition
   doSomething()
-} else if other {
+else if other
   doOther()
-} else {
+else
   fallback()
-}
 ```
 
-No parentheses around conditions. Braces always required (no dangling else).
+Block if/else is also an expression — the last expression in each branch
+is the result:
+```
+result := if x > 0
+  "positive"
+else
+  "non-positive"
+```
+
+No parentheses around conditions.
 
 ### Pattern Matching
 
+Two forms: `match` keyword and inline colon operator.
+
+**`match` keyword** (multi-line, indented arms):
 ```
-match value {
-  0 => "zero"
-  1..10 => "small"
-  n if n > 100 => "big: {n}"
-  _ => "other"
-}
+match value
+  0 -> "zero"
+  1 -> "one"
+  _ -> "other"
 
--- Destructuring
-match point {
-  Point(0, 0) => "origin"
-  Point(x, 0) => "on x-axis at {x}"
-  Point(0, y) => "on y-axis at {y}"
-  Point(x, y) => "({x}, {y})"
-}
+-- With guards
+match x
+  0 -> "zero"
+  _ if x > 0 -> "positive"
+  _ -> "negative"
 
--- Match on Result/Option
-match fetchUser(id) {
-  Ok(user) => renderProfile(user)
-  Err(NotFound) => render404()
-  Err(e) => render500(e)
-}
+-- Or-patterns
+match x
+  1 | 2 | 3 -> "small"
+  4 | 5 | 6 -> "medium"
+  _ -> "other"
+
+-- Destructuring enum variants
+match shape
+  Circle r -> 3.14159 * r * r
+  Rect w h -> w * h
 ```
 
-Exhaustive by default. Compiler error if you miss a case.
+**Colon operator** (inline match):
+```
+result := value :
+  pattern -> expression
+  other -> expression
+
+-- Ternary-like (two-arm match on bool)
+b == 0 : Err(-1) : Ok(a / b)
+```
+
+Match arms use `->` (not `=>`). `=>` is reserved for lambdas.
+Matches are exhaustive by default — compiler error if you miss a case.
 
 ### Loops
 
 ```
--- Iterate over anything iterable
-for item in collection {
+-- For over range
+for i in 0..10
+  print i
+
+-- For with step
+for i in 0..10 step 2
+  print i
+
+-- For over collection
+for item in collection
   process(item)
-}
 
--- With index
-for i, item in collection {
-  print("{i}: {item}")
-}
-
--- Range
-for i in 0..10 { print(i) }
+-- For with key-value
+for k, v in map
+  print k
 
 -- While
-while condition {
+while condition
   doWork()
-}
 
--- Loop (infinite, break to exit)
-loop {
-  data := poll()
-  if data.ready { break data }
-}
+-- Infinite loop (break to exit)
+loop
+  x = x + 1
+  if x >= 3
+    break
 ```
 
-`loop` is an expression — `break value` returns from it.
+`break` and `continue` work as expected.
 
-`for` works on anything implementing `Iter`. No need for `.iter()`,
-`.into_iter()`, etc.
+## Lambdas and Pipes
+
+Lambdas use `=>` (fat arrow):
+```
+nums.map(n => n * 2)
+nums.filter(n => n > 3)
+nums.each(x => print x)
+```
+
+Pipe operator `|` threads values through functions:
+```
+result := 5 | double | double
+
+-- With inline lambdas
+y := 10 | (x => x + 5) | (x => x * 2)
+
+-- Multi-line pipes
+result := [1, 2, 3, 4, 5]
+  | filter (n => n % 2 == 0)
+  | map (n => n * n)
+```
+
+### List Comprehensions
+
+```
+squares := [x * x for x in 0..5]
+evens := [x for x in 0..10 if x % 2 == 0]
+doubled := [n * 2 for n in nums]
+```
 
 ## Types
 
@@ -180,47 +254,43 @@ One integer type for most use cases. Specific sizes available when needed.
 ### Composite Types
 
 ```
--- Records (product types)
-type Point {
-  x: Float
-  y: Float
-}
+-- Records (product types) — inline brace syntax
+type Point { x:Float, y:Float }
+type Config { host:Str, port:Int }
 
--- With defaults
-type Config {
-  host: Str = "localhost"
-  port: Int = 8080
-  debug: Bool = false
-}
-
--- Construction
+-- Construction with named fields
 p := Point(x: 1.0, y: 2.0)
-c := Config(port: 3000)  -- rest use defaults
+c := Config(host: "localhost", port: 3000)
 
--- Enums (sum types)
-type Shape {
+-- Enums (sum types) — indented variants
+type Shape
   Circle(radius: Float)
   Rect(width: Float, height: Float)
-  Triangle(a: Float, b: Float, c: Float)
-}
 
 -- Simple enums
-type Color { Red, Green, Blue }
+type Color
+  Red()
+  Green()
+  Blue()
 
 -- Option and Result are built-in
-type Option[T] { Some(T), None }
-type Result[T, E] { Ok(T), Err(E) }
+type Option
+  Some(value)
+  None
+
+type Result
+  Ok(value)
+  Err(error)
 ```
 
 ### Generics
 
 ```
-type List[T] { ... }
-type Map[K, V] { ... }
+fn identity[T] x:T -> T
+  x
 
-fn first[T](items: List[T]) -> T? {
-  if items.empty { None } else { Some(items[0]) }
-}
+fn double[T] x:T -> T
+  x + x
 ```
 
 `T?` is sugar for `Option[T]`. Clean and universally understood.
@@ -228,90 +298,91 @@ fn first[T](items: List[T]) -> T? {
 ### Traits (Interfaces)
 
 ```
-trait Display {
-  fn display(self) -> Str
-}
+trait Describable
+  fn describe self:Self -> Int
 
-trait Numeric {
-  fn add(self, other: Self) -> Self
-  fn zero() -> Self
-}
-
--- Implementation
-impl Display for Point {
-  fn display(self) -> Str { "({self.x}, {self.y})" }
-}
-
--- Shorthand: derive common traits
-type Point deriving(Display, Eq, Hash, Serialize) {
-  x: Float
-  y: Float
-}
+-- Implementation for a specific type
+impl Describable for Dog
+  fn describe self:Dog -> Int
+    self.age
 ```
 
-Derive covers the common cases. Manual impl when you need control.
+### Methods (impl blocks)
+
+```
+type Point { x:Float, y:Float }
+
+impl Point
+  fn magnitude self:Point -> Float
+    self.x * self.x + self.y * self.y
+
+  fn translate self:Point dx:Float dy:Float -> Point
+    Point(x: self.x + dx, y: self.y + dy)
+
+-- Usage
+p := Point(x: 3.0, y: 4.0)
+print p.magnitude()
+p2 := p.translate(1.0, 1.0)
+```
 
 ### Null Safety
 
-There is no null. Period. Optional values use `Option[T]` (or `T?`).
+There is no null. Period. Optional values use `Option` (or `T?`).
 
 ```
-fn findUser(id: Int) -> User? {
-  db.query("SELECT * FROM users WHERE id = {id}")
-}
+fn safe_div a:Int b:Int -> Option
+  b == 0 : None : Some(a / b)
 
 -- Must handle the None case
-user := findUser(42) ?? defaultUser
-name := findUser(42)?.name ?? "unknown"
-
--- Or pattern match
-match findUser(42) {
-  Some(u) => greet(u)
-  None => print("not found")
-}
+opt :
+  Some val -> val
+  None -> default
 ```
 
 ## Error Handling
 
-This deserves its own section because it's so critical.
-
 ```
--- Functions that can fail return Result[T, E]
-fn readFile(path: Str) -> Result[Str, IoError] {
-  ...
-}
+-- Functions that can fail return Result
+fn safe_div a:Int b:Int -> Result
+  b == 0 : Err(-1) : Ok(a / b)
 
--- The ? operator propagates errors (like Rust, but cleaner)
-fn processConfig(path: Str) -> Result[Config, Error] {
-  text := readFile(path)?
-  config := parseJson[Config](text)?
-  Ok(config)
-}
-
--- try blocks for localized error handling
-result := try {
-  file := readFile("config.json")?
-  parseJson[Config](file)?
-}
-
--- The above returns Result[Config, Error]
-
--- For scripts / top-level: just crash with a message
-fn main() {
-  config := readFile("config.json").unwrap("Failed to read config")
-  serve(config)
-}
-
--- Catch with match
-match readFile("data.txt") {
-  Ok(content) => process(content)
-  Err(e) => log.error("Failed: {e}")
-}
+-- Match on Result
+r :
+  Ok val -> val
+  Err e -> e
 ```
 
-Key design decision: **errors are values, not exceptions**. But the syntax is
-concise enough that it doesn't feel like a burden. The `?` operator does the
-heavy lifting.
+Errors are values, not exceptions.
 
-Error types compose via an `Error` trait, and the compiler auto-converts
-between compatible error types when using `?`.
+## Concurrency
+
+```
+-- Spawn a concurrent task
+spawn greet()
+```
+
+## Modules
+
+```
+-- Import another Ore file
+use "math.ore"
+
+fn main
+  print add(3, 4)
+```
+
+## Quick Reference: Syntax Distinctions
+
+| Feature | Syntax | Example |
+|---------|--------|---------|
+| Function def | `fn name param:Type -> Ret` | `fn add a:Int b:Int -> Int` |
+| Function call | parentheses | `add(1, 2)` |
+| Match arm | `->` | `0 -> "zero"` |
+| Lambda | `=>` | `n => n * 2` |
+| Inline if | `if ... then ... else ...` | `if x > 0 then x else -x` |
+| Block if | indented body | `if x > 0` + newline + indent |
+| Inline match | `subject :` | `x : None : Some(x)` |
+| Block match | `match subject` | `match x` + newline + arms |
+| Record type | inline braces | `type Point { x:Float, y:Float }` |
+| Enum type | indented variants | `type Color` + newline + variants |
+| Pipe | `\|` | `5 \| double \| double` |
