@@ -111,7 +111,8 @@ fn types_equal a:OreType b:OreType -> Bool
       _ -> false
     FnOreType params_a ret_a -> match b
       FnOreType params_b ret_b ->
-        if params_a.len() != params_b.len() then false
+        if params_a.len() != params_b.len()
+          false
         else
           mut eq := types_equal(ret_a, ret_b)
           for i in 0..params_a.len()
