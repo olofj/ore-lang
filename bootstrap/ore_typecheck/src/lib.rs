@@ -845,6 +845,13 @@ impl TypeChecker {
                 self.infer_expr(inner, env);
                 Type::Any
             }
+            Expr::Unwrap(inner) => {
+                let t = self.infer_expr(inner, env);
+                match t {
+                    Type::Option(inner_ty) => *inner_ty,
+                    _ => Type::Any,
+                }
+            }
             Expr::Sleep(_) => Type::Unit,
             Expr::OptionalChain { object, .. } => {
                 self.infer_expr(object, env);

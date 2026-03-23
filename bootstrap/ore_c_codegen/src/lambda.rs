@@ -24,7 +24,7 @@ fn collect_free_vars(expr: &Expr, bound: &HashSet<String>, free: &mut Vec<String
         }
         Expr::UnaryMinus(inner) | Expr::UnaryNot(inner) | Expr::Print(inner)
         | Expr::OptionSome(inner) | Expr::ResultOk(inner) | Expr::ResultErr(inner)
-        | Expr::Try(inner) | Expr::Sleep(inner) => {
+        | Expr::Try(inner) | Expr::Unwrap(inner) | Expr::Sleep(inner) => {
             collect_free_vars(inner, bound, free, seen);
         }
         Expr::Call { func, args } => {

@@ -367,6 +367,35 @@ impl<'ctx> CodeGen<'ctx> {
                 let extracted = self.load_tagged_value(opt_ty, alloca)?;
                 Ok((extracted, ValKind::Int))
             }
+            Expr::Unwrap(inner) => {
+                let (val, kind) = self.compile_expr_with_kind(inner, func)?;
+                let opt_ty = if kind == ValKind::Result { self.result_type() } else { self.option_type() };
+                let alloca = bld!(self.builder.build_alloca(opt_ty, "unwrap_opt"))?;
+                bld!(self.builder.build_store(alloca, val))?;
+                let tag = self.load_tag(opt_ty, alloca)?;
+                // For Option: tag 0 = None (fail), tag 1 = Some (ok)
+                // For Result: tag 0 = Ok (pass), tag 1 = Err (fail)
+                let fail_tag: u64 = if kind == ValKind::Result { 1 } else { 0 };
+                let is_fail = self.check_tag(tag, fail_tag, "is_unwrap_fail")?;
+                let ok_bb = self.context.append_basic_block(func, "unwrap_ok");
+                let fail_bb = self.context.append_basic_block(func, "unwrap_fail");
+                bld!(self.builder.build_conditional_branch(is_fail, fail_bb, ok_bb))?;
+                // Fail branch: call ore_assert to trigger panic
+                self.builder.position_at_end(fail_bb);
+                let msg = if kind == ValKind::Result {
+                    "unwrap! called on Err value"
+                } else {
+                    "unwrap! called on None value"
+                };
+                let msg_ptr = self.build_c_string_global(msg, "unwrap_fail_msg")?;
+                let line_val = self.context.i64_type().const_int(self.current_line as u64, false);
+                self.call_rt("ore_assert", &[self.context.i8_type().const_int(0, false).into(), msg_ptr.into(), line_val.into()], "")?;
+                bld!(self.builder.build_unreachable())?;
+                // Ok branch: extract value
+                self.builder.position_at_end(ok_bb);
+                let extracted = self.load_tagged_value(opt_ty, alloca)?;
+                Ok((extracted, ValKind::Int))
+            }
             Expr::OptionalChain { object, field } => {
                 self.compile_optional_chain(object, field, func)
             }

@@ -739,6 +739,16 @@ impl Parser {
                 }
             }
 
+            // Unwrap operator (!) - assert non-null, same precedence as ?
+            if self.peek() == &Token::Bang {
+                let unwrap_bp = 20;
+                if unwrap_bp >= min_bp {
+                    self.advance(); // consume '!'
+                    lhs = Expr::Unwrap(Box::new(lhs));
+                    continue;
+                }
+            }
+
             // Indexing: expr[expr]
             if self.peek() == &Token::LBracket {
                 let idx_bp = 19;

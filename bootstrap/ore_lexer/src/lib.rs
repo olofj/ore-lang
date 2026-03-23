@@ -51,6 +51,7 @@ pub enum Token {
     ColonEq,     // :=
     Eq,          // =
     EqEq,        // ==
+    Bang,        // !
     BangEq,      // !=
     Lt,          // <
     Gt,          // >
@@ -428,7 +429,7 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     self.emit(Token::BangEq, start);
                 } else {
-                    return Err(self.lex_error_at("unexpected '!'".to_string(), start));
+                    self.emit(Token::Bang, start);
                 }
             }
             b'<' => {

@@ -243,6 +243,7 @@ pub enum Expr {
     ResultOk(Box<Expr>),
     ResultErr(Box<Expr>),
     Try(Box<Expr>),
+    Unwrap(Box<Expr>),
     Sleep(Box<Expr>),
     OptionalChain {
         object: Box<Expr>,

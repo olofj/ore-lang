@@ -192,6 +192,21 @@ impl CCodeGen {
                     Ok((format!("{}.val", tmp), ValKind::Int))
                 }
             }
+            Expr::Unwrap(inner) => {
+                let (val, kind) = self.compile_expr(inner)?;
+                let tmp = self.tmp();
+                self.emit(&format!("OreTaggedUnion {} = {};", tmp, val));
+                if kind == ValKind::Result {
+                    // Result: tag 1 = Err → fail
+                    let msg = self.compile_string_literal("unwrap! called on Err value");
+                    self.emit(&format!("if ({}.tag == 1) ore_assert(0, {}, {});", tmp, msg, self.current_line));
+                } else {
+                    // Option: tag 0 = None → fail
+                    let msg = self.compile_string_literal("unwrap! called on None value");
+                    self.emit(&format!("if ({}.tag == 0) ore_assert(0, {}, {});", tmp, msg, self.current_line));
+                }
+                Ok((format!("{}.val", tmp), ValKind::Int))
+            }
             Expr::Lambda { params, body } => {
                 let (expr, kind) = self.compile_lambda(params, body, None)?;
                 // If it's a closure expression, extract just the function pointer

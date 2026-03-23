@@ -534,6 +534,10 @@ impl Formatter {
                 self.format_expr(inner, level);
                 self.out.push('?');
             }
+            Expr::Unwrap(inner) => {
+                self.format_expr(inner, level);
+                self.out.push('!');
+            }
             Expr::OptionalChain { object, field } => {
                 self.format_expr(object, level);
                 self.out.push_str("?.");

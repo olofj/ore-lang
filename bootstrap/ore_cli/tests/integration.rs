@@ -723,6 +723,13 @@ fn control_option_methods() {
 }
 
 #[test]
+fn control_option_unwrap_bang() {
+    let out = run_ore("control/option_unwrap_bang.ore");
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines, vec!["42"]);
+}
+
+#[test]
 fn stdlib_assert_typeof() {
     let out = run_ore("stdlib/assert_typeof.ore");
     let lines: Vec<&str> = out.trim().lines().collect();

@@ -1,0 +1,11 @@
+fn find_positive x:Int -> Int?
+  if x > 0
+    Some(x)
+  else
+    None
+
+fn main
+  a := find_positive(42)
+
+  -- unwrap with ! operator
+  print a!
