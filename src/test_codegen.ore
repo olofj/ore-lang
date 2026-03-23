@@ -1,7 +1,7 @@
 use codegen
 
 fn main
-  mut st := cg_new()
+  mut st := cg_new([], [])
   
   -- Test state operations
   cg_set_var(st, "x", "int")
