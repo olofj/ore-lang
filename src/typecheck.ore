@@ -11,6 +11,9 @@ use token
 -- Typed accessors for records stored in untyped lists
 -- (get_variant_def, get_param_def, get_fn_def, get_string_part are in arena.ore)
 
+-- Type checker state record
+type TypecheckState { fns: Map, fn_req: Map, records: Map, enums: Map, variant_to_enum: Map, errors: List, scopes: List, methods: Map, builtins: Map }
+
 fn get_sspanned pool:List idx:Int -> SpannedStmt
   pool[idx]
 
@@ -91,49 +94,39 @@ fn scope_lookup scopes:List name:Str -> Str
   ""
 
 -- Type checker state
-fn tc_new -> List
-  mut tc := []
-  tc.push({})
-  tc.push({})
-  tc.push({})
-  tc.push({})
-  tc.push({})
-  tc.push([])
+fn tc_new -> TypecheckState
   mut scopes := []
   scopes.push({})
-  tc.push(scopes)
-  tc.push(make_method_set())
-  tc.push(make_builtin_set())
-  tc
+  TypecheckState(fns: {}, fn_req: {}, records: {}, enums: {}, variant_to_enum: {}, errors: [], scopes: scopes, methods: make_method_set(), builtins: make_builtin_set())
 
-fn tc_fns tc:List -> Map
-  tc[0]
+fn tc_fns tc:TypecheckState -> Map
+  tc.fns
 
-fn tc_fn_req tc:List -> Map
-  tc[1]
+fn tc_fn_req tc:TypecheckState -> Map
+  tc.fn_req
 
-fn tc_records tc:List -> Map
-  tc[2]
+fn tc_records tc:TypecheckState -> Map
+  tc.records
 
-fn tc_enums tc:List -> Map
-  tc[3]
+fn tc_enums tc:TypecheckState -> Map
+  tc.enums
 
-fn tc_variant_to_enum tc:List -> Map
-  tc[4]
+fn tc_variant_to_enum tc:TypecheckState -> Map
+  tc.variant_to_enum
 
-fn tc_errors tc:List -> List
-  tc[5]
+fn tc_errors tc:TypecheckState -> List
+  tc.errors
 
-fn tc_scopes tc:List -> List
-  tc[6]
+fn tc_scopes tc:TypecheckState -> List
+  tc.scopes
 
-fn tc_methods tc:List -> Map
-  tc[7]
+fn tc_methods tc:TypecheckState -> Map
+  tc.methods
 
-fn tc_builtins tc:List -> Map
-  tc[8]
+fn tc_builtins tc:TypecheckState -> Map
+  tc.builtins
 
-fn tc_add_error tc:List msg:Str
+fn tc_add_error tc:TypecheckState msg:Str
   errs := tc_errors(tc)
   errs.push(msg)
 
@@ -178,7 +171,7 @@ fn count_fn_params tokens:List start:Int len:Int -> Int
   pcount
 
 -- Phase 1: Collect fn definitions from tokens
-fn collect_fn_defs tc:List tokens:List
+fn collect_fn_defs tc:TypecheckState tokens:List
   mut i := 0
   len := tokens.len()
   loop
@@ -199,7 +192,7 @@ fn collect_fn_defs tc:List tokens:List
     i = i + 1
 
 -- Phase 1: Collect type/enum definitions from tokens
-fn collect_type_defs tc:List tokens:List
+fn collect_type_defs tc:TypecheckState tokens:List
   mut i := 0
   len := tokens.len()
   loop
@@ -242,7 +235,7 @@ fn collect_type_defs tc:List tokens:List
     i = i + 1
 
 -- Collect enum variant names from token stream
-fn collect_enum_variants tc:List tokens:List start:Int len:Int tname:Str
+fn collect_enum_variants tc:TypecheckState tokens:List start:Int len:Int tname:Str
   mut k := start
   loop
     if k >= len
@@ -261,7 +254,7 @@ fn collect_enum_variants tc:List tokens:List start:Int len:Int tname:Str
     k = k + 1
 
 -- Check if name is known (fn, builtin, record, enum, variant)
-fn is_known_name tc:List name:Str -> Bool
+fn is_known_name tc:TypecheckState name:Str -> Bool
   if tc_fns(tc).contains(name)
     return true
   if tc_builtins(tc).contains(name)
@@ -275,14 +268,14 @@ fn is_known_name tc:List name:Str -> Bool
   false
 
 -- Check a call expression (extracted to avoid nested match)
-fn check_call tc:List func_id:Int call_args:List exprs:List stmts:List
+fn check_call tc:TypecheckState func_id:Int call_args:List exprs:List stmts:List
   func_e := get_expr(exprs, func_id)
   check_call_target(tc, func_e, call_args)
   for j in 0..call_args.len()
     check_expr(tc, call_args[j], exprs, stmts)
 
 -- Check call target is defined and arity is correct
-fn check_call_target tc:List func_e:Expr call_args:List
+fn check_call_target tc:TypecheckState func_e:Expr call_args:List
   match func_e
     IdentExpr fname ->
       if not is_known_name(tc, fname)
@@ -294,7 +287,7 @@ fn check_call_target tc:List func_e:Expr call_args:List
     _ -> 0
 
 -- Check call arity
-fn check_call_arity tc:List fname:Str nargs:Int
+fn check_call_arity tc:TypecheckState fname:Str nargs:Int
   fns := tc_fns(tc)
   if not fns.contains(fname)
     return
@@ -309,7 +302,7 @@ fn check_call_arity tc:List fname:Str nargs:Int
     tc_add_error(tc, "function '" + fname + "' expects at most " + int_to_str(max_arity) + " arguments, got " + int_to_str(nargs))
 
 -- Check identifier expression
-fn check_ident tc:List name:Str
+fn check_ident tc:TypecheckState name:Str
   scopes := tc_scopes(tc)
   found := scope_lookup(scopes, name)
   if found == ""
@@ -317,7 +310,7 @@ fn check_ident tc:List name:Str
       tc_add_error(tc, "undefined variable: " + name)
 
 -- Phase 2: Check expressions
-fn check_expr tc:List expr_id:Int exprs:List stmts:List
+fn check_expr tc:TypecheckState expr_id:Int exprs:List stmts:List
   if expr_id < 0
     return
   e := get_expr(exprs, expr_id)
@@ -398,7 +391,7 @@ fn check_expr tc:List expr_id:Int exprs:List stmts:List
     _ -> 0
 
 -- Check string interpolation parts
-fn check_string_interp tc:List parts:List exprs:List stmts:List
+fn check_string_interp tc:TypecheckState parts:List exprs:List stmts:List
   for j in 0..parts.len()
     p := get_string_part(parts, j)
     match p
@@ -407,7 +400,7 @@ fn check_string_interp tc:List parts:List exprs:List stmts:List
       _ -> 0
 
 -- Check match arms
-fn check_match_arms tc:List arms:List exprs:List stmts:List
+fn check_match_arms tc:TypecheckState arms:List exprs:List stmts:List
   for j in 0..arms.len()
     arm := get_match_arm_typed(arms, j)
     scopes := tc_scopes(tc)
@@ -419,7 +412,7 @@ fn check_match_arms tc:List arms:List exprs:List stmts:List
     scope_pop(scopes)
 
 -- Add variables bound by a pattern into scope
-fn add_pattern_bindings tc:List pat:Pattern
+fn add_pattern_bindings tc:TypecheckState pat:Pattern
   scopes := tc_scopes(tc)
   match pat
     VariantPat name bindings ->
@@ -433,7 +426,7 @@ fn add_pattern_bindings tc:List pat:Pattern
 -- We do NOT recurse into blocks from here. Instead, check_all_stmts
 -- iterates ALL stmts in the pool, which includes loop/fn bodies.
 -- Loop vars are added to scope via token scanning.
-fn check_stmt tc:List stmt_id:Int exprs:List stmts:List
+fn check_stmt tc:TypecheckState stmt_id:Int exprs:List stmts:List
   if stmt_id < 0
     return
   st := get_stmt(stmts, stmt_id)
@@ -475,13 +468,13 @@ fn check_stmt tc:List stmt_id:Int exprs:List stmts:List
     _ -> 0
 
 -- Check a block of statements
-fn check_block tc:List block:Block exprs:List stmts:List
+fn check_block tc:TypecheckState block:Block exprs:List stmts:List
   for i in 0..block.stmts.len()
     ss := get_sspanned(block.stmts, i)
     check_stmt(tc, ss.stmt_id, exprs, stmts)
 
 -- Check all statements in the pool
-fn check_all_stmts tc:List exprs:List stmts:List
+fn check_all_stmts tc:TypecheckState exprs:List stmts:List
   for i in 0..stmts.len()
     check_stmt(tc, i, exprs, stmts)
 
@@ -499,7 +492,7 @@ fn typecheck tokens:List exprs:List stmts:List -> List
   typecheck_with_scopes(tokens, exprs, stmts)
 
 -- Scan tokens and add fn params + for-loop vars + match arm bindings to scope
-fn add_fn_params_from_tokens tc:List tokens:List
+fn add_fn_params_from_tokens tc:TypecheckState tokens:List
   scopes := tc_scopes(tc)
   mut i := 0
   len := tokens.len()
