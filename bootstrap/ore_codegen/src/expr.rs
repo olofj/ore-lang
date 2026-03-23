@@ -383,7 +383,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let tag = self.load_tag(opt_ty, alloca)?;
                 // For Option: tag 0 = None (fail), tag 1 = Some (ok)
                 // For Result: tag 0 = Ok (pass), tag 1 = Err (fail)
-                let fail_tag: u64 = if kind == ValKind::Result { 1 } else { 0 };
+                let fail_tag: u8 = if kind == ValKind::Result { 1 } else { 0 };
                 let is_fail = self.check_tag(tag, fail_tag, "is_unwrap_fail")?;
                 let ok_bb = self.context.append_basic_block(func, "unwrap_ok");
                 let fail_bb = self.context.append_basic_block(func, "unwrap_fail");

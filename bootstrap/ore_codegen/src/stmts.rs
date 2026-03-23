@@ -168,7 +168,7 @@ impl<'ctx> CodeGen<'ctx> {
                 // The with-expression is evaluated but context propagation
                 // to callees is handled by the C backend; the LLVM backend
                 // compiles the body directly for now.
-                self.compile_block_stmts(body, func)
+                self.compile_block_stmts_with_kind(body, func)
             }
         }
     }

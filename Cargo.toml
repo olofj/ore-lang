@@ -12,4 +12,4 @@ members = [
 ]
 
 [workspace.dependencies]
-inkwell = { version = "0.8", features = ["llvm19-1"] }
+inkwell = { version = "0.8", features = ["llvm18-1-prefer-dynamic"] }
