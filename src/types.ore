@@ -65,12 +65,8 @@ fn type_expr_to_ore_type te:TypeExpr -> OreType
         ListOreType(elem: type_expr_to_ore_type(args[0]))
       else if name == "Map" and args.len() == 2
         MapOreType(key: type_expr_to_ore_type(args[0]), val: type_expr_to_ore_type(args[1]))
-      else if name == "Option"
-        OptionOreType
-      else if name == "Result"
-        ResultOreType
       else
-        RecordOreType(name: name)
+        type_expr_to_ore_type(NamedType(name: name))
     _ -> IntOreType
 
 -- Check if two types are equal (structural comparison)
