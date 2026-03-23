@@ -178,14 +178,34 @@ impl CCodeGen {
                 }
             }
             Expr::Ident(name) => {
-                self.variables.get(name).map(|v| v.kind.clone()).unwrap_or(ValKind::Int)
+                if let Some(v) = self.variables.get(name) {
+                    v.kind.clone()
+                } else if let Some(enum_name) = self.variant_to_enum.get(name) {
+                    ValKind::Enum(enum_name.clone())
+                } else {
+                    ValKind::Int
+                }
             }
             Expr::MethodCall { method, .. } => self.infer_method_return_kind(method.as_str()),
             Expr::BinOp { op, left, right } => self.infer_binop_kind(op, left, right),
-            Expr::IfElse { then_block, .. } => {
+            Expr::IfElse { then_block, else_block, .. } => {
                 if let Some(last) = then_block.stmts.last() {
                     if let Stmt::Expr(e) = &last.stmt {
-                        return self.infer_expr_kind(e);
+                        let kind = self.infer_expr_kind(e);
+                        if kind != ValKind::Int {
+                            return kind;
+                        }
+                    }
+                }
+                // Fall back to inferring from the else block when the then
+                // block yields Int (the default/unknown type).  This handles
+                // chained if/else where the then branch is a bare identifier
+                // whose kind cannot be determined statically.
+                if let Some(eb) = else_block {
+                    if let Some(last) = eb.stmts.last() {
+                        if let Stmt::Expr(e) = &last.stmt {
+                            return self.infer_expr_kind(e);
+                        }
                     }
                 }
                 ValKind::Int
@@ -196,6 +216,9 @@ impl CCodeGen {
             Expr::ResultErr(_) => ValKind::Result,
             Expr::Call { func, .. } => {
                 if let Expr::Ident(name) = func.as_ref() {
+                    if let Some(enum_name) = self.variant_to_enum.get(name) {
+                        return ValKind::Enum(enum_name.clone());
+                    }
                     if let Some(fn_info) = self.functions.get(name) {
                         return fn_info.ret_kind.clone();
                     }

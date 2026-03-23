@@ -1,0 +1,33 @@
+-- Test: mixing inline-then and block-style if/else with enum variants
+-- Reproduces codegen type mismatch when infer_expr_kind falls back to
+-- Int for zero-arg enum variants used as bare identifiers.
+
+type Color
+  Red()
+  Green()
+  Blue()
+
+fn color_name c:Color -> Str
+  match c
+    Red -> "red"
+    Green -> "green"
+    Blue -> "blue"
+
+fn pick_color n:Int -> Color
+  if n == 1
+    Red()
+  else if n == 2 then Green()
+  else Blue()
+
+fn pick_color2 n:Int -> Color
+  if n == 1 then Red()
+  else if n == 2 then Green()
+  else Blue()
+
+fn main
+  print color_name(pick_color(1))
+  print color_name(pick_color(2))
+  print color_name(pick_color(3))
+  print color_name(pick_color2(1))
+  print color_name(pick_color2(2))
+  print color_name(pick_color2(3))
