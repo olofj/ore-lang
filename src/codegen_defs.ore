@@ -1,0 +1,240 @@
+-- Codegen definitions: record/enum/function compilation, impl blocks, and item dispatch.
+
+-- ── Record construction ──
+
+fn compile_record_construct st:CodegenState exprs:List stmts:List type_name:Str fields:List -> List
+  t := cg_tmp(st)
+  c_type := "struct ore_rec_{type_name}"
+  emit(st, "{c_type} {t};")
+  -- fields is a list of [field_name, expr_id] pairs from the parser
+  for i in 0..fields.len()
+    pair := list_at(fields, i)
+    field_name := str_at(pair, 0)
+    value_id := pair[1]
+    r := compile_expr(st, exprs, stmts, value_id)
+    emit(st, "{t}.{field_name} = {r[0]};")
+  [t, "rec:{type_name}"]
+
+-- Construct an enum variant using named fields (RecordConstruct syntax)
+fn compile_variant_record_construct st:CodegenState exprs:List stmts:List variant:Str enum_name:Str fields:List -> List
+  tag := find_variant_tag(st, enum_name, variant)
+  t := cg_tmp(st)
+  c_type := "struct ore_enum_{enum_name}"
+  emit(st, "{c_type} {t}; {t}.tag = {tag};")
+  -- Store fields into data[] by field order
+  for i in 0..fields.len()
+    pair := list_at(fields, i)
+    value_id := pair[1]
+    r := compile_expr(st, exprs, stmts, value_id)
+    i64val := value_to_i64_expr(st, r[0], r[1])
+    emit(st, "{t}.data[{i}] = {i64val};")
+  [t, "enum:{enum_name}"]
+
+-- ── Type definitions ──
+
+fn compile_type_def st:CodegenState td:TypeDefNode
+  name := td.name
+  fields := td.fields
+  tl := st.top_level
+  tl.push("// Record: {name}")
+  mut sig := "struct ore_rec_{name} \{"
+  mut field_names_str := ""
+  mut field_kinds_str := ""
+  for i in 0..fields.len()
+    f := get_field_def(fields, i)
+    fn_str := f.name
+    ft := type_expr_to_kind_str(st, f.ty)
+    c_type := kind_to_c_type(ft)
+    sig = sig + " {c_type} {fn_str};"
+    if i > 0
+      field_names_str = field_names_str + ","
+      field_kinds_str = field_kinds_str + ","
+    field_names_str = field_names_str + fn_str
+    field_kinds_str = field_kinds_str + ft
+  sig = sig + " };"
+  tl.push(sig)
+  tl.push("")
+  cg_add_record(st, name, field_names_str, fields.len(), field_kinds_str)
+  cg_set_fn(st, name, "rec:{name}")
+
+fn compile_enum_def st:CodegenState ed:EnumDefNode
+  name := ed.name
+  variants := ed.variants
+  tl := st.top_level
+  -- Calculate max payload size
+  mut max_fields := 0
+  mut variant_names_str := ""
+  for i in 0..variants.len()
+    v := get_variant_def(variants, i)
+    if v.fields.len() > max_fields
+      max_fields = v.fields.len()
+    if i > 0
+      variant_names_str = variant_names_str + ","
+    variant_names_str = variant_names_str + v.name
+    -- Register variant-to-enum mapping
+    cg_add_variant_map(st, v.name, name)
+    -- Register variant field kinds
+    mut vfk_str := ""
+    for j in 0..v.fields.len()
+      vf := get_field_def(v.fields, j)
+      vfk := type_expr_to_kind_str(st, vf.ty)
+      if j > 0
+        vfk_str = vfk_str + ","
+      vfk_str = vfk_str + vfk
+    cg_add_variant_field_kinds(st, v.name, vfk_str)
+  -- Struct: { int8_t tag; int64_t data[N]; }
+  mut data_decl := ""
+  if max_fields > 0
+    data_decl = " int64_t data[{max_fields}];"
+  tl.push("// Enum: {name}")
+  tl.push("struct ore_enum_{name} \{ int8_t tag;{data_decl} };")
+  tl.push("")
+  cg_add_enum(st, name, "{name}:{variant_names_str}", variants.len())
+
+-- ── Function definition compilation ──
+
+fn compile_fn_def st:CodegenState exprs:List stmts:List fd:FnDef
+  name := fd.name
+  -- Skip duplicate function definitions (use separate compiled_fns list, not fn registry)
+  compiled := st.compiled_fns
+  for i in 0..compiled.len()
+    if compiled[i] == name
+      return
+  compiled.push(name)
+  params := fd.params
+  body := fd.body
+  ret_te := fd.ret_type
+  -- Determine return type
+  mut ret_kind := type_expr_to_kind_str(st, ret_te)
+  mut ret_c := kind_to_c_type(ret_kind)
+  if name == "main"
+    ret_c = "int"
+    ret_kind = "int"
+  -- Register function
+  cg_set_fn(st, name, ret_kind)
+  -- Track current function return kind for bare return handling
+  st.current_fn_ret_kind[0] = ret_kind
+  -- Save variable map (restore after function body)
+  saved_vars := cg_save_var_map(st)
+  -- Build parameter signature and collect param kinds
+  mn := mangle_fn(name)
+  mut param_sig := ""
+  mut param_kinds_parts := []
+  for i in 0..params.len()
+    p := get_param_def(params, i)
+    pk := type_expr_to_kind_str(st, p.ty)
+    pc := kind_to_c_type(pk)
+    pn := mangle_var(p.name)
+    param_kinds_parts.push(pk)
+    if i > 0
+      param_sig = param_sig + ", "
+    param_sig = param_sig + "{pc} {pn}"
+    cg_set_var(st, p.name, pk)
+  -- Register parameter kinds for arg coercion at call sites
+  cg_set_fn_params(st, name, param_kinds_parts.join(","))
+  -- Emit forward declaration
+  st.forward_decls.push("{ret_c} {mn}({param_sig});")
+  -- Emit function body
+  emit_raw(st, "")
+  emit_raw(st, "{ret_c} {mn}({param_sig}) \{")
+  cg_inc_indent(st)
+  block_result := compile_block(st, exprs, stmts, body)
+  -- Emit implicit return for non-void functions
+  if name == "main"
+    emit(st, "return 0;")
+  else if ret_kind != "void" and block_result[0] != ""
+    -- Coerce block result to function return type if needed
+    bk := block_result[1]
+    mut effective_bk := bk
+    if bk.starts_with("dynamic:")
+      effective_bk = "int"
+    if effective_bk != ret_kind
+      coerced := coerce_from_i64_expr(block_result[0], ret_kind)
+      emit(st, "return {coerced};")
+    else
+      emit(st, "return {block_result[0]};")
+  cg_dec_indent(st)
+  emit_raw(st, "}")
+  -- Restore variable map (remove params and locals from this function)
+  cg_restore_var_map(st, saved_vars)
+
+-- ── Impl block support ──
+
+-- Resolve Self type references in impl blocks.
+fn resolve_self_type te:TypeExpr type_name:Str -> TypeExpr
+  match te
+    NamedType name ->
+      if name == "Self"
+        return NamedType(name: type_name)
+      te
+    GenericType name args ->
+      mut new_name := name
+      if name == "Self"
+        new_name = type_name
+      mut new_args := []
+      for i in 0..args.len()
+        new_args.push(resolve_self_type(args[i], type_name))
+      GenericType(name: new_name, args: new_args)
+    _ ->
+      te
+
+-- Mangle an impl method into a top-level FnDef.
+-- Name becomes TypeName_method_name, Self types resolved, self param prepended if absent.
+fn mangle_impl_method type_name:Str method:FnDef -> FnDef
+  mangled_name := "{type_name}_{method.name}"
+  -- Resolve Self in params
+  mut resolved_params := []
+  for i in 0..method.params.len()
+    p := get_param_def(method.params, i)
+    resolved_ty := resolve_self_type(p.ty, type_name)
+    resolved_params.push(ParamDef(name: p.name, ty: resolved_ty, default_expr: p.default_expr))
+  -- Resolve Self in return type
+  resolved_ret := resolve_self_type(method.ret_type, type_name)
+  -- Check if self param already exists
+  mut has_self := false
+  if resolved_params.len() > 0
+    first_p := get_param_def(resolved_params, 0)
+    if first_p.name == "self"
+      has_self = true
+  -- Prepend self param if not present
+  mut final_params := []
+  if has_self
+    final_params = resolved_params
+  else
+    final_params.push(ParamDef(name: "self", ty: NamedType(name: type_name), default_expr: -1))
+    for i in 0..resolved_params.len()
+      final_params.push(resolved_params[i])
+  FnDef(name: mangled_name, type_params: method.type_params, params: final_params, ret_type: resolved_ret, body: method.body)
+
+-- Compile all methods in an impl block (or impl trait block).
+fn compile_impl_methods st:CodegenState exprs:List stmts:List type_name:Str methods:List
+  for i in 0..methods.len()
+    method := get_fn_def(methods, i)
+    mangled := mangle_impl_method(type_name, method)
+    compile_fn_def(st, exprs, stmts, mangled)
+
+-- ── Top-level item compilation ──
+
+fn compile_item st:CodegenState exprs:List stmts:List item:Item
+  match item
+    FnDefItem fn_def ->
+      compile_fn_def(st, exprs, stmts, fn_def)
+    TypeDefItem type_def ->
+      compile_type_def(st, type_def)
+    EnumDefItem enum_def ->
+      compile_enum_def(st, enum_def)
+    TestDefItem name body ->
+      -- Compile test as a function
+      test_name := "test_{name}"
+      test_fn := FnDef(name: test_name, type_params: [], params: [], ret_type: NamedType(name: "Void"), body: body)
+      compile_fn_def(st, exprs, stmts, test_fn)
+    UseItem path ->
+      -- Use items are resolved at the driver level (source merging), skip
+      0
+    ImplBlockItem type_name methods ->
+      compile_impl_methods(st, exprs, stmts, type_name, methods)
+    ImplTraitItem trait_name type_name methods ->
+      compile_impl_methods(st, exprs, stmts, type_name, methods)
+    _ ->
+      -- TraitDefItem — skip (trait defs don't generate code)
+      emit_raw(st, "// (skipped item)")

@@ -1,0 +1,283 @@
+-- Codegen state management: CodegenState record, accessors, and tracking registries.
+-- All compiler state in named fields; List/Map fields are heap-allocated.
+
+use ast
+use arena
+use types
+
+-- ── State Management ──
+-- Codegen state record: all compiler state in named fields.
+-- List/Map fields are heap-allocated; mutations through them (push, clear, set)
+-- are visible across pass-by-value record copies.
+type CodegenState { lines: List, indent: List, temp_counter: List, label_counter: List, var_map: Map, fn_ret_map: Map, forward_decls: List, top_level: List, errors: List, record_names: List, record_field_names: List, record_field_counts: List, enum_names: List, enum_variant_names: List, enum_variant_counts: List, variant_to_enum: List, break_labels: List, continue_labels: List, generic_fn_names: List, generic_fn_defs: List, mono_cache: List, exprs_pool: List, stmts_pool: List, deferred_fns: List, record_field_kinds: List, variant_field_kinds: List, current_fn_ret_kind: List, compiled_fns: List, fn_params_map: Map }
+
+fn cg_new exprs:List stmts:List -> CodegenState
+  CodegenState(lines: [], indent: [0], temp_counter: [0], label_counter: [0], var_map: {}, fn_ret_map: {}, forward_decls: [], top_level: [], errors: [], record_names: [], record_field_names: [], record_field_counts: [], enum_names: [], enum_variant_names: [], enum_variant_counts: [], variant_to_enum: [], break_labels: [], continue_labels: [], generic_fn_names: [], generic_fn_defs: [], mono_cache: [], exprs_pool: exprs, stmts_pool: stmts, deferred_fns: [], record_field_kinds: [], variant_field_kinds: [], current_fn_ret_kind: ["void"], compiled_fns: [], fn_params_map: {})
+
+fn list_at lst:List idx:Int -> List
+  lst[idx]
+
+-- Get a string from an inner list (typed access for nested lists)
+fn str_at lst:List idx:Int -> Str
+  lst[idx]
+
+fn cg_lines st:CodegenState -> List
+  st.lines
+
+fn cg_indent st:CodegenState -> Int
+  p := st.indent
+  p[0]
+
+fn cg_set_indent st:CodegenState val:Int
+  p := st.indent
+  p[0] = val
+
+fn cg_inc_indent st:CodegenState
+  cg_set_indent(st, cg_indent(st) + 1)
+
+fn cg_dec_indent st:CodegenState
+  n := cg_indent(st)
+  if n > 0
+    cg_set_indent(st, n - 1)
+
+fn cg_tmp st:CodegenState -> Str
+  p := st.temp_counter
+  n := p[0]
+  p[0] = n + 1
+  "__tmp_{n}"
+
+fn cg_label st:CodegenState prefix:Str -> Str
+  p := st.label_counter
+  n := p[0]
+  p[0] = n + 1
+  "{prefix}_{n}"
+
+fn cg_errors st:CodegenState -> List
+  st.errors
+
+fn cg_error st:CodegenState msg:Str
+  errs := cg_errors(st)
+  errs.push(msg)
+
+-- ── Save/restore helpers ──
+-- Records are passed by value; List/Map fields share heap objects.
+-- To scope state, we save contents, mutate in-place, then restore.
+
+fn cg_save_lines st:CodegenState -> List
+  st.lines.slice(0, st.lines.len())
+
+fn cg_restore_lines st:CodegenState saved:List
+  st.lines.clear()
+  for i in 0..saved.len()
+    st.lines.push(saved[i])
+
+fn cg_save_var_map st:CodegenState -> List
+  [st.var_map.keys(), st.var_map.values()]
+
+fn cg_restore_var_map st:CodegenState saved:List
+  st.var_map.clear()
+  keys := list_at(saved, 0)
+  vals := list_at(saved, 1)
+  for i in 0..keys.len()
+    k := str_at(keys, i)
+    st.var_map.set(k, vals[i])
+
+-- ── Emit helpers ──
+
+fn indent_str n:Int -> Str
+  if n <= 0
+    return ""
+  if n == 1
+    return "    "
+  if n == 2
+    return "        "
+  if n == 3
+    return "            "
+  if n == 4
+    return "                "
+  -- fallback
+  mut s := ""
+  for i in 0..n
+    s = s + "    "
+  s
+
+fn emit st:CodegenState line:Str
+  ind := indent_str(cg_indent(st))
+  cg_lines(st).push(ind + line)
+
+fn emit_raw st:CodegenState line:Str
+  cg_lines(st).push(line)
+
+-- ── Variable tracking (Map-based O(1) lookup) ──
+
+fn cg_var_map st:CodegenState -> Map
+  st.var_map
+
+fn cg_set_var st:CodegenState name:Str kind:Str
+  cg_var_map(st).set(name, kind)
+
+fn cg_get_var_kind st:CodegenState name:Str -> Str
+  m := cg_var_map(st)
+  if m.contains(name)
+    return m.get(name)
+  "int"
+
+fn cg_has_var st:CodegenState name:Str -> Bool
+  cg_var_map(st).contains(name)
+
+-- ── Function tracking (Map-based O(1) lookup) ──
+
+fn cg_fn_ret_map st:CodegenState -> Map
+  st.fn_ret_map
+
+fn cg_fn_params_map st:CodegenState -> Map
+  st.fn_params_map
+
+fn cg_set_fn st:CodegenState name:Str ret_kind:Str
+  cg_fn_ret_map(st).set(name, ret_kind)
+
+fn cg_set_fn_params st:CodegenState name:Str param_kinds_str:Str
+  cg_fn_params_map(st).set(name, param_kinds_str)
+
+fn cg_get_fn_params st:CodegenState name:Str -> Str
+  m := cg_fn_params_map(st)
+  if m.contains(name)
+    return m.get(name)
+  ""
+
+fn cg_get_fn_ret st:CodegenState name:Str -> Str
+  m := cg_fn_ret_map(st)
+  if m.contains(name)
+    return m.get(name)
+  "int64_t"
+
+fn cg_has_fn st:CodegenState name:Str -> Bool
+  cg_fn_ret_map(st).contains(name)
+
+-- ── Generic function tracking ──
+
+fn cg_add_generic_fn st:CodegenState name:Str fd:FnDef
+  st.generic_fn_names.push(name)
+  st.generic_fn_defs.push(fd)
+
+fn cg_get_generic_fn st:CodegenState name:Str -> List
+  names := st.generic_fn_names
+  defs := st.generic_fn_defs
+  for i in 0..names.len()
+    if str_at(names, i) == name
+      return [defs[i]]
+  []
+
+fn cg_has_generic_fn st:CodegenState name:Str -> Bool
+  names := st.generic_fn_names
+  for i in 0..names.len()
+    if str_at(names, i) == name
+      return true
+  false
+
+fn cg_has_mono st:CodegenState mono_name:Str -> Bool
+  cache := st.mono_cache
+  for i in 0..cache.len()
+    if str_at(cache, i) == mono_name
+      return true
+  false
+
+fn cg_add_mono st:CodegenState mono_name:Str
+  st.mono_cache.push(mono_name)
+
+-- ── Record/Enum tracking ──
+
+fn cg_add_record st:CodegenState name:Str fields_str:Str count:Int field_kinds_str:Str
+  st.record_names.push(name)
+  st.record_field_names.push(fields_str)
+  st.record_field_counts.push(count)
+  st.record_field_kinds.push(field_kinds_str)
+
+fn cg_is_record st:CodegenState name:Str -> Bool
+  recs := st.record_names
+  for i in 0..recs.len()
+    if str_at(recs, i) == name
+      return true
+  false
+
+fn cg_get_record_field_kind st:CodegenState rec_name:Str field:Str -> Str
+  recs := st.record_names
+  fields_list := st.record_field_names
+  kinds_list := st.record_field_kinds
+  for i in 0..recs.len()
+    if str_at(recs, i) == rec_name
+      fnames := str_at(fields_list, i).split(",")
+      fkinds := str_at(kinds_list, i).split(",")
+      for j in 0..fnames.len()
+        if str_at(fnames, j) == field
+          return str_at(fkinds, j)
+  "int"
+
+-- Infer which record type has a given field name
+fn cg_infer_record_by_field st:CodegenState field:Str -> Str
+  recs := st.record_names
+  fields_list := st.record_field_names
+  for i in 0..recs.len()
+    fnames := str_at(fields_list, i).split(",")
+    for j in 0..fnames.len()
+      if str_at(fnames, j) == field
+        return str_at(recs, i)
+  ""
+
+fn cg_add_enum st:CodegenState name:Str variants_str:Str count:Int
+  st.enum_names.push(name)
+  st.enum_variant_names.push(variants_str)
+  st.enum_variant_counts.push(count)
+
+fn cg_is_enum st:CodegenState name:Str -> Bool
+  enums := st.enum_names
+  for i in 0..enums.len()
+    if str_at(enums, i) == name
+      return true
+  false
+
+fn cg_add_variant_map st:CodegenState variant:Str enum_name:Str
+  st.variant_to_enum.push("{variant}:{enum_name}")
+
+fn cg_variant_enum st:CodegenState variant:Str -> Str
+  entries := st.variant_to_enum
+  prefix := variant + ":"
+  for i in 0..entries.len()
+    e := str_at(entries, i)
+    if e.starts_with(prefix)
+      return e.substr(prefix.len(), e.len() - prefix.len())
+  ""
+
+-- Store variant field kinds: "VariantName:kind0,kind1,kind2"
+fn cg_add_variant_field_kinds st:CodegenState variant:Str kinds_str:Str
+  st.variant_field_kinds.push("{variant}:{kinds_str}")
+
+-- Look up the kind of a specific field in a variant by index
+fn cg_get_variant_field_kind st:CodegenState variant:Str idx:Int -> Str
+  entries := st.variant_field_kinds
+  prefix := variant + ":"
+  for i in 0..entries.len()
+    e := str_at(entries, i)
+    if e.starts_with(prefix)
+      kinds_str := e.substr(prefix.len(), e.len() - prefix.len())
+      if kinds_str == ""
+        return "int"
+      parts := kinds_str.split(",")
+      if idx < parts.len()
+        return str_at(parts, idx)
+      return "int"
+  "int"
+
+-- ── Utility functions ──
+
+fn list_contains_str lst:List s:Str -> Bool
+  for i in 0..lst.len()
+    if str_at(lst, i) == s
+      return true
+  false
+
+fn copy_str_list src:List -> List
+  mut dst := []
+  for i in 0..src.len()
+    dst.push(src[i])
+  dst

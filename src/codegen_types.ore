@@ -1,0 +1,331 @@
+-- Codegen type helpers: C type mapping, coercion, type expressions,
+-- monomorphization helpers, C reserved word mangling, and string escaping.
+
+-- ── C type mapping ──
+
+fn kind_to_c_type kind:Str -> Str
+  if kind == "int"
+    return "int64_t"
+  if kind == "float"
+    return "double"
+  if kind == "bool"
+    return "int8_t"
+  if kind == "str"
+    return "void*"
+  if kind == "list"
+    return "void*"
+  if kind == "map"
+    return "void*"
+  if kind == "void"
+    return "void"
+  if kind == "option"
+    return "OreTaggedUnion"
+  if kind == "result"
+    return "OreTaggedUnion"
+  -- records/enums: use struct type
+  if kind.starts_with("rec:")
+    n := kind.substr(4, kind.len() - 4)
+    return "struct ore_rec_{n}"
+  if kind.starts_with("enum:")
+    n := kind.substr(5, kind.len() - 5)
+    return "struct ore_enum_{n}"
+  "int64_t"
+
+-- Convert kind string to runtime kind tag integer
+fn kind_to_tag kind:Str -> Int
+  if kind == "int"
+    return 0
+  if kind == "float"
+    return 1
+  if kind == "bool"
+    return 2
+  if kind == "str"
+    return 3
+  if kind == "void"
+    return 4
+  if kind.starts_with("rec:")
+    return 5
+  if kind.starts_with("enum:")
+    return 6
+  if kind == "option"
+    return 7
+  if kind == "result"
+    return 8
+  if kind == "list"
+    return 9
+  if kind == "map"
+    return 10
+  0
+
+-- Ensure a value is a void* pointer expression.
+-- If kind is already str/list/map, value is already void*.
+-- If kind is int/dynamic/unknown, cast from int64_t to void*.
+fn ensure_void_ptr val:Str kind:Str -> Str
+  if kind == "str" or kind == "list" or kind == "map"
+    return val
+  "(void*)(intptr_t)({val})"
+
+-- Convert a value expression to an int64_t expression for storage in lists.
+-- For struct types (enum/record), heap-allocates and returns pointer as int64_t.
+fn value_to_i64_expr st:CodegenState val:Str kind:Str -> Str
+  if kind.starts_with("enum:")
+    ct := kind_to_c_type(kind)
+    return "(\{ {ct} __v2i = {val}; (int64_t)(intptr_t)memcpy(malloc(sizeof({ct})), &__v2i, sizeof({ct})); })"
+  if kind.starts_with("rec:")
+    ct := kind_to_c_type(kind)
+    return "(\{ {ct} __v2i = {val}; (int64_t)(intptr_t)memcpy(malloc(sizeof({ct})), &__v2i, sizeof({ct})); })"
+  if kind == "str" or kind == "list" or kind == "map"
+    return "(int64_t)(intptr_t)({val})"
+  if kind == "bool"
+    return "(int64_t)({val})"
+  if kind == "float"
+    return "*(int64_t*)&(double)\{{val}}"
+  "(int64_t)({val})"
+
+-- Convert an int64_t expression back to the proper C type.
+-- For struct types, dereferences the heap pointer.
+fn coerce_from_i64_expr val:Str kind:Str -> Str
+  if kind.starts_with("enum:")
+    ct := kind_to_c_type(kind)
+    return "*({ct}*)(intptr_t)({val})"
+  if kind.starts_with("rec:")
+    ct := kind_to_c_type(kind)
+    return "*({ct}*)(intptr_t)({val})"
+  if kind == "str" or kind == "list" or kind == "map"
+    return "(void*)(intptr_t)({val})"
+  if kind == "bool"
+    return "(int8_t)({val})"
+  if kind == "float"
+    return "*(double*)&(int64_t)\{{val}}"
+  val
+
+-- Coerce an argument expression to match a parameter's expected type.
+-- Handles int64_t -> struct (enum/record) and struct -> int64_t conversions.
+fn coerce_arg_to_param st:CodegenState expr:Str arg_kind:Str param_kind:Str -> Str
+  if arg_kind == param_kind
+    return expr
+  -- Treat dynamic kinds as int64_t for coercion purposes
+  mut effective_arg_kind := arg_kind
+  if arg_kind.starts_with("dynamic:")
+    effective_arg_kind = "int"
+  -- int64_t arg where struct param is expected: dereference heap pointer
+  mut arg_is_i64 := effective_arg_kind == "int" or effective_arg_kind == "void"
+  mut param_is_struct := param_kind.starts_with("enum:") or param_kind.starts_with("rec:")
+  if arg_is_i64 and param_is_struct
+    return coerce_from_i64_expr(expr, param_kind)
+  -- struct arg where int64_t param is expected: box to heap
+  mut arg_is_struct := effective_arg_kind.starts_with("enum:") or effective_arg_kind.starts_with("rec:")
+  mut param_is_i64 := param_kind == "int" or param_kind == "void"
+  if arg_is_struct and param_is_i64
+    return value_to_i64_expr(st, expr, arg_kind)
+  -- str arg where int64_t param is expected
+  if effective_arg_kind == "str" and param_is_i64
+    return "(int64_t)(intptr_t)({expr})"
+  -- int64_t arg where str param is expected
+  if arg_is_i64 and param_kind == "str"
+    return "(void*)(intptr_t)({expr})"
+  -- int64_t arg where list/map param is expected
+  if arg_is_i64 and (param_kind == "list" or param_kind == "map")
+    return "(void*)(intptr_t)({expr})"
+  -- list/map arg where int64_t param is expected
+  if (effective_arg_kind == "list" or effective_arg_kind == "map") and param_is_i64
+    return "(int64_t)(intptr_t)({expr})"
+  expr
+
+fn type_expr_to_kind_str st:CodegenState te:TypeExpr -> Str
+  match te
+    NamedType name ->
+      if name == "Int"
+        return "int"
+      if name == "Float"
+        return "float"
+      if name == "Bool"
+        return "bool"
+      if name == "Str"
+        return "str"
+      if name == "Void"
+        return "void"
+      if name == "List"
+        return "list"
+      if name == "Map"
+        return "map"
+      if name == "Option"
+        return "option"
+      if name == "Result"
+        return "result"
+      if name == "Channel"
+        return "int64_t"
+      if cg_is_record(st, name)
+        return "rec:{name}"
+      if cg_is_enum(st, name)
+        return "enum:{name}"
+      return "int"
+    _ ->
+      return "int"
+  "int"
+
+-- ── Monomorphization helpers ──
+
+fn kind_to_suffix kind:Str -> Str
+  if kind == "int"
+    return "Int"
+  if kind == "float"
+    return "Float"
+  if kind == "bool"
+    return "Bool"
+  if kind == "str"
+    return "Str"
+  if kind == "void"
+    return "Void"
+  if kind == "list"
+    return "List"
+  if kind == "map"
+    return "Map"
+  if kind == "option"
+    return "Option"
+  if kind == "result"
+    return "Result"
+  if kind.starts_with("rec:")
+    n := kind.substr(4, kind.len() - 4)
+    return "Rec_{n}"
+  if kind.starts_with("enum:")
+    n := kind.substr(5, kind.len() - 5)
+    return "Enum_{n}"
+  "Int"
+
+fn kind_str_to_type_name kind:Str -> Str
+  if kind == "int"
+    return "Int"
+  if kind == "float"
+    return "Float"
+  if kind == "bool"
+    return "Bool"
+  if kind == "str"
+    return "Str"
+  if kind == "void"
+    return "Void"
+  if kind == "list"
+    return "List"
+  if kind == "map"
+    return "Map"
+  if kind == "option"
+    return "Option"
+  if kind == "result"
+    return "Result"
+  "Int"
+
+-- ── C reserved word mangling ──
+
+fn is_c_reserved name:Str -> Bool
+  if name == "auto"
+    return true
+  if name == "break"
+    return true
+  if name == "case"
+    return true
+  if name == "char"
+    return true
+  if name == "const"
+    return true
+  if name == "continue"
+    return true
+  if name == "default"
+    return true
+  if name == "do"
+    return true
+  if name == "double"
+    return true
+  if name == "else"
+    return true
+  if name == "enum"
+    return true
+  if name == "extern"
+    return true
+  if name == "float"
+    return true
+  if name == "for"
+    return true
+  if name == "goto"
+    return true
+  if name == "if"
+    return true
+  if name == "int"
+    return true
+  if name == "long"
+    return true
+  if name == "register"
+    return true
+  if name == "return"
+    return true
+  if name == "short"
+    return true
+  if name == "signed"
+    return true
+  if name == "sizeof"
+    return true
+  if name == "static"
+    return true
+  if name == "struct"
+    return true
+  if name == "switch"
+    return true
+  if name == "typedef"
+    return true
+  if name == "union"
+    return true
+  if name == "unsigned"
+    return true
+  if name == "void"
+    return true
+  if name == "volatile"
+    return true
+  if name == "while"
+    return true
+  if name == "malloc"
+    return true
+  if name == "free"
+    return true
+  if name == "printf"
+    return true
+  if name == "exit"
+    return true
+  if name == "main"
+    return true
+  false
+
+fn mangle_fn name:Str -> Str
+  if name == "main"
+    return name
+  if is_c_reserved(name)
+    return "ore_fn_{name}"
+  name
+
+fn mangle_var name:Str -> Str
+  if is_c_reserved(name)
+    return "ore_v_{name}"
+  name
+
+-- ── Escape C string ──
+
+fn c_escape s:Str -> Str
+  mut out := ""
+  chars := s.chars()
+  for i in 0..chars.len()
+    c := chars[i]
+    if c == "\\"
+      out = out + "\\\\"
+    else if c == "\""
+      out = out + "\\\""
+    else if c == "\n"
+      out = out + "\\n"
+    else if c == "\r"
+      out = out + "\\r"
+    else if c == "\t"
+      out = out + "\\t"
+    else if c == "\0"
+      out = out + "\\0"
+    else if ord(c) < 32
+      out = out + "\\x" + chr(48 + ord(c) / 16) + chr(48 + ord(c) % 16)
+    else
+      out = out + c
+  out

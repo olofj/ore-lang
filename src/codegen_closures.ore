@@ -1,0 +1,298 @@
+-- Codegen closure compilation: free variable detection and lambda/closure emission.
+
+-- ── Free variable detection for closures ──
+
+fn collect_free_vars_expr exprs:List stmts:List expr_id:Int bound:List seen:List free:List
+  e := get_expr(exprs, expr_id)
+  match e
+    IdentExpr name ->
+      if not list_contains_str(bound, name)
+        if not list_contains_str(seen, name)
+          seen.push(name)
+          free.push(name)
+    IntLitExpr _ ->
+      st := 0
+    FloatLitExpr _ ->
+      st := 0
+    BoolLitExpr _ ->
+      st := 0
+    StringLitExpr _ ->
+      st := 0
+    BreakExpr ->
+      st := 0
+    OptionNoneExpr ->
+      st := 0
+    BinOpExpr op left right ->
+      collect_free_vars_expr(exprs, stmts, left, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, right, bound, seen, free)
+    UnaryMinusExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    UnaryNotExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    PrintExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    OptionSomeExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    ResultOkExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    ResultErrExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    TryExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    SleepExpr inner ->
+      collect_free_vars_expr(exprs, stmts, inner, bound, seen, free)
+    CallExpr func args ->
+      collect_free_vars_expr(exprs, stmts, func, bound, seen, free)
+      for i in 0..args.len()
+        collect_free_vars_expr(exprs, stmts, args[i], bound, seen, free)
+    LambdaExpr lparams lbody ->
+      mut inner_bound := copy_str_list(bound)
+      for i in 0..lparams.len()
+        inner_bound.push(lparams[i])
+      collect_free_vars_expr(exprs, stmts, lbody, inner_bound, seen, free)
+    IfElseExpr cond then_block else_block ->
+      collect_free_vars_expr(exprs, stmts, cond, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, then_block, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, else_block, bound, seen, free)
+    ColonMatchExpr cond then_expr else_expr ->
+      collect_free_vars_expr(exprs, stmts, cond, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, then_expr, bound, seen, free)
+      if else_expr >= 0
+        collect_free_vars_expr(exprs, stmts, else_expr, bound, seen, free)
+    MatchExpr subject arms ->
+      collect_free_vars_expr(exprs, stmts, subject, bound, seen, free)
+      for i in 0..arms.len()
+        arm := get_match_arm(arms, i)
+        if arm.guard >= 0
+          collect_free_vars_expr(exprs, stmts, arm.guard, bound, seen, free)
+        collect_free_vars_expr(exprs, stmts, arm.body, bound, seen, free)
+    StringInterpExpr parts ->
+      for i in 0..parts.len()
+        p := get_string_part(parts, i)
+        match p
+          ExprPart expr_id ->
+            collect_free_vars_expr(exprs, stmts, expr_id, bound, seen, free)
+          _ ->
+            st := 0
+    BlockExprExpr block ->
+      collect_free_vars_block(exprs, stmts, block, bound, seen, free)
+    RecordConstructExpr type_name fields ->
+      for i in 0..fields.len()
+        collect_free_vars_expr(exprs, stmts, fields[i], bound, seen, free)
+    FieldAccessExpr object field ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+    OptionalChainExpr object field ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+    MethodCallExpr object method args ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      for i in 0..args.len()
+        collect_free_vars_expr(exprs, stmts, args[i], bound, seen, free)
+    OptionalMethodCallExpr object method args ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      for i in 0..args.len()
+        collect_free_vars_expr(exprs, stmts, args[i], bound, seen, free)
+    ListLitExpr elements ->
+      for i in 0..elements.len()
+        collect_free_vars_expr(exprs, stmts, elements[i], bound, seen, free)
+    ListCompExpr expr var_name iterable cond ->
+      collect_free_vars_expr(exprs, stmts, iterable, bound, seen, free)
+      mut inner_bound := copy_str_list(bound)
+      inner_bound.push(var_name)
+      collect_free_vars_expr(exprs, stmts, expr, inner_bound, seen, free)
+      if cond >= 0
+        collect_free_vars_expr(exprs, stmts, cond, inner_bound, seen, free)
+    MapLitExpr entries ->
+      for i in 0..entries.len()
+        collect_free_vars_expr(exprs, stmts, entries[i], bound, seen, free)
+    IndexExpr object index ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, index, bound, seen, free)
+    AssertExpr cond message ->
+      collect_free_vars_expr(exprs, stmts, cond, bound, seen, free)
+    AssertEqExpr left right message ->
+      collect_free_vars_expr(exprs, stmts, left, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, right, bound, seen, free)
+    AssertNeExpr left right message ->
+      collect_free_vars_expr(exprs, stmts, left, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, right, bound, seen, free)
+    _ ->
+      st := 0
+
+fn collect_free_vars_stmt exprs:List stmts:List stmt_id:Int bound:List seen:List free:List
+  s := get_stmt(stmts, stmt_id)
+  match s
+    LetStmt name mutable value ->
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    LetDestructureStmt names value ->
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    AssignStmt name value ->
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    ExprStmt expr ->
+      collect_free_vars_expr(exprs, stmts, expr, bound, seen, free)
+    ReturnStmt value ->
+      if value >= 0
+        collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    SpawnStmt expr ->
+      collect_free_vars_expr(exprs, stmts, expr, bound, seen, free)
+    ForInStmt var_name start end step body ->
+      collect_free_vars_expr(exprs, stmts, start, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, end, bound, seen, free)
+      if step >= 0
+        collect_free_vars_expr(exprs, stmts, step, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    WhileStmt cond body ->
+      collect_free_vars_expr(exprs, stmts, cond, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    ForEachStmt var_name iterable body ->
+      collect_free_vars_expr(exprs, stmts, iterable, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    ForEachKVStmt key_var val_var iterable body ->
+      collect_free_vars_expr(exprs, stmts, iterable, bound, seen, free)
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    LoopStmt body ->
+      collect_free_vars_block(exprs, stmts, body, bound, seen, free)
+    IndexAssignStmt object index value ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, index, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    FieldAssignStmt object field value ->
+      collect_free_vars_expr(exprs, stmts, object, bound, seen, free)
+      collect_free_vars_expr(exprs, stmts, value, bound, seen, free)
+    _ ->
+      st := 0
+
+fn collect_free_vars_block exprs:List stmts:List block:Block bound:List seen:List free:List
+  ss := block.stmts
+  for i in 0..ss.len()
+    sp := get_sstmt(ss, i)
+    collect_free_vars_stmt(exprs, stmts, sp.stmt_id, bound, seen, free)
+
+fn find_free_vars exprs:List stmts:List expr_id:Int params:List -> List
+  mut bound := []
+  for i in 0..params.len()
+    bound.push(params[i])
+  mut seen := []
+  mut free := []
+  collect_free_vars_expr(exprs, stmts, expr_id, bound, seen, free)
+  free
+
+-- ── Lambda / Closure compilation ──
+
+fn compile_lambda st:CodegenState exprs:List stmts:List params:List body:Int -> List
+  lname := cg_label(st, "lambda")
+
+  -- Detect free variables (captures)
+  free_vars := find_free_vars(exprs, stmts, body, params)
+
+  -- Filter to variables that exist in the current scope
+  mut capture_names := []
+  mut capture_kinds := []
+  for i in 0..free_vars.len()
+    fv := str_at(free_vars, i)
+    if cg_has_var(st, fv)
+      capture_names.push(fv)
+      capture_kinds.push(cg_get_var_kind(st, fv))
+
+  has_captures := capture_names.len() > 0
+
+  -- Build function parameter signature
+  mut param_sig := ""
+  if has_captures
+    param_sig = "void* __env"
+  for i in 0..params.len()
+    if param_sig != ""
+      param_sig = param_sig + ", "
+    param_sig = param_sig + "int64_t {params[i]}"
+
+  -- Emit capture struct definition if needed
+  mut struct_name := ""
+  if has_captures
+    struct_name = "__captures_{lname}"
+    tl := st.top_level
+    mut struct_def := "struct {struct_name} \{"
+    for i in 0..capture_names.len()
+      cn := str_at(capture_names, i)
+      ck := str_at(capture_kinds, i)
+      ct := kind_to_c_type(ck)
+      struct_def = struct_def + " {ct} {cn};"
+    struct_def = struct_def + " };"
+    tl.push(struct_def)
+    tl.push("")
+
+  -- Save current codegen state (in-place save/restore for pass-by-value records)
+  saved_lines := cg_save_lines(st)
+  saved_indent := cg_indent(st)
+  saved_vars := cg_save_var_map(st)
+
+  -- Set up fresh lines for lambda body compilation (keep var_map for captures)
+  st.lines.clear()
+  cg_set_indent(st, 1)
+
+  -- Extract captured variables from env_ptr
+  if has_captures
+    emit(st, "struct {struct_name}* __cap = (struct {struct_name}*)__env;")
+    for i in 0..capture_names.len()
+      cn := str_at(capture_names, i)
+      ck := str_at(capture_kinds, i)
+      ct := kind_to_c_type(ck)
+      emit(st, "{ct} {cn} = __cap->{cn};")
+      cg_set_var(st, cn, ck)
+
+  -- Register lambda parameters as variables
+  for i in 0..params.len()
+    pn := str_at(params, i)
+    cg_set_var(st, pn, "int")
+
+  -- Compile the body expression
+  r := compile_expr(st, exprs, stmts, body)
+
+  -- Emit return statement
+  emit(st, "return (int64_t)({r[0]});")
+
+  -- Collect lambda body lines before restoring
+  body_lines := st.lines.slice(0, st.lines.len())
+
+  -- Restore state
+  cg_restore_lines(st, saved_lines)
+  cg_set_indent(st, saved_indent)
+  cg_restore_var_map(st, saved_vars)
+
+  -- Emit the lambda function definition into top_level
+  tl2 := st.top_level
+  tl2.push("static int64_t {lname}({param_sig}) \{")
+  for i in 0..body_lines.len()
+    tl2.push(body_lines[i])
+  tl2.push("}")
+  tl2.push("")
+
+  -- Build the captures struct at the call site and return closure expression
+  if has_captures
+    cap_var := cg_tmp(st)
+    emit(st, "struct {struct_name} {cap_var};")
+    for i in 0..capture_names.len()
+      cn := str_at(capture_names, i)
+      -- Use the mangled name from current scope
+      mn := mangle_var(cn)
+      emit(st, "{cap_var}.{cn} = {mn};")
+    ["__closure_{lname}|{cap_var}", "int"]
+  else
+    ["(void*)&{lname}", "int"]
+
+-- Parse a closure expression into (fn_ptr, env_ptr)
+-- Closure format: "__closure_LAMBDA_NAME|CAP_VAR"
+-- Regular function pointer: "(void*)&FUNC_NAME"
+fn parse_closure_expr cexpr:Str -> List
+  if cexpr.starts_with("__closure_")
+    rest := cexpr.substr(10, cexpr.len() - 10)
+    -- Find the | separator
+    chars := rest.chars()
+    mut pipe_idx := -1
+    for i in 0..chars.len()
+      if chars[i] == "|"
+        pipe_idx = i
+    if pipe_idx >= 0
+      lname := rest.substr(0, pipe_idx)
+      cap_var := rest.substr(pipe_idx + 1, rest.len() - pipe_idx - 1)
+      return ["(void*)&{lname}", "(void*)&{cap_var}"]
+  result := [cexpr, "NULL"]
+  result
