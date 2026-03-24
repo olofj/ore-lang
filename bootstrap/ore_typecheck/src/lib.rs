@@ -2,6 +2,53 @@ use ore_parser::ast::*;
 use ore_types::Type;
 use std::collections::HashMap;
 
+/// Compute Levenshtein edit distance between two strings (case-insensitive).
+fn edit_distance(a: &str, b: &str) -> usize {
+    let a = a.to_lowercase();
+    let b = b.to_lowercase();
+    let a = a.as_bytes();
+    let b = b.as_bytes();
+    let mut dp = vec![vec![0usize; b.len() + 1]; a.len() + 1];
+    for i in 0..=a.len() {
+        dp[i][0] = i;
+    }
+    for j in 0..=b.len() {
+        dp[0][j] = j;
+    }
+    for i in 1..=a.len() {
+        for j in 1..=b.len() {
+            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            dp[i][j] = (dp[i - 1][j] + 1)
+                .min(dp[i][j - 1] + 1)
+                .min(dp[i - 1][j - 1] + cost);
+        }
+    }
+    dp[a.len()][b.len()]
+}
+
+/// Find the closest match to `name` from `candidates`.
+/// Returns `Some(suggestion)` if within a reasonable edit distance threshold.
+fn suggest_similar<'a>(name: &str, candidates: impl Iterator<Item = &'a str>) -> Option<String> {
+    let threshold = match name.len() {
+        0..=2 => 1,
+        3..=5 => 2,
+        _ => 3,
+    };
+    let mut best: Option<(usize, String)> = None;
+    for candidate in candidates {
+        if candidate == name {
+            continue;
+        }
+        let dist = edit_distance(name, candidate);
+        if dist <= threshold {
+            if best.as_ref().map_or(true, |(d, _)| dist < *d) {
+                best = Some((dist, candidate.to_string()));
+            }
+        }
+    }
+    best.map(|(_, s)| s)
+}
+
 /// Pipeline method names resolved at codegen time, not type-check time.
 const PIPELINE_METHODS: &[&str] = &[
     "map", "filter", "each", "reduce", "fold", "scan", "join",
@@ -84,6 +131,15 @@ impl Env {
         self.vars.insert(name, (ty, mutable));
     }
 
+    /// Collect all variable names visible in this scope (for suggestions).
+    fn all_names(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = self.vars.keys().map(|s| s.as_str()).collect();
+        if let Some(ref parent) = self.parent {
+            names.extend(parent.all_names());
+        }
+        names
+    }
+
     /// Create a child scope, taking ownership of the parent.
     fn push_scope(parent: &mut Env) -> Env {
         Env {
@@ -132,6 +188,20 @@ impl TypeChecker {
 
     fn err(&mut self, msg: impl Into<String>) {
         self.errors.push(TypeError { msg: msg.into(), line: self.current_line });
+    }
+
+    /// Collect all known type names (records, enums, builtins) for suggestions.
+    fn all_type_names(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = Vec::new();
+        names.extend(self.records.keys().map(|s| s.as_str()));
+        names.extend(self.enums.keys().map(|s| s.as_str()));
+        names.extend(["Int", "Float", "Bool", "Str"].iter());
+        names
+    }
+
+    /// Collect all known function names for suggestions.
+    fn all_function_names(&self) -> Vec<&str> {
+        self.functions.keys().map(|s| s.as_str()).collect()
     }
 
     fn resolve_type_expr(&self, te: &TypeExpr) -> Type {
@@ -265,7 +335,11 @@ impl TypeChecker {
             && !self.enums.contains_key(type_name)
             && !matches!(type_name, "Int" | "Float" | "Bool" | "Str")
         {
-            self.err(format!("unknown type '{}' in impl block", type_name));
+            let mut msg = format!("unknown type '{}' in impl block", type_name);
+            if let Some(suggestion) = suggest_similar(type_name, self.all_type_names().into_iter()) {
+                msg.push_str(&format!("; did you mean '{}'?", suggestion));
+            }
+            self.err(msg);
         }
 
         // Check that all required methods are implemented
@@ -397,7 +471,7 @@ impl TypeChecker {
                 let val_ty = self.infer_expr(value, env);
                 if let Some((var_ty, mutable)) = env.lookup(name).cloned() {
                     if !mutable {
-                        self.err(format!("cannot assign to immutable variable '{}'", name));
+                        self.err(format!("cannot assign to immutable variable '{}'; declare with 'mut' to allow assignment", name));
                     }
                     if !var_ty.compatible_with(&val_ty) {
                         self.err(format!(
@@ -406,7 +480,13 @@ impl TypeChecker {
                         ));
                     }
                 } else {
-                    self.err(format!("undefined variable '{}'", name));
+                    let mut msg = format!("undefined variable '{}'", name);
+                    if let Some(suggestion) = suggest_similar(name, env.all_names().into_iter()) {
+                        msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                    } else {
+                        msg.push_str("; use ':=' to declare a new variable");
+                    }
+                    self.err(msg);
                 }
                 Type::Unit
             }
@@ -414,10 +494,16 @@ impl TypeChecker {
                 let _val_ty = self.infer_expr(value, env);
                 if let Some((_var_ty, mutable)) = env.lookup(name).cloned() {
                     if !mutable {
-                        self.err(format!("cannot assign to immutable variable '{}'", name));
+                        self.err(format!("cannot assign to immutable variable '{}'; declare with 'mut' to allow assignment", name));
                     }
                 } else {
-                    self.err(format!("undefined variable '{}'", name));
+                    let mut msg = format!("undefined variable '{}'", name);
+                    if let Some(suggestion) = suggest_similar(name, env.all_names().into_iter()) {
+                        msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                    } else {
+                        msg.push_str("; use ':=' to declare a new variable");
+                    }
+                    self.err(msg);
                 }
                 Type::Unit
             }
@@ -433,7 +519,12 @@ impl TypeChecker {
                 if let Type::Record(name) = &obj_ty {
                     if let Some(rd) = self.records.get(name) {
                         if !rd.fields.iter().any(|(f, _)| f == field) {
-                            self.err(format!("type '{}' has no field '{}'", name, field));
+                            let field_names: Vec<&str> = rd.fields.iter().map(|(n, _)| n.as_str()).collect();
+                            let mut msg = format!("type '{}' has no field '{}'", name, field);
+                            if let Some(suggestion) = suggest_similar(field, field_names.into_iter()) {
+                                msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                            }
+                            self.err(msg);
                         }
                     }
                 }
@@ -686,7 +777,19 @@ impl TypeChecker {
                         }
 
                         if !PIPELINE_METHODS.contains(&name.as_str()) && !name.starts_with("__") {
-                            self.err(format!("undefined function '{}'", name));
+                            let mut msg = format!("undefined function '{}'", name);
+                            // Collect candidates from user-defined functions, env vars, records, enum variants
+                            let fn_names = self.all_function_names();
+                            let var_names = env.all_names();
+                            let all: Vec<&str> = fn_names.iter().copied()
+                                .chain(var_names.iter().copied())
+                                .chain(self.records.keys().map(|s| s.as_str()))
+                                .chain(self.variant_to_enum.keys().map(|s| s.as_str()))
+                                .collect();
+                            if let Some(suggestion) = suggest_similar(name, all.into_iter()) {
+                                msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                            }
+                            self.err(msg);
                         }
                         Type::Any
                     }
@@ -787,7 +890,15 @@ impl TypeChecker {
                     }
                     for (f, _) in fields {
                         if !rd.fields.iter().any(|(fname, _)| fname == f) {
-                            self.err(format!("unknown field '{}' in type '{}'", f, type_name));
+                            let field_names: Vec<&str> = rd.fields.iter().map(|(n, _)| n.as_str()).collect();
+                            let mut msg = format!("unknown field '{}' in type '{}'", f, type_name);
+                            if let Some(suggestion) = suggest_similar(f, field_names.into_iter()) {
+                                msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                            } else {
+                                let available: Vec<&str> = rd.fields.iter().map(|(n, _)| n.as_str()).collect();
+                                msg.push_str(&format!("; available fields: {}", available.join(", ")));
+                            }
+                            self.err(msg);
                         }
                     }
                     Type::Record(type_name.clone())
@@ -795,7 +906,11 @@ impl TypeChecker {
                     // Enum variant construction: Circle(radius: 5.0)
                     Type::Enum(enum_name)
                 } else {
-                    self.err(format!("unknown type '{}'", type_name));
+                    let mut msg = format!("unknown type '{}'", type_name);
+                    if let Some(suggestion) = suggest_similar(type_name, self.all_type_names().into_iter()) {
+                        msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                    }
+                    self.err(msg);
                     Type::Any
                 }
             }
@@ -808,7 +923,12 @@ impl TypeChecker {
                             if let Some((_, fty)) = rd.fields.iter().find(|(f, _)| f == field) {
                                 return fty.clone();
                             } else {
-                                self.err(format!("type '{}' has no field '{}'", name, field));
+                                let field_names: Vec<&str> = rd.fields.iter().map(|(n, _)| n.as_str()).collect();
+                                let mut msg = format!("type '{}' has no field '{}'", name, field);
+                                if let Some(suggestion) = suggest_similar(field, field_names.into_iter()) {
+                                    msg.push_str(&format!("; did you mean '{}'?", suggestion));
+                                }
+                                self.err(msg);
                             }
                         }
                         Type::Any
@@ -1385,5 +1505,69 @@ mod tests {
         assert!(check(
             "type Point { x:Int, y:Int }\n\nfn show p:Point -> Str\n  \"point\"\n\nfn main\n  show({x: 1, y: 2})\n"
         ).is_ok());
+    }
+
+    // --- "Did you mean" suggestion tests ---
+
+    #[test]
+    fn suggestion_undefined_function_typo() {
+        // "prnt" should suggest "print" isn't user-defined, but "greet" -> "great" should work
+        let errs = check_err("fn greet\n  print \"hi\"\n\nfn main\n  gret()\n");
+        assert!(errs.iter().any(|e| e.msg.contains("did you mean 'greet'")),
+            "expected suggestion for 'gret', got: {:?}", errs);
+    }
+
+    #[test]
+    fn suggestion_undefined_variable_typo() {
+        let errs = check_err("fn main\n  count := 42\n  cont = 1\n");
+        assert!(errs.iter().any(|e| e.msg.contains("did you mean 'count'")),
+            "expected suggestion for 'cont', got: {:?}", errs);
+    }
+
+    #[test]
+    fn suggestion_unknown_type_typo() {
+        let errs = check_err("type Point { x:Int, y:Int }\n\nfn main\n  p := Piont(x: 1, y: 2)\n");
+        assert!(errs.iter().any(|e| e.msg.contains("did you mean 'Point'")),
+            "expected suggestion for 'Piont', got: {:?}", errs);
+    }
+
+    #[test]
+    fn suggestion_unknown_field_typo() {
+        let errs = check_err("type Point { x:Int, y:Int }\n\nfn main\n  p := Point(x: 1, z: 2)\n");
+        let err = errs.iter().find(|e| e.msg.contains("unknown field 'z'")).unwrap();
+        assert!(err.msg.contains("did you mean"),
+            "expected did-you-mean suggestion for 'z', got: {:?}", err.msg);
+    }
+
+    #[test]
+    fn suggestion_field_access_typo() {
+        let errs = check_err("type Point { x:Int, y:Int }\n\nfn main\n  p := Point(x: 1, y: 2)\n  print p.z\n");
+        let err = errs.iter().find(|e| e.msg.contains("no field 'z'")).unwrap();
+        // z is distance 1 from both x and y, so we should get a suggestion
+        assert!(err.msg.contains("did you mean"),
+            "expected did-you-mean suggestion, got: {:?}", err.msg);
+    }
+
+    #[test]
+    fn suggestion_undefined_var_hints_declare() {
+        // When no similar name exists, suggest using ':='
+        let errs = check_err("fn main\n  xyzzy = 42\n");
+        assert!(errs.iter().any(|e| e.msg.contains("use ':=' to declare")),
+            "expected ':=' hint, got: {:?}", errs);
+    }
+
+    #[test]
+    fn suggestion_immutable_assign_hints_mut() {
+        let errs = check_err("fn main\n  x := 0\n  x = 1\n");
+        assert!(errs.iter().any(|e| e.msg.contains("mut")),
+            "expected mut hint, got: {:?}", errs);
+    }
+
+    #[test]
+    fn edit_distance_basic() {
+        assert_eq!(edit_distance("kitten", "sitting"), 3);
+        assert_eq!(edit_distance("", "abc"), 3);
+        assert_eq!(edit_distance("abc", "abc"), 0);
+        assert_eq!(edit_distance("Point", "Piont"), 2);
     }
 }
