@@ -178,8 +178,19 @@ impl CCodeGen {
                 }
             }
             Stmt::Return(Some(expr)) => {
-                let (val, _kind) = self.compile_expr(expr)?;
-                self.emit(&format!("return {};", val));
+                let (val, kind) = self.compile_expr(expr)?;
+                let ret_kind = self.current_fn_ret_kind.clone();
+                if kind != ret_kind {
+                    let ret_expr = self.coerce_expr(&val, &kind, &ret_kind);
+                    if ret_expr != val {
+                        self.emit(&format!("return {};", ret_expr));
+                    } else {
+                        let ret_expr = self.coerce_from_i64_expr(&val, &ret_kind);
+                        self.emit(&format!("return {};", ret_expr));
+                    }
+                } else {
+                    self.emit(&format!("return {};", val));
+                }
                 Ok((None, ValKind::Void))
             }
             Stmt::Return(None) => {

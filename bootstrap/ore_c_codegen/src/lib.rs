@@ -182,6 +182,8 @@ pub struct CCodeGen {
     context_vars: HashMap<String, String>,
     /// Context requirements for each function (function name -> Vec of capability names)
     fn_context: HashMap<String, Vec<String>>,
+    /// Return kind of the function currently being compiled (for return value coercion)
+    current_fn_ret_kind: ValKind,
 }
 
 impl Default for CCodeGen {
@@ -223,6 +225,7 @@ impl CCodeGen {
             compiled_functions: HashSet::new(),
             context_vars: HashMap::new(),
             fn_context: HashMap::new(),
+            current_fn_ret_kind: ValKind::Void,
         }
     }
 
@@ -537,6 +540,7 @@ impl CCodeGen {
         let fn_info = self.functions.get(&fndef.name).cloned()
             .ok_or_else(|| self.err(format!("undefined function '{}'", fndef.name)))?;
         let c_fn_name = Self::mangle_fn_name(&fndef.name);
+        self.current_fn_ret_kind = fn_info.ret_kind.clone();
 
         self.variables.clear();
         self.dynamic_kind_tags.clear();
@@ -1531,6 +1535,71 @@ fn main
         let c_code = compile_ore_to_c(src);
         assert!(c_code.contains("ore_payload_Token_Number"),
             "Expected payload extraction:\n{}", c_code);
+    }
+
+    #[test]
+    fn compile_match_enum_with_record_field() {
+        // Mirror the actual Stmt enum from ast.ore with Block fields
+        let src = r#"
+type SpannedStmt { stmt_id: Int, line: Int }
+type Block { stmts: List }
+
+type Stmt
+  LetStmt(name: Str, mutable: Bool, value: Int)
+  ExprStmt(expr: Int)
+  ForInStmt(var_name: Str, start: Int, end: Int, step: Int, body: Block)
+  WhileStmt(cond: Int, body: Block)
+  LoopStmt(body: Block)
+  ForEachStmt(var_name: Str, iterable: Int, body: Block)
+  BreakStmt
+  ReturnStmt(value: Int)
+
+fn get_sspanned pool:List id:Int -> SpannedStmt
+  pool[id]
+
+fn get_stmt pool:List id:Int -> Stmt
+  pool[id]
+
+fn check_block stmts:List block:Block
+  block_stmts := block.stmts
+  for i in 0..block_stmts.len()
+    ss := get_sspanned(block_stmts, i)
+    check_stmt(stmts, ss.stmt_id)
+
+fn check_stmt stmts:List stmt_id:Int
+  st := get_stmt(stmts, stmt_id)
+  match st
+    LetStmt name mutable value ->
+      print name
+    ExprStmt expr ->
+      print expr
+    ForInStmt var_name start end step body ->
+      print var_name
+      check_block(stmts, body)
+    WhileStmt cond body ->
+      check_block(stmts, body)
+    LoopStmt body ->
+      check_block(stmts, body)
+    ForEachStmt var_name iterable body ->
+      check_block(stmts, body)
+    _ ->
+      0
+
+fn main
+  print "ok"
+"#;
+        let c_code = compile_ore_to_c(src);
+        eprintln!("=== Generated C code ===\n{}\n=== End ===", c_code);
+        // Check the data array size is sufficient
+        // LetStmt: Str(8) + Bool(1) + Int(8) = 17 bytes -> 3 i64s
+        // ForInStmt: Str(8) + Int(8) + Int(8) + Int(8) + Block(8) = 40 -> 5 i64s
+        // So data should be at least [5]
+        assert!(c_code.contains("int64_t data[5]"),
+            "Expected data[5] for Stmt enum:\n{}", c_code);
+        assert!(c_code.contains("ore_payload_Stmt_ForInStmt"),
+            "Expected payload struct for ForInStmt:\n{}", c_code);
+        assert!(c_code.contains("struct ore_rec_Block body"),
+            "Expected Block field in payload struct:\n{}", c_code);
     }
 
     // ---------------------------------------------------------------
