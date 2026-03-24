@@ -134,6 +134,8 @@ pub struct CodeGen<'ctx> {
     pub(crate) fn_return_map_val_kind: HashMap<String, ValKind>,
     /// Test function names in order, for `ore test`
     pub test_names: Vec<String>,
+    /// Return kind of the function currently being compiled (for return value coercion)
+    pub(crate) current_fn_ret_kind: ValKind,
 }
 
 #[derive(Debug, Default)]
@@ -198,6 +200,7 @@ impl<'ctx> CodeGen<'ctx> {
             fn_return_list_elem_kind: HashMap::new(),
             fn_return_map_val_kind: HashMap::new(),
             test_names: Vec::new(),
+            current_fn_ret_kind: ValKind::Void,
         }
     }
 
@@ -706,8 +709,10 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub(crate) fn compile_function(&mut self, fndef: &FnDef) -> Result<(), CodeGenError> {
-        let (func, _ret_kind) = self.functions.get(&fndef.name).ok_or_else(|| self.err(format!("undefined function '{}' (not declared before compilation)", fndef.name)))?;
+        let (func, ret_kind) = self.functions.get(&fndef.name).ok_or_else(|| self.err(format!("undefined function '{}' (not declared before compilation)", fndef.name)))?;
         let func = *func;
+        let ret_kind = ret_kind.clone();
+        self.current_fn_ret_kind = ret_kind.clone();
         let entry = self.context.append_basic_block(func, "entry");
         self.builder.position_at_end(entry);
         self.variables.clear();
@@ -773,7 +778,8 @@ impl<'ctx> CodeGen<'ctx> {
                 bld!(self.builder.build_return(Some(&zero)))?;
             } else if fndef.ret_type.is_some() {
                 if let Some(val) = last_val {
-                    bld!(self.builder.build_return(Some(&val)))?;
+                    let coerced = self.coerce_return_value(val, &ret_kind)?;
+                    bld!(self.builder.build_return(Some(&coerced)))?;
                 } else {
                     return Err(self.err(format!("function '{}' must return a value", fndef.name)));
                 }

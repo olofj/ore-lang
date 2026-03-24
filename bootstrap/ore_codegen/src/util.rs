@@ -114,6 +114,26 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
+    /// Coerce a return value to match the function's declared return kind.
+    /// Handles the case where a function returns an enum/record type but the body
+    /// produced a raw i64 (e.g., from indexing an untyped list).
+    pub(crate) fn coerce_return_value(&mut self, val: BasicValueEnum<'ctx>, ret_kind: &ValKind) -> Result<BasicValueEnum<'ctx>, CodeGenError> {
+        let expected_ty = self.kind_to_llvm_type(ret_kind);
+        if val.get_type() == expected_ty {
+            return Ok(val);
+        }
+        match ret_kind {
+            ValKind::Enum(_) | ValKind::Record(_) => {
+                if val.is_int_value() {
+                    self.list_elem_from_i64(val, ret_kind)
+                } else {
+                    Ok(val)
+                }
+            }
+            _ => Ok(val),
+        }
+    }
+
     /// Convert any BasicValueEnum to i64 for storage in Option/Result payloads.
     pub(crate) fn value_to_i64(&mut self, val: BasicValueEnum<'ctx>) -> Result<inkwell::values::IntValue<'ctx>, CodeGenError> {
         match val {

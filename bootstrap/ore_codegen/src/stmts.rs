@@ -110,7 +110,9 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Stmt::Return(Some(expr)) => {
                 let (val, _kind) = self.compile_expr_with_kind(expr, func)?;
-                bld!(self.builder.build_return(Some(&val)))?;
+                let ret_kind = self.current_fn_ret_kind.clone();
+                let coerced = self.coerce_return_value(val, &ret_kind)?;
+                bld!(self.builder.build_return(Some(&coerced)))?;
                 Ok((None, ValKind::Void))
             }
             Stmt::Return(None) => {
