@@ -413,6 +413,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         let type_name = match &obj_kind {
             ValKind::Record(name) => name.clone(),
+            ValKind::Enum(name) => name.clone(),
             _ => return Err(self.err(format!("method call on unsupported type: {:?}", obj_kind))),
         };
 

@@ -7,6 +7,8 @@ use std::collections::{HashMap, HashSet};
 
 use ore_parser::ast::*;
 
+pub mod derive;
+
 /// Tracks whether a compiled value is a string pointer (needs RC) or a plain value
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValKind {
@@ -172,6 +174,7 @@ mod builtins;
 mod stmts;
 mod expr;
 mod runtime_decls;
+mod derive_llvm;
 
 impl<'ctx> CodeGen<'ctx> {
     pub fn new(context: &'ctx Context, module_name: &str) -> Self {
@@ -328,6 +331,24 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
+        // Generate derived method FnDefs from deriving() clauses
+        let mut derived_fns = Vec::new();
+        for item in &program.items {
+            match item {
+                Item::TypeDef(td) => {
+                    let fns = derive::generate_record_derives(td)
+                        .map_err(|msg| self.err(msg))?;
+                    derived_fns.extend(fns);
+                }
+                Item::EnumDef(ed) => {
+                    let fns = derive::generate_enum_derives(ed)
+                        .map_err(|msg| self.err(msg))?;
+                    derived_fns.extend(fns);
+                }
+                _ => {}
+            }
+        }
+
         // Declare regular functions (skip generic ones — they'll be monomorphized on demand)
         for item in &program.items {
             if let Item::FnDef(f) = item {
@@ -347,6 +368,11 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
 
+        // Declare and compile derived functions
+        for f in &derived_fns {
+            self.declare_function(f)?;
+        }
+
         // Compile regular functions (skip generic ones)
         for item in &program.items {
             if let Item::FnDef(f) = item {
@@ -361,6 +387,20 @@ impl<'ctx> CodeGen<'ctx> {
             for method in methods {
                 let mangled_fn = Self::mangle_impl_method(type_name, method);
                 self.compile_function(&mangled_fn)?;
+            }
+        }
+
+        // Compile derived functions
+        for f in &derived_fns {
+            self.compile_function(f)?;
+        }
+
+        // Generate enum eq functions directly as LLVM IR (avoids nested match issues)
+        for item in &program.items {
+            if let Item::EnumDef(ed) = item {
+                if derive::enum_needs_eq(ed) {
+                    self.compile_enum_eq_derive(&ed.name)?;
+                }
             }
         }
 
