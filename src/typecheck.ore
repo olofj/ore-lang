@@ -128,6 +128,11 @@ fn tc_builtins tc:TypecheckState -> Map
 
 fn tc_add_error tc:TypecheckState msg:Str
   errs := tc_errors(tc)
+  -- Deduplicate: block-bearing stmts are checked both via recursive
+  -- traversal (with proper scoping) and via the flat pool scan.
+  for i in 0..errs.len()
+    if errs[i] == msg
+      return
   errs.push(msg)
 
 -- Check if a token is a line terminator
@@ -328,7 +333,8 @@ fn check_expr tc:TypecheckState expr_id:Int exprs:List stmts:List
       check_expr(tc, inner, exprs, stmts)
     IfElseExpr cond then_block else_block ->
       check_expr(tc, cond, exprs, stmts)
-      -- Block bodies checked via flat stmt pool iteration
+      check_block(tc, then_block, exprs, stmts)
+      check_block(tc, else_block, exprs, stmts)
     MethodCallExpr object method args ->
       check_expr(tc, object, exprs, stmts)
       for j in 0..args.len()
@@ -380,8 +386,7 @@ fn check_expr tc:TypecheckState expr_id:Int exprs:List stmts:List
       if not recs.contains(type_name) and not v2e.contains(type_name)
         tc_add_error(tc, "undefined type: " + type_name)
     BlockExprExpr block ->
-      -- Block bodies checked via flat stmt pool iteration
-      0
+      check_block(tc, block, exprs, stmts)
     ColonMatchExpr cond then_expr else_expr ->
       check_expr(tc, cond, exprs, stmts)
       check_expr(tc, then_expr, exprs, stmts)
@@ -421,11 +426,9 @@ fn add_pattern_bindings tc:TypecheckState pat:Pattern
     _ -> 0
 
 -- Phase 2: Check statements
--- NOTE: Block fields inside Stmt enum variants have corrupt memory
--- (codegen limitation with complex records in enums).
--- We do NOT recurse into blocks from here. Instead, check_all_stmts
--- iterates ALL stmts in the pool, which includes loop/fn bodies.
--- Loop vars are added to scope via token scanning.
+-- Now that codegen correctly coerces return values for enum/record types,
+-- Block fields inside Stmt enum variants are accessible. We recurse into
+-- block bodies for proper scope tracking.
 fn check_stmt tc:TypecheckState stmt_id:Int exprs:List stmts:List
   if stmt_id < 0
     return
@@ -446,11 +449,36 @@ fn check_stmt tc:TypecheckState stmt_id:Int exprs:List stmts:List
       check_expr(tc, start, exprs, stmts)
       check_expr(tc, end, exprs, stmts)
       scopes := tc_scopes(tc)
+      scope_push(scopes)
       scope_define(scopes, var_name, "Int")
+      check_block(tc, body, exprs, stmts)
+      scope_pop(scopes)
     ForEachStmt var_name iterable body ->
       check_expr(tc, iterable, exprs, stmts)
       scopes := tc_scopes(tc)
+      scope_push(scopes)
       scope_define(scopes, var_name, "any")
+      check_block(tc, body, exprs, stmts)
+      scope_pop(scopes)
+    ForEachKVStmt key_var val_var iterable body ->
+      check_expr(tc, iterable, exprs, stmts)
+      scopes := tc_scopes(tc)
+      scope_push(scopes)
+      scope_define(scopes, key_var, "any")
+      scope_define(scopes, val_var, "any")
+      check_block(tc, body, exprs, stmts)
+      scope_pop(scopes)
+    WhileStmt cond body ->
+      check_expr(tc, cond, exprs, stmts)
+      scopes := tc_scopes(tc)
+      scope_push(scopes)
+      check_block(tc, body, exprs, stmts)
+      scope_pop(scopes)
+    LoopStmt body ->
+      scopes := tc_scopes(tc)
+      scope_push(scopes)
+      check_block(tc, body, exprs, stmts)
+      scope_pop(scopes)
     IndexAssignStmt object index value ->
       check_expr(tc, object, exprs, stmts)
       check_expr(tc, index, exprs, stmts)
